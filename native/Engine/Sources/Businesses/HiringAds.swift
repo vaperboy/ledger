@@ -4,25 +4,17 @@ import Countries
 import Employees
 import Finance
 
-// Job ads and the agency. An ad costs a fee and brings applicants over the next four weeks, a few a week, more for a bigger
-// company; an agency costs much more, brings suggestions at once and better ones later, and takes a share of the hired person's pay for 24 months.
-// The 'network' search mode is deprecated (kept so old saves and the automatic hirers work; not offered to the player).
-
 public enum JobAds {
     public enum PostResult: Equatable, Sendable {
         case posted(fee: Double, expectedApplicants: Int)
         case notEnoughCash(fee: Double)
-        /// The company name or organisation number is missing.
         case missingRecord(String)
         case notPossible(String)
     }
 
-    /// An ad runs this many days; applicants stay on the list for `keepWeeks` after arriving.
     public static let adDays = 28
     public static let keepWeeks = 8
 
-    /// The organisation number a company advertises under. Registration stores none, so it is derived (stably) from the game seed and the company id:
-    /// the same number every time, nothing to save.
     public static func orgNumber(_ s: GameState, companyID: Int) -> String {
         var r = HashedRandom("\(s.seed):org:\(companyID)")
         func digits(_ n: Int) -> String { (0..<n).map { _ in String(Int(r.next() * 10) % 10) }.joined() }
@@ -34,8 +26,6 @@ public enum JobAds {
         return (co.name, co.name.isEmpty ? "" : orgNumber(s, companyID: companyID))
     }
 
-    /// The fee: bigger company and better-paid role cost more. Base fee scaled to the country, times 1 + 5 percent a head (up to 40 heads),
-    /// times the role's pay against the lowest-paid role (0.6 to 3).
     public static func fee(_ s: GameState, companyID: Int, role: String, data: GameData) -> Double {
         guard let co = s.company(companyID) else { return 0 }
         let cur = World(state: s, data: data).currency(co)
@@ -49,8 +39,6 @@ public enum JobAds {
         return clamp((t[role]?.baseMonthlyWage ?? ref) / ref, 0.6, 3)
     }
 
-    /// How many people answer an ad over its run: a small company gets a few, a big, busy, well-regarded one many.
-    /// 2 + half a person per head + reputation/25 + 1.2 per decade of weekly revenue (against a thousand units' worth), plus a deterministic -1..+1.
     public static func expectedApplicants(_ s: GameState, _ co: Company, data: GameData, salt: String = "") -> Int {
         let cur = World(state: s, data: data).currency(co)
         let heads = Double(min(40, PremisesExtras.heads(co)))
@@ -62,7 +50,6 @@ public enum JobAds {
 
     static func list(_ co: Company) -> [JSONValue] { co.value("apl").array }
 
-    /// The people who have answered the company's ads and the agency, as person ids (still on the market and within `keepWeeks`).
     public static func applicantIDs(_ s: GameState, companyID: Int) -> [Int] {
         guard let co = s.company(companyID) else { return [] }
         return list(co).compactMap { e in
@@ -90,7 +77,6 @@ public enum JobAds {
         return .posted(fee: fee, expectedApplicants: n)
     }
 
-    /// Daily: applicants whose day has come arrive, each with an inbox message routed like others (a manager's name when the company has one).
     public static func runDay(_ s: inout GameState, data: GameData) {
         let today = s.week * 7 + s.day
         for ci in s.companies.indices where (s.companies[ci].status == .open || s.companies[ci].status == .setup) && !s.companies[ci].value("ads").isNull {
@@ -113,7 +99,6 @@ public enum JobAds {
         }
     }
 
-    /// One applicant comes in: a person is made on the market, put on the company's list, and the inbox is told.
     static func arrive(_ s: inout GameState, companyIndex ci: Int, role: String, agency: Bool, boost: Double, data: GameData) {
         let co = s.companies[ci]
         var p = Hiring.generateCandidate(role: role, company: co, tier: agency ? "mid" : nil, faces: true, state: &s, data: data)
@@ -140,16 +125,13 @@ public enum Agency {
         case notPossible(String)
     }
 
-    /// Share of the hired person's monthly pay the agency keeps, for the first `months` months. (Cheaper to find someone yourself in the long run.)
     public static let salaryShare = 0.08
     public static let months = 24
-    /// Suggestions at once, and the better ones that follow (one a week for `laterWeeks` weeks, each with more skill than the last).
     public static let immediate = 3
     public static let laterWeeks = 3
     public static let skillBoostImmediate = 6.0
     public static let skillBoostLater = 12.0
 
-    /// The upfront fee: eight times an ad's fee for the same role and company.
     public static let feeMultiple = 8.0
     public static func fee(_ s: GameState, companyID: Int, role: String, data: GameData) -> Double {
         jsRound(JobAds.fee(s, companyID: companyID, role: role, data: data) * feeMultiple)
@@ -175,7 +157,6 @@ public enum Agency {
         return .engaged(fee: fee, suggestions: ids.sorted())
     }
 
-    /// Daily: the better-fitted candidates arrive one a week.
     public static func runDay(_ s: inout GameState, data: GameData) {
         let today = s.week * 7 + s.day
         for ci in s.companies.indices where (s.companies[ci].status == .open || s.companies[ci].status == .setup) && !s.companies[ci].value("agency").isNull {
@@ -193,14 +174,12 @@ public enum Agency {
         }
     }
 
-    /// At a hire: a person who came through the agency carries the fee obligation for `months` months.
     static func markHire(_ m: inout StaffMember, person n: Person, week: Int) {
         guard !n.value("ag").isNull, n.int("ag") == 1 else { return }
         m.set("agPct", salaryShare)
         m.set("agEnd", week + Int(saturating: (Double(months) * 52 / 12).rounded()))
     }
 
-    /// Month end: the agency's share of each agency hire's monthly wage, booked as an expense.
     public static func monthly(_ s: inout GameState, data: GameData) {
         for ci in s.companies.indices where (s.companies[ci].status == .open || s.companies[ci].status == .setup) {
             let due = s.companies[ci].staff.filter { $0.num("agPct") > 0 && s.week < $0.int("agEnd") }

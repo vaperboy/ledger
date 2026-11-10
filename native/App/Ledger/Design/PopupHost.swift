@@ -2,14 +2,11 @@ import SwiftUI
 import UIKit
 import Combine
 
-/// How a registered popup is drawn: `.card` is wrapped in the standard centred card (header with x, scrolling body); `.raw` draws its own
-/// complete popup (a `GamePopup`, a report page).
 enum PopupDraw {
     case card(title: String, size: CenterSheetSize, category: PopupCategory? = nil, tone: PopupTone? = nil, palette: OutsidePalette? = nil)
     case raw
 }
 
-/// One popup registered with a host. The content closure is kept as `AnyView`; the card's own state lives in the host's layer.
 struct PopupEntry {
     var key: String
     var seq: Int
@@ -20,16 +17,11 @@ struct PopupEntry {
     var item: PopupQueue.Item { PopupQueue.Item(key: key, priority: priority, seq: seq) }
 }
 
-/// The one popup host. The app root owns one and draws every popup above the whole app (tab bar included) as an overlay: no cover, no
-/// sheet, no dialog, so showing a popup never touches navigation. A `.sheet` that can raise popups installs a nested host with
-/// `.popupHost()`; it shows its own popups and those of the host above it.
 final class PopupHost: ObservableObject {
     private static var counter = 0
 
     @Published private(set) var entries: [String: PopupEntry] = [:]
-    /// How many nested hosts (sheets) are open under this one. While one is, it draws this host's popups, so they are drawn once.
     @Published private(set) var claims = 0
-    /// The host above this one (set while this nested host's sheet is open), and whether this host holds a claim on it.
     private(set) weak var parentHost: PopupHost?
     private var holdsClaim = false
     private var parentLink: AnyCancellable?
@@ -37,9 +29,6 @@ final class PopupHost: ObservableObject {
     func claim() { claims += 1 }
     func release() { claims = max(0, claims - 1) }
 
-    /// A nested host (the content of a `.sheet`) takes over drawing the popups of the host above it for as long as it is open. The claim is
-    /// taken once and given back once (`detach`, or when this host is deallocated, so a sheet that vanishes without `onDisappear` cannot
-    /// leave the host above silent for good).
     func attach(to above: PopupHost?) {
         guard !holdsClaim, let above, above !== self else { return }
         parentHost = above
@@ -60,13 +49,10 @@ final class PopupHost: ObservableObject {
         }
     }
 
-    /// Every popup this host and the hosts above it have registered.
     func gathered() -> [PopupEntry] {
         Array(entries.values) + (parentHost?.gathered() ?? [])
     }
 
-    /// What this host's layer draws: nothing while a nested host (a sheet) is open on top of it, because that one draws these popups
-    /// too (once, over the sheet); otherwise its own popups and those of the hosts above it.
     func drawnEntries() -> [PopupEntry] {
         claims > 0 ? [] : gathered()
     }
@@ -78,7 +64,6 @@ final class PopupHost: ObservableObject {
         entries[key] = PopupEntry(key: key, seq: seq, priority: priority, draw: draw, content: content, onClose: onClose)
     }
 
-    /// The one definition of "a popup is showing here": at least one registered popup is drawn (any kind, panels included).
     var hasVisible: Bool { !drawnEntries().isEmpty }
 
     func remove(_ key: String) {
@@ -88,7 +73,6 @@ final class PopupHost: ObservableObject {
 
 private struct PopupHostKey: EnvironmentKey { static let defaultValue: PopupHost? = nil }
 extension EnvironmentValues {
-    /// The host that takes this view's popups (a plain reference, read without observing, so a view never re-renders when popups change).
     var popupHost: PopupHost? {
         get { self[PopupHostKey.self] }
         set { self[PopupHostKey.self] = newValue }
@@ -97,7 +81,6 @@ extension EnvironmentValues {
 
 private struct OutcomeStoreKey: EnvironmentKey { static let defaultValue: GameStore? = nil }
 extension EnvironmentValues {
-    /// The game store that tells the outcome of a confirmed action (read by `confirmAction`; set once at the root).
     var outcomeStore: GameStore? {
         get { self[OutcomeStoreKey.self] }
         set { self[OutcomeStoreKey.self] = newValue }
@@ -106,16 +89,12 @@ extension EnvironmentValues {
 
 private struct PopupCloseKey: EnvironmentKey { static let defaultValue: (() -> Void)? = nil }
 extension EnvironmentValues {
-    /// Set for everything drawn inside a popup: closes that popup. A view that used `\.dismiss` to close its centred popup calls this
-    /// first (the system dismiss would pop the page under the popup, because the popup is no longer a presentation).
     var popupClose: (() -> Void)? {
         get { self[PopupCloseKey.self] }
         set { self[PopupCloseKey.self] = newValue }
     }
 }
 
-/// Draws the popups of a host (and of the host above it): every registered popup stays in the hierarchy so its state survives while
-/// another one is on top, but only the first in `PopupQueue` order is visible and takes touches.
 struct PopupHostLayer: View {
     @ObservedObject var host: PopupHost
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -134,7 +113,6 @@ struct PopupHostLayer: View {
                     .allowsHitTesting(on)
                     .accessibilityHidden(!on)
                     .zIndex(on ? 1 : 0)
-                    // The card draws its own entrance by size and kind (`PopupEntrance`); the host only fades it in and out.
                     .transition(.opacity)
             }
         }
@@ -148,7 +126,6 @@ struct PopupHostLayer: View {
     @ViewBuilder private func entryBody(_ e: PopupEntry) -> some View {
         switch e.draw {
         case .card(let title, let size, let category, let tone, let palette):
-            // The card takes the palette of the screen that raised it, like its content does, so a light outside app gets a light card.
             if let palette {
                 CenterSheetFrame(onClose: e.onClose, title: title, size: size, category: category, tone: tone) { e.content().environment(\.popupClose, e.onClose) }
                     .environment(\.outsidePalette, palette)
@@ -161,8 +138,6 @@ struct PopupHostLayer: View {
     }
 }
 
-/// Registers one popup with the host of its environment while `active`. It is a zero-size UIKit view so it can follow every update of the
-/// view that owns the popup (the content closure always is the newest) without that view observing the host.
 struct PopupRegistration: UIViewRepresentable {
     var host: PopupHost?
     var key: String
@@ -238,7 +213,6 @@ private struct PopupHostModifier: ViewModifier {
     }
 }
 
-/// The custom environment values the registering view had, put back around the popup content (which is drawn at the app root).
 struct PopupCarriedEnvironment: ViewModifier {
     var insideCard: Bool
     var markerBudget: MarkerBudget?
@@ -258,8 +232,6 @@ struct PopupCarriedEnvironment: ViewModifier {
     }
 }
 
-/// Registers a popup with the host and carries the palette of the registering view over to the host's layer
-/// (an outside app keeps its colours in its popups).
 struct HostedPopupModifier<Card: View>: ViewModifier {
     @Environment(\.popupHost) private var host
     @Environment(\.outsidePalette) private var palette
@@ -303,10 +275,8 @@ struct HostedPopupModifier<Card: View>: ViewModifier {
 }
 
 extension View {
-    /// Inside a `.sheet` that can raise popups: its own popups (and those of the host above) are drawn over the sheet, not under it.
     func popupHost() -> some View { modifier(PopupHostModifier()) }
 
-    /// Registers a popup that draws its own complete card (a `GamePopup`, a report) with the host while `active`.
     func hostedPopup<Content: View>(key: String, priority: PopupPriority, active: Bool, onClose: @escaping () -> Void, @ViewBuilder content: @escaping () -> Content) -> some View {
         modifier(HostedPopupModifier(key: key, priority: priority, active: active, draw: .raw, onClose: onClose, onDismiss: nil, card: content))
     }

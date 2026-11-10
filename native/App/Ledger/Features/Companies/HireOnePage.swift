@@ -5,11 +5,6 @@ import Employees
 import Businesses
 import Simulation
 
-/// "Hire <name>": two pages for a worker. Page 1: what they ask, the going rate, the start date and one button, `Offer the going rate`, with a
-/// text link `Change the offer`. Page 2 (only via the link): the pay figure, counter options and hours, with every other term (contract type,
-/// seasons, pay basis, commission, benefits, promises) collapsed under `More terms`. Every figure is the engine's: `termsSummary` for what is shown, `hireOffer` for the answer. Posts other than
-/// workers (manager, assistant, team posts) take the same two pages, priced by `hireSalaryTalk` (their ask shows once they have named it).
-/// `embedded`: shown inside the hiring popup (no screen frame, no scroll view of its own: the popup's `FitScroll` hugs each page).
 struct HireOnePage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -22,10 +17,8 @@ struct HireOnePage: View {
     @StateObject private var model = HireFlowModel()
     @State private var pending: PendingAction?
     @State private var stage = 1
-    /// Before the company has five staff or a manager: -1 below, 0 at, 1 above the going rate.
     @State private var tier = 0
 
-    /// The figures both pages show, whatever the post.
     private struct HirePay {
         var ask: Double?
         var market: Double
@@ -58,14 +51,11 @@ struct HireOnePage: View {
         .onChange(of: model.finished) { _, done in if done { dismiss() } }
     }
 
-    /// Moves between the two pages with the app's move animation.
     private func go(_ to: Int) {
         Haptics.tap()
         withAnimation(Motion.move(reduceMotion)) { stage = to }
     }
 
-    /// The page content in the app's scroll view with its actions pinned under it, or bare inside the popup (whose `FitScroll` scrolls it)
-    /// with the actions at the end.
     @ViewBuilder private func scrolled<C: View, F: View>(@ViewBuilder _ content: () -> C, @ViewBuilder footer: () -> F) -> some View {
         if embedded {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
@@ -109,8 +99,6 @@ struct HireOnePage: View {
         return HirePay(ask: t.theirAsk, market: t.marketPay, yours: t.yourOffer, startWeek: e.state.week, counters: picks)
     }
 
-    // MARK: Helpers
-
     private func currency(_ e: GameEngine) -> Currency {
         if let id = request.companyID, let co = e.state.company(id) { return e.currency(for: co) }
         return e.homeCurrency
@@ -125,20 +113,16 @@ struct HireOnePage: View {
         model.draft.terms(worker: isWorker, sells: sells(e), busy: opts.busyMonths)
     }
 
-    /// The contract extras (perks, promises, expenses, bonus plans) are hidden until the company has five staff or a manager.
     private func simple(_ e: GameEngine) -> Bool {
         guard let id = request.companyID else { return false }
         return !e.staffTermsUnlocked(companyID: id)
     }
 
-    /// The wage for the chosen tier: a tenth under or over the going rate, rounded to a currency step.
     private func tierWage(_ s: HirePay, _ cur: Currency) -> Double {
         tier == 0 ? s.market : cur.roundedStep(s.market * (tier < 0 ? 0.9 : 1.1), about: 500)
     }
 
     private func has(_ opts: HireDraftOptions, _ field: String) -> Bool { opts.fields.contains(field) }
-
-    // MARK: The page
 
     private func page(_ e: GameEngine, _ person: Person, _ opts: HireDraftOptions) -> some View {
         let cur: Currency = currency(e)
@@ -160,7 +144,6 @@ struct HireOnePage: View {
         }
     }
 
-    /// One header for both pages: who they are and what they claim.
     private func header(_ e: GameEngine, _ person: Person) -> some View {
         return HStack(spacing: Theme.Space.m) {
             ThumbnailView(kind: .person, key: person.role, size: 48, initials: person.name, face: person.faceKey)
@@ -184,10 +167,6 @@ struct HireOnePage: View {
         HireChip(title: title, on: on) { Haptics.choose(); action() }
     }
 
-    // MARK: Page 1: the going rate
-
-    /// Page 1: what they ask as the one big figure (the going rate and start date as its line), then what you know about them and what
-    /// the hire costs in all, so the decision is on one screen.
     private func quickStage(_ e: GameEngine, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
         let wage: Double = simple(e) ? tierWage(s, cur) : s.market
         let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: wage)
@@ -221,7 +200,6 @@ struct HireOnePage: View {
                         contextTint: gap > 0 && !near ? P.caution : nil)
     }
 
-    /// Below, at or above the going rate, each with what it does to turnover and the quality of work.
     private func tierBlock(_ s: HirePay, _ cur: Currency) -> some View {
         let picks: [(Int, String)] = [(-1, "Below"), (0, "Going rate"), (1, "Above")]
         let note: String
@@ -242,7 +220,6 @@ struct HireOnePage: View {
         }
     }
 
-    /// What the CV, the first impression, the references and a trial week say, for a worker who answered an ad. Words only, never a skill figure.
     @ViewBuilder private func knownBlock(_ e: GameEngine) -> some View {
         if isWorker, let cid = request.companyID, let a = e.applicants(companyID: cid).first(where: { (x: Applicant) -> Bool in x.personID == request.personID }) {
             TeamBlock("What you know") {
@@ -268,7 +245,6 @@ struct HireOnePage: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Page 1's actions: offer the going rate (the one button), or change the offer.
     private func quickActions(_ e: GameEngine, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
         let plain: Bool = simple(e)
         let rate: Double = plain ? tierWage(s, cur) : s.market
@@ -342,8 +318,6 @@ struct HireOnePage: View {
         }
     }
 
-    // MARK: Page 2: terms and pay
-
     private func shownOffer(_ s: HirePay) -> Double {
         if model.offerSet { return model.offer }
         return s.yours > 0 ? s.yours : s.market
@@ -365,14 +339,12 @@ struct HireOnePage: View {
         }
     }
 
-    /// Page 2's actions: make the offer, Back and Walk away.
     private func payActions(_ e: GameEngine, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
         let shown: Double = shownOffer(s)
         let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: shown)
         return actions(talk, cur, terms, shown, problem: problem)
     }
 
-    /// The offer is the one big figure of the page; their ask and the going rate are its context line.
     private func figuresCard(_ s: HirePay, _ cur: Currency, _ shown: Double) -> some View {
         let ask: String = s.ask.map { (a: Double) -> String in "They ask " + cur.tidyShort(a) } ?? "Ask not said yet"
         return TeamHero(label: "Your offer", value: cur.tidyShort(shown), unit: "a month", context: ask + " \u{00B7} going rate " + cur.tidyShort(s.market))
@@ -400,7 +372,6 @@ struct HireOnePage: View {
         }
     }
 
-    /// Posts other than workers: their ask stays unsaid until you ask for it (the engine's `hearTheirAsk`).
     private func hearAskRow(_ e: GameEngine, _ cur: Currency, _ terms: Hiring.Terms) -> some View {
         let post = request.post, cid = request.companyID, chain = request.chainID, pid = request.personID
         let factor: Double = hourFactor
@@ -449,8 +420,6 @@ struct HireOnePage: View {
         }
     }
 
-    // MARK: Pay basis and sellers' plan
-
     private func planTitle(_ p: HireDraft.Plan) -> String {
         switch p {
         case .salary: return "Salary"
@@ -494,8 +463,6 @@ struct HireOnePage: View {
             if lifted { Text("Lifted to the minimum wage.").popupText(.risk) }
         }
     }
-
-    // MARK: More terms (contract type, seasons, pay basis, commission, benefits, promises, expectations)
 
     private func moreTerms(_ e: GameEngine, _ opts: HireDraftOptions) -> some View {
         let bonus: Int = model.draft.bonusPlan == nil ? 0 : 1
@@ -584,9 +551,6 @@ struct HireOnePage: View {
         }
     }
 
-    // MARK: Buttons
-
-    /// Make the offer, with the reason under it while the terms cannot be offered; Back and Walk away as quiet links.
     private func actions(_ talk: HireSalaryTalk?, _ cur: Currency, _ terms: Hiring.Terms, _ shown: Double, problem: String?) -> some View {
         let annual: Double = talk?.annualEmployerCost ?? 0
         return VStack(spacing: Theme.Space.xs) {
@@ -599,8 +563,6 @@ struct HireOnePage: View {
             }
         }
     }
-
-    // MARK: Actions
 
     private func confirm(_ amount: Double, _ annual: Double, _ cur: Currency, _ terms: Hiring.Terms) {
         let cost: String = annual > 0 ? " The company pays about \(cur.tidyShort(annual)) a year in total employer cost." : ""
@@ -616,7 +578,6 @@ struct HireOnePage: View {
         let said = HireOutcomeWords.line(result, name: name, cur: cur, hourFactor: hourFactor)
         model.lines.append(HireLine(mine: true, text: "I can offer \(cur.tidyShort(amount)) a month."))
         model.lines.append(HireLine(mine: false, text: said.text))
-        // The answer to the offer is told in one outcome popup, whatever it was.
         let chosen: String = "Offer \(cur.tidyShort(amount)) a month"
         switch result {
         case .hired:
@@ -628,8 +589,6 @@ struct HireOnePage: View {
             model.gone = true; model.closing = said.text; Haptics.warning(); store.outcome(chosen: chosen, result: said.text)
         }
     }
-
-    // MARK: Ended
 
     private var ended: some View {
         scrolled {
@@ -645,7 +604,6 @@ struct HireOnePage: View {
     }
 }
 
-/// The frame of `HireOnePage`: the app screen when pushed, or just the popup's title when embedded in the hiring popup.
 private struct HireFrame: ViewModifier {
     @EnvironmentObject var store: GameStore
     var embedded: Bool

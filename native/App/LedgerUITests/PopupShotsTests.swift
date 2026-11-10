@@ -1,8 +1,5 @@
 import XCTest
 
-/// Manual CI run (job `popup-shots`): opens every popup site on the showcase game and attaches a full-screen picture named
-/// "popup-<site>", so the sizes can be checked on a small and a large phone. Every site is optional: one that cannot be reached
-/// records a "MISSING <site>" attachment and the run goes on. Nothing here asserts.
 final class PopupShotsTests: CompanyBatchTourCase {
 
     func keep(_ name: String) {
@@ -21,13 +18,12 @@ final class PopupShotsTests: CompanyBatchTourCase {
         add(a)
     }
 
-    /// Runs one site; false from the body (or a skipped step) is recorded as MISSING.
     func site(_ name: String, _ body: () -> Bool) {
         if !body() { missing(name) }
     }
 
     func closeAny() {
-        for id in ["popup-close", "report-continue", "alert-continue", "error-ok", "outcome-ok", "unlock-skip", "celebration-dismiss", "ambition-later", "conversion-keep"] {
+        for id in ["popup-close", "report-continue", "alert-continue", "error-ok", "outcome-ok", "unlock-skip", "celebration-dismiss", "ambition-later"] {
             let b = app.buttons[id]
             if b.exists && b.isHittable { b.tap(); sleep(1); return }
         }
@@ -49,8 +45,6 @@ final class PopupShotsTests: CompanyBatchTourCase {
         let p = app.buttons["tab-Home"]
         if p.exists && p.isHittable { p.tap(); sleep(1) }
     }
-
-    // MARK: Reports and event popups
 
     func testReportsAndEvents() {
         home()
@@ -78,10 +72,6 @@ final class PopupShotsTests: CompanyBatchTourCase {
             tapID("report-continue", wait: 2)
             return true
         }
-        site("decision") {
-            guard tapID("decide-appoint-manager", wait: 2) else { return false }
-            popup("decision"); closeAny(); return true
-        }
         site("celebration") {
             guard exists("celebration-claim", 2) || exists("celebration-dismiss", 2) else { return false }
             popup("celebration"); closeAny(); return true
@@ -99,8 +89,6 @@ final class PopupShotsTests: CompanyBatchTourCase {
             popup("ambition"); closeAny(); return true
         }
     }
-
-    // MARK: Phone apps
 
     func testSettingsSavesPaywall() {
         site("settings") {
@@ -154,7 +142,6 @@ final class PopupShotsTests: CompanyBatchTourCase {
             return true
         }
         site("confirm") {
-            // A confirm question: paying a loan off in full, when there is a loan to pay.
             if tapID("loan-payoff", wait: 2) || tapContaining("Pay off", wait: 2) { popup("confirm"); closeAny(); return true }
             return false
         }
@@ -177,8 +164,6 @@ final class PopupShotsTests: CompanyBatchTourCase {
             return true
         }
     }
-
-    // MARK: Company popups
 
     func testCompanyPopups() {
         site("acquisition") {

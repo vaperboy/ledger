@@ -2,12 +2,7 @@ import Foundation
 import GameCore
 import Countries
 
-/// A read-only before/after estimate of changing how the business sells, worked out by the engine's own demand, price,
-/// capacity and cost-of-sales functions on the company as it is now, once with the current choice and once with the proposed one.
-/// It adds no rule of its own and writes nothing. It is an estimate, not a promise: the numbers move with the seasons, the
-/// weather and the week-to-week spread of sales, so each is shown as a range over the weeks ahead.
 public struct KnobPreview: Equatable, Sendable {
-    /// Low, typical (average) and high over the weeks looked at.
     public struct Range: Equatable, Sendable {
         public var low: Double
         public var typical: Double
@@ -16,39 +11,25 @@ public struct KnobPreview: Equatable, Sendable {
     public struct Measure: Equatable, Sendable {
         public var now: Range
         public var after: Range
-        /// Change in the typical figure.
         public var change: Double { after.typical - now.typical }
-        /// The ranges overlap: the change may be nothing, or the other way round.
         public var uncertain: Bool { after.low <= now.high && now.low <= after.high }
     }
-    /// How many weeks ahead the ranges cover.
     public var horizon: Int
-    /// Customers who want to buy per week.
     public var demand: Measure
-    /// Customers the business can serve per week (the changeover weeks are not included: see the quote).
     public var capacity: Measure
-    /// Average price of one sale.
     public var price: Measure
-    /// Sales per week.
     public var revenue: Measure
-    /// What is left of sales after cost of sales and the fixed costs the choices change; before wages, rent and tax.
     public var margin: Measure
-    /// Share of sales left after those costs, typical week.
     public var marginShareNow: Double
     public var marginShareAfter: Double
-    /// The business could not serve all the demand (typical week): more pull then turns into queues, not sales.
     public var capacityBoundAfter: Bool
-    /// Options that do not work until their licence is approved; the figures above assume they are approved.
     public var waitingForLicence: [String]
     public var notes: [String]
 }
 
 public extension KnobChange {
-    /// How many weeks ahead the estimate looks.
     static let previewHorizon = 8
 
-    /// What the business would look like with `value` (an option index, or the bit mask of a multi-choice knob) against how it sells
-    /// now. Nil when the business has no ordinary weekly sales model (property, finance, projects, energy ...) or the choice is not valid.
     static func preview(_ s: GameState, _ data: GameData, marketing: MarketingTables, companyID: Int, knob knobID: String, value: Int) -> KnobPreview? {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], let k = bd.knobs.first(where: { $0.id == knobID }) else { return nil }
         let co = s.companies[i]
@@ -57,7 +38,6 @@ public extension KnobChange {
         guard valid else { return nil }
         let old = currentValue(co, k)
 
-        // The company with the proposed choice. Options that need a licence are taken as approved, and said so.
         var proposed = s
         var waiting: [String] = []
         var knobs = proposed.companies[i].value("knob"); knobs[knobID] = .number(Double(value)); proposed.companies[i].set("knob", knobs)
@@ -96,7 +76,6 @@ public extension KnobChange {
 
     private struct Week { var demand: Double, capacity: Double, price: Double, revenue: Double, margin: Double }
 
-    /// One future week of the company, through the same functions `CompanyWeek.openWeek` uses.
     private static func week(_ s: GameState, _ data: GameData, _ marketing: MarketingTables, _ i: Int, ahead: Int, replacing company: Company? = nil) -> Week {
         var t = s
         if let company { t.companies[i] = company }
@@ -113,8 +92,6 @@ public extension KnobChange {
         return Week(demand: demand, capacity: cap, price: price, revenue: revenue, margin: revenue * (1 - rate) - CompanyCosts.fixedOverhead(co, bd, w))
     }
 
-    /// Low, typical and high of the weekly figures. `spread`: sales also vary by the spread real weekly sales have around the model
-    /// (`CompanyWeek.salesNoise`), two standard deviations either way, so the range is not narrower than the engine's own luck.
     private static func range(_ v: [Double], spread: Bool) -> KnobPreview.Range {
         guard let lo = v.min(), let hi = v.max() else { return .init(low: 0, typical: 0, high: 0) }
         let mean = v.reduce(0, +) / Double(v.count)

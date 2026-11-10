@@ -5,8 +5,6 @@ import Employees
 import Businesses
 import Simulation
 
-/// The labour rules of the company's country, read only: minimum wage, hours and overtime, notice, severance, leave, probation.
-/// They come from the country data and are enforced when you hire, give raises, set hours and let people go.
 struct CompanyLabourCard: View {
     @Environment(\.outsidePalette) private var P
     var engine: GameEngine

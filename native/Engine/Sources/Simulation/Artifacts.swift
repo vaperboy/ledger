@@ -1,14 +1,11 @@
 import Foundation
 
-/// Collectible artifacts: numbered pieces ("14 of 500") in rarity tiers, grouped into collections. A finished collection pays a cosmetic.
-/// Artifacts are the one thing players trade (through auctions); they carry no game effect.
 public struct ArtifactDef: Equatable, Sendable, Identifiable {
     public var id: String
     public var name: String
     public var collection: String
     public var rarity: BoxRarity
     public var note: String
-    /// How many exist; the serial of a piece runs from 1 to this.
     public var edition: Int { ArtifactCatalog.edition(rarity) }
 }
 
@@ -16,12 +13,10 @@ public struct ArtifactCollection: Equatable, Sendable, Identifiable {
     public var id: String
     public var name: String
     public var blurb: String
-    /// The cosmetic (`GoldCosmetics`) granted once, when every piece is in the cabinet.
     public var rewardID: String
     public var members: [String]
 }
 
-/// One numbered piece. `id` is unique per piece.
 public struct ArtifactItem: Codable, Equatable, Hashable, Identifiable, Sendable {
     public var defID: String
     public var serial: Int
@@ -73,18 +68,15 @@ public enum ArtifactCatalog {
     public static func collection(_ id: String) -> ArtifactCollection? { collections.first { $0.id == id } }
     public static func defs(of rarity: BoxRarity) -> [ArtifactDef] { defs.filter { $0.rarity == rarity } }
 
-    /// A serial in 1...edition from a roll in [0, 1).
     public static func serial(of def: ArtifactDef, roll: Double) -> Int {
         min(def.edition, max(1, 1 + Int(max(0, min(0.999999, roll)) * Double(def.edition))))
     }
 
-    /// "14 of 500".
     public static func label(_ item: ArtifactItem) -> String {
         "\(item.serial) of \(def(item.defID)?.edition ?? 0)"
     }
 }
 
-/// The artifacts a player owns, and which collection rewards were already handed out.
 public struct Cabinet: Codable, Equatable, Sendable {
     public private(set) var items: [ArtifactItem] = []
     public private(set) var rewarded: Set<String> = []
@@ -94,14 +86,12 @@ public struct Cabinet: Codable, Equatable, Sendable {
     public func owns(_ defID: String) -> Bool { items.contains { $0.defID == defID } }
     public func contains(_ id: String) -> Bool { items.contains { $0.id == id } }
 
-    /// Pieces of a collection held (each piece counted once, however many copies) and the size of the collection.
     public func progress(_ collection: ArtifactCollection) -> (have: Int, total: Int) {
         (collection.members.filter { owns($0) }.count, collection.members.count)
     }
 
     public func isComplete(_ collection: ArtifactCollection) -> Bool { progress(collection).have == collection.members.count }
 
-    /// Adds a piece. Returns the collections this completed for the first time; their cosmetic is owed to the player (once, ever).
     @discardableResult
     public mutating func add(_ item: ArtifactItem) -> [ArtifactCollection] {
         guard !contains(item.id) else { return [] }
@@ -120,7 +110,6 @@ public struct Cabinet: Codable, Equatable, Sendable {
         return items.remove(at: i)
     }
 
-    /// Rarest first, then by piece and serial, for display.
     public var sorted: [ArtifactItem] {
         items.sorted { a, b in
             let ra: Int = ArtifactCatalog.def(a.defID)?.rarity.rank ?? 0

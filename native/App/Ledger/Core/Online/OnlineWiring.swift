@@ -2,7 +2,6 @@ import SwiftUI
 import Businesses
 import Simulation
 
-/// The sample players the supply market reads, refreshed from the online service when the app starts.
 enum OnlineDirectoryCache {
     nonisolated(unsafe) static var players: [PlayerProfile] = []
 
@@ -12,7 +11,6 @@ enum OnlineDirectoryCache {
         await StartupMarketStore.shared.attach(mock)
     }
 
-    /// The companies players run that the viewer may see, as rivals and ranking rows for the game (the order is fixed, so the game stays the same).
     static func playerCompanies() -> [RealCompany] {
         players.flatMap { (p: PlayerProfile) -> [RealCompany] in
             (p.companies ?? []).map { (c: OnlineCompany) -> RealCompany in
@@ -25,7 +23,6 @@ enum OnlineDirectoryCache {
 }
 
 extension GameStore {
-    /// Hands the players' companies to the running game, so they stand as rivals in their own trade and city.
     @MainActor func syncPlayerCompanies() {
         let list = OnlineDirectoryCache.playerCompanies()
         guard !list.isEmpty else { return }
@@ -33,7 +30,6 @@ extension GameStore {
     }
 }
 
-/// Maps online players to suppliers: the first visible company decides the trade, an owner with none visible gets a trade that supplies.
 struct OnlinePlayersAdapter: SupplyMarketPlayers {
     func players() -> [SupplyMarketPlayer] {
         OnlineDirectoryCache.players.map { p in
@@ -45,7 +41,6 @@ struct OnlinePlayersAdapter: SupplyMarketPlayers {
     }
 }
 
-/// Opens a supplier owner's profile from their profile code.
 struct PlayerProfileByCode: View {
     var code: String
     @Environment(OnlineSession.self) private var online

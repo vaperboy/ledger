@@ -3,23 +3,13 @@ import GameCore
 import Countries
 import Finance
 
-/// Marketing channels and the weekly awareness model. Originals: `mktWeekCore` (engine/company/company.js),
-/// awareness.js, organic_awareness.js. Channel data is in `marketing_insurance.json`.
-///
-/// A campaign never promises customers: it raises *awareness*, how many potential customers know you, by an
-/// amount that depends on budget (with diminishing returns), how well the channel fits your trade and audience,
-/// how long it has run, and chance for the high-variance channels. Awareness fades every week.
 public struct MarketingChannel: Sendable {
     public var id: String
     public var name: String
-    /// Strength per week at a full budget
     public var efficiency: Double
-    /// Budget at which returns start to flatten
     public var scale: Double
-    /// How local (1) or national (0) it is, and how well it reaches business customers
     public var localShare: Double
     public var businessShare: Double
-    /// Minimum campaign length in weeks
     public var minimumWeeks: Int
     public var note: String
     public var budgetOptions: [Double]
@@ -29,21 +19,14 @@ public struct MarketingChannel: Sendable {
     public var isPrimeTime: Bool
     public var isNational: Bool
     public var onlyInCountry: String?
-    /// Budgets and scale grow with the country's population (a broadcast reaches more people in a bigger country)
     public var popScaled: Bool = false
-    /// Offered only where the country's data names a national broadcast moment (`media.prime`); named from it
     public var needsCountryMedia: Bool = false
 
-    /// Population factor of the original `initPremCh`: sqrt(max(2, millions) / 5) x 0.9. 1 for channels that do not scale.
     func populationFactor(_ country: Country) -> Double { popScaled ? (max(2, country.populationMillions) / 5).squareRoot() * 0.9 : 1 }
 
-    /// The weekly budget presets in this country's money (written at the reference price level; 0 stays 0).
     public func budgets(in cur: Currency) -> [Double] { budgetOptions.map { $0 == 0 ? 0 : cur.scaledPrice($0 * populationFactor(cur.country)) } }
-    /// The budget at which returns flatten, at this country's price level.
     public func scale(in cur: Currency) -> Double { scale * cur.country.costIndex * populationFactor(cur.country) }
 
-    /// This channel as the country offers it: a country-media channel takes its name and note from the country's own data
-    /// (`media.prime`); nil when the country has none, so the channel is simply not offered there.
     public func offered(in country: Country) -> MarketingChannel? {
         guard needsCountryMedia else { return self }
         let media = country.pack["media"]["prime"]
@@ -55,20 +38,13 @@ public struct MarketingChannel: Sendable {
     }
 }
 
-/// How a campaign pays. Awareness from advertising is added on top of what people already know (organic), with diminishing returns
-/// up to the city's ceiling, so a small budget always helps a little and a big one never wastes everything. All in `RET`.
 public struct MarketingReturn: Sendable {
-    /// Multiplier on the weekly awareness a campaign buys
     public var gain = 1.0
-    /// Stacked on the organic name (true) or only above it (false: the original max-like behaviour)
     public var additive = true
-    /// Weeks a brand-new campaign gets extra pull (people notice something new), and by how much
     public var launchWeeks = 4.0
     public var launchBoost = 0.35
-    /// How much better (+) or worse (-) the local channels do in a big city against a village, per unit of city size
     public var cityLocalPenalty = 0.25
     public var cityOnlineBonus = 0.15
-    /// Share of the ad-lifted customers that stay as repeat business, i.e. how much of a customer's later purchases an ad is credited with in the payback figure
     public var lifetimeFactor = 1.0
     init(json j: JSONValue) {
         func n(_ k: String, _ d: Double) -> Double { j[k].isNull ? d : j[k].double }
@@ -83,13 +59,10 @@ public struct MarketingTables: Sendable {
     public var channels: [String: MarketingChannel]
     public var insuranceProducts: [String: [JSONValue]]
     public var goodsClasses: [(cost: Double, quality: Double)]
-    /// How well each channel suits a family / a trade (1 = normal). Original: `CHAFF_FAM`, `CHAFF_TYPE`.
     public var affinityByFamily: [String: [String: Double]]
     public var affinityByTrade: [String: [String: Double]]
-    /// Channels that can make a trade go viral. Original: `VH_FAM`, `VH_TYPE`.
     public var viralByFamily: [String: [String]]
     public var viralByTrade: [String: [String]]
-    /// The return curve of a campaign (`RET`): how its awareness stacks on the name a business already has.
     public var ret: MarketingReturn
 
     public init(json j: JSONValue) {
@@ -118,20 +91,12 @@ public struct MarketingTables: Sendable {
     }
 }
 
-/// What a campaign commits you to, for the screen to show before it is confirmed. It never states a customer
-/// count or a reach: a campaign raises awareness by chance, it does not promise customers.
 public struct CampaignPlan: Equatable, Sendable {
-    /// Weeks you cannot cut the campaign (the channel's minimum, or what is left of the current lock)
     public var lockedWeeks: Int
-    /// Weeks it will run, nil = until you stop it
     public var weeks: Int?
-    /// Weekly budget times weeks, nil when it has no end date
     public var totalCost: Double?
-    /// Last week the company worked at nearly full capacity: more awareness will not become more sales
     public var nearCapacity: Bool
-    /// The chain runs this channel's marketing for the store
     public var runByChain: Bool
-    /// Why a local campaign on this channel is not allowed (a franchise agreement), nil when it is
     public var blocked: String?
     public init(lockedWeeks: Int, weeks: Int?, totalCost: Double?, nearCapacity: Bool, runByChain: Bool, blocked: String? = nil) {
         self.lockedWeeks = lockedWeeks; self.weeks = weeks; self.totalCost = totalCost; self.nearCapacity = nearCapacity; self.runByChain = runByChain; self.blocked = blocked
@@ -139,25 +104,19 @@ public struct CampaignPlan: Equatable, Sendable {
 }
 
 public enum Marketing {
-    /// True when the store's chain buys this channel for it (the chain's brand marketing, not "own"): the chain sets the
-    /// budget every week, so the store cannot change or cancel it. Stores add their own campaigns on other channels.
     public static func runByChain(_ co: Company, channel: String, state s: GameState) -> Bool {
         guard let ch = Chains.chain(s, of: co), ch["rules"]["mkt"].string != "own" else { return false }
         return co.value("mk12").array.contains { $0.string == channel }
     }
 
-    /// The campaign lengths offered (weeks), none shorter than the channel's own minimum. Original: the planner's `[4,12,26,52]`.
     public static func lengthChoices(_ c: MarketingChannel) -> [Int] { [4, 12, 26, 52].filter { $0 >= c.minimumWeeks } }
 
-    /// How the weekly awareness fades. Original: `awareDecayCore`, then the step 'local_prices awareDecay':
-    /// a company that spends nothing on marketing is forgotten 4% faster.
     public static func decay(_ co: Company) -> Double {
         let core = clamp(0.955 - max(0, 55 - co.reputation) * 0.0015 - max(0, 55 - co.quality) * 0.001 + clamp((co.reputation - 60) * 0.0004, 0, 0.012), 0.9, 0.968)
         let spend = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value["b"].double }
         return spend > 0 ? core : core * 0.96
     }
 
-    /// Awareness people have without any advertising: a shop on a street is seen, a good name spreads. Original: `organic`.
     public static func organicAwareness(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         if bd.normalDemand == 0 || ["fin", "energy", "hold", "club", "rent"].contains(bd.family) { return 0 }
         let prem = co.value("prem")
@@ -165,7 +124,6 @@ public enum Marketing {
         let foot = !prem.isNull && Competition.isFootTraffic(kind)
         let destinations: [String: Double] = ["skires": 38, "indoorski": 30, "fun": 24, "airline": 30, "hotel": 24, "shipping": 24, "vineyard": 22]
         let online: Set<String> = ["webshop", "webdev", "mktg", "tutor"]
-        // Shops people need every week (food, everyday goods) are known to the whole neighbourhood without advertising.
         let neighbourhood: [String: Double] = ["grocery": 48, "kiosk": 44, "bakery": 40, "pharmacy": 44, "hardware": 38, "cafe": 32]
         var base = destinations[bd.id] ?? (foot ? (neighbourhood[bd.id] ?? 20) : online.contains(bd.id) ? 9 : (bd.family == "project" || bd.family == "prod") ? 10 : bd.family == "logi" ? 11 : 12)
         if foot, prem["loc"].double != 0 { base *= clamp(prem["loc"].double, 0.8, 1.25) }
@@ -179,8 +137,6 @@ public enum Marketing {
         return base
     }
 
-    /// What one campaign buys per week before chance: budget with diminishing returns x how well the channel fits this trade, its audience and
-    /// the city. The weekly turn and `estimate` both use it, so the figure shown to the player is the one the game plays.
     static func strength(_ co: Company, _ bd: Trade, _ w: World, channel c: MarketingChannel, budget: Double, since: Double, tables: MarketingTables) -> Double {
         let scale = max(0.5, bd.normalDemand * bd.ticket / 8000)
         let aud = bd.audience
@@ -194,7 +150,6 @@ public enum Marketing {
         return eff * campaignFactor(c, since: since, week: w.week, cityTerm: CityMarket.sizeTerm(w.city(co)?.population ?? 150), tables.ret)
     }
 
-    /// A new campaign gets a little extra pull while it is new; local channels reach fewer of a big city's people, online ones more.
     static func campaignFactor(_ c: MarketingChannel, since: Double, week: Int, cityTerm: Double, _ r: MarketingReturn) -> Double {
         let age = Double(week) - since
         let launch = r.launchWeeks > 0 ? 1 + r.launchBoost * max(0, 1 - age / r.launchWeeks) : 1
@@ -206,7 +161,6 @@ public enum Marketing {
         (fam[bd.family]?[k] ?? 1) * (type[bd.id]?[k] ?? 1)
     }
 
-    /// National reach: advertising nationally is wasted on a one-shop business. Original: `natFit`.
     static func nationalFit(_ co: Company, _ w: World) -> Double {
         let national: Set<String> = ["webshop", "shipping", "airline", "bank", "insco", "fund", "factory", "brewery", "furniture", "power", "mktg", "courier", "trucking", "casino", "hotel"]
         if national.contains(co.type) { return 1 }
@@ -214,16 +168,12 @@ public enum Marketing {
         return clamp(0.12 + 0.88 * min(1, log2(n) / 4), 0.12, 1)
     }
 
-    /// The weekly marketing turn. Original: `mktWeekCore` + the 'campaigns end', 'organic awareness' steps.
-    /// Returns the money spent on campaigns this week (booked and paid by the caller).
     public static func weekly(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData, tables: MarketingTables) {
         var co = s.companies[i]
         let w = World(state: s, data: data)
-        // Campaigns end on their date.
         var mkt = co.value("mkt")
         var mktEnd = co.value("mktEnd")
         for (k, endWeek) in mktEnd.object.sorted(by: { $0.key < $1.key }) {
-            // An end date outlives nothing: a campaign that was cut or replaced leaves no stale date behind.
             if mkt[k].isNull { mktEnd = removing(mktEnd, k); continue }
             if Double(s.week) >= endWeek.double {
                 mkt = removing(mkt, k); mktEnd = removing(mktEnd, k)
@@ -233,7 +183,6 @@ public enum Marketing {
         co.set("mkt", mkt); co.set("mktEnd", mktEnd)
         var gain = 0.0, spend = 0.0
         var primeTimeActive = false
-        // Advertising is paid in advance: with too little cash (after the owner's reserve) the campaigns pause instead of running up debt.
         let planned = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value["b"].double }
         let reserve = Delegation.cashReserveWeeks * FinanceContext(countries: data.countries, trades: data.catalog).weeklyCost(co, s)
         let paused = planned > 0 && co.cash - planned < reserve
@@ -263,13 +212,12 @@ public enum Marketing {
         let wom = co.num("wom")
         if wom > 0.4 { gain += wom * 0.2; co.set("wom", wom * 0.88) } else { co.set("wom", 0) }
         if s.hasHeadOffice("mkt") { gain *= 1.1 }
-        if co.value("tm")["mkt"].double > 0 { gain *= 1 + 0.14 * co.value("tm")["mkt"].double }   // a marketing manager (ManagerTeam)
-        gain *= RoleEffects.awarenessFactor(co)                                                    // a marketing responsible / receptionist (HiringRebuild)
-        if co.flag("brdMkt") { gain *= 1.05 }                                                      // a marketing adviser on the board (ManagerBoards)
+        if co.value("tm")["mkt"].double > 0 { gain *= 1 + 0.14 * co.value("tm")["mkt"].double }
+        gain *= RoleEffects.awarenessFactor(co)
+        if co.flag("brdMkt") { gain *= 1.05 }
         gain *= tables.ret.gain
         let ceiling = CityMarket.awarenessCeiling(co, bd, w)
         if tables.ret.additive {
-            // What advertising buys stacks on the name the business already has (organic + one-off boosts), flattening towards the city's ceiling.
             let d = decay(co)
             var base = max(0, co.awareness - co.num("adOn"))
             if co.status == .open {
@@ -291,7 +239,6 @@ public enum Marketing {
         spill(&s, from: co, gain: gain)
         s.companies[i] = co
         viralRoll(&s, companyIndex: i, bd, w, primeTimeActive: primeTimeActive, tables: tables)
-        // People find you without advertising: awareness drifts toward the organic level.
         co = s.companies[i]
         if co.status == .open {
             let a = organicAwareness(co, bd, w)
@@ -300,28 +247,17 @@ public enum Marketing {
         }
     }
 
-    // MARK: What a campaign is worth
-
-    /// What a weekly budget on one channel is expected to do, for the planner to show before the player commits. Expected values
-    /// (chance channels at their average), at the company's last week of trading, in the company's money.
     public struct Estimate: Equatable, Sendable {
         public var weeklyBudget: Double
-        /// Awareness the business settles at without this campaign and with it (0 to 100)
         public var awarenessWithout: Double
         public var awarenessWith: Double
-        /// Customers wanted per week when the name has settled, against without the campaign (0.25 = a quarter more)
         public var demandLift: Double
-        /// Extra gross profit per week once settled, after what the premises and staff can serve
         public var weeklyExtraProfit: Double
-        /// Settled weekly profit from the campaign minus its budget
         public var netPerWeek: Double
-        /// Weeks until the campaign has earned back everything spent on it (the name builds slowly), nil when it never does
         public var paybackWeeks: Int?
-        /// The business has no room for more customers: the extra demand is turned away
         public var atCapacity: Bool
     }
 
-    /// The expected return of putting `weeklyBudget` into `channel` (replacing what is there now). nil for an unknown channel.
     public static func estimate(_ co: Company, channel: String, weeklyBudget: Double, state s: GameState, data: GameData, tables: MarketingTables) -> Estimate? {
         guard let c = tables.channels[channel], let bd = data.catalog[co.type] else { return nil }
         let w = World(state: s, data: data)
@@ -373,7 +309,6 @@ public enum Marketing {
         return .object(o)
     }
 
-    /// Awareness leaks a little into other countries. Original: `awareSpill`.
     static func spill(_ s: inout GameState, from co: Company, gain: Double) {
         if gain <= 0 { return }
         for i in s.companies.indices where s.companies[i].id != co.id && s.companies[i].type == co.type && s.companies[i].status == .open && s.companies[i].countryCode != co.countryCode {
@@ -381,8 +316,6 @@ public enum Marketing {
         }
     }
 
-    /// Going viral: every kind of business has its own hook. Buzz is short-lived and only sticks if you deliver.
-    /// Original: `viralRoll`.
     static func viralRoll(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, _ w: World, primeTimeActive: Bool, tables: MarketingTables) {
         var co = s.companies[i]
         if co.status != .open { return }

@@ -2,13 +2,6 @@ import Foundation
 import GameCore
 import Finance
 
-/// Trade associations: clubs of players in one trade (one per trade and region) or across trades. A club sets standards its members must keep,
-/// charges a monthly fee and pools its members' buying so each member gets a small, capped discount on the catalogue supply lines.
-/// State `rest["assoc"]`: `m` { "<companyID>": Membership }, `ban` { "<companyID>:<clubID>": week the removal ends }.
-
-// MARK: Standards
-
-/// What a company looks like to its club: the few facts the standards read.
 public struct AssociationStanding: Equatable, Sendable {
     public var reputation: Double
     public var weeksNegative: Int
@@ -25,7 +18,6 @@ public struct AssociationStanding: Equatable, Sendable {
 public enum AssociationStandard: String, Codable, CaseIterable, Sendable {
     case goodName, staffPaid, outOfTheRed, taxCurrent
 
-    /// What members must do, in plain words.
     public var rule: String {
         switch self {
         case .goodName: return "Keep your reputation at \(Int(AssociationStandards.minReputation)) or above."
@@ -49,34 +41,26 @@ public enum AssociationStandards {
     public static let minReputation = 45.0
     public static let maxRedWeeks = 3
 
-    /// The standards of the club the company does not meet.
     public static func breaches(_ club: AssociationClub, _ x: AssociationStanding) -> [AssociationStandard] {
         club.standards.filter { !$0.isMet(x) }
     }
 }
 
-// MARK: Clubs
-
 public struct AssociationClub: Codable, Identifiable, Equatable, Sendable {
     public var id: String
     public var name: String
-    /// The trade in plain words; nil for a club open to every trade.
     public var tradeName: String?
-    /// A country code; nil for a club open to every region.
     public var region: String?
     public var monthlyFee: Double
-    /// The most the pooled-buying discount can reach.
     public var discountCap: Double
     public var standards: [AssociationStandard]
 }
 
 public enum AssociationCatalogue {
-    /// Trade clubs charge more and may reach a larger discount than the clubs across trades.
     public static let tradeFee = 40.0, tradeCap = 0.06
 
     static func slug(_ s: String) -> String { String(s.lowercased().filter { $0.isLetter || $0.isNumber }) }
 
-    /// The club for a trade in a region (every trade and region has one).
     public static func tradeClub(tradeName: String, region: String) -> AssociationClub {
         AssociationClub(id: "tr.\(slug(tradeName)).\(region.lowercased())", name: "\(region) \(tradeName) Association", tradeName: tradeName, region: region,
                         monthlyFee: tradeFee, discountCap: tradeCap, standards: [.goodName, .staffPaid, .outOfTheRed, .taxCurrent])
@@ -88,32 +72,25 @@ public enum AssociationCatalogue {
         AssociationClub(id: "x.steady", name: "Steady Traders Club", tradeName: nil, region: nil, monthlyFee: 28, discountCap: 0.03, standards: [.outOfTheRed, .taxCurrent]),
     ]
 
-    /// What a company of this trade in this region may join: its trade club and the clubs across trades.
     public static func clubs(tradeName: String, region: String) -> [AssociationClub] { [tradeClub(tradeName: tradeName, region: region)] + crossTrade }
 
     public static func club(id: String, tradeName: String, region: String) -> AssociationClub? { clubs(tradeName: tradeName, region: region).first { $0.id == id } }
 }
 
-// MARK: Group purchasing
-
 public enum GroupPurchasing {
     public static let baseRate = 0.01, perMember = 0.001
-    /// No club can go above this, whatever it sets.
     public static let hardCap = 0.08
 
-    /// The discount the pooled volume earns: a little more with each member, never above the club's cap or the hard cap.
     public static func rate(members: Int, cap: Double) -> Double {
         guard members > 0 else { return 0 }
         return min(cap, hardCap, baseRate + perMember * Double(members))
     }
 
-    /// What the discount saves on a week's spend (rounded to the cent; nothing on no spend).
     public static func saving(spend: Double, rate: Double) -> Double {
         guard spend > 0, rate > 0 else { return 0 }
         return (spend * min(rate, hardCap) * 100).rounded() / 100
     }
 
-    /// The discount in words, for the screen: where it comes from and how big it is.
     public static func words(members: Int, rate: Double, cap: Double) -> String {
         let pct = (rate * 1000).rounded() / 10
         let p = pct == pct.rounded() ? String(Int(pct)) : String(pct)
@@ -123,14 +100,10 @@ public enum GroupPurchasing {
     }
 }
 
-// MARK: Membership
-
 public struct AssociationMembership: Codable, Equatable, Sendable {
     public var club: AssociationClub
     public var joinedWeek: Int
-    /// 0 clear, 1 warned, 2 fined (a third failed check removes the member).
     public var strikes: Int
-    /// Members the club had when last read; the discount follows it.
     public var members: Int
     public var saved: Double
     public var feesPaid: Double
@@ -140,7 +113,6 @@ public struct AssociationMembership: Codable, Equatable, Sendable {
 public enum AssociationEnforcement {
     public enum Action: Equatable, Sendable { case clear, warn, fine, remove }
 
-    /// The step after a check: a clean check clears the record; a failed one warns, then fines, then removes.
     public static func next(strikes: Int, breaches: [AssociationStandard]) -> (strikes: Int, action: Action) {
         if breaches.isEmpty { return (0, .clear) }
         switch strikes {
@@ -150,12 +122,9 @@ public enum AssociationEnforcement {
         }
     }
 
-    /// The fine is one more month of the fee.
     public static func fine(_ club: AssociationClub) -> Double { club.monthlyFee }
 
-    /// Weeks a removed company waits before it can rejoin the same club.
     public static let banWeeks = 13
-    /// Fee and check fall due every fourth week after joining.
     public static let cycleWeeks = 4
     public static func isDue(joined: Int, week: Int) -> Bool { week > joined && (week - joined) % cycleWeeks == 0 }
 }
@@ -166,7 +135,6 @@ public enum JoinResult: Equatable, Sendable {
 }
 
 public enum TradeAssociations {
-    // MARK: Reading and writing the state
 
     public static func membership(_ s: GameState, companyID: Int) -> AssociationMembership? {
         let v = s.rest["assoc"]?["m"]["\(companyID)"] ?? .null
@@ -195,8 +163,6 @@ public enum TradeAssociations {
         s.rest["assoc"] = root
     }
 
-    // MARK: Previews (what happens, said before the player decides)
-
     public static func joinPreview(_ club: AssociationClub, members: Int, standing: AssociationStanding) -> [String] {
         let rate = GroupPurchasing.rate(members: members, cap: club.discountCap)
         var lines = ["The first monthly fee is taken now, then every fourth week: \(Int(club.monthlyFee)) a month.",
@@ -213,8 +179,6 @@ public enum TradeAssociations {
          "You can join again later."]
     }
 
-    // MARK: Joining and leaving
-
     @discardableResult
     public static func join(_ s: inout GameState, companyID: Int, club: AssociationClub, members: Int, tradeName: String) -> JoinResult {
         guard let co = s.company(companyID), co.status == .open else { return .refused("The company is not open.") }
@@ -229,22 +193,17 @@ public enum TradeAssociations {
 
     public static func leave(_ s: inout GameState, companyID: Int) { store(&s, companyID: companyID, nil) }
 
-    /// The club's member count as the server last reported it.
     public static func setMembers(_ s: inout GameState, companyID: Int, members: Int) {
-        let count = max(1, members)   // the company is a member itself
+        let count = max(1, members)
         guard var m = membership(s, companyID: companyID), m.members != count else { return }
         m.members = count
         store(&s, companyID: companyID, m)
     }
 
-    // MARK: Each week
-
-    /// Books the group-buying saving of every member company, and on the fourth week charges the fee and checks the standards.
     public static func weekly(_ s: inout GameState, data: GameData) {
         guard let table = s.rest["assoc"]?["m"].object, !table.isEmpty else { return }
         for key in table.keys.sorted() {
             guard let id = Int(key), var m = membership(s, companyID: id) else { continue }
-            // A company that is sold or bust leaves the club, so the club's member count (which every other member's discount follows) never keeps a ghost.
             guard let co = s.company(id), co.status.isLive else {
                 store(&s, companyID: id, nil)
                 continue

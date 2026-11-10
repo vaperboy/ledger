@@ -6,7 +6,6 @@ import Businesses
 import Events
 import Simulation
 
-/// The first-year honeymoon follows each company's own age, and every protection that ends says so in the Inbox.
 final class FirstYearNoticesTests: XCTestCase {
     func testDemandRampFollowsTheCompanysAgeNotTheGameWeek() throws {
         var e = try ChainsTests.engine()

@@ -2,8 +2,6 @@ import Foundation
 import GameCore
 import Countries
 
-/// Accountants, law firms and insurers, each with a star rating that reflects their quality and price.
-/// Original: `genProviders`, `poolFor` (engine/suppliers/providers.js). A pool is created per country, once.
 public enum Providers {
     static func rating(_ r: inout DeterministicRandom) -> Double { jsRound(clamp(3.9 + r.gauss() * 0.62, 2.6, 4.9) * 10) / 10 }
     static func quality(fromRating r: Double) -> Double { clamp((r - 2.6) / 2.3, 0, 1) }
@@ -49,7 +47,6 @@ public enum Providers {
         return out.sorted { $0.rating > $1.rating }.map { $0.value }
     }
 
-    /// The providers available in a country, created on first use. Original: `poolFor(code)`.
     public static func pool(for code: String, state s: inout GameState, countries: CountryBook) -> (accountants: [JSONValue], lawyers: [JSONValue], insurers: [JSONValue]) {
         var poolc = s.rest["poolc"] ?? .object([:])
         if poolc[code].isNull, let country = countries[code] {

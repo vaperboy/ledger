@@ -3,8 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Management tab of an entity page. A chain or group is picked company by company at the top (a compact chip row); below it come that
-/// company's posts: the owner, the general manager (appointed by the owner), the assistant and the executive posts, and the posts still open.
 struct GroupEntityManagement: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -35,8 +33,6 @@ struct GroupEntityManagement: View {
         }
     }
 
-    // MARK: Picker
-
     private func picker(_ members: [Company], selected: Int) -> some View {
         WrapRow(spacing: Theme.Space.s) {
             ForEach(members) { (c: Company) in
@@ -59,10 +55,6 @@ struct GroupEntityManagement: View {
         .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
     }
 
-    // MARK: Header
-
-    /// Across the group: how many managers, how many companies you still run yourself, the group office; for this company: who takes
-    /// the complaints and re-hiring and who decides first. Under it, what your stakes in other groups are worth.
     private func header(_ co: Company) -> some View {
         let gm: GroupManagement = engine.groupManagement()
         let line: DelegationLine? = engine.delegationLines().first { (d: DelegationLine) -> Bool in d.id == co.id }
@@ -86,7 +78,6 @@ struct GroupEntityManagement: View {
         }
     }
 
-    /// "Complaints go to Sam. Hiring is approved by you."
     private func delegationSentence(_ line: DelegationLine, _ co: Company) -> String {
         let runner: String? = engine.groupManagement().lines.first(where: { (l: GroupManagement.Line) -> Bool in l.id == co.id })?.runner?.name
         func who(_ role: String) -> String {
@@ -100,9 +91,6 @@ struct GroupEntityManagement: View {
         return "Complaints go to \(who(line.complaints)). Hiring is approved by \(who(line.rehire))."
     }
 
-    // MARK: Chain of command
-
-    /// Everyone between you and the company, top first: you, then the bosses above the runner, then the runner, each with what they may decide.
     private func rungs(_ co: Company) -> [GroupManagement.Rung] {
         guard let line = engine.groupManagement().lines.first(where: { (l: GroupManagement.Line) -> Bool in l.id == co.id }) else { return [] }
         var out: [GroupManagement.Rung] = Array(line.above.reversed())
@@ -148,8 +136,6 @@ struct GroupEntityManagement: View {
         .accessibilityIdentifier("management-chain-of-command")
     }
 
-    // MARK: People
-
     @ViewBuilder private func people(_ co: Company) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("MANAGEMENT").capsLabel()
@@ -158,17 +144,12 @@ struct GroupEntityManagement: View {
         }
     }
 
-    // MARK: Who may appoint
-
-    /// With a manager in place, hiring the assistant needs the role above to confirm.
     @ViewBuilder private func approvalNote(_ co: Company) -> some View {
         if let above = engine.appointmentAuthority(companyID: co.id, role: "assistant manager").needsConfirmationFrom {
             Text(above == .ceo ? "Assistant manager: needs confirmation from the CEO" : "Assistant manager: needs your confirmation")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
-
-    // MARK: Open posts
 
     @ViewBuilder private func openPosts(_ co: Company) -> some View {
         let all: [TeamOverview.Vacancy] = (store.teamOverviewNow ?? engine.teamOverview()).vacancies

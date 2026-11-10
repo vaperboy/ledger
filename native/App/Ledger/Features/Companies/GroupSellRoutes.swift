@@ -5,14 +5,10 @@ import Businesses
 import Events
 import Simulation
 
-/// The ways to sell a company or part of it, in one place (Group > Ownership > Sell). Every route ends in the same engine sale (`CompanySale`):
-/// a handshake, a broker, an auction with a reserve, a management buyout, a merger with a rival, a sale to a rival group, a stake of 10 to 49%,
-/// going public (holdings), and the master franchise of a country. A route that is shut says why.
 struct SaleRoutePicker: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    /// IPO and share issues live under Raise: the picker points there.
     var onGoRaise: () -> Void = {}
     @State private var pending: PendingAction?
     @State private var sheet: RouteSheet?
@@ -42,7 +38,6 @@ struct SaleRoutePicker: View {
         .centerSheet(item: $sheet, category: .medium, tone: .investment) { (s: RouteSheet) in sheetContent(s) }
     }
 
-    /// Routes as calm rows under hairlines: an open route opens its step, a shut one says why (its subtitle) and is not a link.
     private func routeList(_ list: [CompanySale.Route]) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, r: CompanySale.Route) in
@@ -88,8 +83,6 @@ struct SaleRoutePicker: View {
             store.show("\(name) is on the market \(how). Offers arrive over the coming weeks.", tone: "n")
         } else { Haptics.warning(); store.show("It could not be put on the market now.", tone: "warn") }
     }
-
-    // MARK: The sheets
 
     @ViewBuilder private func sheetContent(_ s: RouteSheet) -> some View {
         switch s {

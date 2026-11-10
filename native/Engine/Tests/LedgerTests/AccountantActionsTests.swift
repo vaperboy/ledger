@@ -4,7 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The player chooses the accountant; the fee follows the choice and payroll responsibility is still derived from it.
 final class AccountantActionsTests: XCTestCase {
     private func game(_ seed: Int) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)

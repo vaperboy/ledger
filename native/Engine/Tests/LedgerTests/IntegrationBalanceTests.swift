@@ -10,21 +10,18 @@ private extension GameEngine {
     mutating func week() { for _ in 0..<7 { _ = nextDay() } }
 }
 
-/// Real add-item lift and its estimate, market-event consequences, price reaction, brand value, market research and own-company capacity.
 final class IntegrationBalanceTests: XCTestCase {
     func engine(_ trade: String = "bakery", weeks: Int = 3, seed: Int = 7) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 100_000_000, quickSetup: false) else { throw XCTSkip("could not start") }
-        e.update { s, d, _ in _ = CompanySetup.quickSetupReport(&s, companyID: id, data: d, options: CompanySetup.SetupOptions(optionalEquipment: true)) }   // the usual full kit
+        e.update { s, d, _ in _ = CompanySetup.quickSetupReport(&s, companyID: id, data: d, options: CompanySetup.SetupOptions(optionalEquipment: true)) }
         for _ in 0..<weeks { e.week() }
-        // items, prices and research are only for an open company, and licences take a while
         var extra = 0
         while e.state.company(id)?.status != .open, extra < 40 { e.week(); extra += 1 }
         return (e, id)
     }
 
-    /// A set-up, open cafe with rivals in its market (as in MarketEventsTests).
     func cafe(weeks: Int = 6) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 777)
         var id = 0
@@ -47,17 +44,14 @@ final class IntegrationBalanceTests: XCTestCase {
         guard e.hasMarketAdvisor(companyID: id) else { throw XCTSkip("no staff to give the duty") }
     }
 
-    // MARK: 1. The add-item estimate is what the game does
-
     func testAddItemEstimateMatchesWhatTheDemandDoes() throws {
-        var (e, id) = try engine(weeks: 70)   // past the first year, when capacity binds and an extra customer adds no profit
+        var (e, id) = try engine(weeks: 70)
         try giveAdvisorDuty(&e, id)
         let own: Bool = SalesItems.isService(try XCTUnwrap(e.data.catalog[try XCTUnwrap(e.state.company(id)).type]))
         for svc in [own] {
             let opt = try XCTUnwrap(e.newItemOptions(companyID: id, isService: svc).options.first)
             let estimate = try XCTUnwrap(opt.profitChange)
             XCTAssertGreaterThan(estimate, 0)
-            // the same state, once without and once with the lift in full force (a ramp that finished long ago)
             var s = e.state
             let d = e.data
             let i = s.companyIndex(id)!
@@ -78,11 +72,8 @@ final class IntegrationBalanceTests: XCTestCase {
         }
     }
 
-    /// Plays the real game 8 weeks after adding an item through the player's action. Each week the expected profit with and without the item's lift is
-    /// read off the same live state; the average once the ramp is in (weeks 5 to 8) matches the estimate shown before adding (the trade, season and
-    /// awareness move the level a little over 8 weeks, hence the tolerance).
     func testEightWeekRunAfterAddingAnItemMatchesTheEstimate() throws {
-        var (e, id) = try engine(weeks: 70)   // well past the first-year demand boost (by company age) and its capacity squeeze: demand is level
+        var (e, id) = try engine(weeks: 70)
         try giveAdvisorDuty(&e, id)
         let opt = try XCTUnwrap(e.newItemOptions(companyID: id, isService: false).options.first)
         let estimate = try XCTUnwrap(opt.profitChange)
@@ -119,17 +110,12 @@ final class IntegrationBalanceTests: XCTestCase {
         XCTAssertEqual(MarketPressure.liftFactor(co, week: week + 2), 1 + f / 2, accuracy: 1e-12)
         XCTAssertEqual(MarketPressure.liftFactor(co, week: week + 4), 1 + f, accuracy: 1e-12)
         XCTAssertEqual(MarketPressure.liftFactor(co, week: week + 40), 1 + f, accuracy: 1e-12, "kept")
-        // a game that never adds an item has exactly 1
         let (e2, id2) = try engine()
         XCTAssertEqual(MarketPressure.demandMultiplier(e2.state.company(id2)!, week: e2.state.week + 9), 1)
-        // the total lift is capped
         for n in 0..<10 { e.addSalesItem(companyID: id, name: "Extra \(n)", isService: false) }
         XCTAssertLessThanOrEqual(MarketPressure.totalLift(e.state.company(id)!), MarketPressure.liftCap + 1e-12)
     }
 
-    // MARK: 2. Market events have consequences, decay, dedupe and cap
-
-    /// Plays `Rivals.behave` week by week on a copy of the state until a rival launches a discount; returns the state just before that week.
     private func stateBeforeALaunch(_ e: GameEngine, _ id: Int) throws -> (GameState, Int, String) {
         var s = e.state
         let d = e.data
@@ -157,7 +143,6 @@ final class IntegrationBalanceTests: XCTestCase {
         let p0 = MarketPressure.pressure(co, week: wk)
         XCTAssertGreaterThan(p0, 0)
         XCTAssertLessThan(MarketPressure.demandMultiplier(co, week: wk), 1)
-        // fades linearly to nothing over 6 weeks
         var last = p0
         for k in 1...5 {
             let p = MarketPressure.pressure(co, week: wk + k)
@@ -166,16 +151,13 @@ final class IntegrationBalanceTests: XCTestCase {
         }
         XCTAssertEqual(MarketPressure.pressure(co, week: wk + 6), 0, accuracy: 1e-12)
         XCTAssertEqual(MarketPressure.demandMultiplier(co, week: wk + 6), 1, accuracy: 1e-12)
-        // the real demand calculation sees it
         let w = World(state: s, data: d)
         var gone = s
         gone.companies[gone.companyIndex(id)!].set("pr27", .null)
         let withIt = Pricing.demandEffect(co, bd, w), without = Pricing.demandEffect(gone.company(id)!, bd, World(state: gone, data: d))
         XCTAssertLessThan(withIt, without)
-        // the event says what it does
         let ev = MarketEvents.events(s, limit: 5).first { $0.kind == .competitorLaunch }
         XCTAssertFalse(ev?.consequence.isEmpty ?? true)
-        // a player priced above the rival loses more than one priced below it
         var amounts: [Double] = []
         for level in [3.0, -3.0] {
             var t = s0
@@ -202,7 +184,7 @@ final class IntegrationBalanceTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
         e.update { s, _, _ in
             s.week = 20
-            for n in 0..<6 { MarketEvents.log(&s, .competitorLaunch, title: "Rival \(n) launches", detail: "d", companyID: 1) }   // market-wide: one a week
+            for n in 0..<6 { MarketEvents.log(&s, .competitorLaunch, title: "Rival \(n) launches", detail: "d", companyID: 1) }
             for n in 0..<6 { MarketEvents.log(&s, .recognition, title: "Person \(n)", detail: "d", companyID: 1, employeeID: n) }
         }
         XCTAssertEqual(e.marketEvents(limit: 50).filter { $0.kind == .competitorLaunch }.count, 1, "one market-wide event a week")
@@ -234,7 +216,6 @@ final class IntegrationBalanceTests: XCTestCase {
     }
 
     func testMajorContractOfferIsReallyThere() throws {
-        // Volume-contract and key-account offers wait in the inbox (accept or decline) unless a manager decides; the event says which.
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
         e.update { s, _, _ in
             var co = Company(raw: [:]); co.set("rv26", .array([.number(1000), .number(1000)])); co.set("id", 9); co.set("name", "Test Co")
@@ -255,7 +236,6 @@ final class IntegrationBalanceTests: XCTestCase {
         XCTAssertFalse(ev.consequence.isEmpty)
         XCTAssertFalse(ev.acknowledged)
         let happyBefore = e.state.company(id)!.staff.first { $0.id == pid }!.happyUntilWeek
-        // ignoring it does nothing
         e.week()
         XCTAssertEqual(e.state.company(id)!.staff.first { $0.id == pid }!.happyUntilWeek, happyBefore)
         let notes = e.state.rest["rep"]?["ev"].array.count ?? 0
@@ -267,8 +247,6 @@ final class IntegrationBalanceTests: XCTestCase {
         if case .refused = e.acknowledgeRecognition(eventID: ev.id) {} else { XCTFail("only once") }
         if case .refused = e.acknowledgeRecognition(eventID: 9999) {} else { XCTFail("unknown event") }
     }
-
-    // MARK: 3. Rivals answer low prices
 
     private func marketWithStrongRivals(_ e: GameEngine, _ id: Int, size: Double, aggression: Double) throws -> (GameState, String) {
         var s = e.state
@@ -301,30 +279,24 @@ final class IntegrationBalanceTests: XCTestCase {
         XCTAssertGreaterThan(MarketPressure.pressure(co, week: s.week, kind: .response), 0, "a strong, aggressive rival fights back")
         XCTAssertTrue(MarketEvents.events(s, limit: 20).contains { $0.kind == .priceResponse && !$0.consequence.isEmpty })
         XCTAssertLessThan(Rivals.rivals(s, key: key)[0].priceFactor, 1.0001)
-        // the fight costs: cost of sales modifier while it lasts
         XCTAssertGreaterThan(co.value("mods").array.filter { $0["k"].string == "cogsup" }.count, 0)
-        // and it is over after its weeks
         XCTAssertEqual(MarketPressure.pressure(co, week: s.week + 9, kind: .response), 0, accuracy: 1e-12)
     }
 
     func testWeakRivalsIgnoreYouAndNearMarketPricesChangeNothing() throws {
         let (e, id) = try cafe()
         let d = e.data
-        // a weak, calm rival ignores even a real undercut
         var (weak, key) = try marketWithStrongRivals(e, id, size: 0.3, aggression: 0.1)
         weak.companies[weak.companyIndex(id)!].priceLevel = -3
         play(&weak, key: key, id: id, d: d, weeks: 6)
         XCTAssertEqual(MarketPressure.pressure(weak.company(id)!, week: weak.week, kind: .response), 0)
         XCTAssertFalse(MarketEvents.events(weak, limit: 50).contains { $0.kind == .priceResponse })
-        // a strong rival does nothing against a company at the going price
         var (strong, key2) = try marketWithStrongRivals(e, id, size: 1.3, aggression: 0.9)
         play(&strong, key: key2, id: id, d: d, weeks: 12)
         XCTAssertEqual(MarketPressure.pressure(strong.company(id)!, week: strong.week, kind: .response), 0)
         XCTAssertFalse(MarketEvents.events(strong, limit: 50).contains { $0.kind == .priceResponse })
         XCTAssertTrue(strong.company(id)!.value("ucw").isNull, "no count is even kept")
     }
-
-    // MARK: 4. Brand value
 
     func testBrandValueGrowsWithEachPartAndIsUsedInPrices() throws {
         var (e, id) = try engine()
@@ -357,8 +329,6 @@ final class IntegrationBalanceTests: XCTestCase {
     }
 
     func testSaleOffersAndLicenceFeesPayForTheBrand() throws {
-        // Two identical games; only the awards differ (they do not touch the company's valuation). Same random numbers, so the offers
-        // come at the same time and differ exactly by the brand premium.
         var (e, id) = try engine(weeks: 6)
         e.update { s, _, _ in
             s.companies[s.companyIndex(id)!].foundedWeek = s.week - 60
@@ -381,7 +351,6 @@ final class IntegrationBalanceTests: XCTestCase {
         XCTAssertGreaterThan(f, p)
         XCTAssertEqual(f / p, ratio, accuracy: 0.01 + 2000 / p)
 
-        // Master licence for a country: the fee carries the premium.
         func masterFee(awards: Int) throws -> Double {
             var g = e
             g.update { s, d, _ in
@@ -419,8 +388,6 @@ final class IntegrationBalanceTests: XCTestCase {
         XCTAssertLessThanOrEqual(e.state.company(n)!.awareness, 45)
     }
 
-    // MARK: 5. Market research
-
     func testResearchIsBoughtDeliveredAndHalvedByAnAdvisor() throws {
         var (e, id) = try engine()
         let opts = e.researchOptions(companyID: id)
@@ -442,7 +409,6 @@ final class IntegrationBalanceTests: XCTestCase {
         XCTAssertTrue(reports[0].findings.count >= 2 && reports[0].findings.allSatisfy { !$0.isEmpty })
         XCTAssertTrue(reports[0].findings[0].contains("%"))
         XCTAssertGreaterThan(e.state.inbox.count, inbox, "an inbox message tells you")
-        // all four reports have real lines
         for o in ["rivals", "benchmark", "product"] {
             XCTAssertEqual(e.buyResearch(companyID: id, optionID: o), .applied)
         }
@@ -451,7 +417,6 @@ final class IntegrationBalanceTests: XCTestCase {
         XCTAssertEqual(all.count, 4)
         XCTAssertTrue(all.allSatisfy { !$0.findings.isEmpty })
         XCTAssertTrue(all.first { $0.optionID == "product" }!.findings[0].hasPrefix("Best next product"))
-        // a market advisor halves cost and weeks
         try giveAdvisorDuty(&e, id)
         let cheap = e.researchOptions(companyID: id)
         for (a, b) in zip(opts, cheap) {
@@ -460,8 +425,6 @@ final class IntegrationBalanceTests: XCTestCase {
         }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
-
-    // MARK: 6. Own-company selling has capacity
 
     func testSellerCanOnlySupplyWhatItsCapacityAllows() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
@@ -472,11 +435,9 @@ final class IntegrationBalanceTests: XCTestCase {
         for _ in 0..<14 { _ = e.nextDay() }
         let item = e.salesItems(companyID: seller)[0]
         XCTAssertEqual(e.setItemListedForGroup(companyID: seller, itemID: item.id, listed: true), .applied)
-        // a full seller has nothing to give
         e.update { s, _, _ in let i = s.companyIndex(seller)!; var lw = s.companies[i].value("lastW"); lw["cap"] = 10; lw["units"] = 10; s.companies[i].set("lastW", lw) }
         XCTAssertEqual(e.ownCompanyListings(forBuyer: buyer).first?.available, 0)
         if case .refused(let why) = e.buyFromOwnCompany(buyer: buyer, seller: seller, itemID: item.id, quantity: 1) { XCTAssertTrue(why.contains("capacity")) } else { XCTFail("no capacity, no sale") }
-        // room for one only
         e.update { s, d, _ in
             let i = s.companyIndex(seller)!
             let co = s.companies[i], bd = d.catalog[co.type]!
@@ -494,14 +455,10 @@ final class IntegrationBalanceTests: XCTestCase {
         let cogs = (e.state.company(seller)!.books.month["cogs"] ?? 0) - sellerCogs
         XCTAssertEqual(cogs, sold * IntercompanySupply.varRatio(e.state.company(seller)!, data: e.data), accuracy: 1, "cost of sales on what was supplied")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        // the capacity is used up for this week
         XCTAssertEqual(e.ownCompanyListings(forBuyer: buyer).first?.available ?? 0, 0)
-        // ... and comes back next week
         e.update { s, _, _ in s.week += 1 }
         XCTAssertEqual(e.ownCompanyListings(forBuyer: buyer).first?.available, 1)
     }
-
-    // MARK: 7. Determinism and save/reload
 
     func testPressureLiftAndResearchSurviveSaveAndStayDeterministic() throws {
         var (a, id) = try engine()

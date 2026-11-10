@@ -22,7 +22,7 @@ final class CarDealerTests: XCTestCase {
     func testBrandDataIsComplete() {
         XCTAssertGreaterThan(CarBrands.all.count, 8)
         for b in CarBrands.all {
-            XCTAssertTrue((0.10...0.14).contains(b.margin), b.id)   // calibrated to the trade's own 14 percent gross
+            XCTAssertTrue((0.10...0.14).contains(b.margin), b.id)
             XCTAssertLessThanOrEqual(b.margin + b.bonus, 0.155, "\(b.id) total margin incl. bonus")
             XCTAssertGreaterThan(b.margin, CarBrands.distributorMargin, "a brand pays more than the generic distributor: \(b.id)")
             XCTAssertFalse(b.models.isEmpty)
@@ -59,7 +59,6 @@ final class CarDealerTests: XCTestCase {
         var (e, id) = try game()
         let o = e.carDealerOffers(companyID: id)[0]
         _ = e.carDealerOrder(companyID: id, brandID: o.brandID, modelID: o.modelID)
-        // Put the car straight into the showroom.
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             var cd = s.companies[i].value("cd")
@@ -84,7 +83,7 @@ final class CarDealerTests: XCTestCase {
         let terms = e.carBrandTerms(companyID: id)
         XCTAssertGreaterThan(terms.count, 4)
         let pick = terms.first { $0.allMet } ?? terms[0]
-        e.update { s, d, _ in  // meet any brand's showroom and staff rules
+        e.update { s, d, _ in
             let i = s.companyIndex(id)!
             s.companies[i].reputation = 90
             _ = d
@@ -93,7 +92,6 @@ final class CarDealerTests: XCTestCase {
         if let hard { XCTAssertTrue(e.carBrandSign(companyID: id, brandID: hard.brand.id).isRefused) }
         let ready = e.carBrandTerms(companyID: id).first { $0.allMet } ?? pick
         if !ready.allMet {
-            // Not enough salespeople or space on a fresh company: the contract is refused with the reason.
             guard case .refused(let why) = e.carBrandSign(companyID: id, brandID: ready.brand.id) else { return XCTFail("should be refused") }
             XCTAssertTrue(why.contains("requires"), why)
             return
@@ -108,7 +106,6 @@ final class CarDealerTests: XCTestCase {
         XCTAssertEqual(e.carDealerSupplier(companyID: id), ready.brand.name)
     }
 
-    /// Sign a contract by forcing the company over the brand's standards, then walk it through reviews, renewal and the drop.
     private func signed(_ e: inout GameEngine, _ id: Int, brand: String = "kasumi") {
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
@@ -131,7 +128,6 @@ final class CarDealerTests: XCTestCase {
         guard let a = e.carBrandContract(companyID: id) else { return XCTFail("no contract") }
         XCTAssertGreaterThan(a.exitPenalty, 0)
         XCTAssertEqual(a.warnings, 0)
-        // Target met: the bonus is paid.
         e.update { s, d, _ in
             let i = s.companyIndex(id)!
             var cd = s.companies[i].value("cd")
@@ -143,7 +139,6 @@ final class CarDealerTests: XCTestCase {
         let r = e.carBrandContract(companyID: id)!
         XCTAssertEqual(r.last?.bonus ?? 0, 10_000_000 * a.bonus, accuracy: 1)
         XCTAssertEqual(r.sold, 0)
-        // Two reviews far under target: warning, then the brand drops the dealership (no penalty).
         for n in 1...2 {
             e.update { s, d, _ in
                 let i = s.companyIndex(id)!
@@ -167,7 +162,6 @@ final class CarDealerTests: XCTestCase {
         XCTAssertEqual(e.carBrandLeave(companyID: id), .applied)
         XCTAssertEqual(e.state.company(id)!.cash, cash - a.exitPenalty, accuracy: 1)
         XCTAssertNil(e.carBrandContract(companyID: id))
-        // A happy brand offers a renewal near the end; accepting extends the term.
         signed(&e, id)
         e.update { s, d, _ in
             let i = s.companyIndex(id)!

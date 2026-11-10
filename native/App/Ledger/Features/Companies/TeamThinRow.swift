@@ -1,22 +1,16 @@
 import SwiftUI
 
-/// One person (or an open post) of a Team list as a clean 60 pt row straight on the page: a portrait, the name over one subline (role,
-/// mood, a note), the monthly pay right-aligned and a chevron. An open post shows its title and an accent word ("Appoint") instead.
-/// No box: lists separate rows with `PersonRowRule`. The row has no button of its own: the caller wraps it.
 struct ThinPersonRow: View {
     @Environment(\.outsidePalette) private var P
     var name: String?
-    /// The post or role: the title of an open post, the line under a name.
     var title: String
     var note: String = ""
     var noteTint: Color = Theme.inkFaint
     var wage: String? = nil
-    /// An accent word at the right of an open post ("Appoint").
     var cue: String? = nil
     var chevron = true
     var roleKey: String? = nil
     var face: String? = nil
-    /// The engine's mood word ("Happy", "Mixed", "Unhappy", "Leaving", "Content"); shown in the subline, tinted when it needs a look.
     var mood: String? = nil
 
     static let portrait: CGFloat = 36
@@ -45,7 +39,6 @@ struct ThinPersonRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Role, then the mood word in its tone, then the note: one caption line.
     private var subline: Text {
         var parts: [Text] = []
         if name == nil {
@@ -60,7 +53,6 @@ struct ThinPersonRow: View {
         return out.font(Font.step(.caption))
     }
 
-    /// Calm words stay soft; a mood that needs the owner takes the caution or loss tone.
     static func moodTint(_ word: String, _ P: OutsidePalette) -> Color {
         switch word {
         case "Leaving": return P.loss
@@ -71,12 +63,10 @@ struct ThinPersonRow: View {
     }
 }
 
-/// The hairline between two person rows, inset to start under the name.
 struct PersonRowRule: View {
     var body: some View { Hairline().padding(.leading, ThinPersonRow.portrait + Theme.Space.m) }
 }
 
-/// A group of a Team screen: a small-caps label in faint ink above its content, no box and no rule. Groups sit 24-32 pt apart.
 struct TeamBlock<Content: View, Trailing: View>: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -102,7 +92,6 @@ extension TeamBlock where Trailing == EmptyView {
     }
 }
 
-/// The hero of a Team screen: an optional small-caps label, one big serif figure with its unit, and one context line under it.
 struct TeamHero: View {
     @Environment(\.outsidePalette) private var P
     var label: String = ""

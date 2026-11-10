@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Press and hold to confirm something that cannot be undone. It reads on any palette (the shared hold button is white on a faint tint,
-/// unreadable on a light page). Letting go early cancels; VoiceOver confirms with the default action.
 struct CivicHoldButton: View {
     var title: String
     var tint: Color

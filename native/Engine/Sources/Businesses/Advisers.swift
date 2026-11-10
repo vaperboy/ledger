@@ -3,24 +3,15 @@ import GameCore
 import Countries
 import Finance
 
-/// Choosing and using the accountant, law firm and insurer of a company, including your own group firms, and the
-/// insurance policies a company holds. Originals: `pickLaw`, `pickInsurer`, `pickAccountant`, `insrMult`, `insrPay`, `lawWeek`
-/// (engine/suppliers/providers.js, engine/company/company.js), `ownProv`, `pickOwn`, `ownFirms` (engine/suppliers/own_group.js)
-/// and the actions `provpick`, `ownpick`, `toggleins` (ui/screens/providers.js, ui/company/view.js).
 public enum Advisers {
     public enum Kind: String, CaseIterable, Sendable {
         case accountant = "acc", law, insurer = "ins"
-        /// The trade a group company must be to serve as this provider. Original: `ownFirms`.
         var ownTrade: String { switch self { case .accountant: return "acctfirm"; case .law: return "law"; case .insurer: return "insco" } }
-        /// The field of the company record that holds the choice.
         var field: String { self == .insurer ? "insr" : self == .accountant ? "acc" : "law" }
     }
 
     public enum Result: Equatable, Sendable { case done, removed, unknown, needInsurer }
 
-    // MARK: Reading
-
-    /// The providers on offer in the company's country. Original: `poolFor(co.country)`.
     public static func pool(_ s: inout GameState, companyID: Int, kind: Kind, data: GameData) -> [JSONValue] {
         guard let co = s.company(companyID) else { return [] }
         let p = Providers.pool(for: co.countryCode, state: &s, countries: data.countries)
@@ -29,12 +20,10 @@ public enum Advisers {
 
     public static func current(_ co: Company, _ kind: Kind) -> JSONValue { co.value(kind.field) }
 
-    /// Companies of yours that can serve as the provider. Original: `ownFirms`.
     public static func ownFirms(_ s: GameState, for companyID: Int, kind: Kind) -> [Company] {
         s.companies.filter { $0.type == kind.ownTrade && $0.status == .open && $0.id != companyID }
     }
 
-    /// A group firm judged by the same numbers as the others, with a group discount. Original: `ownProv`.
     public static func ownProvider(_ s: GameState, kind: Kind, firm oc: Company, data: GameData) -> JSONValue {
         let r = Pricing.rating(oc)
         let q = Providers.quality(fromRating: r)
@@ -56,9 +45,6 @@ public enum Advisers {
         return .object(p)
     }
 
-    // MARK: Choosing
-
-    /// Hire a provider (providerID 0 removes a law firm or an insurer). Original: `ACT.provpick`.
     @discardableResult
     public static func pick(_ s: inout GameState, companyID: Int, kind: Kind, providerID: Int, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID) else { return .unknown }
@@ -77,7 +63,6 @@ public enum Advisers {
         return .done
     }
 
-    /// Use one of your own firms as provider. Original: `pickOwn`.
     @discardableResult
     public static func pickOwn(_ s: inout GameState, companyID: Int, kind: Kind, firmID: Int, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let oc = s.company(firmID), oc.status == .open, oc.type == kind.ownTrade, oc.id != companyID else { return .unknown }
@@ -95,19 +80,16 @@ public enum Advisers {
         return .done
     }
 
-    /// The accountant agreement is held from the moment a firm is chosen. Original: `pickAccountant` (the `acctr` document).
     static func markAccountantDocument(_ s: inout GameState, _ i: Int) {
         var docs = s.companies[i].value("docs")
         docs["accountant_agreement"] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))])
         s.companies[i].set("docs", docs)
     }
 
-    /// Switch one insurance policy on or off. Needs an insurer. Original: `ACT.toggleins`.
     @discardableResult
     public static func togglePolicy(_ s: inout GameState, companyID: Int, product: String) -> Result {
         guard let i = s.companyIndex(companyID) else { return .unknown }
         var ins = s.companies[i].value("ins")
-        // Atlas Insurance takes every policy: no insurer has to be chosen first.
         if !ins[product].bool && s.companies[i].value("insr").isNull {
             s.companies[i].set("insr", .object(["id": .string("atlas"), "name": .string("Atlas Insurance"), "premM": .number(1.0), "payM": .number(0.95), "rating": .number(4.3)]))
         }
@@ -121,9 +103,6 @@ public enum Advisers {
         return .done
     }
 
-    // MARK: Policy numbers
-
-    /// A policy gets its number when it is switched on and loses it when it is switched off. The record (`polNo`) exists only once a policy has been on.
     static func recordPolicyNumber(_ s: inout GameState, companyIndex i: Int, product: String, on: Bool) {
         var nos = s.companies[i].value("polNo")
         if on {
@@ -138,21 +117,15 @@ public enum Advisers {
         }
     }
 
-    /// The number and start date of a policy that is on, if it was recorded.
     public static func policyRecord(_ co: Company, product: String) -> (number: String, week: Int, day: Int)? {
         let r = co.value("polNo")[product]
         guard !r.isNull, co.value("ins")[product].bool else { return nil }
         return (r["no"].string, r["w"].int, r["d"].int)
     }
 
-    // MARK: In the weekly turn
-
-    /// Premium multiplier of the chosen insurer. Original: `insrMult`.
     public static func premiumFactor(_ co: Company) -> Double { co.value("insr").isNull ? 1 : co.value("insr")["premM"].double }
-    /// How reliably the insurer pays a claim. Original: `insrPay`.
     public static func payoutReliability(_ co: Company) -> Double { co.value("insr").isNull ? 0.93 : co.value("insr")["payM"].double }
 
-    /// The weekly legal fee, and the fees of your own firms. Original: `lawWeek`; `accWeek` (own accountant income).
     static func weekly(_ s: inout GameState, _ i: Int, accountantFee amt: Double) {
         let co = s.companies[i]
         if !co.value("law").isNull {
@@ -165,7 +138,6 @@ public enum Advisers {
         }
     }
 
-    /// The premiums go to your own insurer when you chose it. Original: `insWeek`.
     static func premiumsPaid(_ s: inout GameState, _ i: Int, total t: Double) {
         guard t > 0, let o = ownerFirm(s, s.companies[i].value("insr")) else { return }
         Payments.companyReceives(&s, companyID: o, amount: t * 0.85, category: "rev", label: "Premium from \(s.companies[i].name)")
@@ -174,8 +146,6 @@ public enum Advisers {
         }
     }
 
-    /// An insurance claim paid out to a company: the insurer may haggle, and your own insurer carries the cost.
-    /// Original: the `fx.loss` branch of `applyFx` (engine/events/engine.js). Returns the amount paid.
     public static func claimPaid(_ s: inout GameState, _ i: Int, paid: Double) -> Double {
         var paid = paid
         if paid > 0 && s.random.chance(1 - payoutReliability(s.companies[i])) {

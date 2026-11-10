@@ -1,6 +1,3 @@
--- Development seed: invented stand-in players only, no real user data. They never confirm 18+, so the election cycle ignores them and shared
--- features stay closed to them. profiles.id references auth.users, so each gets a placeholder auth row that cannot sign in (no email,
--- no password, banned).
 do $$
 declare r record; uid uuid;
 begin

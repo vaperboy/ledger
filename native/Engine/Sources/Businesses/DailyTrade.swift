@@ -4,13 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// Selling day by day. Original: features/sales/daily_sales.js ("Round 10").
-///
-/// Each day every open company gets its customers for that day (busier on the days that business is busy),
-/// serves them as far as its capacity for the day allows, and is paid for each full sale that same day.
-/// The week-end close (`closeWeek`) books exactly the sales that happened on the days.
 public enum DailyTrade {
-    /// Share of a week's customers on each day, Monday first. Original: `SH`.
     static let shops: [Double] = [0.12, 0.12, 0.13, 0.14, 0.16, 0.19, 0.14]
     static let leisure: [Double] = [0.07, 0.08, 0.11, 0.13, 0.21, 0.25, 0.15]
     static let care: [Double] = [0.15, 0.16, 0.16, 0.17, 0.17, 0.14, 0.05]
@@ -18,10 +12,8 @@ public enum DailyTrade {
     static let sixDays: [Double] = [0.18, 0.18, 0.18, 0.18, 0.17, 0.11, 0]
     static let flat: [Double] = Array(repeating: 1.0 / 7, count: 7)
 
-    /// Units sold by weight or volume are not counted in whole sales.
     static let divisibleUnits: Set<String> = ["tonne", "litre", "barrel", "MWh", "m2-week", "member-week", "unit-week", "space-week", "kbbl"]
     static let tradingFamilies: Set<String> = ["svc", "retail", "venue", "logi", "prod"]
-    /// Seats and cargo space cannot be sold twice. Original: `ROOMS`.
     static let roomTrades: Set<String> = ["hotel", "fun", "casino", "airline", "shipping"]
     static let servedFamilies: Set<String> = ["venue", "retail", "prod"]
 
@@ -41,7 +33,6 @@ public enum DailyTrade {
         }
     }
 
-    /// How many of today's unserved customers come back tomorrow: nobody waits for a coffee, everybody waits for a house.
     static func keepShare(_ bd: Trade, _ sh: [Double]) -> Double {
         let t = bd.ticket
         var k: Double = t >= 20000 ? 0.99 : t >= 1500 ? 0.95 : t >= 400 ? 0.6 : 0
@@ -49,10 +40,7 @@ public enum DailyTrade {
         return k
     }
 
-    /// Does this company trade day by day? Original: `dailyOk`.
     public static func tradesDaily(_ co: Company, _ bd: Trade) -> Bool {
-        // The two car dealerships sell the cars standing in their own yard or showroom (UsedCarDealer, CarDealer) and book that week themselves:
-        // the generic day-by-day trade would take a second, stockless stream of sales into cash that no books or stock ever show.
         co.status == .open && tradingFamilies.contains(bd.family) && bd.id != "salmon" && bd.id != CarDealer.tradeID && bd.id != UsedCarDealer.tradeID
             && !bd.hasTrait("sub") && !divisibleUnits.contains(bd.unit)
     }
@@ -68,16 +56,14 @@ public enum DailyTrade {
         return k
     }
 
-    // MARK: The daily log (stored in the company as `dl`)
-
     struct Log {
         var week: Int
         var days: [String: JSONValue] = [:]
         var units: Double = 0
         var revenue: Double = 0
         var paid: Double = 0
-        var queue: Double = 0           // waiting customers (carried over)
-        var carry: Double = 0           // unused capacity carried over
+        var queue: Double = 0
+        var carry: Double = 0
         var capacity: Double?
         var cumulativeRoom: Double?
         var lost: Double = 0
@@ -106,7 +92,6 @@ public enum DailyTrade {
         }
     }
 
-    /// A fresh log for the week, carrying over unsold capacity and waiting customers. Original: `newLog`.
     static func newLog(for co: Company, week: Int) -> Log {
         let o = co.value("dl")
         var l = Log(week: week)
@@ -119,18 +104,14 @@ public enum DailyTrade {
         return l
     }
 
-    // MARK: A day of trade
-
-    /// Every open company trades the day. Original: `R10DAY(d)` / `dayCore`.
     public static func runDay(_ s: inout GameState, day d: Int, data: GameData) {
         s.dayMode = true
         for i in s.companies.indices {
             let co0 = s.companies[i]
             guard let bd = data.catalog[co0.type], tradesDaily(co0, bd) else { continue }
-            let cycle = GameCalendar.cycle(companyID: co0.id, week: s.week, day: d)   // the log belongs to the company's own seven-day cycle
+            let cycle = GameCalendar.cycle(companyID: co0.id, week: s.week, day: d)
             var log = (!co0.value("dl")["w"].isNull && co0.value("dl")["w"].int == cycle) ? Log(json: co0.value("dl")) : newLog(for: co0, week: cycle)
             if log.days[String(d)] != nil { continue }
-            // Read-only view for the calculations; it is dropped before the state changes.
             let (dm, cp, price, vat, stockF, salesRoles, _, people): (DemandResult, CapacityResult, Double, Double, Double, Set<String>, Int, [Int: Person]) = {
                 let w = World(state: s, data: data)
                 let dm = DemandModel.compute(co0, bd, w)
@@ -151,8 +132,6 @@ public enum DailyTrade {
         }
     }
 
-    /// What a company sold on game day (`week`, `day`), read from its open log or the one closed last (a cycle spans two calendar weeks).
-    /// Null when nothing was logged for that day.
     public static func soldOn(_ co: Company, week: Int, day: Int) -> JSONValue {
         let cycle = GameCalendar.cycle(companyID: co.id, week: week, day: day)
         for key in ["dl", "dlast"] {
@@ -169,7 +148,6 @@ public enum DailyTrade {
         return clamp(StockHandling.unitsAvailable(co, bd, demand: D, capacity: cap, units: base, w: w) / base, 0, 1)
     }
 
-    /// Original: `tradeDay`. Returns units sold, the cash taken and any spoiled stock to write off.
     static func tradeDay(_ co: inout Company, _ bd: Trade, _ L: inout Log, week wk: Int, day d: Int, demand D: Double, capacity cap: Double,
                          price: Double, vat vr: Double, stockFactor: Double, salesRoles: Set<String>, people: [Int: Person], serveShare: Double = 1,
                          random r: inout DeterministicRandom) -> (sold: Double, cash: Double, writeOff: Double) {
@@ -178,7 +156,6 @@ public enum DailyTrade {
         let s = sh[wd]
         let keep = keepShare(bd, sh)
         let kind = DailyTrade.kind(bd)
-        // Goods are delivered to the shelf before trading. Original: R12DELIV.
         let writeOff = Shelf.deliver(&co, bd, weekday: wd, demand: D, ticket: price, mgrQuality: ManagerModel.quality(co, bd, people: people), random: &r)
         let shelfOn = kind == .goods && !co.value("shelf").isNull
         let lam = max(0, D * s * max(0, 1 + r.gauss() * 0.1) * (shelfOn ? 1 : stockFactor))
@@ -188,7 +165,6 @@ public enum DailyTrade {
         if L.capacity! <= 0 { room = 0 }
         else if kind == .goods && !servedFamilies.contains(bd.family) { room = .infinity }
         else {
-            // Overtime only when an extra job still pays after time-and-a-half.
             let wpu = co.lastWages / max(1, L.capacity!)
             let overtimeOK = kind == .service && price * (1 - bd.costOfSales) > 1.5 * wpu
             let stretch: Double = overtimeOK ? 1.2 : kind == .goods ? 1.1 : 1
@@ -215,9 +191,6 @@ public enum DailyTrade {
         return (sold, cash, writeOff)
     }
 
-    // MARK: Who made the sales (for commission)
-
-    /// Salespeople by skill, and you if you sell there yourself. Original: `sellers` / `attribute`.
     static func attributeSales(_ co: inout Company, _ bd: Trade, units n: Double, price: Double, week wk: Int, salesRoles: Set<String>,
                                people: [Int: Person], random r: inout DeterministicRandom) {
         if n <= 0 { return }
@@ -268,25 +241,20 @@ public enum DailyTrade {
         co.staff = staff
     }
 
-    // MARK: The week-end close
-
     public struct WeekClose {
         public var units: Double
         public var averagePrice: Double
         public var cashAlreadyTaken: Double
     }
 
-    /// The week's books use the full sales that happened on its days. Overtime is paid; a crowded shop serves worse.
-    /// Original: `R10U`.
     static func closeWeek(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, demand D: Double, capacity cap: Double, price: Double, data: GameData) -> WeekClose {
         var co = s.companies[i]
         let wk = s.week - 1
-        let cycle = GameCalendar.cycle(companyID: co.id, week: s.week, day: s.day) - 1   // the cycle that ended on the company's slot day
+        let cycle = GameCalendar.cycle(companyID: co.id, week: s.week, day: s.day) - 1
         var L: Log
         if !co.value("dl")["w"].isNull && co.value("dl")["w"].int == cycle { L = Log(json: co.value("dl")) }
         else {
             L = newLog(for: co, week: cycle)
-            // Played week by week (no days were traded): trade all seven days now.
             if !s.dayMode {
                 let w = World(state: s, data: data)
                 let sf = stockFactor(co, bd, demand: D, capacity: cap, w: w)
@@ -312,7 +280,6 @@ public enum DailyTrade {
                 let wpu = co.lastWages / cap
                 if wpu > 0 { overtimePay = overtime * wpu * 1.5 }
             } else if L.units > cap * 1.2 {
-                // A full shop still sells, but queues grow, service slips and staff wear out.
                 co.quality = max(0, co.quality - min(6, (L.units / cap - 1.2) * 12))
                 var staff = co.staff
                 for k in staff.indices where s.random.next() < 0.02 * (L.units / cap - 1.2) * 5 { staff[k].happyUntilWeek = 0 }
@@ -321,7 +288,6 @@ public enum DailyTrade {
         }
         co.set("dlast", .object(["w": .number(Double(cycle)), "days": .object(L.days), "u": .number(L.units), "ot": .number(overtime), "lost": .number(L.lost), "so": .number(L.soldOutDays)]))
         co.set("dl", .object(["w": -1, "days": .object([:]), "u": .number(L.units), "r": 0, "paid": 0, "q": .number(L.queue), "ca": .number(L.carry), "cap": .number(L.capacity ?? cap)]))
-        // Each seller's week of sales (for commission), reset for the new week.
         let salesRoles = data.catalog.tables.salesRoles
         var staff = co.staff
         for k in staff.indices where PayPlans.sells(staff[k], salesRoles: salesRoles) {

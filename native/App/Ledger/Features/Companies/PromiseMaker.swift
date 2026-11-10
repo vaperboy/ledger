@@ -5,16 +5,12 @@ import Employees
 import Businesses
 import Simulation
 
-/// Adds one promise to a draft: what, in how many weeks, and for the kinds that need it what exactly (a benefit, a working percentage).
-/// Used by the hiring terms page and by the contract discussion; the engine records and checks the promise (`StaffPromises`).
 struct PromiseMaker: View {
     struct Choice: Identifiable { var id: String; var title: String }
     var kinds: [StaffPromises.Kind]
-    /// What fulfils each kind, in words, by the kind's raw value.
     var details: [String: String]
     var benefits: [Choice]
     var percents: [Double]
-    /// The working percentage now (a promised change must differ from it).
     var current: Double
     var label = "Add a promise"
     var add: (StaffPromises.Draft) -> Void
@@ -73,7 +69,6 @@ struct PromiseMaker: View {
 }
 
 extension PromiseMaker {
-    /// The hiring terms page: kinds, wording, benefits and percentages come from the engine's draft options.
     init(options: HireDraftOptions, current: Double, add: @escaping (StaffPromises.Draft) -> Void) {
         let plans: [Choice] = options.bonusPlans.map { Choice(id: "plan:" + $0.id, title: $0.title) }
         let exps: [Choice] = options.expenses.map { Choice(id: "exp:" + $0.id, title: $0.title) }

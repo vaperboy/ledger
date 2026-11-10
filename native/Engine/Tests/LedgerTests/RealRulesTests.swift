@@ -6,8 +6,6 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// Owner requests, 3 Nov: chain and franchise requirements are real-life papers; breakdowns under warranty are repaired without a decision;
-/// appointment authority (an assistant manager needs confirmation from the level above); research reports arrive as inbox documents.
 final class RealRulesTests: XCTestCase {
     private func game(manager: Bool = false, seed: Int = 4242) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -39,8 +37,6 @@ final class RealRulesTests: XCTestCase {
         }
     }
 
-    // MARK: 1. Chain and franchise requirements
-
     func testProvenConceptNeedsAYearAndFourProfitableQuarters() throws {
         var (e, id) = try game()
         func proven() -> Bool { Franchising.provenConcept(e.state, e.state.company(id)!).ok }
@@ -55,7 +51,6 @@ final class RealRulesTests: XCTestCase {
         set(open: 40, profits: Array(repeating: 100, count: 12)); XCTAssertFalse(proven(), "under 52 weeks of trading")
         set(open: 60, profits: Array(repeating: 100, count: 9) + [-100, -100, -100]); XCTAssertFalse(proven(), "a loss-making quarter")
         set(open: 60, profits: Array(repeating: 100, count: 9)); XCTAssertFalse(proven(), "fewer than four quarters of record")
-        // A single bad month inside a profitable quarter does not matter: the quarter is what counts.
         set(open: 60, profits: [100, 100, 100, 100, 100, 100, 100, 100, 100, 200, -100, 100]); XCTAssertTrue(proven())
     }
 
@@ -65,7 +60,6 @@ final class RealRulesTests: XCTestCase {
         XCTAssertEqual(r0.map { $0.key }, ["proven", "trademark", "ops_manual", "fran", "support"])
         XCTAssertTrue(r0.allSatisfy { !$0.ok && $0.status == .missing }, "a fresh company has none of them")
         XCTAssertFalse(r0.contains { $0.detail.lowercased().contains("reputation") || $0.title.lowercased().contains("cash") })
-        // Applying for the trademark costs the fee, shows "waiting for review", and the review ends the wait.
         let cash0 = e.state.company(id)!.cash
         XCTAssertEqual(e.applyForChainDocument(companyID: id, document: "trademark"), .ok)
         XCTAssertLessThan(e.state.company(id)!.cash, cash0, "the fee is paid")
@@ -80,7 +74,6 @@ final class RealRulesTests: XCTestCase {
         }
         tm = Franchising.requirements(e.state, e.state.company(id)!).first { $0.key == "trademark" }!
         XCTAssertTrue(tm.status == .done || tm.detail.lowercased().contains("refused"), "reviewed: approved or refused with a reason")
-        // The operations manual is written by the company: a small fee, no review, never refused.
         XCTAssertEqual(e.applyForChainDocument(companyID: id, document: "ops_manual"), .ok)
         XCTAssertNotEqual(e.state.company(id)!.value("docs")["ops_manual"]["signed"].bool, true)
         e.update { s, d, _ in
@@ -93,7 +86,6 @@ final class RealRulesTests: XCTestCase {
     func testChainRegistrationNeedsTrademarkAndManualOnly() throws {
         var (e, id) = try game()
         if case .notYet = e.applyForChainDocument(companyID: id, document: "chain") {} else { XCTFail("trademark and manual are missing") }
-        // No cash, reputation or record is asked: just the two papers.
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].reputation = 5; s.companies[i].monthlyHistory = [] } }
         setDocs(&e, id, ["trademark", "ops_manual"])
         XCTAssertTrue(e.chainRequirements(companyID: id).allSatisfy { $0.ok })
@@ -125,8 +117,6 @@ final class RealRulesTests: XCTestCase {
         XCTAssertEqual(rows[0].status, .missing)
         XCTAssertTrue(FranchiseBrands.status(brand, e.state, w).ok, "no reputation or experience gate")
     }
-
-    // MARK: 2. Warranty
 
     private func setWarranty(_ e: inout GameEngine, _ id: Int, until: Int) {
         e.update { s, _, _ in
@@ -169,8 +159,6 @@ final class RealRulesTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)!.cash, cash0, "nothing is paid until the owner chooses")
     }
 
-    // MARK: 3. Appointment authority
-
     func testOwnerAppointsManagerAndCEOWhenThereIsOne() throws {
         let (e, id) = try game(manager: true)
         let gm = e.appointmentAuthority(companyID: id, role: "general manager")
@@ -192,9 +180,7 @@ final class RealRulesTests: XCTestCase {
         XCTAssertEqual(e.appointmentAuthority(companyID: id, role: "deputy").needsConfirmationFrom, .owner)
         let staff = e.appointmentAuthority(companyID: id, role: "barista")
         XCTAssertEqual(staff.decidedBy, .manager); XCTAssertNil(staff.needsConfirmationFrom)
-        // The automatic hirer refuses an assistant role: it goes through a proposal.
         XCTAssertFalse(ManagerHiring.verdict(e.state, companyID: id, role: "assistant", target: 1, data: e.data).allowed)
-        // The proposal is an open decision for the owner; no assistant exists until it is confirmed.
         var cand: [Person] = []
         e.update { s, d, _ in cand = ManagerModel.searchAssistants(&s, companyID: id, data: d) ?? [] }
         let person = try XCTUnwrap(cand.first)
@@ -203,7 +189,6 @@ final class RealRulesTests: XCTestCase {
         let m = try XCTUnwrap(e.state.inbox.first { $0.actionID == "asst" && $0.status == "open" })
         XCTAssertEqual(Delegation.level(of: m), 5, "with no CEO it reaches the owner")
         XCTAssertFalse(e.proposeAssistantManager(companyID: id, personID: person.id, monthlyWage: 1), "one open proposal at a time")
-        // Declining creates nobody; confirming installs the assistant.
         var declined = e
         XCTAssertTrue(declined.answer(messageID: m.id, option: 1))
         XCTAssertEqual(declined.state.company(id)!.value("asst")["npc"].int, 0)
@@ -211,8 +196,6 @@ final class RealRulesTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)!.value("asst")["npc"].int, person.id)
         XCTAssertEqual(e.state.people[person.id]?.employerID, id)
     }
-
-    // MARK: 4. Research documents
 
     func testResearchArrivesAsAnInboxDocument() throws {
         var (e, id) = try game()
@@ -230,7 +213,6 @@ final class RealRulesTests: XCTestCase {
         XCTAssertEqual(doc.sections.map { $0.heading }.first, "Summary")
         XCTAssertEqual(doc.sections.map { $0.heading }.last, "Recommendation")
         XCTAssertTrue(doc.sections.contains { $0.heading == "Prices" })
-        // Survives a save and reload, and an ordinary message has no document.
         let back = try JSONDecoder().decode(GameState.self, from: try JSONEncoder().encode(e.state))
         XCTAssertEqual(back.inbox.first { $0.id == m.id }?.doc, doc)
         var plainID = 0

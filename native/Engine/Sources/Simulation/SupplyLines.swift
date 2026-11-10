@@ -4,15 +4,8 @@ import Countries
 import Finance
 import Businesses
 
-/// The Suppliers screen of a company as one list of what it buys, grouped by what is supplied (not by vendor). Each row is a line of the trade's
-/// supply catalogue (`SupplyCatalogue`): its current supplier, a word for quality and reliability, what it cost this week against the week
-/// before, and the offers to switch to. Stock and repairs read the existing goods and repair suppliers, and kinds your own companies can supply
-/// read the existing own-company switch; the other lines use the catalogue's own offers. Nothing is decided here.
-
 public enum SupplyChange: Equatable, Sendable {
-    /// A supplier of a catalogue line ("market" or a supplier id).
     case catalogue(line: String, offer: String)
-    /// The existing switch of an input (stock, repairs, an own-company supply).
     case input(String, SupplierSwitch)
 }
 
@@ -25,9 +18,7 @@ public struct SupplyOfferRow: Identifiable, Equatable, Sendable {
     public var trust: Double?
     public var source: String
     public var lead: String
-    /// What it would cost a week at this company's activity (nil when it is billed per job).
     public var weekly: Double?
-    /// Against the supplier used now: positive costs more a week.
     public var weeklyVsNow: Double?
     public var isCurrent: Bool
     public var blocked: String?
@@ -38,18 +29,14 @@ public struct SupplyRow: Identifiable, Equatable, Sendable {
     public var id: String
     public var group: String
     public var title: String
-    /// The same kind of purchase in general words, shared by every trade ("Linen and laundry").
     public var kind: String
-    /// What the line is, in words ("Cleaning and hygiene supplies").
     public var scale: String
     public var current: String
     public var quality: String
     public var reliability: String
     public var weekly: Double?
     public var weeklyBefore: Double?
-    /// A delivery missed recently.
     public var note: String?
-    /// Why a chain's rule or a franchise agreement fixes the choice; nil when the company decides.
     public var governed: String?
     public var offers: [SupplyOfferRow]
     public var canSwitch: Bool { offers.contains { !$0.isCurrent && $0.blocked == nil } }
@@ -67,7 +54,6 @@ public struct SupplyGroup: Identifiable, Equatable, Sendable {
 }
 
 public extension GameEngine {
-    /// What the company buys, grouped by what is supplied. Empty for a trade that buys nothing.
     func supplyLines(companyID: Int) -> [SupplyGroup] {
         guard let co = state.company(companyID), co.status.isLive, let bd = data.catalog[co.type], !SalesItems.firstChoicePending(co) else { return [] }
         let inputs = supplierInputs(companyID: companyID)
@@ -98,10 +84,8 @@ public extension GameEngine {
         return .line("mat")
     }
 
-    /// Switch the supplier of one row. Choosing an outside supplier of a kind your own company supplied ends that supply first.
     @discardableResult
     mutating func chooseSupply(companyID: Int, change: SupplyChange) -> SupplierSwitchResult {
-        // Choosing another supplier for a line ends a player supplier's contract on it.
         if let co = state.company(companyID), let bd = data.catalog[co.type] {
             let key: String
             switch change { case .input(let id, _): key = id; case .catalogue(let line, _): key = line }
@@ -125,13 +109,10 @@ public extension GameEngine {
         }
     }
 
-    /// A catalogue change that picks a player supplier's contract (kept as it is).
     private func isPlayerOffer(_ change: SupplyChange) -> Bool {
         if case .catalogue(_, let offer) = change { return offer.hasPrefix("P:") }
         return false
     }
-
-    // MARK: Words
 
     private func supplyLeadWord(_ days: Int) -> String { days <= 0 ? "Continuous" : days == 1 ? "Next day" : "\(days) days" }
     private func supplyStarsWord(_ stars: String) -> String {
@@ -156,8 +137,6 @@ public extension GameEngine {
     }
     private func supplySource(_ kind: SupplierProviderKind) -> String { kind == .outside || kind == .noneFixed ? "Market" : "Company" }
 
-    // MARK: Rows
-
     private func supplyRow(_ co: Company, _ bd: Trade, _ line: SupplyCatalogue.Line, _ input: SupplierInput?) -> SupplyRow {
         let cur = SupplyCatalogue.current(state, co, bd, line: line, data: data)
         let spend = SupplyCatalogue.weeklySpend(co, line: line.id)
@@ -167,7 +146,6 @@ public extension GameEngine {
         var offers: [SupplyOfferRow] = []
         let linked = input?.current.map { $0.kind == .ownCompany || $0.kind == .businessCustomer } ?? false
         let folded = line.tiers && line.input != "goods" && line.input != "repair" && !linked
-        // The price level the recorded spend is at, so another offer can be priced against it.
         var nowPF = 1.0
         if line.input == "goods" { nowPF = input?.current?.priceFactor ?? 1 } else if folded { nowPF = cur.priceFactor } else if linked { nowPF = 1 }
         let marketWeekly = weekly.map { $0 / max(0.01, nowPF) }

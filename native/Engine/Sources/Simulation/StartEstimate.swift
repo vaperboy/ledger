@@ -9,7 +9,6 @@ public enum StartBudget: String, CaseIterable, Sendable { case small, medium, la
 
 public enum StartTime: String, CaseIterable, Sendable { case handsOff, handsOn }
 
-/// Where a city's start-up costs split into thirds (cheapest third, middle, dearest) over the trades that can be started there.
 public struct StartCostTiers: Equatable, Sendable {
     public var lowTop: Double
     public var midTop: Double
@@ -17,13 +16,10 @@ public struct StartCostTiers: Equatable, Sendable {
 }
 
 public extension Trade {
-    /// The owner is needed for less than half a post, so the business runs mostly without them.
     var isHandsOff: Bool { ownerFTE < 0.5 }
-    /// The owner fills a whole post with their own skilled work.
     var needsOwnerSkill: Bool { ownerFTE >= 1 }
 }
 
-/// Everything about starting one trade that needs no simulation: what it costs, what it costs to keep, how long the cash lasts.
 public struct StartFacts: Equatable, Sendable {
     public var tradeID: String
     public var name: String
@@ -46,7 +42,6 @@ public struct StartFacts: Equatable, Sendable {
     public var invest: Double
 }
 
-/// The result of trial runs of one trade, played on a copy of the game with nothing else in it.
 public struct StartRuns: Equatable, Sendable {
     public struct Run: Equatable, Sendable {
         public var firstMonth: Double
@@ -58,7 +53,6 @@ public struct StartRuns: Equatable, Sendable {
     public var closeReturn: Double
 }
 
-/// A copy of the game's data that plays trial runs of a new company away from the main thread: the engine it makes is its own.
 public struct StartSimulationJob: @unchecked Sendable {
     public static let weeks = 26
     public static let seeds = 3
@@ -113,7 +107,6 @@ public struct StartSimulationJob: @unchecked Sendable {
     }
 }
 
-/// What the start screens say about one trade: the facts plus ranges from trial runs. Nothing here promises a profit.
 public struct StartEstimate: Equatable, Sendable {
     public enum Pill: String, Equatable, Sendable { case easier = "Easier to run", care = "Needs care", lowCost = "Low cost" }
     public enum Risk: String, Equatable, Sendable {
@@ -163,7 +156,6 @@ public struct StartEstimate: Equatable, Sendable {
         if level == .lower && !facts.needsSkill { pill = .easier } else if facts.costTier == .small { pill = .lowCost } else { pill = .care }
     }
 
-    /// The best matches first: lower risk, then the shorter payback.
     public static func ranked(_ list: [StartEstimate]) -> [StartEstimate] {
         list.sorted { a, b in
             if a.risk.rank != b.risk.rank { return a.risk.rank < b.risk.rank }
@@ -173,7 +165,6 @@ public struct StartEstimate: Equatable, Sendable {
 }
 
 public extension GameEngine {
-    /// The trades that can be started in this city, with their prices (cheapest first).
     func startableRows(cityID: String? = nil) -> [TradePickerRow] {
         tradePickerRows(cityID: cityID).filter { r in
             guard r.blocked == nil, r.startUpCost != nil, let bd = data.catalog[r.tradeID] else { return false }
@@ -187,14 +178,12 @@ public extension GameEngine {
         return StartCostTiers(lowTop: costs[(costs.count - 1) / 3], midTop: costs[(costs.count - 1) * 2 / 3])
     }
 
-    /// The families (trade categories) on offer in this city, in the order of the list.
     func startInterests(cityID: String? = nil) -> [String] {
         var seen: [String] = []
         for r in startableRows(cityID: cityID) where !seen.contains(r.sector) { seen.append(r.sector) }
         return seen
     }
 
-    /// Up to `limit` trades the player can pay for, the ones that fit the answers best first (budget, time, interest each count one point).
     func startCandidates(budget: StartBudget?, time: StartTime?, interest: String?, cityID: String? = nil, limit: Int = 5) -> [TradePickerRow] {
         let rows = startableRows(cityID: cityID).filter { $0.isFunded }
         let tiers = startCostTiers(cityID: cityID)
@@ -209,7 +198,6 @@ public extension GameEngine {
         return Array(scored.sorted { $0.1 != $1.1 ? $0.1 > $1.1 : ($0.0.startUpCost ?? 0) < ($1.0.startUpCost ?? 0) }.prefix(limit).map { $0.0 })
     }
 
-    /// The costs of starting one trade now in a city, at the size the player's money carries.
     func startFacts(tradeID: String, cityID: String? = nil) -> StartFacts? {
         let city = cityID ?? state.player.cityID
         guard let bd = data.catalog[tradeID], SpecialFamilies.isStartable(bd) else { return nil }
@@ -230,12 +218,10 @@ public extension GameEngine {
                           shortfall: max(plan.shortfall, plan.registrationShortfall), invest: plan.intoCompany)
     }
 
-    /// The trial runs for these facts, to be played with `run()` (off the main thread if the screen should stay live).
     func startJob(_ facts: StartFacts) -> StartSimulationJob {
         StartSimulationJob(state: state, data: data, events: events, marketing: marketing, tradeID: facts.tradeID, cityID: facts.cityID, size: facts.size, invest: facts.invest)
     }
 
-    /// Facts and trial runs together, played on the calling thread.
     func startEstimate(tradeID: String, cityID: String? = nil) -> StartEstimate? {
         guard let facts = startFacts(tradeID: tradeID, cityID: cityID) else { return nil }
         return StartEstimate(facts: facts, runs: startJob(facts).run())

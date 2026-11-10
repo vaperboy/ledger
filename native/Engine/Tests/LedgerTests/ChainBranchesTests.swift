@@ -6,9 +6,7 @@ import Businesses
 import Events
 import Simulation
 
-/// A chain owned by one owner is one company with branches: one dividend, pooled cash, no branch bankruptcy, branches closed or sold as businesses.
 final class ChainBranchesTests: XCTestCase {
-    /// A seasoned first store, registered as a chain, and a second store of it.
     private func chain() throws -> (e: GameEngine, chainID: Int, a: Int, b: Int) {
         var e = try ChainsTests.engine()
         let a = ChainsTests.start(&e, "cafe")
@@ -30,7 +28,7 @@ final class ChainBranchesTests: XCTestCase {
         var expected = 0.0, standaloneA = 0.0
         e.update { s, _, ctx in
             Payments.injectCash(&s, companyID: a, amount: 60_000_000)
-            if let i = s.companyIndex(b) { s.companies[i].addPayable("other", 9_000_000) }   // a branch with a loss to carry
+            if let i = s.companyIndex(b) { s.companies[i].addPayable("other", 9_000_000) }
             let L = Chains.stores(s, Chains.chain(s, id: chainID)!)
             let eq = L.reduce(0) { $0 + CompanyFigures.assets($1) - CompanyFigures.debts($1, loans: s.loans) - $1.shareCapital }
             let cash = L.reduce(0) { $0 + $1.cash - ctx.weeklyCost($1, s) * 2 }
@@ -71,7 +69,6 @@ final class ChainBranchesTests: XCTestCase {
 
     func testABranchNeverGoesBankruptAloneOnlyTheWholeChain() throws {
         var (e, chainID, a, b) = try chain()
-        // One branch far below zero, more than the chain can cover, long past the first year.
         e.update { s, _, _ in
             s.week = max(s.week, 40)
             let all = Chains.stores(s, Chains.chain(s, id: chainID)!).reduce(0) { $0 + max(0, $1.cash) }
@@ -82,7 +79,6 @@ final class ChainBranchesTests: XCTestCase {
         XCTAssertTrue(e.state.company(b)?.status.isLive ?? false, "a branch is not a legal entity: it cannot fail on its own")
         XCTAssertTrue(e.state.company(a)?.status.isLive ?? false)
         XCTAssertGreaterThanOrEqual(e.chainCash(chainID: chainID).weeksOverdrawn, 1)
-        // Thirteen weeks overdrawn past twice its limit: the chain fails as one company.
         let n0 = e.state.stats.bankruptcies
         e.update { s, d, ctx in
             var ch = Chains.chain(s, id: chainID)!; ch["neg"] = 13; Chains.save(&s, ch)
@@ -98,7 +94,6 @@ final class ChainBranchesTests: XCTestCase {
     func testClosingABranchWindsItDownIntoTheChain() throws {
         var (e, chainID, a, b) = try chain()
         e.update { s, _, _ in Payments.injectCash(&s, companyID: b, amount: 5_000_000) }
-        // The head office is one person short, so one of the closing branch's team moves there.
         let gone = try XCTUnwrap(e.state.company(a)?.staff.first(where: { m in e.state.company(b)?.staff.contains { $0.role == m.role } ?? false }))
         e.update { s, _, _ in
             if let i = s.companyIndex(a) { s.companies[i].staff = s.companies[i].staff.filter { $0.id != gone.id } }

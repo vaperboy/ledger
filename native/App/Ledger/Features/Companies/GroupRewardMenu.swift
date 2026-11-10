@@ -4,9 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// "Reward" on the row of an executive, a head-office member or the data analyst: a pay review, a promotion, more responsibility, training, a benefit
-/// (a weekly reimbursement) or a change of hours. Each is one of the engine's real `group*` actions; the engine prices it first
-/// (`groupRewardPreview`) and the owner confirms with the cost and the consequence in front of them. A matching promise is kept by the same action.
 struct GroupRewardMenu: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The daily popup's figures come from the day's real trade and the day's real messages, nothing else.
 final class DailyDigestTests: XCTestCase {
     func newEngine() throws -> GameEngine { try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242) }
 

@@ -3,20 +3,12 @@ import GameCore
 import Countries
 import Finance
 
-/// Every machine is a unit that wears out on its own, and sometimes breaks down: it is out of use for a few days, and
-/// the repair is free only while the warranty lasts. Originals: `unitsOf`, `newUnit`, `breakUnit`, `postWeek`, the
-/// 'eqWeek.before' / 'eqWeek.after' steps and 'eqN' (engine/company/equipment_realism.js).
-///
-/// Units bought through `EquipmentMarket` carry their brand, class, reliability and (used) true wear; units bought by the
-/// standard purchase (quick setup) have reliability 1 and class 1.
 public enum EquipmentUnits {
     public static func kind(tradeID: String, equipmentID: String, tables: TradeTables) -> String {
         let own = tables.raw["EQ_KINDS"][tradeID][equipmentID].string
         return own.isEmpty ? (foreign.kind(equipmentID, tables) ?? "mach") : own
     }
 
-    /// Every item of every trade, for the TechPro Store: any company can buy any item. Items of other trades
-    /// are bought and owned but do nothing for the business (no capacity, quality or requirement), so their flags and standard count are stripped.
     static let foreign = ForeignItems()
 
     final class ForeignItems: @unchecked Sendable {
@@ -54,7 +46,6 @@ public enum EquipmentUnits {
 
     static func gameYear(_ week: Int) -> Int { GameCalendar.year(week: week) }
 
-    /// Warranty length in years for a new unit of this kind. Original: `warrY`.
     static func warrantyYears(kind k: String, vehicleModel m: String?, class cls: Double, price: Double, tables: TradeTables, currency: Currency) -> Double {
         if k == "veh" {
             let c = tables.raw["VEH_CLASS"][m ?? ""].string
@@ -70,11 +61,9 @@ public enum EquipmentUnits {
         return (price >= currency.scaledPrice(500000) ? 2 : 1) + (cls >= 2 ? 1 : 0)
     }
 
-    /// A new unit, as bought. Original: `newUnit(.., 'new')`.
     static func newUnit(_ s: inout GameState, kind k: String, name: String, price: Double, years: Double,
                         brand: EquipmentMarket.Brand? = nil, used: EquipmentMarket.UsedOffer? = nil) -> JSONValue {
         if let u = used {
-            // A second-hand unit: no warranty, and its true wear may differ from what the seller showed.
             return .object(["u": .number(Double(s.makeID())), "src": "used", "nm": .string(u.name), "yr": .number(Double(u.year)), "tc": .number(u.trueCondition),
                             "vis": .number(u.visibleCondition), "c0": .number(u.trueCondition), "warr": 0, "price": .number(u.price), "down": 0,
                             "rel": .number(u.reliability), "kr": .bool(u.knownToLast), "cls": .number(Double(u.cls))])
@@ -83,7 +72,6 @@ public enum EquipmentUnits {
                         "warr": .number(Double(s.week) + years * 52), "price": .number(price), "down": 0, "rel": .number(brand?.reliability ?? 1), "cls": .number(Double(brand?.cls ?? 1))])
     }
 
-    /// Bring the list of units in line with the count in the equipment record. Original: `unitsOf`.
     static func ensureUnits(_ s: inout GameState, companyIndex i: Int, equipmentID id: String) {
         var units = s.companies[i].value("units")
         let rec = s.companies[i].value("eq")[id]
@@ -103,12 +91,10 @@ public enum EquipmentUnits {
 
     static func removing(_ v: JSONValue, _ key: String) -> JSONValue { var o = v.object; o.removeValue(forKey: key); return .object(o) }
 
-    /// Record units for equipment just bought. Called by `CompanySetup.buyEquipment`.
     static func recordPurchase(_ s: inout GameState, companyIndex i: Int, _ e: EquipmentSpec, tradeID: String, quantity q: Int, unitPrice: Double,
                                brand: EquipmentMarket.Brand? = nil, used: EquipmentMarket.UsedOffer? = nil, data: GameData) {
         let k = kind(tradeID: tradeID, equipmentID: e.id, tables: data.catalog.tables)
         guard k != "soft", k != "svc" else { return }
-        // Units that existed before the purchase are listed first (they keep their own wear).
         let rec = s.companies[i].value("eq")[e.id]
         var prior = rec
         prior["n"] = .number(rec["n"].double - Double(q))
@@ -125,7 +111,6 @@ public enum EquipmentUnits {
         syncCondition(&s, companyIndex: i, equipmentID: e.id)
     }
 
-    /// The record's condition is the average of its units'. Original: `syncCond`.
     static func syncCondition(_ s: inout GameState, companyIndex i: Int, equipmentID id: String) {
         var eq = s.companies[i].value("eq")
         let list = s.companies[i].value("units")[id].array
@@ -135,9 +120,6 @@ public enum EquipmentUnits {
         s.companies[i].set("eq", eq)
     }
 
-    // MARK: Availability
-
-    /// How many units can be used right now: units in for repair do not count. Original: step 'eqN'.
     static func availableCount(_ co: Company, equipmentID id: String, vehicle: Bool, count n0: Double) -> Double {
         var n = n0
         if vehicle {
@@ -148,9 +130,6 @@ public enum EquipmentUnits {
         return max(0, n)
     }
 
-    // MARK: The weekly steps
-
-    /// Before the week's wear: changes of the record's condition (events, repairs) reach the units. Original: 'eqWeek.before'.
     static func before(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData) {
         let ids = s.companies[i].value("eq").object.keys.sorted()
         for id in ids where id != "fit" {
@@ -180,7 +159,6 @@ public enum EquipmentUnits {
         }
     }
 
-    /// After the week: wear per unit, breakdowns, repairs. Original: 'eqWeek.after' (`postWeek`).
     static func after(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, utilisation util: Double, data: GameData) {
         let co0 = s.companies[i]
         let mm = [1.5, 1.0, 0.6][min(2, max(0, co0.maintenance))]
@@ -192,7 +170,6 @@ public enum EquipmentUnits {
             guard let spec = bd.allEquipment.first(where: { $0.id == id }) else { continue }
             var rec = s.companies[i].value("eq")[id]
             if !rec["sub"].isNull {
-                // A subscription is paid every month; a plan with too few seats slows the work down.
                 Payments.companyPays(&s, companyID: s.companies[i].id, amount: rec["sub"]["fee"].double * 12 / 52, category: "oth")
                 let plan = EquipmentMarket.book["plans"][rec["sub"]["tier"].int]
                 rec["perf"] = .number(Double(EquipmentMarket.users(s.companies[i])) > plan["users"].double ? 0.85 : plan["perf"].double)
@@ -202,7 +179,6 @@ public enum EquipmentUnits {
                 continue
             }
             if !rec["soft"].isNull {
-                // Yearly updates of a licence are paid weekly; an old one-time licence loses some of its output.
                 if rec["upd"].double > 0 { Payments.companyPays(&s, companyID: s.companies[i].id, amount: rec["upd"].double / 52, category: "oth") }
                 if rec["soft"].string == "once", Double(s.week) - (rec["ver"].isNull ? Double(s.week) : rec["ver"].double) > spec.lifeYears * 52 { rec["perf"] = .number(min(rec["perf"].isNull ? 1 : rec["perf"].double, 0.92)) }
                 rec["cond"] = 1; rec["_c"] = 1
@@ -233,7 +209,6 @@ public enum EquipmentUnits {
             for r in repairs { Payments.companyPays(&s, companyID: s.companies[i].id, amount: r.0, category: "oth", label: r.1); Vat.input(&s, companyIndex: i, net: r.0, data: data) }
             syncCondition(&s, companyIndex: i, equipmentID: id)
         }
-        // Vehicles
         var vehicles = s.companies[i].value("veh").array
         for n in vehicles.indices {
             var v = vehicles[n]
@@ -255,10 +230,8 @@ public enum EquipmentUnits {
         if !reports.isEmpty && open {
             let co = s.companies[i]
             let breakdowns = reports.count
-            // What the repairs cost while they last, so the player knows what is at stake.
             if let note = EquipmentOutage.compute(co, bd, World(state: s, data: data)).note { reports.append(note) }
             let mgrName = co.managerID.flatMap { s.people[$0]?.name }
-            // Addressed to the ops desk only when somebody sits there; with nobody it is the owner's own notice.
             s.addDeskNotice("ops", company: co, data: data, from: mgrName ?? "Workshop", title: breakdowns > 1 ? "\(breakdowns) breakdowns at \(co.name)" : "Breakdown at \(co.name)",
                             body: reports.joined(separator: " "), tone: "bad", sev: 1)
         }
@@ -292,7 +265,6 @@ public enum EquipmentUnits {
         return ("\(name) broke down. No warranty, so the repair cost \(cur.display(cost)). Back in about \(down) days.", cost)
     }
 
-    /// Whole days out of use, between the table's low and high. Original: `rint(W[0], W[1])`.
     static func downtimeDays(_ key: String, _ s: inout GameState, _ tables: TradeTables) -> Int {
         let w = tables.raw["BREAKDOWN_DAYS"][key]
         let lo = w.isNull ? 3 : w[0].int, hi = w.isNull ? 10 : w[1].int

@@ -1,15 +1,9 @@
 import SwiftUI
 
-/// The short fake launch screen every Phone app shows when it is opened from the Phone home: the app's own icon (same tint and
-/// glyph as on the grid) large and centred on a dark ground in the app's tint, the name beneath in the serif face, then a
-/// cross-fade into the app. A tap skips it. Purely visual: the app underneath is already built, no game state is touched and
-/// no engine call is made. It is a `@State` of the pushed screen, so it does not replay when returning from a sub-screen.
-/// Skipped under `-showcase` (screenshots and UI tests).
 struct AppLaunchSplash<Content: View>: View {
     var glyph: String
     var title: String
     var tint: Color
-    /// An outside app's own palette: the splash then uses its ground, text and accent instead of the icon's tint. Nil for insider apps.
     var palette: OutsidePalette? = nil
     @ViewBuilder var content: () -> Content
 

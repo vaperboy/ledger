@@ -1,24 +1,15 @@
 import Foundation
 import GameCore
 
-/// The nine sectors a startup of yours can build in, and what a finished product does for your own companies when they use it.
-/// Original: features/player/startup_sectors.js (`CAT`, `fxFor`, `fxNow` and the 'demand', 'capacity' steps).
-/// Startups live in `state.rest["founded"]`; the product is `sw16` = { cat, prod, model, devs, selfH, prog, phase (build, beta, live), cust, revW, int, use: [company ids] }.
-///
-/// Not ported: the better marketing (`aw`) that a social app gives your companies.
 public enum StartupProducts {
     public struct Sector: Identifiable, Equatable {
         public var id: String
         public var name: String
-        /// How capital-hungry it is, 1...4 (investors look at this).
         public var capitalNeed: Int
-        /// Seed money for one unit of seed, in the game's base prices.
         public var seed: Double
-        /// Work needed (builder-weeks) before the product is ready.
         public var work: Double
         public var canBuildYourself: Bool
         public var builders: String
-        /// Revenue per customer and year, and how fast customers come.
         public var arpu: Double
         public var growth: Double
         public var countsUsers: Bool
@@ -27,9 +18,6 @@ public enum StartupProducts {
         public static func == (a: Sector, b: Sector) -> Bool { a.id == b.id }
     }
 
-    /// The sector tables were written in pounds; the game's accounting unit is about one krone and wages are in that unit.
-    /// Seed money and revenue per customer are therefore multiplied by the pound-to-unit factor, so a seed buys the same number of builder-months
-    /// as it did in the original and a customer pays in the same unit as the wages. Nothing else is changed.
     public static let unit = 13.0
 
     public static let sectors: [Sector] = [
@@ -65,7 +53,6 @@ public enum StartupProducts {
     public static func sector(_ id: String) -> Sector? { sectors.first { $0.id == id } }
     public static func productName(sector id: String, product: String) -> String { sector(id)?.products.first { $0.id == product }?.name ?? "" }
 
-    /// What the product does for a company of this trade: d = more customers, k = more capacity, aw = better marketing (not used), c = lower running costs.
     public struct Effect: Equatable {
         public var d = 0.0, k = 0.0, aw = 0.0, c = 0.0
         public var text: String
@@ -75,7 +62,6 @@ public enum StartupProducts {
         }
     }
 
-    /// Original: `fxFor(cat, prod, bd)`.
     public static func effect(sector cat: String, product prod: String, trade bd: Trade) -> Effect? {
         func has(_ list: String) -> Bool { list.split(separator: " ").contains { String($0) == bd.id } }
         let fam = bd.family
@@ -119,7 +105,6 @@ public enum StartupProducts {
         }
     }
 
-    /// The total effect on one company right now from the products it uses. Original: `fxNow`.
     public static func effectNow(_ co: Company, _ s: GameState, trade: Trade) -> Effect {
         var out = Effect(text: "")
         guard let list = s.rest["founded"]?.array, !list.isEmpty else { return out }

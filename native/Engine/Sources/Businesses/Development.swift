@@ -4,20 +4,12 @@ import Countries
 import Employees
 import Finance
 
-/// Developing something new. A company runs one development project at a time: a new product line, a premium range, a menu
-/// refresh, an own brand, an online shop, a store refit, a new service, automation. It costs money up front and takes weeks;
-/// the team's skill and the company's quality decide whether it works fully, partly or not at all. What it gives fades as
-/// rivals copy it: half of it is gone after about two years, 40% stays for good.
-/// Original: features/company/product_development.js (`RD56`). State on the company: `rd56` = { run, done[] } and `rd56f`, the
-/// current factors the weekly turn writes for `DemandModel.modifier` and the ticket price.
 public enum Development {
     public struct Project: Equatable, Sendable {
         public var id: String, name: String, text: String
-        /// "dem" demand, "tick" prices, "cogs" materials, "cap" capacity.
         public var kind: String
         public var size: Double
         public var weeks: Int
-        /// Cost as a share of a year's sales.
         public var share: Double
     }
 
@@ -38,13 +30,8 @@ public enum Development {
                   Project(id: "offer", name: "A new offer for customers", text: "More customers: about +4% demand", kind: "dem", size: 0.04, weeks: 12, share: 0.03)],
     ]
 
-    // MARK: Named for the trade
-
-    /// Trade families whose projects are written for the trade (a menu, a service line, a product range). The other families that still
-    /// have projects (project businesses, logistics) only have generic ones ("better processes"), which the screens do not offer.
     public static let specificFamilies: Set<String> = ["prod", "venue", "retail", "svc"]
 
-    /// What a trade develops, singular, by trade; a trade not listed uses its family's noun (`familyNouns`).
     static let tradeNouns: [String: String] = [
         "foodtruck": "menu item", "cafe": "menu item", "restaurant": "menu item", "nightclub": "event night", "gym": "class", "hotel": "guest package",
         "casino": "game", "fun": "attraction", "skires": "attraction", "indoorski": "attraction", "pcbang": "game offer",
@@ -55,13 +42,11 @@ public enum Development {
     ]
     static let familyNouns: [String: String] = ["prod": "product line", "venue": "menu item", "retail": "product range", "svc": "service line"]
 
-    /// True when this company's trade has development projects written for it (see `specificFamilies`).
     public static func isSpecific(_ co: Company, data: GameData) -> Bool {
         guard let bd = data.catalog[co.type] else { return false }
         return specificFamilies.contains(bd.family) && !projects(for: co, data: data).isEmpty
     }
 
-    /// The thing this trade develops, for its heading ("menu item", "service line", "product range"); nil where nothing specific exists.
     public static func noun(for co: Company, data: GameData) -> String? {
         guard isSpecific(co, data: data), let bd = data.catalog[co.type] else { return nil }
         return tradeNouns[co.type] ?? familyNouns[bd.family]
@@ -69,7 +54,6 @@ public enum Development {
 
     public enum StartResult: Equatable, Sendable { case ok, notPossible, busy, recent, notEnoughCash }
 
-    /// The projects a company can run (none for finance, energy, rental, clubs and holdings).
     public static func projects(for co: Company, data: GameData) -> [Project] {
         guard let bd = data.catalog[co.type] else { return [] }
         let f = bd.family
@@ -77,13 +61,11 @@ public enum Development {
         return ["fin", "energy", "rent", "club", "hold"].contains(f) ? [] : table["other"]!
     }
 
-    /// Cost of a project today: a share of a year's sales, at least a base amount. Original: `costOf`.
     public static func cost(_ p: Project, for co: Company, currency cur: Currency) -> Double {
         let yearly = max(co.value("lastW")["rev"].double * 52, co.monthlyHistory.suffix(12).reduce(0) { $0 + $1.revenue })
         return cur.roundedStep(max(cur.scaledPrice(40000), yearly * p.share), about: 1000)
     }
 
-    /// The share of the effect still working: half is copied away after about two years, 40% stays for good. Original: `left`.
     static func remaining(_ d: JSONValue, week: Int) -> Double { 0.4 + 0.6 * pow(0.5, Double(week - d["w"].int) / 104) }
 
     public static func running(_ co: Company) -> (project: String, weeksLeft: Int, cost: Double)? {
@@ -92,7 +74,6 @@ public enum Development {
     }
     public static func finished(_ co: Company) -> [JSONValue] { co.value("rd56")["done"].array }
 
-    /// Original: `RD.start`.
     public static func start(_ s: inout GameState, companyID: Int, project id: String, data: GameData) -> StartResult {
         guard let i = s.companyIndex(companyID), let p = projects(for: s.companies[i], data: data).first(where: { $0.id == id }) else { return .notPossible }
         var r = s.companies[i].value("rd56")
@@ -108,9 +89,6 @@ public enum Development {
         return .ok
     }
 
-    // MARK: The expansion form (read and cancel)
-
-    /// Everything the product-expansion form shows before anything is paid.
     public struct Plan: Equatable, Sendable {
         public var project: Project
         public var cost: Double
@@ -119,7 +97,6 @@ public enum Development {
         public var cashAfter: Double
         public var oddsFull: Double
         public var oddsPartial: Double
-        /// Why it cannot be started now (nil: it can).
         public var blockedReason: String?
         public var requirements: [String]
     }
@@ -139,7 +116,6 @@ public enum Development {
                     requirements: ["Paid in full when you start", "One project at a time", "The team's skill and the company's quality decide how well it works"])
     }
 
-    /// Stop the running project. The part of the money not yet spent (weeks still to run) comes back to the company; nothing else changes.
     @discardableResult
     public static func cancel(_ s: inout GameState, companyID: Int) -> Double? {
         guard let i = s.companyIndex(companyID) else { return nil }
@@ -157,8 +133,6 @@ public enum Development {
         return refund
     }
 
-    /// Finish projects that are due and write the factors the demand, capacity, price and cost models read. Run once a week
-    /// per company. Original: the 'development projects finish' step.
     public static func weekly(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         var r = s.companies[i].value("rd56")
         guard !r.isNull else { return }
@@ -191,7 +165,6 @@ public enum Development {
         refreshFactors(&s, i)
     }
 
-    /// The current effect of everything developed, as multipliers. A store refit under way costs a sixth of capacity.
     static func refreshFactors(_ s: inout GameState, _ i: Int) {
         let r = s.companies[i].value("rd56")
         guard !r.isNull else { return }
@@ -200,7 +173,6 @@ public enum Development {
         s.companies[i].set("rd56f", .object(["dem": .number(mult("dem")), "tick": .number(mult("tick")), "cap": .number(mult("cap") * refit), "cogsup": .number(2 - mult("cogs"))]))
     }
 
-    /// The factor for `DemandModel.modifier` ("dem", "cap", "cogsup") and the ticket price ("tick"). 1 when nothing was developed.
     static func factor(_ co: Company, _ key: String) -> Double {
         let f = co.value("rd56f")
         return f.isNull || f[key].isNull ? 1 : f[key].double

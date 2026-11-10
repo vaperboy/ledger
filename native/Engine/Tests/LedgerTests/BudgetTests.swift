@@ -5,8 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// The one budget per manager or executive: three presets scaled to the country, one rule (above the budget the owner is asked), and old saves
-/// read as the nearest preset.
 final class BudgetTests: XCTestCase {
     private func gameWithManager() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
@@ -17,8 +15,6 @@ final class BudgetTests: XCTestCase {
         return (e, id)
     }
 
-    // MARK: Presets
-
     func testPresetsFollowTheCountryAndGrowFromTightToFree() throws {
         let book = try CountryBook.bundled()
         for c in book.countries {
@@ -28,7 +24,6 @@ final class BudgetTests: XCTestCase {
             XCTAssertEqual(Budget.free.spendLimit(cur), Budget.unlimited, c.code)
             XCTAssertLessThan(Budget.tight.payLimit(cur), Budget.normal.payLimit(cur), c.code)
             XCTAssertLessThan(Budget.normal.payLimit(cur), Budget.normal.spendLimit(cur), c.code)
-            // the higher the post, the bigger the normal budget
             XCTAssertLessThan(Budget.normal.spendLimit(cur, kind: "region"), Budget.normal.spendLimit(cur, kind: "chainmgr"), c.code)
             XCTAssertLessThan(Budget.normal.spendLimit(cur, kind: "chainmgr"), Budget.normal.spendLimit(cur, kind: "ceo56"), c.code)
             XCTAssertLessThan(Budget.normal.spendLimit(cur, kind: "ceo56"), Budget.normal.spendLimit(cur, kind: "md"), c.code)
@@ -57,8 +52,6 @@ final class BudgetTests: XCTestCase {
         XCTAssertTrue(Budget.normal.covers(pay, monthly: true, cur))
         XCTAssertFalse(Budget.normal.covers(pay * 1.01, monthly: true, cur))
     }
-
-    // MARK: Old saves
 
     func testOldAuthorityReadsAsTheNearestPreset() throws {
         XCTAssertEqual(Budget.of(.object(["lvl": 0, "buy": 25000])), .tight)
@@ -109,8 +102,6 @@ final class BudgetTests: XCTestCase {
         XCTAssertEqual(ManagerModel.budget(of: try XCTUnwrap(e.state.company(id))), .tight)
     }
 
-    // MARK: The ask
-
     func testAProposalAboveTheBudgetComesToTheOwnerAndOneBelowDoesNot() throws {
         var (e, id) = try gameWithManager()
         let co = try XCTUnwrap(e.state.company(id)), mid = try XCTUnwrap(co.managerID)
@@ -118,21 +109,17 @@ final class BudgetTests: XCTestCase {
         XCTAssertGreaterThan(limit, 0)
         XCTAssertTrue(ManagerModel.withinBudget(co, amount: limit, e.state, data: e.data))
         XCTAssertFalse(ManagerModel.withinBudget(co, amount: limit * 1.5, e.state, data: e.data))
-        // premises space that costs twice the budget is the owner's to approve
         let manager = try XCTUnwrap(e.state.people[mid])
         e.update { s, d, _ in
             let ci = s.companyIndex(id)!
             ManagerModel.propose(&s, ci, ManagerModel.Proposal(kind: "space", cost: limit * 2), manager, 0.5, data: d)
         }
         XCTAssertNotNil(e.state.inbox.first { $0.companyID == id && $0.actionID == "prop" && $0.status == "open" }, "above the budget: the owner is asked")
-        // on a free budget nothing is above it
         e.setManagerBudget(companyID: id, budget: .free)
         let free = try XCTUnwrap(e.state.company(id))
         XCTAssertTrue(ManagerModel.withinBudget(free, amount: limit * 1000, e.state, data: e.data))
-        // on a tight budget even a small amount is asked
         e.setManagerBudget(companyID: id, budget: .tight)
         XCTAssertFalse(ManagerModel.withinBudget(try XCTUnwrap(e.state.company(id)), amount: 1, e.state, data: e.data))
-        // no manager: everything is the owner's
         var noManager = free
         noManager.managerID = nil
         XCTAssertFalse(ManagerModel.withinBudget(noManager, amount: 0, e.state, data: e.data))

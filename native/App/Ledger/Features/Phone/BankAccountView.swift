@@ -4,9 +4,6 @@ import Countries
 import Finance
 import Simulation
 
-/// One account (BankAccount.dc.html): the tabs, the balance with the available / overdraft / rate strip, the action
-/// tiles and the tab's content. Every money action is the engine's existing one; each reports its result in a popup. Investing is in the
-/// Market app, so the Bank opens cash accounts only.
 struct BankAccountScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -15,7 +12,6 @@ struct BankAccountScreen: View {
     @State private var move: BankMoveKind?
     @State private var viewAll = false
 
-    /// Bills come second: they are what most visits are for. The section bar folds the last ones into More when they do not fit.
     private var tabs: [BankTab] {
         switch id {
         case .personal: return [.account, .bills, .loans, .deposits, .statements]
@@ -60,21 +56,16 @@ struct BankAccountScreen: View {
         content(e, d, fmt, t)
     }
 
-    // MARK: Tabs
-
-    /// The company behind this account (0 for the player's own accounts), to find its Bank messages.
     private var bankCompanyID: Int {
         if case .company(let n) = id { return n }
         return 0
     }
 
-    /// Opening the Loans tab reads its messages: their dot goes.
     private func clearLoanDot() {
         guard tab == .loans else { return }
         for mid in store.loanMessageIDs(companyID: bankCompanyID) { store.markItemSeen(.bank, mid) }
     }
 
-    /// The system section bar: Loans carries a dot for unread bank letters.
     private func tabRow(_ d: BankAccountDetail, _ selection: Binding<BankTab>) -> some View {
         let loanIDs: [String] = tabs.contains(.loans) ? store.loanMessageIDs(companyID: bankCompanyID) : []
         let loansDot: Bool = loanIDs.contains { (mid: String) -> Bool in store.isNew(.bank, mid) }
@@ -83,9 +74,6 @@ struct BankAccountScreen: View {
             .padding(.horizontal, -Theme.Space.page)
     }
 
-    // MARK: Balance
-
-    /// The balance leads; change this month beside it, then one strip of what can be spent. No box: the page is the surface.
     private func balanceCard(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
         let label: String = id == .personal ? "Your account" : "Company account"
         let tint: Color = d.balance < 0 ? P.loss : P.ink
@@ -110,9 +98,6 @@ struct BankAccountScreen: View {
         }
     }
 
-    // MARK: Tiles
-
-    /// Pay bill opens the Bills tab: one place for bills instead of a second list in a sheet.
     private func tiles(_ d: BankAccountDetail) -> some View {
         HStack(spacing: Theme.Space.s) {
             if id == .personal {
@@ -123,8 +108,6 @@ struct BankAccountScreen: View {
             ActionTile(glyph: BankGlyph.bill, title: "Pay bill") { tab = .bills }
         }
     }
-
-    // MARK: Content
 
     @ViewBuilder private func content(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt, _ t: BankTab) -> some View {
         switch t {
@@ -156,7 +139,6 @@ struct BankAccountScreen: View {
         }
     }
 
-    /// The next three payments; the Bills tab holds the rest and the Pay now buttons.
     private func comingUp(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
         CardSection(title: "Coming up", trailing: {
             Button("All bills") { tab = .bills }.buttonStyle(TertiaryButtonStyle(size: .compact))
@@ -182,7 +164,6 @@ struct BankAccountScreen: View {
     }
 }
 
-/// One coming payment: icon, title, date, amount.
 struct BankObligationRow: View {
     @Environment(\.outsidePalette) private var P
     var obligation: Obligation
@@ -194,7 +175,6 @@ struct BankObligationRow: View {
     }
 }
 
-/// One movement: label, date, signed amount.
 struct BankTransactionRow: View {
     @Environment(\.outsidePalette) private var P
     var transaction: BankTransaction
@@ -206,7 +186,6 @@ struct BankTransactionRow: View {
     }
 }
 
-/// "View all": the longer list of movements.
 struct BankAllMovementsSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -230,7 +209,6 @@ struct BankAllMovementsSheet: View {
     }
 }
 
-/// The owner's salary from a company (moved here from the company's money desk).
 struct BankOwnerSalary: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore

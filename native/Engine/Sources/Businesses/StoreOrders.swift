@@ -3,35 +3,19 @@ import GameCore
 import Countries
 import Finance
 
-/// The TechPro Store checkout: a basket of equipment, software, subscriptions and vehicles is paid for at checkout and DELIVERED on a
-/// real date. The goods reach the company on the delivery day (`runDay`, called by the daily step); digital goods (software licences,
-/// subscriptions) arrive at once. It reuses the equipment market for what is bought (`EquipmentMarket.buyNew` and friends, with
-/// `prepaid: true` because the money was taken at checkout) and `Payments` for the money, so nothing is priced or booked twice.
-///
-/// Delivery days come from the goods: a kind-based lead time (a till is quicker than a machine), longer for dearer items, a vehicle takes
-/// longest, with one day either way from a hashed roll. Express shipping halves the wait (rounded up) for a higher fee; a company of
-/// yours that runs a delivery business (a logistics trade, open) delivers your orders itself, free and a day quicker.
-/// An order lives in its store company's record under `ord` (set only when the first order is placed).
 public enum StoreOrders {
     static let key = "ord"
     static let keepOrders = 40
 
-    // MARK: Lines and quotes
-
-    /// One thing in the basket.
     public struct Line: Equatable, Sendable, Identifiable {
         public enum Kind: String, Sendable { case new, vehicle, used, plan }
         public var kind: Kind
         public var equipmentID: String
         public var quantity: Int
-        /// New equipment and subscriptions: `EquipmentMarket.Offer.index`.
         public var offerIndex: Int
-        /// New vehicles: `EquipmentMarket.VehicleOffer.id`.
         public var vehicleOfferID: String
-        /// Subscriptions: the plan (0 to 2).
         public var plan: Int
         public var payment: EquipmentMarket.Payment
-        /// Second-hand items: the listing as shown.
         public var used: EquipmentMarket.UsedOffer?
 
         public init(kind: Kind, equipmentID: String, quantity: Int = 1, offerIndex: Int = 0, vehicleOfferID: String = "", plan: Int = 0,
@@ -52,15 +36,12 @@ public enum StoreOrders {
         public var name: String
         public var subtitle: String
         public var quantity: Int
-        /// The value of the goods.
         public var goods: Double
-        /// What leaves the account at checkout for this line (the whole price, a down payment, a first month, nothing for a lease).
         public var chargeNow: Double
         public var payment: EquipmentMarket.Payment
         public var digital: Bool
         public var isVehicle: Bool
         public var days: Int
-        /// A lease or a subscription plan: what it costs each month after checkout (0 for anything else).
         public var monthly: Double
     }
 
@@ -69,12 +50,9 @@ public enum StoreOrders {
         public var delivery: Delivery
         public var goods: Double
         public var shipping: Double
-        /// Goods charges plus shipping: what leaves the account at checkout.
         public var chargeNow: Double
-        /// Days until the last item arrives (0 = all digital).
         public var days: Int
         public var deliveryText: String
-        /// "Own delivery (Fleet Co)", "Standard shipping", "Express shipping" or "Digital delivery".
         public var carrier: String
         public var needsShipping: Bool
     }
@@ -84,7 +62,6 @@ public enum StoreOrders {
         public var ownCompanyName: String?
     }
 
-    /// A company of yours that runs a delivery business and is open: it delivers the store's orders itself.
     public static func ownCarrier(_ s: GameState, data: GameData) -> (id: Int, name: String)? {
         for co in s.companies where co.status == .open {
             if data.catalog[co.type]?.family == "logi" { return (co.id, co.name) }
@@ -101,8 +78,6 @@ public enum StoreOrders {
 
     static func dateText(_ absoluteDay: Int) -> String { GameCalendar.dateString(week: absoluteDay / 7, dayOffset: absoluteDay % 7) }
 
-    // MARK: Pricing one line
-
     private struct Priced {
         var name: String
         var subtitle: String
@@ -115,7 +90,6 @@ public enum StoreOrders {
         var monthly: Double = 0
     }
 
-    /// Lead time in days for one physical item, before shipping speed.
     static func leadDays(kind: String, vehicleKind: String?, used: Bool, goods: Double, currency: Currency) -> Int {
         if let vk = vehicleKind {
             if used { return 3 }
@@ -198,9 +172,6 @@ public enum StoreOrders {
         return list.contains { $0.id == listing.id }
     }
 
-    // MARK: Quote
-
-    /// Shipping speed applied to a line's lead time.
     static func days(base: Int, digital: Bool, delivery: Delivery, roll: Double) -> Int {
         if digital { return 0 }
         let varied = max(1, base + Int(saturating: (roll * 3).rounded(.down)) - 1)
@@ -211,8 +182,6 @@ public enum StoreOrders {
         }
     }
 
-    /// What the basket costs now, what shipping costs and when it arrives. Nil when a line cannot be bought (not on offer any more, not allowed)
-    /// or "own delivery" is chosen without a delivery company of your own.
     public static func quote(_ s: GameState, companyID: Int, lines: [Line], delivery: Delivery, data: GameData) -> Quote? {
         guard let co = s.company(companyID), co.status.isLive, !lines.isEmpty else { return nil }
         if delivery == .own && ownCarrier(s, data: data) == nil { return nil }
@@ -237,7 +206,6 @@ public enum StoreOrders {
         if physicalGoods > 0 {
             let minimumFee = delivery == .express ? cur.scaledPrice(70) : cur.scaledPrice(25)
             shipping = cur.tidy(max(minimumFee, shipPercent))
-            // Your own delivery company charges a fee (revenue for it) a little under the open market, and none to itself.
             if delivery == .own { shipping = ownCarrier(s, data: data)?.id == companyID ? 0 : cur.tidy(shipping * 0.7) }
         }
         let goods = out.reduce(0) { $0 + $1.goods }
@@ -252,16 +220,12 @@ public enum StoreOrders {
                      carrier: carrier, needsShipping: needs)
     }
 
-    // MARK: Placing the order
-
     public enum PlaceOutcome: Equatable, Sendable {
         case placed(number: String, deliveryText: String, total: Double)
         case notEnoughCash(missing: Double)
         case notPossible
     }
 
-    /// Pay for the basket from `companyID`'s account, file the receipt with `receiptCompanyID` and set the delivery. Items due today
-    /// (digital goods) arrive straight away.
     @discardableResult
     public static func place(_ s: inout GameState, companyID: Int, lines: [Line], delivery: Delivery, receiptCompanyID: Int, data: GameData) -> PlaceOutcome {
         guard let q = quote(s, companyID: companyID, lines: lines, delivery: delivery, data: data),
@@ -298,9 +262,6 @@ public enum StoreOrders {
         return .placed(number: number, deliveryText: q.deliveryText, total: q.chargeNow)
     }
 
-    // MARK: Delivery
-
-    /// Called every day: every order whose date has come hands over its goods.
     public static func runDay(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status.isLive && !s.companies[i].value(key).isNull {
             deliverDue(&s, companyID: s.companies[i].id, data: data)
@@ -322,7 +283,6 @@ public enum StoreOrders {
                 line["done"] = .bool(true)
                 if grant(&s, companyID: companyID, line: line, dealWeek: order["dl"].bool ? order["w"].int : nil, data: data) { arrived.append(line["nm"].string) }
                 else {
-                    // The goods cannot be delivered (the company changed too much): the charge for them comes back.
                     let back = line["c"].double
                     if back > 0 { Payments.companyReceives(&s, companyID: companyID, amount: back, category: nil, label: "Order \(order["no"].string): refund") }
                     line["refund"] = .bool(true)
@@ -343,7 +303,6 @@ public enum StoreOrders {
         if anyChange, let ci = s.companyIndex(companyID) { s.companies[ci].set(key, .array(orders)) }
     }
 
-    /// Put one delivered line into the company (the money was taken at checkout).
     private static func grant(_ s: inout GameState, companyID: Int, line j: JSONValue, dealWeek: Int?, data: GameData) -> Bool {
         guard let line = decode(j) else { return false }
         let r: EquipmentMarket.Result
@@ -363,8 +322,6 @@ public enum StoreOrders {
         }
         return r == .ok
     }
-
-    // MARK: Records
 
     static func encode(_ line: Line, quote q: LineQuote, eta: Int) -> JSONValue {
         var o: [String: JSONValue] = ["k": .string(line.kind.rawValue), "eq": .string(line.equipmentID), "nm": .string(q.name), "q": .number(Double(max(1, line.quantity))),
@@ -394,7 +351,6 @@ public enum StoreOrders {
                                   performance: j["pf"].double, kilometres: j["km"].int, risk: j["rk"].string, fuel: j["fu"].string)
     }
 
-    /// One placed order as the screens show it.
     public struct Record: Equatable, Sendable, Identifiable {
         public var id: String { number }
         public var number: String

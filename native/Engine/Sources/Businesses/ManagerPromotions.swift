@@ -4,57 +4,41 @@ import Countries
 import Employees
 import Finance
 
-/// Promotions: a worker or a manager moves up. The talk covers pay, a bonus, shares in the company, the duties they take, how much they decide
-/// themselves and how they report. Posts: a better role, manager of a company without one, chain manager or regional manager of a chain, and a
-/// job at your main office. A promoted person who leaves a company has their successor appointed. Executives then do their duties each week.
-/// Originals: features/people/worker_roles_and_promotions.js (`postsFor`, `p11offer`, `applyPost`, `execWeek`, `V.anrep11`),
-/// features/company/shareholders_and_board.js (`R15give`), features/company/shelf_stock_chains_boards.js (`R12chiefPosts`, `R12hireChief`).
 extension ManagerModel {
-    // MARK: Types
 
     public struct PromotionPost: Identifiable, Equatable {
-        public var id: String           // "role:<role>", "mgr@<companyID>", "chain:<chainID>[:<city>]", "hq:<role>"
+        public var id: String
         public var title: String
         public var place: String
-        public var kind: String         // "role", "mgr", "exec"
+        public var kind: String
         public var companyID: Int
         public var base: Double
         public var ask: Double
-        /// Why the post cannot be taken now ("" when it can).
         public var blocked: String = ""
     }
 
     public enum PromotionOutcome: Equatable {
         case accepted(String)
-        case counter(Double, String)     // "Make it ..." (they ask for more, never less)
+        case counter(Double, String)
         case unavailable(String)
     }
 
-    /// What is on the table besides pay: how much they decide alone (the budget preset) and shares in the company. Duties and the report they
-    /// give are fixed by the post (`fixedManagerDuties`, `fixedExecutiveDuties`); the only pay on results is the profit share of the contract talk.
     public struct PromotionTerms: Equatable, Sendable {
-        /// The budget preset (`Budget.rawValue`): 0 tight (ask me first), 1 normal (within limits), 2 free (full control).
         public var authority: Int = 1
         public var budget: Budget {
             get { Budget(rawValue: min(2, max(0, authority))) ?? .normal }
             set { authority = newValue.rawValue }
         }
-        /// Percent of the company's shares (limited companies only)
         public var sharesPercent: Double = 0
         public init(authority: Int = 1, sharesPercent: Double = 0) {
             self.authority = authority; self.sharesPercent = sharesPercent
         }
     }
 
-    /// A promoted manager looks after hiring and buying; the owner keeps the rest.
     static let fixedManagerDuties = ["hire", "buy"]
-    /// Every chief (chain manager, regional manager, managing director) checks quality, coaches the managers and finds managers for empty stores,
-    /// and reports once a month.
     static let fixedExecutiveDuties = ["quality", "coach", "hire"]
     static let hqForRole: [String: String] = ["hr": "hr", "acct": "acc", "lawyer": "law", "analyst2": "ana", "analyst": "ana", "marketer": "mkt", "buyer": "proc", "consult": "strat", "designer": "mkt"]
     static let hqForManager = ["perf", "strat", "proc", "hr"]
-
-    // MARK: Who is being promoted
 
     struct Candidate { var co: Company; var n: Person; var isManager: Bool; var pay: Double; var role: String; var skill: Double }
 
@@ -71,7 +55,6 @@ extension ManagerModel {
         marketWage(s, c, role: data.catalog[c.type]?.standardStaff.first?.role ?? "helper", data: data) * 1.55
     }
 
-    /// Posts above the person's present one. Original: `postsFor`.
     public static func promotionPosts(_ s: GameState, companyID: Int, personID: Int, data: GameData) -> [PromotionPost] {
         guard let c = candidate(s, companyID: companyID, personID: personID, data: data), let bd = data.catalog[c.co.type] else { return [] }
         let tables = data.catalog.tables, co = c.co
@@ -92,7 +75,6 @@ extension ManagerModel {
             let base = managerBase(s, x, data: data)
             out.append(PromotionPost(id: "mgr@\(x.id)", title: title(t), place: x.name, kind: "mgr", companyID: x.id, base: base, ask: ask(base)))
         }
-        // chain chiefs
         if let ch = Chains.chain(s, of: co) {
             let L = Chains.stores(s, ch), id = ch["id"].int, regs = regionals(s)
             if !regs.contains(where: { $0["scope"].string == "chain:\(id)" }) && L.count >= 2 {
@@ -104,7 +86,6 @@ extension ManagerModel {
                 out.append(PromotionPost(id: "chain:\(id):\(city)", title: "Regional manager", place: "\(ch["name"].string) · \(cityName(s, city, data))", kind: "exec", companyID: co.id, base: base, ask: ask(base)))
             } }
         }
-        // main office
         let hk = c.isManager ? hqForManager : (hqForRole[c.role].map { [$0] } ?? [])
         for k in hk {
             guard let r = Headquarters.role(k, data) else { continue }
@@ -119,23 +100,16 @@ extension ManagerModel {
     }
     static func playerBase(_ s: GameState, _ data: GameData, _ v: Double) -> Double { playerCurrency(s, data).scaledPrice(v) }
 
-    // MARK: The talk
-
-    /// What this person asks for the post as offered: pay, with the authority counted. The price the shared `Negotiation` works from.
     static func promotionNeed(_ post: PromotionPost, terms: PromotionTerms) -> Double {
         var need = post.ask
         if post.kind != "role" { need *= 1 + (terms.authority == 2 ? -0.03 : terms.authority == 0 && post.kind == "exec" ? 0.03 : 0) }
         return need
     }
 
-    /// What the shares in the package are worth a month to the person, spread over three years.
     static func promotionExtras(_ s: GameState, _ c: Candidate, terms: PromotionTerms, data: GameData) -> Double {
         terms.sharesPercent > 0 ? max(0, Valuation.companyValue(c.co, state: s, trades: data.catalog)) * terms.sharesPercent / 100 / 36 : 0
     }
 
-    /// Offer the post. At or above what the person asks they accept. Below it they ask for more through the shared `Negotiation` (patience by the level of
-    /// the post and the person's temperament, now and then an unrealistic figure); they never turn down more pay: when their patience is gone they take the
-    /// post at what is on the table, and are not happy about it. Original: `ACT.p11offer` (the answer is now `Negotiation`). The talk is kept by the caller.
     public static func offerPromotion(_ s: inout GameState, companyID: Int, personID: Int, post key: String, monthlyWage w: Double, terms: PromotionTerms = PromotionTerms(),
                                       negotiation talk: inout Negotiation.State, data: GameData) -> PromotionOutcome {
         guard let c = candidate(s, companyID: companyID, personID: personID, data: data), let post = promotionPosts(s, companyID: companyID, personID: personID, data: data).first(where: { $0.id == key }) else { return .unavailable("This post is not open.") }
@@ -172,7 +146,6 @@ extension ManagerModel {
         }
     }
 
-    /// Give a person shares as part of the contract. Original: `R15give`.
     @discardableResult
     static func giveShares(_ s: inout GameState, companyID: Int, personID: Int, percent: Double) -> String {
         guard let i = s.companyIndex(companyID), let n = s.people[personID] else { return "" }
@@ -183,7 +156,6 @@ extension ManagerModel {
         return " \(firstName(n.name)) now owns \(Int(pct))% of \(s.companies[i].name)."
     }
 
-    /// Give the person a new job. Original: `applyPost`, `promoteStaff`.
     static func applyPromotion(_ s: inout GameState, _ c: Candidate, post: PromotionPost, wage w: Double, terms u: PromotionTerms, data: GameData) -> String {
         guard var n = s.people[c.n.id], let ci = s.companyIndex(c.co.id) else { return "Something went wrong." }
         defer { StaffPromises.noticeChange(&s, companyID: c.co.id) }
@@ -215,7 +187,6 @@ extension ManagerModel {
             s.note("\(first) now manages \(s.companies[ti].name) on \(cur.display(w)) a month.", tone: "good", companyID: post.companyID)
             return "\(first) now manages \(s.companies[ti].name)." + (shares ? giveShares(&s, companyID: post.companyID, personID: n.id, percent: u.sharesPercent) : "")
         }
-        // a chief post or a job at the main office
         if n.value("stats").isNull { ensureStats(&n, role: c.role) }
         n.set("k11", k11); n.set("p11", .null)
         s.people[n.id] = n
@@ -248,15 +219,13 @@ extension ManagerModel {
             return "Something blocked the move. Check that your office has a free desk."
         }
         var tail = ""
-        // someone who moves up appoints their own successor
         if let had = had {
-            if GrowthPaths.installSuccessor(&s, companyID: co.id, data: data) { /* the named successor */ } else if fillManager(&s, companyID: co.id, by: n.name, why: "\(first) moved up to \(post.title.lowercased())", boss: n, data: data) == nil { s.note("\(had) has no manager now. Find one, or run it yourself.", tone: "bad", companyID: co.id) }
+            if GrowthPaths.installSuccessor(&s, companyID: co.id, data: data) {  } else if fillManager(&s, companyID: co.id, by: n.name, why: "\(first) moved up to \(post.title.lowercased())", boss: n, data: data) == nil { s.note("\(had) has no manager now. Find one, or run it yourself.", tone: "bad", companyID: co.id) }
         }
         if shares { tail = giveShares(&s, companyID: co.id, personID: n.id, percent: u.sharesPercent) }
         return "\(first) is now \(post.title)." + tail
     }
 
-    /// The person leaves the job they had. Original: `leaveJob`.
     static func leaveJob(_ s: inout GameState, _ c: Candidate) {
         guard let ci = s.companyIndex(c.co.id) else { return }
         if c.isManager {
@@ -268,8 +237,6 @@ extension ManagerModel {
         if var n = s.people[c.n.id] { n.employerID = 0; s.people[n.id] = n }
     }
 
-    // MARK: A report on a person
-
     public struct PersonReport: Equatable, Sendable {
         public var preparedByAnalyst: Bool
         public var sections: [(title: String, lines: [(label: String, value: String)])]
@@ -277,7 +244,6 @@ extension ManagerModel {
         public static func == (a: PersonReport, b: PersonReport) -> Bool { a.preparedByAnalyst == b.preparedByAnalyst && a.verdict == b.verdict && a.sections.count == b.sections.count }
     }
 
-    /// Your own notes, or with a data analyst a full report with a verdict. Original: `V.anrep11`.
     public static func personReport(_ s: GameState, companyID: Int, personID: Int, data: GameData) -> PersonReport? {
         guard let c = candidate(s, companyID: companyID, personID: personID, data: data) else { return nil }
         let ana = Headquarters.has(s, "ana")
@@ -314,8 +280,6 @@ extension ManagerModel {
         return PersonReport(preparedByAnalyst: ana, sections: sections.map { ($0.0, $0.1.map { (label: $0.0, value: $0.1) }) }, verdict: verdict)
     }
 
-    // MARK: Executives at work
-
     static func scopeCompanies(_ s: GameState, person n: Person, data: GameData) -> [Company] {
         if let rg = regionals(s).first(where: { $0["npc"].int == n.id }) {
             return s.companies.filter { $0.status.isLive && ((!$0.value("region").isNull && $0.value("region").int == rg["id"].int) || rg["scope"].string == "all" || data.catalog[$0.type]?.category == rg["scope"].string) }
@@ -324,8 +288,6 @@ extension ManagerModel {
         return []
     }
 
-    /// Someone above a company looks at a few people, bargains with each (AutoHire) and brings the owner the best deal as an inbox offer
-    /// ("mfind11"), at the wage already agreed. Used by the chiefs' weekly rounds and by the board. True when an offer was sent.
     @discardableResult
     static func offerManagerCandidate(_ s: inout GameState, need: Company, bd: Trade, from n: Person, data: GameData) -> Bool {
         var found = (0..<3).map { _ in generateCandidate(company: need, type: bd.managerType, faces: false, state: &s, data: data) }
@@ -338,7 +300,6 @@ extension ManagerModel {
         return true
     }
 
-    /// What a chief does each week (`fixedExecutiveDuties`) and their monthly report to the owner.
     static func executivesWeekly(_ s: inout GameState, data: GameData) {
         var ex: [Int] = []
         if let g = s.rest["group"]?["ceo"], !g.isNull { ex.append(g["npc"].int) }

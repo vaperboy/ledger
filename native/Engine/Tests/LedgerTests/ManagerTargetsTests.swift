@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Manager targets and the yearly budget: set by you, judged each month, bonuses paid through the books.
 final class ManagerTargetsTests: XCTestCase {
     private func managedCafe(seed: Int) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -25,8 +24,7 @@ final class ManagerTargetsTests: XCTestCase {
 
     func testTargetsAreSetByThemselvesJudgedAndTheOwnerApprovesTheBudget() throws {
         var (e, id) = try managedCafe(seed: 5)
-        run(&e, days: 14 * 7)   // a few months of numbers
-        // With nobody between you and the manager the targets come on their own, from the history and your direction.
+        run(&e, days: 14 * 7)
         let st = try XCTUnwrap(e.targetStatus(companyID: id))
         XCTAssertTrue(st.setter.isOwner)
         XCTAssertEqual(st.standing.count, 3)
@@ -39,11 +37,9 @@ final class ManagerTargetsTests: XCTestCase {
         XCTAssertEqual(log.last?["of"].int, 3)
         XCTAssertTrue(log.allSatisfy { $0["bonus"].isNull }, "no bonus is paid on targets: the profit share is the only pay on results")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        // The scorecard reads the same log.
         XCTAssertNotNil(e.runManagerScorecards().first { $0.id == id })
     }
 
-    /// Each direction tilts the month's targets: growth stretches sales, lean and cash stretch profit.
     func testTheOwnersDirectionTiltsTheTargets() throws {
         var (e, id) = try managedCafe(seed: 5)
         e.update { s, d, _ in
@@ -76,7 +72,6 @@ final class ManagerTargetsTests: XCTestCase {
         XCTAssertGreaterThan(g.rev, l.rev)
     }
 
-    /// A month counter at or below zero (a hand-made history) must not index outside the twelve months.
     func testMonthOfYearNeverLeavesTheTwelveMonths() {
         for m in -30...30 { XCTAssertTrue((0..<12).contains(ManagerTargets.month0(m)), "\(m)") }
         XCTAssertEqual(ManagerTargets.month0(1), 0); XCTAssertEqual(ManagerTargets.month0(13), 0); XCTAssertEqual(ManagerTargets.month0(0), 11)
@@ -89,7 +84,6 @@ final class ManagerTargetsTests: XCTestCase {
         XCTAssertNil(e.targetStatus(companyID: 9999))
     }
 
-    /// `current` must be a real nil when the month has no targets (a `JSONValue` nil literal used to become `.null`, so every managed company counted as having targets).
     func testNoTargetsThisMonthIsARealNil() throws {
         var (e, id) = try managedCafe(seed: 5)
         var co = try XCTUnwrap(e.state.company(id))
@@ -104,9 +98,7 @@ final class ManagerTargetsTests: XCTestCase {
         XCTAssertFalse(m.isNull)
         XCTAssertGreaterThan(ManagerTargets.demandFactor(co, week: e.state.week), 1)
         XCTAssertTrue(WorkerBonus.hasTargets(co, week: e.state.week))
-        // A month with no record (far ahead) is nil again.
         XCTAssertNil(ManagerTargets.current(co, week: e.state.week + 20))
-        // Unmanaged company: never a chase.
         let plain = ChainsTests.start(&e, "cafe")
         XCTAssertEqual(ManagerTargets.demandFactor(try XCTUnwrap(e.state.company(plain)), week: e.state.week), 1)
     }

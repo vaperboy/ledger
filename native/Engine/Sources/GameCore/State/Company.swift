@@ -1,13 +1,10 @@
 import Foundation
 
-/// Where a company is in its life. Original: `co.st`.
 public enum CompanyStatus: String, Sendable {
     case setup, open, closed, sold, bust
     public var isLive: Bool { self != .sold && self != .bust }
 }
 
-/// Category totals for a company's books: this week, this month, this year, last year and since the start.
-/// Categories: rev, cogs, wages, rent, mkt, ins, oth, dep, int, fine, loss, acc, tax.
 public struct Books: Equatable, Sendable {
     public var week: [String: Double] = [:]
     public var month: [String: Double] = [:]
@@ -25,7 +22,6 @@ public struct Books: Equatable, Sendable {
         return .object(["w": v(week), "m": v(month), "y": v(year), "ly": v(lastYear), "t": v(total)])
     }
 
-    /// Book an amount in a category in every period. Original: `bk(co, cat, amt)`.
     public mutating func add(_ category: String, _ amount: Double) {
         week[category, default: 0] += amount
         month[category, default: 0] += amount
@@ -33,15 +29,12 @@ public struct Books: Equatable, Sendable {
         total[category, default: 0] += amount
     }
 
-    /// Total costs of a period. Original: `sumExp(b)`.
     public static func expenses(_ b: [String: Double]) -> Double {
         ["cogs", "wages", "rent", "mkt", "ins", "oth", "dep", "int", "fine", "loss", "acc", "fin"].reduce(0) { $0 + (b[$1] ?? 0) }
     }
     public static func profit(_ b: [String: Double]) -> Double { (b["rev"] ?? 0) - expenses(b) }
 }
 
-/// A company the player owns (or owned). Stored as JSON underneath (see `JSONRecord`); the properties below are
-/// the ones the Swift game reads and writes. Every other field of an imported save is kept untouched.
 public struct Company: JSONRecord, Identifiable {
     public var raw: [String: JSONValue]
     public init(raw: [String: JSONValue]) { self.raw = raw }
@@ -53,34 +46,24 @@ public struct Company: JSONRecord, Identifiable {
     public var cityID: String { get { str("city") } set { set("city", newValue) } }
     public var size: Double { get { num("size", 1) } set { set("size", newValue) } }
     public var status: CompanyStatus { get { CompanyStatus(rawValue: str("st", "setup")) ?? .setup } set { set("st", newValue.rawValue) } }
-    /// Week the company was founded / opened. Original: `w0`, `wOpen`.
     public var foundedWeek: Int { get { int("w0") } set { set("w0", newValue) } }
     public var openedWeek: Int? { get { value("wOpen").isNull ? nil : int("wOpen") } set { raw["wOpen"] = newValue.map { .number(Double($0)) } ?? .null } }
-    /// The company's own cash. Never change this directly: use `Ledger.move` so every movement is recorded.
     public var cash: Double { get { num("cash") } set { set("cash", newValue) } }
-    /// Percent of the company the player owns. Original: `own`.
     public var ownership: Double { get { num("own", 100) } set { set("own", newValue) } }
-    /// Price level, -3 (budget) ... +3 (luxury), may be fractional. Original: `price`.
     public var priceLevel: Double { get { num("price") } set { set("price", newValue) } }
-    /// Owner's weekly hours working in the company. Original: `ohrs`.
     public var ownerHours: Double { get { num("ohrs", 40) } set { set("ohrs", newValue) } }
     public var ownerSkill: Double { get { num("oskill", 40) } set { set("oskill", newValue) } }
     public var reputation: Double { get { num("rep", 45) } set { set("rep", newValue) } }
     public var quality: Double { get { num("q", 45) } set { set("q", newValue) } }
-    /// How many potential customers know the company, 0-100. Original: `aware`.
     public var awareness: Double { get { num("aware", 25) } set { set("aware", newValue) } }
-    /// 0 deferred, 1 normal, 2 thorough maintenance. Original: `maint`.
     public var maintenance: Int { get { int("maint", 1) } set { set("maint", newValue) } }
-    /// Stock on hand, at cost. Original: `inv`.
     public var inventory: Double { get { num("inv") } set { set("inv", newValue) } }
-    /// VAT collected minus VAT paid, waiting to be settled. Original: `vatAcc`.
     public var vatBalance: Double { get { num("vatAcc") } set { set("vatAcc", newValue) } }
     public var managerID: Int? { get { value("mgr").isNull ? nil : int("mgr") } set { raw["mgr"] = newValue.map { .number(Double($0)) } ?? .null } }
     public var managerMonthlyWage: Double { get { num("mgrWage") } set { set("mgrWage", newValue) } }
     public var managerProfitBonus: Double { get { num("mgrBonus") } set { set("mgrBonus", newValue) } }
     public var ownerMonthlySalary: Double { get { num("ownerSalary") } set { set("ownerSalary", newValue) } }
     public var shareCapital: Double { get { num("capital") } set { set("capital", newValue) } }
-    /// Total money the owner has put into a limited company. Original: `inj`.
     public var injectedCapital: Double { get { num("inj") } set { set("inj", newValue) } }
     public var ownerNetFlow: Double { get { num("ownNet") } set { set("ownNet", newValue) } }
     public var distributed: Double { get { num("dist") } set { set("dist", newValue) } }
@@ -99,7 +82,6 @@ public struct Company: JSONRecord, Identifiable {
     public var lastWeekRevenue: Double { get { value("lastW")["rev"].double } }
     public var lastWages: Double { get { num("lastWages") } set { set("lastWages", newValue) } }
 
-    /// Amounts owed and not yet paid: wages, other bills, rent, tax. Original: `co.pay`.
     public var payables: [String: Double] {
         get { value("pay").object.mapValues { $0.double } }
         set { raw["pay"] = .object(newValue.mapValues { .number($0) }) }
@@ -131,7 +113,6 @@ public struct Company: JSONRecord, Identifiable {
         get { value("tx").array }
         set { raw["tx"] = .array(newValue) }
     }
-    /// Newest first, capped at 40, like the original's `co.tx`.
     public mutating func addTransaction(week: Int, amount: Double, label: String) {
         var t = transactions
         t.insert(.object(["w": .number(Double(week)), "a": .number(amount), "l": .string(label)]), at: 0)
@@ -142,7 +123,6 @@ public struct Company: JSONRecord, Identifiable {
     public var isOpenOrClosed: Bool { status == .open || status == .closed }
 }
 
-/// An unpaid customer invoice (business customers pay after a few weeks). Original: `co.recv` entries.
 public struct Receivable: JSONRecord {
     public var raw: [String: JSONValue]
     public init(raw: [String: JSONValue]) { self.raw = raw }
@@ -151,11 +131,9 @@ public struct Receivable: JSONRecord {
     }
     public var amount: Double { get { num("a") } set { set("a", newValue) } }
     public var dueWeek: Int { get { int("due") } set { set("due", newValue) } }
-    /// Hidden from the player: this customer will never pay. Original: `bad`.
     public var willDefault: Bool { get { flag("bad") } set { set("bad", newValue) } }
 }
 
-/// One line of a company's monthly history. Original: `co.hist` entries.
 public struct MonthRecord: JSONRecord {
     public var raw: [String: JSONValue]
     public init(raw: [String: JSONValue]) { self.raw = raw }

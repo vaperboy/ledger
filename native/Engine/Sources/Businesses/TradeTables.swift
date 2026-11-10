@@ -1,15 +1,11 @@
 import Foundation
 import GameCore
 
-/// Reference tables shared by all trades: job roles and base wages, kinds of premises, vehicle models,
-/// seasonal demand curves, documents. Loaded from `tables.json`.
 public struct TradeTables: Sendable {
     public struct Role: Sendable { public var name: String; public var baseMonthlyWage: Double }
     public struct Premises: Sendable {
         public var name: String
-        /// Rent per m² per year at the reference level
         public var rentPerM2Year: Double
-        /// Purchase price per m² at the reference level
         public var pricePerM2: Double
         public var note: String
     }
@@ -22,10 +18,8 @@ public struct TradeTables: Sendable {
     public var roles: [String: Role]
     public var premises: [String: Premises]
     public var vehicles: [String: VehicleModel]
-    /// Twelve monthly demand multipliers per season key
     public var seasons: [String: [Double]]
     public var salesRoles: Set<String>
-    /// Fit-out cost per m² by premises kind
     public var fitOut: [String: Double]
     public var raw: JSONValue
 

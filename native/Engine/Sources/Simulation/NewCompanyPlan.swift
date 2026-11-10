@@ -4,10 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// The New company screen's whole picture before anything is confirmed: the start-up cost with the premises the player picked,
-/// what leaves their own account, what is left, and the risks. Pure reads over `CompanySetup.estimate` and the premises listings;
-/// the only rule added is arithmetic (replace the estimate's standard premises cost with the chosen place's cost).
-/// What the owner chose on the plan beyond the mandatory costs. Nothing optional is bought unless it is chosen here.
 public struct SetupChoices: Equatable, Sendable {
     public enum Stock: String, CaseIterable, Equatable, Sendable {
         case full, half, none
@@ -15,20 +11,15 @@ public struct SetupChoices: Equatable, Sendable {
         public var title: String { self == .full ? "Full opening stock" : self == .half ? "Half the opening stock" : "No opening stock" }
     }
     public var stock: Stock = .full
-    /// Buy the equipment the trade can open without (and vehicles beyond the required ones).
     public var optionalEquipment = false
-    /// The first line of the standard team only (the people the trade cannot open without), or the whole standard team.
     public var team: CompanySetup.SetupOptions.Team = .minimum
-    /// Money to move into the company; nil: the recommended amount that keeps your personal reserve.
     public var putInto: Double? = nil
-    /// The owner chooses what the company sells first (the item list starts empty). False keeps the trade's starter items on the list.
     public var chooseFirstItem = true
     public init(stock: Stock = .full, optionalEquipment: Bool = false, team: CompanySetup.SetupOptions.Team = .minimum, putInto: Double? = nil, chooseFirstItem: Bool = true) {
         self.stock = stock; self.optionalEquipment = optionalEquipment; self.team = team; self.putInto = putInto; self.chooseFirstItem = chooseFirstItem
     }
 }
 
-/// One line of the start-up statement, grouped by what kind of money it is.
 public struct PlanLine: Equatable, Sendable, Identifiable {
     public enum Kind: String, Equatable, Sendable { case mandatory, optional, deposit, fee, workingCapital }
     public var id: String
@@ -38,42 +29,33 @@ public struct PlanLine: Equatable, Sendable, Identifiable {
     public var note: String
 }
 
-/// A cheaper way to start the same trade, offered when the plan is not affordable.
 public struct PlanAlternative: Equatable, Sendable, Identifiable {
     public var id: String
     public var title: String
     public var detail: String
-    /// What the company needs from you under this alternative, and how much less than the current plan.
     public var needed: Double
     public var saving: Double
 }
 
 public struct NewCompanyPlan: Equatable {
     public enum PremisesKind: Equatable, Sendable {
-        /// Rent or buy a place (the engine lists several).
         case place
-        /// The trade starts from home and moves into a workshop or office later.
         case home
-        /// The trade needs no fixed place.
         case none
     }
 
-    /// One place on offer, with what renting and buying it cost up front.
     public struct PremisesOption: Equatable, Sendable, Identifiable {
         public var id: Int { index }
         public var index: Int
         public var name: String
         public var landlord: String
         public var squareMetres: Double
-        /// 1 = standard footfall / location quality
         public var location: Double
         public var monthlyRent: Double
-        /// Renting: 3 months deposit (returned when you leave) plus the fit-out.
         public var rentUpfront: Double
         public var deposit: Double
         public var fitOut: Double
         public var purchasePrice: Double
-        /// Buying: 35% down plus the fit-out; the rest is a 15-year commercial mortgage.
         public var buyUpfront: Double
         public var downPayment: Double
         public var canBuy: Bool
@@ -89,63 +71,42 @@ public struct NewCompanyPlan: Equatable {
     public var estimate: CompanySetup.Estimate
     public var premisesKind: PremisesKind
     public var options: [PremisesOption]
-    /// The place that is used when nothing is picked: the one quick set-up rents.
     public var standardIndex: Int
     public var pick: Pick?
-    /// The estimate with the picked place's cost in place of the standard premises cost.
     public var total: Double
     public var premisesCost: Double
     public var registrationAndCapital: Double
-    /// Money put into the company on top of the share capital: the full cost with a 15% margin, as far as the account allows.
     public var intoCompany: Double
     public var available: Double
     public var personalLeft: Double
     public var shortfall: Double
-    /// The account cannot pay registration and share capital: the company cannot even be registered yet.
     public var registrationShortfall: Double
     public var risks: [String]
     public var isFunded: Bool { shortfall <= 0 && registrationShortfall <= 0 }
-    /// The choices this plan was priced with.
     public var choices = SetupChoices()
-    /// The statement: mandatory costs, optional items that were chosen, deposits, fees and working capital.
     public var lines: [PlanLine] = []
-    /// What the company needs for the scope chosen (mandatory + chosen optional + working capital), before the 15% margin.
     public var neededNow = 0.0
-    /// The investment the game recommends (equipment, team, buffer on top of what is needed now); never charged by itself.
     public var recommendedInvestment = 0.0
     public var mandatoryTotal = 0.0, optionalTotal = 0.0, workingCapital = 0.0
-    /// Optional items that were NOT chosen, with their price, so the player can add them knowingly.
     public var notChosen: [PlanLine] = []
-    /// The part of your own money kept back: three monthly loan instalments and a small personal float.
     public var personalReserve = 0.0
-    /// Your accounts after registration, capital and the money moved into the company.
     public var accountsAfter: Double { max(0, available - registrationAndCapital - intoCompany) }
-    /// The company's cash once the mandatory costs and the chosen optional items are paid.
     public var companyCashAfterSetup: Double { intoCompany - mandatoryTotal + registrationAndCapitalInCompany - optionalTotal }
-    /// Share capital stays in the company; registration and abroad fees do not.
     public var registrationAndCapitalInCompany = 0.0
     public var alternatives: [PlanAlternative] = []
-    /// The reserve is intact only if your accounts after setup are at least the reserve.
     public var keepsReserve: Bool { accountsAfter + 0.5 >= personalReserve }
 }
 
-/// What happened when a company was started with a chosen place.
 public struct NewCompanyOutcome: Equatable {
     public var companyID: Int
-    /// nil: no place was picked (home, none, or the standard one)
     public var premises: CompanySetup.PremisesResult?
-    /// What quick set-up could not do (usually cash).
     public var setupNotes: [String]
-    /// What was left out on purpose (optional equipment, extra staff) with its cost, so it can be added later knowingly.
     public var skipped: [CompanySetup.SetupSkipped] = []
-    /// The company's cash and your accounts right after the start.
     public var companyCash = 0.0
     public var accountsAfter = 0.0
 }
 
 public extension GameEngine {
-    /// A copy of the state with a throw-away company, so a listing and its terms can be priced before the company exists. The account
-    /// is topped up in the copy so registration never hides the numbers (affordability is reported separately).
     func previewCompany(tradeID: String, cityID: String, size: Double, countryCode: String? = nil) -> (state: GameState, companyID: Int)? {
         var tmp = state
         tmp.cash += Double(Int32.max)
@@ -154,7 +115,6 @@ public extension GameEngine {
         return (tmp, id)
     }
 
-    /// The full plan for a trade in a city. `pick` nil means the standard rented place.
     func newCompanyPlan(tradeID: String, cityID: String, size: Double, pick: NewCompanyPlan.Pick? = nil, countryCode: String? = nil,
                         choices: SetupChoices = SetupChoices(), withAlternatives: Bool = true) -> NewCompanyPlan? {
         guard let bd = data.catalog[tradeID] else { return nil }
@@ -189,7 +149,6 @@ public extension GameEngine {
         let available = Payments.liquid(state)
         let reserve = personalReserve()
         let regShort = max(0, est.registration + est.shareCapital + est.abroad - state.cash)
-        // The scope the owner chose: what the trade cannot open without, plus only the optional items ticked.
         let optionalEquip = max(0, est.equipment - est.requiredEquipment) + max(0, est.vehicles - est.requiredVehicles)
         let stockChosen = jsRound(est.stock * choices.stock.share)
         let payroll = choices.team == .minimum ? est.minimumPayroll : est.firstPayroll
@@ -228,9 +187,6 @@ public extension GameEngine {
         let optionalSum = lines.filter { $0.kind == .optional }.reduce(0) { $0 + $1.amount }
         let working = lines.filter { $0.kind == .workingCapital }.reduce(0) { $0 + $1.amount }
         let fees = lines.filter { $0.kind == .fee }.reduce(0) { $0 + $1.amount }
-        // What the company itself needs: everything except registration and abroad fees, which leave your own account.
-        // the game buys and hires nothing at start, so only what the paperwork and the place need is charged; the full
-        // figure (equipment, a team, a buffer) is the RECOMMENDED investment, shown but never taken unless the player puts it in.
         let recommendedIDs: Set<String> = ["optEq", "payroll", "buffer"]
         let needed = lines.filter { $0.kind != .fee && !recommendedIDs.contains($0.id) }.reduce(0) { $0 + $1.amount }
         let wanted = needed
@@ -263,7 +219,6 @@ public extension GameEngine {
         plan.workingCapital = working
         plan.personalReserve = reserve
         plan.registrationAndCapitalInCompany = est.shareCapital
-        // The money does not carry the usual place: start from the cheapest one on offer (the player can still pick another).
         if pick == nil, kind == .place, plan.shortfall > 0, let cheap = options.min(by: { $0.rentUpfront < $1.rentUpfront }), cheap.index != standard,
            cheap.rentUpfront < (chosenOption?.rentUpfront ?? .infinity),
            var cheaper = newCompanyPlan(tradeID: tradeID, cityID: cityID, size: size, pick: .init(listingIndex: cheap.index, buy: false), countryCode: countryCode, choices: choices, withAlternatives: false),
@@ -277,7 +232,6 @@ public extension GameEngine {
         return plan
     }
 
-    /// The opening stock a first company can afford: the full standard stock when the money carries it, else half, else none (stock can be bought as sales start).
     func suggestedChoices(tradeID: String, cityID: String, size: Double, pick: NewCompanyPlan.Pick? = nil) -> SetupChoices {
         var c = SetupChoices()
         for stock in [SetupChoices.Stock.full, .half, .none] {
@@ -287,13 +241,11 @@ public extension GameEngine {
         return c
     }
 
-    /// Money kept back from the move into the company: three monthly instalments of the player's own loans and a small float.
     func personalReserve() -> Double {
         let instalments = state.loans.filter { $0.companyID == 0 }.reduce(0.0) { $0 + $1.monthlyPayment }
         return jsRound(instalments * 3 + homeCurrency.scaledPrice(2500))
     }
 
-    /// Cheaper ways to start the same trade: a smaller size, renting instead of buying, the core team only, no optional extras.
     private func setupAlternatives(_ plan: NewCompanyPlan, size: Double, cityID: String, countryCode: String?, pick: NewCompanyPlan.Pick?) -> [PlanAlternative] {
         guard let bd = data.catalog[plan.tradeID] else { return [] }
         let cur = homeCurrency
@@ -321,7 +273,6 @@ public extension GameEngine {
         return out
     }
 
-    /// The whole standard team and the optional equipment are never bought for the player: they hire and buy by hand (or appoint a manager who does).
     func tutorialLimited(_ c: SetupChoices) -> SetupChoices {
         var out = c
         out.team = .minimum
@@ -329,9 +280,6 @@ public extension GameEngine {
         return out
     }
 
-    /// Start a company, take the picked place (rent or buy) and then do the set-up the owner chose. The set-up is budgeted: required
-    /// equipment, the core team (or the whole team if chosen) only while the company's cash carries the wages, and an opening stock of the
-    /// chosen share. What was left out comes back in `skipped` with its cost. `choices` default to the careful start.
     mutating func startCompanyChoosingPremises(tradeID: String, cityID: String, size: Double?, name: String?, pick: NewCompanyPlan.Pick?, fundWith amount: Double,
                                                choices requested: SetupChoices = SetupChoices(), accountantID: Int? = nil) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
         let choices: SetupChoices = tutorialLimited(requested)
@@ -353,7 +301,6 @@ public extension GameEngine {
                 if choices.chooseFirstItem { SalesItems.markFirstChoicePending(&s, i) }
             }
             var options = CompanySetup.SetupOptions(team: choices.team, optionalEquipment: choices.optionalEquipment, payrollMonthsReserve: 2, equipmentInPlace: true, teamInPlace: true)
-            // Nothing is filled in for the player: documents are signed on the Setup screen, the place and the equipment are chosen in AirStay and TechPro.
             options.applyDocuments = false; options.autoPremises = false; options.buyProperty = false
             let rep = CompanySetup.quickSetupReport(&s, companyID: id, data: d, options: options)
             out.setupNotes = rep.log

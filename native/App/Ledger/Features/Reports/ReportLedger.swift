@@ -3,10 +3,8 @@ import GameCore
 import Countries
 import Simulation
 
-/// What the Reports screen shows for the chosen period: the report itself, the company bank movements, or payroll and bills.
 enum ReportPage: String, CaseIterable, Hashable, Identifiable { case summary = "Summary", movements = "Transactions", bills = "Bills and payroll"; var id: String { rawValue } }
 
-/// Amounts in the currency of the company they belong to (the home currency for the group's own lines).
 @MainActor private struct MoneyText {
     var store: GameStore
     var engine: GameEngine
@@ -16,8 +14,6 @@ enum ReportPage: String, CaseIterable, Hashable, Identifiable { case summary = "
     }
 }
 
-/// The bank movements of the companies in a report's weeks, newest first, with a filter by kind. Each company keeps its
-/// latest 40 movements, so an old period can be incomplete; the screen says so.
 struct ReportMovements: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -75,13 +71,11 @@ struct ReportMovements: View {
         }
     }
 
-    /// Whether every company shown uses the home currency (totals can then be added up).
     private var singleCurrency: Bool {
         let home = engine.homeCurrency.country.currencyCode
         return engine.state.companies.filter { $0.isOpenOrClosed }.allSatisfy { engine.currency(for: $0).country.currencyCode == home }
     }
 
-    /// A company that has its full 40 movements, the oldest after this period began, may have lost some of this period's.
     private var isIncomplete: Bool {
         engine.state.companies.contains { co in
             guard companyID == nil ? co.isOpenOrClosed : co.id == companyID else { return false }
@@ -104,7 +98,6 @@ struct ReportMovements: View {
     }
 }
 
-/// Payroll and bills: what falls due next (the same list the money overview uses) and what was paid in the chosen period.
 struct ReportBills: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

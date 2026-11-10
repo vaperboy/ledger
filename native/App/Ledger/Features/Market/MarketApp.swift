@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The Market app (Phone): the one place for your markets, your rivals, everything you invest and the world beyond. Five parts under
-/// the header: Overview, Companies, Rivals, Invest, World. A link from elsewhere names a company (its market page opens) or a part.
 struct MarketApp: View {
     @EnvironmentObject var store: GameStore
     @State private var tab: MarketUI.Tab = .overview
@@ -48,7 +46,6 @@ struct MarketApp: View {
         }
     }
 
-    /// A link names a part, or a company whose market page opens over Companies; a company that is gone falls back to the Overview.
     private func take() {
         let news: Bool = store.marketNewsPending
         store.marketNewsPending = false
@@ -63,9 +60,6 @@ struct MarketApp: View {
     }
 }
 
-// MARK: Pages inside the app
-
-/// Every page the Market app pushes over itself.
 enum MarketRoute: Hashable, Identifiable {
     case company(Int)
     case rival(companyID: Int, rivalID: Int)
@@ -102,7 +96,6 @@ enum MarketRoute: Hashable, Identifiable {
     }
 }
 
-/// The screen for a `MarketRoute`. Pushed pages that push further pages host their own destination with this same table.
 struct MarketDestination: View {
     var route: MarketRoute
 
@@ -133,7 +126,6 @@ struct MarketDestination: View {
     }
 }
 
-/// The fund manager desk, read from the engine as it is.
 private struct FundManagerPage: View {
     @EnvironmentObject var store: GameStore
     var body: some View {
@@ -141,9 +133,6 @@ private struct FundManagerPage: View {
     }
 }
 
-// MARK: Shared pieces of the Market screens
-
-/// The one big figure a Market screen opens with: a small label, the figure in large serif, one context line and, with history, a line.
 struct MarketHero: View {
     var label: String
     var value: String
@@ -179,7 +168,6 @@ struct MarketHero: View {
     }
 }
 
-/// A caps label above a group, with an optional quiet note on the right.
 struct MarketLabel: View {
     var title: String
     var note: String = ""
@@ -195,27 +183,22 @@ struct MarketLabel: View {
     }
 }
 
-/// Signed figures in one wording across the app.
 enum MarketFormat {
-    /// "+4.2%" / "−1.0%".
     static func percent(_ share: Double, decimals: Int = 1) -> String {
         let v: Double = share * 100
         let body: String = String(format: "%.\(decimals)f%%", abs(v))
         return (v >= 0 ? "+" : "\u{2212}") + body
     }
 
-    /// "+£2.4k" / "−£300".
     static func money(_ v: Double, _ cur: Currency) -> String {
         (v >= 0 ? "+" : "\u{2212}") + cur.tidyShort(abs(v))
     }
 
-    /// "+1.2 pts".
     static func points(_ v: Double) -> String {
         (v >= 0 ? "+" : "\u{2212}") + String(format: "%.1f pts", abs(v))
     }
 }
 
-/// A row in the house style with a thin bar under its text: how big a part of the whole it is (a position of the portfolio).
 struct MarketBarRow: View {
     var glyph: String
     var title: String
@@ -261,7 +244,6 @@ struct MarketBarRow: View {
     }
 }
 
-/// A tappable tile for something that needs attention (an opportunity, a threat): raised surface, glyph, two lines.
 struct MarketSignalTile: View {
     var signal: MarketUI.Signal
     var action: () -> Void

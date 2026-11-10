@@ -1,8 +1,6 @@
 import Foundation
 import GameCore
 
-/// The player's level: experience points earned from finished goals, the daily goal and weeks played. It lives in the save
-/// (`rest["lvl"]` = { xp, wk }), so every player keeps their own level.
 public enum PlayerLevel {
     public static let ladderXP = 60
     public static let dailyXP = 25
@@ -11,14 +9,11 @@ public enum PlayerLevel {
     public struct Info: Equatable, Sendable {
         public var level: Int
         public var xp: Int
-        /// Points gathered inside this level and the points this level asks for in all.
         public var xpIntoLevel: Int
         public var xpForNext: Int
-        /// 0 to 1 towards the next level.
         public var progress: Double
     }
 
-    /// Total points needed to reach `level` (level 1 needs none).
     public static func threshold(_ level: Int) -> Int { 25 * level * max(0, level - 1) }
 
     public static func level(forXP xp: Int) -> Int {
@@ -35,7 +30,6 @@ public enum PlayerLevel {
         return Info(level: l, xp: xp, xpIntoLevel: into, xpForNext: need, progress: need > 0 ? min(1, Double(into) / Double(need)) : 0)
     }
 
-    /// Adds points and celebrates a new level. Returns the points added.
     @discardableResult
     public static func award(_ s: inout GameState, _ points: Int) -> Int {
         guard points > 0 else { return 0 }
@@ -50,7 +44,6 @@ public enum PlayerLevel {
         return points
     }
 
-    /// Each new game week played gives points once. The first look only records the week.
     public static func sweep(_ s: inout GameState) {
         var v = s.rest["lvl"] ?? .object([:])
         let seen: Int? = v["wk"].isNull ? nil : v["wk"].int
@@ -62,7 +55,6 @@ public enum PlayerLevel {
 }
 
 public extension GameEngine {
-    /// Level, points and progress to the next level.
     var playerLevel: PlayerLevel.Info { PlayerLevel.info(state) }
     mutating func sweepLevel() { update { s, _, _ in PlayerLevel.sweep(&s) } }
 }

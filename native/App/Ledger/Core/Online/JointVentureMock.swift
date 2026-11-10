@@ -2,8 +2,6 @@ import Foundation
 import GameCore
 import Events
 
-/// The stand-in server for joint ventures: sample players answer offers and vote on a fixed, repeatable schedule (the same inputs always give the
-/// same answers). Offers sent are kept in the online mock's extension data, one list per friend.
 final class MockJointVentureService: JointVentureService, @unchecked Sendable {
     private let online: any OnlineService
     private static let sentKey = "jv.sent.v1"
@@ -32,7 +30,6 @@ final class MockJointVentureService: JointVentureService, @unchecked Sendable {
         return all[friendID] ?? []
     }
 
-    /// A friend answers one to three game weeks after the offer. They lean towards yes when the price is at or under the fair price.
     func reply(to offer: JVOffer, week: Int) async -> JVReply? {
         let delay: Int = 1 + Int(HashedRandom.first("jvdelay:" + offer.id) * 3)
         guard week >= offer.sentWeek + delay else { return nil }
@@ -41,7 +38,6 @@ final class MockJointVentureService: JointVentureService, @unchecked Sendable {
         return HashedRandom.first("jvreply:" + offer.id) < chance ? .accepted : .declined
     }
 
-    /// About once in four months a partner calls one, about what the company is going through.
     func emergency(companyID: Int, week: Int, profitable: Bool, cashTight: Bool, partners: [JVVoteQuery.Partner]) async -> JVEmergency? {
         guard !partners.isEmpty, HashedRandom.first("jvcall:\(companyID):\(week)") < 0.06 else { return nil }
         let who: JVVoteQuery.Partner = partners[Int(HashedRandom.first("jvwho:\(companyID):\(week)") * Double(partners.count)) % partners.count]

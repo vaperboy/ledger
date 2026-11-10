@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// No country is built into the game. Every country comes from its own data file entry, and nothing in the code or in the
-/// shared data may be taken from one particular country (the HTML game was written around Norway).
 final class CountryNeutralityTests: XCTestCase {
     private var sourcesDirectory: URL {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources")
@@ -21,11 +19,11 @@ final class CountryNeutralityTests: XCTestCase {
         let quoted = try NSRegularExpression(pattern: "\"(\(codes.joined(separator: "|")))\"")
         var found: [String] = []
         for f in try files(withExtension: "swift") {
-            if f.lastPathComponent == "Demo.swift" { continue }   // a showcase game for screenshots, not game logic
+            if f.lastPathComponent == "Demo.swift" { continue }
             for (n, line) in try String(contentsOf: f, encoding: .utf8).split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let text = String(line)
                 if text.trimmingCharacters(in: .whitespaces).hasPrefix("//") { continue }
-                if text.contains("d[\"DK\"]") || text.contains("j[\"CH\"]") { continue }   // data keys that only look like country codes (demand design factor, marketing channels)
+                if text.contains("d[\"DK\"]") || text.contains("j[\"CH\"]") { continue }
                 if quoted.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil { found.append("\(f.lastPathComponent):\(n + 1): \(text.trimmingCharacters(in: .whitespaces))") }
             }
         }
@@ -75,14 +73,12 @@ final class CountryNeutralityTests: XCTestCase {
             XCTAssertFalse(c.pack["authorities"]["tax"].string.isEmpty, "\(c.code): tax authority")
             XCTAssertFalse(c.companyForms["limited"]?.isEmpty ?? true, "\(c.code): limited form")
         }
-        // Companies and stocks are named from the country's own words.
         let uk = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 4)
         let de = try GameEngine.newGame(countryCode: "DE", playerName: "T", seed: 4)
         XCTAssertNotEqual(uk.quotes(.stock).map { $0.name }, de.quotes(.stock).map { $0.name })
     }
 
     func testNoCurrencyStandsStill() throws {
-        // In the HTML game the Norwegian krone never moved. Here every currency except the player's own drifts.
         var rates = ExchangeRates()
         var random = DeterministicRandom(seed: 9)
         let book = try CountryBook.bundled()
@@ -94,7 +90,7 @@ final class CountryNeutralityTests: XCTestCase {
     func testCompanyNamesUseTheCountrysOwnEndings() throws {
         for code in ["UK", "DE", "JP", "BR"] {
             var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 11)
-            let endings = try XCTUnwrap(e.homeCountry.pack["names"]["coinEnd"].array.map { $0.string }) 
+            let endings = try XCTUnwrap(e.homeCountry.pack["names"]["coinEnd"].array.map { $0.string })
             e.update { s, _, _ in Ledger_noop(&s) }
             XCTAssertFalse(endings.isEmpty)
             XCTAssertFalse(endings.contains("vik") && code != "NO" && code != "SE", "\(code) must not use Nordic endings")

@@ -10,7 +10,6 @@ private extension GameEngine {
 }
 
 final class SalesItemsTests: XCTestCase {
-    /// `opened` keeps stepping weeks until the company has opened (licences take a while); prices can only be set on an open company.
     func engine(_ trade: String = "bakery", weeks: Int = 3, opened: Bool = false) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
@@ -25,7 +24,7 @@ final class SalesItemsTests: XCTestCase {
     }
 
     func testNamesAreCompanySpecificAndStable() throws {
-        let (e, id) = try engine(weeks: 0)   // bakery is a recipe trade: after a week its item model installs its real items
+        let (e, id) = try engine(weeks: 0)
         let items = e.salesItems(companyID: id)
         XCTAssertGreaterThanOrEqual(items.count, 3)
         let first = e.state.company(id)!.name.split(separator: " ").first.map(String.init)!
@@ -39,19 +38,17 @@ final class SalesItemsTests: XCTestCase {
     }
 
     func testDefaultsAreRevenueNeutral() throws {
-        let (e, id) = try engine("estate", weeks: 12)   // a trade no item model installs real items in (bakery now gets them in its first week)
+        let (e, id) = try engine("estate", weeks: 12)
         let co = e.state.company(id)!, bd = e.data.catalog[co.type]!
         XCTAssertEqual(SalesItems.demandFactor(co), 1)
         XCTAssertEqual(SalesItems.ticketFactor(co), 1)
         let w = World(state: e.state, data: e.data)
         XCTAssertEqual(Pricing.ticket(co, bd, w), Pricing.ticket(co, bd, w, withItems: false))
-        // touching a price and setting it back to market leaves the company as it was
         var b = e
         let it = b.salesItems(companyID: id)[0]
         XCTAssertEqual(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice), .applied)
         XCTAssertEqual(SalesItems.demandFactor(b.state.company(id)!), 1)
         XCTAssertEqual(SalesItems.ticketFactor(b.state.company(id)!), 1)
-        // a new item keeps the weights balanced
         XCTAssertEqual(b.addSalesItem(companyID: id, name: "Maple loaf box", isService: false), .applied)
         let list = b.salesItems(companyID: id)
         XCTAssertEqual(list.reduce(0.0) { $0 + $1.revenueWeight }, 1, accuracy: 1e-9)
@@ -133,7 +130,6 @@ final class SalesItemsTests: XCTestCase {
         XCTAssertTrue(e.ownCompanyListings(forBuyer: buyer).isEmpty, "nothing is listed yet")
         let item = e.salesItems(companyID: seller)[0]
         XCTAssertEqual(e.setItemListedForGroup(companyID: seller, itemID: item.id, listed: true), .applied)
-        // a two-week-old company is nearly full; the seller needs room to supply (capacity limits are tested in IntegrationBalanceTests)
         e.update { s, _, _ in let i = s.companyIndex(seller)!; var lw = s.companies[i].value("lastW"); lw["cap"] = 100; s.companies[i].set("lastW", lw) }
         let listing = try XCTUnwrap(e.ownCompanyListings(forBuyer: buyer).first)
         XCTAssertEqual(listing.sellerID, seller)
@@ -147,7 +143,6 @@ final class SalesItemsTests: XCTestCase {
         XCTAssertEqual((e.state.company(seller)!.books.month["rev"] ?? 0) - sellerRev, listing.price.rounded(), accuracy: 1)
         XCTAssertGreaterThan(e.state.company(buyer)!.value("eq")[listing.equipmentID]["n"].double, owned)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        // the licence just bought is not offered again: the next listing (if any) fills a different need
         XCTAssertNotEqual(e.ownCompanyListings(forBuyer: buyer).first?.equipmentID, listing.equipmentID)
     }
 
@@ -172,8 +167,6 @@ final class SalesItemsTests: XCTestCase {
         XCTAssertLessThan(booked, paid)
     }
 
-    // MARK: Price ceiling, first choice, price setter
-
     func testPriceCeilingIsRealistic() throws {
         let (e, id) = try engine("estate", weeks: 2, opened: true)
         let it = e.salesItems(companyID: id)[0]
@@ -183,7 +176,6 @@ final class SalesItemsTests: XCTestCase {
         XCTAssertTrue(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 0.1).isRefused)
         XCTAssertEqual(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * ceiling), .applied)
         XCTAssertLessThanOrEqual(ceiling, SalesItems.ratioRange.upperBound)
-        // a forecast for an absurd price is held at the ceiling
         let top = b.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * ceiling, discountPercent: 0)
         let wild = b.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * 50, discountPercent: 0)
         XCTAssertEqual(wild.units, top.units, accuracy: 1e-9)
@@ -218,7 +210,6 @@ final class SalesItemsTests: XCTestCase {
             s.companies[i].staff = s.companies[i].staff + [m]
         }
         XCTAssertTrue(b.salesItems(companyID: id).allSatisfy { $0.priceSetter == .advisor })
-        // information only: the owner can still set the price
         let it = b.salesItems(companyID: id)[0]
         XCTAssertEqual(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 1.1), .applied)
         XCTAssertEqual(b.salesItems(companyID: id).first { $0.id == it.id }?.price ?? 0, it.marketPrice * 1.1, accuracy: 1e-6)
@@ -250,13 +241,11 @@ final class SalesItemsTests: XCTestCase {
         var b = e
         XCTAssertTrue(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * (ceiling + 0.05)).isRefused)
         XCTAssertEqual(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * ceiling), .applied)
-        // the forecast is held at the same ceiling
         let top = b.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * ceiling, discountPercent: 0)
         let wild = b.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * 9, discountPercent: 0)
         XCTAssertEqual(wild.units, top.units, accuracy: 1e-9)
     }
 
-    /// A company the player started: nothing sells until the choice, and then only the chosen item has customers.
     func testOnlyTheChosenItemDrivesDemand() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
@@ -268,7 +257,6 @@ final class SalesItemsTests: XCTestCase {
             return DemandModel.compute(co, e.data.catalog[co.type]!, World(state: e.state, data: e.data)).customers
         }
         XCTAssertEqual(customers(), 0, "nothing is on sale before the choice")
-        // chosen before any weekly step: the module's own starter items are what is offered
         let starters = e.firstItemChoices(companyID: id)
         XCTAssertGreaterThanOrEqual(starters.count, 2)
         let pick = starters[1]
@@ -282,7 +270,6 @@ final class SalesItemsTests: XCTestCase {
         XCTAssertEqual(list.filter { $0.id != pick.id }.reduce(0.0) { $0 + $1.unitShare }, 0, accuracy: 1e-9, "hidden starters have no customers")
         let rows = SalesItems.rows(e.state, companyID: id, data: e.data)
         XCTAssertTrue(rows.filter { $0.id != pick.id }.allSatisfy { $0.weeklyUnits == 0 && $0.weeklyRevenue == 0 })
-        // a price change on a hidden starter is refused; on the chosen item it works
         let hidden = try XCTUnwrap(rows.first { $0.id != pick.id })
         XCTAssertTrue(e.setItemPrice(companyID: id, itemID: hidden.id, price: hidden.marketPrice).isRefused)
         XCTAssertEqual(e.setItemPrice(companyID: id, itemID: pick.id, price: pick.marketPrice * 0.9), .applied)
@@ -300,7 +287,6 @@ final class SalesItemsTests: XCTestCase {
         let pick = try XCTUnwrap(e.firstItemChoices(companyID: id).first)
         XCTAssertEqual(e.chooseFirstItem(companyID: id, itemID: pick.id), .applied)
         XCTAssertEqual(e.salesItems(companyID: id).map { $0.id }, [pick.id])
-        // without the flag (engine tests, older starts) all starters are visible as before
         let plain = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "bakery", companyName: "Test Bakery")
         XCTAssertFalse(plain.needsFirstItemChoice(companyID: try XCTUnwrap(plain.state.companies.first).id))
     }

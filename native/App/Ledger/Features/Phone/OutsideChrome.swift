@@ -3,10 +3,6 @@ import SwiftUI
 import UIKit
 #endif
 
-/// Shared chrome for the "outside world" phone apps (Weather, News, Luxury, Ventures, the shops). Each of them draws its own
-/// interface and its own masthead; this only hides the system bar, sets the page and offers the round back button wired to `dismiss`.
-/// The app's own palette (`OutsidePalette`) goes into the environment here, so the shared cards, lines, icons and the back button
-/// inside it use that palette instead of the game's champagne-on-charcoal. A light palette also turns the status bar dark.
 struct OutsideScreen: ViewModifier {
     var palette: OutsidePalette
 
@@ -23,12 +19,9 @@ struct OutsideScreen: ViewModifier {
 }
 
 extension View {
-    /// Hides the navigation bar and sets the page, for an app that draws its own header with `OutsideBack`.
     func outsideScreen(_ palette: OutsidePalette) -> some View { modifier(OutsideScreen(palette: palette)) }
 }
 
-/// Dark status bar text while a light app is on the selected tab. The app root follows `StatusBarScheme.shared.light`; each light app
-/// screen registers itself while it is shown on the active tab page (hidden tab pages stay alive, so the tab's activity counts too).
 struct LightStatusBar: ViewModifier {
     var on: Bool
     @Environment(\.markerPageActive) private var activePage
@@ -43,7 +36,6 @@ struct LightStatusBar: ViewModifier {
     }
 }
 
-/// Which light screens are showing now; the app root asks for the light scheme (dark status bar text) while any is.
 @MainActor
 final class StatusBarScheme: ObservableObject {
     static let shared = StatusBarScheme()
@@ -57,7 +49,6 @@ final class StatusBarScheme: ObservableObject {
     }
 }
 
-/// The back button (44 pt target, in the app's ink) for an outside app's own masthead.
 struct OutsideBack: View {
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose

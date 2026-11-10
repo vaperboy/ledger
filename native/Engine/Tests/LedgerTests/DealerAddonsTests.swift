@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Dealer add-ons: warranty with a real reserve, car loans through the bank, insurance at the sale. Setup, booking, take rates and the ledger.
 final class DealerAddonsTests: XCTestCase {
     private func game(trade: String = "usedcar", seed: Int = 7) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -13,7 +12,6 @@ final class DealerAddonsTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 400_000_000) else { throw XCTSkip("no company") }
         _ = e.quickSetup(companyID: id)
         _ = e.openCompany(companyID: id)
-        // The opening checklist belongs to the trade's own rules (staff, premises); these tests only need a trading company.
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         return (e, id)
     }
@@ -21,7 +19,6 @@ final class DealerAddonsTests: XCTestCase {
     private func week(_ e: inout GameEngine, _ id: Int, by n: Int = 1) {
         for _ in 0..<n { e.update { s, d, _ in s.week += 1; if let i = s.companyIndex(id) { DealerAddons.weekly(&s, companyIndex: i, data: d) } } }
     }
-    /// All three add-ons set up, approved and switched on.
     private func ready(_ e: inout GameEngine, _ id: Int, _ addons: [DealerAddon] = DealerAddon.allCases) {
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].openedWeek = s.week - 30; s.companies[i].reputation = 70 } }
         for a in addons { XCTAssertEqual(e.startDealerAddonSetup(companyID: id, addon: a), .applied) }
@@ -42,8 +39,6 @@ final class DealerAddonsTests: XCTestCase {
         let t = DealerAddons.typicalSale(company: co, state: e.state, data: e.data)
         return DealerSale(key: "t\(k)", price: t.price * factor, car: t.car)
     }
-
-    // MARK: Setup
 
     func testSetupCostsReviewTimeAndApproval() throws {
         var (e, id) = try game()
@@ -96,8 +91,6 @@ final class DealerAddonsTests: XCTestCase {
         XCTAssertTrue(e.state.company(id)!.value("dap").isNull, "a company that never set anything up keeps its old save shape")
     }
 
-    // MARK: Warranty
-
     func testWarrantyReserveIsARealLiabilityAndClaimsDrawFromIt() throws {
         var (e, id) = try game()
         ready(&e, id, [.warranty])
@@ -120,7 +113,6 @@ final class DealerAddonsTests: XCTestCase {
         let booked = co.books.total["oth"] ?? 0
         XCTAssertGreaterThan(booked, reserve - 1, "the reserve is an expense in the accounts")
         balanced(e, "after sales")
-        // Run the warranties out: claims are paid, what is unused is released, the liability ends.
         week(&e, id, by: 120)
         co = e.state.company(id)!
         let t = DealerAddons.totals(co)
@@ -160,8 +152,6 @@ final class DealerAddonsTests: XCTestCase {
         XCTAssertLessThan(off.expectedNet, 0, "an included warranty is a cost of the sale")
         balanced(e, "included")
     }
-
-    // MARK: Loans
 
     func testLoanCommissionComesFromTheBankAndTheLoanIsNotTheDealers() throws {
         var (e, id) = try game()
@@ -211,8 +201,6 @@ final class DealerAddonsTests: XCTestCase {
         XCTAssertEqual(e.dealerAddonSettings(companyID: id)?.loanCommission ?? 0, 0.01, accuracy: 1e-9)
     }
 
-    // MARK: Insurance
-
     func testInsuranceTakeRateComesFromThePriceAdvantage() throws {
         var (e, id) = try game()
         ready(&e, id, [.insurance])
@@ -226,7 +214,6 @@ final class DealerAddonsTests: XCTestCase {
         XCTAssertGreaterThan(mid.takeRate, 0.7, "cheaper than buying it separately: most customers take it")
         XCTAssertGreaterThan(low.customerSaving, high.customerSaving)
         XCTAssertGreaterThan(high.customerSaving, 0)
-        // The dealer's income per sale: take rate times commission on the first-year premium.
         XCTAssertEqual(mid.expectedIncome, mid.takeRate * mid.customerPrice * 0.15, accuracy: mid.customerPrice * 0.001)
     }
 
@@ -247,14 +234,11 @@ final class DealerAddonsTests: XCTestCase {
         XCTAssertEqual(pols.reduce(0) { $0 + $1.commission }, comm, accuracy: 1)
         for p in pols { XCTAssertEqual(p.commission / p.premium, 0.15, accuracy: 0.01); XCTAssertGreaterThan(p.yearlySaving, 0); XCTAssertEqual(p.untilWeek - p.week, 52) }
         XCTAssertEqual(cash(e, id) - c0, comm, accuracy: 1, "the commission is the only cash: the customer pays the insurer")
-        // A year later nothing more is paid: it was a one-time commission.
         let before = cash(e, id)
         week(&e, id, by: 60)
         XCTAssertEqual(cash(e, id), before, accuracy: 1)
         balanced(e, "insurance")
     }
-
-    // MARK: Whole
 
     func testAllThreeTogetherOnNewCarDealerKeepTheLedgerBalanced() throws {
         var (e, id) = try game(trade: "cardealer")

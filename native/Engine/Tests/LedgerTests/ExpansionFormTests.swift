@@ -4,7 +4,6 @@ import Finance
 import Simulation
 @testable import Businesses
 
-/// The product-expansion form reads cost, weeks, odds and cash left without paying anything; cancelling a running project refunds the unspent part.
 final class ExpansionFormTests: XCTestCase {
     private func game() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 21)
@@ -29,7 +28,6 @@ final class ExpansionFormTests: XCTestCase {
         XCTAssertEqual(e.startDevelopment(companyID: id, project: "menu"), .ok)
         let paid = cash0 - (e.state.company(id)?.cash ?? 0)
         XCTAssertEqual(paid, plan.cost, accuracy: 1)
-        // half-way through the project the unspent half comes back
         for _ in 0..<(4 * 7) { e.nextDay() }
         let cashMid = try XCTUnwrap(e.state.company(id)).cash
         let refund = try XCTUnwrap(e.cancelDevelopment(companyID: id))
@@ -38,7 +36,6 @@ final class ExpansionFormTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(e.state.company(id)).cash, cashMid + refund, accuracy: 1)
         XCTAssertNil(Development.running(try XCTUnwrap(e.state.company(id))))
         XCTAssertNil(e.cancelDevelopment(companyID: id), "nothing left to cancel")
-        // the decision survives a save: start again, round-trip, still running
         XCTAssertEqual(e.startDevelopment(companyID: id, project: "loyal"), .ok)
         let back = try JSONDecoder().decode(GameState.self, from: try JSONEncoder().encode(e.state))
         XCTAssertEqual(Development.running(try XCTUnwrap(back.company(id)))?.project, "loyal")

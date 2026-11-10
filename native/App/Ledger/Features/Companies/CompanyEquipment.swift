@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// What the company owns and lacks, in one list: machines, what is missing, vehicles and software. A category shows only where the trade
-/// has use for it (`equipmentRelevance`). Buying is in TechPro Store; this screen services, sells, returns and cancels.
 struct CompanyEquipmentScreen: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -58,11 +56,8 @@ struct CompanyEquipmentScreen: View {
         }
     }
 
-    // MARK: Categories
-
     private func isMachine(_ o: EquipmentMarket.Owned) -> Bool { o.kind != "veh" && o.kind != "soft" }
 
-    /// Items the trade needs more of than the company has (a required one never bought, or too few for the team).
     private func shortNeeds(_ rel: (machines: Bool, vehicles: Bool, software: Bool), _ needs: [EquipmentMarket.Need]) -> [EquipmentMarket.Need] {
         needs.filter { (n: EquipmentMarket.Need) -> Bool in
             guard n.ofTrade, n.need > 0, n.have + n.leased < n.need else { return false }
@@ -71,8 +66,6 @@ struct CompanyEquipmentScreen: View {
     }
 
     private func isWorn(_ seen: Double, _ down: Int) -> Bool { down == 0 && seen < 0.48 }
-
-    // MARK: Header
 
     private func header(_ rel: (machines: Bool, vehicles: Bool, software: Bool), _ needs: [EquipmentMarket.Need], _ owned: [EquipmentMarket.Owned]) -> some View {
         let machineCount: Int = owned.filter { isMachine($0) }.reduce(0) { $0 + Int($1.count) + Int($1.leasedCount) }
@@ -91,9 +84,6 @@ struct CompanyEquipmentScreen: View {
         }
     }
 
-    // MARK: Rows
-
-    /// One row: name over a caption, a status pill, and the one action.
     private func itemRow<T: View>(_ title: String, _ subtitle: String, pill: String, tone: AcctPill.Tone, @ViewBuilder trailing: () -> T) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
@@ -118,7 +108,6 @@ struct CompanyEquipmentScreen: View {
 
     private func wearTint(_ seen: Double) -> Color { seen >= 0.8 ? P.gain : seen >= 0.48 ? P.inkSoft : P.loss }
 
-    /// What the machine does for the business, from the trade's own flags.
     private func enables(_ e: GameEngine, _ equipmentID: String) -> String {
         guard let s = e.tradeInfo(companyID: companyID)?.allEquipment.first(where: { $0.id == equipmentID }) else { return "" }
         var parts: [String] = []
@@ -131,8 +120,6 @@ struct CompanyEquipmentScreen: View {
     private func priceText(_ x: EquipmentMarket.Need, _ cur: Currency) -> String {
         x.subscription ? "from " + cur.tidyShort(x.fromPrice / max(1, x.lifeYears) / 12) + "/mo" : "from " + cur.tidyShort(x.fromPrice)
     }
-
-    // MARK: Machines
 
     private func machinesSection(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need], _ all: [EquipmentMarket.Owned]) -> some View {
         let list: [EquipmentMarket.Owned] = all.filter { isMachine($0) }
@@ -206,8 +193,6 @@ struct CompanyEquipmentScreen: View {
         }
     }
 
-    // MARK: Missing
-
     @ViewBuilder private func missingSection(_ e: GameEngine, _ co: Company, _ rel: (machines: Bool, vehicles: Bool, software: Bool), _ needs: [EquipmentMarket.Need]) -> some View {
         let list: [EquipmentMarket.Need] = shortNeeds(rel, needs)
         let cur: Currency = e.currency(for: co)
@@ -226,8 +211,6 @@ struct CompanyEquipmentScreen: View {
             }
         }
     }
-
-    // MARK: Vehicles
 
     @ViewBuilder private func vehiclesSection(_ e: GameEngine, _ co: Company, _ all: [EquipmentMarket.Owned]) -> some View {
         let cur: Currency = e.currency(for: co)
@@ -305,8 +288,6 @@ struct CompanyEquipmentScreen: View {
         }
     }
 
-    // MARK: Software
-
     @ViewBuilder private func softwareSection(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need], _ all: [EquipmentMarket.Owned]) -> some View {
         let cur: Currency = e.currency(for: co)
         let list: [EquipmentMarket.Need] = needs.filter { (n: EquipmentMarket.Need) -> Bool in
@@ -340,8 +321,6 @@ struct CompanyEquipmentScreen: View {
         }
     }
 
-    // MARK: Confirmations
-
     private func askTitle(_ p: Pending) -> String {
         switch p {
         case .unit(_, _, let n): return "Sell this \(n)?"
@@ -365,7 +344,6 @@ struct CompanyEquipmentScreen: View {
         if case .endLease = p { return "End the lease" }
         return "Sell"
     }
-    /// Selling, cancelling and ending a lease cannot be taken back, so each one asks.
     private func ask(_ p: Pending) {
         asking = PendingAction(title: askTitle(p), message: askMessage(p), button: buttonTitle(p), destructive: false, tone: .danger, icon: "tag") { confirm(p) }
     }

@@ -5,7 +5,6 @@ import Employees
 import Businesses
 import Simulation
 
-/// The Group screen's "who manages whom" read model.
 final class GroupManagementTests: XCTestCase {
     func testOwnerRunsEverythingUntilSomeoneIsAppointed() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 61)
@@ -22,7 +21,6 @@ final class GroupManagementTests: XCTestCase {
         XCTAssertEqual(g0.managerCount, 0)
         XCTAssertTrue(g0.lines.allSatisfy { $0.runner == nil && $0.above.isEmpty && $0.firstToDecide == "You" })
 
-        // Appoint a store manager to the first company on a normal budget: the line shows who runs it and what they may decide.
         e.update { s, _, _ in
             guard let i = s.companyIndex(ids[0]) else { return }
             var p = Person(raw: [:]); p.id = s.makeID(); p.name = "Anna Reed"

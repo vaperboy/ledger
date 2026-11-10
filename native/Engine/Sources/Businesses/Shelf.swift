@@ -1,10 +1,7 @@
 import Foundation
 import GameCore
 
-/// Shelf stock with deliveries. Goods businesses sell from a shelf that is refilled on delivery days; when the shelf
-/// is empty, sales are lost. Original: features/company/shelf_stock_chains_boards.js (`R12DELIV`).
 public enum Shelf {
-    /// Days between deliveries: perishables and fast sellers daily, others twice a week or weekly.
     static func deliveryEvery(_ bd: Trade) -> Double {
         let st = bd.trait("stock") ?? 0
         return (st == 0 || st <= 2 || bd.hasTrait("perish")) ? 1 : st <= 14 ? 3.5 : 7
@@ -21,7 +18,6 @@ public enum Shelf {
         return g == 0 ? 7 : g
     }
 
-    /// Order the shelf for the days until the next delivery. Returns the value of spoiled stock to write off.
     @discardableResult
     static func deliver(_ co: inout Company, _ bd: Trade, weekday wd: Int, demand D: Double, ticket: Double, mgrQuality: Double,
                         random r: inout DeterministicRandom) -> Double {
@@ -34,7 +30,6 @@ public enum Shelf {
         let byManager = co.managerID != nil
         let weekly: Double
         if !byManager {
-            // You order from last week: what sold, plus some of what you could not sell.
             let last = co.value("dlast")
             weekly = (!last.isNull && last["u"].double != 0) ? last["u"].double + 0.6 * last["lost"].double : D
         } else {

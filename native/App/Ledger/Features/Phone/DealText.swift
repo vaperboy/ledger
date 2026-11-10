@@ -4,8 +4,6 @@ import Businesses
 import Finance
 import Countries
 
-/// A share deal in plain words, from the engine's `CapTable.DealTerms`: price per share, shares issued or sold, valuation, ownership before and
-/// after, dilution, who is paid (the company or you), and the conditions. Used by every confirmation that moves shares.
 enum DealText {
     static func describe(_ t: CapTable.DealTerms?, _ cur: Currency, companyName: String) -> String {
         guard let t else { return "The money goes into \(companyName)." }

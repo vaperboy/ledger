@@ -4,7 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Atlas > the company's accountant: who keeps the books now and the others on offer (name, fee, rating). A switch is confirmed with the monthly fee first.
 struct AtlasAccountantSection: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

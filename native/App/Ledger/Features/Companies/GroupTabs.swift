@@ -4,13 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-// The Group tab has four tabs: Overview, Structure, People, Suppliers (GroupHome.swift); each company, holding and chain is managed on its own page (GroupEntityPage.swift and
-// the GroupEntity*.swift files). Every figure comes from the engine.
-
-/// The tabs of an entity page. `key` is the name other screens use to ask for one (`GameStore.openGroupEntity(companyID:section:)`).
 enum GroupSection: String, CaseIterable, Hashable {
     case overview = "Overview", management = "Management", board = "Boardroom", money = "Money", expansion = "Grow", deals = "Owners and sales"
-    /// Stays the same when a tab is retitled, so links that name a tab keep working.
     var key: String {
         switch self {
         case .overview: return "overview"
@@ -23,15 +18,11 @@ enum GroupSection: String, CaseIterable, Hashable {
     }
 }
 
-/// Text tabs with a champagne underline, for the Group tab and for an entity page. When all titles fit at their natural size they share
-/// the width equally; on a narrow phone or with larger text the row scrolls sideways and keeps the chosen tab in view.
 struct GroupSectionBar<Tab: Hashable & RawRepresentable>: View where Tab.RawValue == String {
     @Binding var tab: Tab
     var badges: [Tab: Int] = [:]
     var sections: [Tab]
-    /// Each tab's accessibility identifier is this prefix and its title.
     var idPrefix: String = "group-tab-"
-    /// Tabs a tour points at.
     var anchors: [Tab: CoachStop] = [:]
     @Environment(\.outsidePalette) private var P
 
@@ -44,7 +35,6 @@ struct GroupSectionBar<Tab: Hashable & RawRepresentable>: View where Tab.RawValu
                 }
                 .scrollIndicators(.hidden)
                 .contentMargins(.horizontal, Theme.Space.page, for: .scrollContent)
-                // The strip fades out at both edges, so a tab cut by the edge reads as "more this way", not as clipped text.
                 .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.06),
                                              .init(color: .black, location: 0.94), .init(color: .clear, location: 1)],
                                      startPoint: .leading, endPoint: .trailing))
@@ -79,10 +69,6 @@ struct GroupSectionBar<Tab: Hashable & RawRepresentable>: View where Tab.RawValu
     }
 }
 
-// MARK: - The entities
-
-/// One line of the picker: a company, a holding or a whole chain (a chain is ONE entry). `companyID` is the company the entity page works
-/// on (a chain: its first store); `members` are the companies the entity covers (a holding: itself and everything under it).
 struct GroupEntity: Identifiable, Equatable {
     var id: String
     var companyID: Int
@@ -96,16 +82,12 @@ struct GroupEntity: Identifiable, Equatable {
     var changeAmount: Double
     var changeShare: Double?
     var members: [Int]
-    /// Profit this month of the companies it covers (a holding: itself and everything under it).
     var profit: Double = 0
-    /// Its value per day, oldest first (the sum of its companies' histories, aligned on today), for the trend line.
     var trend: [Double] = []
     var isChain: Bool { chainID != nil }
 }
 
 enum GroupEntities {
-    /// The change of a sum of companies over `days`: the amounts add up, the share is against what they were worth before.
-    /// `hist` is the decoded history when the caller has it (decoding it per company was the slow part of building the list).
     static func change(_ e: GameEngine, ids: [Int], values: [Int: Double], days: Int, hist: DayHistory? = nil) -> (amount: Double, share: Double?)? {
         let h: DayHistory = hist ?? e.dayHistory
         var amount: Double = 0
@@ -132,7 +114,6 @@ enum GroupEntities {
                            profit: profit, trend: series(hist, ids: ids))
     }
 
-    /// The summed daily values of `ids`, aligned on the last day (a company with a shorter history adds from its first day on).
     static func series(_ h: DayHistory, ids: [Int]) -> [Double] {
         let all: [[Double]] = ids.compactMap { (i: Int) -> [Double]? in h.perCompany[i] }
         let n: Int = all.map { (s: [Double]) -> Int in s.count }.max() ?? 0
@@ -145,7 +126,6 @@ enum GroupEntities {
         return out
     }
 
-    /// Everything the picker lists, biggest first; a holding is followed by its companies, indented.
     static func build(_ e: GameEngine, days: Int = 30) -> [GroupEntity] {
         let st: GameState = e.state
         let hist: DayHistory = e.dayHistory
@@ -203,17 +183,14 @@ enum GroupEntities {
         return out
     }
 
-    /// `build` for the store's engine, once per engine change (the Group landing and page both read it on every render).
     @MainActor static func cached(_ store: GameStore) -> [GroupEntity]? { store.memo("groupEntities") { build($0) } }
 
-    /// The entity a request for a company lands on: its own entry, else the chain or holding it belongs to.
     static func find(_ list: [GroupEntity], companyID: Int) -> GroupEntity? {
         if let own = list.first(where: { (g: GroupEntity) -> Bool in g.companyID == companyID }) { return own }
         return list.first(where: { (g: GroupEntity) -> Bool in g.members.contains(companyID) })
     }
 }
 
-/// A change as an arrow with a share (or an amount when the earlier value was too small for a share), coloured by direction.
 @MainActor
 enum GroupFmt {
     static func change(_ amount: Double, _ share: Double?, has: Bool, _ store: GameStore) -> (text: String, tint: Color) {

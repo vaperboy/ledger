@@ -3,10 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// The AirStay market: the places on offer for your companies, sorted into offices, shops and retail and storage, and which of your companies
-/// can take a place and pay for it. Premises stay what they always were (`CompanySetup`): a company works in the kind of place its trade needs, a
-/// listing is generated per trade and city, rent and deposit follow the kind of place. This only gathers the listings of all your companies in
-/// one feed and lets the player choose which company takes one (any open or starting company of the same kind of place in the same city).
 public enum PlaceMarket {
     public enum Category: String, CaseIterable, Sendable {
         case offices, shops, retail
@@ -19,26 +15,20 @@ public enum PlaceMarket {
         }
     }
 
-    /// One place on offer in the feed.
     public struct Offer: Identifiable, Equatable {
         public var id: String
-        /// The company whose trade and city generated this listing.
         public var originCompanyID: Int
         public var listing: CompanySetup.Listing
-        /// The kind of place (a key of the premises table: office, shop, industrial ...).
         public var placeKind: String
         public var category: Category
-        /// "Office", "Shop / retail unit", "Warehouse" ...
         public var buildingType: String
         public var cityID: String
         public var cityName: String
         public var canBuy: Bool
-        /// The street and district shown for it, and which of the three pictures of its kind it shows (fixed by the listing).
         public var title: String = ""
         public var photoSlot: Int = 0
     }
 
-    /// A company that could take an offer, with what it would pay.
     public struct Candidate: Identifiable, Equatable {
         public var id: Int { companyID }
         public var companyID: Int
@@ -49,11 +39,9 @@ public enum PlaceMarket {
         public var upfrontBuy: Double
         public var canRent: Bool
         public var canBuy: Bool
-        /// It already works in a place that this would replace (the old deposit comes back).
         public var hasPlace: Bool
     }
 
-    /// A place one of your companies works in now.
     public struct Rented: Identifiable, Equatable {
         public var id: Int { companyID }
         public var companyID: Int
@@ -68,16 +56,11 @@ public enum PlaceMarket {
         public var monthlyRent: Double
         public var deposit: Double
         public var atHome: Bool
-        /// A home trade that works from home can look for a place.
         public var isHomeTrade: Bool
-        /// The address and picture slot the place had when it was taken.
         public var title: String = ""
         public var photoSlot: Int = 0
     }
 
-    // MARK: Kinds
-
-    /// The kind of place this company's trade works in (a home trade: the place it moves into), or nil when it has no place to look for.
     public static func placeKind(_ co: Company, _ bd: Trade) -> String? {
         guard bd.family != "rent", let k = bd.premisesKind, k != "none" else { return nil }
         return k == "home" ? PremisesExtras.placeKind(bd) : k
@@ -98,9 +81,6 @@ public enum PlaceMarket {
         }
     }
 
-    // MARK: The feed
-
-    /// The places on offer: one set of listings per trade and city among your companies.
     public static func offers(_ s: GameState, data: GameData) -> [Offer] {
         let w = World(state: s, data: data)
         var seen = Set<String>()
@@ -123,7 +103,6 @@ public enum PlaceMarket {
         return out
     }
 
-    /// The companies that can take this offer: the same kind of place, in the same city.
     public static func candidates(_ s: GameState, offer: Offer, data: GameData) -> [Candidate] {
         let w = World(state: s, data: data)
         var out: [Candidate] = []
@@ -139,8 +118,6 @@ public enum PlaceMarket {
         }
         return out
     }
-
-    // MARK: Active rents
 
     public static func rented(_ s: GameState, data: GameData) -> [Rented] {
         var out: [Rented] = []
@@ -163,8 +140,6 @@ public enum PlaceMarket {
         return out
     }
 
-    /// The companies a rented place can move to: another of your companies that works in the same kind of place in the same city and does not own its place.
-    /// `upfrontRent` is the deposit that moves with the lease; `monthlyRent` the rent it keeps paying.
     public static func targets(_ s: GameState, from companyID: Int, data: GameData) -> [Candidate] {
         guard let from = s.company(companyID), let fbd = data.catalog[from.type], let kind = placeKind(from, fbd) else { return [] }
         let prem = from.value("prem")
@@ -183,15 +158,12 @@ public enum PlaceMarket {
         return out
     }
 
-    // MARK: Taking a place
-
     public struct RentOutcome: Equatable {
         public var result: CompanySetup.PremisesResult
         public var reference: String
         public init(result: CompanySetup.PremisesResult, reference: String) { self.result = result; self.reference = reference }
     }
 
-    /// `companyID` takes the listing (rent or buy) and the receipt goes to `receiptCompanyID`.
     @discardableResult
     public static func take(_ s: inout GameState, companyID: Int, offer: Offer, buy: Bool, receiptCompanyID: Int, data: GameData) -> RentOutcome {
         guard let i = s.companyIndex(companyID), s.companyIndex(receiptCompanyID) != nil,
@@ -209,7 +181,6 @@ public enum PlaceMarket {
         let what = buy ? "Purchase" : "Lease"
         Receipts.add(&s, receiptCompanyID: receiptCompanyID, number: ref, kind: "lease", title: what + ": " + (offer.title.isEmpty ? offer.listing.name : offer.title),
                      detail: payer + " \u{00B7} " + String(Int(offer.listing.squareMetres)) + " m² \u{00B7} " + offer.listing.landlord + " \u{00B7} " + offer.cityName, amount: now, payer: payer)
-        // The reference stays on the company's place, so the active rent shows it.
         var prem = s.companies[i].value("prem")
         prem["ref"] = .string(ref)
         prem["rc"] = .number(Double(receiptCompanyID))
@@ -220,8 +191,6 @@ public enum PlaceMarket {
 
     public enum MoveResult: Equatable { case ok, notRented, notPossible, notEnoughCash }
 
-    /// Move a rented place from one of your companies to another: the lease, its deposit and the fit-out go with it. The first company is left without a
-    /// place (a home trade works from home again); the second one's old place, if any, is given up and its deposit returned.
     public static func reassign(_ s: inout GameState, from: Int, to: Int, data: GameData) -> MoveResult {
         guard from != to, let fi = s.companyIndex(from), let ti = s.companyIndex(to),
               let fbd = data.catalog[s.companies[fi].type], let tbd = data.catalog[s.companies[ti].type],

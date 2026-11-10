@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The hero of Manage: how much of its capacity the company uses, what limits it, and demand against capacity week by week. Read from
-/// `operationsFigures` (cached per engine state).
 struct CompanyPerformance: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

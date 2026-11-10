@@ -1,16 +1,10 @@
 import Foundation
 import GameCore
 
-/// Weather: each country has a climate; every week's weather is drawn from the game seed, so the same game
-/// always has the same weather. Weather changes how many customers come and, for outdoor work, how much can be
-/// done. Original: features/world/weather_and_tourism.js. Climate tables are in `Resources/weather.json`.
 public struct WeatherTables: Sendable {
-    /// Per country: [average °C by month], [share of days with rain or snow by month]
     var climate: [String: (temperature: [Double], wetShare: [Double])]
     var temperatureSpread: [String: Double]
-    /// Per country: the chance of a storm in a week, by month (0 = January).
     var storm: [String: [Double]]
-    /// Per trade: [sensitivity to pleasant weather, demand effect by weather kind, capacity effect by kind]
     var tradeSensitivity: [String: Sensitivity]
     var familySensitivity: [String: Sensitivity]
 
@@ -37,15 +31,12 @@ public struct WeatherTables: Sendable {
 public struct WeekWeather: Equatable, Sendable {
     public var temperature: Double
     public var rainyDays: Int
-    /// "sun", "mixed", "rain", "snow", "heat", "cold" or "storm"
     public var kind: String
-    /// How pleasant, against what is normal for the month
     public var againstNormal: Double
     public var snowIsNormal: Bool
 }
 
 public enum Weather {
-    /// The chance a week brings a storm, by country and month (0 = January). Original: `stormP`. The numbers are data (`weather.json`).
     static func stormChance(_ cc: String, month m: Int, tables: WeatherTables) -> Double {
         tables.storm[cc]?[m] ?? 0.01
     }
@@ -54,7 +45,6 @@ public enum Weather {
         clamp(1 - abs(t - 22) / 16, -1, 1) * 0.6 + (1 - r / 3.5) * 0.4
     }
 
-    /// The weather of a country in a week. Original: `draw(cc, w)`.
     public static func draw(country cc: String, week: Int, seed: Int, tables: WeatherTables) -> WeekWeather {
         guard let c = tables.climate[cc] else { return WeekWeather(temperature: 15, rainyDays: 2, kind: "mixed", againstNormal: 0, snowIsNormal: false) }
         let m = GameCalendar.month(week: week)
@@ -82,7 +72,6 @@ public enum Weather {
                            againstNormal: n - pleasantness(avg, c.wetShare[m] * 7), snowIsNormal: avg <= -1)
     }
 
-    /// What this week's weather does to a company: (demand factor, capacity factor). Original: `fx(co)`.
     public static func effect(for co: Company, trade: Trade, week: Int, seed: Int, tables: WeatherTables) -> (demand: Double, capacity: Double) {
         guard let s = tables.tradeSensitivity[co.type] ?? tables.familySensitivity[trade.family] else { return (1, 1) }
         let x = draw(country: co.countryCode, week: week, seed: seed, tables: tables)

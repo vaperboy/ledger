@@ -4,25 +4,11 @@ import Countries
 import Finance
 import Businesses
 
-/// Startups, both ways. (1) Startups YOU found: pick a sector and a product, put in seed money, hire builders, raise rounds from investors,
-/// switch the finished product on in your own companies, pitch it to rivals, shut it down or sell it at an exit. (2) Startups of other people
-/// that you invest in: pitches arrive every four weeks, you buy a percentage, they raise rounds, ask for bridge money, fail or exit.
-/// Originals: features/player/selling_startups_and_crisis.js (`foundedWeek`, `fpitch`...), features/player/startup_sectors.js (the nine
-/// sectors, `f17go`, `weekly`, `p17go`), engine/world/investing.js (`genStartup`, `investStartup`, `startupsWeek`, `ACTS.round`, `ACTS.bridge`).
-///
-/// State: `rest["founded"]` (yours), `rest["startups"]` (stakes in others'), `rest["deals_su"]` + `rest["deals_suW"]` (the pitches on offer).
-/// The money from a sector product used by your companies comes through `StartupProducts` (demand and capacity steps).
-///
-/// Not faithful: the software startup of the earlier rounds (`f.sw`, with a software shop in equipment buying) is folded into the SaaS
-/// sector of the nine (`sw16`); a social app's marketing boost is not applied; pitching to rivals needs rivals as individual businesses
-/// (`rest["mk"][key].riv`), which the Competition port provides, so the list is empty until then.
 public enum Startups {
     public static let rounds = ["Pre-seed", "Seed", "Series A", "Series B", "Growth"]
     public static let capitalWords = ["", "Low", "Medium", "High", "Very high", "Huge"]
     public static let stakeStages = ["Seed (building product)", "Launch (finding the market)", "Growth (scaling)", "Exit-ready"]
     public static let minimumInvestment = 50_000.0
-
-    // MARK: Reading
 
     public struct Product: Equatable {
         public var sector: String, product: String, model: String, phase: String
@@ -39,7 +25,6 @@ public enum Startups {
         public var runwayWeeks: Int
         public var offers: [Funding.FundOffer]
         public var product: Product?
-        /// The real company behind it (open it for people, pay, marketing, shares), its team, the builders among them, the team asked for at founding, the price.
         public var companyID: Int
         public var teamSize: Int
         public var developers: Int
@@ -53,7 +38,6 @@ public enum Startups {
                                  selfHours: w["selfH"].double, progress: w["prog"].double, customers: w["cust"].double, revenueWeekly: w["revW"].double,
                                  internalPrice: w["int"].double, usedBy: w["use"].array.map { $0.int })
     }
-    /// A startup as the screens see it: the company's own cash, people, shares and value, and the product record.
     static func read(_ f: JSONValue, _ s: GameState) -> Founded {
         let co = s.company(f["cid"].int)
         let cash = co?.cash ?? 0
@@ -71,7 +55,6 @@ public enum Startups {
                        product: product(f["sw16"]), companyID: f["cid"].int, teamSize: co?.staff.count ?? 0, developers: co.map { StartupModel.developers($0) } ?? 0,
                        teamWanted: f["wantTeam"].int, price: f["sw16"]["price"].double)
     }
-    /// Stage by what is true: building, launched, with customers, with real revenue, scaling.
     static func stageIndex(_ f: JSONValue) -> Int {
         let w = f["sw16"]
         if w["phase"].string != "live" { return 0 }
@@ -87,7 +70,6 @@ public enum Startups {
         body(&list[k]); s.rest["founded"] = .array(list)
     }
 
-    /// How attractive a startup of yours is to investors. Original: `interest(f.ck, clamp(f.tr + f.stage * 0.15, 0, 1))`.
     public static func investorInterest(_ s: GameState, _ f: Founded, sectorCapitalNeed ck: Int) -> Double {
         Funding.interest(s, capitalNeed: ck, traction: clamp(f.traction + Double(f.stage) * 0.15, 0, 1))
     }
@@ -96,11 +78,9 @@ public enum Startups {
         return Funding.interest(s, capitalNeed: raw["ck"].int, traction: clamp(raw["tr"].double + raw["stage"].double * 0.15, 0, 1))
     }
 
-    /// Hours a week you could still give to building something yourself, at most 20. Original: `freeH`.
     public static func freeHours(_ s: GameState) -> Double { min(20, max(0, 80 - CapacityModel.ownerHoursCommitted(s))) }
     static func builderCost(_ sector: String, _ cur: Currency) -> Double { cur.scaledPrice(sector == "clean" || sector == "health" ? 75000 : 65000) }
 
-    /// Plan of a startup before you found it: weeks to test and to sell, builders' monthly cost, runway. Original: the `sheet` tiles.
     public struct Plan: Equatable {
         public var seed: Double, builders: Int, weeksToTest: Int?, weeksToSell: Int?, buildersMonthly: Double, runwayWeeks: Int, interest: Double, capitalNeed: Int
     }
@@ -115,7 +95,6 @@ public enum Startups {
                     runwayWeeks: Int(saturating: (CompanyFigures.runwayWeeks(cash: seed, weeklyLoss: cur.scaledPrice(d.seed) / 26 + Double(devs) * dc * 12 / 52) ?? 0).rounded()),
                     interest: Funding.interest(s, capitalNeed: d.capitalNeed, traction: 0.05), capitalNeed: d.capitalNeed)
     }
-    /// Your own companies that could use this product, with the effect each would get.
     public static func companiesThatCanUse(_ s: GameState, sector: String, product: String, data: GameData) -> [(company: Company, effect: StartupProducts.Effect)] {
         s.companies.filter { $0.status == .open || $0.status == .setup }.compactMap { c in
             guard let bd = data.catalog[c.type], let x = StartupProducts.effect(sector: sector, product: product, trade: bd) else { return nil }
@@ -123,13 +102,8 @@ public enum Startups {
         }
     }
 
-    // MARK: Founding
-
     public enum FoundResult: Equatable { case ok(Int), notEnoughMoney(Double), unknownSector }
 
-    /// Found a startup: a REAL company (limited, home-based) funded with the seed money, whose builders are hired and paid like any staff.
-    /// who: "self", "c2" (two builders) or "c4"; seedMultiple 1, 2 or 4. The builders are hired only as far as the seed carries their wages for
-    /// three months; the rest are shown as wanted and can be hired from the company's team screen. Original: `ACT.f17go` (the blob is gone).
     @discardableResult
     public static func found(_ s: inout GameState, name: String?, sector: String, product: String, model: String, who: String, seedMultiple: Double,
                              data: GameData, context fc: FinanceContext) -> FoundResult {
@@ -137,7 +111,6 @@ public enum Startups {
         let cur = fc.homeCurrency(s)
         let seed = cur.scaledPrice(d.seed) * seedMultiple
         let c = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
-        // Like any limited company it is registered (fee) and has an accountant.
         let fee = c.registrationFee
         if Payments.liquid(s) < seed + fee { return .notEnoughMoney(seed + fee) }
         let rec = Funding.record(s)
@@ -165,7 +138,6 @@ public enum Startups {
             let cands = Hiring.search(role: "dev", company: co, mode: .network, faces: false, state: &s, data: data)
             if AutoHire.hireWorker(role: "dev", companyID: id, candidates: cands, state: &s, data: data) != nil { hired += 1 } else { break }
         }
-        // The first support hire is part of the default founding team: someone has to look after the first customers.
         var support = 0
         if let co = s.company(id) {
             let payroll: Double = co.staff.reduce(0.0) { $0 + $1.monthlyWage }
@@ -191,12 +163,8 @@ public enum Startups {
         return .ok(id)
     }
 
-    // MARK: Launch
-
     public enum LaunchResult: Equatable { case ok, notReady, badPrice }
 
-    /// The launch decision once the product is finished: the price from now on (the marketing campaign is set by the caller through the ordinary
-    /// campaigns). Revenue starts the next week.
     @discardableResult
     public static func launch(_ s: inout GameState, startupID: Int, price: Double) -> LaunchResult {
         guard let k = index(s, startupID), let f = s.rest["founded"]?.array[k], f["sw16"]["phase"].string == "ready" else { return .notReady }
@@ -207,7 +175,6 @@ public enum Startups {
         return .ok
     }
 
-    /// Change the price of a launched product. Customers answer next week.
     @discardableResult
     public static func setPrice(_ s: inout GameState, startupID: Int, price: Double) -> Bool {
         guard price > 0, let k = index(s, startupID), let f = s.rest["founded"]?.array[k], ["live", "ready"].contains(f["sw16"]["phase"].string) else { return false }
@@ -215,7 +182,6 @@ public enum Startups {
         return true
     }
 
-    /// What the launch screen shows for a price: the expected first weeks without luck. The campaign budget is read from the company's own plan.
     public static func launchPreview(_ s: GameState, startupID: Int, price: Double, data: GameData, context fc: FinanceContext) -> StartupModel.Funnel? {
         guard let f = (s.rest["founded"]?.array ?? []).first(where: { $0["id"].int == startupID }), let co = s.company(startupID),
               let d = StartupProducts.sector(f["sw16"]["cat"].string) else { return nil }
@@ -224,12 +190,8 @@ public enum Startups {
         return StartupModel.expectedFunnel(s, co, sector: d, model: f["sw16"]["model"].string, price: price, awareness: co.awareness, customers: f["sw16"]["cust"].double, quality: q, currency: cur)
     }
 
-    // MARK: Raising rounds, putting in money, shutting down
-
     public enum RoundResult: Equatable { case offers(Int), none, tooSoon(weeksLeft: Int), notLive }
 
-    /// Pitch to investors for a round: the ordinary company pitch (`Funding.pitch`), sized to 26 weeks of the team's cost against the company's value.
-    /// The offers, their share counts and their terms are `Funding`'s and `CapTable`'s, the same as for any company of yours.
     @discardableResult
     public static func pitchRound(_ s: inout GameState, startupID: Int, data: GameData) -> RoundResult {
         guard let co = s.company(startupID), co.status.isLive else { return .notLive }
@@ -249,7 +211,6 @@ public enum Startups {
 
     public static func declineRound(_ s: inout GameState, startupID: Int, index n: Int) { Funding.declineOffer(&s, companyID: startupID, index: n) }
 
-    /// Put your own money into the company (an owner investment, no new shares).
     @discardableResult
     public static func topUp(_ s: inout GameState, startupID: Int, amount: Double) -> Bool {
         let a = jsRound(amount)
@@ -257,7 +218,6 @@ public enum Startups {
         return Payments.injectCash(&s, companyID: startupID, amount: a)
     }
 
-    /// Close it: the ordinary winding-up is `GameEngine.windUpCompany`; this keeps the old entry point for the founder's record and returns what you got back.
     @discardableResult
     public static func shutDown(_ s: inout GameState, startupID: Int) -> Double? {
         guard let i = s.companyIndex(startupID), s.companies[i].status.isLive else { return nil }
@@ -273,9 +233,6 @@ public enum Startups {
         return back
     }
 
-    // MARK: The product: builders, your hours, use in your companies, internal price
-
-    /// Hire one more builder (delta > 0) or let one go (delta < 0) through the ordinary hiring and dismissal. Pay, notice and severance are the company's.
     public static func setBuilders(_ s: inout GameState, startupID: Int, delta: Int, data: GameData) {
         guard s.company(startupID) != nil else { return }
         if delta > 0 {
@@ -295,7 +252,6 @@ public enum Startups {
             }
         }
     }
-    /// Give (or take back) your own hours to the product. Fails when you have fewer than 5 free.
     @discardableResult
     public static func toggleOwnerHours(_ s: inout GameState, startupID: Int) -> Bool {
         guard let k = index(s, startupID), let f = s.rest["founded"]?.array[k], !f["sw16"].isNull else { return false }
@@ -305,7 +261,6 @@ public enum Startups {
         edit(&s, startupID) { $0["sw16"]["selfH"] = .number(left) }
         return true
     }
-    /// Switch the product on or off in one of your companies (once it is testable). Original: `ACT.w17use`.
     @discardableResult
     public static func toggleUse(_ s: inout GameState, startupID: Int, companyID: Int) -> Bool {
         guard let k = index(s, startupID), let f = s.rest["founded"]?.array[k], !f["sw16"].isNull, f["sw16"]["phase"].string != "build" else { return false }
@@ -316,12 +271,9 @@ public enum Startups {
         }
         return true
     }
-    /// What your companies pay the startup for using it: 0, 25, 50 or 100 (% of the price). Original: `ACT.w17int`.
     public static func setInternalPrice(_ s: inout GameState, startupID: Int, percent: Double) {
         edit(&s, startupID) { if !$0["sw16"].isNull { $0["sw16"]["int"] = .number(min(100, max(0, percent))) } }
     }
-
-    // MARK: Pitching the product to rivals
 
     public struct RivalTarget: Identifiable, Equatable {
         public var id: Int
@@ -333,7 +285,6 @@ public enum Startups {
         public var odds: Double
     }
     static func trust(_ rel: Double) -> Double { clamp((rel - 45) / 45, 0, 1) }
-    /// Rivals of your companies that could use the product, best relationship first, at most ten. Original: `targets`.
     public static func rivalTargets(_ s: GameState, startupID: Int, data: GameData) -> [RivalTarget] {
         guard let raw = (s.rest["founded"]?.array ?? []).first(where: { $0["id"].int == startupID }), raw["st"].string == "live", let p = product(raw["sw16"]), p.ready else { return [] }
         var seen = Set<Int>(), out: [RivalTarget] = []
@@ -352,7 +303,6 @@ public enum Startups {
         }
         return Array(out.sorted { $0.relationship > $1.relationship }.prefix(10))
     }
-    /// Pitch the product to one rival. Returns true if they signed up. Original: `ACT.p17go`.
     @discardableResult
     public static func pitchToRival(_ s: inout GameState, startupID: Int, rivalID: Int, data: GameData) -> Bool? {
         guard let t = rivalTargets(s, startupID: startupID, data: data).first(where: { $0.id == rivalID }), t.waitWeeks == 0, !t.alreadyCustomer,
@@ -380,10 +330,6 @@ public enum Startups {
         return ok
     }
 
-    // MARK: The week
-
-    /// A startup saved before startups became companies (no `cid`): it becomes a real company holding the cash the blob had, with the builders on the
-    /// payroll and your share as it was. Nothing the player had is lost; the record keeps its product and takes the company's id.
     static func migrateLegacy(_ s: inout GameState, data: GameData) {
         guard var list = s.rest["founded"]?.array else { return }
         var changed = false
@@ -412,8 +358,6 @@ public enum Startups {
         if changed { s.rest["founded"] = .array(list) }
     }
 
-    /// Once a week: keep each startup's record in line with its company (value, share, builders), notice the end of the company (broke or sold),
-    /// warn when the money runs short, and settle rival deals. The product itself runs inside the company's own week (`StartupModel.context`).
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         _ = pitches(&s, data: data)
         migrateLegacy(&s, data: data)
@@ -448,7 +392,6 @@ public enum Startups {
             list[k] = f
         }
         s.rest["founded"] = .array(list)
-        // Rival deals: a friend who bought a poor product out of trust may regret it.
         for k in list.indices where list[k]["st"].string == "live" && !list[k]["sw16"].isNull {
             for d in list[k]["sw16"]["deals"].array where d["chk"].int != 0 && s.week >= d["chk"].int {
                 guard var mk = s.rest["mk"], let key = Optional(d["mk"].string), !mk[key].isNull, var arr = Optional(mk[key]["riv"].array),
@@ -464,8 +407,6 @@ public enum Startups {
         }
         weeklyStakes(&s)
     }
-
-    // MARK: Startups of others: pitches, stakes, rounds and bridges
 
     public struct Pitch: Identifiable, Equatable {
         public var id: Int
@@ -501,7 +442,6 @@ public enum Startups {
                                         "traction": .number(clamp(jsRound(q * 90 + s.random.gauss() * 18), 3, 99))])])
     }
 
-    /// The three pitches on offer; a new set every four weeks. Original: `startupDeals`.
     public static func pitches(_ s: inout GameState, data: GameData) -> [Pitch] {
         if s.rest["deals_su"] == nil || s.week - (s.rest["deals_suW"]?.int ?? 0) >= 4 {
             s.rest["deals_su"] = .array([genPitch(&s, data: data), genPitch(&s, data: data), genPitch(&s, data: data)])
@@ -512,7 +452,6 @@ public enum Startups {
                   team: $0["sig"]["team"].int, market: $0["sig"]["market"].int, traction: $0["sig"]["traction"].int)
         }
     }
-    /// The pitches already drawn (read only; `weekly` keeps them fresh).
     public static func pitchesOnOffer(_ s: GameState) -> [Pitch] {
         (s.rest["deals_su"]?.array ?? []).map {
             Pitch(id: $0["id"].int, name: $0["name"].string, sector: $0["sec"].string, blurb: $0["blurb"].string, raise: $0["raise"].double, preMoney: $0["pre"].double, postMoney: $0["post"].double,
@@ -526,7 +465,6 @@ public enum Startups {
 
     public enum InvestResult: Equatable { case ok, tooSmall, notEnoughMoney, gone }
 
-    /// Put money into a pitch. Original: `investStartup`.
     @discardableResult
     public static func invest(_ s: inout GameState, pitchID: Int, amount: Double, context fc: FinanceContext) -> InvestResult {
         let q = investQuote(s, pitchID: pitchID, amount: amount, context: fc)
@@ -537,7 +475,6 @@ public enum Startups {
         return .ok
     }
 
-    /// Record a new stake in a pitch (paid for by the caller) and take the pitch off the table; `holdingID` is the holding that owns it, 0 for you.
     static func openStake(_ s: inout GameState, pitch d: JSONValue, amount amt: Double, holdingID: Int) {
         let pct = amt / d["post"].double * 100
         var f: JSONValue = .object(["id": .number(Double(s.makeID())), "name": d["name"], "sec": d["sec"], "q": d["q"], "st": "live", "stage": 0, "pct": .number(pct), "in": .number(amt), "val": d["post"],
@@ -553,7 +490,6 @@ public enum Startups {
         body(&list[k]); s.rest["startups"] = .array(list)
     }
 
-    /// Spend a week on the board of a startup you hold 20% or more of; it improves their odds. Original: `helpStartup`.
     @discardableResult
     public static func help(_ s: inout GameState, stakeID: Int) -> Bool {
         guard let f = (s.rest["startups"]?.array ?? []).first(where: { $0["id"].int == stakeID }), f["seat"].bool, f["st"].string == "live", f["helpedW"].int != s.week || f["helpedW"].isNull else { return false }
@@ -562,7 +498,6 @@ public enum Startups {
         return true
     }
 
-    /// Sell a fraction of your stake at 72% of fair value. Original: `sellStartupStake`.
     @discardableResult
     public static func sellStake(_ s: inout GameState, stakeID: Int, fraction: Double) -> Double {
         sellAsking(&s, stakeID: stakeID, fraction: fraction, askMultiplier: nil).proceeds
@@ -620,7 +555,6 @@ public enum Startups {
         s.rest["startups"] = .array(list)
     }
 
-    /// The answer to a pro-rata round ("round") or a bridge ("bridge"). Returns false when you lack the money (the message stays open). Original: `ACTS.round`, `ACTS.bridge`.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int) -> Bool {
         let data = m.value("data"), sid = data["sid"].int
         guard let f = (s.rest["startups"]?.array ?? []).first(where: { $0["id"].int == sid }) else { return true }
@@ -638,7 +572,6 @@ public enum Startups {
             } else { editStake(&s, sid) { x in x["pct"] = .number(x["pct"].double * 0.8); x["seat"] = .bool(x["pct"].double >= 20) } }
             return true
         }
-        // bridge
         let need = data["need"].double
         if idx == 0 {
             if available(s, f) < need { return false }

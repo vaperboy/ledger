@@ -3,10 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-// Bank > Statements > Transactions: the company's ledger (income and expenses) with a date range and search, and a detail with a note and the record
-// a movement belongs to. All data comes from `companyTransactions` and `transactionDetail`; the ledger is the Bank's payment record, nothing here
-// moves money.
-
 enum BankTxKind: String, CaseIterable, Hashable {
     case all = "All", income = "Income", expenses = "Expenses"
     var engineKind: TransactionFilterKind {
@@ -21,7 +17,6 @@ enum BankTxKind: String, CaseIterable, Hashable {
 enum BankTxRange: String, CaseIterable, Hashable {
     case month = "This month", quarter = "Last 3 months", year = "Last 12 months", all = "All time"
 
-    /// The first game week of the range (nil = no limit).
     func fromWeek(_ engine: GameEngine) -> Int? {
         let week: Int = engine.state.week
         switch self {
@@ -38,7 +33,6 @@ enum BankTxRange: String, CaseIterable, Hashable {
 }
 
 enum BankTxGlyphs {
-    /// The icon of a ledger category.
     static func category(_ id: String) -> String {
         switch id {
         case "sales": return Glyph.arrowIn
@@ -59,7 +53,6 @@ enum BankTxGlyphs {
     }
 }
 
-/// The transaction list of one company account, under the statement.
 struct BankTransactionsCard: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -75,7 +68,6 @@ struct BankTransactionsCard: View {
             let engineKind: TransactionFilterKind = kind.engineKind
             let from: Int? = range.fromWeek(e)
             let query: String = search
-            // The ledger walk runs once per engine change and filter, not on every render of the live Phone tab.
             let key: String = "tx|\(co.id)|\(engineKind)|\(from ?? -1)|\(query)"
             let page: TransactionPage? = (store.memo(key) { (g: GameEngine) -> [TransactionPage] in
                 g.companyTransactions(companyID: co.id, kind: engineKind, fromWeek: from, search: query).map { [$0] } ?? []
@@ -178,7 +170,6 @@ struct BankTransactionsCard: View {
     }
 }
 
-/// One transaction: amount, fields, a note the owner can keep, and the record it belongs to. Pushed from the list, and from a supplier record.
 struct BankTransactionDetailScreen: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

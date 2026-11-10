@@ -3,20 +3,11 @@ import GameCore
 import Countries
 import Finance
 
-/// Transport and logistics (taxi, courier, trucking, shipping, airline, wh3pl). Every service or route the company sells is an item: a ride type, a parcel
-/// service, a lane, a voyage type, a route with its cabin, a warehouse service. The item's price is the live slider. Its cost is built from the company's own books:
-/// the fleet's depreciation or lease, loan interest, servicing and (where the company pays it) fuel from the vehicle records, then wages, premises and fixed costs,
-/// shared by the capacity the item uses and divided by what it really sold; plus the cost that only exists when one is sold (fuel carried in cost of sales, tolls,
-/// port dues, handling, packaging, agent commission). Load factor (sold against capacity) and the empty share are shown with each item.
-/// Nothing here moves cash: the attributions come from what the weekly model books, so a trade earns what it earned before at default prices.
-/// Save keys: `items27` (the services become items), `itemsv2` (their records), `w10u` (set once the items were set up).
 public enum TransportItems {
     public static var trades: Set<String> { ItemTradeGroups.transport }
     static let allTrades: Set<String> = ["taxi", "courier", "trucking", "shipping", "airline", "wh3pl"]
     static let key = "w10u"
     static let unitPrefix = "w10s:", extraPrefix = "w10x:"
-
-    // MARK: Data
 
     struct TypeSpec { var id: String; var name: String; var ratio: Double; var share: Double; var fleet: Double; var weight: Double; var variable: Double; var empty: Double; var lead: Int; var note: String }
     struct ExtraSpec { var name: String; var ratio: Double; var share: Double; var cost: Double; var note: String }
@@ -40,20 +31,14 @@ public enum TransportItems {
 
     static func isManaged(_ id: String) -> Bool { id.hasPrefix(unitPrefix) || id.hasPrefix(extraPrefix) }
 
-    /// What the item is, besides its economics: the empty share at a normal load, the lead time and a line of what it is in real life.
     public struct Info: Equatable, Sendable {
         public var economics: RentalUnits.UnitEconomics
-        /// "service" (a ride type, lane, route) or "extra" (an add-on sold with it).
         public var kind: String
-        /// Share of the running or seats that goes empty at a normal load (empty running, empty seats, empty racking).
         public var empty: Double
         public var leadDays: Int
         public var note: String
-        /// Cost of the load that did not pay: what one empty share of the capacity costs per sold unit.
         public var emptyCostPerUnit: Double
     }
-
-    // MARK: Fleet and pool costs (real, from the company's records)
 
     struct PoolCosts { var depreciation = 0.0, lease = 0.0, interest = 0.0, upkeep = 0.0, fuel = 0.0 }
 
@@ -93,8 +78,6 @@ public enum TransportItems {
         return p
     }
 
-    // MARK: Items before prices are known
-
     struct Base {
         var itemID: String
         var spec: TypeSpec
@@ -104,7 +87,6 @@ public enum TransportItems {
         var status: String
     }
 
-    /// Capacity of one unit of the main pool a week: what a normally set up company of the trade handles per vehicle, bay or rack.
     static func capacityPerUnit(_ bd: Trade, main: EquipmentSpec) -> Double {
         main.standardCount > 0 ? bd.normalCapacity / main.standardCount : 0
     }
@@ -129,11 +111,8 @@ public enum TransportItems {
         }
     }
 
-    // MARK: Economics
-
     struct Computed { var base: Base; var econ: RentalUnits.UnitEconomics }
 
-    /// A `RentalUnits.Spec` with this service's own variable cost: the rental maths (fixed cost over periods sold, variable cost on the going price) is the same.
     static func costSpec(_ spec: Spec, variable: Double) -> RentalUnits.Spec {
         RentalUnits.Spec(kind: "roomtype", per: spec.per, periods: 1, pools: spec.pools, turn: variable, dmg: 0, chan: spec.chan, adv: spec.adv, tenure: 0, relet: 0, types: [], extras: [])
     }
@@ -169,7 +148,6 @@ public enum TransportItems {
         }
     }
 
-    /// Everything about the service behind one item, at its current price. Nil for an item that is not one of these trades' services.
     public static func economics(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> RentalUnits.UnitEconomics? {
         computed(s, companyID: companyID, data: data).first { $0.base.itemID == itemID }?.econ
     }
@@ -178,7 +156,6 @@ public enum TransportItems {
         computed(s, companyID: companyID, data: data).map { $0.econ }
     }
 
-    /// Economics plus the real-life facts of the item (empty share, lead time, what it is). Extras have a cost only.
     public static func info(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> Info? {
         guard let co = s.company(companyID), let spec = specs[co.type] else { return nil }
         if let c = computed(s, companyID: companyID, data: data).first(where: { $0.base.itemID == itemID }) {
@@ -195,10 +172,6 @@ public enum TransportItems {
         return Info(economics: e, kind: "extra", empty: 0, leadDays: 0, note: x.note, emptyCostPerUnit: 0)
     }
 
-    // MARK: Setting the services up as items
-
-    /// Put the company's services in as items and records and refresh their costs. Idempotent. Old titles-only items that the services replace are dropped on the
-    /// first run; items the owner added are kept.
     public static func sync(_ s: inout GameState, companyID: Int, data: GameData) {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open, let bd = data.catalog[s.companies[i].type], allTrades.contains(bd.id), let spec = specs[bd.id] else { return }
         let co = s.companies[i]
@@ -221,12 +194,11 @@ public enum TransportItems {
         }
         for (k, x) in spec.extras.enumerated() {
             let id = extraPrefix + "\(k)"
-            if !first && existing[id] == nil { continue }   // an extra the owner removed stays removed
+            if !first && existing[id] == nil { continue }
             var it = fresh(id, x.name)
             it.name = x.name; it.unitShare = x.share; it.ratio = x.ratio
             managed.append(it)
         }
-        // Shares add up to one with the owner's own items and the ratios keep the revenue weights at one: the trade earns what it earned.
         let keptShare = kept.reduce(0.0) { $0 + $1.unitShare }
         let managedShare = managed.reduce(0.0) { $0 + $1.unitShare }
         if managedShare > 0 { let f = max(0, 1 - keptShare) / managedShare; for k in managed.indices { managed[k].unitShare *= f } }
@@ -253,13 +225,11 @@ public enum TransportItems {
             r.stock = max(1, Int(saturating: b.count.rounded())); r.capacity = b.periods; r.status = b.status; r.leadDays = b.spec.lead
             ItemModels.put(&s, i, r)
         }
-        // A smoothed weekly cost of the company (monthly bills would otherwise make the item costs jump).
         let wk = Books.expenses(s.companies[i].books.week), prev = s.companies[i].value(key)["exp"].double
         s.companies[i].set(key, .object(["w": .number(Double(s.week)), "exp": .number(wk > 0 ? (prev > 0 ? 0.9 * prev + 0.1 * wk : wk) : prev)]))
         refreshCosts(&s, i, companyID: companyID, data: data)
     }
 
-    /// This week's true line in every item's history (units sold, revenue, profit), then the cost of one unit from the books.
     static func refreshCosts(_ s: inout GameState, _ i: Int, companyID: Int, data: GameData) {
         let week = s.week
         let rows = SalesItems.rows(s, companyID: companyID, data: data)
@@ -277,7 +247,6 @@ public enum TransportItems {
         }
     }
 
-    /// Weekly, after `ItemModels.weeklyTick`: set up new services, refresh costs and the history line.
     public static func weekly(_ s: inout GameState, _ i: Int, data: GameData) {
         guard s.companies.indices.contains(i), trades.contains(s.companies[i].type), s.companies[i].status == .open else { return }
         sync(&s, companyID: s.companies[i].id, data: data)

@@ -4,15 +4,10 @@ import Countries
 import Employees
 import Finance
 
-/// Locations of a chain: one quoted way to open another (what it costs, how it is named), and managers for the locations that come from the chain
-/// level (a chain CEO or chain manager) instead of from the owner. A location is a store of `Chains` under the chain's brand; opening runs
-/// `Chains.openStore`, hiring uses the existing manager machinery (`ManagerModel.fillManager`, promotions).
 public enum ChainLocations {
-    // MARK: Names
 
     static func cityName(_ co: Company, data: GameData) -> String { data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? "" }
 
-    /// The brand a company's locations carry: the chain's name, else its own name without a trailing city.
     static func brand(_ s: GameState, _ co: Company, data: GameData) -> String {
         if let ch = Chains.chain(s, of: co) { return ch["name"].string }
         var n = co.name
@@ -21,34 +16,22 @@ public enum ChainLocations {
         return n
     }
 
-    /// The name of a company bought or opened as a branch of `co`.
     static func branchName(_ s: GameState, of co: Company, newCompany c: Company, data: GameData) -> String {
         LocationNames.locationName(s, brand: brand(s, co, data: data), countryCode: c.countryCode, cityID: c.cityID, cityName: cityName(c, data: data), excluding: c.id, data: data)
     }
 
-    // MARK: Quote
-
-    /// What opening one more location in a city involves. Nothing is changed.
     public struct Quote: Equatable, Sendable {
         public var chainID: Int
         public var cityID: String
         public var cityName: String
-        /// The name the location will carry.
         public var name: String
-        /// Premises fit-out, equipment and vehicles to the chain's standard.
         public var fitOut: Double
-        /// Rent a month of the standard place.
         public var monthlyRent: Double
-        /// Rent deposit paid up front.
         public var deposit: Double
-        /// Licences and registration papers the new location needs.
         public var licences: Double
-        /// First stock, the first staff and a buffer, with the chain's 15% for the opening.
         public var other: Double
-        /// All of it, paid now.
         public var total: Double
         public var canAfford: Bool
-        /// A chain manager or CEO is in post: the location gets its manager without you.
         public var managerFromChain: Bool
     }
 
@@ -65,46 +48,31 @@ public enum ChainLocations {
                      other: max(0, total - fitOut - deposit - licences), total: total, canAfford: Payments.liquid(s) >= total, managerFromChain: chainLead(s, chainID: chainID) != nil)
     }
 
-    // MARK: Opening
-
-    /// Open a location: premises, equipment and people to the chain's standard, named by place, on the chain's rules from day one, and with a
-    /// manager from the chain level when there is one. `fundedBy` is a chain paying from its own stores' spare cash.
     public static func open(_ s: inout GameState, chainID: Int, cityID: String, size: Double = 1, data: GameData, context fc: FinanceContext, fundedBy parts: [Int: Double]? = nil) -> Result<Int, CompanySetup.StartError> {
         let r = Chains.openStore(&s, chainID: chainID, cityID: cityID, size: size, data: data, context: fc, fundedBy: parts)
         if case .success(let id) = r, let lead = chainLead(s, chainID: chainID) { _ = fillManager(&s, storeID: id, lead: lead, data: data) }
         return r
     }
 
-    /// You propose a location and the chain's board votes at once: a chain nobody else owns part of is yours to decide, so it opens as asked.
-    /// With co-owners the shares may vote it down (`BoardVote`, kind "open"), and then nothing opens.
     public static func openByVote(_ s: inout GameState, chainID: Int, cityID: String, size: Double = 1, data: GameData, context fc: FinanceContext) -> Result<Int, CompanySetup.StartError> {
         guard let ch = Chains.chain(s, id: chainID), let first = Chains.stores(s, ch).first else { return .failure(.notAllowedHere) }
         if ManagerModel.boardGate(s, kind: "open", companyID: first.id) != nil { return .failure(.notAllowedHere) }
         return open(&s, chainID: chainID, cityID: cityID, size: size, data: data, context: fc)
     }
 
-    // MARK: Proposals to the chain's board
-
-    /// A location the chain's CEO or chain manager (or the owner) put to the board: to open one in a city, or to close one. Saved on the chain's
-    /// board as `brd.locp`; the board decision list shows it with the proposer's recommendation, and the owner or the shares decide.
     public struct LocationProposal: Identifiable, Equatable, Sendable {
         public var id: Int
         public var chainID: Int
-        /// "open" or "shut".
         public var kind: String
         public var cityID: String
         public var cityName: String
         public var size: Double
-        /// The location to close; for an opening, the chain's first location (the board votes on the chain through it).
         public var storeID: Int
         public var storeName: String
-        /// "Name, Title" of the proposer.
         public var by: String
         public var why: String
         public var week: Int
-        /// What it costs once: the opening bill, or the closing costs after what the closure brings in.
         public var cost: Double
-        /// What the proposal is about: the city to open in, or the store to close.
         public var target: String { kind == "open" ? cityID : String(storeID) }
     }
 
@@ -117,13 +85,11 @@ public enum ChainLocations {
         }
     }
 
-    /// "Name, CEO" or "Name, Chain manager" of whoever stands above the store managers, for a proposal in their name.
     public static func leadLabel(_ s: GameState, chainID: Int) -> String? {
         guard let ch = Chains.chain(s, id: chainID), let n = chainLead(s, chainID: chainID) else { return nil }
         return "\(n.name), \(ch["ceo56"].isNull ? "Chain manager" : "CEO")"
     }
 
-    /// Put opening a location in a city to the board. Nil when it cannot be quoted, is on the list already, or was turned down lately.
     @discardableResult
     public static func proposeOpen(_ s: inout GameState, chainID: Int, cityID: String, size: Double = 1, by: String, why: String, data: GameData) -> Int? {
         guard let ch = Chains.chain(s, id: chainID), let first = Chains.stores(s, ch).first, let q = quote(s, chainID: chainID, cityID: cityID, size: size, data: data) else { return nil }
@@ -131,7 +97,6 @@ public enum ChainLocations {
                                                                       "co": .number(Double(first.id)), "sn": .string(first.name), "cost": .number(q.total)])
     }
 
-    /// Put closing a location to the board. Nil when it is not a location that can be closed, is on the list already, or was turned down lately.
     @discardableResult
     public static func proposeClosure(_ s: inout GameState, storeID: Int, by: String, why: String, data: GameData) -> Int? {
         guard let co = s.company(storeID), let ch = Chains.chain(s, of: co), ChainBranches.refusal(s, co) == nil,
@@ -158,7 +123,6 @@ public enum ChainLocations {
         return id
     }
 
-    /// A decided proposal carried out: the location opens or closes.
     static func carryOut(_ s: inout GameState, _ d: ManagerModel.BoardDecision, data: GameData, context fc: FinanceContext) -> ManagerModel.BoardDecisionResult {
         guard let p = proposals(s, chainID: ManagerModel.keyID(d.key)).first(where: { $0.id == d.proposalID }) else { return .gone }
         if p.kind == "open" {
@@ -176,8 +140,6 @@ public enum ChainLocations {
         }
     }
 
-    /// Monthly: a chain's CEO or chain manager proposes closing a location that has lost money for half a year. (Opening is proposed through
-    /// `proposeOpen` by whoever grows the chain.)
     static func leadProposals(_ s: inout GameState, chainID: Int, data: GameData) {
         guard GameCalendar.isMonthEnd(week: s.week), let ch = Chains.chain(s, id: chainID), let label = leadLabel(s, chainID: chainID) else { return }
         for st in Chains.stores(s, ch) where st.status == .open {
@@ -188,19 +150,14 @@ public enum ChainLocations {
         }
     }
 
-    // MARK: Managers from the chain level
-
-    /// The chain CEO, else the chain manager: whoever stands above the store managers and appoints them.
     public static func chainLead(_ s: GameState, chainID: Int) -> Person? {
         if let ch = Chains.chain(s, id: chainID), !ch["ceo56"].isNull, let n = s.people[ch["ceo56"]["npc"].int] { return n }
         if let rg = ManagerModel.regionals(s).first(where: { $0["scope"].string == "chain:\(chainID)" }) { return s.people[rg["npc"].int] }
         return nil
     }
 
-    /// A worker at least this good is promoted to manager of their own location before anyone is hired from outside.
     static let promotionSkill = 55.0
 
-    /// Give a location with no manager one: the best worker there when ready, else a hire through the chain lead's search.
     @discardableResult
     static func fillManager(_ s: inout GameState, storeID: Int, lead: Person, data: GameData) -> Bool {
         guard let co = s.company(storeID), HierarchyHiring.needsStoreManager(s, co, data: data) else { return false }
@@ -220,7 +177,6 @@ public enum ChainLocations {
         return s.company(storeID)?.managerID != nil
     }
 
-    /// Every location of the chain without a manager gets one from the chain level. Returns how many were filled.
     @discardableResult
     public static func fillManagers(_ s: inout GameState, chainID: Int, data: GameData) -> Int {
         guard let ch = Chains.chain(s, id: chainID), let lead = chainLead(s, chainID: chainID) else { return 0 }

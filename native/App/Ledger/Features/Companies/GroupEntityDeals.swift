@@ -5,9 +5,6 @@ import Businesses
 import Events
 import Simulation
 
-/// Everything about who owns an entity, behind a small Owners / Sell / Raise / Offers control: the owners and their mood, every way to sell
-/// (one route picker, one offers ladder), raising money and issuing shares, and the offers that come to it (franchise applications, bids,
-/// owners' demands, hosting). This is the only place in the app where a company is sold or shares are issued or sold.
 struct GroupEntityOwnership: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -29,12 +26,10 @@ struct GroupEntityOwnership: View {
         }
     }
 
-    /// The companies that have owners to show, one block each. A branch of a chain has no shares of its own.
     private func ownable(_ cos: [Company]) -> [Company] {
         cos.filter { (c: Company) -> Bool in !engine.isBranch(companyID: c.id) }
     }
 
-    /// One line under a chain's ownership parts: its branches are part of the chain company, not companies with shares.
     @ViewBuilder private func branchNote(_ cos: [Company]) -> some View {
         let n: Int = cos.filter { (c: Company) -> Bool in engine.isBranch(companyID: c.id) }.count
         if n > 0 {
@@ -42,8 +37,6 @@ struct GroupEntityOwnership: View {
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
-
-    // MARK: Owners
 
     @ViewBuilder private func owners(_ cos: [Company]) -> some View {
         let list: [Company] = ownable(cos)
@@ -57,8 +50,6 @@ struct GroupEntityOwnership: View {
         branchNote(cos)
     }
 
-    // MARK: Sell
-
     @ViewBuilder private func sell(_ cos: [Company]) -> some View {
         let sellable: [Company] = cos.filter { (c: Company) -> Bool in !engine.isBranch(companyID: c.id) }
         VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -70,8 +61,6 @@ struct GroupEntityOwnership: View {
             branchNote(cos)
         }
     }
-
-    // MARK: Raise
 
     @ViewBuilder private func raise(_ cos: [Company]) -> some View {
         let list: [Company] = ownable(cos)
@@ -85,8 +74,6 @@ struct GroupEntityOwnership: View {
         branchNote(cos)
     }
 
-    // MARK: Offers
-
     @ViewBuilder private func offers(_ cos: [Company]) -> some View {
         let franchisors: [Company] = cos.filter { (c: Company) -> Bool in engine.isFranchisor(companyID: c.id) }
         let ids: Set<Int> = Set(cos.map { (c: Company) -> Int in c.id })
@@ -97,12 +84,10 @@ struct GroupEntityOwnership: View {
             }
             if !asks.isEmpty { bids(asks) }
             if !franchisors.isEmpty { applicants(franchisors) }
-            // Hosting a deal carries its own title, and shows only when there is a venue and a guest.
             HostingSection(engine: engine)
         }
     }
 
-    /// Inbound offers and owners' demands that used to be answered in the Inbox.
     static let ownerActions: Set<String> = ["g27bid", "own27"]
     static let ownerDecisions: Set<String> = ["s_acqoffer", "e_merger", "t_pe", "t_hostile", "t_ipo", "t_auction", "t_activist"]
     static func isOwnerOffer(_ m: Message) -> Bool {
@@ -130,7 +115,6 @@ struct GroupEntityOwnership: View {
         .confirmAction($pending)
     }
 
-    /// An answer that cannot be undone or spends money is confirmed first, as in the Inbox (`DecisionConfirm`).
     private func ask(_ m: Message, _ i: Int) {
         guard m.options.indices.contains(i) else { return }
         let label: String = engine.displayText(m.options[i]["l"].string, companyID: m.companyID)
@@ -163,9 +147,6 @@ struct GroupEntityOwnership: View {
     }
 }
 
-// MARK: - Franchise brands (Expansion tab)
-
-/// Joining a franchise brand: shown under the Expansion tab. Buying a rival is in Market > Rivals; selling and owning are under Ownership.
 struct GroupBuyRows: View {
     var engine: GameEngine
     var entity: GroupEntity

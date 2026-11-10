@@ -5,16 +5,14 @@ import Finance
 import Businesses
 import Simulation
 
-/// The changeover slowdown lasts exactly the weeks the quote says, and the licence weeks shown are the ones the application takes.
 final class KnobTransitionTests: XCTestCase {
     private func open(_ e: inout GameEngine, _ trade: String) -> Int {
         let id = ChainsTests.start(&e, trade)
-        e.update { s, _, _ in s.rest["ownHrsFixed"] = true; if let i = s.companyIndex(id) { s.companies[i].status = .open } }   // hours stay as set: capacity is what is measured
+        e.update { s, _, _ in s.rest["ownHrsFixed"] = true; if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         ChainsTests.play(&e, days: 7 * 3)
         return id
     }
 
-    /// Run until the week counter moves once.
     private func nextWeek(_ e: inout GameEngine) {
         let w = e.state.week
         while e.state.week == w { ChainsTests.play(&e, days: 1) }
@@ -35,7 +33,6 @@ final class KnobTransitionTests: XCTestCase {
             let id = open(&e, "cafe")
             let k = try singleKnob(e, "cafe")
             for to in k.options.indices {
-                // wait out any earlier changeover of the same knob, then change
                 while let c = e.state.company(id)?.value("hys56c"), !c.isNull, Double(e.state.week) < c["end"].double { nextWeek(&e) }
                 guard let q = e.knobChangeQuote(companyID: id, knob: k.id, option: to), q.blocked == nil, q.transitionWeeks > 0 else { continue }
                 lengthsSeen.insert(q.transitionWeeks)
@@ -56,7 +53,6 @@ final class KnobTransitionTests: XCTestCase {
         var e = try ChainsTests.engine(seed: 11)
         let id = open(&e, "cafe")
         let k = try singleKnob(e, "cafe")
-        // a change with a known length of 2 or more weeks
         let to = try XCTUnwrap(k.options.indices.first { (e.knobChangeQuote(companyID: id, knob: k.id, option: $0)?.transitionWeeks ?? 0) >= 2 })
         let q = try XCTUnwrap(e.knobChangeQuote(companyID: id, knob: k.id, option: to))
         _ = e.changeKnob(companyID: id, knob: k.id, option: to)
@@ -95,7 +91,6 @@ final class KnobTransitionTests: XCTestCase {
         let def = try XCTUnwrap(Documents.definition(doc.id, country: try XCTUnwrap(e.data.countries[co.countryCode]), tables: e.data.catalog.tables))
         XCTAssertEqual(doc.weeks, Documents.waitWeeks(doc.id, definition: def, company: co, World(state: e.state, data: e.data)))
         XCTAssertNotEqual(doc.weeks, def.weeks, "abroad the wait is not the home-country figure (bureaucracy, no head-office desk): \(doc.weeks) vs \(def.weeks)")
-        // what the application then takes is exactly what was shown
         XCTAssertEqual(e.toggleKnobOption(companyID: id, knob: k.id, option: 0, on: true), .done)
         let rec = try XCTUnwrap(e.state.company(id)).value("docs")[doc.id]
         XCTAssertEqual(Int(rec["done"].double - rec["w0"].double), doc.weeks)

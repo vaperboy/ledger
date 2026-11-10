@@ -2,8 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// Shortcuts to Phone apps and flows (up to four). The engine stores the identifiers per game
-/// (`GameEngine.homeShortcutIDs`); what each one opens lives here.
 enum HomeShortcut: String, CaseIterable, Identifiable {
     case bank, hire, reports, market, inbox, goals, news, ventures
     var id: String { rawValue }
@@ -36,7 +34,6 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The Phone app whose red bubble this box carries, if it has one.
     var badgeApp: PhoneApp? {
         switch self {
         case .inbox: return .inbox
@@ -57,7 +54,6 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The saved identifiers as shortcuts: unknown ones are dropped, and with nothing saved (or nothing valid) the default four.
     static func resolve(_ ids: [String]?) -> [HomeShortcut] {
         guard let ids else { return defaults }
         let list: [HomeShortcut] = ids.compactMap { HomeShortcut(rawValue: $0) }
@@ -65,13 +61,10 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
     }
 }
 
-/// What the last ordinary day did, in real figures: shown beside the week progress after Next day.
 struct DayChip: Equatable, Identifiable {
     var id: UUID
-    /// The day of the week that has just been reached (1 to 7).
     var day: Int
     var netWorthChange: Double
     var cashChange: Double
-    /// The group's profit on that day (nil when it could not be measured).
     var profit: Double? = nil
 }

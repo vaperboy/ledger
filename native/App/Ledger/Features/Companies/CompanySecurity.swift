@@ -4,8 +4,6 @@ import Businesses
 import Countries
 import Simulation
 
-/// IT security of one company: the protection level, offline backups, staff training and the cyber insurance state. It lives where the
-/// company's insurance and advisers are chosen (Manage > Insurance and advisers), not under Customers.
 struct CompanySecurityCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

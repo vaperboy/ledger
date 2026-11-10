@@ -4,7 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// What the player sees and can do in a project company: the order book, tenders, developments.
 public struct ProjectBoard: Equatable {
     public struct JobRow: Identifiable, Equatable {
         public var id: Int
@@ -19,9 +18,7 @@ public struct ProjectBoard: Equatable {
         public var progress: Double
         public var held: Bool
         public var isPublic: Bool
-        /// Estimated margin on this job: what the client pays less materials and subcontractors (labour is in the wages).
         public var margin: Double
-        /// Event agency: the day of the event (week and day offset), otherwise nil.
         public var dueWeek: Int?
         public var started: Bool
     }
@@ -31,9 +28,7 @@ public struct ProjectBoard: Equatable {
         public var buyer: String
         public var worth: Double
         public var bidCost: Double
-        /// What the job would cost this company at list price (materials and subcontractors); nil when it cannot be estimated.
         public var costEstimate: Double?
-        /// Rival bidders as a word: None / A few / Several / Many.
         public var rivals: String
         public var priceWeight: Double
         public var weeksToBid: Int
@@ -78,7 +73,6 @@ public struct ProjectBoard: Equatable {
     public var managerBids = true
     public var hasManager = false
     public var outstandingPayments = 0.0
-    /// Last week's figures.
     public var lastWeekHoursWorked = 0.0
     public var lastWeekRequests = 0
     public var lastWeekTaken = 0
@@ -87,7 +81,6 @@ public struct ProjectBoard: Equatable {
 public extension GameEngine {
     enum DevelopmentStart: Equatable { case started, notEnoughCash, loanRefused, notAvailable }
 
-    /// Buy land and start a development. `financed`: a construction loan for most of the cost. Original: `devsheet` / `FAM.dev.start`.
     @discardableResult
     mutating func startDevelopment(companyID: Int, size: Double, financed: Bool) -> DevelopmentStart {
         var out = DevelopmentStart.notAvailable
@@ -103,7 +96,6 @@ public extension GameEngine {
         return out
     }
 
-    /// What a development of this size would cost, for the sheet that starts one.
     func developmentQuote(companyID: Int, size: Double, financed: Bool) -> ProjectDeveloper.Quote? {
         guard let co = state.company(companyID), let bd = data.catalog[co.type], ProjectModel.isDeveloper(bd) else { return nil }
         return ProjectDeveloper.quote(co, bd, size: size, financed: financed, world: World(state: state, data: data), homeCurrency: homeCurrency)
@@ -113,7 +105,6 @@ public extension GameEngine {
         update { s, _, _ in ProjectDeveloper.setPriceMultiplier(&s, companyID: companyID, projectID: projectID, multiplier: multiplier) }
     }
 
-    /// Send a bid for a tender: price as a share of the list price, and a quality commitment (costs a little more to deliver).
     @discardableResult
     mutating func bidOnTender(companyID: Int, tenderID: Int, priceFactor: Double, higherQuality: Bool) -> ProjectTenders.BidResult {
         var out = ProjectTenders.BidResult.closed
@@ -121,18 +112,15 @@ public extension GameEngine {
         return out
     }
 
-    /// `unchanged` means the bid could not be taken back: the bidding has closed, or it was never there.
     @discardableResult
     mutating func withdrawBid(companyID: Int, tenderID: Int) -> SettingResult {
         applySetting(probe: { .object($0.rest) }) { s, _, _ in ProjectTenders.withdrawBid(&s, companyID: companyID, tenderID: tenderID) }
     }
 
-    /// Should the manager bid for tenders at list price when there is room? Original: `tnd56auto`.
     mutating func setManagerBids(companyID: Int, on: Bool) {
         update { s, _, _ in ProjectTenders.setManagerBids(&s, companyID: companyID, on: on) }
     }
 
-    /// Findings specific to project companies (nothing for other trades).
     func projectInsights(for co: Company) -> [Insight] {
         guard co.status == .open, let bd = data.catalog[co.type], bd.family == "project", let b = projectBoard(companyID: co.id) else { return [] }
         var out: [Insight] = []
@@ -159,7 +147,6 @@ public extension GameEngine {
         return out
     }
 
-    /// The order book, tenders and developments of a project company; nil for other trades.
     func projectBoard(companyID: Int) -> ProjectBoard? {
         guard let co = state.company(companyID), let bd = data.catalog[co.type], bd.family == "project" else { return nil }
         var b = ProjectBoard()

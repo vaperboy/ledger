@@ -3,17 +3,13 @@ import GameCore
 import Finance
 import Businesses
 
-/// Offers on a company from other players. The company has to be on the market (`SaleListings`) and shown to players (`PlayerDeals.showToPlayers`); the offers
-/// then sit beside the others and are accepted, countered or declined the same way. An offer stands for two weeks.
 extension CompanySale {
-    /// A player who offers to buy.
     public struct PlayerBuyer: Equatable, Sendable {
         public var name: String
         public var profileCode: String
         public init(name: String, profileCode: String) { self.name = name; self.profileCode = profileCode }
     }
 
-    /// Put the company up for sale and show it to other players for `days` days. A company already on the market is only shown.
     @discardableResult
     public static func startPlayerListing(_ s: inout GameState, companyID: Int, days: Int) -> Bool {
         guard PlayerDeals.offerDays.contains(days) else { return false }
@@ -23,7 +19,6 @@ extension CompanySale {
         return PlayerDeals.showToPlayers(&s, companyID: companyID, days: days)
     }
 
-    /// A player's offer arrives. Only while the company is shown to players, one open offer per player, and at most six offers at a time.
     @discardableResult
     public static func addPlayerOffer(_ s: inout GameState, companyID: Int, buyer: PlayerBuyer, price: Double, context fc: FinanceContext) -> Bool {
         guard price.isFinite, price > 0, !buyer.name.isEmpty, let until = PlayerDeals.playerListingUntil(s, companyID: companyID), until >= PlayerDeals.today(s),

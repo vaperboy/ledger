@@ -3,19 +3,11 @@ import GameCore
 import Countries
 import Finance
 
-/// What a manager does on their own in a store: set item prices inside a band around the market price, keep the shelves stocked to the company's stock
-/// policy, and run marketing under a monthly ceiling. The owner's order (`ManagerModel.Direction`) picks the band and the ceiling; the budget says whether
-/// the manager acts alone at all. A sales director takes over the ads and a marketing manager the prices (`ManagerHeads`). Every action is one plain
-/// sentence in the manager's weekly report (`ManagerVoice.record`).
 enum ManagerStore {
-    /// Weeks between two price reviews and between two marketing reviews of one store.
     static let reviewWeeks = 4
-    /// One price step against the market price (0.05 = 5%); the band is one step either side.
     static let priceStep = 0.05
-    /// Awareness from which a manager stops buying more of it: a name that is not unknown (the old manager's own bar), or 70 when the owner asked for growth.
     static let steadyKnownEnough = 26.0
     static let knownEnoughGrowing = 70.0
-    /// Weekly ad budget (in the base currency) a manager does not go above on their own unless the owner asked for growth.
     static let steadyAdBudget = 1500.0
 
     static func awarenessGoal(_ co: Company) -> Double { ManagerModel.direction(of: co) == .grow ? knownEnoughGrowing : steadyKnownEnough }
@@ -33,9 +25,6 @@ enum ManagerStore {
         marketing(&s, ci, by: ManagerHeads.actor(s, co, "sales", manager: n).tag, bd, utilisation: util, data: data)
     }
 
-    // MARK: Prices
-
-    /// Move every item's price one step towards the band edge the owner's direction calls for. Nothing happens while the owner or a market advisor sets prices.
     static func pricing(_ s: inout GameState, _ ci: Int, by tag: String, data: GameData) {
         let co = s.companies[ci]
         guard case .manager = SalesItems.priceSetter(s, co) else { return }
@@ -59,15 +48,11 @@ enum ManagerStore {
         names.count <= 2 ? names.joined(separator: " and ") : "\(names[0]), \(names[1]) and \(names.count - 2) more"
     }
 
-    // MARK: Marketing
-
-    /// Most a store spends on marketing a week: the direction's share of a month's revenue, spread over the weeks.
     static func weeklyCeiling(_ co: Company) -> Double {
         ManagerModel.recentMonthlyRevenue(co) * marketingShare(co) * 12 / 52
     }
     static func marketingShare(_ co: Company) -> Double { ManagerModel.direction(of: co)?.marketingShare ?? ManagerModel.Direction.steadyMarketingShare }
 
-    /// Raise the store's ad budget one step while it is under the ceiling and people still do not know the place, or bring it back under the ceiling.
     static func marketing(_ s: inout GameState, _ ci: Int, by tag: String, _ bd: Trade, utilisation util: Double, data: GameData) {
         let co = s.companies[ci]
         let ch = bd.audience > 0.5 ? "google" : "meta"
@@ -81,7 +66,6 @@ enum ManagerStore {
         let name = ch == "google" ? "Google" : "Meta"
         let share = Int(saturating: jsRound(marketingShare(co) * 100))
         if now > 0 && now > room {
-            // over the ceiling: back to the largest step under it, or off, once the campaign's minimum run is over
             guard Double(s.week) >= (mkt[ch]["lock"].isNull ? 0 : mkt[ch]["lock"].double) else { return }
             if let lower = steps.last(where: { $0 <= room }) {
                 mkt[ch]["b"] = .number(lower)
@@ -93,7 +77,6 @@ enum ManagerStore {
             s.companies[ci].set("mkt", mkt)
             return
         }
-        // Without a growth order the manager stays at one modest campaign: unbounded ads would turn a thinly known, capacity-light trade into a get-rich path.
         let top = ManagerModel.direction(of: co) == .grow ? Double.infinity : cur.scaledPrice(steadyAdBudget)
         guard co.awareness < awarenessGoal(co), util < 0.95, co.cash > ManagerModel.weekCost(s, co, data: data) * 6, let next = steps.first(where: { $0 > now }), next <= room, next <= top else { return }
         if mkt[ch].isNull { mkt[ch] = .object(["b": .number(next), "since": .number(Double(s.week)), "lock": .number(Double(s.week + 4))]) } else { mkt[ch]["b"] = .number(next) }

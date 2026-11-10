@@ -2,8 +2,6 @@ import Foundation
 import GameCore
 import Countries
 
-/// The chain as its own thing: a brand with a head office that owns the name, the standards and the shared services, above locations that only
-/// trade under it. Read-only: the data is the chain's record (`Chains`), its papers, its executives and its locations.
 public enum ChainIdentity {
     public struct Service: Equatable, Sendable, Identifiable {
         public var id: String
@@ -15,12 +13,10 @@ public enum ChainIdentity {
     public struct HeadOffice: Equatable, Sendable {
         public var chainID: Int
         public var brand: String
-        /// "Khan Shop head office"
         public var title: String
         public var tradeID: String
         public var locations: Int
         public var cities: Int
-        /// 0 to 100, how much the name is worth.
         public var brandScore: Double
         public var ceoName: String?
         public var chainManagerName: String?

@@ -6,7 +6,6 @@ import Businesses
 @testable import Simulation
 @testable import Businesses
 
-/// The three middle-man trades that earn commission: travel agency, insurance broker, finance and mortgage broker (Brokers.swift).
 final class BrokersTests: XCTestCase {
     private let ids = ["travel", "insbroker", "finbroker"]
 
@@ -26,8 +25,6 @@ final class BrokersTests: XCTestCase {
 
     private func noGaps(_ e: GameEngine, _ what: String) { XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(what): \(Ledger.gaps(e.state))") }
 
-    // MARK: Data
-
     func testTradesAreWiredIntoTheTables() throws {
         let cat = try TradeCatalog.bundled()
         let docs = cat.tables.raw["DOCS"], kinds = cat.tables.raw["EQ_KINDS"]
@@ -46,7 +43,6 @@ final class BrokersTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(cat["travel"]).equipment.contains { $0.id == "bs" && $0.isRequired })
         XCTAssertTrue(try XCTUnwrap(cat["insbroker"]).equipment.contains { $0.id == "cmp" && $0.isRequired })
         XCTAssertTrue(try XCTUnwrap(cat["travel"]).documents.contains("travel_bond"))
-        // The sellers can be paid on commission (commission only, base and commission).
         for (trade, role) in [("travel", "tcons"), ("insbroker", "insadv"), ("finbroker", "mortadv")] {
             XCTAssertTrue(cat.tables.salesRoles.contains(role))
             XCTAssertEqual(PayPlans.modes(role: role, trade: trade, salesRoles: cat.tables.salesRoles), ["fix", "mix", "com"])
@@ -70,8 +66,6 @@ final class BrokersTests: XCTestCase {
             XCTAssertGreaterThan(l["decline"].double, 0)
         }
     }
-
-    // MARK: Rules
 
     func testTravelPaysAfterTheTripAndCancelledBookingsEarnOnlyTheFee() throws {
         var (e, id) = try game("travel")
@@ -122,7 +116,6 @@ final class BrokersTests: XCTestCase {
             let cfg = Brokers.config["trades"]["insbroker"]
             let bd = data.catalog["insbroker"]!
             var b = Brokers.Book()
-            // 100 motor policies of 7,000 sold now: 12 percent first year, 6 percent renewal.
             b.cohorts = [Brokers.Cohort(line: "motor", start: s.week - 26, count: 100, premium: 700_000, first: 84_000, recurring: 42_000, index: s.economy.inflationIndex)]
             let cash0 = s.companies[i].cash
             let rev = Brokers.settleInsurance(&s, i, cfg, &b, quality: 0.5, active: [])
@@ -131,7 +124,6 @@ final class BrokersTests: XCTestCase {
             XCTAssertEqual(b.cohorts[0].count, 100 * (1 - f), accuracy: 1e-9)
             XCTAssertEqual(cash0 - s.companies[i].cash, 84_000 * f * 0.5, accuracy: 1.0, "unearned half of the commission on the cancelled share is clawed back")
             XCTAssertGreaterThan(b.stat["claw"] ?? 0, 0)
-            // A year on: the renewal pays the renewal commission on what is kept.
             b.cohorts = [Brokers.Cohort(line: "motor", start: s.week - 52, count: 100, premium: 700_000, first: 0, recurring: 42_000, index: s.economy.inflationIndex)]
             let renewed = Brokers.settleInsurance(&s, i, cfg, &b, quality: 0.5, active: [])
             XCTAssertEqual(renewed, 42_000 * 0.80, accuracy: 0.01)
@@ -147,7 +139,6 @@ final class BrokersTests: XCTestCase {
             let i = s.companyIndex(id)!
             let cfg = Brokers.config["trades"]["finbroker"]
             var b = Brokers.Book()
-            // 10 mortgages of 3,000,000 with 0.2 percent trail; the procuration commission was 20,000 each.
             b.cohorts = [Brokers.Cohort(line: "mort", start: s.week - 13, count: 10, premium: 30_000_000, first: 200_000, recurring: 60_000, index: 1)]
             let cash0 = s.companies[i].cash
             let rev = Brokers.settleLoans(&s, i, cfg, &b)
@@ -165,7 +156,7 @@ final class BrokersTests: XCTestCase {
         e.update { s, data, _ in
             let co = s.companies[s.companyIndex(id)!]
             let cfg = Brokers.config["trades"]["finbroker"]
-            let line = cfg["lines"][3]   // business loans
+            let line = cfg["lines"][3]
             for (rate, which) in [(0.02, 0), (0.09, 1)] {
                 s.economy.policyRate = rate
                 var b = Brokers.Book()
@@ -178,10 +169,6 @@ final class BrokersTests: XCTestCase {
         XCTAssertGreaterThan(cheap, 400, "about a quarter are declined")
     }
 
-    // MARK: Two years, owner and manager
-
-    /// A competent owner (everything set up with the quick set-up, a manager hired) trades two game years. Prints the result; asserts the company
-    /// survives, the money books balance, and the book of business exists. No clamps: the profit is what it is.
     func testEndToEndTwoYears() throws {
         let seeds = (ProcessInfo.processInfo.environment["LEDGER_BROKERS_SEEDS"]?.split(separator: ",").compactMap { Int($0) }) ?? [11]
         for trade in (ProcessInfo.processInfo.environment["LEDGER_BROKERS_COMPARE"]?.split(separator: ",").map(String.init) ?? ids) { for seed in seeds {

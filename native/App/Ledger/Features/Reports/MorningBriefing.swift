@@ -4,14 +4,12 @@ import Countries
 import Events
 import Simulation
 
-/// One "what changed" line of the morning briefing.
 private struct BriefingLine: Identifiable {
     var id: Int
     var text: String
     var tint: Color
 }
 
-/// The insight of the day: one real thing worth knowing, with an optional button that opens the screen it is about.
 private struct BriefingInsight {
     var label: String
     var text: String
@@ -20,10 +18,6 @@ private struct BriefingInsight {
     var action: Suggestion.Action?
 }
 
-/// The morning briefing after an ordinary day: the day's change in net worth and cash counts up, two or three lines say what changed and why,
-/// then one insight of the day (a suggestion, the busiest company or the week's close) with an optional button. The parts arrive one after
-/// the other and Continue fades in at about 1.4 s; one tap on the card finishes the reveal at once and Continue follows 0.4 s later.
-/// Under Reduce Motion everything is there at once. A quiet day shows the compact version (two lines) with the same pacing.
 struct DailyReportPopup: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -31,8 +25,6 @@ struct DailyReportPopup: View {
     @State private var revealed: Int = 0
     @State private var showContinue: Bool = false
     @State private var skipped: Bool = false
-
-    // MARK: Content from real data
 
     private var lines: [BriefingLine] {
         if digest.isEmpty { return [] }
@@ -70,15 +62,12 @@ struct DailyReportPopup: View {
         return BriefingInsight(label: "Coming up", text: "The week closes \(when) and the weekly report follows.", tint: Theme.gold, buttonTitle: nil, action: nil)
     }
 
-    // MARK: Pacing
-
     private var instant: Bool { reduceMotion || skipped }
 
     private func visible(_ index: Int) -> Bool { reduceMotion || revealed > index }
 
     private static let barDuration: Double = 1.6
 
-    /// The time (0...1 of the bar) at which the eased bar has reached `p`: the inverse of a smooth ease-in-out.
     private func timeFor(progress p: Double) -> Double {
         var lo: Double = 0
         var hi: Double = 1
@@ -118,8 +107,6 @@ struct DailyReportPopup: View {
         }
     }
 
-    // MARK: Views
-
     var body: some View {
         let list: [BriefingLine] = lines
         let total: Int = list.count + 2
@@ -138,7 +125,6 @@ struct DailyReportPopup: View {
                 .contentShape(Rectangle())
                 .onTapGesture { skip(count: total) }
             }
-            // Continue is pinned and in the layout from the start (only faded), so the card never reflows when it appears.
             .popupFooter {
                 PopupOptionButton(title: "Continue", highlighted: true, identifier: "daily-continue") { store.dismissDailySheet() }
                     .opacity(canContinue ? 1 : 0)
@@ -207,7 +193,6 @@ struct DailyReportPopup: View {
     }
 }
 
-/// A briefing part: hidden (but taking its space, so nothing jumps) until its turn, then it fades and rises a few points in.
 private struct BriefingStep: ViewModifier {
     var shown: Bool
     func body(content: Content) -> some View {

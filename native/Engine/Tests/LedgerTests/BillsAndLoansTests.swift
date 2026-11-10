@@ -5,8 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Missed bills, missed loan instalments, an unpaid VAT return, rent between two companies of yours, and loan rates abroad.
-/// Written by tracing the code (no Swift toolchain was available when they were added).
 final class BillsAndLoansTests: XCTestCase {
     private func cafe(seed: Int = 7) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
@@ -17,7 +15,6 @@ final class BillsAndLoansTests: XCTestCase {
         return (e, id)
     }
 
-    /// Leaves the company with exactly zero spendable money (cash at the bottom of its overdraft room).
     private func drain(_ s: inout GameState, _ id: Int, _ ctx: FinanceContext) {
         let i = s.companyIndex(id)!
         let room = ctx.overdraftRoom(s.companies[i], s)
@@ -28,11 +25,9 @@ final class BillsAndLoansTests: XCTestCase {
         Ledger.moveRaw(&s, .company(id), amount - s.companies[s.companyIndex(id)!].cash)
     }
 
-    // MARK: (1) Late fees and supplier cut-off
-
     func testMissedSupplierBillsCarryLateInterestAndCutOffSuppliers() throws {
         var (e, id) = try cafe(seed: 21)
-        e.update { s, _, _ in s.week = max(s.week, 30) }   // suppliers cut a buyer off only from week 27 (balance.json firstYear)
+        e.update { s, _, _ in s.week = max(s.week, 30) }
         var cash0 = 0.0
         e.update { s, _, ctx in
             drain(&s, id, ctx)
@@ -66,7 +61,6 @@ final class BillsAndLoansTests: XCTestCase {
         co = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(co.int("supCut"), 2, "third miss: no stock at all")
 
-        // Recovery: pay everything.
         e.update { s, _, ctx in
             fund(&s, id, 50_000_000)
             let i = s.companyIndex(id)!
@@ -89,8 +83,6 @@ final class BillsAndLoansTests: XCTestCase {
         withArrears.arrears["rent"] = 120
         XCTAssertEqual(Payday.PayrollConfig(json: withArrears.json).arrears["rent"], 120)
     }
-
-    // MARK: (4) Rent: the landlord is paid when the tenant pays
 
     func testLandlordIsPaidWhenTenantPaysNotWeekly() throws {
         var (e, tenant) = try cafe(seed: 31)
@@ -138,8 +130,6 @@ final class BillsAndLoansTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    // MARK: (2) Company loan instalments
-
     private func addLoan(_ s: inout GameState, company id: Int, balance: Double = 1_000_000) -> Int {
         var l = Loan(raw: [:])
         l.id = s.makeID(); l.kind = "biz"; l.name = "Business loan"; l.balance = balance; l.originalAmount = balance
@@ -175,7 +165,6 @@ final class BillsAndLoansTests: XCTestCase {
         }
         XCTAssertTrue(e.state.inbox.contains { $0.title.hasPrefix("Bank calls the loan") })
 
-        // Money comes in, the next instalment is paid: back on track.
         e.update { s, _, ctx in
             fund(&s, id, 100_000_000)
             Banking.collectMonthlyInstalments(state: &s, context: ctx)
@@ -212,8 +201,6 @@ final class BillsAndLoansTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    // MARK: (3) VAT return
-
     func testUnpaidVatReturnIsLateAndPenalised() throws {
         var (e, id) = try cafe(seed: 51)
         var filingWeek = 0, otherWeek = 0
@@ -238,7 +225,6 @@ final class BillsAndLoansTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(co.unpaidMonths, 1, "counts as unpaid")
         }
         XCTAssertTrue(e.state.inbox.contains { $0.title.hasPrefix("VAT return not paid") })
-        // Interest runs, and paying it clears everything.
         e.update { s, data, ctx in
             s.week = otherWeek
             let i = s.companyIndex(id)!
@@ -254,8 +240,6 @@ final class BillsAndLoansTests: XCTestCase {
         }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
-
-    // MARK: (5) Loan rates abroad
 
     func testCompanyLoanRateUsesItsOwnCountry() throws {
         var (e, id) = try cafe(seed: 61)

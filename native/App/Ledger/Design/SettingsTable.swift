@@ -1,28 +1,20 @@
 import SwiftUI
 
-/// How a settings row opens: a small sheet for a simple change, or a full-screen page for a bigger decision.
 enum SettingOpens {
     case sheet, page
     var glyph: String { self == .sheet ? Glyph.settings : Glyph.chevron }
 }
 
-/// One row of a settings table: the setting's name with a grey note, its current value on the right, and a mark for what a tap opens
-/// (a chevron for a full page, the small settings mark for a sheet). Used by the company tabs that replaced their second row of
-/// sub-tabs with one page. Money in `value` must already come through the store or currency formatter.
 struct SettingsTableRow: View {
     var title: String
     var note: String = ""
     var value: String
     var valueTint: Color = Theme.ivory
     var opens: SettingOpens = .page
-    /// With a glyph the row takes the overview-table look: an icon circle in front, an optional coloured change line under the value,
-    /// and a chevron at the end for both popups and pages.
     var glyph: String? = nil
-    /// A picture slot in place of the icon circle (same 34 pt height, so the row does not change height).
     var thumb: ThumbSpec? = nil
     var change: String = ""
     var changeTint: Color = Theme.gain
-    /// A row that only shows a value: no button, no chevron, nothing opens.
     var readOnly = false
     var action: () -> Void
 
@@ -84,7 +76,6 @@ struct SettingsTableRow: View {
     }
 }
 
-/// The settings list of the overview-table look: one surface group (no border) with a caps label and rows made with `SettingsTableRow(glyph:)`.
 struct OverviewSettingsCard<Content: View>: View {
     var heading: String
     @ViewBuilder var content: () -> Content
@@ -99,7 +90,6 @@ struct OverviewSettingsCard<Content: View>: View {
     }
 }
 
-/// The table around settings rows with its caps header (a surface group, flat inside another group).
 struct SettingsTable<Content: View>: View {
     var heading: String = "Setting"
     @ViewBuilder var content: () -> Content
@@ -112,7 +102,6 @@ struct SettingsTable<Content: View>: View {
     }
 }
 
-/// A full-screen page for one bigger decision: scrolling content under the new-look header (round back button, title, subtitle).
 struct SettingsPage<Content: View>: View {
     var title: String
     var subtitle: String

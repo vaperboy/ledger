@@ -1,7 +1,6 @@
 import XCTest
 @testable import Ledger
 
-/// Request building, profile decoding with hidden fields, and server error mapping for the Supabase client.
 final class SupabaseWireTests: XCTestCase {
     private let base = URL(string: "https://example.supabase.co")!
 

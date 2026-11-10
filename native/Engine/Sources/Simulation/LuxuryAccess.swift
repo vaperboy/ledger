@@ -3,17 +3,13 @@ import GameCore
 import Countries
 import Businesses
 
-/// Entry to the Luxury phone app (a private-sales app for the very rich) and the financed purchase of a piece.
 public enum LuxuryGate: Equatable, Sendable {
     case notApplied
     case accepted
-    /// Declined in game week `week`; may apply again from the following week.
     case declined(week: Int)
 }
 
 public extension GameEngine {
-    /// Net worth needed, in accounting units: 10 million in US dollars or in euros (whichever is the lower), converted at today's rates.
-    /// The screens never show it.
     var luxuryGateThreshold: Double {
         let rates = ExchangeRates(drift: state.exchangeRates.values)
         let perCode = ["USD", "EUR"].compactMap { code -> Double? in
@@ -22,7 +18,6 @@ public extension GameEngine {
         return perCode.min() ?? 10_000_000
     }
 
-    /// The stored result: accepted stays accepted, a decline is remembered with its week.
     var luxuryGate: LuxuryGate {
         let g = state.rest["luxGate"] ?? .null
         switch g["st"].string {
@@ -32,7 +27,6 @@ public extension GameEngine {
         }
     }
 
-    /// Whether the player may send an application now (never applied, or declined in an earlier week).
     var luxuryGateCanApply: Bool {
         switch luxuryGate {
         case .accepted: return false
@@ -41,11 +35,8 @@ public extension GameEngine {
         }
     }
 
-    /// The pure check: is this net worth enough?
     func luxuryGatePasses(netWorth: Double) -> Bool { netWorth >= luxuryGateThreshold }
 
-    /// Apply for entry. Accepted if net worth reaches the threshold; the result is saved. Does nothing once accepted or if a decline is
-    /// from this same week.
     @discardableResult
     mutating func applyForLuxuryAccess() -> LuxuryGate {
         guard luxuryGateCanApply else { return luxuryGate }
@@ -58,9 +49,6 @@ public extension GameEngine {
         return luxuryGate
     }
 
-    // MARK: Financed purchase
-
-    /// Share of the price paid in cash when a piece is financed.
     static var luxuryDownShare: Double { 0.2 }
     static var luxuryFinanceTermMonths: Int { 60 }
 
@@ -71,7 +59,6 @@ public extension GameEngine {
         public var monthlyPayment: Double
         public var yearlyRate: Double
         public var termMonths: Int
-        /// Cash needed at closing: the deposit plus the bank's arrangement fee.
         public var dueAtClosing: Double { down + fee }
         public var refusal: String?
     }
@@ -86,8 +73,6 @@ public extension GameEngine {
 
     enum LuxuryFinanceResult: Equatable, Sendable { case ok, refused(String), notEnoughCash, unknownItem }
 
-    /// Buy with a loan for 80%: the bank's own application (same checks and fee as the Bank app), then the purchase. Nothing happens
-    /// if the cash for the deposit and fee is missing or the bank refuses.
     @discardableResult
     mutating func buyLuxuryFinanced(itemID: String) -> LuxuryFinanceResult {
         guard let it = Luxury.item(itemID), let q = luxuryFinanceQuote(itemID: itemID) else { return .unknownItem }
@@ -103,7 +88,6 @@ public extension GameEngine {
 }
 
 public extension GameEngine {
-    /// What selling a piece pays today after the selling costs; nil when it cannot be sold now (lent to a museum).
     func luxurySellQuote(pieceID: Int) -> Double? {
         guard let p = luxuryPieces.first(where: { $0.id == pieceID }) else { return nil }
         if p.use == "museum" && p.until > state.week { return nil }

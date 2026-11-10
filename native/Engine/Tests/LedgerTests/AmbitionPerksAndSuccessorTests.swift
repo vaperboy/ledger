@@ -5,7 +5,6 @@ import Businesses
 import Events
 import Simulation
 
-/// Ambition perks reaching loans and quality, the finance manager negotiating a raise, and the "find a successor" search.
 final class AmbitionPerksAndSuccessorTests: XCTestCase {
     func testFinancierPerkCutsTheLoanMarginAndRanksAreReal() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 21)
@@ -19,8 +18,6 @@ final class AmbitionPerksAndSuccessorTests: XCTestCase {
         XCTAssertEqual(Ambitions.loanMarginCut(e.state, e.data), 0.003, accuracy: 1e-9)
         let perked = Banking.offer(kind: "cons", amount: 1000, company: nil, state: e.state, netWorth: 1_000_000, context: e.context).margin
         XCTAssertEqual(plain - perked, 0.003, accuracy: 1e-9, "the engine's lending hook applies the perk")
-        // A milestone about your rank among all companies now reads a real place (you run a company, so not the 999 of "no ranking").
-        // Only an open (or closed) company counts in the table, so open the one still being set up.
         e.update { s, _, _ in for i in s.companies.indices { s.companies[i].status = .open } }
         let rank = try XCTUnwrap(e.yourRanking(scope: .country, metric: .revenue))
         XCTAssertGreaterThanOrEqual(rank.rank, 1)
@@ -35,7 +32,6 @@ final class AmbitionPerksAndSuccessorTests: XCTestCase {
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: id, monthlyWage: cands[0].askingMonthlyWage * 1.2, profitBonus: 0.05), .ok)
         XCTAssertEqual(e.state.company(id)?.managerProfitBonus ?? 0, 0.05, accuracy: 1e-9)
-        // The manager gives notice: the message offers a search, and answering it pays for one and keeps the candidates.
         e.update { s, _, _ in ManagerModel.resign(&s, companyIndex: s.companyIndex(id)!, why: "a better offer") }
         let ask = try XCTUnwrap(e.openDecisions.first { $0.actionID == ManagerTargets.successorAction })
         let cash0 = e.state.company(id)?.cash ?? 0
@@ -46,7 +42,6 @@ final class AmbitionPerksAndSuccessorTests: XCTestCase {
         XCTAssertEqual(e.findSuccessor(companyID: id)?.count, 4)
         XCTAssertEqual(e.state.company(id)?.cash ?? 0, cash1, "a search already running is not paid twice")
 
-        // The finance manager who runs a holding negotiates its raise: better terms than doing it yourself.
         let before = e.raisePlan(holdingID: id, goal: 5_000_000, publicOffering: false)
         XCTAssertNil(before.manager)
         var fin = 0

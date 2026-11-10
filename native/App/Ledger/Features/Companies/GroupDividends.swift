@@ -4,15 +4,11 @@ import Countries
 import Businesses
 import Simulation
 
-/// Group > Dividends: the dividend desk. Nothing is paid by itself; the owner picks a company or a holding and a share of what it may pay.
 struct GroupDividendsPage: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
-    /// Only these companies (an entity page); nil lists every company. Companies show as cards of their own unless `holding` names the
-    /// holding whose companies they are: then the page shows that holding's collect card.
     var scope: Set<Int>? = nil
     var holding: Int? = nil
-    /// One tight line per company, for the one-screen Money tab.
     var compact: Bool = false
     @State private var pending: PendingAction?
 
@@ -21,7 +17,6 @@ struct GroupDividendsPage: View {
     }
 
     private var compactBody: some View {
-        // A branch of a chain pays nothing on its own: dividends come from the chain company.
         let rows: [DividendRow] = engine.dividendRows().filter { (r: DividendRow) -> Bool in (scope == nil || scope!.contains(r.id)) && !engine.isBranch(companyID: r.id) }
         let hold: Company? = holding.flatMap { (id: Int) -> Company? in engine.state.company(id) }
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -40,7 +35,6 @@ struct GroupDividendsPage: View {
         .confirmAction($pending)
     }
 
-    /// One payable line: what may be paid, and a menu (half or all) behind the row, so the row stays one calm line.
     @ViewBuilder private func compactLine(_ text: String, payable: Bool, verb: String = "Pay", _ pick: @escaping (Double) -> Void) -> some View {
         if payable {
             Menu {

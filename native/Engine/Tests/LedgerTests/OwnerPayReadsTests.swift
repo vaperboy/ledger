@@ -5,7 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// The salary / dividend / retain comparison reuses the engine's own tax functions.
 final class OwnerPayReadsTests: XCTestCase {
     private func gameWithCompany() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)

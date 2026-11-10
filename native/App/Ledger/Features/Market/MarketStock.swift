@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// One share on the exchange: its price line, the figures, and the order ticket. The ticket says, before anything is placed, what will
-/// happen if you place it, in the engine's own refusal words when it would be turned down.
 struct MarketStockPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -40,8 +38,6 @@ struct MarketStockPage: View {
             }
         }
     }
-
-    // MARK: Parts
 
     private func hero(_ e: GameEngine, _ row: ExchangeRow, _ cur: Currency) -> some View {
         let history: [Double] = ExchangeUI.history(e, row.id)
@@ -106,7 +102,6 @@ struct MarketStockPage: View {
         .overlay(alignment: .bottom) { Rectangle().fill(focus == focused ? P.focus : P.hairline).frame(height: focus == focused ? 1 : 0.5) }
     }
 
-    /// Shortcuts for the share count: what you may sell, or a round lot to buy.
     private func chips(_ row: ExchangeRow, _ e: GameEngine) -> some View {
         let lots: [Int] = side == .sell ? sellLots(row, e) : [10, 100, 1000]
         return HStack(spacing: Theme.Space.s) {
@@ -148,15 +143,12 @@ struct MarketStockPage: View {
             .accessibilityIdentifier("ticket-limit-\(title)")
     }
 
-    // MARK: What will happen
-
     private func parsed(_ cur: Currency) -> (shares: Int, limit: Double) {
         let n: Int = Int(sharesText.filter { (c: Character) -> Bool in c.isNumber }) ?? 0
         let cleaned: String = limitText.replacingOccurrences(of: ",", with: ".").filter { (c: Character) -> Bool in c.isNumber || c == "." }
         return (n, (Double(cleaned) ?? 0) * cur.rate)
     }
 
-    /// The engine tries the order on a copy of the game; nothing is placed. A refusal is its own words.
     private func trial(_ e: GameEngine, _ cur: Currency) -> OrderResult {
         let p = parsed(cur)
         var copy: GameEngine = e
@@ -186,7 +178,6 @@ struct MarketStockPage: View {
         }
     }
 
-    /// The engine's refusal words, with the figure it leaves out.
     private func refusalText(_ why: OrderRefusal, _ e: GameEngine, _ cur: Currency) -> String {
         switch why {
         case .outsideBand(let lo, let hi): return why.words + " Today that is " + ExchangeUI.price(lo, cur) + " to " + ExchangeUI.price(hi, cur) + "."
@@ -221,8 +212,6 @@ struct MarketStockPage: View {
         }
         return out
     }
-
-    // MARK: Place and cancel
 
     private func placeBar(_ e: GameEngine, _ row: ExchangeRow, _ cur: Currency) -> some View {
         let result: OrderResult = trial(e, cur)
@@ -263,9 +252,6 @@ struct MarketStockPage: View {
         }
     }
 
-    // MARK: Start values
-
-    /// The limit starts at the last close, in the player's currency without a symbol.
     private func seed(_ row: ExchangeRow, _ cur: Currency) {
         guard !seeded else { return }
         seeded = true
@@ -273,7 +259,6 @@ struct MarketStockPage: View {
         if row.kind == "own" { side = .sell }
     }
 
-    /// The price as typed, rounded the way the caller needs so the band edges stay inside the band.
     private static func plain(_ v: Double, _ cur: Currency, _ rule: FloatingPointRoundingRule) -> String {
         let local: Double = v / cur.rate
         if abs(local) >= 100 { return String(format: "%.0f", local.rounded(rule)) }

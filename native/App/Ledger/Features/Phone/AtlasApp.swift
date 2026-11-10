@@ -4,10 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Atlas Insurance (Phone, blue): the insurance of your companies as an insurer's app. The coverage screen that used to sit under Manage
-/// ("Insurance and advisers": policies, insurer, law firm, accountant, security) moves here as it was and stays one tap away; around it the
-/// app has a home (premiums, your policies, up-to-date banner, Get a quote), a checkout (insured company, period, what is covered, payment,
-/// where the receipt goes) and "Insurance activated" with the policy number the engine recorded when the policy went on.
 struct AtlasApp: View {
     private let P = OutsidePalette.atlas
     @EnvironmentObject var store: GameStore
@@ -89,8 +85,6 @@ struct AtlasApp: View {
 
     private func money(_ v: Double, _ co: Company) -> String { store.short(v, in: co) }
 
-    // MARK: Home
-
     private func homeView(_ e: GameEngine, _ co: Company) -> some View {
         let o: CoverageOverview? = e.coverageOverview(companyID: co.id)
         let live: [Company] = e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }
@@ -111,7 +105,6 @@ struct AtlasApp: View {
         .accessibilityIdentifier("atlas-home")
     }
 
-    /// How covered the company is (policies in force out of those it can have), what that costs a year, and the one way to add cover.
     private func coverageHero(_ co: Company, _ o: CoverageOverview) -> some View {
         let yearly: Double = o.weeklyPremiums * 52
         let off: Int = o.policies.count - o.activeCount
@@ -133,7 +126,6 @@ struct AtlasApp: View {
         }
     }
 
-    /// The accountant, one row: who keeps the books and their fee; it opens the advisers page.
     private func adviserRow(_ e: GameEngine, _ co: Company) -> some View {
         let now: AdviserOption? = e.adviserChoices(companyID: co.id, kind: .accountant).first { (a: AdviserOption) -> Bool in a.isCurrent }
         return ShopSection(title: "Advisers") {
@@ -178,7 +170,6 @@ struct AtlasApp: View {
         }
     }
 
-    /// The product's card picture from the items sheet (clipped, rounded); the shield icon stays while the product has no picture.
     @ViewBuilder private func policyIcon(_ p: InsurancePolicyRow, size: CGFloat, glyphSize: CGFloat, tint: Color) -> some View {
         let key: String = ArtLibrary.itemKey(group: "insurance", familyKey: p.id, seed: p.id) ?? ""
         #if canImport(UIKit)
@@ -232,7 +223,6 @@ struct AtlasApp: View {
         }
     }
 
-    /// Cancels a policy that is in force. It is not linked to a company tab: it is done here, in the app.
     private func askToCancel(_ co: Company, _ p: InsurancePolicyRow) {
         let id: Int = co.id
         let name: String = p.name
@@ -251,8 +241,6 @@ struct AtlasApp: View {
         if receiptID == 0 { receiptID = companyID }
         step = .checkout
     }
-
-    // MARK: Checkout
 
     private func checkoutView(_ e: GameEngine, _ co: Company) -> some View {
         guard let o = e.coverageOverview(companyID: co.id), let p = o.policies.first(where: { (x: InsurancePolicyRow) -> Bool in x.id == policyID }) else {
@@ -326,8 +314,6 @@ struct AtlasApp: View {
             }
         }
     }
-
-    // MARK: Insurance activated
 
     private func activatedView(_ e: GameEngine, _ co: Company) -> some View {
         let r: InsuranceOutcome? = outcome

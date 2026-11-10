@@ -3,14 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Financial, energy and group trades (insco, bank, fund, power, oilgas, hold). Each real product line of the company is an item:
-/// an insurer's covers (premium, expected claims, reserves), a bank's loan types and deposit accounts (rate against funding cost and credit loss),
-/// a fund's fee classes (AUM, fee, market exposure), a power producer's tariffs (price per MWh against the cost of generating it), an oil company's
-/// fields (price per barrel against lifting cost, depletion and the oil price exposure) and a holding's group services (cost-plus fee per unit).
-/// The money stays where it was: `FinanceModel`, `EnergyModel` and `HoldingModel` book premiums, interest, fees, claims, losses and barrels exactly as before,
-/// and the items split that money by product. Nothing here moves cash. The overhead (wages, premises, interest, depreciation not booked to a product)
-/// is the company's smoothed weekly expense less what the product lines carry directly, shared by value, so the item profits tie to the company's result.
-/// Save keys: `items27` (the products become items), `itemsv2` (their records), `w11` (set once set up).
 public enum FinanceItems {
     public static var trades: Set<String> { ItemTradeGroups.finance }
     static let allTrades: Set<String> = ["insco", "bank", "fund", "power", "oilgas", "hold"]
@@ -25,10 +17,8 @@ public enum FinanceItems {
 
     static func isManaged(_ id: String) -> Bool { id.hasPrefix(prefix) }
 
-    /// One cost or income line of a product, per unit sold (the unit of `Econ.priceUnit`).
     public struct Part: Equatable, Sendable { public var label: String; public var perUnit: Double }
 
-    /// A product line before the owner's price and the overhead are known. Money in accounting units, prices at the market (slider at 1).
     struct Base {
         var id: String, name: String, kind: String, unitWord: String, priceUnit: String
         var units = 0.0, volume = 0.0, price = 0.0
@@ -45,40 +35,28 @@ public enum FinanceItems {
         }
     }
 
-    // MARK: Economics of one product
-
     public struct Econ: Equatable, Sendable {
         public var itemID: String
         public var name: String
-        /// "Insurance cover", "Loan", "Deposit account", "Fee class", "Tariff", "Field", "Group service".
         public var kindLabel: String
-        /// "policy", "customer", "client", "MWh", "barrel", "subsidiary".
         public var unitWord: String
-        /// What the price is per: "a year", "MWh", "barrel" or "a week".
         public var priceUnit: String
         public var units: Double
-        /// Units sold in a week (policy-years, customer-years, MWh, barrels), the base of every per-unit figure.
         public var volume: Double
-        /// The owner's price and the market price, per unit.
         public var price: Double
         public var marketPrice: Double
-        /// Direct cost per unit by cause (claims, funding, credit loss, lifting, depreciation ...), and income per unit that is not the price (investment income).
         public var parts: [Part]
         public var credit: Double
         public var overheadPerUnit: Double
-        /// All-in cost per unit, which is also the price that breaks even.
         public var costPerUnit: Double
         public var margin: Double
         public var weeklyRevenue: Double
         public var weeklyCost: Double
         public var weeklyProfit: Double
-        /// Size of the book behind it: annual premium, loan balance, AUM, MWh a week, barrels in the ground, subsidiaries served.
         public var size: Double
         public var sizeLabel: String
-        /// Capital or reserves held against it.
         public var reserve: Double
         public var reserveLabel: String
-        /// Expected loss or exposure per unit, what it becomes in a bad year, and the relative swing of the result.
         public var riskLabel: String
         public var risk: Double
         public var stress: Double
@@ -103,7 +81,6 @@ public enum FinanceItems {
                     riskLabel: b.riskLabel, risk: b.risk, stress: b.stress, swing: b.swing, status: b.status, note: b.note)
     }
 
-    /// The company's smoothed weekly expense and what the product lines book directly (kept as an EMA so monthly bills do not make the costs jump).
     static func overheadTotal(_ co: Company) -> Double {
         let r = co.value(key)
         return max(0, r["exp"].double - r["dir"].double)
@@ -135,7 +112,6 @@ public enum FinanceItems {
         }
     }
 
-    /// Everything about the product behind one item, at the owner's current price. Nil for an item that is not a product line of these trades.
     public static func economics(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> Econ? {
         computed(s, companyID: companyID, data: data).first { $0.itemID == itemID }?.econ
     }
@@ -144,20 +120,14 @@ public enum FinanceItems {
         computed(s, companyID: companyID, data: data).map { $0.econ }
     }
 
-    /// Pure: the same product at a proposed price (accounting units, absolute), for the live slider. Margin, profit a week and the loss on a bad year.
     public static func atPrice(_ e: Econ, price p: Double) -> (profitPerUnit: Double, margin: Double, weeklyProfit: Double, badYearProfitPerUnit: Double) {
         let per = p - e.costPerUnit
         let bad = per - max(0, e.stress - e.risk)
         return (per, p > 0 ? per / p : 0, per * e.volume, bad)
     }
 
-    // MARK: Setting the products up as items
-
-    /// Put the company's product lines in as items and records and refresh their costs. Idempotent. The old titles-only items the products replace are dropped on the
-    /// first run (only when the company has products to show); items the owner added are kept.
     public static func sync(_ s: inout GameState, companyID: Int, data: GameData) {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open, let bd = data.catalog[s.companies[i].type], allTrades.contains(bd.id) else { return }
-        // Smoothed books first (the overhead of this week's costs uses them).
         let wk = Books.expenses(s.companies[i].books.week)
         let first = s.companies[i].value(key).isNull
         let prev = s.companies[i].value(key)
@@ -175,7 +145,6 @@ public enum FinanceItems {
         let old = SalesItems.items(co, bd)
         let existing = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
         var kept: [SalesItems.Item] = old.filter { !isManaged($0.id) && !(first && $0.id.hasPrefix("d")) }
-        // A company whose earlier items were all the old titles keeps no title items at all.
         let totalUnits = list.reduce(0.0) { $0 + max(0, $1.units) }
         let sumPrice = list.reduce(0.0) { $0 + (totalUnits > 0 ? max(0, $1.units) / totalUnits : 1 / Double(list.count)) * $1.price }
         var managed: [SalesItems.Item] = list.map { b in
@@ -212,7 +181,6 @@ public enum FinanceItems {
         refresh(&s, i, companyID: companyID, data: data)
     }
 
-    /// What the company books directly for its products in a week (claims, interest paid and credit losses, running and depreciation of the plant, lifting).
     static func directBooked(_ co: Company, _ bd: Trade) -> Double {
         let b = co.books.week
         switch bd.id {
@@ -223,7 +191,6 @@ public enum FinanceItems {
         }
     }
 
-    /// This week's line in every product's history, and the cost of one unit in the units of the item list so the shared price slider shows the true profit or loss.
     static func refresh(_ s: inout GameState, _ i: Int, companyID: Int, data: GameData) {
         let week = s.week
         let items = SalesItems.items(s.companies[i], data.catalog[s.companies[i].type]!)
@@ -234,7 +201,6 @@ public enum FinanceItems {
             let e = c.econ
             let line = ItemModels.Week(week: week, units: e.volume, revenue: e.weeklyRevenue, profit: e.weeklyProfit)
             if let last = r.history.last, last.week == week { r.history[r.history.count - 1] = line } else { ItemModels.log(&r, week: week, units: line.units, revenue: line.revenue, profit: line.profit) }
-            // The list price of the item is `mt * ratio` and the product's own price is `marketPrice`: the cost keeps its share of the price in both.
             let listMarket = mt * it.ratio
             r.fair = listMarket
             r.cost = e.marketPrice > 0 ? e.costPerUnit / e.marketPrice * listMarket : 0
@@ -242,7 +208,6 @@ public enum FinanceItems {
         }
     }
 
-    /// Weekly, after `ItemModels.weeklyTick`: set up new product lines, drop gone ones, refresh costs and the history line.
     public static func weekly(_ s: inout GameState, _ i: Int, data: GameData) {
         guard s.companies.indices.contains(i), trades.contains(s.companies[i].type), s.companies[i].status == .open else { return }
         sync(&s, companyID: s.companies[i].id, data: data)

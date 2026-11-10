@@ -7,7 +7,6 @@ import Simulation
 
 typealias ClubOffer = (id: Int, name: String, weekly: Double, years: Int)
 
-/// A football club's own section: the season and table, the budget, sponsors, staff and transfers.
 struct CompanyClub: View {
     enum Part: String, CaseIterable, Hashable { case season = "Season", budget = "Budget", people = "Staff", transfers = "Transfers", sponsors = "Sponsors", table = "Table" }
     @EnvironmentObject var store: GameStore
@@ -35,7 +34,6 @@ struct CompanyClub: View {
         }
     }
 
-    /// The season is the page; the club's other areas are rows of a table, each opening a page of its own.
     private func clubTable(_ c: FootballModel.Summary) -> some View {
         let pos: String = c.position > 0 ? "\(c.position) of \(c.clubs)" : "–"
         let cur: Currency = engine.currency(for: company)
@@ -357,7 +355,6 @@ struct CompanyClub: View {
     }
 }
 
-/// Buy a club in a country's top league, or found a new one in the second tier.
 struct ClubMarketView: View {
     @EnvironmentObject var store: GameStore
     @State private var country = ""
@@ -468,4 +465,3 @@ struct ClubMarketView: View {
         .centerSheetTitle(c.name)
     }
 }
-

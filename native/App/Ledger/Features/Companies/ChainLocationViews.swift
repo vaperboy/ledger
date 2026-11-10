@@ -5,9 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Plain words for who owns, runs and sits where in a chain, shared by the chain page, a store's Chain section and the company overview.
 enum ChainWords {
-    /// "Owned by you" or "Held by <holding> 82%"; `showFull` also states a full 100% ("Owned by you 100%").
     static func ownerText(_ e: GameEngine, companyID: Int, showFull: Bool = false) -> String {
         let o: OwnerLine = e.ownerLine(companyID: companyID)
         if let hid = o.holdingID, let hp = o.holdingPercent {
@@ -17,16 +15,13 @@ enum ChainWords {
         return "Owned by you " + StructureWords.percent(o.youPercent)
     }
 
-    /// The text with its first letter lowered, for use inside a line.
     static func lowered(_ s: String) -> String { s.prefix(1).lowercased() + s.dropFirst() }
 
-    /// Who runs a company day to day: the manager, else whoever stands above, else "you".
     static func runnerName(_ gm: GroupManagement?, companyID: Int) -> String {
         guard let line = gm?.lines.first(where: { (l: GroupManagement.Line) -> Bool in l.id == companyID }) else { return "you" }
         return line.runner?.name ?? line.above.first?.name ?? "you"
     }
 
-    /// A location's own name without the brand ("Soho" for "Khan Shop Soho"); the city when the name is only the brand.
     static func place(_ s: Chains.StoreLine, brand: String) -> String {
         let prefix: String = brand + " "
         if s.name.hasPrefix(prefix) && s.name.count > prefix.count { return String(s.name.dropFirst(prefix.count)) }
@@ -34,7 +29,6 @@ enum ChainWords {
     }
 }
 
-/// The chain's head office: the brand, who owns it, who runs it and what it provides to every location, apart from any one store.
 struct ChainHeadOffice: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -87,8 +81,6 @@ struct ChainHeadOffice: View {
     }
 }
 
-/// One location of a chain as a card: its place, health, who manages it, what it earns and the one thing to do next; sell, close and its own
-/// rules sit behind the "More" menu. The surface is the caller's.
 struct ChainLocationCard: View {
     var line: Chains.StoreLine
     var place: String
@@ -143,7 +135,6 @@ struct ChainLocationCard: View {
         return line.cityName.isEmpty ? status + rules : line.cityName + " \u{00B7} " + status + rules
     }
 
-    /// The manager's portrait and name, or "You run it" when nobody does.
     @ViewBuilder private var runner: some View {
         if let name = runnerName {
             HStack(spacing: Theme.Space.s) {
@@ -204,7 +195,6 @@ struct ChainLocationCard: View {
     }
 }
 
-/// The one way to grow a chain: pick a city, see the quote and the name, add the location.
 struct ChainAddLocation: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -250,7 +240,6 @@ struct ChainAddLocation: View {
         .confirmAction($pending)
     }
 
-    /// Opening goes to the chain's board: co-owners may vote it down, told in plain words; otherwise it opens as asked.
     private func open(_ q: ChainLocations.Quote) {
         if let head = summary.stores.first, let pct = ManagerModel.boardGate(engine.state, kind: "open", companyID: head.id) {
             Haptics.warning()

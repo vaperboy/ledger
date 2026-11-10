@@ -1,19 +1,5 @@
 import SwiftUI
 
-// Animation helpers (money, charts, goals, luxury). Each one is driven by a real value change and respects Reduce Motion.
-
-// MARK: Profit glow
-
-/// Retired decoration: the green sweep across a rising figure. Kept as a no-op so call sites compile; `moneyFlash` carries the change.
-struct ProfitGlow: ViewModifier {
-    var value: Double
-    func body(content: Content) -> some View { content }
-}
-
-// MARK: Chart draws itself
-
-/// Reveals a chart from left to right once, the first time it appears (`reveal`, 0.6 s; `duration` is kept for older call sites).
-/// Instant under Reduce Motion.
 struct DrawInOnce: ViewModifier {
     var duration: Double = Motion.revealSeconds
     @State private var progress: CGFloat = 0
@@ -33,27 +19,16 @@ struct DrawInOnce: ViewModifier {
     }
 }
 
-// MARK: Debt falling
-
-/// A debt or loan figure: rolls down and flashes red to neutral when it falls (`moneyFlash`), and the bar beside it should use `.animation(Motion.fill(...))`.
 extension Motion {
-    /// A progress bar or ring filling to a new value (`quick`, 0.22 s); nil under Reduce Motion.
     static func fill(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.quickAnimation }
-    /// A figure counting to a new value (`quick`, 0.22 s); nil under Reduce Motion.
     static func count(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.quickAnimation }
 }
 
-// MARK: Gold pulse
-
-/// Retired decoration: the gold ring pulse. Kept as a no-op so call sites compile.
 struct GoldPulse: ViewModifier {
     var trigger: Bool
     func body(content: Content) -> some View { content }
 }
 
-// MARK: Staggered reveal
-
-/// A section fades and rises a few points in, `index` x 40 ms after the page appears; first appearance only.
 struct StaggerReveal: ViewModifier {
     var index: Int
     @State private var shown: Bool = false
@@ -72,24 +47,11 @@ struct StaggerReveal: ViewModifier {
 }
 
 extension View {
-    /// Retired: does nothing (see `ProfitGlow`).
-    func profitGlow(_ value: Double) -> some View { modifier(ProfitGlow(value: value)) }
-    /// The chart draws itself from left to right the first time it appears (see `DrawInOnce`).
     func drawsItself(duration: Double = Motion.revealSeconds) -> some View { modifier(DrawInOnce(duration: duration)) }
-    /// Retired: does nothing (see `GoldPulse`).
     func goldPulse(_ trigger: Bool) -> some View { modifier(GoldPulse(trigger: trigger)) }
-    /// Reveals this section 40 ms after the previous one (see `StaggerReveal`).
     func staggerReveal(_ index: Int) -> some View { modifier(StaggerReveal(index: index)) }
-    /// A new row slides in from the top and fades; it leaves with a fade.
-    func rowArrival() -> some View {
-        transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity))
-    }
 }
 
-// MARK: Payment notice and transfer chip (app shell)
-
-/// The top-of-screen overlay of the shell: a transfer chip fades and slides.
-/// Never takes a tap, never blocks.
 struct MotionOverlay: View {
     @EnvironmentObject var store: GameStore
 
@@ -107,19 +69,15 @@ struct MotionOverlay: View {
     }
 }
 
-/// An amount chip, then it clears itself. Without an origin it fades in, slides up 24 pt and fades out (1.4 s). With one (`MoneyTravel`)
-/// it flies from that point to its resting place at the top of the screen in 0.5 s, where the net worth is, and fades.
 struct TransferChipView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var chip: TransferChip
-    /// The overlay's frame in screen space, to turn the chip's origin into an offset from where it rests.
     var top: CGRect = .zero
     @State private var step: Int = 0
 
     private var flies: Bool { chip.origin != nil && !reduceMotion }
 
-    /// Distance from the resting place (top centre, one chip below the safe area) back to where the money came from.
     private var startOffset: CGSize {
         guard flies, let o = chip.origin else { return CGSize(width: 0, height: 24) }
         return CGSize(width: o.x - top.midX, height: o.y - (top.minY + 30))
@@ -156,22 +114,15 @@ struct TransferChipView: View {
     }
 }
 
-// MARK: Money travel
-
-/// One payment to show: the label, the amount, and whether it leaves the player's money (payroll) or arrives (a loan, a sale).
 struct MoneyBurst: Equatable {
     let id = UUID()
     var label: String
     var amount: Double
     var outgoing: Bool = false
-    /// The amount in the payer's own currency ("£2.4k"); nil shows it in the home currency.
     var text: String? = nil
-    /// Which view sends it when several share one binding (a list of rows); 0 for a lone view.
     var source: Int = 0
 }
 
-/// Sends a chip from this view to the net worth at the top of the screen whenever `burst` is set (then clears it). Off under Reduce Motion
-/// and for amounts under one unit, so only real money moves.
 struct MoneyTravel: ViewModifier {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -194,14 +145,9 @@ struct MoneyTravel: ViewModifier {
 }
 
 extension View {
-    /// The one money-travel hook: set the binding to a `MoneyBurst` after a payment and a chip flies from this view to the net worth (0.5 s).
-    /// `source` tells rows that share one binding apart (the burst's `source` must match).
     func moneyTravel(_ burst: Binding<MoneyBurst?>, source: Int = 0) -> some View { modifier(MoneyTravel(burst: burst, source: source)) }
 }
 
-// MARK: Luxury reveal
-
-/// The card shown over a high-value purchase confirmation: a plain surface panel that fades in (the self-drawing gold edge is retired).
 struct GoldReveal<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown: Bool = false
@@ -223,9 +169,6 @@ struct GoldReveal<Content: View>: View {
     }
 }
 
-// MARK: Milestone ring
-
-/// The milestone mark: a gold ring that draws round (800 ms), then rests. No shimmer, no particles.
 struct GoldRingMark: View {
     var glyph: String
     var size: CGFloat = 64

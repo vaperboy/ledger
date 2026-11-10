@@ -3,9 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-// The accountant choice: one list of rows (name, fee, rating, current) used as a step in the new-company and holding flows. Rows take the colours of the app they sit in.
-
-/// The accountants of a country as choice rows. `chosenID` is the one shown as selected.
 struct AccountantChoiceList: View {
     var offers: [AccountantOffer]
     var currency: Currency
@@ -13,7 +10,6 @@ struct AccountantChoiceList: View {
     var onPick: (AccountantOffer) -> Void
 
     var body: some View {
-        // The fee is the figure compared down the list, so it sits on the right; rating and error rate are the line under the name.
         VStack(spacing: Theme.Space.s) {
             ForEach(offers) { (o: AccountantOffer) in
                 ShopChoiceRow(title: o.name, subtitle: subtitle(o), trailing: currency.tidyShort(o.monthlyFee) + "/mo", selected: o.id == chosenID,
@@ -28,8 +24,6 @@ struct AccountantChoiceList: View {
     }
 }
 
-/// The accountant step of a flow that creates a company: the country's accountants, the standard one pre-selected until another is tapped, and
-/// below them the offices other players run. `accountantID` stays nil while the standard one is wanted, so the engine's own default applies.
 struct AccountantStep: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -37,7 +31,6 @@ struct AccountantStep: View {
     var currency: Currency
     @Binding var accountantID: Int?
     var service: AccountantOfficeService = AccountantOfficeBackend.make()
-    /// The player office chosen, if any; the engine accountant it is billed as is what `accountantID` holds.
     @State private var officeID: String?
     @State private var offices: [AccountantOffice] = []
 

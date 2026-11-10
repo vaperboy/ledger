@@ -2,8 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// Pro "Insights": net worth over time, how each company's value moved in 30 days, and the cash runway. Drawn with plain paths from
-/// the day history (no dependencies). A free player sees the same shapes blurred behind one unlock button.
 struct InsightsView: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
@@ -50,8 +48,6 @@ struct InsightsView: View {
         .elevation(.raised)
         .padding(.horizontal, Theme.Space.xl)
     }
-
-    // MARK: Cards
 
     private func netWorthCard(accent: Color) -> some View {
         let series: [Double] = engine.netWorthSeries(days: 365)
@@ -133,7 +129,6 @@ struct InsightsView: View {
     }
 }
 
-/// A smooth-less line with a soft fill under it, drawn left to right as `drawn` goes from 0 to 1.
 struct InsightLine: View {
     var values: [Double]
     var tint: Color
@@ -155,7 +150,6 @@ struct InsightLine: View {
     }
 }
 
-/// The path of a normalised series (0 at the bottom, 1 at the top) across the width of its frame.
 struct InsightShape: Shape {
     var points: [Double]
     var closed: Bool

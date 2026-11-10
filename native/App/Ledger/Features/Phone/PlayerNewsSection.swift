@@ -3,9 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Players part of the News app: what real players did, in short plain sentences made from each event's own facts, with a filter
-/// (Everyone, Friends, My trade, My country). Private players never appear; a Friends-level player appears to their friends only, and only
-/// friends see a company's name.
 struct PlayerNewsSection: View {
     var engine: GameEngine
     @Environment(\.outsidePalette) private var P

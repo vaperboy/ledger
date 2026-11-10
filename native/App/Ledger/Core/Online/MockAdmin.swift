@@ -1,7 +1,5 @@
 import Foundation
 
-/// The in-memory rules, waiting changes and audit log behind the offline stand-in's Admin screen. It mirrors the server's fixed limits so
-/// the screen behaves the same offline; nothing in it is saved.
 struct MockAdminBook {
     var rules: [WorldRule] = MockAdminBook.defaults
     var confirmations: [PendingConfirmation] = MockAdminBook.sampleConfirmations()

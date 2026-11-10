@@ -3,25 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Volume contracts with business customers: a customer takes a set number of units every week for a set number of weeks, at a
-/// price below (or, rarely, above) your list price, and pays after a delay. Originals: the 'contract' and 'offer' ways to sell in
-/// features/sales/trade_sales_mechanics.js (`weekly`, `decide`, `ACTS.sw33`), the running of tender contracts in
-/// features/sales/public_tenders.js (`contractsWeek`, `start`) and the contract page `ACT.ct56` (ui/company/deals.js).
-///
-/// Where it lives: the contracts are the original's `co.sw33.ct` list (one-off orders: `co.sw33.one`), so saves from the old game
-/// load as they are and `Demand.applyWaysToSell` already adds the contracts' units to the week's customers. A contract adds, beside
-/// the original's fields (`n who u d end pub tnd ext warn q`): `id`, `w0`, `term` (weeks), `pay` (weeks until the customer pays) and
-/// `cr` (how reliable the customer is, 0.4 - 1).
-///
-/// What a contract does:
-///  * demand and capacity: the units are part of the week's demand. A shop that cannot serve them (served below 85 %) gets a warning;
-///    at six warnings a penalty, at twelve the contract is cancelled and the reputation falls;
-///  * revenue: the discount is taken off the week's revenue and cash (the till booked list price); the part of the contract's money
-///    that came in as cash now becomes a receivable that falls due after `pay` weeks, with the usual chance of never being paid
-///    (a less reliable customer and a longer delay raise it). The money moves through `Payments`, so the books balance;
-///  * risk: a customer can go under (its unpaid invoices are lost, the contract ends), walk away from poor quality, or not renew.
-///
-/// Volume tenders (`VolumeTenders`) feed `sign` with a tender's id (`tnd`). The other ways to sell (platforms, memberships ...) are in `SalesWays`.
 public enum VolumeContracts {
     public static let action = "ctv"
     static let termChoices = [13, 26, 52]
@@ -29,14 +10,10 @@ public enum VolumeContracts {
     public struct Terms: Equatable, Sendable {
         public var name: String
         public var customer: String
-        /// Units a week
         public var units: Double
-        /// Below your list price (negative = above)
         public var discount: Double
         public var weeks: Int
-        /// Weeks until the customer pays
         public var paymentWeeks: Int
-        /// 0.4 shaky ... 1 solid
         public var reliability: Double
         public var isPublic = false
         public var tenderID: Int? = nil
@@ -64,22 +41,17 @@ public enum VolumeContracts {
         public var higherQuality: Bool
         public var paymentWeeks: Int
         public var reliability: Double
-        /// Position in the list (the original's `ct56` index)
         public var index: Int
         public var reliabilityWord: String { reliability >= 0.85 ? "Solid" : reliability >= 0.65 ? "Average" : "Shaky" }
     }
 
     public struct Detail: Equatable, Sendable {
         public var contract: Contract
-        /// What they pay for one unit now (list price less the discount)
         public var price: Double
         public var worthAYear: Double
         public var weeksLeft: Int
-        /// Unpaid invoices of this contract
         public var outstanding: Double
     }
-
-    // MARK: Reading
 
     static func store(_ co: Company) -> JSONValue {
         let v = co.value("sw33")
@@ -96,15 +68,12 @@ public enum VolumeContracts {
         store(co)["ct"].array.enumerated().map { contract($0.element, index: $0.offset, week: week) }
     }
 
-    /// Orders from companies that are booked for a week still to come (or this one). Original: `sw33.one` with `w >= S.week`.
     public static func bookedOrders(_ co: Company, week: Int) -> [(customer: String, units: Double, week: Int)] {
         store(co)["one"].array.filter { $0["w"].int >= week }.map { ($0["who"].string, $0["u"].double, $0["w"].int) }
     }
 
-    /// Units a week that contracts take. Original: `sum(s.ct, c => c.u)`.
     public static func committedUnits(_ co: Company) -> Double { store(co)["ct"].array.reduce(0) { $0 + $1["u"].double } }
 
-    /// The share of the company's capacity the contracts take, from last week's figures.
     public static func capacityShare(_ co: Company) -> Double {
         let cap = co.value("lastW")["cap"].double
         return cap > 0 ? committedUnits(co) / cap : 0
@@ -119,8 +88,6 @@ public enum VolumeContracts {
         return Detail(contract: c, price: price, worthAYear: price * c.units * 52, weeksLeft: max(0, c.endWeek - s.week), outstanding: open)
     }
 
-    // MARK: Signing and ending
-
     static func addLog(_ sw: inout JSONValue, week: Int, _ text: String) {
         var l = sw["log"].array
         l.insert(.object(["w": .number(Double(week)), "t": .string(text)]), at: 0)
@@ -128,7 +95,6 @@ public enum VolumeContracts {
         sw["log"] = .array(l)
     }
 
-    /// Put a contract on the company's list (the owner said yes, a manager signed, or a tender was won). Original: `decide` / `start`.
     @discardableResult
     public static func sign(_ s: inout GameState, companyID: Int, terms t: Terms, signedBy manager: String? = nil) -> Int? {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open, t.units > 0, t.weeks > 0 else { return nil }
@@ -149,7 +115,6 @@ public enum VolumeContracts {
         return id
     }
 
-    /// End a contract early: a penalty of 10 % of four weeks' business and a small blow to the name; the customer finds another supplier.
     @discardableResult
     public static func terminate(_ s: inout GameState, companyID: Int, contractID: Int, data: GameData) -> Bool {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return false }
@@ -168,9 +133,6 @@ public enum VolumeContracts {
         return true
     }
 
-    // MARK: Offers
-
-    /// How the answer to an offer in the inbox is applied. Original: `ACTS.sw33`.
     public static func answer(_ s: inout GameState, message m: Message, option: Int) {
         guard option == 0, let i = s.companyIndex(m.companyID), s.companies[i].status == .open else { return }
         let d = m.value("data")
@@ -198,8 +160,6 @@ public enum VolumeContracts {
 
     static func ratingFactor(_ co: Company) -> Double { clamp((co.int("rvN") >= 5 ? Pricing.rating(co) : 3.8) - 3, 0, 1.5) / 1.5 }
 
-    /// A customer comes with an offer now and then, more often when people know you. A manager decides at once, the owner is asked.
-    /// Original: the end of `weekly` in trade_sales_mechanics.js.
     static func offers(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         let co = s.companies[i]
         var sw = store(co)
@@ -225,14 +185,12 @@ public enum VolumeContracts {
         if way.kind == "contract" {
             let units = max(0.2, jsRound(real * (0.08 + 0.14 * h.next()) * 10) / 10)
             let reliability = jsRound((0.4 + 0.6 * h.next()) * 100) / 100
-            // A shaky customer tempts with a better price; a big one pays late.
             let discount = jsRound((0.05 + 0.10 * h.next() + (reliability < 0.65 ? 0.02 : 0)) * 100) / 100
             let weeks = termChoices[min(2, Int(h.next() * 3))]
             let pay = [0, 4, 8, 13][min(3, Int(h.next() * 4))]
             let t = Terms(name: way.name, customer: who, units: units, discount: discount, weeks: weeks, paymentWeeks: pay, reliability: reliability)
             let worthTotal = units * tk * (1 - discount) * Double(weeks)
             if let m = manager {
-                // A manager takes it when there is room, the discount is modest and the customer is not shaky.
                 let takes = discount <= 0.12 && (lw.isNull || util < 0.92) && reliability >= 0.6
                 MarketEvents.noteContractOffer(&s, company: co, customer: who, worth: worthTotal, outcome: takes ? "\(m) signed it." : "\(m) declined it: the terms or the room were not right.")
                 if takes { sign(&s, companyID: co.id, terms: t, signedBy: m) }
@@ -269,7 +227,6 @@ public enum VolumeContracts {
         }
     }
 
-    /// A tender contract that ended well (or was cancelled) counts for or against the company in later tenders. Original: `s.hist[co.id]`.
     static func recordDelivery(_ s: inout GameState, companyID: Int, ok: Bool) {
         var st = ProjectTenders.load(s)
         let key = String(companyID)
@@ -280,10 +237,6 @@ public enum VolumeContracts {
         ProjectTenders.save(&s, st)
     }
 
-    // MARK: The week
-
-    /// Called for every open company after its week (the till has booked last week's sales). Original: `weekly` (discounts, ends),
-    /// `contractsWeek` (delivery, warnings), plus the payment delay and the customer's own risks.
     static func weekly(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         let co = s.companies[i]
         guard co.status == .open else { return }
@@ -295,7 +248,6 @@ public enum VolumeContracts {
         offers(&s, i, bd, data: data)
     }
 
-    /// The discount and the payment delay, on the units the contracts took last week.
     static func settle(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         let co = s.companies[i]
         let units = co.value("lastW")["units"].double
@@ -313,10 +265,9 @@ public enum VolumeContracts {
             remaining -= u
             if u <= 0 { continue }
             let listValue = u * tk
-            let x = jsRound(listValue * c["d"].double)                 // the discount (negative = a surcharge)
+            let x = jsRound(listValue * c["d"].double)
             let pay = c["pay"].int
             if x != 0 { Payments.book(&s, companyID: co.id, category: "rev", amount: -x) }
-            // The standard business-customer receivable booked by the till carries the discount's share for the invoiced part.
             if x != 0, bs > 0 {
                 var recv = s.companies[i].receivables
                 if let last = recv.lastIndex(where: { $0.value("ct").isNull }) {
@@ -328,7 +279,6 @@ public enum VolumeContracts {
             let cashList = listValue * cs * (1 + vr)
             let cashNet = max(0, (listValue - x) * cs * (1 + vr))
             if pay > 0 && cashNet > 0 {
-                // What came in as cash is invoiced instead: it comes in after the delay, unless the customer never pays.
                 Payments.companyPays(&s, companyID: co.id, amount: cashList, category: nil)
                 let reliability = c["cr"].isNull ? 0.8 : c["cr"].double
                 var h = HashedRandom("\(s.seed):vctp:\(s.week):\(c["id"].int)")
@@ -339,7 +289,6 @@ public enum VolumeContracts {
                 recv.append(r)
                 s.companies[i].receivables = recv
             } else if cashList != 0 || x != 0 {
-                // Paid on delivery: only the discount comes off the cash that came in.
                 let cut = x * cs * (1 + vr)
                 if cut > 0 { Payments.companyPays(&s, companyID: co.id, amount: cut, category: nil) }
                 else if cut < 0 { Payments.companyReceives(&s, companyID: co.id, amount: -cut, category: nil, label: nil) }
@@ -347,7 +296,6 @@ public enum VolumeContracts {
         }
     }
 
-    /// Delivery, warnings, penalties, a customer who goes under or walks away. Original: `contractsWeek`.
     static func serviceAndRisk(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         var co = s.companies[i]
         var sw = store(co)
@@ -386,7 +334,6 @@ public enum VolumeContracts {
             }
             if !gone && !c["pub"].bool {
                 let reliability = c["cr"].isNull ? 0.8 : c["cr"].double
-                // The customer goes under: its unpaid invoices are lost and the volume disappears.
                 if h.next() < (0.0004 + 0.0016 * (1 - reliability)) * (slump ? 2 : 1) {
                     var recv = co.receivables
                     var owed = 0.0
@@ -401,7 +348,6 @@ public enum VolumeContracts {
                     addLog(&sw, week: s.week, "\(who) went under.")
                     gone = true
                 }
-                // The customer finds a better supplier when quality is poor.
                 else if co.quality < 35 && h.next() < 0.01 {
                     s.addMessage(from: who, title: "Contract ended: \(name)", body: "\(who) has found a supplier with better quality and ends the contract with \(co.name).", companyID: co.id, tone: "bad")
                     addLog(&sw, week: s.week, "\(who) left for a better supplier.")
@@ -416,8 +362,6 @@ public enum VolumeContracts {
         if badTender { recordDelivery(&s, companyID: co.id, ok: false) }
     }
 
-    /// The end of a term: a tender contract with extensions left is extended for a year when delivery was good; another contract is
-    /// renewed if the customer was satisfied (more likely with a good rating), otherwise it ends. Original: `contractsWeek`, `weekly`.
     static func endings(_ s: inout GameState, _ i: Int, data: GameData) {
         let co = s.companies[i]
         var sw = store(co)

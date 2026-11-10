@@ -6,8 +6,6 @@ import Employees
 @testable import Businesses
 import Simulation
 
-/// The contract discussion (`ContractTalk`): every topic, the rule that nobody refuses more pay, what declining or delaying costs, the patience and
-/// the unrealistic counters of `negotiation.json` for the asks of employees, delegation, the labour rules in the preview and the save.
 final class ContractTalkTests: XCTestCase {
     private func shop(_ trade: String = "cafe", country: String = "UK", seed: Int = 5) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: country, playerName: "Tester", seed: seed)
@@ -15,8 +13,7 @@ final class ContractTalkTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("no company") }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
-        e.update { s, _, _ in s.rest["ownHrsFixed"] = true }   // these talk tests were tuned with the owner at a full week
-        // an office holds a limited number of people now (hiring rebuild): these tests hire several, so the place is a big one
+        e.update { s, _, _ in s.rest["ownHrsFixed"] = true }
         e.update { s, _, _ in if let i = s.companyIndex(id), s.companies[i].value("prem")["kind"].string == "office" || s.companies[i].value("prem")["kind"].isNull { var p = s.companies[i].value("prem"); if p.isNull { p = .object([:]) }; p["m2"] = .number(900); s.companies[i].set("prem", p) } }
         return (e, id)
     }
@@ -24,7 +21,6 @@ final class ContractTalkTests: XCTestCase {
     private func hire(_ e: inout GameEngine, _ id: Int, role: String = "barista", pers: String = "steady", hours: Double? = nil, needsHours: Double? = nil) -> Int {
         var pid = 0
         e.update { s, d, _ in
-            // a candidate who studies can work 20 or 30 hours at most: take one who can work the hours asked (the draw stream decides who comes first)
             let need = max(hours ?? 0, needsHours ?? 0)
             var p = Hiring.generateCandidate(role: role, company: s.company(id), tier: "mid", state: &s, data: d)
             var tries = 0
@@ -49,8 +45,6 @@ final class ContractTalkTests: XCTestCase {
     }
 
     private func reseed(_ e: inout GameEngine, _ n: Int) { e.update { s, _, _ in s.random = DeterministicRandom(seed: n) } }
-
-    // MARK: Nobody refuses more pay
 
     func testARiseYouOfferIsAlwaysTakenWhateverThePerson() throws {
         let (e0, id) = try shop()
@@ -113,11 +107,10 @@ final class ContractTalkTests: XCTestCase {
 
     func testPatienceAndUnrealisticCountersOfTheDataApplyToTheirAsks() throws {
         let (e0, id) = try shop()
-        // Unrealistic counters (above even their own ask) turn up at about the data rate of the temperament; the greedy ones do it most.
         var above = 0, counters = 0, roundsWorker = 0
         for seed in 1...120 {
             var e = e0
-            let pid = hire(&e, id, pers: "arrogant")   // greedy
+            let pid = hire(&e, id, pers: "arrogant")
             reseed(&e, seed)
             ask(&e, id, pid, .payRise)
             let talk = try XCTUnwrap(e.contractTalk(personID: pid))
@@ -129,7 +122,6 @@ final class ContractTalkTests: XCTestCase {
         XCTAssertGreaterThan(counters, 60)
         XCTAssertGreaterThan(above, 0, "some counters are unrealistic")
         XCTAssertLessThan(Double(above) / Double(counters), 0.6)
-        // Patience: rounds until they take your last figure follow the post and the temperament (a manager has more than a worker).
         var (e, id2) = try shop(seed: 9)
         let w = hire(&e, id2, pers: "steady")
         reseed(&e, 3); ask(&e, id2, w, .payRise)
@@ -151,13 +143,10 @@ final class ContractTalkTests: XCTestCase {
                 var p = Hiring.generateCandidate(role: "barista", company: s.company(id), tier: "mid", state: &s, data: d)
                 p.set("pers", pers); s.people[p.id] = p; pid = p.id
             }
-            // what they ask of THIS company with THIS package (the salary talk's ask), not the bare figure on the CV
             let ask = try XCTUnwrap(e.hearTheirAsk(post: .worker(role: "barista"), companyID: id, personID: pid))
             XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: ask), .ok, "\(pers): an offer at their ask is accepted")
         }
     }
-
-    // MARK: Topics
 
     func testPromotionTheyAskForMoreButNeverRefuse() throws {
         var (e, id) = try shop()
@@ -179,7 +168,6 @@ final class ContractTalkTests: XCTestCase {
         var (e, id) = try shop()
         let pid = hire(&e, id)
         let post = try XCTUnwrap(ManagerModel.promotionPosts(e.state, companyID: id, personID: pid, data: e.data).first { $0.kind == "mgr" && $0.companyID == id })
-        // Full control costs them nothing extra and takes a little off what they ask; asking first adds nothing for a manager of a store.
         let full = ManagerModel.promotionNeed(post, terms: .init(authority: 2))
         let limited = ManagerModel.promotionNeed(post, terms: .init(authority: 1))
         XCTAssertLessThan(full, limited)
@@ -199,7 +187,6 @@ final class ContractTalkTests: XCTestCase {
         }
         let f = e.contractPropose(companyID: id, personID: a, proposal: .init(.hours, choice: "full"))
         switch f { case .agreed, .unwilling, .notPossible: break; default: XCTFail("\(f)") }
-        // A seasonal worker: seasons come and go; part time all year is yes unless they want the season only.
         let b = hire(&e, id, hours: 25)
         e.update { s, _, _ in
             let k = s.companies[s.companyIndex(id)!].staff.firstIndex { $0.id == b }!
@@ -221,7 +208,6 @@ final class ContractTalkTests: XCTestCase {
             let k = s.companies[ci].staff.firstIndex { $0.id == pid }!
             var st = s.companies[ci].staff; st[k].tiredness = 70; s.companies[ci].staff = st
         }
-        // the weekly trigger sees them
         let m = member(e, id, pid)!
         XCTAssertEqual(ContractTalk.requestTrigger(m, e.state.people[pid]!, company: e.state.company(id)!, week: e.state.week, salesRoles: e.salesRoles, tenure: 0), .hoursAsk(staffID: pid))
         ask(&e, id, pid, .hours)
@@ -236,7 +222,6 @@ final class ContractTalkTests: XCTestCase {
     func testPayBasisFixedMixCommissionAndTheSalaryForAnHourlyWorker() throws {
         var (e, id) = try shop("estate")
         let pid = hire(&e, id, role: "estate")
-        // a move to a less secure plan may be refused (the draw is per person and eight-week block): the same offer in a later block goes through
         var mix = false
         for _ in 0..<12 where !mix {
             switch e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, amount: 0.05, choice: "mix")) {
@@ -261,12 +246,10 @@ final class ContractTalkTests: XCTestCase {
         XCTAssertEqual(wage(e, id, pid), 0, "commission only: nothing in base")
         guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, choice: "fix")) else { return XCTFail("fix is a rise and is never refused") }
         XCTAssertGreaterThan(wage(e, id, pid), 0)
-        // someone who wants security may leave over commission only: not more pay, so allowed, and the preview says it first
         let sec = hire(&e, id, role: "estate")
         e.update { s, _, _ in s.people[sec]!.set("sec", 0.9) }
         let pv = e.contractPreview(companyID: id, personID: sec, proposal: .init(.payBasis, choice: "com"))
         XCTAssertTrue(pv.risks.contains { $0.contains("security") })
-        // an hourly worker in a cafe: a fixed salary
         let (e2, id2) = try shop()
         var c = e2
         let w = hire(&c, id2)
@@ -285,7 +268,6 @@ final class ContractTalkTests: XCTestCase {
         guard case .notPossible = e.contractPropose(companyID: id, personID: mgr, proposal: .init(.bonus, amount: 0.05)) else { return XCTFail("no cut here") }
         let agent = hire(&e, id, role: "estate")
         guard case .notPossible = e.contractPropose(companyID: id, personID: agent, proposal: .init(.bonus, amount: 0.05)) else { return XCTFail("fixed pay has no plan") }
-        // a move to a less secure pay plan is something a person may refuse: a content, flexible person takes it
         e.update { s, _, _ in
             var p = s.people[agent]!; p.set("pers", "loyal"); s.people[agent] = p
             let ci = s.companyIndex(id)!, k = s.companies[ci].staff.firstIndex { $0.id == agent }!
@@ -324,7 +306,7 @@ final class ContractTalkTests: XCTestCase {
         e.update { s, _, _ in
             let ci = s.companyIndex(id)!
             let k = s.companies[ci].staff.firstIndex { $0.id == pid }!
-            var st = s.companies[ci].staff; st[k].hiredWeek = s.week - 200; s.companies[ci].staff = st   // years of service
+            var st = s.companies[ci].staff; st[k].hiredWeek = s.week - 200; s.companies[ci].staff = st
         }
         let q0 = try XCTUnwrap(Dismissal.quote(e.state, companyID: id, staffID: pid, reason: .unjustified, data: e.data))
         let pv = e.contractPreview(companyID: id, personID: pid, proposal: .init(.notice, amount: 8))
@@ -336,14 +318,12 @@ final class ContractTalkTests: XCTestCase {
         let w = World(state: e.state, data: e.data), co = e.state.company(id)!
         let extra = wage(e, id, pid) * 12 / 52 * 8 * (1 + w.country(co).employerOnCost(monthlyWage: wage(e, id, pid)))
         XCTAssertEqual(q1.notice - q0.notice, extra, accuracy: 0.01, "you pay the extra weeks when you let them go without cause")
-        // and they work them when they resign
         e.update { s, d, _ in StaffRoutine.handle(&s, companyIndex: s.companyIndex(id)!, .quit(staffID: pid), data: d) }
         XCTAssertEqual(member(e, id, pid)?.noticeWeeks, 8 + 8, "eight weeks for years of service, plus the eight agreed")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
     func testMoveToAnotherStoreOfTheChainAndAManagerToACompanyWithoutOne() throws {
-        // Whether a person refuses a move is a hashed draw on their id (rare, never certain): try a few games until both agree, so the test does not hang on one id.
         for seed in 5..<45 { if try moveScenario(seed: seed) { return } }
         XCTFail("no seed in which both the worker and the manager agree to move")
     }
@@ -366,7 +346,6 @@ final class ContractTalkTests: XCTestCase {
         guard case .agreed = e.contractPropose(companyID: a, personID: pid, proposal: .init(.move, choice: "\(b)")) else { return false }
         XCTAssertNil(member(e, a, pid)); XCTAssertNotNil(member(e, b, pid))
         XCTAssertEqual(e.state.people[pid]?.employerID, b)
-        // the manager of one goes to the other, which has none
         let cands = try XCTUnwrap(e.searchManagers(companyID: a))
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: a, monthlyWage: cands[0].askingMonthlyWage * 1.3), .ok)
         guard case .agreed = e.contractPropose(companyID: a, personID: cands[0].id, proposal: .init(.move, choice: "\(b)")) else { return false }
@@ -386,8 +365,6 @@ final class ContractTalkTests: XCTestCase {
         XCTAssertFalse(t[.move]!.available, "no other store")
         XCTAssertFalse(t[.move]!.why.isEmpty)
     }
-
-    // MARK: Consequences shown before confirming
 
     func testPreviewIsADryRunWithCostRiskAndLabourRules() throws {
         var (e, id) = try shop()
@@ -464,7 +441,6 @@ final class ContractTalkTests: XCTestCase {
         XCTAssertNotNil(e.contractTalk(personID: pid))
         let asked = e.state.week
         for _ in 0..<((Negotiation.memoryWeeks + 2) * 7) { e.nextDay() }
-        // The first request is forgotten; a person who is still short of pay may ask again later, which is a new request, not the old one.
         if let again = e.contractTalk(personID: pid) { XCTAssertGreaterThan(again.week, asked, "the old request is gone") }
         XCTAssertEqual(member(e, id, pid)?.int("denied") ?? 0, 0)
     }
@@ -502,8 +478,6 @@ final class ContractTalkTests: XCTestCase {
         XCTAssertNotEqual(member(e, id, pid)?.role, "barista")
     }
 
-    // MARK: Delegation and saves
-
     func testAManagerHandlesRequestsInsideTheirBudgetOnly() throws {
         var (e, id) = try shop()
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))
@@ -516,7 +490,6 @@ final class ContractTalkTests: XCTestCase {
         e.setManagerBudget(companyID: id, budget: .normal)
         let h = try XCTUnwrap(e.contractHandler(companyID: id))
         XCTAssertEqual(h.level, 1)
-        // a rise above the normal budget's monthly pay limit stays with the owner
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertFalse(ContractTalk.managerMayDecide(co, extraMonthly: h.payLimit * 2, e.state, data: e.data))
         XCTAssertTrue(ContractTalk.managerMayDecide(co, extraMonthly: h.payLimit / 2, e.state, data: e.data))
@@ -568,16 +541,12 @@ final class ContractTalkTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    // MARK: One source of truth
-
     private var engineRoot: URL { URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent() }
 
     private func swiftFiles(under dir: URL) -> [URL] {
         (FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)?.compactMap { $0 as? URL } ?? []).filter { $0.pathExtension == "swift" }
     }
 
-    /// The simple raise / promote paths are gone: the engine has no wrapper for them and no screen calls an engine action of theirs; the profile and the
-    /// Team screens open the one discussion.
     func testTheSupersededButtonsAndPathsAreGone() throws {
         let sources = engineRoot.appendingPathComponent("Sources")
         let gone = ["func raise(personID", "func giveManagerRaise", "func offerPromotion(companyID", "func setPayModel(companyID", "func setCommissionRate(companyID", "func offerFullTime(companyID",
@@ -588,7 +557,6 @@ final class ContractTalkTests: XCTestCase {
             let text = try String(contentsOf: f, encoding: .utf8)
             for g in gone { XCTAssertFalse(text.contains(g), "\(f.lastPathComponent) still has \(g)") }
         }
-        // The final steps are called from the contract talk (and, for the manager's own pay review within his limit, from the manager's week).
         let callers: [String: [String]] = ["StaffTalks.raise(": ["ContractTalk.swift", "ManagerWeek.swift", "StaffTalks.swift"], "ManagerModel.offerPromotion(": ["ContractTalk.swift"],
                                            "StaffProfile.setPayModel(": ["ContractTalk.swift"], "ManagerModel.raiseManager(": ["ContractTalk.swift"],
                                            "StaffTalks.setStaffHours(": ["ContractTalk.swift"], "StaffTalks.offerFullTime(": ["ContractTalk.swift"]]
@@ -609,7 +577,6 @@ final class ContractTalkTests: XCTestCase {
         XCTAssertEqual(uses, 1, "exactly one screen talks to the contract engine")
     }
 
-    /// No pay rise is refused by an employee anywhere in the engine: the words of the old refusals are gone and the only walk-away in a pay talk settles.
     func testNoEmployeeRefusalOfAPayRiseIsLeftInTheCode() throws {
         let b = engineRoot.appendingPathComponent("Sources/Businesses")
         let talks = try String(contentsOf: b.appendingPathComponent("StaffTalks.swift"), encoding: .utf8)
@@ -630,7 +597,6 @@ final class ContractTalkTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    /// Pay requests from one company reach the owner at most twice a week; the rest wait for the next week.
     func testPayRequestsAreCappedPerCompanyAndWeek() throws {
         var (e, id) = try shop()
         var ids: [Int] = []

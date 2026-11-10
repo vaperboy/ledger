@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Chain locations: names that vary by place (never by number), one quoted way to open a location, and managers appointed from the chain level.
 final class ChainLocationsTests: XCTestCase {
     private func chain(stores count: Int) throws -> (e: GameEngine, chain: Int, stores: [Int]) {
         var e = try ChainsTests.engine("NO")
@@ -88,7 +87,6 @@ final class ChainLocationsTests: XCTestCase {
         e.update { s, d, _ in filled = ChainLocations.fillManagers(&s, chainID: id, data: d) }
         XCTAssertEqual(filled, 2)
         for sid in stores { XCTAssertNotNil(e.state.company(sid)?.managerID, "store \(sid) has no manager") }
-        // a location opened afterwards gets its manager at once
         guard case .success(let third) = e.openLocation(chainID: id, cityID: e.state.player.cityID) else { return XCTFail("not opened") }
         XCTAssertNotNil(e.state.company(third)?.managerID)
     }

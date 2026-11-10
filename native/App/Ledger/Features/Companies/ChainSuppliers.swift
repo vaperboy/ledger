@@ -5,11 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The chain's view of the same Suppliers record as a store's Operations > Suppliers: for each input, who the stores use, which provider is
-/// the usual one and which stores differ (the exceptions), and the chain-wide rule. A rule makes one provider the chain's mandatory choice for
-/// an input, exactly like a chain standard for how you sell: each store switches on its own terms, a store that cannot (the provider does not
-/// serve it, an own company has no spare capacity) keeps its choice and is listed with the reason, a franchised unit follows only what its
-/// agreement fixes, and "Each store decides" releases the rule. Each exception opens that store's Suppliers section.
 struct ChainSupplyOverview: View {
     @EnvironmentObject var store: GameStore
     @State private var pending: PendingAction?
@@ -51,7 +46,6 @@ struct ChainSupplyOverview: View {
         let all = rows()
         let ids = Set(summary.stores.map { $0.id })
         let links = engine.supplyLinks().filter { ids.contains($0.buyerID) || ids.contains($0.supplierID) }
-        // Inputs where every store buys outside need no row of their own.
         let active = all.filter { r in !(r.exceptions.isEmpty && isOutside(r.usual) && r.id != "goods" && r.id != "repair") }
         let quiet = all.filter { r in r.exceptions.isEmpty && isOutside(r.usual) && r.id != "goods" && r.id != "repair" }
         let rules = engine.chainSupplierRules(chainID: summary.id)
@@ -89,7 +83,6 @@ struct ChainSupplyOverview: View {
         }
     }
 
-    /// One input: the usual provider as the shared `SupplierRow` (how many stores use it on the right), then the stores that differ.
     private func inputRow(_ r: Row) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             SupplierRow(name: r.usual, detail: r.title.tidyMoney, value: "\(r.usualCount) of \(r.byStore.count)", valueNote: "stores")
@@ -102,8 +95,6 @@ struct ChainSupplyOverview: View {
         }
         .padding(.bottom, r.exceptions.isEmpty ? 0 : Theme.Space.s)
     }
-
-    // MARK: Chain rule
 
     @ViewBuilder private func ruleBlock(_ rule: ChainSupplierRule) -> some View {
         let following = rule.plan.lines.filter { !$0.changes && !$0.free }.count

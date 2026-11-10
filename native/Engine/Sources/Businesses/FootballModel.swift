@@ -3,27 +3,17 @@ import GameCore
 import Countries
 import Finance
 
-/// Football: the top league of each country that has one. You can buy a club (if its owners will sell) or found one in the second
-/// tier; the manager picks the players, you set the wage budget, ticket prices and sponsors. Original: engine/world/football.js and
-/// the round-24 steps in features/world/football_clubs.js (club debt, transfer windows, bids for your players).
-///
-/// Saved like the original (a legacy save carries on): `rest.clubs[country]` the clubs, `rest.lg[country]` the league, and for an
-/// owned club `fm` {club id, div 1|2, wage share of revenue, tix -1..1, coach, asst, sp (sponsors), offers, last (form), hist (seasons),
-/// titles, s (squad strength), val, R, sq, xw, book, amort, tin, tout, fill}.
 public enum FootballModel {
-    /// Accounting units per US dollar (the original's `USD`).
     public static let usd = 10.5
     static let suffixes = ["United", "FC", "Athletic", "City", "Sporting", "Rovers", "Town", "Wanderers", "Albion", "Rangers"]
     static let brandWords = ["Nordic", "Fjord", "Urban", "Bright", "Prime", "Hearth", "Peak", "Harbor", "Golden", "Fresh", "Anchor", "Summit", "Birch", "Clear", "Northern", "Blue", "Maple", "Ember"]
     static let sponsorIndustries = ["Bank", "Telecom", "Energy", "Airlines", "Brewery", "Insurance", "Motors", "Sportswear", "Foods", "Betting", "Cola", "Logistics"]
     static let bidderSuffixes = ["FC", "United", "City", "Athletic", "SK"]
 
-    /// Sponsor slots in the order of the original: key, title, share of yearly revenue.
     public static let slots: [(key: String, title: String, share: Double)] = [
         ("shirt", "Shirt sponsor", 0.08), ("stad", "Stadium naming rights", 0.06), ("kit", "Kit supplier", 0.04),
         ("p1", "Official partner", 0.02), ("p2", "Official partner", 0.02),
     ]
-    /// Transfer tiers: name, fee as a share of yearly revenue, squad strength added, extra wages as a share of revenue.
     public static let tiers: [(name: String, fee: Double, strength: Double, wages: Double)] = [
         ("Squad player", 0.04, 1.2, 0.006), ("First-team starter", 0.1, 3, 0.015), ("Star signing", 0.25, 7, 0.035),
     ]
@@ -36,18 +26,13 @@ public enum FootballModel {
         return LeagueInfo(name: f[0].string, clubs: f[1].int, low: f[2][0].double, high: f[2][1].double)
     }
 
-    /// Countries that have a league, in menu order.
     public static func countriesWithLeague(_ data: GameData) -> [Country] { data.countries.countries.filter { leagueInfo($0) != nil } }
 
-    // MARK: Hashes the original uses
-
-    /// Original: `fbHash`.
     static func hash(_ text: String) -> Int32 {
         var h: Int32 = 7
         for u in text.utf16 { h = h &* 31 &+ Int32(u) }
         return h
     }
-    /// JavaScript `x | 0` for a double.
     static func toInt32(_ x: Double) -> Int32 {
         guard x.isFinite else { return 0 }
         let t = x.rounded(.towardZero)
@@ -57,9 +42,6 @@ public enum FootballModel {
     }
     static func round100k(_ x: Double) -> Double { jsRound(x / 100000) * 100000 }
 
-    // MARK: Clubs of a league
-
-    /// The clubs of a country's top league, always the same for the same game seed. Original: `clubsOf` (creation part).
     public static func generateClubs(country c: Country, seed: Int) -> [JSONValue] {
         guard let L = leagueInfo(c) else { return [] }
         var r = DeterministicRandom(state: toInt32(Double(hash("club" + c.code)) * 2654435761.0 + Double(seed == 0 ? 1 : seed)))
@@ -87,14 +69,12 @@ public enum FootballModel {
         return out
     }
 
-    /// Letters, accents and spaces only. Original: `.replace(/[^A-Za-zÀ-ž ]/g, '')`.
     static func cleanName(_ s: String) -> String {
         String(String.UnicodeScalarView(s.unicodeScalars.filter { (0x41...0x5A).contains($0.value) || (0x61...0x7A).contains($0.value) || (0xC0...0x17E).contains($0.value) || $0.value == 0x20 }))
     }
 
     static func clubs(_ s: GameState, _ cc: String) -> [JSONValue] { s.rest["clubs"]?[cc].array ?? [] }
 
-    /// The clubs of a country, made on first use and then kept in the save. Original: `clubsOf`.
     @discardableResult
     public static func ensureClubs(_ s: inout GameState, _ country: Country) -> [JSONValue] {
         var all = s.rest["clubs"] ?? .object([:])
@@ -121,8 +101,6 @@ public enum FootballModel {
 
     static func clubBase(rank0: Double, n: Int) -> Double { 28 + 57 * (Double(n - 1) - rank0) / Double(max(1, n - 1)) }
 
-    // MARK: League
-
     struct Row { var id: String; var s: Double; var pts: Int; var gp: Int; var hg: Int }
     struct Result { var r: String; var home: Bool; var opp: String }
     struct League {
@@ -147,7 +125,6 @@ public enum FootballModel {
                             "t": .array(t.map { .object(["id": .string($0.id), "s": .number($0.s), "pts": .number(Double($0.pts)), "gp": .number(Double($0.gp)), "hg": .number(Double($0.hg))]) }),
                             "res": .object(r), "last": .object([:])])
         }
-        /// Table order: points, then strength. Original: `tableRank`.
         var sorted: [Row] {
             t.enumerated().sorted { a, b in a.element.pts != b.element.pts ? a.element.pts > b.element.pts : (a.element.s != b.element.s ? a.element.s > b.element.s : a.offset < b.offset) }.map { $0.element }
         }
@@ -177,12 +154,10 @@ public enum FootballModel {
 
     static func sig(_ x: Double) -> Double { 1 / (1 + exp(-x)) }
 
-    /// Open clubs of the player in a country.
     static func ownedClubs(_ s: GameState, country cc: String? = nil) -> [Int] {
         s.companies.indices.filter { s.companies[$0].type == "club" && s.companies[$0].status == .open && !s.companies[$0].value("fm").isNull && (cc == nil || s.companies[$0].countryCode == cc!) }
     }
 
-    /// Every league with a club of yours plays a round. Original: `clubLeaguesWeek`, `leagueStep`.
     public static func leaguesWeek(_ s: inout GameState, data: GameData) {
         var done = Set<String>()
         for i in ownedClubs(s) {
@@ -232,7 +207,6 @@ public enum FootballModel {
         saveLeague(&s, country.code, lg)
     }
 
-    /// The strength of the player's team: the club's base, wages, the manager, form and signings. Original: `ownStrength`.
     static func strength(_ s: GameState, _ i: Int) -> Double {
         let fm = s.companies[i].value("fm")
         let cc = s.companies[i].countryCode
@@ -285,7 +259,6 @@ public enum FootballModel {
             fm["val"] = .number(newVal)
             fm["R"] = .number(clubRevenue(clubValue: newVal, div: fm["div"].int))
             fm["s0"] = .null
-            // contracts run out and players age: what you bought (or lost) fades over a season or two. Original: round-24 'seasonEnd' step.
             fm["sq"] = .number(fm["sq"].double * 0.65)
             fm["xw"] = .number(fm["xw"].double * 0.65)
             s.companies[i].set("fm", fm)
@@ -305,10 +278,8 @@ public enum FootballModel {
         for i in own { sponsorOffers(&s, i, country: country) }
     }
 
-    /// Yearly revenue of a club from its value. Original: `clubRev`.
     public static func clubRevenue(clubValue: Double, div: Int) -> Double { clubValue / 3 * (div == 2 ? 0.45 : 1) }
 
-    /// Clubs come up for sale and go off the market, and owners warm to you again. Original: `clubMonth`.
     public static func monthly(_ s: inout GameState) {
         guard var all = s.rest["clubs"], !all.isNull else { return }
         for cc in all.object.keys.sorted() {
@@ -324,8 +295,6 @@ public enum FootballModel {
         s.rest["clubs"] = all
     }
 
-    // MARK: Buying and founding
-
     public struct Offer: Equatable {
         public enum Answer: String, Equatable { case accept, counter, reject, ignore }
         public var answer: Answer
@@ -335,14 +304,12 @@ public enum FootballModel {
         public init(answer: Answer, price: Double?, debt: Double, message: String) { self.answer = answer; self.price = price; self.debt = debt; self.message = message }
     }
 
-    /// The debt a club carries; you take it over when you buy it. Original: `R24.clubDebt`.
     static func clubDebt(_ club: JSONValue, seed: Int) -> Double {
         if !club["debt"].isNull { return club["debt"].double }
         let h = Double(Int(hash(club["id"].string + ":" + String(seed == 0 ? 1 : seed))) % 1000) / 1000
         return club["founded"].bool ? 0 : round100k(club["val"].double * (0.05 + 0.45 * h))
     }
 
-    /// An offer for a club, as a multiple of its value. Original: `proposeClub` + the debt step.
     public static func propose(_ s: inout GameState, clubID: String, multiple mult: Double, currency cur: Currency) -> Offer {
         guard let club = findClub(s, id: clubID) else { return Offer(answer: .ignore, price: nil, debt: 0, message: "No such club.") }
         let cc = club["country"].string
@@ -377,8 +344,6 @@ public enum FootballModel {
 
     public enum BuyResult: Equatable { case ok(Int), notEnoughCash, notAvailable }
 
-    /// What buying a club at `price` does to your money, shown before it is agreed: the cash the club company starts with, the debt it takes over
-    /// and its monthly payment, and what is left of your account.
     public struct PurchasePlan: Equatable, Sendable {
         public var price: Double
         public var clubCash: Double
@@ -397,7 +362,6 @@ public enum FootballModel {
         return PurchasePlan(price: price, clubCash: jsRound(club["val"].double * 0.03), debt: debt, monthlyDebtPayment: pay, liquidBefore: liquid, liquidAfter: liquid - price)
     }
 
-    /// Buy the club at the agreed price (the club's debt comes with it). Original: `buyClub` + the debt step.
     public static func buy(_ s: inout GameState, clubID: String, price: Double, data: GameData, context fc: FinanceContext) -> BuyResult {
         guard let club = findClub(s, id: clubID), club["owner"].string == "ai", let country = data.countries[club["country"].string] else { return .notAvailable }
         if Payments.liquid(s) < price { return .notEnoughCash }
@@ -419,12 +383,10 @@ public enum FootballModel {
         return .ok(id)
     }
 
-    /// Value of a new club in the second tier. Original: `foundClub`.
     public static func foundingValue(_ country: Country) -> Double? {
         leagueInfo(country).map { round100k($0.low * usd * 1e6 * 0.5) }
     }
 
-    /// Found a club in the second tier; it must earn promotion to the top league. Original: `foundClub`.
     public static func found(_ s: inout GameState, country: Country, cityID: String?, data: GameData) -> BuyResult {
         guard let val = foundingValue(country) else { return .notAvailable }
         if Payments.liquid(s) < val * 0.4 { return .notEnoughCash }
@@ -443,7 +405,6 @@ public enum FootballModel {
         return .ok(id)
     }
 
-    /// The company that runs a club you own. Original: `makeClubCo`.
     static func makeClubCompany(_ s: inout GameState, club: JSONValue, division div: Int, cash: Double, country: Country, data: GameData) -> Int? {
         guard let id = SpecialFamilies.blankCompany(&s, tradeID: "club", country: country, cityID: club["city"].string, name: club["name"].string, size: 1, data: data),
               let i = s.companyIndex(id) else { return nil }
@@ -480,8 +441,6 @@ public enum FootballModel {
         return id
     }
 
-    // MARK: Sponsors
-
     static func sponsorOffers(_ s: inout GameState, _ i: Int, country: Country) {
         var fm = s.companies[i].value("fm")
         guard let club = findClub(s, id: fm["club"].string) else { return }
@@ -515,8 +474,6 @@ public enum FootballModel {
         return .ok
     }
 
-    // MARK: People: the manager and the assistant
-
     public struct Coach: Equatable, Identifiable {
         public var id: Int, name: String, skill: Double, wage: Double, age: Int, kind: String, interim: Bool
         var json: JSONValue {
@@ -529,7 +486,6 @@ public enum FootballModel {
             guard !j.isNull else { return nil }
             self.init(id: j["id"].int, name: j["name"].string, skill: j["skill"].double, wage: j["wage"].double, age: j["age"].int, kind: j["kind"].string, interim: j["interim"].bool)
         }
-        /// A word for the quality. Original: the UI's wording.
         public var quality: String { skill >= 80 ? "Outstanding" : skill >= 65 ? "Strong" : skill >= 45 ? "Capable" : "Developing" }
     }
 
@@ -544,7 +500,6 @@ public enum FootballModel {
         return Coach(id: s.makeID(), name: name, skill: skill, wage: ask, age: s.random.int(34, 63), kind: kind)
     }
 
-    /// Four candidates for the job. Original: `clubCands`.
     public static func candidates(_ s: inout GameState, companyID: Int, kind: String, data: GameData) -> [Coach] {
         guard let i = s.companyIndex(companyID), let club = findClub(s, id: s.companies[i].value("fm")["club"].string),
               let country = data.countries[s.companies[i].countryCode] else { return [] }
@@ -566,7 +521,6 @@ public enum FootballModel {
         var fm = s.companies[i].value("fm"); fm["asst"] = .null; s.companies[i].set("fm", fm)
     }
 
-    /// The manager is sacked; the assistant takes over or a caretaker steps in. Original: `clubSack`.
     public static func sackManager(_ s: inout GameState, companyIndex i: Int, reason why: String, data: GameData) {
         var fm = s.companies[i].value("fm")
         guard let old = Coach(fm["coach"]) else { return }
@@ -588,8 +542,6 @@ public enum FootballModel {
         }
     }
 
-    // MARK: Budget
-
     public static func setWageShare(_ s: inout GameState, companyID: Int, share: Double) {
         guard let i = s.companyIndex(companyID), s.companies[i].type == "club" else { return }
         var fm = s.companies[i].value("fm"); fm["wage"] = .number(clamp(share, 0.4, 0.95)); s.companies[i].set("fm", fm)
@@ -599,9 +551,6 @@ public enum FootballModel {
         var fm = s.companies[i].value("fm"); fm["tix"] = .number(Double(min(1, max(-1, level)))); s.companies[i].set("fm", fm)
     }
 
-    // MARK: The week of the club
-
-    /// Original: `clubWeek` + the round-24 step (extra wages, write-off of signings, bids for your players).
     static func context(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) -> CompanyWeek.WeekContext {
         var co = s.companies[i]
         var fm = co.value("fm")
@@ -638,7 +587,7 @@ public enum FootballModel {
         let wages = fm["wage"].double * R / 52
         let coachW = (fm["coach"].isNull ? 0 : fm["coach"]["wage"].double) + (fm["asst"].isNull ? 0 : fm["asst"]["wage"].double)
         let ops = R * 0.3 / 52
-        var cogs = ops   // the playing and coaching wages go to the wages line (below), not the cost of sales
+        var cogs = ops
         var wageBill = wages + coachW
         fm["wk"] = .object(["tv": .number(tv), "spons": .number(spons), "merch": .number(merch), "match": .number(md), "wages": .number(wages), "coaches": .number(coachW), "ops": .number(ops)])
         if let r = res {
@@ -663,7 +612,6 @@ public enum FootballModel {
             sponsorOffers(&s, i, country: country)
             fm = s.companies[i].value("fm")
         }
-        // The round-24 step: extra wages for players signed (or saved by selling), signings written off over three years.
         wageBill += fm["xw"].double * R / 52
         var dep = 0.0
         var amort = fm["amort"].array
@@ -674,7 +622,6 @@ public enum FootballModel {
         s.companies[i].set("fm", fm)
         if dep > 0 { Payments.book(&s, companyID: co.id, category: "dep", amount: dep) }
         if wageBill > 0 { Payments.companyPays(&s, companyID: co.id, amount: wageBill, category: "wages", label: "Players' and coaches' wages") }
-        // Bids for your players arrive while a transfer window is open.
         if let win = transferWindow(s, lg) {
             let open = s.inbox.contains { $0.actionID == "club24" && $0.companyID == co.id && $0.status == "open" }
             if s.random.chance(win == "summer" ? 0.15 : 0.08) && !open {
@@ -693,9 +640,6 @@ public enum FootballModel {
         return CompanyWeek.WeekContext(units: res != nil ? 1 : 0, rev: rev, cogs: cogs, D: 1, cap: 1, util: fillNow != 0 ? fillNow : 0.7, price: 1, paidDuringWeek: 0)
     }
 
-    // MARK: Transfers
-
-    /// "summer" in the first six weeks of the season, "winter" in weeks 26-29, otherwise nil. Original: `R24.window`.
     static func transferWindow(_ s: GameState, _ lg: League) -> String? {
         let sw = s.week - lg.w0
         return sw >= 0 && sw < 6 ? "summer" : sw >= 26 && sw < 30 ? "winter" : nil
@@ -715,7 +659,6 @@ public enum FootballModel {
 
     public enum SignResult: Equatable { case ok, closed, cash }
 
-    /// Buy a player now, in a transfer window. The fee is written off over three years. Original: `R24.sign`.
     public static func sign(_ s: inout GameState, companyID: Int, tier: Int) -> SignResult {
         guard let i = s.companyIndex(companyID), tier >= 0, tier < tiers.count, let lg = readLeague(s, s.companies[i].countryCode) else { return .closed }
         if transferWindow(s, lg) == nil { return .closed }
@@ -735,7 +678,6 @@ public enum FootballModel {
         return .ok
     }
 
-    /// The owner answers a bid for a player. Original: `ACTS.club24` and `R24.sell`.
     public static func answerBid(_ s: inout GameState, message m: Message, option idx: Int) {
         guard let i = s.companyIndex(m.companyID), !s.companies[i].value("fm").isNull else { return }
         let d = m.value("data")
@@ -743,8 +685,6 @@ public enum FootballModel {
         if let k = s.inbox.firstIndex(where: { $0.id == m.id }) { var dd = d; dd["done"] = 1; s.inbox[k].set("data", dd) }
         guard idx == 0 else { return }
         var fm = s.companies[i].value("fm")
-        // The player's remaining book value (his share of the unamortised signing fees) is written off at the sale; the sale books only the
-        // difference to the fee, once: a gain in revenue or a loss.
         let share = fm["sq"].double > 0 ? clamp(d["pts"].double / fm["sq"].double, 0, 1) : 0
         var am = fm["amort"].array
         var writeOff = 0.0
@@ -764,8 +704,6 @@ public enum FootballModel {
         s.companies[i].reputation = clamp(s.companies[i].reputation - d["pts"].double * 0.3, 0, 100)
         s.note("\(s.companies[i].name) sold \(d["who"].string) to \(d["to"].string).", tone: "good", companyID: m.companyID)
     }
-
-    // MARK: Reading for screens
 
     public struct TableRow: Identifiable, Equatable {
         public var id: String, name: String
@@ -844,7 +782,6 @@ public enum FootballModel {
         return r
     }
 
-    /// The clubs of a country as the buying screen lists them. Makes them (without saving) if the league was not opened yet.
     public static func clubList(_ s: GameState, country: Country) -> [ClubInfo] {
         let list = s.rest["clubs"]?[country.code].isNull == false ? clubs(s, country.code) : generateClubs(country: country, seed: s.seed)
         return list.map { ClubInfo(id: $0["id"].string, name: $0["name"].string, city: $0["city"].string, value: $0["val"].double, owner: $0["owner"].string,

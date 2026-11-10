@@ -3,7 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The tender card reads: the company's own cost estimate and the rivals as a word.
 final class TenderInfoTests: XCTestCase {
     func testRivalCountIsAWordScale() {
         func t(_ n: Int) -> ProjectTenders.Tender { ProjectTenders.Tender(raw: ["rivals": .number(Double(n))]) }

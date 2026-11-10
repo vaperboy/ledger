@@ -1,9 +1,5 @@
 import Foundation
 
-/// Text in the game's data may contain tokens that depend on the country of the reader:
-///  - `{auth:key}`  the name of a public body in that country (tax office, food authority ...)
-///  - `{m:amount}`  an amount written at the reference price level, scaled to the country and shown in its currency
-/// Original: `locText` (engine/core/text.js). Stored text keeps its tokens; they are resolved when text is shown.
 public enum TextTokens {
     public static func resolve(_ text: String, country: Country, currency: Currency) -> String {
         guard text.contains("{") else { return text }

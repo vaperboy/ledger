@@ -3,7 +3,6 @@ import GameCore
 @testable import Businesses
 @testable import Simulation
 
-/// A real player's save from an older build: it loads, every screen read works on it, and a month of play does not trap.
 final class PlayerSaveTests: XCTestCase {
     func testPlayersOldSaveLoadsReadsAndPlays() throws {
         let (data, events, marketing) = try GameEngine.loadResources()

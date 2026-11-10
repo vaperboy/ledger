@@ -3,14 +3,11 @@ import GameCore
 import Countries
 import Finance
 
-/// The product lines of each finance trade, read from the books the existing models keep (`fm` on the company, the week's `lastW`). Pure reads: no cash moves.
 extension FinanceItems {
     static func knobIndex(_ co: Company, _ id: String, def: Int, max top: Int) -> Int {
         let v = co.value("knob")[id]
         return v.isNull ? def : min(top, Swift.max(0, v.int))
     }
-
-    // MARK: Insurance: one item per cover
 
     static func insuranceBases(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, mt: Double) -> [Base] {
         let fm = co.value("fm"), tables = w.catalog.tables, sp = spec["insco"]
@@ -53,8 +50,6 @@ extension FinanceItems {
             return b
         }
     }
-
-    // MARK: Bank: loan types and deposit accounts
 
     static func bankBases(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, mt: Double) -> [Base] {
         let fm = co.value("fm"), sp = spec["bank"], cur = w.currency(co)
@@ -107,8 +102,6 @@ extension FinanceItems {
         return out
     }
 
-    // MARK: Fund: one item per fee class
-
     static func fundBases(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, mt: Double) -> [Base] {
         let fm = co.value("fm"), sp = spec["fund"], cur = w.currency(co)
         let aum = fm["aum"].double
@@ -133,8 +126,6 @@ extension FinanceItems {
             return b
         }
     }
-
-    // MARK: Power: one item per tariff
 
     static func powerBases(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, mt: Double) -> [Base] {
         let sp = spec["power"], lw = co.value("lastW")
@@ -173,8 +164,6 @@ extension FinanceItems {
             return b
         }
     }
-
-    // MARK: Oil and gas: one item per field
 
     static func oilBases(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, mt: Double) -> [Base] {
         let sp = spec["oilgas"], fm = co.value("fm")
@@ -217,8 +206,6 @@ extension FinanceItems {
         }
         return out
     }
-
-    // MARK: Holding: group services at cost plus a margin
 
     static func holdBases(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, mt: Double, overhead: Double) -> [Base] {
         let sp = spec["hold"]

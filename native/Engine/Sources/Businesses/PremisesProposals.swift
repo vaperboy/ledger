@@ -3,26 +3,13 @@ import GameCore
 import Countries
 import Finance
 
-/// A manager whose company turns customers away because the premises are full proposes renting bigger ones.
-/// "Demand-limited" is read from what the company measured itself (`lastW`: demand D against what it can serve cap) together with what limits it:
-/// the space (the bottleneck of `CapacityModel`) or the places in an office or at home (`Workplaces`, no free place). The proposal carries
-/// the extra capacity, the rent change and a profit uplift computed from the demand that is being turned away, and nothing else: accepting
-/// moves the company through the same machinery as renting a place (`CompanySetup.setPremises`: deposit back, deposit, fit-out) plus a moving cost,
-/// and the profit comes only because the capacity limit is higher, so the demand that was turned away converts to sales. It is not free money.
-/// A decline starts a cooldown. The message is a "prop" decision that always reaches the owner (`Delegation.level`: kind "prem" is level 5).
 public enum PremisesProposals {
     public static let kind = "prem"
-    /// Weeks in a row the company must be premises-limited before the manager believes the number.
     public static let streakWeeks = 6
-    /// Weeks before the manager asks again after an unanswered proposal, and after a decline.
     public static let askCooldownWeeks = 13, declineCooldownWeeks = 52
-    /// Smallest unmet demand, as a share of capacity, that is worth a move.
     public static let minUnmetShare = 0.10
-    /// A move is not proposed if it pays back slower than this many weeks.
     public static let maxPaybackWeeks = 104.0
-    /// Variable costs of the extra sales that the gross margin does not carry (supplies, hours, wear): the uplift counts this share of the gross margin.
     public static let marginKept = 0.70
-    /// One move never lifts sales by more than this share of the capacity it starts from (Nov 3 balance report).
     public static let maxUpliftShare = 0.60
 
     public struct Plan: Equatable, Sendable {
@@ -34,15 +21,12 @@ public enum PremisesProposals {
         public var toSquareMetres: Double
         public var fromPlaces: Int?
         public var toPlaces: Int?
-        /// Customers' demand above what can be served now, units a week (the number the plan is built on).
         public var unmetUnitsPerWeek: Double
-        /// Units a week the new capacity converts into sales (never more than the unmet demand).
         public var extraUnitsPerWeek: Double
         public var extraCapacityPercent: Double
         public var monthlyRentBefore: Double
         public var monthlyRentAfter: Double
         public var rentChangeMonthly: Double
-        /// Deposit (net of the one returned), fit-out and moving, once.
         public var oneOffCost: Double
         public var movingCost: Double
         public var projectedWeeklyProfitUplift: Double
@@ -51,9 +35,6 @@ public enum PremisesProposals {
         var listing: CompanySetup.Listing
     }
 
-    // MARK: Reading
-
-    /// Is the company turning demand away because of its premises? The unmet units a week, nil if it is not (or has no premises that limit it).
     public static func unmetDemand(_ s: GameState, companyID: Int, data: GameData) -> Double? {
         guard let co = s.company(companyID), co.status == .open, let bd = data.catalog[co.type] else { return nil }
         let lw = co.value("lastW")
@@ -71,7 +52,6 @@ public enum PremisesProposals {
         return p["owned"].bool ? 0 : p["rent"].double * p["m2"].double / 12
     }
 
-    /// The best move to bigger premises for this company, nil when it is not premises-limited, owns its premises, or no listing pays.
     public static func plan(_ s: GameState, companyID: Int, data: GameData) -> Plan? {
         guard let unmet = unmetDemand(s, companyID: companyID, data: data), let co = s.company(companyID), let bd = data.catalog[co.type], !co.value("prem")["owned"].bool else { return nil }
         let w = World(state: s, data: data)
@@ -95,7 +75,6 @@ public enum PremisesProposals {
             let toPlaces = Workplaces.places(kind: kind, squareMetres: l.squareMetres)
             var placeGain = 0.0
             if let from = info.capacity, let to = toPlaces, to > from, (info.free ?? 1) <= 0 { placeGain = cap * Double(to - from) / Double(max(1, info.used)) }
-            // a move that would lift capacity by more than the cap is not offered: the real uplift of a single move stays within it
             if max(spaceGain, placeGain) > cap * maxUpliftShare { continue }
             let gain = min(unmet, max(spaceGain, placeGain))
             guard gain > 0 else { continue }
@@ -108,14 +87,11 @@ public enum PremisesProposals {
                             monthlyRentBefore: rentBefore, monthlyRentAfter: t.monthlyRent, rentChangeMonthly: t.monthlyRent - rentBefore, oneOffCost: oneOff, movingCost: moving,
                             projectedWeeklyProfitUplift: weekly, projectedYearlyProfitUplift: weekly * 52, paybackWeeks: oneOff > 0 ? oneOff / weekly : 0, listing: l)
             if (plan.paybackWeeks ?? 0) > maxPaybackWeeks { continue }
-            // the move that pays most over two years after its one-off cost
             func value(_ p: Plan) -> Double { p.projectedWeeklyProfitUplift * 104 - p.oneOffCost }
             if best == nil || value(plan) > value(best!) { best = plan }
         }
         return best
     }
-
-    // MARK: Proposing (weekly, from the manager's week)
 
     static func managerWeek(_ s: inout GameState, _ ci: Int, _ n: Person, data: GameData) {
         let co = s.companies[ci]
@@ -145,21 +121,16 @@ public enum PremisesProposals {
                      expiresWeek: s.week + 4)
     }
 
-    // MARK: Answering
-
-    /// The owner's answer: option 0 moves, anything else declines.
     static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData) {
         guard s.companyIndex(m.companyID) != nil else { return }
         if idx == 0 { _ = accept(&s, message: m, data: data) } else { decline(&s, companyID: m.companyID) }
     }
 
-    /// Decline: the manager does not ask again for a year.
     public static func decline(_ s: inout GameState, companyID: Int) {
         guard let ci = s.companyIndex(companyID) else { return }
         var fl = s.companies[ci].value("flags"); fl["premNo"] = .number(Double(s.week)); s.companies[ci].set("flags", fl)
     }
 
-    /// Weeks left of the cooldown after a decline or an unanswered proposal (0 = may ask).
     public static func cooldownWeeks(_ s: GameState, companyID: Int) -> Int {
         guard let co = s.company(companyID) else { return 0 }
         let fl = co.value("flags")
@@ -175,14 +146,12 @@ public enum PremisesProposals {
         return move(&s, companyID: m.companyID, listing: l, data: data)
     }
 
-    /// Accept the best current plan for a company without going through the inbox (for screens and tests). False when there is nothing to accept or it cannot be paid.
     @discardableResult
     public static func accept(_ s: inout GameState, companyID: Int, data: GameData) -> Bool {
         guard let p = plan(s, companyID: companyID, data: data) else { return false }
         return move(&s, companyID: companyID, listing: p.listing, data: data)
     }
 
-    /// The move: the owner puts in what the company lacks, then deposit back, new deposit and fit-out (`CompanySetup.setPremises`), then the moving cost.
     static func move(_ s: inout GameState, companyID: Int, listing l: CompanySetup.Listing, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID) else { return false }
         let w = World(state: s, data: data)

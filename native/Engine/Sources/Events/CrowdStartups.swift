@@ -4,15 +4,11 @@ import Countries
 import Finance
 import Businesses
 
-/// Startups funded by other players, on the player's books. The rules are `CrowdStartupRules`; this moves the money and every move goes through
-/// `Ledger`, so `Ledger.gaps` stays empty. Escrow is the server's: money paid in leaves the investor at once and reaches the startup only at a milestone.
-/// A founder's own startup is a real company made by `Startups.found`; released money and the investors' shares land on it.
 public enum CrowdStartups {
     public static let me = "me"
 
     public enum FoundOutcome { case ok(CrowdStartupRules.Startup), refused(String) }
 
-    /// What founding costs in the player's money: the entry cost, the founder's own money and the registration, and the plan that results.
     public struct FoundQuote: Equatable {
         public var entryCost: Double
         public var founderPutIn: Double
@@ -30,8 +26,6 @@ public enum CrowdStartups {
         return FoundQuote(entryCost: jsRound(entry), founderPutIn: p.seed, registration: c.registrationFee, plan: plan)
     }
 
-    /// Found a startup that other players can fund: the entry cost leaves for good, the founder's money goes into the new company, and the
-    /// plan is listed for investors. Refused for new accounts, a plan with too little of the founder's own money, or too little cash.
     public static func found(_ s: inout GameState, name: String?, sector: String, product: String, model: String, who: String, seedMultiple: Double, planFactor: Double,
                              pitch: String, accountWeeks: Int, level: Int, today: Int, data: GameData, context fc: FinanceContext) -> FoundOutcome {
         let gate = CrowdStartupRules.foundGate(accountWeeks: accountWeeks, level: level)
@@ -50,11 +44,8 @@ public enum CrowdStartups {
         }
     }
 
-    // MARK: Investing
-
     public enum InvestOutcome { case ok(CrowdStartupRules.Quote, CrowdStartupRules.Holding), refused(String) }
 
-    /// The player puts money into a startup's open stage. The money goes into escrow; the shares are owned at once but locked.
     public static func invest(_ s: inout GameState, startup st: inout CrowdStartupRules.Startup, linkKeys: Set<String>, accountWeeks: Int, amount: Double, today: Int) -> InvestOutcome {
         let amt = jsRound(amount)
         switch CrowdStartupRules.investCheck(st, investorID: me, linkKeys: linkKeys, accountWeeks: accountWeeks, amount: amt, today: today) {
@@ -67,17 +58,12 @@ public enum CrowdStartups {
         }
     }
 
-    /// Adds a purchase to the player's holdings (one per startup; the lock restarts from the latest purchase).
     public static func add(_ h: CrowdStartupRules.Holding, to list: inout [CrowdStartupRules.Holding]) {
         if let i = list.firstIndex(where: { $0.startupID == h.startupID && $0.ownerID == h.ownerID }) {
             list[i].percent += h.percent; list[i].paid += h.paid; list[i].boughtDay = max(list[i].boughtDay, h.boughtDay)
         } else { list.append(h) }
     }
 
-    // MARK: Milestones and failure
-
-    /// A milestone is reached: the stage's escrow goes to the startup. When the startup is the player's company, the money lands in its cash and the
-    /// investors' shares are issued on its cap table. Returns the amount released.
     @discardableResult
     public static func reachMilestone(_ s: inout GameState, startup st: inout CrowdStartupRules.Startup, today: Int) -> Double {
         let stage = st.milestones
@@ -89,22 +75,17 @@ public enum CrowdStartups {
         let total = CapTable.table(s.companies[i]).total
         CapTable.issue(&s, i, newShares: CapTable.sharesForPercent(min(pct, 49), total: total), to: "Crowd investors (\(CrowdStartupRules.stageNames[stage].lowercased()))", paid: released)
         let own = s.companies[i].ownership
-        // The released money is cash in the company, so its value rises by that much now rather than at the next weekly refresh.
         Startups.edit(&s, cid) { $0["pct"] = .number(own); $0["val"] = .number($0["val"].double + released) }
         s.note("\(CrowdStartupRules.milestoneNames[stage]): \(Int(released.rounded())) of investors' money is released to \(st.name).", tone: "good", companyID: cid)
         return released
     }
 
-    /// Pays back what the startup's failure returns from escrow to the player.
     public static func settleRefunds(_ s: inout GameState, _ back: [(investorID: String, amount: Double)], startupName: String) {
         for b in back where b.investorID == me && b.amount > 0 {
             Payments.playerReceives(&s, b.amount, label: "Escrow returned: \(startupName)")
         }
     }
 
-    // MARK: Secondary sales
-
-    /// The player buys shares from another holder at a price inside the band; the transfer tax is paid on top and leaves the economy.
     public static func buy(_ s: inout GameState, startup st: CrowdStartupRules.Startup, from seller: CrowdStartupRules.Holding, percent: Double, price: Double, accountWeeks: Int,
                            linkKeys: Set<String>, gainsRate: Double, today: Int) -> Result<(CrowdStartupRules.SaleQuote, CrowdStartupRules.Holding), SaleFailure> {
         switch CrowdStartupRules.saleCheck(st, holding: seller, percent: percent, price: price, buyerID: me, buyerLinkKeys: linkKeys, buyerAccountWeeks: accountWeeks, gainsRate: gainsRate, today: today, rules: s.worldRules) {
@@ -117,7 +98,6 @@ public enum CrowdStartups {
         }
     }
 
-    /// The player sells shares to a buyer: the price comes in, the gains tax is withheld on a gain.
     public static func sell(_ s: inout GameState, startup st: CrowdStartupRules.Startup, holding: inout CrowdStartupRules.Holding, percent: Double, price: Double, buyerID: String,
                             buyerLinkKeys: Set<String>, buyerAccountWeeks: Int, gainsRate: Double, today: Int) -> Result<CrowdStartupRules.SaleQuote, SaleFailure> {
         switch CrowdStartupRules.saleCheck(st, holding: holding, percent: percent, price: price, buyerID: buyerID, buyerLinkKeys: buyerLinkKeys, buyerAccountWeeks: buyerAccountWeeks, gainsRate: gainsRate, today: today, rules: s.worldRules) {
@@ -134,9 +114,6 @@ public enum CrowdStartups {
 
     public struct SaleFailure: Error, Equatable { public var message: String }
 
-    // MARK: Progress of the player's own startup
-
-    /// How far the player's own startup company has come, by what is true in its books: launched (opened), selling (first sales), covering its costs (first profit).
     public struct Progress: Equatable {
         public var milestones: Int
         public var assets: Double

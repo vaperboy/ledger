@@ -4,7 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// A hand-drawn signature: the player draws with a finger. `strokes` holds every line drawn.
 struct SignaturePad: View {
     @Binding var strokes: [[CGPoint]]
     var body: some View {
@@ -27,8 +26,6 @@ struct SignaturePad: View {
     }
 }
 
-/// The paper form for a document or licence application: what it is, who issues it, the fee and the wait, a box to confirm the terms and a
-/// signature box. Only when both are done can it be sent; the authority then reviews it and answers later (it may refuse).
 struct DocumentSignSheet: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -63,8 +60,6 @@ struct DocumentSignSheet: View {
     }
 }
 
-/// Manage > Licences: how many papers are held (the hero), then one row per licence with its fee, status and the way to apply.
-/// Apply by signing the form; the answer comes later and may be a refusal.
 struct CompanyLicences: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

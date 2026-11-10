@@ -1,14 +1,9 @@
 import SwiftUI
 
-/// How a series changed from the one drawn before it.
 private enum SeriesStep {
-    /// A new last point was added: the earlier points stay and the line grows to it.
     case grow
-    /// The series is a fixed window: it moved on by one day, so the line slides left by one step and ends at the new point.
     case slide
-    /// Only the last point moved.
     case tail
-    /// Anything else (another period chosen): shown at once.
     case still
 
     static func between(_ old: [Double], _ new: [Double]) -> SeriesStep {
@@ -20,9 +15,6 @@ private enum SeriesStep {
     }
 }
 
-/// The line of a series (or its filled area) between the series drawn before (`from`) and the one now (`to`). `phase - base`, clamped to 0...1,
-/// is how far the move has gone: earlier points stay put (or slide one step left for a window), the last point travels from the old last
-/// value to the new one, and the vertical scale eases between the two ranges.
 private struct SeriesShape: Shape {
     var to: [Double]
     var from: [Double]
@@ -30,7 +22,6 @@ private struct SeriesShape: Shape {
     var area: Bool
     var phase: Double
     var base: Double
-    /// Maps a series to the low and high of the plot (so a chart can pad its scale).
     var range: ([Double]) -> (Double, Double)
 
     var animatableData: Double {
@@ -67,7 +58,6 @@ private struct SeriesShape: Shape {
             pts.append((1, last))
         }
         let span: Double = max(hi - lo, abs(hi) * 0.002, 1)
-        // A non-finite value or size would hand CoreGraphics a NaN point: every coordinate is made finite first.
         func fin(_ v: Double) -> CGFloat { v.isFinite ? CGFloat(v) : 0 }
         let points: [CGPoint] = pts.map { (q: (x: Double, v: Double)) -> CGPoint in
             CGPoint(x: rect.minX + rect.width * fin(q.x), y: rect.minY + rect.height * (1 - fin((q.v - lo) / span)) * 0.9 + rect.height * 0.05)
@@ -87,9 +77,6 @@ private struct SeriesShape: Shape {
     }
 }
 
-/// A sparkline that is drawn once and then only extended: when a day is appended the earlier line stays and its trailing segment travels to the
-/// new point (a fixed window slides left by one step), instead of drawing again. The left-to-right draw is `drawsItself()` and belongs to the
-/// first appearance only. Reduce Motion shows the new series at once. `range` can pad the scale (default: the series' own low and high).
 struct LiveSparkline: View {
     var values: [Double]
     var tint: Color = Theme.gold

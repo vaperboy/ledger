@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Transport and logistics: services and routes as items, their economics from the books, the price slider, old saves, and a two-year probe per trade.
 final class TransportItemsTests: XCTestCase {
     static let all = ["taxi", "courier", "trucking", "shipping", "airline", "wh3pl"]
 
@@ -45,7 +44,6 @@ final class TransportItemsTests: XCTestCase {
             r.e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
             r.invested += top
         }
-        // The hook the lead adds beside `ItemModels.weeklyTick` in `ItemHooks.weekly`, run here by hand.
         if withItems { r.e.update { s, d, _ in for i in s.companies.indices { TransportItems.weekly(&s, i, data: d) } } }
     }
 
@@ -99,7 +97,6 @@ final class TransportItemsTests: XCTestCase {
     func testOldSavesAndOtherTradesAreUntouched() throws {
         var r = try Self.start("taxi")
         for _ in 0..<3 { Self.week(&r, withItems: false) }
-        // the weekly hook (ItemHooks) installs the real items by itself now, so even without the by-hand call the company has them
         let co = r.e.state.company(r.id)!
         XCTAssertFalse(co.value("itemsv2").isNull)
         var other = try Self.start("bakery")
@@ -120,7 +117,6 @@ final class TransportItemsTests: XCTestCase {
         XCTAssertEqual(SalesItems.items(r.e.state.company(r.id)!, r.e.data.catalog["courier"]!).first { $0.id == item }!.priceMultiplier, 1.2, accuracy: 1e-9)
     }
 
-    /// Two years of a competent owner per trade, with and without the withItems: no trade becomes unprofitable by design. Prints profit per year.
     func testTwoYearProbePerTrade() throws {
         for t in Self.all {
             var base = try Self.start(t), withItems = try Self.start(t)

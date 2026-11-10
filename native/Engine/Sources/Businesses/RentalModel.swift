@@ -4,45 +4,33 @@ import Countries
 import Employees
 import Finance
 
-/// One building (or car park, or block of flats) a rental company owns. Original: `co.props` entries.
 public struct Property: JSONRecord, Identifiable {
     public var raw: [String: JSONValue]
     public init(raw: [String: JSONValue]) { self.raw = raw }
 
     public var id: Int { get { int("id") } set { set("id", newValue) } }
     public var name: String { get { str("name") } set { set("name", newValue) } }
-    /// Flats, square metres or parking/storage spaces, by `kind`.
     public var units: Double { get { num("units") } set { set("units", newValue) } }
-    /// "res" (flats), "com" (m2 of commercial space) or "park" (spaces and storage units)
     public var kind: String { get { str("kind") } set { set("kind", newValue) } }
-    /// What it cost to buy.
     public var cost: Double { get { num("cost") } set { set("cost", newValue) } }
-    /// What it is worth now: follows the housing market and the condition.
     public var value: Double { get { num("val") } set { set("val", newValue) } }
-    /// Housing index on the day it was bought.
     public var housingAtPurchase: Double { get { num("idx0", 1) } set { set("idx0", newValue) } }
-    /// Mortgage loan id, 0 if none.
     public var loanID: Int { get { int("loan") } set { set("loan", newValue) } }
-    /// Rent per unit per week at market level, before the company's own rent policy.
     public var rentPerUnit: Double { get { num("rentU") } set { set("rentU", newValue) } }
     public var vacancy: Double { get { num("vac") } set { set("vac", newValue) } }
     public var condition: Double { get { num("cond") } set { set("cond", newValue) } }
     public var boughtWeek: Int { get { int("w0") } set { set("w0", newValue) } }
-    /// Units let on a long lease (commercial property only).
     public var leasedUnits: Double { get { num("lu") } set { set("lu", newValue) } }
     public var leases: [Lease] { get { records("leases") } set { setRecords("leases", newValue) } }
 }
 
-/// A tenant on a long lease in a commercial building. Original: `p.leases` entries.
 public struct Lease: JSONRecord {
     public var raw: [String: JSONValue]
     public init(raw: [String: JSONValue]) { self.raw = raw }
     public var name: String { get { str("name") } set { set("name", newValue) } }
     public var squareMetres: Double { get { num("m2") } set { set("m2", newValue) } }
-    /// Rent per m2 per week.
     public var weeklyRentPerM2: Double { get { num("rw") } set { set("rw", newValue) } }
     public var untilWeek: Int { get { int("until") } set { set("until", newValue) } }
-    /// One of the player's own companies is the tenant.
     public var companyID: Int { get { int("co") } set { set("co", newValue) } }
 }
 
@@ -53,7 +41,6 @@ public extension Company {
     }
 }
 
-/// A property for sale. Original: `propListings` entries.
 public struct PropertyListing: Identifiable, Equatable, Sendable {
     public var id: Int { index }
     public var index: Int
@@ -66,7 +53,6 @@ public struct PropertyListing: Identifiable, Equatable, Sendable {
     public var grossYield: Double
 }
 
-/// A business that wants to rent space in a commercial building, or buy the building. Original: `propTenants` entries.
 public struct TenantOffer: Identifiable, Equatable, Sendable {
     public var id: Int { index }
     public var index: Int
@@ -74,21 +60,14 @@ public struct TenantOffer: Identifiable, Equatable, Sendable {
     public var squareMetres: Double
     public var weeklyRentPerM2: Double
     public var years: Int
-    /// Offer for the whole building as a multiple of its value.
     public var buyMultiple: Double
 }
 
-/// Residential rentals, commercial property and parking/self-storage: a portfolio of properties with tenants,
-/// vacancy, maintenance, mortgages and values that follow the housing market. Original: `FAM.rent`, `propListings`,
-/// `buyProp`, `sellProp`, `renovateProp` (engine/company/family_rental.js) and `propTenants`, `leaseTo`, `sellPropTo`.
 public enum RentalModel {
     public enum BuyResult: Equatable { case ok, notEnoughCash, loanDeclined, unknown }
 
     static func kind(_ bd: Trade) -> String { bd.traitText["kind"] ?? "res" }
 
-    // MARK: Listings
-
-    /// Four properties for sale in the company's city, a new list every four weeks. Original: `propListings`.
     public static func listings(_ co: Company, _ bd: Trade, _ w: World) -> [PropertyListing] {
         guard let city = w.city(co) else { return [] }
         let k = kind(bd)
@@ -118,9 +97,6 @@ public enum RentalModel {
         Currency(country: w.countries.resolve(w.state.homeCountryCode, orHome: w.state.homeCountryCode), rates: w.rates)
     }
 
-    // MARK: Buying, selling, renovating
-
-    /// Buy a listing with a mortgage of `ltv` of the price, keeping `reserve` in cash. Original: `buyProp`.
     @discardableResult
     public static func buy(_ s: inout GameState, companyID: Int, listing L: PropertyListing, loanToValue ltv: Double, reserve: Double = 0, data: GameData) -> BuyResult {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], bd.family == "rent" else { return .unknown }
@@ -130,7 +106,6 @@ public enum RentalModel {
         if s.companies[i].cash < down + reserve { return .notEnoughCash }
         var loanID = 0
         if loan > 0 {
-            // A mortgage up to 60% of the price is always granted; more only within the bank's business-loan limit.
             if loan > price * 0.6 + 1 {
                 let nw = Valuation.netWorth(s, trades: data.catalog).total
                 let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
@@ -166,7 +141,6 @@ public enum RentalModel {
         return .ok
     }
 
-    /// Sell a property on the market (2.5% costs) and repay its mortgage. Returns what the sale brought in. Original: `sellProp`.
     @discardableResult
     public static func sell(_ s: inout GameState, companyID: Int, propertyID: Int) -> Double {
         guard let i = s.companyIndex(companyID), let k = s.companies[i].properties.firstIndex(where: { $0.id == propertyID }) else { return 0 }
@@ -178,7 +152,6 @@ public enum RentalModel {
         return net
     }
 
-    /// Cash in, mortgage out, gain or loss booked. Shared by `sell` and `sell(to:)`.
     static func settle(_ s: inout GameState, companyID: Int, property p: Property, net: Double, label: String, gainBase: Double) {
         Payments.companyReceives(&s, companyID: companyID, amount: net, category: nil, label: label)
         if p.loanID != 0, let l = s.loans.first(where: { $0.id == p.loanID }) {
@@ -190,13 +163,11 @@ public enum RentalModel {
         Payments.book(&s, companyID: companyID, category: gain > 0 ? "rev" : "loss", amount: gain > 0 ? gain : -gain)
     }
 
-    /// What renovating this property costs: two percent of the reference price per unit.
     public static func renovationCost(_ co: Company, propertyID: Int, data: GameData) -> Double? {
         guard let bd = data.catalog[co.type], let p = co.properties.first(where: { $0.id == propertyID }) else { return nil }
         return jsRound(p.units * ((bd.trait("price") ?? 0) * 0.02))
     }
 
-    /// Renovate: costs two percent of the reference price per unit, restores condition and adds 1.5% to the value. Original: `renovateProp`.
     @discardableResult
     public static func renovate(_ s: inout GameState, companyID: Int, propertyID: Int, data: GameData) -> BuyResult {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type],
@@ -212,10 +183,6 @@ public enum RentalModel {
         return .ok
     }
 
-    // MARK: Commercial tenants and buyers
-
-    /// Businesses that want space in this building, or want to buy it; new offers every four weeks. Original: `propTenants`
-    /// (the original also offers its franchise brands as tenants; those are not ported, so tenants are local businesses).
     public static func tenants(_ co: Company, property p: Property, _ w: World) -> [TenantOffer] {
         let seed = (w.week >> 2) * 977 + p.id
         var r = DeterministicRandom(state: Int32(truncatingIfNeeded: seed &* 2654435761))
@@ -237,7 +204,6 @@ public enum RentalModel {
         return out
     }
 
-    /// Let space in a commercial building on a long lease. Original: `leaseTo`.
     @discardableResult
     public static func lease(_ s: inout GameState, companyID: Int, propertyID: Int, offer o: TenantOffer) -> Bool {
         guard let i = s.companyIndex(companyID), let k = s.companies[i].properties.firstIndex(where: { $0.id == propertyID }) else { return false }
@@ -253,7 +219,6 @@ public enum RentalModel {
         return true
     }
 
-    /// Sell the whole building to a buyer who pays more than its value. Original: `sellPropTo`.
     @discardableResult
     public static func sell(_ s: inout GameState, companyID: Int, propertyID: Int, to o: TenantOffer) -> Double {
         guard let i = s.companyIndex(companyID), let k = s.companies[i].properties.firstIndex(where: { $0.id == propertyID }) else { return 0 }
@@ -266,7 +231,6 @@ public enum RentalModel {
         return net
     }
 
-    /// Leases that have run out end, with a note. Original: `leaseClean` (company tenants are part of the franchise feature, not ported).
     static func expireLeases(_ s: inout GameState, _ i: Int) {
         PremisesExtras.cleanLeases(&s, landlordIndex: i)
         var changed = false
@@ -285,9 +249,6 @@ public enum RentalModel {
         if changed { s.companies[i].properties = list }
     }
 
-    // MARK: The week
-
-    /// Rent in, upkeep and property tax out; vacancy, condition and value move. Original: `FAM.rent.custom`.
     static func weekly(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) -> CompanyWeek.WeekContext {
         expireLeases(&s, i)
         var co = s.companies[i]
@@ -347,9 +308,6 @@ public enum RentalModel {
         return CompanyWeek.WeekContext(units: occU, rev: rent, cogs: upkeep + ptax + outsourced, D: units, cap: units, util: util, price: bd.ticket, paidDuringWeek: 0)
     }
 
-    // MARK: Events
-
-    /// Effects of events that only a property company understands. Original: `FAM.rent.fx`.
     public static func applyEffects(_ s: inout GameState, _ i: Int, fx: JSONValue, data: GameData) {
         var list = s.companies[i].properties
         if list.isEmpty { return }

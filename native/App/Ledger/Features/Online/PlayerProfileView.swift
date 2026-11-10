@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Another player's profile as the server lets this viewer see it (see `PrivacyLevel`), with Add friend, Remove, Block and Report.
 struct PlayerProfileView: View {
     var playerID: String
     @Environment(OnlineSession.self) private var online
@@ -39,8 +38,6 @@ struct PlayerProfileView: View {
             }
         }
     }
-
-    // MARK: Parts
 
     private func header(_ p: PlayerProfile) -> some View {
         VStack(spacing: Theme.Space.s) {
@@ -146,8 +143,6 @@ struct PlayerProfileView: View {
         .disabled(busy)
     }
 
-    // MARK: Calls
-
     private func load() async {
         do { profile = try await online.service.profile(id: playerID); failure = nil } catch { failure = (error as? LocalizedError)?.errorDescription ?? "Could not load this profile." }
     }
@@ -164,7 +159,6 @@ struct PlayerProfileView: View {
 
 struct ReportTarget: Identifiable { var id: String; var name: String }
 
-/// The reasons list of the report popup (centre card): pick one, add a line if you like, send.
 struct ReportSheet: View {
     var target: ReportTarget
     var onSend: (ReportReason, String) -> Void
@@ -199,7 +193,6 @@ struct ReportSheet: View {
     }
 }
 
-/// A friend's companies on a page of their own: every company with its trade, place and how it is doing.
 struct FriendCompaniesView: View {
     var player: PlayerProfile
 

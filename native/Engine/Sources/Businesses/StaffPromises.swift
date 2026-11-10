@@ -4,22 +4,6 @@ import Countries
 import Employees
 import Finance
 
-/// Promises to employees: a promise made in a hire talk or a contract talk, with a date it falls due, and a REAL check that it was kept.
-/// Seven kinds, each tied to a system that already exists:
-///  - salary review: a raise is given (their pay for a full week rises);
-///  - promotion: they are promoted (`ManagerModel.applyPromotion` writes the post);
-///  - additional responsibility: duties are added by a promotion, or they become a team lead;
-///  - training: they are sent on a course (`StaffProfile.takeCourse`);
-///  - better conditions: any perk that covers them, a bonus plan or an expense reimbursement is added;
-///  - future benefits: the named benefit (a perk, a bonus plan or an expense) is switched on for them;
-///  - working percentage: the contract reaches the agreed percentage.
-/// A promise is Pending, becomes Due on its date (an Inbox note says so), is Fulfilled the moment the real action happens, and is Broken when the
-/// grace period after the due date passes without it. Broken promises hurt through the systems that already exist: the `denied` mark (more people hand
-/// in notice), the mood card, and the company's reputation for keeping its word, which candidates weigh in their ask (`Hiring.askReading`) and the person
-/// weighs when you later ask them to accept a cut in hours or a change of role. Renegotiating moves the date (once per promise) and costs some goodwill;
-/// the person may refuse, by temperament.
-/// Stored on the Person (`prm`, the last 12 promises) so it works for workers, managers and executives alike; the company's record of keeping its word is
-/// `ptr` {k: [weeks], b: [weeks]} (the last 8 of each), written only when a promise is resolved.
 public enum StaffPromises {
     public enum Kind: String, CaseIterable, Sendable {
         case salaryReview, promotion, responsibility, training, betterConditions, futureBenefits, percentageChange
@@ -34,8 +18,6 @@ public enum StaffPromises {
             case .percentageChange: return "Change of working percentage"
             }
         }
-        /// What the real fulfilment check is, in words (the Promises screen and the hire page show it).
-        /// What counts as keeping it for someone who works for the group (an executive, head-office member or the analyst): the nearest real action, named.
         public var fulfilledByForGroup: String {
             switch self {
             case .salaryReview: return "A pay review: their pay is raised."
@@ -62,11 +44,9 @@ public enum StaffPromises {
 
     public enum Status: String, Sendable { case pending = "Pending", due = "Due", fulfilled = "Fulfilled", broken = "Broken", renegotiated = "Renegotiated" }
 
-    /// A promise as the player drafts it (the hire page, the contract talk): the date is given in weeks from now.
     public struct Draft: Equatable, Sendable {
         public var kind: Kind
         public var dueInWeeks: Int
-        /// futureBenefits: "perk:<id>", "plan:<id>" or "exp:<id>". percentageChange: the percentage, e.g. "80". Others: empty.
         public var detail: String
         public init(_ kind: Kind, dueInWeeks: Int, detail: String = "") { self.kind = kind; self.dueInWeeks = dueInWeeks; self.detail = detail }
         public var isPlausible: Bool {
@@ -93,17 +73,13 @@ public enum StaffPromises {
         public var renegotiations: Int
         public var madeDate: GameCalendar.Date { GameCalendar.date(week: madeWeek) }
         public var dueDate: GameCalendar.Date { GameCalendar.date(week: dueWeek) }
-        /// What it means for them and for you, in words (no figures).
         public var consequence: String
         public var isOpen: Bool { status == .pending || status == .due }
     }
 
-    /// Weeks after the due date in which a promise is still Due before it counts as broken.
     public static let graceWeeks = 4
     static let keep = 12
     static let key = "prm"
-
-    // MARK: Benefits named by a promise
 
     enum Benefit: Equatable { case perk(String), plan(String), expense(String) }
     static func benefit(_ detail: String) -> Benefit? {
@@ -134,22 +110,18 @@ public enum StaffPromises {
         }
     }
 
-    // MARK: Reading and writing the records
-
     struct Baseline {
         var unitWage = 0.0, role = "", promo = 0, k11Week = 0, duties = 0, courses = 0, conditions = 0, lvl = 0
     }
 
     static func unitWage(_ m: StaffMember) -> Double { m.monthlyWage / max(0.05, m.partTimeShare) }
 
-    /// How good the conditions are: perks that cover them, a bonus plan, expense reimbursements, an own car.
     static func conditions(_ co: Company, personID: Int) -> Int {
         if co.managerID == personID { return StaffPerks.onPerks(co).filter { StaffPerks.coversManager(co, $0) }.count }
         guard let m = co.staff.first(where: { $0.id == personID }) else { return 0 }
         return StaffPerks.perks(for: m, in: co).count + (WorkerBonus.level(of: m) == nil ? 0 : 1) + StaffExpenses.on(m).count + (m.flag("ownCar") ? 1 : 0)
     }
 
-    /// Someone who works for the group, not in a company's staff list and not a company's manager.
     static func isGroup(_ s: GameState, companyID: Int, personID: Int) -> Bool {
         if let co = s.company(companyID), co.managerID == personID || co.staff.contains(where: { $0.id == personID }) { return false }
         return GroupPeople.isGroupPerson(s, personID)
@@ -196,7 +168,6 @@ public enum StaffPromises {
 
     static func store(_ list: [(Promise, Baseline)], _ s: inout GameState, personID: Int) {
         guard var n = s.people[personID] else { return }
-        // keep every open one and the latest resolved ones
         let open = list.filter { $0.0.isOpen }, done = list.filter { !$0.0.isOpen }.suffix(max(0, keep - open.count))
         let merged = (open + done).sorted { $0.0.id < $1.0.id }
         if merged.isEmpty { n.raw.removeValue(forKey: key) } else { n.set(key, .array(merged.map { encode($0.0, $0.1) })) }
@@ -214,15 +185,10 @@ public enum StaffPromises {
         }
     }
 
-    // MARK: Making a promise
-
-    /// Make a promise to someone who works for the company. Returns the promise, or nil when the person is not an employee, the draft is not plausible, or the
-    /// same kind of promise is already open for them.
     @discardableResult
     public static func make(_ s: inout GameState, companyID: Int, personID: Int, draft d: Draft) -> Promise? {
         guard d.isPlausible, let n = s.people[personID] else { return nil }
         if isGroup(s, companyID: companyID, personID: personID) {
-            // a group employee: only benefits that can be agreed for them (a reimbursement) can be promised
             if d.kind == .futureBenefits, case .expense? = benefit(d.detail) {} else if d.kind == .futureBenefits { return nil }
         } else {
             guard let co = s.company(companyID),
@@ -232,7 +198,6 @@ public enum StaffPromises {
         if list.contains(where: { $0.0.isOpen && $0.0.kind == d.kind && $0.0.detail == d.detail }) { return nil }
         var b = baseline(s, companyID: companyID, personID: personID)
         if n.employerID == 0 {
-            // a promise made in a hire talk: the baseline is taken when the person joins (see `Hiring.hire`), nothing to measure yet
             b = Baseline()
         }
         let id = s.makeID()
@@ -244,7 +209,6 @@ public enum StaffPromises {
         return p
     }
 
-    /// Take the baseline of promises made in a hire talk, now that the person has joined (the checks compare with the state at the start).
     static func rebase(_ s: inout GameState, companyID: Int, personID: Int) {
         guard let n = s.people[personID] else { return }
         let b = baseline(s, companyID: companyID, personID: personID)
@@ -252,9 +216,6 @@ public enum StaffPromises {
         store(list, &s, personID: personID)
     }
 
-    // MARK: Fulfilment
-
-    /// Kept, for someone who works for the group: the real action named in the promise happened (see `GroupPeople`).
     static func isKeptForGroup(_ p: Promise, _ b: Baseline, _ s: GameState, _ n: Person) -> Bool {
         switch p.kind {
         case .salaryReview: return b.unitWage > 0 && (GroupPeople.wage(s, personID: p.personID) ?? 0) / max(0.05, GroupPeople.percent(s, personID: p.personID) / 100) >= b.unitWage * 1.02
@@ -303,14 +264,11 @@ public enum StaffPromises {
         }
     }
 
-    /// The real action happened: look at everything a company's people were promised and mark what is now kept. Called by the doors (raise, promotion,
-    /// course, benefits, hours) and by the weekly run.
     public static func noticeChange(_ s: inout GameState, companyID: Int) {
         let ids = s.people.values.filter { $0.raw[key] != nil && ($0.employerID == companyID || records($0).contains { $0.0.isOpen && $0.0.companyID == companyID }) }.map { $0.id }
         for id in ids { resolve(&s, personID: id, weekly: false) }
     }
 
-    /// Check one person's promises: kept ones are fulfilled, due ones become Due, overdue ones are Broken (only in the weekly run).
     static func resolve(_ s: inout GameState, personID: Int, weekly: Bool) {
         guard let n = s.people[personID] else { return }
         var list = records(n)
@@ -365,7 +323,7 @@ public enum StaffPromises {
         if let ci = s.companyIndex(p.companyID) {
             if let k = s.companies[ci].staff.firstIndex(where: { $0.id == p.personID }) {
                 var st = s.companies[ci].staff
-                st[k].set("denied", s.week)            // the existing mark: more quit risk for half a year, and a line on the mood card
+                st[k].set("denied", s.week)
                 st[k].happyUntilWeek = 0
                 st[k].set("broke", s.week)
                 s.companies[ci].staff = st
@@ -379,22 +337,15 @@ public enum StaffPromises {
         }
     }
 
-    /// How many promises the company broke in the last year and kept in the last year (what candidates and staff have heard).
     static func record(_ co: Company, week: Int) -> (kept: Int, broken: Int) {
         let t = co.value("ptr")
         return (t["k"].array.filter { week - $0.int < 52 }.count, t["b"].array.filter { week - $0.int < 52 }.count)
     }
 
-    /// Has this person been let down by a promise in the last year?
     public static func letDown(_ m: StaffMember, week: Int) -> Bool { m.value("broke").isNull ? false : week - m.int("broke") < 52 }
-
-    // MARK: Renegotiating
 
     public enum RenegotiateResult: Equatable, Sendable { case agreed(String), refused(String), notPossible(String) }
 
-    /// Ask to move the date of an open promise. Once per promise. They may refuse, by temperament (a stubborn or greedy person is more likely to), and a
-    /// person already let down is less patient. Agreeing replaces it with a new Pending promise (the old one is Renegotiated) and they are a little less
-    /// pleased; refusing leaves it as it was.
     public static func renegotiate(_ s: inout GameState, personID: Int, promiseID: Int, newDueInWeeks: Int) -> RenegotiateResult {
         guard let n = s.people[personID] else { return .notPossible("This person is gone.") }
         var list = records(n)
@@ -421,21 +372,17 @@ public enum StaffPromises {
         store(list, &s, personID: personID)
         if let ci = s.companyIndex(old.companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == personID }) {
             var st = s.companies[ci].staff
-            st[k].happyUntilWeek = min(st[k].happyUntilWeek, s.week)   // a delay ends any cheer
+            st[k].happyUntilWeek = min(st[k].happyUntilWeek, s.week)
             s.companies[ci].staff = st
         }
         return .agreed("\(ManagerModelNames.first(n.name)) agrees to wait until \(GameCalendar.dateString(week: s.week + newDueInWeeks)).")
     }
 
-    // MARK: Weekly
-
-    /// Due promises become Due (with an Inbox note), overdue ones are Broken, kept ones are Fulfilled; promises of people who left lapse.
     public static func weekly(_ s: inout GameState, data: GameData) {
         let ids = s.people.values.filter { $0.raw[key] != nil }.map { $0.id }.sorted()
         for id in ids {
             guard let n = s.people[id] else { continue }
             resolve(&s, personID: id, weekly: true)
-            // the person is no longer with the company: open promises lapse
             if let n2 = s.people[id] {
                 var list = records(n2)
                 let before = list.count
@@ -453,14 +400,11 @@ public enum StaffPromises {
         GroupPeople.weekly(&s, data: data)
     }
 
-    // MARK: Reads
-
     public static func promises(_ s: GameState, personID: Int) -> [Promise] {
         guard let n = s.people[personID] else { return [] }
         return records(n).map { var p = $0.0; p.consequence = describe(p, name: n.name); return p }
     }
 
-    /// Every promise made to the people of a company, open ones first, then the latest resolved ones.
     public static func promises(_ s: GameState, companyID: Int) -> [Promise] {
         var out: [Promise] = []
         for n in s.people.values where n.raw[key] != nil {
@@ -472,7 +416,6 @@ public enum StaffPromises {
     }
 }
 
-/// First names for notes (the one place that cuts a name; managers use the same rule).
 enum ManagerModelNames {
     static func first(_ name: String) -> String { name.split(separator: " ").first.map(String.init) ?? name }
 }

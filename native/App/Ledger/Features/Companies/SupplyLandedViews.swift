@@ -6,15 +6,10 @@ import Events
 import Businesses
 import Simulation
 
-/// What an offer really costs the buyer: the price, freight and customs of the goods that travel, as the engine works them out (`SupplyLanded`), and the
-/// screens that use it: the landed-cost lines on offers, the one-off stock order and the list of what is on the way.
 enum SupplyLandedBasis {
-    /// A neutral weekly spend that ranks offers when the company has no priced spend yet; money is not shown against it.
     static let neutralWeekly = 2000.0
-    /// The weekly order the offers are compared at.
     static let compareUnits = 20
 
-    /// The offers of a purchase with their landed costs, cheapest landed cost first.
     static func rows(_ e: GameEngine, companyID: Int, listings: [SupplyListing], weekly: Double?, units: Int = compareUnits) -> [SupplyLanded.Row] {
         let spend: Double = (weekly ?? 0) > 0 ? (weekly ?? 0) : neutralWeekly
         return e.playerSupplyLanded(companyID: companyID, listings: listings, weeklyMarketSpend: spend, units: units)
@@ -25,7 +20,6 @@ enum SupplyLandedBasis {
     }
 }
 
-/// Price, freight, customs and the landed total of one offer, per unit, with how it travels. Without a priced spend it says the share freight and customs add.
 struct LandedCostLines: View {
     var row: SupplyLanded.Row
     var currency: Currency
@@ -58,10 +52,6 @@ struct LandedCostLines: View {
     }
 }
 
-// MARK: One-off stock order
-
-/// Orders stock from a player's company: the offers ranked by landed cost, how many units, what it costs with freight and customs, and when it arrives.
-/// The goods are paid for now and join the shelves when they arrive; the order shows under "On the way".
 struct StockOrderPopup: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
@@ -140,9 +130,6 @@ struct StockOrderPopup: View {
     }
 }
 
-// MARK: On the way
-
-/// Orders that are still travelling: who sent them, where from, when they arrive and what a hold at the border added.
 struct InTransitSection: View {
     var rows: [Shipments.Row]
     var currency: Currency

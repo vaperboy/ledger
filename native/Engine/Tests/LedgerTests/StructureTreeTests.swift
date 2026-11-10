@@ -3,7 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Group Structure model: who hangs under whom, owner lines, chain versus head office, and the health roll-up.
 final class StructureTreeTests: XCTestCase {
     private func open(_ e: inout GameEngine, _ id: Int) {
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }

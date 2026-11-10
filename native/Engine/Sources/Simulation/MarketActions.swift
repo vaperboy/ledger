@@ -4,11 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// What the player can do on the equipment market, with premises, and in the Aurum luxury shop; and what those screens read.
-/// Originals: the shop actions of features/company/realistic_buying.js (`shopbuy`, `subpick`, `sellunit`, `sellveh`, `selleq`,
-/// `repaireq`, `premsheet`), and the Aurum actions (`luxbuygo`, `luxsell`, `lx56*`, `est56*`).
 public extension GameEngine {
-    // MARK: Premises
 
     func premisesListings(companyID: Int) -> [CompanySetup.Listing] {
         guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return [] }
@@ -20,15 +16,12 @@ public extension GameEngine {
         return CompanySetup.premisesTerms(co, listing, data: data, world: World(state: state, data: data))
     }
 
-    /// Rent (or buy with a commercial mortgage) the listing, leaving the place the company is in now.
     @discardableResult
     mutating func takePremises(companyID: Int, listing: CompanySetup.Listing, buy: Bool = false) -> CompanySetup.PremisesResult {
         var r = CompanySetup.PremisesResult.bad
         update { s, d, _ in r = CompanySetup.setPremises(&s, companyID: companyID, listing: listing, buy: buy, data: d) }
         return r
     }
-
-    // MARK: Equipment market
 
     func equipmentNeeds(companyID: Int) -> [EquipmentMarket.Need] {
         guard let co = state.company(companyID) else { return [] }
@@ -47,11 +40,9 @@ public extension GameEngine {
                    : EquipmentMarket.usedEquipment(state, companyID: companyID, equipmentID: equipmentID, data: data)
     }
     func ownedEquipment(companyID: Int) -> [EquipmentMarket.Owned] { EquipmentMarket.owned(state, companyID: companyID, data: data) }
-    /// A week of running costs of the fleet at full use: fuel, leases, motor insurance, vehicle tax, charges on company cars.
     func fleetRunningCosts(companyID: Int) -> VehicleRunning.FleetCosts { VehicleRunning.fleetCosts(state, companyID: companyID, data: data) }
     func equipmentHealth(companyID: Int) -> Double? { state.company(companyID).flatMap { EquipmentMarket.health($0) } }
 
-    /// Price of one item of the offer, today (a vehicle: of the make and model).
     func equipmentPrice(companyID: Int, equipmentID: String, factor: Double, vendorID: String? = nil) -> Double {
         guard let co = state.company(companyID), let e = data.catalog[co.type]?.allEquipment.first(where: { $0.id == equipmentID }) else { return 0 }
         return EquipmentMarket.price(e, company: co, World(state: state, data: data), factor: factor, vendor: vendorID, dealWeek: state.week)
@@ -59,7 +50,6 @@ public extension GameEngine {
     func vehiclePrice(modelID: String, factor: Double) -> Double {
         data.catalog.tables.vehicles[modelID].map { EquipmentMarket.vehiclePrice($0, factor: factor, World(state: state, data: data), dealWeek: state.week) } ?? 0
     }
-    /// The store's sale on an offer today (what `equipmentPrice` already includes).
     func equipmentDeal(equipmentID: String, vendorID: String?) -> StoreDeals.Deal {
         EquipmentMarket.dealFor(equipmentID: equipmentID, vendor: vendorID, week: state.week, seed: state.seed)
     }
@@ -103,7 +93,6 @@ public extension GameEngine {
         update { s, d, _ in r = EquipmentMarket.subscribe(&s, companyID: companyID, equipmentID: equipmentID, plan: plan, offer: offer, data: d) }
         return r
     }
-    /// True when the plan existed and is now cancelled.
     @discardableResult
     mutating func cancelSubscription(companyID: Int, equipmentID: String) -> Bool { var ok = false; update { s, _, _ in ok = EquipmentMarket.cancelSubscription(&s, companyID: companyID, equipmentID: equipmentID) }; return ok }
     @discardableResult
@@ -124,7 +113,6 @@ public extension GameEngine {
         update { s, _, _ in v = EquipmentMarket.sellVehicle(&s, companyID: companyID, vehicleID: vehicleID) }
         return v
     }
-    /// True when the lease existed and is now ended.
     @discardableResult
     mutating func endEquipmentLease(companyID: Int, equipmentID: String) -> Bool {
         var ok = false
@@ -137,8 +125,6 @@ public extension GameEngine {
         update { s, d, _ in r = EquipmentMarket.serviceAll(&s, companyID: companyID, equipmentID: equipmentID, data: d) }
         return r
     }
-
-    // MARK: Luxury
 
     var luxuryPieces: [Luxury.Piece] { Luxury.pieces(state) }
     var luxuryValue: Double { Luxury.personalValue(state) }

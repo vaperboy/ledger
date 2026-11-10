@@ -5,7 +5,6 @@ import Businesses
 import Finance
 import Simulation
 
-/// Start a company, last screen: the setup, what it costs now and to keep, and how long the cash lasts with no sales. Money moves only on "Open the company".
 struct StartConfirmView: View {
     @EnvironmentObject var store: GameStore
     @EnvironmentObject var estimator: StartEstimator
@@ -15,7 +14,6 @@ struct StartConfirmView: View {
     @State private var estimate: StartEstimate?
     @State private var facts: StartFacts?
     @State private var refusal: String?
-    /// The company's own name (blank: the trade's name) and where it works.
     @State private var name = ""
     @State private var rentIndex: Int?
     @State private var buying = false
@@ -66,8 +64,6 @@ struct StartConfirmView: View {
         return f.shortfall > 0 ? "You are \(store.money(f.shortfall)) short of what this needs." : nil
     }
 
-    // MARK: Setup
-
     private func setup(_ e: GameEngine, _ f: StartFacts) -> some View {
         let cities: [Country.City] = e.homeCountry.cities
         return CardSection("The setup") {
@@ -97,13 +93,10 @@ struct StartConfirmView: View {
         }
     }
 
-    // MARK: Premises
-
     private func premisesPlan(_ e: GameEngine, _ f: StartFacts) -> NewCompanyPlan? {
         e.newCompanyPlan(tradeID: f.tradeID, cityID: f.cityID, size: f.size, withAlternatives: false)
     }
 
-    /// The place picked, or nil for the standard rented one.
     private func currentPick(_ plan: NewCompanyPlan?) -> NewCompanyPlan.Pick? {
         guard let plan, plan.premisesKind == .place else { return nil }
         let chosen: Int = rentIndex ?? plan.standardIndex
@@ -112,8 +105,6 @@ struct StartConfirmView: View {
         if rentIndex == nil && !buy { return nil }
         return NewCompanyPlan.Pick(listingIndex: chosen, buy: buy)
     }
-
-    // MARK: If you open it
 
     private func ifYouOpen(_ f: StartFacts) -> some View {
         let weeks: Int = f.runwayWeeks ?? 0
@@ -156,8 +147,6 @@ struct StartConfirmView: View {
         }
         .accessibilityElement(children: .combine)
     }
-
-    // MARK: Open
 
     private func open(_ e: GameEngine) {
         guard let f = facts else { return }

@@ -5,42 +5,28 @@ import Businesses
 import Events
 import Simulation
 
-/// Deals between players, as the app sees them: franchises other players offer, companies they put up for sale, offers on a company the player sells and
-/// applicants to the player's own franchise. The screens talk only to this protocol; `MockPlayerDealsService` stands in for the server. The rules are
-/// `PlayerDeals`, the same on both sides.
-
 enum PlayerDealsEvent: Equatable {
-    /// A player applies to the franchise of one of the player's companies.
     case applicant(companyID: Int, PlayerDeals.PlayerApplicant)
-    /// A player offers a price for a company of the player's that is shown to players.
     case buyerOffer(companyID: Int, buyer: CompanySale.PlayerBuyer, price: Double)
 }
 
 protocol PlayerDealsService: AnyObject {
     var onChange: (() -> Void)? { get set }
-    /// Keys of the player's own accounts, which cannot deal with one another.
     var buyerLinkKeys: Set<String> { get }
 
-    // What other players offer
     func franchiseOffers(today: Int) -> [PlayerDeals.FranchiseListing]
     func companyOffers(today: Int) -> [PlayerDeals.CompanyListing]
-    /// The seller's answer to an offer on their company. `round` counts the offers made already.
     func makeOffer(listingID: String, price: Double, round: Int, today: Int) -> PlayerDeals.Reply
-    /// The player bought the company: it is off the market.
     func soldToPlayer(listingID: String)
 
-    // What the player offers
     func publish(franchise: PlayerDeals.FranchiseListing)
     func withdrawFranchise(companyID: Int)
     func publish(company: PlayerDeals.CompanyListing)
     func withdrawCompany(companyID: Int)
 
-    /// Works the market forward to today (at most a few weeks at once) and returns what came in for the player's offers.
     func advance(today: Int) -> [PlayerDealsEvent]
 }
 
-/// Observable wrapper the screens watch. It publishes what the player offers (taken from the save, so an offer lives as long as the game says),
-/// and applies what the market reports: applicants and offers on the player's companies.
 @MainActor final class PlayerDealsStore: ObservableObject {
     static let shared = PlayerDealsStore()
 
@@ -56,10 +42,8 @@ protocol PlayerDealsService: AnyObject {
 
     private func touch() { DispatchQueue.main.async { [weak self] in self?.revision += 1 } }
 
-    /// The player as other players see them.
     private struct Me { var id = "me"; var name: String; var code = "YOU"; var link = "me" }
 
-    /// Publishes the player's open offers, withdraws the ones that ended, and applies what came in since the last visit.
     func sync(_ store: GameStore) {
         guard let e = store.engine else { return }
         let me = Me(name: e.state.player.name)
@@ -80,7 +64,6 @@ protocol PlayerDealsService: AnyObject {
         for ev in service.advance(today: today) {
             switch ev {
             case .applicant(let id, var a):
-                // Where the applicant wants the unit: a city of the franchisor's country when the service did not say.
                 if a.cityID.isEmpty, let co = e.state.company(id) {
                     let cities = e.data.countries.resolve(co.countryCode, orHome: e.state.homeCountryCode).cities
                     if !cities.isEmpty { a.cityID = cities[(Int(a.profileCode.dropFirst()) ?? 0) % cities.count].id }
@@ -92,12 +75,10 @@ protocol PlayerDealsService: AnyObject {
         }
     }
 
-    /// What the player asks of other players: a little over what the company is worth to a buyer.
     static func asking(_ e: GameEngine, _ companyID: Int) -> Double {
         max(1000, (e.companyAskingValue(companyID: companyID) * 1.15 / 1000).rounded() * 1000)
     }
 
-    /// The offers other players make, in the player's own country and city where the service did not say.
     func franchiseOffers(_ e: GameEngine) -> [PlayerDeals.FranchiseListing] {
         let today: Int = PlayerDeals.today(e.state)
         return service.franchiseOffers(today: today).filter { $0.isOpen(today: today) && FranchiseBrands.isFranchisable($0.tradeID) }

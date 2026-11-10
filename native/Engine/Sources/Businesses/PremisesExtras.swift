@@ -3,25 +3,15 @@ import GameCore
 import Countries
 import Finance
 
-/// A trade that starts at home and later takes a workshop or office, a franchise unit in a building you own (the landlord company
-/// gets the rent), and the franchise rent discount.
-/// Originals: `R37` (features/screens/newcomer_premises_one_line.js: `homeTrade`, `offM2`, `homeListings`, `ACT.home37`, the weekly
-/// 'outgrown' step), `rentWeekCore`, `leaseNote`, `leaseClean`, `fbFreeProps` (engine/company/company.js, engine/world/franchise_brands.js).
 public enum PremisesExtras {
-    // MARK: Home trades
 
     public static func isHomeTrade(_ bd: Trade) -> Bool { bd.premisesKind == "home" }
-    /// The kind of place the trade moves into. Original: `baseKind`.
     public static func placeKind(_ bd: Trade) -> String { bd.raw["prem45"].isNull ? "office" : bd.raw["prem45"][0].string }
-    /// "office", "workshop", "warehouse", "shop", "clinic". Original: `placeW`.
     public static func placeWord(_ bd: Trade) -> String { ["office": "office", "industrial": "workshop", "warehouse": "warehouse", "retail": "shop", "clinic": "clinic"][placeKind(bd)] ?? "place" }
-    /// People working in the business, you included. Original: `heads`.
     public static func heads(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) + (co.managerID == nil && co.ownerHours > 0 ? 1 : 0) }
-    /// People who need a place at the premises: staff in on-site roles, the manager and the owner when the owner works there. Crews at customers' sites and remote staff take no place.
     public static func onSiteHeads(_ co: Company) -> Int {
         co.staff.filter { Workplaces.needsPlace(role: $0.role) }.count + (co.managerID != nil ? 1 : 0) + (co.managerID == nil && co.ownerHours > 0 ? 1 : 0)
     }
-    /// The size of place the company would look for. Original: `offM2`.
     public static func wantedSquareMetres(_ co: Company, _ bd: Trade) -> Double {
         let o = max(20, (Double(max(3, onSiteHeads(co) + 1)) * 9 / 5).rounded() * 5)
         if !bd.raw["prem45"].isNull && bd.raw["prem45"][0].string != "office" {
@@ -29,12 +19,9 @@ public enum PremisesExtras {
         }
         return o
     }
-    /// Working from home (no place of its own yet). Original: `atHome`.
     public static func isAtHome(_ co: Company, _ bd: Trade) -> Bool { isHomeTrade(bd) && !(co.value("prem")["m2"].double > 0) }
-    /// A team of four or more has outgrown the kitchen table.
     public static func hasOutgrownHome(_ co: Company, _ bd: Trade) -> Bool { isAtHome(co, bd) && onSiteHeads(co) >= 4 }
 
-    /// Five places for a home trade to move into, a new list every half year. Original: `R37.homeListings`.
     static func listings(_ co: Company, _ bd: Trade, _ w: World) -> [CompanySetup.Listing] {
         let want = wantedSquareMetres(co, bd)
         var r = HashedRandom("\(w.state.seed):pl37:\(co.type):\(co.cityID):\(Int(want)):\(w.week / 26)")
@@ -51,7 +38,6 @@ public enum PremisesExtras {
         }
     }
 
-    /// Morale and quality slip every week for a team of four or more at home. Original: the 'week.after' step at 55.
     public static func weekly(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status == .open {
             guard let bd = data.catalog[s.companies[i].type], hasOutgrownHome(s.companies[i], bd) else { continue }
@@ -61,9 +47,6 @@ public enum PremisesExtras {
         }
     }
 
-    // MARK: A landlord company of yours
-
-    /// Free space in your commercial buildings in this city. Original: `fbFreeProps`.
     public struct FreeSpace: Equatable, Sendable { public var companyID: Int; public var propertyID: Int; public var name: String; public var freeSquareMetres: Double }
 
     public static func freeSpace(_ s: GameState, cityID: String, squareMetres m2: Double) -> [FreeSpace] {
@@ -76,7 +59,6 @@ public enum PremisesExtras {
         return out
     }
 
-    /// The tenant is registered in the building the first time its rent is paid. Original: `leaseNote`.
     static func leaseNote(_ s: inout GameState, tenantIndex i: Int) {
         let lo = s.companies[i].value("landlord")
         guard !lo.isNull, !s.companies[i].value("prem")["leased"].bool, s.companies[i].value("prem")["m2"].double > 0,
@@ -90,23 +72,18 @@ public enum PremisesExtras {
         var prem = s.companies[i].value("prem"); prem["leased"] = 1; s.companies[i].set("prem", prem)
     }
 
-    /// Rent a company of yours pays goes to the landlord company (97 %). Original: the `co.landlord` lines of `rentWeekCore`.
-    /// Weekly: the tenant is registered in the building. The landlord is paid when the tenant really pays its rent (`payLandlord`),
-    /// not when it accrues, so both sides book the same cash in the same period.
     static func rentToLandlord(_ s: inout GameState, tenantIndex i: Int, rent r: Double) {
         let lo = s.companies[i].value("landlord")
         guard !lo.isNull else { return }
         leaseNote(&s, tenantIndex: i)
     }
 
-    /// The tenant paid `paid` of its rent: the landlord company receives 97 % of it, now.
     public static func payLandlord(_ s: inout GameState, tenantIndex i: Int, paid: Double) {
         let lo = s.companies[i].value("landlord")
         guard !lo.isNull, paid > 0, let l = s.company(lo["co"].int), l.status == .open else { return }
         Payments.companyReceives(&s, companyID: l.id, amount: paid * 0.97, category: "rev", label: "Rent from \(s.companies[i].name)")
     }
 
-    /// Leases of your own companies end when the tenant is gone. Original: `leaseClean`.
     static func cleanLeases(_ s: inout GameState, landlordIndex i: Int) {
         var props = s.companies[i].properties
         var changed = false

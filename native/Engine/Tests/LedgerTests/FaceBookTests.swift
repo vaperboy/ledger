@@ -5,7 +5,6 @@ import Employees
 import Businesses
 import Simulation
 
-/// Employee portraits: which sheet, exclusive faces, locks that survive a save, candidates giving theirs back, running out.
 final class FaceBookTests: XCTestCase {
     private func engine() throws -> GameEngine { try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 5) }
 
@@ -14,8 +13,6 @@ final class FaceBookTests: XCTestCase {
         p.employerID = hired
         return p
     }
-
-    // MARK: Which sheet
 
     func testSheetByBusinessAndRole() throws {
         let data = try GameData.bundled()
@@ -31,8 +28,6 @@ final class FaceBookTests: XCTestCase {
         XCTAssertEqual(FaceBook.style(for: person(9, role: "housek"), trade: cat["hotel"]), .casual)
         XCTAssertEqual(FaceBook.style(for: person(10, role: "acct"), trade: nil), .suit)
     }
-
-    // MARK: Exclusive, locked, released
 
     func testNoTwoPeopleShareAFace() throws {
         var e = try engine()
@@ -55,7 +50,6 @@ final class FaceBookTests: XCTestCase {
             s.people[2000] = self.person(2000, hired: 7)
             FaceBook.assign(personID: 2000, countryCode: "UK", style: .casual, state: &s)
             FaceBook.sweep(&s, data: data)
-            // the person leaves: the face stays locked
             var p = s.people[2000]!; p.employerID = 0; s.people[2000] = p
             s.week += 40
             FaceBook.sweep(&s, data: data)
@@ -66,7 +60,6 @@ final class FaceBookTests: XCTestCase {
         let loaded = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(e.state))
         XCTAssertEqual(FaceBook.locks(loaded), FaceBook.locks(e.state))
         XCTAssertEqual(loaded.people[2000]?.faceKey, key)
-        // a new person cannot get the locked face even though its owner is not employed
         var s2 = loaded
         for i in 0..<1500 {
             s2.people[3000 + i] = person(3000 + i, hired: 0)
@@ -89,15 +82,12 @@ final class FaceBookTests: XCTestCase {
             let a = FaceBook.assign(personID: 4000, countryCode: "UK", style: .casual, state: &s)
             XCTAssertNotNil(a)
             FaceBook.assign(personID: 4001, countryCode: "UK", style: .casual, state: &s)
-            // explicit release
             FaceBook.release(personID: 4000, state: &s)
             XCTAssertNil(s.people[4000]?.faceKey)
-            // lease runs out
             s.week += FaceBook.leaseWeeks
             FaceBook.sweep(&s, data: data)
             XCTAssertNil(s.people[4001]?.faceKey)
             XCTAssertTrue(FaceBook.locks(s).isEmpty)
-            // the freed face can go to someone else
             s.people[4002] = self.person(4002)
             XCTAssertEqual(FaceBook.assign(personID: 4002, countryCode: "UK", style: .casual, state: &s), a)
         }
@@ -143,7 +133,6 @@ final class FaceBookTests: XCTestCase {
             XCTAssertEqual(k.sheet, .casual); XCTAssertTrue(best.contains(k.cell))
             taken.insert(k.string)
         }
-        // the best matches are gone: the next is a wider match, still an original that nobody holds
         let next = FaceCatalog.pick(traits, style: .casual) { taken.contains($0.string) }!
         XCTAssertFalse(taken.contains(next.string))
         XCTAssertEqual(FaceKey(next.string), next)

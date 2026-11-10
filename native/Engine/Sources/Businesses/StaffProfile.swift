@@ -4,10 +4,6 @@ import Countries
 import Employees
 import Finance
 
-/// The profile of one team member and what the owner can do about them: mood and why, record, courses, warnings, dismissal,
-/// layoffs, commission pay. Originals: `CT.staffProfile`, `moodOf`, `V.staffman`, `ACT.warnstaff`, `ACT.firestaff`, `ACT.logo`,
-/// `ACT.talkstaff`, `ACT.docourse`/`takeCourse`, `ACT.setpay`/`setPay`/`ACT.setrate` and the quarterly `staffTrack`
-/// (ui/company/people.js, features/player/selling_startups_and_crisis.js, engine/people/people.js, engine/company/sales_insurance.js).
 public enum StaffProfile {
     public static func band(_ v: Double) -> String { v >= 80 ? "Outstanding" : v >= 65 ? "Strong" : v >= 45 ? "Capable" : v >= 28 ? "Developing" : "Entry level" }
 
@@ -15,7 +11,6 @@ public enum StaffProfile {
         "late": "is often late", "lazy": "is under-performing", "conflict": "is causing conflict", "sick": "has high sick leave", "theft": "is suspected of stealing"]
 
     public struct Mood: Equatable, Sendable {
-        /// "Leaving", "Unhappy", "Happy", "Mixed" or "Content".
         public var word: String
         public var good: [String]
         public var bad: [String]
@@ -30,11 +25,8 @@ public enum StaffProfile {
         public var monthlyWage: Double
         public var payBasis: String
         public var hoursPerWeek: Double
-        /// Whether they have picked up new abilities since they started (a fact, not a figure).
         public var skillGainedSinceStart: Bool
-        /// What the work log says about their work, from events (completed tasks, mistakes, lateness, initiative, communication ...). No rating, no figures.
         public var feedback: WorkLog.Feedback
-        /// Lost interest in the work (still turns up).
         public var disengaged: Bool
         public var contract: EmploymentContract.Summary?
         public var weeksWithYou: Int
@@ -47,34 +39,26 @@ public enum StaffProfile {
         public var warnings: Int
         public var underpaid: Bool
         public var newInRole: Bool
-        /// Dismissal for cause is easy to defend (two warnings on file or theft).
         public var dismissalDocumented: Bool
-        /// Notice pay if let go now, and the compensation range if they claim unfair dismissal.
         public var severance: Double
         public var compensationRange: ClosedRange<Double>
         public var courses: [Course]
         public var commissionMode: String?
         public var commissionRate: Double
         public var isSalesRole: Bool
-        /// The company perks that apply to this person, and what they are worth to them a month (counted as pay).
         public var perks: [String] = []
         public var perksWorth = 0.0
-        /// The bonus plan they are on (nil: none), what it paid this year so far, and the average it has paid a month lately (counted as pay).
         public var bonusPlan: String? = nil
         public var bonusPaidThisYear = 0.0
         public var bonusMonthlyAverage = 0.0
-        /// The expense reimbursements paid for them (phone, uniform, training, travel).
         public var expenses: [String] = []
     }
 
     public struct Course: Equatable, Sendable {
         public var id: String; public var name: String; public var cost: Double
-        /// What the course is good for, in words (a modest, solid or large boost); the result is never certain.
         public var benefit: String
         var maxGain: Double
     }
-
-    // MARK: Reading
 
     static func marketPay(_ s: GameState, _ co: Company, _ m: StaffMember, data: GameData) -> Double {
         let w = World(state: s, data: data)
@@ -89,12 +73,10 @@ public enum StaffProfile {
         return bd.raw["crs"].array.map { Course(id: $0[0].string, name: $0[1].string, cost: cur.scaledPrice($0[2].double), benefit: $0[4].double >= 10 ? "A large boost to what they can do, if it takes." : $0[4].double >= 5 ? "A solid boost to what they can do, if it takes." : "A modest boost to what they can do, if it takes.", maxGain: $0[4].double) }
     }
 
-    /// Why they feel the way they do. Original: `moodOf`.
     public static func mood(_ s: GameState, companyID: Int, staffID: Int, data: GameData) -> Mood? {
         guard let co = s.company(companyID), let m = co.staff.first(where: { $0.id == staffID }), let n = s.people[staffID] else { return nil }
         var good: [String] = [], bad: [String] = []
         let market = marketPay(s, co, m, data: data)
-        // The perks that cover this person count as pay when they judge whether they are paid enough (not twice: their effect on quitting is the perk's own quit factor).
         let perkList = StaffPerks.perks(for: m, in: co)
         let perkWorth = StaffPerks.worthMonthly(co, m, currency: World(state: s, data: data).currency(co))
         let eff = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0) + m.num("bnEma") + perkWorth
@@ -121,7 +103,6 @@ public enum StaffProfile {
         return Mood(word: word, good: good, bad: bad)
     }
 
-    /// Everything the profile screen shows. Original: `CT.staffProfile` and the Record cards of `V.staffman`.
     public static func profile(_ s: GameState, companyID: Int, staffID: Int, data: GameData) -> Profile? {
         guard let co = s.company(companyID), let m = co.staff.first(where: { $0.id == staffID }), let n = s.people[staffID],
               let mood = mood(s, companyID: companyID, staffID: staffID, data: data) else { return nil }
@@ -145,11 +126,8 @@ public enum StaffProfile {
 
     static func isDocumented(_ m: StaffMember) -> Bool { m.int("warn") >= 2 || m.str("flag") == "theft" }
 
-    // MARK: Actions
-
     public enum CourseResult: Equatable, Sendable { case none, cash, done(String) }
 
-    /// Send someone (or yourself, `staffID` nil) on a course. Results are uncertain. Original: `takeCourse`.
     public static func takeCourse(_ s: inout GameState, companyID: Int, staffID: Int?, courseID: String, data: GameData) -> CourseResult {
         guard let i = s.companyIndex(companyID), let c = courses(s.companies[i], data: data).first(where: { $0.id == courseID }) else { return .none }
         if let id = staffID, !s.companies[i].staff.contains(where: { $0.id == id }) { return .none }
@@ -179,7 +157,6 @@ public enum StaffProfile {
         return .done(msg)
     }
 
-    /// A talk about a problem: half the time it helps. Original: `ACT.talkstaff`. Returns whether the problem is gone.
     public static func talk(_ s: inout GameState, companyID: Int, staffID: Int) -> Bool? {
         guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == staffID }) else { return nil }
         var st = s.companies[i].staff
@@ -189,7 +166,6 @@ public enum StaffProfile {
         return ok
     }
 
-    /// A written warning: creates a record and may fix a problem. Original: `ACT.warnstaff`. Returns whether it worked.
     public static func warn(_ s: inout GameState, companyID: Int, staffID: Int) -> Bool? {
         guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == staffID }) else { return nil }
         var st = s.companies[i].staff
@@ -203,14 +179,12 @@ public enum StaffProfile {
 
     public struct DismissResult: Equatable, Sendable { public var severance: Double; public var claimedUnfairDismissal: Bool; public var compensation: Double }
 
-    /// Let someone go. Without two warnings on file they may claim unfair dismissal. Original: `ACT.firestaff`. The rule is `Dismissal.dismiss`.
     @discardableResult
     public static func dismiss(_ s: inout GameState, companyID: Int, staffID: Int, data: GameData) -> DismissResult? {
         guard let o = Dismissal.dismiss(&s, companyID: companyID, staffID: staffID, data: data) else { return nil }
         return DismissResult(severance: o.paid, claimedUnfairDismissal: o.claimedUnfairDismissal, compensation: o.compensation)
     }
 
-    /// Cut the weakest performers to save costs; the mood of the rest drops. Original: `ACT.logo`.
     @discardableResult
     public static func layOff(_ s: inout GameState, companyID: Int, count n: Int, data: GameData) -> [Int] {
         guard let i = s.companyIndex(companyID), !s.companies[i].staff.isEmpty else { return [] }
@@ -223,7 +197,6 @@ public enum StaffProfile {
         return gone
     }
 
-    /// What a layoff of the n weakest would save per month and cost in severance now. Original: `layoffCard`.
     public static func layoffPreview(_ s: GameState, companyID: Int, count n: Int, data: GameData) -> (names: [String], savesPerMonth: Double, severance: Double) {
         guard let co = s.company(companyID) else { return ([], 0, 0) }
         let t = data.catalog.tables
@@ -236,7 +209,6 @@ public enum StaffProfile {
 
     public enum PayResult: Equatable, Sendable { case changed, resigned, notSales, unknown }
 
-    /// Change a seller's pay model: "fix", "mix" (lower salary plus commission) or "com" (commission only). Original: `ACT.setpay`, `setPay`.
     public static func setPayModel(_ s: inout GameState, companyID: Int, staffID: Int, mode: String, data: GameData) -> PayResult {
         guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == staffID }), let n = s.people[staffID] else { return .unknown }
         let salesRoles = data.catalog.tables.salesRoles, role = s.companies[i].staff[k].role
@@ -250,20 +222,16 @@ public enum StaffProfile {
         let co = s.companies[i]
         let cur = World(state: s, data: data).currency(co)
         let mk = cur.roundedStep(marketPay(s, co, co.staff[k], data: data) * (0.7 + n.skill / 160), about: 100)
-        // The base pay of "fix" and the fixed part of "mix" never go under the country's minimum wage for the contracted hours.
-        // Commission only has NO base at all: pay is the commission and nothing else, whatever the minimum wage.
         let floor = World(state: s, data: data).minimumWage(co, hours: co.staff[k].weeklyHours ?? StaffModel.fullWeekHours).rounded(.up)
         var st = co.staff
         st[k].monthlyWage = mode == "com" ? 0 : max(floor, mode == "fix" ? max(st[k].monthlyWage, cur.roundedStep(mk * 0.95, about: 100)) : cur.roundedStep(mk * (PayPlans.mode("mix")?.baseShare ?? 0.6), about: 100))
         st[k].set("pay", .object(["m": .string(mode), "rate": .number(rate)]))
-        // a job outside the general selling jobs counts as selling only while it is on a plan
         if PayPlans.isExtra(role: role, trade: s.companies[i].type, salesRoles: salesRoles) { if mode == "fix" { st[k].raw.removeValue(forKey: "ppx") } else { st[k].set("ppx", 1) } }
         st[k].set("commEma", 0)
         s.companies[i].staff = st
         return .changed
     }
 
-    /// Commission share on their own sales. Original: `ACT.setrate`.
     @discardableResult
     public static func setCommissionRate(_ s: inout GameState, companyID: Int, staffID: Int, rate: Double) -> Bool {
         guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == staffID }), s.companies[i].staff[k].commissionMode != nil else { return false }
@@ -273,9 +241,6 @@ public enum StaffProfile {
         return true
     }
 
-    // MARK: Weekly
-
-    /// Late arrivals and complaints per quarter, and a problem that fades after a warning. Original: `staffTrack`.
     public static func trackWeek(_ s: inout GameState) {
         for i in s.companies.indices where s.companies[i].status == .open {
             let q4 = s.week / 13

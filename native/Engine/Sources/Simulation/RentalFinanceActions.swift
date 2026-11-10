@@ -5,7 +5,6 @@ import Employees
 import Finance
 import Businesses
 
-/// A property as the screen shows it.
 public struct PropertyRow: Identifiable, Equatable, Sendable {
     public var id: Int
     public var name: String
@@ -29,7 +28,6 @@ public struct LeaseRow: Equatable, Sendable {
     public var weeksLeft: Int
 }
 
-/// The whole portfolio of a rental company.
 public struct PropertyPortfolio: Equatable, Sendable {
     public var rows: [PropertyRow]
     public var unitWord: String
@@ -39,12 +37,10 @@ public struct PropertyPortfolio: Equatable, Sendable {
     public var weeklyRent: Double
     public var grossYield: Double { totalValue > 0 ? weeklyRent * 52 / totalValue : 0 }
     public var occupancy: Double
-    /// How much of the property work the staff can do, 0...1.4 (below 1 vacancy and repairs suffer).
     public var staffCover: Double
     public var gainOnCost: Double { rows.reduce(0) { $0 + $1.value - $1.cost } }
 }
 
-/// One insurance product as the screen shows it.
 public struct ProductRow: Identifiable, Equatable, Sendable {
     public var id: String
     public var name: String
@@ -54,7 +50,6 @@ public struct ProductRow: Identifiable, Equatable, Sendable {
     public var verifiedSellers: Double
 }
 
-/// An insurance salesperson and the weeks (as game weeks) at which each product verification is done.
 public struct SalespersonRow: Identifiable, Equatable, Sendable {
     public var id: Int
     public var name: String
@@ -62,7 +57,6 @@ public struct SalespersonRow: Identifiable, Equatable, Sendable {
 }
 
 public extension GameEngine {
-    // MARK: Reading
 
     func propertyPortfolio(companyID: Int) -> PropertyPortfolio? {
         guard let co = state.company(companyID), let bd = data.catalog[co.type], bd.family == "rent" else { return nil }
@@ -115,7 +109,6 @@ public extension GameEngine {
         }
     }
 
-    /// Salespeople of an insurer and for which products each is verified (or waiting).
     func salespeople(companyID: Int) -> [SalespersonRow] {
         guard let co = state.company(companyID) else { return [] }
         return co.staff.filter { $0.role == "agent" }.map { m in
@@ -125,9 +118,6 @@ public extension GameEngine {
         }
     }
 
-    // MARK: Property actions
-
-    /// Buy a listed property with a mortgage of `loanToValue` (0 ... 0.8) of the price.
     mutating func buyProperty(companyID: Int, listingIndex: Int, loanToValue: Double) -> RentalModel.BuyResult {
         var r = RentalModel.BuyResult.unknown
         update { s, data, _ in
@@ -146,7 +136,6 @@ public extension GameEngine {
         return net
     }
 
-    /// What renovating the property would cost the company, for the confirmation; nil when it is gone.
     func renovationCost(companyID: Int, propertyID: Int) -> Double? {
         guard let co = state.company(companyID) else { return nil }
         return RentalModel.renovationCost(co, propertyID: propertyID, data: data)
@@ -170,7 +159,6 @@ public extension GameEngine {
         return ok
     }
 
-    /// Sell a whole commercial building to one of the interested buyers. Returns the cash received, -1 if one of your companies rents in it.
     mutating func sellBuilding(companyID: Int, propertyID: Int, offerIndex: Int) -> Double {
         var net = 0.0
         update { s, data, _ in
@@ -181,8 +169,6 @@ public extension GameEngine {
         }
         return net
     }
-
-    // MARK: Insurance actions
 
     @discardableResult
     mutating func setInsuranceProduct(companyID: Int, product: String, offered: Bool) -> FinanceModel.ProductResult {
@@ -198,9 +184,6 @@ public extension GameEngine {
         return r
     }
 
-    // MARK: Insights
-
-    /// Findings specific to property and finance companies, for the company screen.
     func rentalFinanceInsights(for co: Company) -> [Insight] {
         guard co.status == .open, let bd = data.catalog[co.type] else { return [] }
         var out: [Insight] = []

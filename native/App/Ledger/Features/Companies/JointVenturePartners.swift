@@ -4,8 +4,6 @@ import Countries
 import Events
 import Simulation
 
-/// The Partners section of a company page: who co-owns it and what they hold, the lock-up in words, invitations waiting for an answer, the way
-/// into the meetings and the Invite a friend flow. Rules: `JVRules`, `JointVenture`.
 struct JointVenturePartnersCard: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
@@ -15,7 +13,6 @@ struct JointVenturePartnersCard: View {
     @State private var meetingsOpen = false
     @State private var pending: PendingAction?
 
-    /// Shown on an open limited company that is not a holding or a chain branch.
     static func applies(_ co: Company, _ e: GameEngine) -> Bool { e.jvCanStart(companyID: co.id) }
 
     var body: some View {
@@ -72,7 +69,6 @@ struct JointVenturePartnersCard: View {
         }
     }
 
-    /// Says what a buy-out does before it happens; nothing moves until the player confirms.
     private func askBuyOut(_ s: JointVenture.Stake) {
         guard let terms: JointVenture.ExitTerms = engine.jvExitTerms(companyID: company.id, memberID: s.id) else { return }
         if let why = terms.problem { Haptics.warning(); store.tell("Not now", why, tone: "warn"); return }
@@ -95,9 +91,6 @@ struct JointVenturePartnersCard: View {
     }
 }
 
-// MARK: - Invite a friend
-
-/// Pick a friend, a stake and a private price, then see in their words what joining does before sending.
 struct JVInviteSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
@@ -181,7 +174,6 @@ struct JVInviteSheet: View {
             }
     }
 
-    /// The popup the friend reads: what happens if they join, in plain lines.
     @ViewBuilder private func consequence(friend: PlayerProfile, terms: JointVenture.Terms, cur: Currency) -> some View {
         Text("If you join, this will happen").popupText(.title)
         Text("\(friend.displayName) reads this for \(terms.companyName) before answering.").popupText(.caption)

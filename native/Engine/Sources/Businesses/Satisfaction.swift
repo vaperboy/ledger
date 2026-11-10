@@ -3,9 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Customers' mood: complaints, word of mouth, buzz, and the limit of a local name.
-/// Originals: `complaintsWeek`, `resolveC`, `mgrRefund` (small_team_and_rewards / complaints), the 'happy customers tell others'
-/// step (local_prices), `hypeWeek`, `chainWeek` and `reachOf`, and the 'nobody working' step.
 public enum Satisfaction {
     static let complaintTexts: [String: [String]] = [
         "svc": ["The job took far longer than promised.", "Nobody called me back about my booking.", "The invoice was higher than the quote.", "The work was sloppy and had to be redone."],
@@ -18,10 +15,6 @@ public enum Satisfaction {
 
     public enum Answer: String, Sendable { case refund, sorry, ignore }
 
-    // MARK: Complaints
-
-    /// A week of complaints: new ones arrive when quality slips or the place is overrun; a manager answers them; unanswered ones
-    /// older than two weeks turn into bad reviews.
     static func complaintsWeek(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         guard s.companies[i].status == .open, !Pricing.noWorkFamilies.contains(bd.family) else { return }
         var list = s.companies[i].value("compl").array
@@ -46,12 +39,10 @@ public enum Satisfaction {
                 resolve(&s, i, bd, complaintAt: k, refund ? .refund : .sorry, good: good, data: data)
                 var l = s.companies[i].value("compl").array; l[k]["by"] = "mgr"; s.companies[i].set("compl", .array(l))
             } else if let sk = ManagerModel.assistantSkill(s.companies[i], duty: "comp", people: s.people) {
-                // An assistant manager with the complaints job answers them.
                 let refund = managerRefunds(&s, i, bd, severity: c["sev"].int, data: data)
                 resolve(&s, i, bd, complaintAt: k, refund ? .refund : .sorry, good: s.random.chance(0.55 + sk * 0.4), data: data)
                 var l = s.companies[i].value("compl").array; l[k]["by"] = "asst"; s.companies[i].set("compl", .array(l))
             } else if Delegation.staffAnswerComplaints(s, s.companies[i]) && c["sev"].int <= 2 {
-                // The owner's standing instruction: staff deal with routine complaints the way a sensible manager would.
                 let refund = managerRefunds(&s, i, bd, severity: c["sev"].int, data: data)
                 resolve(&s, i, bd, complaintAt: k, refund ? .refund : .sorry, good: s.random.chance(0.75), data: data)
                 var l = s.companies[i].value("compl").array; l[k]["by"] = "staff"; s.companies[i].set("compl", .array(l))
@@ -64,15 +55,12 @@ public enum Satisfaction {
         if l.count > 30 { l.removeLast(l.count - 30); s.companies[i].set("compl", .array(l)) }
     }
 
-    /// Open complaints of a company, newest first, for the list on the company screen.
     public static func openComplaints(_ co: Company) -> [JSONValue] { co.value("compl").array.filter { $0["st"].string == "open" } }
 
-    /// What a refund costs: the price of the job for small tickets, goodwill for big ones. Original: `refundOf`.
     static func refundAmount(ticket tk: Double, severity: Int, _ cur: Currency) -> Double {
         Double(severity) * min(tk * 1.5, cur.scaledPrice(1500) + tk * 0.06)
     }
 
-    /// Managers refund when it is cheap relative to the business and the complaint is serious. Original: `mgrRefund`.
     static func managerRefunds(_ s: inout GameState, _ i: Int, _ bd: Trade, severity sev: Int, data: GameData) -> Bool {
         let w = World(state: s, data: data)
         let co = s.companies[i]
@@ -86,7 +74,6 @@ public enum Satisfaction {
         return sev >= 3 || (sev == 2 && s.random.chance(0.5))
     }
 
-    /// Answer a complaint. `good` is the outcome of an apology if already decided. Original: `resolveC`.
     @discardableResult
     static func resolve(_ s: inout GameState, _ i: Int, _ bd: Trade, complaintAt k: Int, _ answer: Answer, good: Bool?, data: GameData) -> Bool? {
         var list = s.companies[i].value("compl").array
@@ -114,14 +101,10 @@ public enum Satisfaction {
             s.companies[i].reputation = clamp(s.companies[i].reputation - 0.9 * Double(sev), 0, 100)
             if sev >= 3 { s.companies[i].awareness = clamp(s.companies[i].awareness - 1, 0, 100) }
         }
-        // `Payments` may have rewritten the company; keep our list edits.
         s.companies[i].set("compl", .array(list))
         return outcome
     }
 
-    // MARK: Word of mouth, buzz and reach
-
-    /// Happy customers tell others, and a shop on a busy street is seen. Original: weekCo.after step 'happy customers tell others'.
     static func wordOfMouth(_ s: inout GameState, _ i: Int, _ bd: Trade) {
         let co = s.companies[i]
         guard co.status == .open, bd.normalDemand != 0, !Pricing.noWorkFamilies.contains(bd.family) else { return }
@@ -134,10 +117,6 @@ public enum Satisfaction {
         s.companies[i].awareness = clamp(co.awareness + g, 0, 100)
     }
 
-    /// People who used you tell others: a busy business becomes known in its area, but not famous (the floor is at most 32). The
-    /// floor follows how busy the last 26 weeks were (a young business has fewer weeks to average, so it rises over months), how
-    /// good the work is and how cheap. Original: week.after step 'trades_in_hours weekly' (features/sales/trades_in_hours.js).
-    /// Not ported: the review-score factor (reviews are not a native screen yet) and the hour-priced trades (plumber, electrician...).
     static func knownByUse(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         var co = s.companies[i]
         guard co.status == .open, !["fin", "energy", "hold", "club", "rent"].contains(bd.family) else { return }
@@ -153,7 +132,6 @@ public enum Satisfaction {
         s.companies[i] = co
     }
 
-    /// How much people sold to by a viral moment tell their friends, and what they think of the place afterwards. Original: `hypeWeek`.
     static func buzzWeek(_ s: inout GameState, _ i: Int) {
         var co = s.companies[i]
         let h = co.num("hype")
@@ -175,7 +153,6 @@ public enum Satisfaction {
         s.companies[i] = co
     }
 
-    /// One shop is a local name; many outlets build a known brand. Original: `reachOf(co).cap` in `chainWeek`.
     static func reachCap(_ s: inout GameState, _ i: Int, data: GameData) {
         let w = World(state: s, data: data)
         let n = Double(Competition.chainOutlets(s.companies[i], w))
@@ -183,9 +160,6 @@ public enum Satisfaction {
         s.companies[i].awareness = min(s.companies[i].awareness, cap)
     }
 
-    // MARK: Nobody works there
-
-    /// A company with no owner hours, no manager and no staff on duty closes until someone turns up. Original: weekCo.before 10.
     static func closeIfNobodyWorks(_ s: inout GameState, _ i: Int, _ bd: Trade) {
         let co = s.companies[i]
         if !Pricing.noWorkFamilies.contains(bd.family), bd.id != StartupModel.tradeID, co.status == .open, co.managerID == nil, !(co.ownerHours > 0), !co.staff.contains(where: { $0.noticeWeeks <= 0 }) {

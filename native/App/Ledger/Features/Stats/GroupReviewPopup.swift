@@ -2,20 +2,14 @@ import SwiftUI
 import GameCore
 import Simulation
 
-// The quarterly group review (engine: Simulation/GroupReview.swift): one popup at a quarter end that looks back in words and arrows and
-// asks for one or two targets; the choice is told in the one outcome popup. Plain information about the targets lives on the Stats page.
-
 extension GameStore {
-    /// The review to show now, once the day's reports, rewards and notices have been read.
     var groupReviewReady: ReviewOffer? {
         guard !isAdvancing, !popupOpen, unlockQueue.isEmpty else { return nil }
         return engine?.reviewOffer
     }
 
-    /// Not now: the review comes back next week.
     func deferGroupReview() { act { (e: inout GameEngine) -> Bool in e.deferReview(); return true } }
 
-    /// The player picked targets: they are set and the outcome is told once.
     func setGroupReview(_ kinds: [TargetKind]) {
         let r: ReviewChoice? = act { (e: inout GameEngine) -> ReviewChoice? in e.setReviewTargets(kinds) } ?? nil
         guard let r else { return }
@@ -31,7 +25,6 @@ extension GameStore {
 }
 
 extension View {
-    /// Registers the quarterly review with the popup host (it draws below decisions and alerts, with the reports).
     func groupReviewPopup(_ store: GameStore) -> some View {
         let offer: ReviewOffer? = store.groupReviewReady
         return hostedPopup(key: "review-" + (offer?.label ?? ""), priority: .report, active: offer != nil, onClose: { store.deferGroupReview() }) {
@@ -40,11 +33,9 @@ extension View {
     }
 }
 
-/// How a figure moved, as the arrow and the change in percent. Green up is better, red down is worse.
 struct ReviewMove: View {
     var now: Double
     var before: Double?
-    /// True when a lower figure is the better one (costs against sales).
     var lowerIsBetter = false
 
     var body: some View {
@@ -87,8 +78,6 @@ struct GroupReviewPopup: View {
         }
     }
 
-    // MARK: The quarter
-
     private func row(_ label: String, value: String, move: ReviewMove? = nil) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label).popupText(.rowLabel)
@@ -128,8 +117,6 @@ struct GroupReviewPopup: View {
         }
     }
 
-    // MARK: The last targets
-
     private func lastTargets(_ g: QuarterRecord) -> some View {
         VStack(alignment: .leading, spacing: PopupSpace.row) {
             Text("Your targets for \(g.label)").popupText(.title)
@@ -151,8 +138,6 @@ struct GroupReviewPopup: View {
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surface))
     }
-
-    // MARK: The next targets
 
     private var choose: some View {
         VStack(alignment: .leading, spacing: PopupSpace.row) {
@@ -182,7 +167,6 @@ struct GroupReviewPopup: View {
         .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(on ? Theme.accentWash : Theme.surface))
     }
 
-    /// At most two: choosing a third drops the oldest pick.
     private func toggle(_ k: TargetKind) {
         Haptics.tap()
         if let i = picked.firstIndex(of: k) { picked.remove(at: i); return }

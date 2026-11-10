@@ -1,10 +1,6 @@
 name: Native iOS TestFlight upload
 
-# Manual only. Builds a signed archive of the native app and uploads it to App Store Connect (TestFlight).
-# Needs these repository secrets (Settings > Secrets and variables > Actions):
-#   APPLE_TEAM_ID, IOS_BUNDLE_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64
 on:
-  # Runs when this branch is pushed (a workflow can only be started by name from the default branch).
   push:
     branches: [ testflight-build ]
   workflow_dispatch:

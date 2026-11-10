@@ -3,23 +3,15 @@ import GameCore
 import Countries
 import Finance
 
-/// What a bought rival becomes, a new site beside a rival, a loan from your own bank for a purchase, and the answers to a rival's price cut.
-/// Originals: `absorb`, `ACT.rivhow` (features/people/worker_roles_and_promotions.js, section 3), `ACT.branchgo`, the weekly step
-/// `R7.afterCoWeek` (features/world/rivals_holdings_software.js), `bankRoom`, `ACT.rivfin27` (features/company/intercompany_supply.js)
-/// and `ACT.rm27` with the week step that ends a matched price (features/world/rival_groups.js).
-/// Buying a rival as its own company stays `Rivals.acquire` (`rivclose` with `how: own`). Everything here is an extension of that, so the
-/// price, the group's cut and hidden bills are the same.
 public enum RivalAbsorb {
     public enum How: String, Sendable, CaseIterable { case merge, shut, branch, franchiseOldOwner = "frold", franchiseNewOwner = "frnew" }
 
     public enum Outcome: Equatable, Sendable {
-        /// Done: the text is what happened, `companyID` the new company (for a branch), `fine` what the competition authority charged.
         case ok(message: String, companyID: Int?, fine: Double)
         case notEnoughCash
         case failed(String)
     }
 
-    /// What each choice needs in the current account on top of the price (the original option buttons).
     public static func extraCost(_ how: How, price: Double) -> Double {
         switch how {
         case .merge: return Rivals.roundTo(price * 0.08, 1000)
@@ -30,7 +22,6 @@ public enum RivalAbsorb {
 
     static func rivalOf(_ s: GameState, _ co: Company, _ rivalID: Int) -> Rivals.Rival? { Rivals.rivals(s, for: co).first { $0.id == rivalID } }
 
-    /// The group behind a rival gets the price. Same lines as `Rivals.acquire`.
     static func paySellingGroup(_ s: inout GameState, rival r: Rivals.Rival, price: Double) {
         guard let gid = r.groupID, s.rest["g27"]?["g"][gid] != nil else { return }
         var g = s.rest["g27"]!["g"][gid]
@@ -41,7 +32,6 @@ public enum RivalAbsorb {
         s.rest["g27"]!["g"][gid] = g
     }
 
-    /// Buy a rival and merge it into your company, close it down, make it your branch, or run it as a franchise office. Original: `ACT.rivhow`.
     public static func absorb(_ s: inout GameState, companyID: Int, rivalID: Int, price: Double, how: How, data: GameData, context fc: FinanceContext) -> Outcome {
         guard let co = s.company(companyID), co.status == .open, let r = rivalOf(s, co, rivalID) else { return .failed("That rival is gone.") }
         switch how {
@@ -89,7 +79,6 @@ public enum RivalAbsorb {
             return .ok(message: text, companyID: nil, fine: 0)
         }
         s.companies[ci].awareness = min(100, s.companies[ci].awareness + 2 + sz * 4)
-        // closing a rival when you already hold most of the market draws the competition authority
         var fine = 0.0
         if let m = MarketMap.market(of: s.companies[ci], s, data: data) {
             let share = MarketMap.truth(s, m, data: data).share
@@ -133,12 +122,8 @@ public enum RivalAbsorb {
         return .ok(message: text, companyID: nil, fine: 0)
     }
 
-    // MARK: A new site next to a rival
-
     public enum BranchResult: Equatable, Sendable { case ok(companyID: Int), needsFranchisePapers, notEnoughCash, failed(String) }
 
-    /// Register a second site beside a rival. It starts in set-up like any new company, knows your name from day one and takes customers from
-    /// that rival every week it is open (`weekly`). Original: `ACT.branchgo`.
     public static func openBranchNextToRival(_ s: inout GameState, companyID: Int, rivalID: Int, data: GameData, context fc: FinanceContext) -> BranchResult {
         guard let co = s.company(companyID), co.status == .open, rivalOf(s, co, rivalID) != nil else { return .failed("That rival is gone.") }
         guard co.value("docs")["fran"]["st"].string == "ok" else { return .needsFranchisePapers }
@@ -156,10 +141,6 @@ public enum RivalAbsorb {
         }
     }
 
-    // MARK: A purchase paid with a loan from your own bank
-
-    /// How much your own bank may lend its owner for a purchase: a quarter of its capital less what it already lent you, no more than 80%
-    /// of its cash, and only while its capital ratio is above the minimum. Original: `bankRoom`.
     public static func bankRoom(_ s: GameState, bankID: Int, data: GameData) -> Double {
         guard let b = s.company(bankID), b.status == .open, b.type == "bank" else { return 0 }
         let fm = b.value("fm")
@@ -171,13 +152,10 @@ public enum RivalAbsorb {
         return max(0, min(eq * 0.25 - used, b.cash * 0.8))
     }
 
-    /// Your own bank, if you have an open one.
     public static func ownBank(_ s: GameState) -> Company? { s.companies.first { $0.type == "bank" && $0.status == .open } }
 
     public enum FinanceResult: Equatable { case ok(Rivals.AcquireResult), bankCannotLend }
 
-    /// Borrow `amount` from your own bank (96 months, at the policy rate plus your credit margin and a point) and buy the rival with it.
-    /// If the purchase is refused the loan is undone. Original: `ACT.rivfin27` then `ACT.rivclose`.
     public static func buyWithOwnBank(_ s: inout GameState, companyID: Int, rivalID: Int, price: Double, amount: Double, data: GameData, context fc: FinanceContext) -> FinanceResult {
         guard let bank = ownBank(s), amount <= bankRoom(s, bankID: bank.id, data: data) + 1, amount > 0, let bi = s.companyIndex(bank.id) else { return .bankCannotLend }
         let backup = s
@@ -196,23 +174,19 @@ public enum RivalAbsorb {
         return .ok(r)
     }
 
-    // MARK: Answering a rival's price cut
-
     public enum Counter: String, Sendable, CaseIterable { case match, quality, brand }
     public enum CounterResult: Equatable, Sendable { case done(String), alreadyLowest, notEnoughCash, newCompany(Int), failed(String) }
 
-    /// The running price cut of a rival against you, if it is still on and unanswered.
     public static func priceCut(_ s: GameState, companyID: Int, rivalID: Int) -> (pct: Int, end: Int, answered: String?)? {
         guard let co = s.company(companyID), let raw = s.rest["mk"]?[Rivals.key(co)]["riv"].array.first(where: { $0["id"].int == rivalID }), !raw["uc27"].isNull else { return nil }
         let u = raw["uc27"]
         return (u["pct"].int, u["end"].int, u["resp"].isNull ? nil : u["resp"].string)
     }
 
-    /// Match their price, hold prices and sell quality, or add a cheap second brand. Original: `ACT.rm27`.
     public static func answerPriceCut(_ s: inout GameState, companyID: Int, rivalID: Int, answer k: Counter, data: GameData, context fc: FinanceContext) -> CounterResult {
         guard let ci = s.companyIndex(companyID), let cut = priceCut(s, companyID: companyID, rivalID: rivalID), cut.answered == nil else { return .failed("This has passed.") }
         let co = s.companies[ci], key = Rivals.key(co), left = max(1, cut.end - s.week)
-        let wanted = 1 - Double(cut.pct) / 300   // the demand effect the cut put on your company (`RivalGroups` "undercut")
+        let wanted = 1 - Double(cut.pct) / 300
         func soften(_ s: inout GameState, to f: (Double) -> Double) {
             var mods = s.companies[ci].value("mods").array
             if let m = mods.firstIndex(where: { $0["k"].string == "dem" && abs($0["m"].double - wanted) < 1e-9 }) { mods[m]["m"] = .number(f(mods[m]["m"].double)) }
@@ -252,10 +226,6 @@ public enum RivalAbsorb {
         }
     }
 
-    // MARK: Weekly
-
-    /// A matched price returns to normal when the rival's cut ends; a site beside a rival takes customers from it. Original: `rival_groups.js` week step
-    /// (`match27`) and `R7.afterCoWeek`.
     static func weekly(_ s: inout GameState) {
         for i in s.companies.indices where s.companies[i].status.isLive {
             let flags = s.companies[i].value("flags")

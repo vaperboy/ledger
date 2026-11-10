@@ -3,9 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-/// Bills across the whole Bank app: every account's coming payments in one list, grouped by the company (or you) that pays them, each row
-/// with Pay now (`BankBillsList`: loan instalment, or the engine's `payObligationNow`). Payroll is automatic and says so instead of offering
-/// a button. Pushed from the Bank home.
 struct BankAllBillsScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore

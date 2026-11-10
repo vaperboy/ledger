@@ -2,13 +2,10 @@ import Foundation
 import GameCore
 import Businesses
 
-/// One row of the Group "Structure" screen: you, a holding, a chain, a company, a chain location, a division or a stake, with who owns it, who
-/// runs it, how it is doing and what to do next. Built from the same records as the other screens; nothing is stored.
 public struct StructureNode: Identifiable, Equatable, Sendable {
     public enum Kind: String, Equatable, Sendable { case you, holding, chain, company, branch, division, headOffice, stake }
     public enum Health: String, Equatable, Sendable {
         case thriving, healthy, tight, struggling
-        /// Still being set up, or too new to judge.
         case setup
 
         public var title: String {
@@ -20,46 +17,37 @@ public struct StructureNode: Identifiable, Equatable, Sendable {
             case .setup: return "Setting up"
             }
         }
-        /// 0 is the best; used to pick the worst of several.
         fileprivate var severity: Int {
             switch self { case .thriving: return 0; case .healthy: return 1; case .tight: return 2; case .struggling: return 3; case .setup: return -1 }
         }
     }
     public enum Action: Equatable, Sendable {
-        /// This many points wait for you at the board.
         case decide(Int)
         case appointManager
-        /// Something is wrong; the text says what in plain words.
         case fix(String)
         case open
     }
 
-    /// "you", "co:<id>", "chain:<id>", "loc:<id>" (a chain location), "div:<id>", "stake:<holdingID>:<companyID>".
     public var id: String
     public var kind: Kind
     public var parentID: String?
     public var companyID: Int?
     public var name: String
     public var roleLabel: String
-    /// Share of the company on your side: shares you hold directly plus those under your holding.
     public var ownerYouPercent: Double
-    /// Share of the company the parent holding owns; nil when no holding does.
     public var holdingPercent: Double?
     public var tierTitle: String?
     public var runnerName: String?
     public var runnerTitle: String?
     public var runnerPersonID: Int?
-    /// What the runner may decide, in the words used on the Team screen.
     public var authority: String?
     public var health: Health
     public var value: Double
-    /// Revenue growth over the last three months against the three before; nil when there is too little history.
     public var change: Double?
     public var waitingDecisions: Int
     public var primaryAction: Action
 }
 
-/// Who owns a company: you directly, a holding of yours, and outside owners; the three add up to 100.
 public struct OwnerLine: Equatable, Sendable {
     public var youPercent: Double
     public var holdingID: Int?
@@ -71,7 +59,6 @@ public struct OwnerLine: Equatable, Sendable {
     }
 }
 
-/// Where a chain location sits: "Branch 2 of 5". `index` counts from 1 and the head office is 1.
 public struct BranchPosition: Equatable, Sendable {
     public var chainID: Int
     public var headOfficeID: Int
@@ -80,8 +67,6 @@ public struct BranchPosition: Equatable, Sendable {
 }
 
 public extension GameEngine {
-    /// The group as a flat list in display order: You, then holdings (each followed by what sits under it), chains (each followed by its
-    /// locations) and companies that stand alone. Parents come before their children.
     func structureTree() -> [StructureNode] {
         let s = state
         let mgmt = Dictionary(groupManagement().lines.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
@@ -107,7 +92,6 @@ public extension GameEngine {
         var nodes: [StructureNode] = []
         var placed = Set<Int>()
 
-        /// A node for one company; `holdingID` is the holding the row hangs under, if any.
         func companyNode(_ c: Company, id: String, kind: StructureNode.Kind, parent: String?, role: String, holdingID: Int?, decisions: Bool) -> StructureNode {
             let h = health(c)
             let line = mgmt[c.id]
@@ -135,7 +119,6 @@ public extension GameEngine {
                                    holdingPercent: nil, tierTitle: nil, runnerName: nil, runnerTitle: nil, runnerPersonID: nil, authority: nil,
                                    health: .setup, value: netWorth.companies, change: nil, waitingDecisions: 0, primaryAction: .open))
 
-        /// A chain with its locations (head office first) under `parent`; false when the company is not in a chain of two or more.
         func addChain(of c: Company, parent: String) -> Bool {
             let stores = s.chainStores(of: c)
             guard stores.count >= 2, let ch = Chains.chain(s, of: c), let head = stores.first else { return false }
@@ -161,7 +144,6 @@ public extension GameEngine {
             return true
         }
 
-        /// Divisions and old-style branches of a holding or company, placed right under it.
         func addAttached(to c: Company, nodeID: String) {
             for d in HoldingStakes.divisions(of: c.id, in: s) where !placed.contains(d.id) {
                 placed.insert(d.id)
@@ -205,7 +187,6 @@ public extension GameEngine {
             addAttached(to: c, nodeID: "co:\(c.id)")
         }
 
-        // A division or branch whose host never made it into the tree hangs under you so nothing disappears.
         for c in live where !placed.contains(c.id) {
             placed.insert(c.id)
             nodes.append(companyNode(c, id: "co:\(c.id)", kind: .company, parent: "you", role: tradeName(c), holdingID: nil, decisions: false))
@@ -213,7 +194,6 @@ public extension GameEngine {
         return nodes
     }
 
-    /// "Branch 2 of 5" for a store of a chain with two or more live stores; nil for anything else.
     func branchParent(companyID: Int) -> BranchPosition? {
         guard let c = state.company(companyID), c.status.isLive, let ch = Chains.chain(state, of: c) else { return nil }
         let stores = state.chainStores(of: c)
@@ -221,7 +201,6 @@ public extension GameEngine {
         return BranchPosition(chainID: ch["id"].int, headOfficeID: head.id, index: i + 1, count: stores.count)
     }
 
-    /// Who owns the company: you, the holding it sits under (moved shares or the biggest stake), and outside owners.
     func ownerLine(companyID: Int) -> OwnerLine {
         guard let c = state.company(companyID) else { return OwnerLine(youPercent: 0, holdingID: nil, holdingPercent: nil, othersPercent: 0) }
         let rows = c.value("holders").array
@@ -233,13 +212,11 @@ public extension GameEngine {
         return OwnerLine(youPercent: direct, holdingID: hid, holdingPercent: HoldingStakes.sharePercent(of: c, holdingID: hid), othersPercent: others)
     }
 
-    /// The worst health among the given nodes of `structureTree()` (setup only when all of them are still setting up).
     func structureHealth(ids: [String]) -> StructureNode.Health {
         let wanted = Set(ids)
         return Self.worstHealth(structureTree().filter { wanted.contains($0.id) }.map { $0.health })
     }
 
-    /// The worst health among the given companies.
     func structureHealth(companyIDs: [Int]) -> StructureNode.Health {
         let wanted = Set(companyIDs)
         return Self.worstHealth(structureTree().filter { $0.companyID.map { wanted.contains($0) } ?? false }.map { $0.health })
@@ -249,7 +226,6 @@ public extension GameEngine {
         hs.filter { $0 != .setup }.max { $0.severity < $1.severity } ?? .setup
     }
 
-    /// The plain-words tier of a holding's share of a company.
     internal static func stakeTierTitle(_ percent: Double) -> String {
         switch HoldingStakes.tier(forPercent: percent) {
         case .none, .passive: return "Small stake (under 20%)"

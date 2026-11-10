@@ -6,10 +6,7 @@ import Finance
 import Simulation
 import Employees
 
-/// Vehicles for the trades whose people really travel, the running costs of every vehicle, the company-car perk with a real car behind it,
-/// own car with mileage beyond estate agents, and the country data blocks for motor insurance, road tax and benefit in kind.
 final class VehiclesTravelTests: XCTestCase {
-    /// The rule: sales reps get a car each, visiting professionals a car per three, goods that leave by road a vehicle.
     static let salesRepTrades = ["mktg", "staffing", "factory", "vineyard", "brewery", "furniture", "hardware", "event"]
     static let visitingTrades = ["cons", "photo", "law", "acctfirm", "engcons"]
     static let deliveryTrades = ["farm", "factory", "vineyard"]
@@ -58,8 +55,6 @@ final class VehiclesTravelTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    // MARK: Running costs
-
     func startedCompany(_ trade: String, country: String = "UK", seed: Int = 5, fund: Double = 8_000_000) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: country, playerName: "Tester", seed: seed)
         var id = 0
@@ -67,13 +62,12 @@ final class VehiclesTravelTests: XCTestCase {
             Ledger.move(&s, .me, 80_000_000, why: "Test funds")
             if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) { id = i }
             Payments.injectCash(&s, companyID: id, amount: fund)
-            _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(optionalEquipment: true))   // the usual full kit, vans included
+            _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(optionalEquipment: true))
         }
         XCTAssertNotEqual(id, 0, trade)
         return (e, id)
     }
 
-    /// Cash a week of wear and running costs takes from the company at a given fuel price.
     func weekCost(_ e: GameEngine, _ id: Int, fuelIndex: Double, util: Double) -> (cash: Double, km: Double) {
         var s = e.state
         s.economy.fuel = fuelIndex
@@ -84,9 +78,6 @@ final class VehiclesTravelTests: XCTestCase {
         return (before - s.companies[i].cash, s.companies[i].value("veh").array.reduce(0) { $0 + $1["km"].double } - km0)
     }
 
-    /// Fuel is a standard-rated purchase: the bank pays net plus input VAT (reclaimed later by a registered company); sales-tax countries add none.
-    /// The exact cash a fuel bill of `net` costs: the bank pays the net rounded to whole money (Payments.companyPays) plus Vat.input's
-    /// jsRound(net * standard rate) on the unrounded net, so the bill is not simply net * (1 + vat).
     private func fuelBill(_ net: Double, _ c: Country) -> Double { jsRound(net) + (c.usesSalesTax ? 0 : jsRound(net * c.vat.standard)) }
 
     func testAPlumberPaysFuelForTheKilometresItsOdometerCounts() throws {
@@ -135,13 +126,10 @@ final class VehiclesTravelTests: XCTestCase {
         XCTAssertNotEqual(base, withData)
     }
 
-    // MARK: Company car perk
-
     func hireLead(_ e: inout GameEngine, _ id: Int) throws -> Int {
         var pid = 0
         e.update { s, d, _ in pid = Hiring.generateCandidate(role: "lead", company: s.company(id), tier: "mid", state: &s, data: d).id }
         let ask = try XCTUnwrap(e.state.people[pid]).askingMonthlyWage
-        // A candidate may counter a first offer (the talk factor differs by country): raise it until they accept.
         var result = Hiring.HireResult.refused
         for k in [1.5, 2.0, 3.0] where result != .ok { result = e.hire(personID: pid, companyID: id, monthlyWage: ask * k) }
         XCTAssertEqual(result, .ok)
@@ -164,24 +152,20 @@ final class VehiclesTravelTests: XCTestCase {
         XCTAssertEqual(cars[0]["eq"].string, CompanyCarPerk.equipmentID)
         XCTAssertEqual(rec[0].monthlyLease, cars[0]["lease"].double)
         XCTAssertEqual(e.staffPerkMonthlyCost(companyID: id, perk: "car"), preview, accuracy: 1.0, "what was shown is what the cars cost")
-        // the car appears in the Fleet list with its driver and its fuel
         let fleet = try XCTUnwrap(e.ownedEquipment(companyID: id).first { $0.equipmentID == CompanyCarPerk.equipmentID })
         XCTAssertEqual(fleet.vehicles.count, 1)
         XCTAssertFalse(fleet.vehicles[0].driver.isEmpty)
         XCTAssertGreaterThan(fleet.vehicles[0].fuelPerWeek, 0)
-        // fuel for the perk car follows the same kilometres as its odometer, whatever the trade
         let one = weekCost(e, id, fuelIndex: 1, util: 0.5), two = weekCost(e, id, fuelIndex: 2, util: 0.5)
         let w = World(state: e.state, data: e.data), co = e.state.company(id)!
         let perKm = VehicleRunning.fuelPerKm(model: CompanyCarPerk.model, tables: e.data.catalog.tables, country: w.country(co), currency: w.currency(co), fuelIndex: 1)
         let km = e.data.catalog.tables.raw["RUNNING"]["defaultKmPerWeek"].double * 0.5
         XCTAssertEqual(one.km, km, accuracy: 1e-9)
         XCTAssertEqual(two.cash - one.cash, fuelBill(2 * km * perKm, w.country(co)) - fuelBill(km * perKm, w.country(co)), accuracy: 1e-6)
-        // the old flat per-head charge is gone: the weekly perk line carries no car
         var s = e.state
         let before = s.companies[s.companyIndex(id)!].cash
         StaffPerks.weekly(&s, data: e.data)
         XCTAssertEqual(s.companies[s.companyIndex(id)!].cash, before, accuracy: 1e-6, "no flat 'Staff perks' charge for the car")
-        // switching it off gives the car back
         XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "car"), false)
         XCTAssertTrue(e.state.company(id)!.value("veh").array.allSatisfy { $0["perk"].isNull })
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
@@ -204,12 +188,9 @@ final class VehiclesTravelTests: XCTestCase {
         XCTAssertTrue(e.state.company(id)!.value("veh").array.allSatisfy { $0["perk"].isNull })
     }
 
-    // MARK: Own car with mileage beyond estate agents
-
     func testASalesRepCanUseTheirOwnCarAndMileageFollowsTheCountryRateOtherwiseTheFlatFigure() throws {
         for (code, rate) in [("UK", 0.55 / 1.609344), ("DE", Double?.none)] as [(String, Double?)] {
             var (e, id) = try startedCompany("staffing", country: code, fund: 8_000_000)
-            // an office holds a limited number of people now (hiring rebuild): this test hires two, so the place is a big one
             e.update { s, _, _ in if let i = s.companyIndex(id), s.companies[i].value("prem")["kind"].string == "office" || s.companies[i].value("prem")["kind"].isNull { var p = s.companies[i].value("prem"); if p.isNull { p = .object([:]) }; p["m2"] = .number(900); s.companies[i].set("prem", p) } }
             var rep = 0, hr = 0
             e.update { s, d, _ in
@@ -229,7 +210,6 @@ final class VehiclesTravelTests: XCTestCase {
             let w = World(state: e.state, data: e.data), co = e.state.company(id)!
             if let rate { XCTAssertEqual(monthly, VehicleRunning.kmPerWeek(bd, tables: e.data.catalog.tables) * 52 / 12 * rate * w.country(co).fx, accuracy: 0.5, code) }
             else { XCTAssertEqual(monthly, w.currency(co).scaledPrice(4500), accuracy: 0.01, "\(code) has no mileage rate in its data: the game's flat figure") }
-            // booked once: the difference between a rep on their own car and not is exactly one week of mileage
             var with = e.state, without = e.state
             let i = with.companyIndex(id)!
             without.companies[i].staff = without.companies[i].staff.map { var m = $0; m.set("ownCar", 0); return m }
@@ -239,8 +219,6 @@ final class VehiclesTravelTests: XCTestCase {
             XCTAssertEqual((a - with.companies[i].cash) - (b - without.companies[i].cash), monthly * 12 / 52, accuracy: 1.0, code)
         }
     }
-
-    // MARK: Country blocks: motor insurance, vehicle tax, benefit in kind
 
     func dataWith(_ code: String, _ edit: (inout VehicleRules) -> Void, from e: GameEngine) -> GameData {
         var list = e.data.countries.countries
@@ -261,7 +239,6 @@ final class VehiclesTravelTests: XCTestCase {
         XCTAssertEqual(c.insurance, car["cost"].double * 0.04 / 52, accuracy: 1e-6)
         XCTAssertEqual(c.vehicleTax, 1000, accuracy: 1e-6)
         XCTAssertGreaterThan(c.benefitCharge, 0)
-        // booked through the insurance, "other" and wages lines, cash and books agree
         var s = e.state
         let i = s.companyIndex(id)!
         let books0 = s.companies[i].books
@@ -280,8 +257,6 @@ final class VehiclesTravelTests: XCTestCase {
         XCTAssertNil(rules.motorInsuranceShare); XCTAssertNil(rules.benefitInKindShare)
         XCTAssertEqual(e.data.countries["DE"]!.vehicleRules, VehicleRules.none)
     }
-
-    // MARK: A year, several seeds: costs appear only where vehicles are
 
     func fuelWeeks(_ trade: String, seed: Int) throws -> (fuelWeeks: Int, vehicles: Int, gaps: Int) {
         var (e, id) = try startedCompany(trade, country: "UK", seed: seed, fund: 20_000_000)

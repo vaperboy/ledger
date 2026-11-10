@@ -3,29 +3,13 @@ import GameCore
 import Countries
 import Finance
 
-/// The Desk (stories): one small business situation a real day (a supplier calls, a customer complains, a tip, a headline) with two or three ways to
-/// answer. The answer plays out over the next game days and the outcome is told in the next morning's Inbox. Finished stories fill a notebook
-/// of chapters; a finished chapter earns a knowledge card and a notebook cover, never cash. Nothing is lost by skipping a day: there is no
-/// backlog and no streak, only the day's item. The situations are data (`Resources/desk.json`), picked for the trades the player runs.
-///
-/// An answer's effects are drawn from a short list and clamped below, so no item can move a company by more than a few percent:
-///  - `dem`, `cost` [multiplier, weeks]: demand, or cost of goods, for a few weeks (the usual temporary modifiers)
-///  - `rep`, `aware`, `mood`: reputation, awareness and staff mood, a few points
-///  - `pay`, `gain`: a small one-off cost or windfall, as a share of a week's takings (never less than a few hundred in reference money)
-///  - `p` with `fxb`/`rb`: the answer works with that chance (drawn from the seed), else the `fxb` effects and `rb` text apply
-/// State `rest["desk"]`: `cur` { day, id, co, pick } today's item (day = real day number); `pend` the answers still playing out { id, co, pick, due,
-/// rd }; `nb` the notebook { "<itemID>": { pick, co, rd, gw, res, ok } }; `rw` { "<chapterID>": week } finished chapters; `n` days played.
 public enum DeskStories {
-    // MARK: Bounds
 
     public static let demandRange = 0.94...1.06
     public static let weeksRange = 2...5
     public static let moodRange = -4.0...4.0, pointRange = -3.0...3.0
     public static let maxPay = 0.08, maxGain = 0.05
-    /// Stories to finish in a chapter for its reward.
     public static let storiesPerChapter = 3
-
-    // MARK: Data
 
     public struct Option: Equatable, Sendable {
         public var label: String, hint: String
@@ -34,7 +18,6 @@ public enum DeskStories {
     }
     public struct Item: Identifiable, Equatable, Sendable {
         public var id: String, chapter: String, kind: String, title: String, text: String
-        /// "any", a family ("venue", "fin" ...) or a trade id ("gym", "bank") the situation fits.
         public var fits: [String]
         public var options: [Option]
     }
@@ -63,15 +46,12 @@ public enum DeskStories {
     public static var items: [Item] { book.items }
     public static func item(_ id: String) -> Item? { book.items.first { $0.id == id } }
 
-    // MARK: Which situation today
-
     public static func isOpen(_ s: GameState) -> Bool { Unlocks.isOpen(s, "desk") }
 
     static func liveCompanies(_ s: GameState) -> [Company] {
         s.companies.filter { $0.status == .open && $0.type != "hold" && $0.type != "club" }
     }
 
-    /// Does the situation fit this company: "any", its trade id or its family.
     static func fits(_ it: Item, _ co: Company, _ data: GameData) -> Bool {
         let fam = data.catalog[co.type]?.family ?? ""
         return it.fits.contains("any") || it.fits.contains(co.type) || it.fits.contains(fam)
@@ -81,15 +61,13 @@ public enum DeskStories {
 
     static func notebook(_ s: GameState) -> JSONValue { s.rest["desk"]?["nb"] ?? .object([:]) }
 
-    /// Picks the day's situation: one the player has not met yet where possible, more often from chapters they have read less of; the
-    /// company it is about is one it fits. The same game and day always give the same one.
     static func pickToday(_ s: GameState, realDay: Int, data: GameData) -> (Item, Int)? {
         let cos = liveCompanies(s)
         let nb = notebook(s)
         let fitting = book.items.filter { it in cos.contains { fits(it, $0, data) } }
         guard !fitting.isEmpty else { return nil }
         var pool = fitting.filter { nb[$0.id].isNull }
-        if pool.isEmpty {   // everything met: the ones met longest ago come round again
+        if pool.isEmpty {
             let oldest = fitting.map { nb[$0.id]["rd"].int }.min() ?? 0
             pool = fitting.filter { nb[$0.id]["rd"].int == oldest }
         }
@@ -105,25 +83,20 @@ public enum DeskStories {
         return (chosen, co.id)
     }
 
-    // MARK: Reading
-
     public struct Today: Equatable, Sendable {
         public var item: Item
         public var companyID: Int
         public var companyName: String
-        /// The option taken today, nil while undecided.
         public var picked: Int?
         public var text: String
     }
 
-    /// Something is waiting on the desk today (the quiet dot). False before the Desk opens and once today's choice is made.
     public static func waiting(_ s: GameState, realDay: Int) -> Bool {
         guard isOpen(s) else { return false }
         if let c = s.rest["desk"]?["cur"], !c.isNull, c["day"].int == realDay { return c["pick"].int < 0 }
         return !liveCompanies(s).isEmpty
     }
 
-    /// Today's situation as stored (read only); nil until `open` has been called today.
     public static func today(_ s: GameState, realDay: Int) -> Today? {
         guard isOpen(s), let c = s.rest["desk"]?["cur"], !c.isNull, c["day"].int == realDay, let it = item(c["id"].string) else { return nil }
         let name = s.company(c["co"].int)?.name ?? "your company"
@@ -132,7 +105,6 @@ public enum DeskStories {
 
     static func fill(_ text: String, _ name: String) -> String { text.replacingOccurrences(of: "{co}", with: name) }
 
-    /// Put today's situation on the desk (once per real day) and return it.
     @discardableResult
     public static func open(_ s: inout GameState, realDay: Int, data: GameData) -> Today? {
         guard isOpen(s) else { return nil }
@@ -145,15 +117,11 @@ public enum DeskStories {
         return today(s, realDay: realDay)
     }
 
-    // MARK: Answering
-
     public struct Choice: Equatable, Sendable {
-        /// What was chosen, and what happens now (the result itself comes with the next morning's Inbox).
         public var chosen: String, told: String
         public var days: Int
     }
 
-    /// Answer today's situation. The effects come due `days` game mornings later.
     @discardableResult
     public static func choose(_ s: inout GameState, option idx: Int, realDay: Int, data: GameData) -> Choice? {
         guard let t = today(s, realDay: realDay), t.picked == nil, t.item.options.indices.contains(idx) else { return nil }
@@ -169,9 +137,6 @@ public enum DeskStories {
         return Choice(chosen: o.label, told: o.days == 1 ? "Done. You will hear how it went tomorrow morning." : "Done. You will hear how it went in \(o.days) days.", days: o.days)
     }
 
-    // MARK: Every morning
-
-    /// Answers that are due play out: effects are applied and the outcome goes to the Inbox, once.
     public static func runDay(_ s: inout GameState, data: GameData) {
         guard var d = s.rest["desk"], !d["pend"].array.isEmpty else { return }
         let today = dayNumber(s)
@@ -204,7 +169,6 @@ public enum DeskStories {
         checkChapter(&s, it.chapter)
     }
 
-    /// Bounded effects (see the type's comment).
     static func apply(_ s: inout GameState, _ ci: Int, _ fx: JSONValue, data: GameData) {
         guard !fx.isNull else { return }
         let co = s.companies[ci]
@@ -212,7 +176,7 @@ public enum DeskStories {
             let v = fx[key]
             guard !v.isNull else { return }
             let m = clamp(v[0].double, demandRange.lowerBound, demandRange.upperBound)
-            let w = min(weeksRange.upperBound, max(weeksRange.lowerBound, v[1].int + 1))   // +1: a modifier is used from the next weekly run
+            let w = min(weeksRange.upperBound, max(weeksRange.lowerBound, v[1].int + 1))
             Engagement.addModifier(&s, ci, key: modKey, multiplier: m, weeks: w)
         }
         mult("dem", "dem")
@@ -231,15 +195,11 @@ public enum DeskStories {
         }
     }
 
-    // MARK: Notebook
-
     public struct Story: Identifiable, Equatable, Sendable {
         public var id: String
         public var title: String, kind: String
-        /// What the player did, and how it went.
         public var chosen: String, result: String
         public var week: Int, companyName: String
-        /// 1 it went well, -1 it did not, 0 not a gamble.
         public var luck: Int
     }
     public struct ChapterPage: Identifiable, Equatable, Sendable {
@@ -261,7 +221,6 @@ public enum DeskStories {
         s.addMessage(from: "Desk", title: "Notebook: \(ch.name) is complete", body: "\(ch.fact) You have earned a notebook cover (\(ch.rewardTitle)).", tone: "good")
     }
 
-    /// The notebook, chapter by chapter, with the stories finished so far (newest first).
     public static func pages(_ s: GameState) -> [ChapterPage] {
         let nb = notebook(s)
         return book.chapters.map { ch in
@@ -276,16 +235,13 @@ public enum DeskStories {
         }
     }
 
-    /// Covers earned so far (the notebook's look), in the order they were earned.
     public static func covers(_ s: GameState) -> [String] {
         let rw = s.rest["desk"]?["rw"].object ?? [:]
         return rw.sorted { $0.value.int != $1.value.int ? $0.value.int < $1.value.int : $0.key < $1.key }.compactMap { (e: (key: String, value: JSONValue)) -> String? in book.chapters.first { $0.id == e.key }?.cover }
     }
 
-    /// Days the Desk has been answered (told neutrally; never a streak).
     public static func daysPlayed(_ s: GameState) -> Int { s.rest["desk"]?["n"].int ?? 0 }
 
-    /// Answers still playing out, as titles ("Short delivery").
     public static func playingOut(_ s: GameState) -> [String] {
         (s.rest["desk"]?["pend"].array ?? []).compactMap { item($0["id"].string)?.title }
     }

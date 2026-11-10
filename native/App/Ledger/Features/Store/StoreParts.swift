@@ -1,10 +1,7 @@
 import SwiftUI
 import Simulation
 
-// Small pieces shared by the Store, Box, Cabinet and Auction screens.
-
 extension BoxRarity {
-    /// Muted colours; the word always stays beside the colour.
     var tint: Color {
         switch self {
         case .common: return Theme.inkSoft
@@ -16,14 +13,12 @@ extension BoxRarity {
 }
 
 extension StoreError {
-    /// A calm line for the "not enough gold" popup.
     var isShortOfGold: Bool { if case .notEnoughGold = self { return true }; return false }
 }
 
 enum StoreText {
     static func gold(_ n: Int) -> String { n == 1 ? "1 gold" : "\(n.formatted()) gold" }
 
-    /// "1h 05m", "4m 12s", "Ended". Plain text, no urgency colours.
     static func timeLeft(_ seconds: Double) -> String {
         let s: Int = Int(seconds.rounded(.down))
         if s <= 0 { return "Ended" }
@@ -35,13 +30,11 @@ enum StoreText {
     static let goldRule = "Gold buys cosmetics, boxes and extra slots. It never turns into in-game money and cannot be cashed out. Artifacts are traded for cash in auctions, which take a \(AuctionRules.feePercent)% fee out of the economy."
 }
 
-/// A small tag: the rarity in its colour, always as a word.
 struct RarityTag: View {
     var rarity: BoxRarity
     var body: some View { Text(rarity.title).textStyle(.caption, tint: rarity.tint, weight: .semibold) }
 }
 
-/// An amount of gold: a coin mark and the number.
 struct GoldAmount: View {
     var amount: Int
     var style: TextStep = .headline
@@ -56,7 +49,6 @@ struct GoldAmount: View {
     }
 }
 
-/// One numbered piece: name, rarity, "14 of 500" and the collection it belongs to.
 struct ArtifactRow: View {
     var item: ArtifactItem
     var trailing: String = ""
@@ -81,8 +73,6 @@ struct ArtifactRow: View {
     }
 }
 
-/// The published odds of a box: every row with its exact percentage, the rarity totals, what gold the box holds on average, and the guarantee.
-/// Shown on the store page and the box page, before anything is bought.
 struct BoxOddsTable: View {
     var kind: BoxKind
     var showRows = true

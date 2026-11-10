@@ -3,8 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Group tab: its title, then four tabs (Overview, Structure, People, Suppliers; `GroupHome`). A company, holding or chain pushes its own
-/// page (`NavRoute.entity`); any other tab can push the same page (`GameStore.openGroupEntity`). Choosing the Group tab again returns to Overview.
 struct GroupView: View {
     @EnvironmentObject var store: GameStore
     @State private var showAddMenu = false
@@ -30,7 +28,6 @@ struct GroupView: View {
                 })
                 .environmentObject(store)
             }
-            // Choosing Group again: back to Overview.
             .onChange(of: store.rootToken(.group)) { _, _ in showAddMenu = false; addDestination = nil; tab = .overview }
         }
     }
@@ -56,8 +53,6 @@ struct GroupView: View {
     }
 }
 
-/// The pushed Group entity page on any tab: the entity's own page, with the breadcrumb above its header. Back (its chevron, or the
-/// edge swipe) pops it like any pushed screen.
 struct GroupEntityScreen: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
@@ -86,8 +81,6 @@ struct GroupEntityScreen: View {
     }
 }
 
-/// One line above an entity page's header: "Group > Chain" (or "Group > Holding > Company"). The parents are buttons: Group goes back,
-/// a holding swaps this page for its own on the same tab.
 struct EntityBreadcrumb: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -118,4 +111,3 @@ struct EntityBreadcrumb: View {
         return out
     }
 }
-

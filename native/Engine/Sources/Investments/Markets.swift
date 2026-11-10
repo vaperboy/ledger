@@ -2,10 +2,7 @@ import Foundation
 import GameCore
 import Countries
 
-/// Stocks, crypto and funds: their prices move week by week with the market mood and the economy.
-/// Original: `initMarkets`, `marketWeek`, `fundsWeek` (engine/world/economy_markets.js, investing.js).
 public enum Markets {
-    /// symbol, neutral name, sector, price, volatility, beta, dividend yield. Every country file names its own listed companies (flavour.stocks); these names are only a fallback.
     static let stockDefinitions: [(sym: String, name: String, sector: String, price: Double, vol: Double, beta: Double, yield: Double)] = [
         ("ENRG", "Energy company", "Energy", 214, 0.034, 0.9, 0.035),
         ("FOOD", "Food company", "Food", 168, 0.04, 1.0, 0.02),
@@ -25,7 +22,6 @@ public enum Markets {
     public static let stockSymbols = stockDefinitions.map { $0.sym }
     public static let cryptoSymbols = cryptoDefinitions.map { $0.sym }
 
-    /// Give the listed companies the names of the player's home country (names are cosmetic; saves from older versions kept others).
     public static func refreshNames(_ s: inout GameState, country: Country) {
         let names = country.pack["flavour"]["stocks"]
         guard !names.isNull, var stocks = s.rest["stocks"]?.object else { return }
@@ -33,7 +29,6 @@ public enum Markets {
         s.rest["stocks"] = .object(stocks)
     }
 
-    /// Create the markets for a new game. Original: `initMarkets`.
     public static func initialize(_ s: inout GameState, country: Country) {
         let renamed = country.pack["flavour"]["stocks"]
         var stocks: [String: JSONValue] = [:]
@@ -64,8 +59,6 @@ public enum Markets {
         "recovery": ["bull", "bull", "bear"], "crash": ["bear", "recovery"],
     ]
 
-    /// The mood that follows the current one. It is fixed by the game seed and the number of moods so far (not drawn from the game's random
-    /// stream), so the early warning and the change itself always agree. The game mode moves the crash chance.
     static func nextRegime(_ s: GameState, _ M: JSONValue) -> String {
         var h = HashedRandom("\(s.seed):regime:\(M["n"].int)")
         let options = transitions[M["regime"].string] ?? ["bull"]
@@ -74,16 +67,13 @@ public enum Markets {
         return crash ? "crash" : pick
     }
 
-    /// Per mood change, from the game mode in `rest["difficulty"]` (the mode type lives in a module this one does not see).
     static func crashChance(_ s: GameState) -> Double {
         let mode = s.rest["difficulty"]?.string ?? ""
         return mode == "sandbox" ? 0.015 : mode == "hard" ? 0.04 : 0.03
     }
 
-    /// Weeks of notice before a downturn: two, one on Hard.
     static func warningLead(_ s: GameState) -> Int { s.rest["difficulty"]?.string == "hard" ? 1 : 2 }
 
-    /// A News item (and, for a crash or a bear market, an Inbox note) a week or two before the mood turns, so it is survivable but felt.
     static func warn(_ s: inout GameState, next: String, weeks: Int) {
         let when = weeks == 1 ? "next week" : "within \(weeks) weeks"
         switch next {
@@ -102,7 +92,6 @@ public enum Markets {
         }
     }
 
-    /// Market mood, stock and crypto prices for the week. Original: `marketWeek`.
     public static func weekly(_ s: inout GameState) {
         var M = s.rest["mkt"] ?? .object(["regime": "bull", "left": 40, "m": 0])
         M["left"] = .number(M["left"].double - 1)
@@ -117,8 +106,6 @@ public enum Markets {
             if r == "crash" { s.news("MARKETS PANIC: stocks and crypto plunge.", tone: "bad") }
         }
         let regime = M["regime"].string
-        // Weekly drift per mood. The moods used to average out at +0.3% a year, so an index fund lost money over ten years (balance pass:
-        // every mood now carries +0.12% a week, which makes the median index about +6% a year and still swings widely.
         let lift = 0.0012
         let drifts: [String: Double] = ["bull": 0.0035 + lift, "correction": -0.003 + lift, "bear": -0.005 + lift, "recovery": 0.004 + lift, "crash": -0.04 + lift]
         let vols: [String: Double] = ["bull": 0.012, "correction": 0.02, "bear": 0.022, "recovery": 0.018, "crash": 0.04]
@@ -171,7 +158,6 @@ public enum Markets {
         s.rest["crypto"] = crypto
     }
 
-    /// Index, bond and money-market fund prices. Original: `fundsWeek`.
     public static func fundsWeekly(_ s: inout GameState) {
         var F = s.rest["fundPx"] ?? .object(["idx": 100, "bond": 100, "mm": 100])
         let idxRet = s.rest["idxRet"]?.double ?? 0
@@ -183,7 +169,6 @@ public enum Markets {
         F["bond"] = .number(F["bond"].double * (1 + (policy + 0.008) / 52 - dr * 6 + s.random.gauss() * 0.0015))
         s.economy.set("rate0", s.economy.policyRate)
         s.rest["fundPx"] = F
-        // Weekly closes of each fund (newest last, two years kept) for charts; written from the first week this was kept.
         var H = s.rest["fundH"] ?? .object([:])
         for k in fundSymbols {
             var h = H[k].array
@@ -196,6 +181,5 @@ public enum Markets {
 
     public static let fundSymbols = ["idx", "bond", "mm"]
 
-    /// Weekly closes of a fund, oldest first (empty until a week has passed).
     public static func fundHistory(_ s: GameState, _ sym: String) -> [Double] { (s.rest["fundH"]?[sym].array ?? []).map { $0.double } }
 }

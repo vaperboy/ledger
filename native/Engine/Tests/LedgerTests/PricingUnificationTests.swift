@@ -9,7 +9,6 @@ private extension GameEngine {
     mutating func week() { for _ in 0..<7 { _ = nextDay() } }
 }
 
-/// Item demand uses the trade's elasticity with a kink at a reference price that moves with quality and rivals.
 final class PricingUnificationTests: XCTestCase {
     func engine() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
@@ -19,9 +18,7 @@ final class PricingUnificationTests: XCTestCase {
         return (e, id)
     }
 
-    /// The price ratio that earns most profit per unit of the first item, found on the forecast over a fine grid.
     func bestRatio(_ engine: GameEngine, _ id: Int) -> Double {
-        // Capacity is left out here (see the capacity test), so only the demand curve decides.
         var e = engine
         noCap(&e, id)
         let it = e.salesItems(companyID: id)[0]
@@ -113,7 +110,6 @@ final class PricingUnificationTests: XCTestCase {
         XCTAssertNotEqual(a, b)
     }
 
-    /// With demand above what the shop can serve, the best price is the lowest that fills capacity, which sits above the kink.
     func testCapacityPushesTheBestPriceUp() {
         let sh = SalesItems.DemandShape(elasticity: 1.4, reference: 1)
         let cost = 0.35, base = 100.0

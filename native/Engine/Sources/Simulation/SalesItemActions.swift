@@ -4,11 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// Per-item prices, discounts, company-specific items and selling to your other companies (`SalesItems`, `OwnListings`).
-/// Prices are in accounting units, like `Pricing.ticket`.
 public extension GameEngine {
-    /// The items the player sees. Empty while the first choice of what to sell is still open (`needsFirstItemChoice`); starter items the
-    /// player did not choose stay out of the list.
     func salesItems(companyID: Int) -> [SalesItem] {
         guard let co = state.company(companyID) else { return [] }
         if SalesItems.firstChoicePending(co) { return [] }
@@ -17,26 +13,21 @@ public extension GameEngine {
         return hidden.isEmpty ? rows : rows.filter { !hidden.contains($0.id) }
     }
 
-    /// True for a company the player started that still has nothing on sale: the item page asks what to sell first.
     func needsFirstItemChoice(companyID: Int) -> Bool { state.company(companyID).map(SalesItems.firstChoicePending) ?? false }
 
-    /// The three starter products (fewer where the trade has fewer) to choose the first product or service from. Empty once the choice is made; a custom first item is
-    /// added with `addSalesItem` or `addNewItem`.
     func firstItemChoices(companyID: Int) -> [SalesItem] {
         guard let co = state.company(companyID), SalesItems.firstChoicePending(co), let i = state.companyIndex(companyID),
               let bd = data.catalog[co.type] else { return [] }
-        var seeded = state   // the trade's own starter items, as they will be once its module has installed them
+        var seeded = state
         SalesItems.seedStarters(&seeded, i, data: data)
         let offered = Set(SalesItems.starterIDs(bd, SalesItems.items(seeded.companies[i], bd)))
         return SalesItems.rows(seeded, companyID: companyID, data: data).filter { offered.contains($0.id) }
     }
 
-    /// The lowest and highest price of an item against its market price for this company's trade (the slider's range).
     func itemPriceRange(companyID: Int) -> ClosedRange<Double> {
         state.company(companyID).flatMap { data.catalog[$0.type] }.map { SalesItems.range(for: $0) } ?? SalesItems.priceRange
     }
 
-    /// Choose the first item to sell from `firstItemChoices`; the other starter items stay out of the list.
     @discardableResult
     mutating func chooseFirstItem(companyID: Int, itemID: String) -> SettingResult {
         let data = self.data
@@ -52,19 +43,15 @@ public extension GameEngine {
         }
     }
 
-    /// Pure: units, revenue and profit change per week for a price (and discount percent) on one item.
     func itemForecast(companyID: Int, itemID: String, price: Double, discountPercent: Double) -> ItemForecast {
         SalesItems.forecast(state, companyID: companyID, itemID: itemID, price: price, discountPercent: discountPercent, data: data)
     }
 
-    /// A free-name suggestion for a new product or service, made from the company name and trade.
     func suggestedItemName(companyID: Int, isService: Bool) -> String {
         guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return "" }
         return SalesItems.suggestedName(co, bd, isService: isService, seed: state.seed)
     }
 
-    /// Any real number is kept as typed; the price must lie between 30% and the trade's ceiling of the market price (`itemPriceRange`).
-    /// The owner can always set it, whoever is hired to advise: `SalesItem.priceSetter` is information only.
     @discardableResult
     mutating func setItemPrice(companyID: Int, itemID: String, price: Double) -> SettingResult {
         let data = self.data
@@ -84,7 +71,6 @@ public extension GameEngine {
         return result
     }
 
-    /// A discount of `percent` for `weeks` weeks (0 percent ends it). Deepest allowed is the trade's own limit.
     @discardableResult
     mutating func setItemDiscount(companyID: Int, itemID: String, percent: Double, weeks: Int) -> SettingResult {
         let data = self.data
@@ -121,15 +107,12 @@ public extension GameEngine {
         }
     }
 
-    /// The choices for the "new product or service" popup. Profit and market numbers are nil without a market advisor.
     func newItemOptions(companyID: Int, isService: Bool) -> NewItemOptionList {
         NewItemOptions.list(state, companyID: companyID, isService: isService, data: data)
     }
 
-    /// True when a market advisor is employed (or a manager has that duty).
     func hasMarketAdvisor(companyID: Int) -> Bool { state.company(companyID).map(NewItemOptions.hasAdvisor) ?? false }
 
-    /// Add the chosen option: it goes on sale at once.
     @discardableResult
     mutating func addNewItem(companyID: Int, optionID: String) -> SettingResult {
         let svc = optionID.hasPrefix("svc:")
@@ -139,7 +122,6 @@ public extension GameEngine {
         return addSalesItem(companyID: companyID, name: o.name, isService: o.isService)
     }
 
-    /// Offer an item to your other companies (or stop).
     @discardableResult
     mutating func setItemListedForGroup(companyID: Int, itemID: String, listed: Bool) -> SettingResult {
         let data = self.data

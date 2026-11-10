@@ -1,8 +1,6 @@
 import SwiftUI
 import Simulation
 
-/// The confirmation of every purchase in the Store, built in one place. Each one says what you pay and exactly what you get; the purchase itself
-/// goes through `StoreSession` and the store service, as before.
 @MainActor
 enum StorePurchase {
     private static var session: StoreSession { StoreSession.shared }
@@ -50,7 +48,6 @@ enum StorePurchase {
         }
     }
 
-    /// Runs `work` once a closing popup has left, so what opens next is not lost to its dismissal.
     static func afterPopup(_ work: @escaping @MainActor () -> Void) {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64(Motion.sheetLeaveSeconds * 1_000_000_000))
@@ -58,15 +55,12 @@ enum StorePurchase {
         }
     }
 
-    /// The pack that gives the most gold per unit of money.
     static var bestPack: GoldPack? { GoldStore.packs.max { GoldStore.goldPerUnit($0) < GoldStore.goldPerUnit($1) } }
 
-    /// The box bundle with the biggest saving.
     static var bestBundle: BoxBundle? { GoldStore.boxBundles.max { $0.savingPercent < $1.savingPercent } }
 }
 
 extension BoxKind {
-    /// What the box is, in a line.
     var blurb: String {
         switch self {
         case .free: return "A small gift: usually a cosmetic or an artifact, sometimes a little gold or cash."

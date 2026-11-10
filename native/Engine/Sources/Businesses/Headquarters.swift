@@ -4,13 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// Your main office: one place from the kitchen table to a headquarters building, the desks, and the people who work for the whole group
-/// (personal assistant, HR manager, group accountant, in-house lawyer, data analyst, performance analyst, marketing director, procurement,
-/// strategy analyst). Original: engine/management/office.js, engine/people/fame.js (`hqUnlocked`, `hqResult`, `stratMemo`),
-/// engine/people/scorecards.js, ui/screens/group.js (Group > Main office), ui/screens/hiring.js (`hqsearch`, `hqoffer`).
-/// Saved in `rest["office"]` {tier, city, since, staff[{id, role, name, wage, w0, onb, cos}], rep{freq, detail, only}, perfAuto}.
 public enum Headquarters {
-    // MARK: Data
 
     public struct Tier: Identifiable, Equatable, Sendable {
         public var id: String
@@ -42,9 +36,6 @@ public enum Headquarters {
     public static func tier(_ s: GameState, _ data: GameData) -> Tier? { tiers(data).first { $0.id == office(s)["tier"].string } }
     public static func has(_ s: GameState, _ role: String) -> Bool { s.hasHeadOffice(role) }
 
-    /// The group office is something the owner sets up (`rentOffice` writes `set`); until then no group-level post exists.
-    /// A new game carries a free home-office record from day one (the owner's own desk), which is not a group office. Older saves count as
-    /// set up when the office has people or a rented tier, or a group managing director already exists.
     public static func established(_ s: GameState) -> Bool {
         let o = office(s)
         if o.isNull { return false }
@@ -53,25 +44,19 @@ public enum Headquarters {
         return !md.isNull && s.people[md["npc"].int] != nil
     }
 
-    /// What the office costs a month: rent and the employer cost of its staff (the amount `monthly` pays).
     public static func monthlyCost(_ s: GameState, _ data: GameData) -> Double {
         guard let t = tier(s, data) else { return 0 }
         return staff(s).reduce(rent(s, tier: t, cityID: office(s)["city"].string, data: data) * 1.02) { $0 + $1["wage"].double * 1.14 }
     }
 
-    /// The holding that pays for the group office, if one has cash to spare (`payHeadOffice` uses the same choice); else nil: the owner pays.
     static func officePayer(_ s: GameState, amount: Double) -> Company? {
         s.companies.first(where: { $0.type == "hold" && $0.status == .open && $0.cash > amount * 3 })
     }
 
-    /// Who employs the people of the group office: a holding with spare cash, else the group office the owner set up.
     public static func employerName(_ s: GameState, _ data: GameData) -> String {
         officePayer(s, amount: max(1, monthlyCost(s, data)))?.name ?? "Your group office"
     }
 
-    // MARK: Fame
-
-    /// How well known you are decides who applies and what they ask. Original: `fame`.
     public static func fame(_ s: GameState, _ data: GameData) -> Double {
         let live = s.liveCompanies
         let nw = max(1, Valuation.netWorth(s, trades: data.catalog).total)
@@ -80,17 +65,14 @@ public enum Headquarters {
         let aw = live.map { $0.awareness }.max() ?? 0
         let ol = live.map { Double(Competition.chainOutlets($0, w)) }.max() ?? 1
         f += 0.25 * aw + 5 * log2(max(1, ol))
-        f += Luxury.fameBonus(s) + 4 * Double(Abroad.foreignCountries(s).count)   // luxury perks; each foreign country
+        f += Luxury.fameBonus(s) + 4 * Double(Abroad.foreignCountries(s).count)
         return clamp(f, 0, 100)
     }
     public static func fameLabel(_ f: Double) -> String { f >= 80 ? "World famous" : f >= 60 ? "Nationally famous" : f >= 40 ? "Well known in business" : f >= 20 ? "Known locally" : "Unknown" }
     public static func fameSalary(_ f: Double) -> Double { 0.75 + f / 55 }
 
-    // MARK: Office
-
     static func inflation(_ s: GameState, _ data: GameData) -> Double { World(state: s, data: data).inflationIndex }
 
-    /// Monthly rent of an office tier in a city. Original: `officeRent`.
     public static func rent(_ s: GameState, tier t: Tier, cityID: String, data: GameData) -> Double {
         let w = World(state: s, data: data)
         let cur = ManagerModel.playerCurrency(s, data)
@@ -105,7 +87,6 @@ public enum Headquarters {
 
     public enum RentResult: Equatable, Sendable { case ok, bad, desks, notEnoughCash }
 
-    /// Rent an office (moving costs a month of rent as a deposit). Original: `rentOffice`.
     public static func rentOffice(_ s: inout GameState, tier id: String, cityID: String? = nil, data: GameData) -> RentResult {
         guard let t = tiers(data).first(where: { $0.id == id }) else { return .bad }
         let old = office(s)
@@ -124,9 +105,6 @@ public enum Headquarters {
 
     public static func setPerformanceAuto(_ s: inout GameState, _ on: Bool) { var o = office(s); o["perfAuto"] = .bool(on); s.rest["office"] = o }
 
-    // MARK: Roles: when they open, whether there is room
-
-    /// Roles open up as the group grows. Original: `hqUnlocked`.
     public static func unlocked(_ s: GameState, _ role: String, _ data: GameData) -> Bool {
         let live = s.liveCompanies
         let n = live.count, mgrs = live.filter { $0.managerID != nil }.count, staffN = live.reduce(0) { $0 + $1.staff.count }
@@ -158,7 +136,6 @@ public enum Headquarters {
         return .ok
     }
 
-    /// What a role does for you right now. Original: `hqResult`.
     public static func result(_ s: GameState, role: String, data: GameData) -> String {
         let cos = s.liveCompanies.filter { $0.status == .open }
         switch role {
@@ -176,12 +153,8 @@ public enum Headquarters {
         }
     }
 
-    // MARK: Hiring
-
     public enum SearchMode: String, Sendable { case network, ad, agency }
 
-    /// Look for someone for a main-office role: the network is free but dries up for four weeks; a job ad or an agency costs money.
-    /// Original: `ACT.hqsearch` (searchWorkers with `hq_<role>`).
     public static func search(_ s: inout GameState, role: String, mode: SearchMode, data: GameData) -> [Person]? {
         guard room(s, role: role, data: data) == .ok, let r = self.role(role, data) else { return nil }
         let cur = ManagerModel.playerCurrency(s, data)
@@ -205,18 +178,13 @@ public enum Headquarters {
         }
     }
 
-    /// `refuse` is an insult with no figure named, `countered` names their own figure, `walkedAway` means the person took another job.
     public enum HireResult: Equatable, Sendable { case ok, refuse, taken, blocked(RoomResult), countered(Negotiation.Counter), walkedAway }
 
-    /// The going monthly rate for a main-office role: the role's pay at the player's price level, and what the player's fame adds. What a person asks
-    /// on top of it follows their skill.
     public static func goingRate(role: String, state s: GameState, data: GameData) -> Double {
         guard let r = self.role(role, data) else { return 0 }
         return ManagerModel.playerCurrency(s, data).roundedStep(ManagerModel.playerCurrency(s, data).scaledPrice(r.monthlyPay) * fameSalary(fame(s, data)), about: 100)
     }
 
-    /// Offer the job. At or above what they would settle for they accept; below it they counter, refuse or walk away (head-office posts are
-    /// senior ones, so they have patience). Original: `hireHQnpc`.
     public static func hire(_ s: inout GameState, role: String, personID: Int, monthlyWage wage: Double, data: GameData) -> HireResult {
         let r = room(s, role: role, data: data)
         guard r == .ok, let n0 = s.people[personID] else { return .blocked(r) }
@@ -249,10 +217,6 @@ public enum Headquarters {
         return true
     }
 
-    /// Assign a company to your marketing director or performance analyst. Original: `ACT.hqas`.
-    // MARK: Paying for the office
-
-    /// Group salaries and the office: a holding with spare cash pays, else you do. Original: `payHQ`.
     static func payHeadOffice(_ s: inout GameState, _ amt: Double, label: String) {
         let a = jsRound(amt)
         if a <= 0 { return }
@@ -263,7 +227,6 @@ public enum Headquarters {
         Payments.playerPays(&s, a, label: label)
     }
 
-    /// Rent and salaries each month, the strategy memo and the manager scorecards. Original: `officeMonth`.
     static func monthly(_ s: inout GameState, data: GameData) {
         guard let t = tier(s, data) else { return }
         let o = office(s)
@@ -274,8 +237,6 @@ public enum Headquarters {
         let auto = o["perfAuto"].isNull ? true : o["perfAuto"].bool
         if has(s, "perf") && auto { managerScorecards(&s, data: data) }
     }
-
-    // MARK: Scorecards, strategy memo
 
     public struct Scorecard: Identifiable, Equatable, Sendable {
         public var id: Int
@@ -289,7 +250,6 @@ public enum Headquarters {
         public var weeks: Int
     }
 
-    /// How a manager is doing. Original: `mgrReview`.
     public static func review(_ s: GameState, companyID: Int) -> Scorecard? {
         guard let co = s.company(companyID), let mid = co.managerID, let n = s.people[mid] else { return nil }
         let h = Array(co.monthlyHistory.suffix(3))
@@ -302,7 +262,6 @@ public enum Headquarters {
         return Scorecard(id: co.id, companyName: co.name, managerName: n.name, score: Int(score), margin: margin, reputation: Int(saturating: jsRound(co.reputation)), quality: Int(saturating: jsRound(co.quality)),
                          fraud: fraud, weeks: s.week - co.int("mgrW0"))
     }
-    /// Run (and remember) the review of every managed company; with a performance analyst this happens each month. Original: `managerScorecards`.
     @discardableResult
     public static func managerScorecards(_ s: inout GameState, data: GameData) -> [Scorecard] {
         let L = s.companies.filter { ($0.status == .open || $0.status == .closed) && $0.managerID != nil }.compactMap { review(s, companyID: $0.id) }.sorted { $0.score > $1.score }
@@ -318,7 +277,6 @@ public enum Headquarters {
         return L
     }
 
-    /// A quarterly memo from the strategy analyst. Original: `stratMemo`.
     static func strategyMemo(_ s: inout GameState, data: GameData) {
         guard has(s, "strat") else { return }
         var out: [String] = []
@@ -341,15 +299,12 @@ public enum Headquarters {
                      body: out.isEmpty ? "No concerns this quarter. All companies look healthy." : out.joined(separator: "\n"), tone: "n", status: "done", sev: 1)
     }
 
-    // MARK: Your right hand
-
     public struct RightHand: Equatable, Sendable {
         public var personID: Int
         public var decidesForYou: Bool
-        public var briefing: String       // week, month, off
+        public var briefing: String
     }
 
-    /// The personal assistant at your main office is your right hand. Original: `LH`.
     public static func rightHand(_ s: GameState) -> RightHand? {
         guard let pa = staff(s).first(where: { $0["role"].string == "pa" && s.people[$0["id"].int] != nil }) else { return nil }
         let lh = s.rest["lh"] ?? .null

@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// The three popup categories side by side, with real popup components, for review screenshots. Opened only by the launch argument
-/// `-popupGallery` (UI test `ShotsPopupTests`); never reachable in play.
 struct PopupGallery: View {
     @State private var pending: PendingAction?
     @State private var medium = false

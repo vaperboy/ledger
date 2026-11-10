@@ -1,18 +1,12 @@
 import Foundation
 import GameCore
 
-/// The Season Pass: an 8-week real-time progression with a free and a premium (Ledger Plus) track. Rewards are cosmetic or comfort only
-/// (no cash, no simulation effect) and fixed per tier, so nothing is random. It is NOT part of the game save: seasons follow the real
-/// calendar and belong to the player, not to one saved game, so the app keeps it in its own small store (UserDefaults, JSON).
-/// XP comes from facts seen in the game (`observe`); a per-day cap keeps heavy play from outrunning the pass.
 public struct SeasonPass: Codable, Equatable, Sendable {
-    // MARK: Config
 
     public static let seasonDays = 56
     public static let tierCount = 30
     public static let xpPerTier = 150
     public static let dailyXPCap = 100
-    /// Positive-cash weeks in a row that earn the cash XP.
     public static let cashStreakWeeks = 4
 
     public enum Source: String, Codable, Sendable, CaseIterable {
@@ -39,11 +33,9 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         }
     }
 
-    /// The few facts read from a game to find what happened since the last look.
     public struct Snapshot: Codable, Equatable, Sendable {
         public static let unknownMonths = -1
         public var seed: Int, week: Int, cash: Double, profitMonths: Int, loans: Int, goals: Int
-        /// The date key of the daily goal once its reward is claimed; empty otherwise.
         public var dailyDone: String
         public init(seed: Int, week: Int, cash: Double, profitMonths: Int, loans: Int, goals: Int, dailyDone: String) {
             self.seed = seed; self.week = week; self.cash = cash; self.profitMonths = profitMonths; self.loans = loans; self.goals = goals; self.dailyDone = dailyDone
@@ -76,23 +68,16 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         return Snapshot(seed: s.seed, week: s.week, cash: s.cash, profitMonths: profitMonths(s), loans: s.loans.count, goals: Career.goalsDone(s), dailyDone: daily)
     }
 
-    // MARK: State
-
-    /// Real day number (days since 1970) the first season began; later seasons follow every `seasonDays`.
     public var firstDay: Int
     public var season: Int
     public var xp: Int
-    /// Reward keys claimed this season, "f12" or "p12" (track letter and tier).
     public var claimed: Set<String>
-    /// Every reward id ever claimed; it survives season rollover so a cosmetic stays owned.
     public var owned: Set<String>
-    /// Chosen cosmetic per kind (`SeasonReward.Kind.rawValue` to reward id).
     public var equipped: [String: String]
     public var xpDay: Int
     public var xpToday: Int
     public var cashStreak: Int
     public var baseline: Snapshot?
-    /// Free rewards of the season that just ended that were reached and never claimed (they are lost at rollover); nil until a season has ended.
     public var missedFree: Int?
 
     public init(today: Int) {
@@ -100,15 +85,12 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         xpDay = today; xpToday = 0; cashStreak = 0; baseline = nil
     }
 
-    // MARK: Seasons
-
     public static func seasonIndex(firstDay: Int, today: Int) -> Int { max(0, (today - firstDay) / seasonDays) }
     public var startDay: Int { firstDay + season * Self.seasonDays }
     public var endDay: Int { startDay + Self.seasonDays }
     public func daysLeft(today: Int) -> Int { max(0, endDay - today) }
     public var seasonNumber: Int { season + 1 }
 
-    /// Starts the new season when the real date has passed the end of this one. XP and claims reset; owned rewards stay. Returns true on rollover.
     @discardableResult
     public mutating func rollover(today: Int) -> Bool {
         let idx: Int = Self.seasonIndex(firstDay: firstDay, today: today)
@@ -118,12 +100,10 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         return true
     }
 
-    /// Free rewards reached this season and not yet claimed.
     public var unclaimedFree: Int {
         (1...Self.tierCount).filter { SeasonRewards.reward(.free, tier: $0) != nil && $0 <= tier && !isClaimed(.free, tier: $0) }.count
     }
 
-    /// A line for the last days of a season: what is still waiting, and that it is lost when the season ends. Nil when there is nothing to say.
     public func endingNote(today: Int, isPlus: Bool) -> String? {
         let left: Int = daysLeft(today: today)
         guard left <= 7 else { return nil }
@@ -134,34 +114,25 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         return "The season ends \(when). You are at tier \(tier) of \(Self.tierCount); the next tier is \(xpToNextTier) XP away."
     }
 
-    /// XP still needed for the next tier (0 when the pass is complete).
     public var xpToNextTier: Int { isComplete ? 0 : Self.xpPerTier - xpIntoTier }
 
-    /// What the player has missed from the season that just ended, in words; nil when nothing was lost.
     public var missedNote: String? {
         guard let n = missedFree, n > 0 else { return nil }
         return "Last season ended with \(n) free \(n == 1 ? "reward" : "rewards") unclaimed. Claim before the season ends to keep them."
     }
 
-    // MARK: Tiers
-
     public static func tier(forXP xp: Int) -> Int { min(tierCount, max(0, xp) / xpPerTier) }
     public var tier: Int { Self.tier(forXP: xp) }
     public var isComplete: Bool { tier >= Self.tierCount }
-    /// XP gathered towards the next tier (0 when the pass is complete).
     public var xpIntoTier: Int { isComplete ? 0 : xp % Self.xpPerTier }
     public var tierProgress: Double { isComplete ? 1 : Double(xpIntoTier) / Double(Self.xpPerTier) }
     public func xpLeftToday(today: Int) -> Int { xpDay == today ? max(0, Self.dailyXPCap - xpToday) : Self.dailyXPCap }
 
-    /// Progress in words: where the player stands and what is left.
     public var progressText: String {
         if isComplete { return "Season complete: all \(Self.tierCount) tiers reached" }
         return "Tier \(tier) of \(Self.tierCount). \(xpIntoTier) of \(Self.xpPerTier) XP to tier \(tier + 1)"
     }
 
-    // MARK: XP
-
-    /// Adds XP for `source`, trimmed to what the day's cap still allows. Returns the XP actually granted.
     @discardableResult
     public mutating func award(_ source: Source, today: Int, count: Int = 1) -> Int {
         if xpDay != today { xpDay = today; xpToday = 0 }
@@ -172,7 +143,6 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         return granted
     }
 
-    /// XP from a watched reward ad: it sits outside the daily cap (the app offers it once a real day) but never past the last tier.
     @discardableResult
     public mutating func addBonus(_ amount: Int) -> Int {
         let top: Int = max(0, Self.tierCount * Self.xpPerTier - xp)
@@ -183,8 +153,6 @@ public struct SeasonPass: Codable, Equatable, Sendable {
 
     public static let adBonusXP = 40
 
-    /// Compares the game with the last look and awards XP for what happened. A different game (seed) or an earlier week only resets the
-    /// baseline, so loading another save never pays. Returns the XP granted.
     @discardableResult
     public mutating func observe(_ now: Snapshot, today: Int) -> Int {
         rollover(today: today)
@@ -207,15 +175,12 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         return total
     }
 
-    // MARK: Claiming
-
     public enum Track: String, Codable, Sendable { case free = "f", premium = "p" }
 
     public enum ClaimResult: Equatable, Sendable {
         case claimed(SeasonReward)
         case alreadyClaimed
         case tierNotReached
-        /// Premium reward without Ledger Plus.
         case needsPlus
         case noReward
     }
@@ -223,7 +188,6 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     static func key(_ track: Track, _ tier: Int) -> String { track.rawValue + String(tier) }
     public func isClaimed(_ track: Track, tier t: Int) -> Bool { claimed.contains(Self.key(track, t)) }
 
-    /// A reward can be claimed once its tier is reached; premium needs Plus (`isPlus`), which is only ever an input.
     public func canClaim(_ track: Track, tier t: Int, isPlus: Bool) -> Bool {
         guard SeasonRewards.reward(track, tier: t) != nil, t <= tier, !isClaimed(track, tier: t) else { return false }
         return track == .free || isPlus
@@ -239,7 +203,6 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         return .claimed(r)
     }
 
-    /// Claims everything open, tier by tier, free before premium.
     public mutating func claimAll(isPlus: Bool) -> [SeasonReward] {
         var got: [SeasonReward] = []
         for t in 1...Self.tierCount {
@@ -259,14 +222,12 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         equipped[r.kind.rawValue] = id
     }
 
-    /// Adds a cosmetic or comfort item bought or won outside the pass (store, box, collection); the first of an equippable kind is equipped.
     public mutating func grantOwned(_ id: String) {
         guard let r = SeasonRewards.item(id) else { return }
         owned.insert(id)
         if equipped[r.kind.rawValue] == nil && r.kind.isEquippable { equipped[r.kind.rawValue] = id }
     }
 
-    /// Save slots added by owned rewards and bought slots (comfort only).
     public var bonusSaveSlots: Int {
         SeasonRewards.all.filter { $0.kind == .saveSlot && owned.contains($0.id) }.count
             + GoldCosmetics.all.filter { $0.item.kind == .saveSlot && owned.contains($0.id) }.count

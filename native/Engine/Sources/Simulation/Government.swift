@@ -1,13 +1,9 @@
 import Foundation
 import GameCore
 
-// One country's government: administrators, treasury, printing, rates, price support, the audit log and the office of president.
-// Elections are in Politics.swift. Every change a president or an election makes waits in `pending` until an administrator confirms it.
-
 public struct GovPolicy: Codable, Equatable, Sendable {
     public static let transferRange = 0.0...0.05
     public static let gainsRange = 0.05...0.40
-    /// The most a rate may move in one change, and the weeks between changes.
     public static let step = 0.01
     public static let changeGapWeeks = 7
 
@@ -23,12 +19,10 @@ public struct GovPriceSupport: Codable, Equatable, Identifiable, Sendable {
     public static let maxWeeks = 8
     public static let budgetShareOfTreasury = 0.05
     public static let maxOpen = 2
-    /// One account may draw at most this share of the weekly budget, however many companies it owns.
     public static let accountShare = 0.25
 
     public var id: Int
     public var tradeID: String
-    /// Share of the company's week of sales that the state adds.
     public var percent: Double
     public var weeklyBudget: Double
     public var weeks: Int
@@ -74,7 +68,6 @@ public struct Government: Codable, Equatable, Sendable {
 
     public var country: String
     public var admins: Set<String>
-    /// The administrator's world rules this government runs on; the bridge sets it from the game's snapshot before every change. Nil: the defaults.
     public var activeRules: WorldRules?
     var rules: WorldRules { activeRules ?? WorldRules.defaults }
     public internal(set) var treasury = GovTreasury()
@@ -103,8 +96,6 @@ public struct Government: Codable, Equatable, Sendable {
 
     func requireAdmin(_ a: String) throws { guard isAdmin(a) else { throw GovError.notAdmin } }
 
-    // MARK: Log and news
-
     mutating func log(_ actor: String, _ action: String, _ detail: String, week: Int) {
         audit.insert(GovAuditEntry(id: takeID(), week: week, actor: actor, action: action, detail: detail), at: 0)
         if audit.count > Self.logLimit { audit.removeLast(audit.count - Self.logLimit) }
@@ -115,20 +106,15 @@ public struct Government: Codable, Equatable, Sendable {
         if news.count > 100 { news.removeLast(news.count - 100) }
     }
 
-    /// Money coming in from a person or company (tax, fee, fine, donation). The caller has already taken it from them.
     mutating func receive(_ amount: Double, kind: String, ref: String, week: Int) {
         guard amount > 0 else { return }
         try? treasury.post(amount, kind: kind, ref: ref, week: week)
     }
 
-    /// A refund or payout out of the treasury. The caller must credit the same amount to the person or company.
     mutating func payOut(_ amount: Double, kind: String, ref: String, week: Int) throws {
         try treasury.post(-abs(amount), kind: kind, ref: ref, week: week)
     }
 
-    // MARK: Administrator: printing
-
-    /// Prints money into the treasury. The entry is public and cannot be undone; prices follow later (`GovInflation`).
     @discardableResult
     public mutating func printMoney(admin: String, amount: Double, reason: String, week: Int) throws -> GovMint {
         try requireAdmin(admin)
@@ -150,7 +136,6 @@ public struct Government: Codable, Equatable, Sendable {
         log(admin, "admin_add", account, week: week)
     }
 
-    /// An administrator stays; the last one cannot be removed.
     public mutating func removeAdmin(by admin: String, account: String, week: Int) throws {
         try requireAdmin(admin)
         guard admins.count > 1, admins.contains(account) else { throw GovError.wrongState }
@@ -158,9 +143,6 @@ public struct Government: Codable, Equatable, Sendable {
         log(admin, "admin_remove", account, week: week)
     }
 
-    // MARK: Donations
-
-    /// A gift to the treasury. It buys nothing: no office, no support, no say. The record is public.
     @discardableResult
     public mutating func donate(account: String, name: String, amount: Double, week: Int) throws -> GovDonation {
         let a = govRound(amount)
@@ -171,8 +153,6 @@ public struct Government: Codable, Equatable, Sendable {
         log(account, "donation", "\(a)", week: week)
         return d
     }
-
-    // MARK: Rates (president proposes, administrator confirms)
 
     @discardableResult public mutating func proposePolicy(by account: String, transferTax: Double, gainsTax: Double, week: Int) throws -> Int {
         guard isPresident(account, week: week) else { throw GovError.notPresident }
@@ -195,9 +175,6 @@ public struct Government: Codable, Equatable, Sendable {
 
     func pct(_ x: Double) -> String { String(format: "%.1f%%", x * 100) }
 
-    // MARK: Price support
-
-    /// Support for one trade: the state adds `percent` of a company's week of sales, up to a weekly budget. Admin confirms before it runs.
     @discardableResult public mutating func proposePriceSupport(by account: String, tradeID: String, percent: Double, weeklyBudget: Double, weeks: Int, week: Int) throws -> Int {
         guard isPresident(account, week: week) else { throw GovError.notPresident }
         try Self.checkSupport(percent: percent, budget: weeklyBudget, weeks: weeks, treasury: treasury.balance, rules: rules)
@@ -221,7 +198,6 @@ public struct Government: Codable, Equatable, Sendable {
         }
     }
 
-    /// What the state adds to one company's week. Zero when nothing applies. The caller credits the company the returned amount.
     public mutating func supportPayout(account: String, tradeID: String, weekRevenue: Double, week: Int) -> Double {
         guard weekRevenue > 0, !isAdmin(account), !isPresident(account, week: week) else { return 0 }
         guard let i = supports.firstIndex(where: { $0.status == .active && $0.tradeID == tradeID && week >= $0.startWeek && week < $0.endWeek }) else { return 0 }
@@ -236,8 +212,6 @@ public struct Government: Codable, Equatable, Sendable {
         supports[i].drawn[account] = (s.drawn[account] ?? 0) + amt
         return amt
     }
-
-    // MARK: Administrator decisions
 
     public mutating func confirm(admin: String, pendingID: Int, week: Int) throws {
         try requireAdmin(admin)
@@ -286,7 +260,6 @@ public struct Government: Codable, Equatable, Sendable {
 
     public var openPending: [GovPending] { pending.filter { $0.status == .open } }
 
-    /// Ends supports that have run their weeks. Called each week.
     mutating func expireSupports(week: Int) {
         for i in supports.indices where supports[i].status == .active && week >= supports[i].endWeek { supports[i].status = .ended }
     }

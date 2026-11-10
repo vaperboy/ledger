@@ -4,9 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Giving back (C3): sponsor the club, a scholarship, a park, a hospital wing, or endow a foundation. Paid from your own cash, not a
-/// company's. Each gift raises your standing in one city (a little more demand there, up to +6%), adds to your legacy and moves your
-/// public image. All figures come from `Giving` through `GameEngine`; this screen only chooses and reports.
 struct GivingView: View {
     @EnvironmentObject var store: GameStore
     @State private var pending: PendingAction?
@@ -40,7 +37,6 @@ struct GivingView: View {
                     foundationSection(e)
                     marksSection(e)
                 }
-                // Blocks sit on the page with no surface of their own.
                 .environment(\.insideCard, true)
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)
@@ -51,8 +47,6 @@ struct GivingView: View {
         .appScreen(title: "Giving back", subtitle: "Gifts, sponsorships and your foundation", tab: .phone)
         .confirmAction($pending)
     }
-
-    // MARK: Summary
 
     private func summary(_ e: GameEngine) -> some View {
         let cur = e.homeCurrency
@@ -76,12 +70,8 @@ struct GivingView: View {
         }
     }
 
-    // MARK: Gifts
-
-    /// How much a gift lifts the standing in a town, in words (the engine adds 3 to 25).
     private static func liftWord(_ v: Double) -> String { v < 5 ? "a little" : v < 10 ? "some" : v < 20 ? "a good deal" : "a great deal" }
 
-    /// How long a gift is remembered (the engine's legacy value, 8 to 400).
     private static func legacyWord(_ v: Double) -> String { v < 20 ? "A short" : v < 100 ? "A lasting" : "A lasting, great" }
 
     private func giftRow(_ e: GameEngine, _ g: Giving.Gift, _ place: Giving.Place) -> some View {
@@ -106,7 +96,7 @@ struct GivingView: View {
                         title: "\(g.name) in \(place.name)?",
                         message: "Costs \(cur.tidyDisplay(cost)) from your own cash" + (g.yearly ? ", and again every year; if you cannot pay one year the sponsorship ends." : ", once.")
                             + " Your standing in \(place.name) rises \(Self.liftWord(g.standing)) and it adds to your legacy. It cannot be undone, and there is no financial return except the small demand lift in that city.",
-                        button: g.yearly ? "Sponsor" : "Give", destructive: true) { give(g, place) }  // irreversible: always asks
+                        button: g.yearly ? "Sponsor" : "Give", destructive: true) { give(g, place) }
                 }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).disabled(short)
                 if short { Text("Short by \(cur.tidyShort(cost - e.state.cash)).").textStyle(.caption, tint: Theme.inkFaint) }
             }
@@ -122,8 +112,6 @@ struct GivingView: View {
         case .unknown: store.show("That gift is not available.", tone: "warn")
         }
     }
-
-    // MARK: Foundation
 
     @ViewBuilder private func foundationSection(_ e: GameEngine) -> some View {
         let cur = e.homeCurrency
@@ -163,8 +151,6 @@ struct GivingView: View {
             }
         }
     }
-
-    // MARK: Marks
 
     @ViewBuilder private func marksSection(_ e: GameEngine) -> some View {
         let marks = e.givingMarks

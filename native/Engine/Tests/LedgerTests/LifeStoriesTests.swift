@@ -4,7 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Start-up loan (default) and heir stories, and the New company affordability list (no trade is ever blocked by money).
 final class LifeStoriesTests: XCTestCase {
     private func json(_ s: GameState) throws -> JSONValue { try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(s)) }
 
@@ -76,23 +75,19 @@ final class LifeStoriesTests: XCTestCase {
         XCTAssertEqual(rows.count, e.data.catalog.all.filter { !SpecialFamilies.isRetired($0) }.count, "every trade is listed except the retired ones")
         let funded = rows.filter { $0.isFunded }
         XCTAssertFalse(funded.isEmpty); XCTAssertLessThan(funded.count, rows.count)
-        // funded first, cheapest first
         XCTAssertEqual(rows.prefix(funded.count).map { $0.tradeID }, funded.map { $0.tradeID })
         XCTAssertEqual(funded.compactMap { $0.cost }, funded.compactMap { $0.cost }.sorted())
         for r in funded { XCTAssertLessThanOrEqual(r.minimum ?? .infinity, Payments.liquid(e.state)); XCTAssertEqual(r.shortfall, 0) }
-        // cost and shortfall are the engine's estimate, not a made-up number
         let r = try XCTUnwrap(rows.first { !$0.isFunded && $0.blocked == nil })
         let t = try XCTUnwrap(e.data.catalog[r.tradeID])
         var probe = e.state; probe.cash += 1_000_000_000
         let city = e.homeCountry.cities[0]
-        let est = try XCTUnwrap(CompanySetup.estimate(tradeID: t.id, cityID: city.id, 
+        let est = try XCTUnwrap(CompanySetup.estimate(tradeID: t.id, cityID: city.id,
                                                       size: CompanySetup.recommendedSize(t, city: city), state: probe, data: e.data))
         XCTAssertEqual(r.cost, est.total)
-        // what must be paid to start at all: papers, the cheapest place, registration, capital, and the required kit's upfront part
         let least = est.documents + est.premisesLeast + est.property + est.wait + est.registration + est.shareCapital + est.abroad + est.requiredEquipmentUpfront + est.requiredVehicles
         XCTAssertEqual(least, est.minimumToOpen, accuracy: 0.01)
         XCTAssertEqual(r.shortfall, max(0, least - Payments.liquid(e.state)), accuracy: 0.01)
-        // and nothing is refused: an unaffordable trade can still be registered
         var e2 = e
         let res = e2.startCompany(tradeID: r.tradeID, cityID: city.id, fundWith: 0)
         _ = res

@@ -5,8 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// The reads and actions behind the company screens: the new-company plan with a chosen place, insurance and advisers,
-/// payroll mode and approval, and moving a home-based company into a place and back.
 final class CompanyScreensTests: XCTestCase {
     private func game(seed: Int = 7) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
@@ -50,7 +48,6 @@ final class CompanyScreensTests: XCTestCase {
         guard case .success(let bought) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, size: 1, name: nil, pick: .init(listingIndex: 1, buy: true), fundWith: 200_000_000) else { return XCTFail("not started") }
         XCTAssertEqual(bought.premises, .ok)
         XCTAssertTrue(e.state.company(bought.companyID)!.value("prem")["owned"].bool)
-        // No pick: nothing is rented by itself; the player chooses the place in AirStay.
         guard case .success(let std) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, size: 1, name: nil, pick: nil, fundWith: 100_000_000) else { return XCTFail("not started") }
         XCTAssertNil(std.premises)
         XCTAssertTrue(e.state.company(std.companyID)!.value("prem").isNull)
@@ -64,7 +61,6 @@ final class CompanyScreensTests: XCTestCase {
         XCTAssertNil(o.insurer)
         XCTAssertEqual(o.policies.count, 6)
         XCTAssertNotNil(o.accountant)
-        // Atlas Insurance takes every policy: no insurer has to be chosen first.
         XCTAssertEqual(e.toggleInsurancePolicy(companyID: id, product: "prop"), .done)
         XCTAssertEqual(e.coverageOverview(companyID: id)?.insurer?.name, "Atlas Insurance")
         let insurers = e.adviserChoices(companyID: id, kind: .insurer)
@@ -79,12 +75,11 @@ final class CompanyScreensTests: XCTestCase {
         XCTAssertNil(e.coverageOverview(companyID: id)!.insurer)
     }
 
-    /// Two owner-run companies with staff, played until the Inbox asks to approve payroll for them.
     private func twoCompaniesAwaitingPayrollApproval() throws -> (GameEngine, [Int], Message) {
         var e = try game()
         var ids: [Int] = []
         for _ in 0..<2 {
-            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 50_000_000) else { throw XCTSkip("no company") }   // no accountant or manager: the player runs payroll
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 50_000_000) else { throw XCTSkip("no company") }
             ids.append(id)
         }
         var days = 0

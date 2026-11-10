@@ -1,11 +1,7 @@
 import Foundation
 import Businesses
 
-/// The stand-in for the association side of the server. Members come from the sample players: a trade club takes the players with a company of
-/// that trade in that country, a club across trades takes a steady share of every public player (chosen from the club id and the player id, so
-/// the list is the same on every launch). Players at Private level are never listed.
 final class MockAssociationService: AssociationService {
-    /// The players as the viewer sees them (relation and privacy applied); falls back to the plain roster before the directory is loaded.
     private func directory() -> [PlayerProfile] {
         OnlineDirectoryCache.players.isEmpty ? SampleRoster.players() : OnlineDirectoryCache.players
     }
@@ -19,7 +15,6 @@ final class MockAssociationService: AssociationService {
             if let trade = club.tradeName {
                 guard raw.countryCode == club.region else { continue }
                 guard let co = raw.companies?.first(where: { $0.trade.lowercased() == trade.lowercased() }) else { continue }
-                // Where a company is stays with friends, as on the profile.
                 rows.append(AssociationMemberRow(id: raw.id, profile: shown, line: friend ? "\(co.trade) in \(co.city)" : nil))
             } else {
                 var s = SampleRoster.Stream(club.id + ":" + raw.id)

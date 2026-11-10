@@ -5,7 +5,6 @@ import Employees
 import Businesses
 import Simulation
 
-/// The Reward menu of group employees prices a reward before it is confirmed: a course costs once and changes no pay; a benefit costs every month.
 final class GroupRewardPreviewTests: XCTestCase {
     func testTrainingCostsOnceAndBenefitCostsEveryMonth() throws {
         let e = try GameEngine.newGame(countryCode: "UK", playerName: "Alex", seed: 5)

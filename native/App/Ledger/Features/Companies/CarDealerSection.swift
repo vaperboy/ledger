@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// A car as one card in the showroom list. Same layout as a person in the Team list (`PersonCard`): a round holder, the name, two badges,
-/// a note line and the figure at the right with its caption.
 struct CarStockCard: View {
     var row: CarDealerRow
     var currency: Currency
@@ -59,10 +57,8 @@ struct CarStockCard: View {
     }
 }
 
-/// An id for the sheets: the sheet reads the car again from the engine, so it never holds a stale copy.
 struct CarSheetID: Identifiable, Hashable { var id: Int }
 
-/// The new-car dealership page section: the supplier (distributor or brand), the showroom and cars on order, and ordering.
 struct CarDealerSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -106,7 +102,6 @@ struct CarDealerSection: View {
         .centerSheet(isPresented: $brandScreen, title: "Brand contract", size: .tall, category: .detail, tone: .investment) { CarBrandScreen(companyID: company.id).environmentObject(store) }
     }
 
-    /// Who supplies the cars, the margin on each, who orders; the row opens the brand contracts.
     private func supplierBlock(_ cur: Currency) -> some View {
         let con = engine.carBrandContract(companyID: company.id)
         let buyer = engine.carDealerHasBuyer(companyID: company.id)
@@ -122,7 +117,6 @@ struct CarDealerSection: View {
     }
 }
 
-/// One car: its cost, the list price and the price slider with what the sale would earn or lose right now.
 struct CarPriceSheet: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -173,7 +167,6 @@ struct CarPriceSheet: View {
     }
 }
 
-/// Order cars from the current supplier: the distributor's whole range, or only the contract brand's.
 struct CarOrderSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -202,7 +195,6 @@ struct CarOrderSheet: View {
         }
     }
 
-    /// One model on a plain row: photo, name, one line with class, fuel and arrival, what you pay at the right with the list price under it.
     private func offerRow(_ o: CarDealerOffer, _ cur: Currency) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
             UsedCarPhoto(family: o.body, title: o.modelName, size: 42)

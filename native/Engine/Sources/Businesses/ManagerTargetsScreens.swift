@@ -3,8 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// What the screens use of the targets: the card (this month's standing, the year's budget, the last months) and the owner's approval of the
-/// yearly budget. Model: `ManagerTargets`.
 extension ManagerTargets {
     public struct Status: Equatable, Sendable {
         public struct Budget: Equatable, Sendable {
@@ -19,15 +17,12 @@ extension ManagerTargets {
         public struct LogLine: Equatable, Sendable { public var month: Int; public var met: Int }
         public var setter: Setter
         public var hasManager: Bool
-        /// The owner's direction the targets follow (nil: none chosen).
         public var direction: String?
-        /// This month's targets and where they stand (empty before the first targets are set).
         public var standing: [Standing]
         public var budget: Budget?
         public var log: [LogLine]
     }
 
-    /// Approve the year's budget as it was drafted (`year` limits it to that year's budget).
     @discardableResult
     public static func approveBudget(_ s: inout GameState, companyID: Int, year: Int? = nil) -> Bool {
         guard let ci = s.companyIndex(companyID) else { return false }

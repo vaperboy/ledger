@@ -5,8 +5,6 @@ import Countries
 import Finance
 import Simulation
 
-/// The Statements tab: the account's week, month or year statement (opening and closing balance, money in and out, the movements), where
-/// the business money went (the old Costs page), and for a company every transaction with its detail. A statement exists once a period has closed.
 struct BankStatementsTab: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -66,8 +64,6 @@ struct BankStatementsTab: View {
             }
         }
     }
-
-    // MARK: Where the money goes
 
     private var palette: [Color] { [Theme.slateBlue, P.caution, P.gain, P.accent, P.loss, Color(red: 0.36, green: 0.70, blue: 0.74), Color(red: 0.62, green: 0.50, blue: 0.80), Theme.goldDeep, P.inkFaint, P.inkSoft, Theme.glass, Theme.goldLight] }
 

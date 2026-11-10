@@ -5,11 +5,9 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Professional services (cons, tutor, photo, law, acctfirm, mktg).
 final class ProfessionalServicesTests: XCTestCase {
     static let trades = ["cons", "tutor", "photo", "law", "acctfirm", "mktg"]
 
-    /// A competent owner as in `BalanceProbeTests.play`: the standard set-up, a manager for a team of four or more, then open.
     private func start(_ trade: String, seed: Int = 7) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         var id = 0
@@ -28,13 +26,11 @@ final class ProfessionalServicesTests: XCTestCase {
             }
         }
         guard id != 0 else { throw XCTSkip("could not start \(trade)") }
-        // Licences and permits take a few weeks: open as soon as the checklist allows.
         for _ in 0..<100 where e.state.company(id)?.status != .open { _ = e.openCompany(companyID: id); _ = e.nextDay() }
         guard e.state.company(id)?.status == .open else { throw XCTSkip("\(trade) did not open") }
         return (e, id)
     }
 
-    /// One week; with `withItems` the weekly step the lead hooks into `PriceMoves.weekly` runs after it.
     private func week(_ e: inout GameEngine, _ id: Int, withItems: Bool) {
         for _ in 0..<7 { _ = e.nextDay() }
         if withItems { e.update { s, d, _ in ProfessionalServices.prepare(&s, companyID: id, data: d) } }
@@ -68,7 +64,6 @@ final class ProfessionalServicesTests: XCTestCase {
             for sp in ts.items {
                 for r in sp.roles { XCTAssertNotNil(data.catalog.tables.roles[r.role], "\(t) \(sp.name): role \(r.role)") }
                 guard sp.goods == nil else { continue }
-                // Margin of one block at the market price, from the costs the page shows: 1 - consumables - write-off - labour / relative price.
                 let ratio = sp.rate / mean
                 let margin = 1 - sp.consumables - sp.writeOff - ts.labourShare * ProfessionalServices.labourFactor(sp, bd, data) / ratio
                 XCTAssertGreaterThan(margin, 0, "\(t) \(sp.name) must not lose money by design at the planned utilisation")
@@ -105,12 +100,10 @@ final class ProfessionalServicesTests: XCTestCase {
             var (e, id) = try start(t)
             e_prepare(&e, id)
             for _ in 0..<3 { week(&e, id, withItems: true) }
-            // A steady week at the planned utilisation (a new company is often quieter, see testQuietWeeksMakeEveryBilledHourDearer).
             let planned = try XCTUnwrap(ProfessionalServices.specs[t]).plannedUtilisation
             e.update { s, _, _ in
                 if let i = s.companyIndex(id) {
                     var lw = s.companies[i].value("lastW"); lw["util"] = .number(planned); lw["cap"] = .number(max(1, lw["cap"].double))
-                    // whole daily sales can leave a young firm with no sold units yet: the steady week carries units too
                     lw["units"] = .number(planned * lw["cap"].double); s.companies[i].set("lastW", lw)
                 }
             }
@@ -213,7 +206,6 @@ final class ProfessionalServicesTests: XCTestCase {
         XCTAssertEqual(ItemModels.records(back.company(id)!), ItemModels.records(e.state.company(id)!))
     }
 
-    /// Two-year survival probe of a competent owner (set up, open, nothing else) with and without the withItems. Prints profit; no clamps.
     func testTwoYearProbeEveryTradeKeepsItsProfit() throws {
         for t in Self.trades {
             var (a, ia) = try start(t, seed: 11); var (b, ib) = try start(t, seed: 11)

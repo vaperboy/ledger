@@ -6,9 +6,6 @@ import Simulation
 import UIKit
 #endif
 
-/// The Luxury phone app: a private-sales app made by someone else (obsidian and muted gold, serif names, monospaced money).
-/// First opening is by application (`LuxuryGateView`); once accepted it opens on the Showroom, with My Vault as the other tab.
-/// Items, prices, upkeep, loans and sale values all come from the engine (`Luxury`, `luxuryFinanceQuote`, `luxurySellQuote`).
 struct LuxuryView: View {
     enum Tab: String { case showroom, vault }
 
@@ -79,7 +76,6 @@ struct LuxuryView: View {
 struct LuxuryID: Identifiable { let id: String }
 struct LuxuryPieceID: Identifiable { let id: Int }
 
-/// The masthead shown on both tabs: back button, the house name, and the cash that can be spent.
 struct LuxuryHeader: View {
     @EnvironmentObject var store: GameStore
     private var P: OutsidePalette { .luxury }
@@ -101,7 +97,6 @@ struct LuxuryHeader: View {
     }
 }
 
-/// A luxury item's picture: the catalogue asset or the sheet cell, cropped to fill the given height; the icon until art exists.
 struct LuxuryPhoto: View {
     var itemID: String
     var height: CGFloat
@@ -124,7 +119,6 @@ struct LuxuryPhoto: View {
     }
 }
 
-/// Small helpers for the facts every card and sheet shows.
 enum LuxuryFacts {
     static func item(_ id: String) -> Luxury.Item? { Luxury.item(id) }
     static func categoryName(_ it: Luxury.Item) -> String { Luxury.categories.first { $0.id == it.category }?.name ?? it.category }

@@ -3,12 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Rival groups: about ten named groups per country with an owner, a strategy, cash, debt and an ambition. They own many of the local
-/// rivals you meet, and every month some of them make a move: cut prices beside you, open next door, buy an independent rival, push
-/// marketing, raise prices or go abroad. Groups that overreach get into trouble and sell cheaply; some go bankrupt.
-/// Original: features/world/rival_groups.js (`STRAT`, `ensureCC`, `assign`, `groupMonth`, `MOVES`, `onDistress`, `onCollapse`, `cutsWeek`, `monthTick`).
-/// Bids for your companies (`bid`, answered in Events/RivalBids), poaching your manager (`poach`), buying your suppliers (`buysup`: dearer goods for
-/// everyone who buys there) and the ranking of the biggest companies (`CompanyRanking`) are in.
 public enum RivalGroups {
     struct Strategy { var name: String, text: String, margin: Double, growth: Double, leverage: Double, weights: [(String, Double)] }
     static let strategies: [(String, Strategy)] = [
@@ -51,14 +45,11 @@ public enum RivalGroups {
         return read(g)
     }
 
-    /// The groups that compete in a country.
     static func all(_ s: GameState) -> [JSONValue] { (s.rest["g27"]?["g"] ?? .null).object.sorted(by: { $0.key < $1.key }).map { $0.value } }
 
     public static func groups(_ s: GameState, country cc: String) -> [Group] {
         all(s).filter { !$0["gone"].bool && $0["cs"].array.contains { $0.string == cc } }.map(read).sorted { $0.revenue > $1.revenue }
     }
-
-    // MARK: Making the groups
 
     static func tradeRevenue(_ bd: Trade, _ c: Country) -> Double {
         let core = c.coreCities
@@ -125,7 +116,6 @@ public enum RivalGroups {
         return c.name
     }
 
-    /// Decide which local rivals belong to a group (once). Original: `assign`.
     static func assign(_ s: inout GameState, key k: String, type: String, countryCode cc: String, data: GameData) {
         guard let riv = s.rest["mk"]?[k]["riv"].array, riv.contains(where: { $0["g27"].isNull }) else { return }
         ensureCountry(&s, cc, data: data)
@@ -138,8 +128,6 @@ public enum RivalGroups {
             Rivals.mutate(&s, key: k, id: r["id"].int) { $0["g27"] = .string(pick) }
         }
     }
-
-    // MARK: Weekly and monthly
 
     static func profit(_ g: JSONValue, _ s: GameState) -> Double { g["rev"].double * g["m"].double - g["debt"].double * (s.economy.policyRate + 0.025) }
     static func holdWeeks(_ g: JSONValue) -> Int {
@@ -158,7 +146,6 @@ public enum RivalGroups {
 
     static func weekly(_ s: inout GameState, data: GameData) {
         guard s.rest["g27"] != nil || s.companies.contains(where: { $0.status == .open }) else { return }
-        // A rival's price cut runs out.
         if let mk = s.rest["mk"] {
             for k in mk.object.keys.sorted() {
                 for r in mk[k]["riv"].array where !r["uc27"].isNull && Double(s.week) >= r["uc27"]["end"].double {
@@ -182,7 +169,6 @@ public enum RivalGroups {
         return out.sorted()
     }
 
-    /// Every rival a group has in the player's markets.
     public static func members(_ s: GameState, groupID: String) -> [(companyIndex: Int, key: String, rivalID: Int)] {
         var out: [(companyIndex: Int, key: String, rivalID: Int)] = []
         for (i, co) in s.companies.enumerated() where co.status == .open {
@@ -199,7 +185,6 @@ public enum RivalGroups {
         guard var root = s.rest["g27"] else { return }
         let ids = root["g"].object.keys.sorted()
         let mi = s.week / 4
-        // The life of each group
         for id in ids where !root["g"][id]["gone"].bool {
             var g = root["g"][id]
             let st = strategy(g["strat"].string)
@@ -232,7 +217,6 @@ public enum RivalGroups {
             root["g"][id] = g
         }
         s.rest["g27"] = root
-        // Moves: only groups that compete with you somewhere
         var sent = 0
         for id in ids {
             guard let g = s.rest["g27"]?["g"][id], !g["gone"].bool, g["cs"].array.contains(where: { mine.contains($0.string) }) else { continue }
@@ -248,8 +232,6 @@ public enum RivalGroups {
             if move(&s, id, kindName, &h, data: data), ["undercut", "beside", "buysup", "poach", "bid"].contains(kindName) { sent += 1 }
         }
     }
-
-    // MARK: Moves
 
     static func targets(_ s: GameState, _ g: JSONValue, data: GameData) -> [Int] {
         let w = World(state: s, data: data)
@@ -367,9 +349,8 @@ public enum RivalGroups {
             let cn = data.countries[cc]?.name ?? cc
             logMove(&g, week: week, "Entered \(cn)"); save()
             s.news("\(name) expands into \(cn).", tone: myCountries(s).contains(cc) ? "bad" : "n")
-            if myCountries(s).contains(cc) {   // a rival group newly in a country where you trade (it was not there before: the pool excludes its countries)
+            if myCountries(s).contains(cc) {
                 let mine: Int? = s.companies.first(where: { $0.status.isLive && $0.countryCode == cc })?.id
-                // More rival pressure for all your companies there: 3 percent of demand, fading over 26 weeks.
                 for ci in s.companies.indices where s.companies[ci].status.isLive && s.companies[ci].countryCode == cc {
                     MarketPressure.add(&s, ci, kind: .country, amount: 0.03, weeks: 26)
                 }
@@ -378,7 +359,6 @@ public enum RivalGroups {
             }
             return true
         case "poach":
-            // Try to hire your best manager away: they ask you to match, pay a bonus or let them go.
             let types = g["types"].array.map { $0.string }
             let fam0 = types.first.flatMap { data.catalog[$0]?.family }
             let cands = s.companies.indices.filter { i in
@@ -430,7 +410,7 @@ public enum RivalGroups {
                 return c.status == .open && c.type != "hold" && g["cs"].array.contains(where: { $0.string == c.countryCode }) && (types.contains(c.type) || acq)
                     && Valuation.companyValue(c, state: s, trades: data.catalog) > 0 && CompanyFigures.yearlyProfitEstimate(c, currentWeek: week) > 0
                     && week - (c.openedWeek ?? c.foundedWeek) > 78 && !(c.num("bid27") > Double(week))
-                    && SaleListings.boardBlock(s, companyID: c.id) == nil   // a company with partners is sold by its board, not by a bid to the owner
+                    && SaleListings.boardBlock(s, companyID: c.id) == nil
             }
             guard let ti = T.max(by: { Valuation.companyValue(s.companies[$0], state: s, trades: data.catalog) < Valuation.companyValue(s.companies[$1], state: s, trades: data.catalog) }) else { return false }
             let co = s.companies[ti]
@@ -456,9 +436,6 @@ public enum RivalGroups {
         }
     }
 
-    // MARK: Poaching, supplier purchases and bids: the follow-ups
-
-    /// The goods supplier a company buys from (the first of its vendor list while vendor choice is not ported). Original: `goodsPick`.
     static func goodsSupplier(_ s: GameState, _ co: Company, data: GameData) -> (id: String, name: String)? {
         guard let bd = data.catalog[co.type], bd.costOfSales >= 0.03, !["fin", "energy", "rent", "club", "svc"].contains(bd.family),
               !bd.id.hasPrefix("engcons"), !bd.id.hasPrefix("event") else { return nil }
@@ -467,13 +444,11 @@ public enum RivalGroups {
         return list.first.map { ($0.id, $0.name) }
     }
 
-    /// Is this supplier owned by a competitor?
     public static func supplierOwner(_ s: GameState, vendorID: String) -> String? {
         let o = s.rest["g27"]?["vown"][vendorID] ?? .null
         return o.isNull ? nil : o.string
     }
 
-    /// The owner answers a call about the manager. Original: `ACTS.g27poach`.
     public static func answerPoach(_ s: inout GameState, message m: Message, option idx: Int, data: GameData) {
         let d = m.value("data")
         guard let ci = s.companyIndex(d["co"].int), let mid = s.companies[ci].managerID, mid == d["n"].int, var n = s.people[mid] else { return }
@@ -495,7 +470,6 @@ public enum RivalGroups {
         }
     }
 
-    /// They accept the offer and work out their notice. Original: `poachGo`.
     public static func poachGo(_ s: inout GameState, _ ci: Int, groupID gid: String) {
         let co = s.companies[ci]
         let g = s.rest["g27"]?["g"][gid] ?? .null
@@ -509,7 +483,6 @@ public enum RivalGroups {
         s.rest["g27"]?["g"][gid] = gg
     }
 
-    /// After you sold a company to a group: it becomes one of the group's sites in the market; the group pays. Original: `sellToGroup` (after `acceptSale`).
     public static func completeSale(_ s: inout GameState, groupID gid: String, company co: Company, price: Double, data: GameData) {
         guard var g = s.rest["g27"]?["g"][gid], !g.isNull else { return }
         let k = Rivals.key(co)
@@ -528,8 +501,6 @@ public enum RivalGroups {
         s.rest["g27"]?["g"][gid] = g
         s.news("\(g["name"].string) buys \(co.name).")
     }
-
-    // MARK: Trouble
 
     static func onDistress(_ s: inout GameState, groupID id: String) {
         let ms = members(s, groupID: id)

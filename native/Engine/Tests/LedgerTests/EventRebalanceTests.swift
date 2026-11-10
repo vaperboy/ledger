@@ -7,10 +7,7 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// Events rebalance: the first-year ramp, the one-bad-event-a-week cap, blocking decisions, options on every
-/// non-information event, and that the new state survives a save.
 final class EventRebalanceTests: XCTestCase {
-    /// Events that stay read-only Inbox rows: no options, `auto` (or the two untagged special ids).
     static let information: Set<String> = ["g_review", "g_award", "v_critic", "v_bigwin", "c_market", "d_market", "pr_subsidy", "rival_call", "probe", "g_heat"]
 
     func testRampWeightsByWeek() throws {
@@ -47,10 +44,10 @@ final class EventRebalanceTests: XCTestCase {
             XCTAssertFalse(EventEngine.takeBadSlot(&s, companyID: 2, eventID: "g_theft"), "a second bad event in the same week waits")
             XCTAssertFalse(EventEngine.takeBadSlot(&s, companyID: 1, eventID: "g_power"))
             XCTAssertEqual(s.rest["evBad"]?["later"].array.count, 2)
-            s.week = 7   // next week the slot is free again
+            s.week = 7
             XCTAssertTrue(EventEngine.takeBadSlot(&s, companyID: 2, eventID: "g_theft"))
             XCTAssertFalse(EventEngine.takeBadSlot(&s, companyID: 1, eventID: "g_power"))
-            s.week = 13  // the cap ends after week 12
+            s.week = 13
             XCTAssertTrue(EventEngine.takeBadSlot(&s, companyID: 1, eventID: "g_power"))
             XCTAssertTrue(EventEngine.takeBadSlot(&s, companyID: 2, eventID: "g_power"))
         }
@@ -66,14 +63,13 @@ final class EventRebalanceTests: XCTestCase {
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: false)
         }
         for _ in 0..<(3 * 7) { e.nextDay() }
-        // The company's own weekday decides when its paperwork clears and it opens: play on until it has.
         var extra = 0
         while e.state.company(id)?.status != .open && extra < 14 { e.nextDay(); extra += 1 }
         let lib = e.events
         e.update { s, data, ctx in
             XCTAssertEqual(s.company(id)?.status, .open)
             s.week = 8
-            XCTAssertTrue(EventEngine.takeBadSlot(&s, companyID: 99, eventID: "g_theft"))   // another company used this week's slot
+            XCTAssertTrue(EventEngine.takeBadSlot(&s, companyID: 99, eventID: "g_theft"))
             XCTAssertFalse(EventEngine.takeBadSlot(&s, companyID: id, eventID: "g_theft"))
             let before = s.inbox.count
             s.week = 9

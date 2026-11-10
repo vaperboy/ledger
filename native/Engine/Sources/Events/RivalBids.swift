@@ -4,14 +4,9 @@ import Countries
 import Finance
 import Businesses
 
-/// Rival groups bidding for one of your companies (the `bid` move in `RivalGroups`). You can accept, ask for more (one counter-offer, a
-/// final one at 15% more) or refuse. Where outside owners hold more than half, they decide without you when the price is good. An
-/// unanswered bid counts as a refusal, but the other owners may still sell.
-/// Original: `R27.bidFor`, `ACTS.g27bid`, `outsideVote`, `sellToGroup`, and the 'week.after' step for unanswered bids (features/world/rival_groups.js).
 public enum RivalBids {
     public static let action = "g27bid"
 
-    /// Sell the company to the group at this price (a normal company sale), then the group takes it over as one of its sites.
     @discardableResult
     static func sell(_ s: inout GameState, companyID: Int, groupID: String, price: Double, data: GameData, context fc: FinanceContext) -> Bool {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return false }
@@ -23,13 +18,12 @@ public enum RivalBids {
         return true
     }
 
-    /// With less than half the shares, the other owners decide. Original: `outsideVote`.
     static func outsideVote(_ s: inout GameState, companyID: Int, groupID: String, price: Double, value v0: Double, data: GameData, context fc: FinanceContext) {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open else { return }
         let co = s.companies[i]
         let out = 100 - co.ownership
         guard out > 50 else { return }
-        let need = 1.12   // the holders' satisfaction is not tracked: the usual premium
+        let need = 1.12
         guard price >= v0 * need else { return }
         let cur = fc.homeCurrency(s)
         if sell(&s, companyID: companyID, groupID: groupID, price: price, data: data, context: fc) {
@@ -39,7 +33,6 @@ public enum RivalBids {
         }
     }
 
-    /// The owner's answer. Original: `ACTS.g27bid`.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData, context fc: FinanceContext) {
         let d = m.value("data")
         let cid = d["co"].int, gid = d["g"].string
@@ -67,7 +60,6 @@ public enum RivalBids {
         outsideVote(&s, companyID: cid, groupID: gid, price: price, value: v0, data: data, context: fc)
     }
 
-    /// Unanswered messages: a poach goes through, a bid is refused (the other owners may still sell). Original: 'week.after' step.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         for k in s.inbox.indices {
             let m = s.inbox[k]

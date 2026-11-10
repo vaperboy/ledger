@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Brands that take new franchisees, shelved by trade. You apply, they answer in a week or three, then you meet them to agree the terms,
-/// then you start. Each brand is its own card: fee, units and strength in a figure strip, and one next step.
 struct FranchisesView: View {
     @EnvironmentObject var store: GameStore
 
@@ -24,7 +22,6 @@ struct FranchisesView: View {
                     ForEach(trades, id: \.self) { t in tradeShelf(e, brands, trade: t) }
                     PlayerFranchiseShelf()
                 }
-                // Brands sit on the page, separated by hairlines; plain cards draw flat.
                 .environment(\.insideCard, true)
                 .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -60,8 +57,6 @@ struct FranchisesView: View {
     }
 }
 
-/// One franchise brand: its terms, and the next step with it (apply, meet them, or start under the agreed deal).
-/// The steps into a brand, each with where it stands: done, now, waiting or blocked.
 struct FranchiseStepsList: View {
     var steps: [FranchiseBrands.Step]
 
@@ -167,7 +162,6 @@ struct FranchiseBrandRow: View {
     }
 }
 
-/// The meeting with a brand: standard terms, and what you ask for on top. They accept, counter, push back or walk away.
 struct BrandMeetingView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -205,8 +199,6 @@ struct BrandMeetingView: View {
             .appScreen(title: b.name, subtitle: "\(b.tierDescription) · \(FranchiseBrands.brandWord(b.strength))", tab: .group)
         }
     }
-
-    // MARK: The talk
 
     private func replyTint() -> Color {
         guard let r = result else { return Theme.ivoryMuted }
@@ -264,8 +256,6 @@ struct BrandMeetingView: View {
             }
         }
     }
-
-    // MARK: Facts
 
     private func factItems(_ e: GameEngine, _ b: FranchiseBrands.Brand, _ cur: Currency) -> [KeyFigures.Item] {
         [
@@ -333,7 +323,6 @@ struct BrandMeetingView: View {
     }
 }
 
-/// Start the company under a brand whose terms you agreed.
 struct StartFranchisedView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -346,7 +335,6 @@ struct StartFranchisedView: View {
     @State private var buying = false
     @State private var pending: PendingAction?
 
-    /// The money picture of the start, worked out once per render from the engine's plan.
     private struct StartFigures {
         var total: Double
         var fund: Double

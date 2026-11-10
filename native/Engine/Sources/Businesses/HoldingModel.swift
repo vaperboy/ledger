@@ -3,20 +3,8 @@ import GameCore
 import Countries
 import Finance
 
-/// The holding company: a limited company that owns the shares of your other limited companies and may invest its cash.
-/// Original: `createHolding`, `moveToHolding`, `holdInvest`, `holdDivest`, `FAM.hold` (engine/world/deals.js), the tax group
-/// (`taxGroup`, `groupContrib` in engine/money/money.js) and the holding's weekly dividend step (features/sales/trades_in_hours.js).
-///
-/// How it fits the rest of the game:
-///  - A company owned through a holding has `hold` = the holding's id. It is then left out of your own list of holdings in net
-///    worth, because the holding's value already contains it (`fm.assets` = treasury funds + each company's value x your share).
-///  - Dividends paid by such a company go to the holding's cash (and are not taxed as yours); the holding pays dividends to you.
-///  - Limited companies in one country that the holding owns 90% or more of form a tax group: one company's profit covers a sister
-///    company's loss in the same year (group contribution), so less tax is paid.
 public enum HoldingModel {
     public static let indexFundKey = "idx"
-    /// Funds a holding's treasury can hold: the index fund (kept in `fm.idxU` / `fm.idxCost`, as always) and the bond and money-market
-    /// funds (in `fm.fx[sym]` = { q, cost }, written only once bought).
     public static let treasuryFunds = ["idx", "bond", "mm"]
 
     public static func indexPrice(_ s: GameState) -> Double { fundPrice(s, indexFundKey) }
@@ -24,20 +12,17 @@ public enum HoldingModel {
         s.rest["fundPx"]?[sym].isNull == false ? s.rest["fundPx"]![sym].double : 100
     }
 
-    /// Units and cost basis of one treasury fund.
     public static func fundPosition(_ h: Company, _ sym: String) -> (units: Double, cost: Double) {
         let fm = h.value("fm")
         if sym == indexFundKey { return (fm["idxU"].double, fm["idxCost"].double) }
         return (fm["fx"][sym]["q"].double, fm["fx"][sym]["cost"].double)
     }
-    /// The week of the latest purchase of a treasury fund and the units bought in that week (nil before any purchase was recorded).
     public static func fundLastBuy(_ h: Company, _ sym: String) -> (week: Int, units: Double)? {
         let fm = h.value("fm")
         let rec = sym == indexFundKey ? fm["idxBuy"] : fm["fx"][sym]["buy"]
         return rec.isNull ? nil : (rec["w"].int, rec["q"].double)
     }
     public static func fundValue(_ h: Company, _ s: GameState, _ sym: String) -> Double { fundPosition(h, sym).units * fundPrice(s, sym) }
-    /// Everything the treasury holds in funds, at today's prices.
     public static func treasuryValue(_ h: Company, _ s: GameState) -> Double { treasuryFunds.reduce(0) { $0 + fundValue(h, s, $1) } }
 
     static func setFundPosition(_ fm: inout JSONValue, _ sym: String, units: Double, cost: Double) {
@@ -56,8 +41,6 @@ public enum HoldingModel {
         if sym == indexFundKey { fm["idxBuy"] = rec } else { fm["fx"][sym]["buy"] = rec }
     }
 
-    /// Companies under a holding that still exist (also ones still being set up): the ones moved under it and the ones it controls with a
-    /// bought stake of more than half the shares. Smaller stakes are in `HoldingStakes.stakeCompanies`.
     public static func subsidiaries(of holdingID: Int, in s: GameState) -> [Company] {
         s.companies.filter { $0.status.isLive && ($0.holdingID == holdingID || HoldingStakes.sharePercent(of: $0, holdingID: holdingID) > HoldingStakes.controlAbove) }
     }
@@ -66,21 +49,14 @@ public enum HoldingModel {
         s.companies.filter { $0.type == "hold" && (openOnly ? $0.status == .open : $0.status.isLive) }
     }
 
-    /// Index fund held by the holding, at today's price.
     public static func indexValue(_ h: Company, _ s: GameState) -> Double { fundValue(h, s, indexFundKey) }
 
-    // MARK: The week
-
-    /// The holding books no sales and earns nothing on idle cash (a business current account pays no interest): only money put in its treasury
-    /// funds grows, through their price. It revalues what it owns each week. Original: `FAM.hold.custom`.
     static func context(_ s: inout GameState, _ i: Int, _ data: GameData) -> CompanyWeek.WeekContext {
         let h = s.companies[i]
         refreshAssets(&s, holdingID: h.id, data: data)
         return CompanyWeek.WeekContext(units: 0, rev: 0, cogs: 0, D: 0, cap: 0, util: 0, price: 1, paidDuringWeek: 0)
     }
 
-    /// Revalue what a holding owns (`fm.assets` = treasury funds + each company's value x its share). Called every week, and whenever a company
-    /// enters or leaves the holding or is sold, so net worth never counts a company twice (inside the holding and on its own) or not at all.
     public static func refreshAssets(_ s: inout GameState, holdingID: Int, data: GameData) {
         guard let i = s.companyIndex(holdingID), s.companies[i].type == "hold" else { return }
         let rivals = HoldingStakes.revalueRivals(&s, holdingID: holdingID, data: data)
@@ -91,8 +67,6 @@ public enum HoldingModel {
         s.companies[i].set("fm", fm)
     }
 
-    /// A holding pays its own small costs with dividends from its companies instead of quietly going bankrupt.
-    /// Original: the 'trades_in_hours weekly' step.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         HoldingStakes.weekly(&s)
         for hi in s.companies.indices where s.companies[hi].type == "hold" && s.companies[hi].status == .open {
@@ -115,13 +89,8 @@ public enum HoldingModel {
         }
     }
 
-    // MARK: Creating and changing
-
     public enum Failure: Error, Equatable { case notEnoughCash, notAllowed }
 
-    /// Register a holding company: the owner pays the registration fee and the share capital, which stays in the holding.
-    /// Original: `createHolding` (+ the new-holding screen that moves chosen companies under it).
-    /// A company and the part of it (percent of the whole, taken from your own shares) to put under a new holding; 100 or more is the whole company.
     public struct StakeInput: Equatable, Sendable {
         public var companyID: Int
         public var percent: Double
@@ -157,7 +126,6 @@ public enum HoldingModel {
         return .success(id)
     }
 
-    /// Put a limited company under a holding. Original: `moveToHolding`.
     @discardableResult
     public static func move(_ s: inout GameState, companyID: Int, into holdingID: Int, data: GameData? = nil) -> Bool {
         guard let ci = s.companyIndex(companyID), let hi = s.companyIndex(holdingID) else { return false }
@@ -172,7 +140,6 @@ public enum HoldingModel {
         return true
     }
 
-    /// Take a company out of the holding again (it is then yours directly). Original: `ACT.hrel`.
     @discardableResult
     public static func release(_ s: inout GameState, companyID: Int, data: GameData? = nil) -> Bool {
         guard let ci = s.companyIndex(companyID), s.companies[ci].holdingID != 0, !HoldingStakes.isDivision(s.companies[ci]), HoldingStakes.divisions(of: companyID, in: s).isEmpty else { return false }
@@ -182,8 +149,6 @@ public enum HoldingModel {
         return true
     }
 
-    /// The holding buys units of a treasury fund (the index fund unless told otherwise) with its cash; the amount is the cost basis.
-    /// Original: `holdInvest`.
     @discardableResult
     public static func invest(_ s: inout GameState, holdingID: Int, amount: Double, fund sym: String = indexFundKey) -> Bool {
         guard treasuryFunds.contains(sym), let i = s.companyIndex(holdingID), s.companies[i].type == "hold", amount > 0, s.companies[i].cash >= amount else { return false }
@@ -197,11 +162,8 @@ public enum HoldingModel {
         return true
     }
 
-    /// Share of a treasury sale lost to costs (0.66%).
     public static let divestCost = 0.0066
 
-    /// The holding sells units of a treasury fund for cash, worth `amount` before the sale cost; returns what reached its account (0 when
-    /// nothing was sold). Original: `holdDivest`.
     @discardableResult
     public static func divestAmount(_ s: inout GameState, holdingID: Int, amount: Double, fund sym: String = indexFundKey) -> Double {
         guard treasuryFunds.contains(sym), let i = s.companyIndex(holdingID), s.companies[i].type == "hold" else { return 0 }
@@ -223,8 +185,6 @@ public enum HoldingModel {
         divestAmount(&s, holdingID: holdingID, amount: amount, fund: sym) > 0
     }
 
-    /// Positions from saves written before the cost basis was kept: the value on the day the save is first opened becomes the basis,
-    /// so the profit shown starts from zero instead of counting the whole position as profit. Runs on every load; only fills what is missing.
     public static func backfillCostBasis(_ s: inout GameState) {
         for i in s.companies.indices where s.companies[i].type == "hold" {
             var fm = s.companies[i].value("fm")
@@ -237,7 +197,6 @@ public enum HoldingModel {
         }
     }
 
-    /// When a holding goes bankrupt its companies come back to you. Original: 'companies in a failed holding return to you'.
     public static func holdingFailed(_ s: inout GameState, holdingID: Int) {
         HoldingStakes.releaseLines(&s, holdingID: holdingID)
         for j in s.companies.indices where s.companies[j].holdingID == holdingID {
@@ -247,9 +206,6 @@ public enum HoldingModel {
         }
     }
 
-    // MARK: Tax group
-
-    /// The companies that share this year's profits and losses with `co`, or nil. Original: `taxGroup`.
     public static func taxGroup(of co: Company, in s: GameState) -> [Company]? {
         let h: Company?
         if co.type == "hold" { h = co } else if co.holdingID != 0 { h = s.company(co.holdingID) } else { h = HoldingStakes.controllingHolding(of: co, in: s) }
@@ -261,8 +217,6 @@ public enum HoldingModel {
         return members.count > 1 && members.contains(where: { $0.id == co.id }) ? members : nil
     }
 
-    /// Profit of this company that covers a sister company's loss (`out`), and loss of this company that is covered (`in`).
-    /// Original: `groupContrib`.
     public static func groupContribution(_ co: Company, in s: GameState) -> (out: Double, in: Double) {
         guard let group = taxGroup(of: co, in: s) else { return (0, 0) }
         func p(_ c: Company) -> Double { max(0, c.yearProfitSoFar - (c.lossCarryAtYearStart ?? 0)) }
@@ -272,8 +226,6 @@ public enum HoldingModel {
         if used <= 0 { return (0, 0) }
         return (p(co) / tp * used, l(co) / tl * used)
     }
-
-    // MARK: Reading for screens
 
     public struct Subsidiary: Identifiable, Equatable {
         public var id: Int
@@ -285,18 +237,14 @@ public enum HoldingModel {
         public var inTaxGroup: Bool
     }
 
-    /// One view of the holding and everything under it. `share` figures are what the holding owns (value x ownership).
     public struct Consolidated: Equatable {
         public var holdingCash = 0.0, indexFund = 0.0, indexCost = 0.0
-        /// Bond and money-market funds in the treasury, at today's prices, and what they cost.
         public var otherFunds = 0.0, otherFundsCost = 0.0
         public var holdingValue = 0.0
         public var subsidiaries: [Subsidiary] = []
-        /// Sum over the companies of the holding's share of revenue / profit over twelve months (plus its own income)
         public var revenueTTM = 0.0, profitTTM = 0.0
         public var cashInGroup = 0.0, debtInGroup = 0.0
         public var companiesValue: Double { subsidiaries.reduce(0) { $0 + $1.share } }
-        /// The holding's share of the rivals it owns part of, at the last revaluation.
         public var rivalStakes = 0.0
         public var dividendsThisYear = 0.0
         public var taxSaved = 0.0
@@ -323,7 +271,6 @@ public enum HoldingModel {
                                  revenueTTM: hist.reduce(0) { $0 + $1.revenue }, profitTTM: hist.reduce(0) { $0 + $1.profit }, cash: k.cash,
                                  inTaxGroup: group.contains { $0.id == k.id })
             c.subsidiaries.append(sub)
-            // An associate adds only its share of profit; a passive stake adds nothing but dividends.
             if tier.isConsolidated { c.revenueTTM += sub.revenueTTM * own }
             if tier.isConsolidated || tier == .influence { c.profitTTM += sub.profitTTM * own }
             if tier.isConsolidated {

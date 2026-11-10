@@ -6,10 +6,7 @@ import Finance
 @testable import Simulation
 import Events
 
-/// Inbox confirmation rules, report boundaries and the report sheet, ambition at setup, celebrations, optional missions,
-/// and the payroll / legal liability state.
 final class InboxReportsGoalsTests: XCTestCase {
-    // MARK: Helpers
 
     func cafeGame(seed: Int = 4242, weeks: Int = 0) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -31,8 +28,6 @@ final class InboxReportsGoalsTests: XCTestCase {
     func message(action: String, options: [JSONValue]) -> Message {
         Message(raw: ["id": 1, "kind": "ask", "act": .string(action), "status": "open", "opts": .array(options)])
     }
-
-    // MARK: 7B Inbox confirmation
 
     func testRoutineAnswersAreNotConfirmed() {
         let m = message(action: "oil24", options: [.option("Accept the offer"), .option("Decline")])
@@ -87,8 +82,6 @@ final class InboxReportsGoalsTests: XCTestCase {
         let notes = (e.state.rest["rep"]?["ev"].array ?? []).map { $0["t"].string }
         XCTAssertFalse(notes.contains { $0.hasPrefix("Decision needed") })
     }
-
-    // MARK: 7C Report boundaries and the sheet
 
     func testReportPeriodsCloseOnTheirBoundaries() throws {
         var (e, _) = try cafeGame()
@@ -148,8 +141,6 @@ final class InboxReportsGoalsTests: XCTestCase {
         XCTAssertTrue(d.risks.contains { $0.hasPrefix("The group made a loss") })
     }
 
-    // MARK: 7D Ambition, celebrations, missions
-
     func testAmbitionChosenAtSetupIsStored() throws {
         let e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 3, ambition: "champion")
         XCTAssertEqual(e.currentAmbition, "champion")
@@ -158,7 +149,6 @@ final class InboxReportsGoalsTests: XCTestCase {
         XCTAssertNil(none.currentAmbition)
         let bad = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 3, ambition: "nonsense")
         XCTAssertNil(bad.currentAmbition)
-        // The choice survives a save.
         let data = try JSONEncoder().encode(e.state)
         let back = try JSONDecoder().decode(GameState.self, from: data)
         XCTAssertEqual(Ambitions.currentPath(back), "champion")
@@ -167,7 +157,7 @@ final class InboxReportsGoalsTests: XCTestCase {
     func testAmbitionCanBeChangedFreelyInTheFirstFourWeeksOnly() throws {
         var (e, _) = try cafeGame(seed: 12)
         XCTAssertFalse(e.ambitionCardPending, "held back until the first profitable month")
-        e.update { s, _, _ in var l = s.rest["ldr"] ?? .object([:]); l["amb"] = 1; s.rest["ldr"] = l }   // M7 claimed; the window runs four weeks from the choice
+        e.update { s, _, _ in var l = s.rest["ldr"] ?? .object([:]); l["amb"] = 1; s.rest["ldr"] = l }
         XCTAssertTrue(e.ambitionChangeIsFree)
         XCTAssertTrue(e.ambitionCardPending, "offered once, after the first profitable month")
         XCTAssertFalse(e.ambitionPromptPending, "the card never holds up play")
@@ -252,7 +242,6 @@ final class InboxReportsGoalsTests: XCTestCase {
         var (e, id) = try cafeGame(weeks: 4)
         XCTAssertEqual(e.state.company(id)?.status, .open)
         _ = e.takeCelebrations()
-        // A fully owned open company already meets "keep two thirds of every company" on the family dynasty path.
         e.chooseAmbition(path: "dynasty")
         let c = e.pendingCelebrations.first { $0.kind == "milestone" && $0.title == "Keep at least two thirds of every company" }
         XCTAssertNotNil(c)
@@ -277,7 +266,6 @@ final class InboxReportsGoalsTests: XCTestCase {
         var (e, id) = try cafeGame(weeks: 4)
         XCTAssertEqual(e.state.company(id)?.status, .open)
         let day = Date(timeIntervalSince1970: 1_800_000_000)
-        // Force a goal that is already done ("grow": net worth is far above the tiny base).
         e.update { s, _, _ in
             s.rest["dy59"] = .object(["streak": 0, "last": "", "d": .string(GameEngine.dayString(day)), "got": 0, "k": "grow",
                                       "b": .object(["week": 0, "staff": 0, "cmp": 0, "nw": 1])])
@@ -293,8 +281,6 @@ final class InboxReportsGoalsTests: XCTestCase {
         XCTAssertFalse(e.pendingCelebrations.contains { $0.kind == "mission" })
     }
 
-    // MARK: 7A Home shortcuts
-
     func testHomeShortcutsAreStoredPerGameAndWrittenOnlyWhenSet() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
         XCTAssertNil(e.homeShortcutIDs)
@@ -307,8 +293,6 @@ final class InboxReportsGoalsTests: XCTestCase {
         XCTAssertNil(e.setHomeShortcutIDs(nil))
         XCTAssertNil(e.state.rest["homeBoxes"], "clearing returns to the default and removes the key")
     }
-
-    // MARK: 7E Payroll and legal liability
 
     func lawsuit(claim: Double, fee: Double, p: Double = 0.5, big: Bool = false) -> JSONValue {
         .object(["claim": .number(claim), "fee": .number(fee), "who": "A. Customer", "big": .bool(big), "p": .number(p), "settle": .number(claim / 2), "wks": 0, "why": "says you broke the terms"])
@@ -357,7 +341,6 @@ final class InboxReportsGoalsTests: XCTestCase {
             Lawsuits.lose(&s, id, lawsuit(claim: 60_000, fee: 0), extra: 0, data: d)
         }
         XCTAssertEqual(payablesAndCash(e, id).legal, 50_000)
-        // 20,000 arrives: that much goes to the court, the rest stays owed.
         e.update { s, _, _ in
             Ledger.set(&s, .company(id), to: 20_000)
             if let i = s.companyIndex(id) { XCTAssertEqual(LegalDebts.settle(&s, companyIndex: i), 20_000) }

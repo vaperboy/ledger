@@ -3,9 +3,6 @@ import GameCore
 import Businesses
 import Events
 
-/// The local stand-in for the players' deal server: seeds other players' franchise offers and companies for sale, answers offers on those companies with the
-/// seller's rules (`PlayerDeals.reply`), and sends applicants and buyers to the player's own offers as weeks pass. Nothing is saved: the market is drawn
-/// again, the same, on each launch, with offers that last a few days to a month from the first day it is looked at.
 final class MockPlayerDealsService: PlayerDealsService {
     var onChange: (() -> Void)?
     let buyerLinkKeys: Set<String> = ["me"]
@@ -20,7 +17,6 @@ final class MockPlayerDealsService: PlayerDealsService {
 
     private func roll(_ key: String) -> Double { HashedRandom.first("dealsmock:" + key) }
 
-    /// A whole number from 0 to `n - 1`, the same for the same key.
     private func pick(_ key: String, _ n: Int) -> Int { min(n - 1, Int(roll(key) * Double(n))) }
 
     private static let first = ["Ana", "Ben", "Chidi", "Dara", "Elif", "Farid", "Greta", "Hugo", "Ines", "Jonas", "Kira", "Leo", "Mira", "Nils", "Olga", "Pavel"]
@@ -35,7 +31,6 @@ final class MockPlayerDealsService: PlayerDealsService {
         (Self.first[i % Self.first.count] + " " + Self.last[(i * 5 + 2) % Self.last.count], String(format: "P%05d", 52_100 + i * 41))
     }
 
-    /// Draws the market on first use, with the offers' last days counted from `today`.
     private func seed(_ today: Int) {
         guard anchor == nil else { return }
         anchor = today
@@ -76,8 +71,6 @@ final class MockPlayerDealsService: PlayerDealsService {
         }
     }
 
-    // MARK: What other players offer
-
     func franchiseOffers(today: Int) -> [PlayerDeals.FranchiseListing] {
         seed(today)
         return franchises.filter { $0.isOpen(today: today) }
@@ -97,8 +90,6 @@ final class MockPlayerDealsService: PlayerDealsService {
         sold.insert(listingID)
         onChange?()
     }
-
-    // MARK: What the player offers
 
     func publish(franchise l: PlayerDeals.FranchiseListing) {
         guard let id = Int(l.id.dropFirst()), ownFranchises[id] != l else { return }
@@ -120,8 +111,6 @@ final class MockPlayerDealsService: PlayerDealsService {
         if ownCompanies.removeValue(forKey: companyID) != nil { onChange?() }
     }
 
-    // MARK: Time
-
     func advance(today: Int) -> [PlayerDealsEvent] {
         seed(today)
         let week: Int = today / 7
@@ -130,7 +119,6 @@ final class MockPlayerDealsService: PlayerDealsService {
         var events: [PlayerDealsEvent] = []
         for w in (last + 1)...min(week, last + 4) {
             for (id, f) in ownFranchises.sorted(by: { $0.key < $1.key }) where f.isOpen(today: w * 7) {
-                // The stronger the brand, the likelier a player applies in a week.
                 guard roll("app\(id):\(w)") < 0.25 + f.strength / 200 else { continue }
                 let p = person(pick("who\(id):\(w)", 1000))
                 let capital: Double = (40_000 + roll("cap\(id):\(w)") * 220_000).rounded()

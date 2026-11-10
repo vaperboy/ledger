@@ -1,9 +1,6 @@
 import SwiftUI
 import Simulation
 
-/// The floating Next day control at the bottom right of Home: a 56 pt glass pill that advances one day, with a thin accent ring that runs
-/// round it while the day plays. It is attached inside the page's tab bar clearance (see `CompaniesView`), so it sits above the tab bar
-/// by `gap`; Home keeps `reserve` points clear for it.
 struct NextDayDock: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -11,9 +8,7 @@ struct NextDayDock: View {
     @State private var dayRing: Double = 0
 
     static let height: CGFloat = 56
-    /// Space between the pill and the tab bar (or the screen's bottom edge where there is no bar).
     static let gap: CGFloat = Theme.Space.m
-    /// Height Home keeps clear at the bottom: the pill and its gap, on top of the tab bar's own clearance.
     static let reserve: CGFloat = height + gap
 
     private var over: Bool { engine.state.isGameOver }
@@ -25,7 +20,6 @@ struct NextDayDock: View {
             .padding(.trailing, Theme.Space.page)
             .onChange(of: store.isAdvancing) { _, running in
                 guard running else { return }
-                // A single day takes about 0.35 s: the ring fills over that time (at once under Reduce Motion).
                 dayRing = 0
                 if reduceMotion { dayRing = 1 } else { withAnimation(.linear(duration: 0.35)) { dayRing = 1 } }
             }

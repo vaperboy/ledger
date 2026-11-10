@@ -1,11 +1,5 @@
 import SwiftUI
 
-/// Liquid Glass, used where it belongs: on things that float above the content (the Next day bar, tab pills, the
-/// country chip, toasts, steppers) and on the few hero boxes (net worth, company value, the next 30 days).
-///
-/// Built with the iOS 26 SDK and running on iOS 26, this is Apple's real Liquid Glass (`glassEffect`). Everywhere else
-/// it is drawn by hand in the same spirit: a blurred material over the dark page, a charcoal tint so the colours stay
-/// those of the concept, a bright specular rim at the top edge that fades round the sides, and a soft inner sheen.
 struct LiquidGlass<S: InsettableShape>: ViewModifier {
     var shape: S
     var tint: Color? = nil
@@ -15,7 +9,6 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if reduceTransparency {
-            // Reduce Transparency: an opaque surface with a clear edge instead of glass or blur.
             content
                 .background(shape.fill(Theme.walnutRaised))
                 .overlay(shape.strokeBorder(Color.white.opacity(0.3), lineWidth: 1))
@@ -53,12 +46,10 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
                 ZStack {
                     shape.fill(.ultraThinMaterial)
                     shape.fill((tint ?? Theme.walnutRaised).opacity(tint == nil ? 0.55 : 0.42))
-                    // Sheen: light caught in the upper part of the glass
                     shape.fill(LinearGradient(colors: [Color.white.opacity(0.10), Color.white.opacity(0.0)], startPoint: .top, endPoint: .center))
                 }
             )
             .overlay(
-                // Specular rim: bright along the top, fading down the sides, a faint return at the bottom
                 shape.strokeBorder(
                     LinearGradient(stops: [
                         .init(color: Color.white.opacity(0.42), location: 0),
@@ -74,23 +65,17 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
 }
 
 extension View {
-    /// Liquid Glass in a rounded rectangle.
     func liquidGlass(cornerRadius: CGFloat = Theme.Radius.m, tint: Color? = nil, interactive: Bool = false) -> some View {
         modifier(LiquidGlass(shape: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous), tint: tint, interactive: interactive))
     }
-    /// Liquid Glass in a circle (round buttons).
     func liquidGlassCircle(tint: Color? = nil, interactive: Bool = false) -> some View {
         modifier(LiquidGlass(shape: Circle(), tint: tint, interactive: interactive))
     }
-    /// Liquid Glass in a capsule (pills, chips, floating bars).
     func liquidGlassCapsule(tint: Color? = nil, interactive: Bool = false) -> some View {
         modifier(LiquidGlass(shape: Capsule(), tint: tint, interactive: interactive))
     }
 }
 
-
-/// Wraps glass pieces that sit together (the tab bar and its selected pill) in one iOS 26 `GlassEffectContainer`, so they sample and render as one
-/// group; a plain pass-through where the real glass is not available.
 struct GlassGroup<Content: View>: View {
     var spacing: CGFloat = 0
     @ViewBuilder var content: () -> Content

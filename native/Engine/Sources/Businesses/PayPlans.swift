@@ -2,9 +2,6 @@ import Foundation
 import GameCore
 import Employees
 
-/// Which jobs can be paid on commission, and the plans (`Resources/pay_plans.json`). The general selling jobs are `tables.salesRoles`; the data lists
-/// further jobs per trade. A person in such a job who is put on a plan is marked `ppx` so that everything that treats sellers (attribution of sales,
-/// commission, the skill lift, the pay talks) includes them, and nobody else in that job.
 public enum PayPlans {
     public struct Mode: Equatable, Sendable { public var baseShare: Double, defaultRate: Double }
 
@@ -29,20 +26,15 @@ public enum PayPlans {
 
     public static var rateSteps: [Double] { tables.steps }
     public static func mode(_ id: String) -> Mode? { id == "mix" ? tables.mix : id == "com" ? tables.com : nil }
-    /// The plan modes that exist for a job in a trade: "fix", "mix", "com". Empty when the job has no commission plan there.
     public static func modes(role: String, trade: String, salesRoles: Set<String>) -> [String] { eligible(role: role, trade: trade, salesRoles: salesRoles) ? ["fix", "mix", "com"] : [] }
 
-    /// May this job be paid on commission in this trade?
     public static func eligible(role: String, trade: String, salesRoles: Set<String>) -> Bool {
         salesRoles.contains(role) || (tables.extra[trade]?.contains(role) ?? false)
     }
-    /// Is the job one of the extra, trade-specific ones (not a general selling job)?
     public static func isExtra(role: String, trade: String, salesRoles: Set<String>) -> Bool {
         !salesRoles.contains(role) && (tables.extra[trade]?.contains(role) ?? false)
     }
-    /// The jobs the data adds for a trade.
     public static func extraRoles(trade: String) -> Set<String> { tables.extra[trade] ?? [] }
 
-    /// Does this person sell, for everything that treats sellers? A general selling job, or an extra job with a plan.
     public static func sells(_ m: StaffMember, salesRoles: Set<String>) -> Bool { salesRoles.contains(m.role) || m.flag("ppx") }
 }

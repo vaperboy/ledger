@@ -4,9 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Buying or selling in steps. Buy: what (funds and crypto with price, trend and risk), who pays and holds it (you or a holding), how
-/// much (a large amount with quick picks), review, confirm. Sell: how much of the position, review, confirm. Every figure on the review
-/// comes from the same quote the trade uses. Selling a large position whole is press-and-hold.
 struct MarketTradeFlow: View {
     enum Side { case buy, sell }
     enum Step: Int { case what, who, amount, review, done }
@@ -51,8 +48,6 @@ struct MarketTradeFlow: View {
         .onAppear { skipLoneOwner() }
     }
 
-    // MARK: Header and steps
-
     private var title: String { side == .buy ? "Buy" : "Sell" }
 
     private var subtitle: String {
@@ -82,7 +77,6 @@ struct MarketTradeFlow: View {
 
     private var ownerCount: Int { store.engine.map { (e: GameEngine) -> Int in MarketData.owners(e).count } ?? 1 }
 
-    /// With no holding there is no one else to pay: the Who step is skipped.
     private func skipLoneOwner() {
         guard side == .buy, ownerCount <= 1 else { return }
         if owner == nil { owner = .player }
@@ -100,8 +94,6 @@ struct MarketTradeFlow: View {
         case .done: done()
         }
     }
-
-    // MARK: What
 
     private func what(_ e: GameEngine) -> some View {
         let list: [MarketUI.Asset] = MarketData.assets(e)
@@ -149,8 +141,6 @@ struct MarketTradeFlow: View {
         .accessibilityIdentifier("trade-asset-\(a.id)")
     }
 
-    // MARK: Who
-
     private func who(_ e: GameEngine, _ cur: Currency) -> some View {
         let asset: MarketUI.Asset? = assetID.flatMap { (id: String) -> MarketUI.Asset? in MarketData.asset(e, id: id) }
         return VStack(alignment: .leading, spacing: 0) {
@@ -167,8 +157,6 @@ struct MarketTradeFlow: View {
             }
         }
     }
-
-    // MARK: How much
 
     private func amountValue(_ cur: Currency) -> Double {
         let cleaned: String = amountText.replacingOccurrences(of: ",", with: ".").filter { (c: Character) -> Bool in c.isNumber || c == "." }
@@ -242,8 +230,6 @@ struct MarketTradeFlow: View {
         }
     }
 
-    // MARK: Review and confirm
-
     @ViewBuilder private func review(_ e: GameEngine, _ cur: Currency) -> some View {
         if side == .buy, let a = assetID.flatMap({ (id: String) -> MarketUI.Asset? in MarketData.asset(e, id: id) }) {
             let payer: MarketUI.Owner = owner ?? .player
@@ -314,8 +300,6 @@ struct MarketTradeFlow: View {
             problem = why
         }
     }
-
-    // MARK: Done
 
     private func done() -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {

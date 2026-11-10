@@ -6,7 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The books balance after each money event, valuation is not double counted, employment pay lines, management routing, and a save mid-game.
 final class ReconciliationTests: XCTestCase {
     private func firm(_ code: String = "UK", trade: String = "cafe", seed: Int = 31, days: Int = 14) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)
@@ -32,8 +31,6 @@ final class ReconciliationTests: XCTestCase {
         return pid
     }
 
-    // MARK: financial reconciliation
-
     func testLoanTakenAndRepaidKeepsTheBooksBalanced() throws {
         var (e, id) = try firm()
         XCTAssertEqual(e.takeLoan(kind: "biz", amount: 3_000_000, termMonths: 24, companyID: id), .ok)
@@ -49,7 +46,7 @@ final class ReconciliationTests: XCTestCase {
 
     func testPayrollInvoicesTaxAndDividendKeepTheBooksBalanced() throws {
         var (e, id) = try firm(days: 10)
-        for _ in 0..<(6 * 7) { _ = e.nextDay() }      // invoices raised, sent and paid; a tax month closes
+        for _ in 0..<(6 * 7) { _ = e.nextDay() }
         balanced(e, "six weeks of trading")
         e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: 30_000_000) }
         if e.maximumDividend(companyID: id) > 0 { XCTAssertGreaterThan(e.payDividendShare(companyID: id, share: 0.5), 0) }
@@ -62,17 +59,15 @@ final class ReconciliationTests: XCTestCase {
         let offer = try XCTUnwrap(e.equipmentOffers(companyID: id, equipmentID: need.equipmentID).first)
         _ = e.buyEquipmentItem(companyID: id, equipmentID: need.equipmentID, offer: offer, quantity: 1, payment: .cash)
         balanced(e, "equipment bought")
-        for _ in 0..<14 { _ = e.nextDay() }           // depreciation
+        for _ in 0..<14 { _ = e.nextDay() }
         _ = e.sellAllEquipment(companyID: id, equipmentID: need.equipmentID)
         balanced(e, "equipment sold")
         if let p = e.coverageOverview(companyID: id)?.policies.first(where: { !$0.isOn }) {
             _ = e.toggleInsurancePolicy(companyID: id, product: p.id)
-            for _ in 0..<35 { _ = e.nextDay() }       // premium collected
+            for _ in 0..<35 { _ = e.nextDay() }
         }
         balanced(e, "insurance bought")
     }
-
-    // MARK: valuation
 
     func testCompanyValueIsCountedOnceInNetWorth() throws {
         var (e, id) = try firm(days: 21)
@@ -85,8 +80,6 @@ final class ReconciliationTests: XCTestCase {
         XCTAssertLessThan(after.personal, nw.personal)
         balanced(e, "valuation move")
     }
-
-    // MARK: employment pay lines
 
     func testHourlyPartTimeFixedAndSeasonalPayLinesArePaidAndBalanced() throws {
         var (e, id) = try firm(days: 7)
@@ -121,8 +114,6 @@ final class ReconciliationTests: XCTestCase {
         }
     }
 
-    // MARK: business systems
-
     func testANewCompanyStartsEmptyAndPricingStaysInRange() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 41)
         e.update { s, _, _ in Ledger.move(&s, .me, 800_000_000, why: "Test funds") }
@@ -151,8 +142,6 @@ final class ReconciliationTests: XCTestCase {
         balanced(e, "week after")
     }
 
-    // MARK: management
-
     func testManagedCompanyDelegationAndSeverityGrowsWithSize() throws {
         var (e, id) = try firm(days: 7)
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].managerID = 0 } }
@@ -171,8 +160,6 @@ final class ReconciliationTests: XCTestCase {
         }
         balanced(e, "decision answered")
     }
-
-    // MARK: save and load
 
     func testSaveReloadThenSevenDaysEqualsTheUnsavedRun() throws {
         var (e, id) = try firm(days: 21)

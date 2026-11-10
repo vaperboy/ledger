@@ -3,18 +3,12 @@ import GameCore
 import Countries
 import Finance
 
-/// Own-company selling: an item flagged `listedForGroup` can be bought by another open company of the same owner in the same country as
-/// equipment or supplies. The buyer pays the listing price (and VAT, as in `IntercompanySupply.transferVat`), the SELLING company books the
-/// revenue and the cost of sales (so the profit is its own), and the buyer receives the item through the same path TechPro uses
-/// (`CompanySetup.addEquipment`). What an item can be depends on the seller's trade (`kindsBySeller`) and on what the buyer's trade can use.
 public enum OwnListings {
-    /// Equipment kinds (see `EquipmentMarket.kind`) a seller trade can supply from its own items.
     static let kindsBySeller: [String: Set<String>] = [
         "webdev": ["soft", "svc"], "gamestudio": ["soft", "svc"], "startup": ["soft", "svc"], "mktg": ["svc"],
         "furniture": ["furn"], "factory": ["mach", "tool"], "hardware": ["tool"], "electrician": ["tool"], "plumber": ["tool"], "handy": ["tool"],
     ]
 
-    /// The buyer's equipment needs this seller can fill: the biggest shortfall first.
     static func fills(_ s: GameState, buyer b: Company, seller sp: Company, data: GameData) -> [EquipmentMarket.Need] {
         guard let kinds = kindsBySeller[sp.type] else { return [] }
         return EquipmentMarket.needs(s, companyID: b.id, data: data)
@@ -22,10 +16,6 @@ public enum OwnListings {
             .sorted { ($0.need - $0.have) != ($1.need - $1.have) ? ($0.need - $0.have) > ($1.need - $1.have) : $0.equipmentID < $1.equipmentID }
     }
 
-    // MARK: The seller's capacity
-
-    /// Customers a week the seller can still serve: its capacity (last week's figure, or computed while it has not traded) less last week's customers
-    /// and what it has already supplied to your other companies this week. Supplying a unit takes (unit price / the seller's ticket) of that.
     static func spareSlots(_ s: GameState, seller sp: Company, _ sbd: Trade, _ w: World) -> Double {
         let lw = sp.value("lastW")
         let cap = lw["cap"].isNull ? CapacityModel.compute(sp, sbd, w).capacity : lw["cap"].double
@@ -39,7 +29,6 @@ public enum OwnListings {
         max(1e-6, price / max(0.01, Pricing.ticket(sp, sbd, w)))
     }
 
-    /// Whole units the seller can supply this week at this unit price.
     public static func spareUnits(_ s: GameState, seller sp: Company, _ sbd: Trade, price: Double, _ w: World) -> Int {
         let n = spareSlots(s, seller: sp, sbd, w) / slotsPerUnit(price: price, seller: sp, sbd, w)
         return n.isFinite ? Int(saturating: min(n, Double(Int32.max)).rounded(.down)) : 0
@@ -65,7 +54,6 @@ public enum OwnListings {
         return out
     }
 
-    /// nil when done, else the reason.
     public static func buy(_ s: inout GameState, buyer: Int, seller: Int, itemID: String, quantity: Int, data: GameData) -> String? {
         guard quantity >= 1 else { return "Choose at least one." }
         guard let bi = s.companyIndex(buyer), let si = s.companyIndex(seller), buyer != seller else { return "That company no longer exists." }
@@ -75,20 +63,17 @@ public enum OwnListings {
         let w = World(state: s, data: data)
         let k = EquipmentMarket.kind(e, tradeID: bbd.id, tables: w.catalog.tables)
         let one = k == "soft" || k == "svc"
-        // The seller can only supply what its capacity allows; a shortfall is cut back to what it has (the rest is refused, not owed), none at all is refused.
         let room = listing.available
         guard room >= 1 else { return "\(sp.name) has no spare capacity this week." }
         let q = min(one ? 1 : quantity, room)
         let total = (listing.price * Double(q)).rounded()
         let vatDue = w.country(sp).usesSalesTax ? 0 : Double(jsRound(total * Vat.rate(sp, sbd, w)))
         guard b.cash >= total + vatDue else { return "Not enough cash in \(b.name)." }
-        // the buyer pays, the seller books the sale and what it cost to make
         Payments.companyPays(&s, companyID: buyer, amount: total, category: nil, label: "\(listing.itemName) from \(sp.name)")
         Payments.companyReceives(&s, companyID: seller, amount: total, category: "rev", label: "Sale to \(b.name): \(listing.itemName)")
         Payments.companyPays(&s, companyID: seller, amount: total * IntercompanySupply.varRatio(sp, data: data), category: "cogs", label: nil)
         IntercompanySupply.transferVat(&s, supplier: s.companies[si], buyerIndex: bi, net: total, data: data, w, cashNow: true)
         CompanySetup.addEquipment(&s, companyIndex: bi, e, tradeID: bbd.id, quantity: Double(q), totalPrice: total * IntercompanySupply.varRatio(sp, data: data), brand: nil, used: nil, data: data)
-        // The seller's capacity used this week, and a note when it could not supply everything asked for.
         let sup = s.companies[si].value("ownSup")
         let before = (!sup.isNull && sup["w"].int == s.week) ? sup["n"].double : 0
         s.companies[si].set("ownSup", .object(["w": .number(Double(s.week)), "n": .number(before + Double(q) * slotsPerUnit(price: listing.price, seller: sp, sbd, w))]))

@@ -1,16 +1,7 @@
 import SwiftUI
 
-// The three buttons of the game. Every older style below maps onto one of them.
-//   Primary   : `PrimaryButtonStyle`, solid accent, accent ink. One per screen or popup (Next Day, Continue, Claim, Execute).
-//   Secondary : `SecondaryButtonStyle`, a quiet outline with ink text; `tint` colours the text (accent = recommended, loss = irreversible).
-//   Tertiary  : `TertiaryButtonStyle`, text only (Cancel, See all, links).
-//   Sizes     : `.regular` is 44 pt high; `.compact` draws 32 pt but keeps a 44 pt hit area. Disabled buttons look disabled themselves.
-//   Blocked   : `PrimaryAction` shows the reason under a disabled primary button instead of fading it silently.
-
-/// Height of a button: regular (44 pt) or compact (32 pt drawn inside a 44 pt hit area).
 enum LedgerButtonSize { case regular, compact }
 
-/// Corner radius and heights of every button (radius inside the 10 to 14 pt range).
 enum LedgerButtonMetrics {
     static let radius: CGFloat = 12
     static let regularHeight: CGFloat = 48
@@ -20,12 +11,10 @@ enum LedgerButtonMetrics {
 private struct ButtonLoadingKey: EnvironmentKey { static let defaultValue = false }
 private struct ButtonSuccessKey: EnvironmentKey { static let defaultValue: Int = 0 }
 extension EnvironmentValues {
-    /// True while the button's action runs: the label gives way to a spinner and touches are ignored.
     var ledgerButtonLoading: Bool {
         get { self[ButtonLoadingKey.self] }
         set { self[ButtonLoadingKey.self] = newValue }
     }
-    /// A counter: each change flashes the button bronze once (the action succeeded).
     var ledgerButtonSuccess: Int {
         get { self[ButtonSuccessKey.self] }
         set { self[ButtonSuccessKey.self] = newValue }
@@ -33,16 +22,8 @@ extension EnvironmentValues {
 }
 
 extension View {
-    /// Shows the shared button spinner in place of the label of the buttons inside, and blocks their touches.
-    func buttonLoading(_ on: Bool) -> some View {
-        environment(\.ledgerButtonLoading, on).allowsHitTesting(!on)
-    }
-    /// Flashes the buttons inside bronze each time `count` changes.
-    func buttonSuccess(_ count: Int) -> some View { environment(\.ledgerButtonSuccess, count) }
 }
 
-/// The one body behind the three button styles. One press rule for all: scale 0.97 with a spring back, a lighter fill on touch, a hover
-/// lift under a pointer, a flat disabled look, a spinner while loading, a bronze flash on success. A loss tint is a plain red.
 private struct LedgerButtonBody: View {
     enum Tier { case primary, secondary, tertiary }
     let configuration: ButtonStyleConfiguration
@@ -85,7 +66,6 @@ private struct LedgerButtonBody: View {
         return P.lineStrong
     }
 
-    /// Light laid over the button while it is touched or hovered.
     private var lift: Double {
         guard enabled, !loading else { return 0 }
         if configuration.isPressed { return tier == .primary ? 0.18 : 0.10 }
@@ -100,7 +80,6 @@ private struct LedgerButtonBody: View {
         let fillInk: Color? = tier == .primary ? textColor : nil
         configuration.label
             .textStyle(step, tint: textColor, weight: weight)
-            // On the accent fill every Text of the label takes the fill's ink, even one styled inside the label.
             .transformEnvironment(\.containerInk) { (ink: inout Color?) in if let fillInk { ink = fillInk } }
             .lineLimit(1).minimumScaleFactor(0.85)
             .opacity(loading ? 0 : 1)
@@ -128,18 +107,15 @@ private struct LedgerButtonBody: View {
     }
 }
 
-/// The one filled button: solid accent, no gradient, no glow. Use once per screen or popup.
 struct PrimaryButtonStyle: ButtonStyle {
     var size: LedgerButtonSize = .regular
     var fullWidth = false
-    /// A fill other than the accent (rare: a palette's own brand colour).
     var tint: Color? = nil
     func makeBody(configuration: Configuration) -> some View {
         LedgerButtonBody(configuration: configuration, tier: .primary, size: size, fullWidth: fullWidth, tint: tint)
     }
 }
 
-/// The quiet outline: every other action. `tint` colours the text; `passive` greys a Later / Skip answer.
 struct SecondaryButtonStyle: ButtonStyle {
     var size: LedgerButtonSize = .regular
     var fullWidth = false
@@ -150,7 +126,6 @@ struct SecondaryButtonStyle: ButtonStyle {
     }
 }
 
-/// Text only: Cancel, links, See all. Accent unless tinted.
 struct TertiaryButtonStyle: ButtonStyle {
     var size: LedgerButtonSize = .regular
     var fullWidth = false
@@ -160,7 +135,6 @@ struct TertiaryButtonStyle: ButtonStyle {
     }
 }
 
-/// The primary action of a screen that may be blocked: when `blockedReason` is set the button is disabled and the reason shows under it.
 struct PrimaryAction: View {
     var title: String
     var blockedReason: String? = nil
@@ -185,7 +159,6 @@ struct PrimaryAction: View {
     }
 }
 
-/// Cancel, Decline: the tertiary button in soft ink.
 struct PlainTextButtonStyle: ButtonStyle {
     @Environment(\.outsidePalette) private var P
     var tint: Color? = nil
@@ -194,42 +167,26 @@ struct PlainTextButtonStyle: ButtonStyle {
     }
 }
 
-/// An important action: the primary button, hugging its label.
 struct ImportantButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         PrimaryButtonStyle().makeBody(configuration: configuration)
     }
 }
 
-/// An expensive or irreversible action: the secondary button with the text in `tint` (accent by default). Put the amount in the label.
-struct FoilButtonStyle: ButtonStyle {
-    @Environment(\.outsidePalette) private var P
-    var tint: Color? = nil
-    func makeBody(configuration: Configuration) -> some View {
-        SecondaryButtonStyle(tint: tint ?? P.accent).makeBody(configuration: configuration)
-    }
-}
-
-/// The footer of a popup card: the action as one capsule, Cancel as quiet text under it.
 struct PopupFooter: View {
     @Environment(\.outsidePalette) private var P
     var cancel = "Cancel"
     var action: String
-    /// Red for an irreversible action, gold foil for a spend.
     var tone: Tone = .normal
     var onCancel: () -> Void
     var onAction: () -> Void
-    /// Greys out and blocks the left or right button (a Clear with nothing to clear, a Send until the form is complete).
     var cancelEnabled = true
     var actionEnabled = true
-    /// Accessibility ids of the two buttons (UI tests find them by id).
     var cancelID = "confirm-cancel"
     var actionID = "confirm-go"
 
     enum Tone { case normal, expensive, destructive }
 
-    /// The action as one capsule (the popup's tone; white for a neutral event), Cancel as quiet text under it. An irreversible action is a
-    /// red press-and-hold button instead, so it can never run from a slip of the finger.
     var body: some View {
         VStack(spacing: 4) {
             actionButton.disabled(!actionEnabled)
@@ -257,8 +214,6 @@ struct PopupFooter: View {
     }
 }
 
-/// The pinned action row of a popup: a hairline, then the buttons on the card colour, full width. `.popupFooter { }` draws its content in this
-/// bar under the scrolling body; build the content with `PopupFooter`, `PopupOptionButton` or a single highlighted button.
 struct PopupActionBar<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @ViewBuilder var content: () -> Content
@@ -272,7 +227,6 @@ struct PopupActionBar<Content: View>: View {
     }
 }
 
-/// An inline validation or risk message inside a popup or a page: a small mark and a line in the warning colour.
 struct InlineMessage: View {
     @Environment(\.outsidePalette) private var P
     var text: String
@@ -284,4 +238,3 @@ struct InlineMessage: View {
         }
     }
 }
-

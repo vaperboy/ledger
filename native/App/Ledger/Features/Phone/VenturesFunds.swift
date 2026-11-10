@@ -6,8 +6,6 @@ import Finance
 import Events
 import Simulation
 
-/// Funds: the private equity funds you committed to (value, multiple, what is still to be called, sell on the secondary market) and the funds
-/// open to commitments this year. An open fund opens `FundCommitSheet`.
 struct VenturesFundsSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

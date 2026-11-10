@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 @testable import Simulation
 
-/// Accounting rules: input VAT on repairs and leases, employer on-cost on perks, football disposals, salmon stock, project retention, the inflation index.
 final class ModelRulesTests: XCTestCase {
     private func cafe(seed: Int = 11) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -21,7 +20,7 @@ final class ModelRulesTests: XCTestCase {
             let rate = World(state: s, data: d).country(s.companies[i]).vat.standard
             var cash = s.companies[i].cash
             let oth0 = s.companies[i].books.week["oth"] ?? 0
-            Vat.input(&s, companyIndex: i, net: 1000, data: d)   // below the threshold: not registered
+            Vat.input(&s, companyIndex: i, net: 1000, data: d)
             XCTAssertEqual(cash - s.companies[i].cash, (1000 * rate).rounded(), accuracy: 1)
             XCTAssertEqual((s.companies[i].books.week["oth"] ?? 0) - oth0, (1000 * rate).rounded(), accuracy: 1, "unreclaimable VAT is a cost")
             var docs = s.companies[i].value("docs"); docs["vat"] = .object(["st": .string("ok")]); s.companies[i].set("docs", docs)
@@ -125,7 +124,6 @@ final class ModelRulesTests: XCTestCase {
         }
     }
 
-    /// A lease is a contract: a company shut for a spell still pays the instalments; wound up or bankrupt, the lease ends and the lessor takes the things back.
     func testLeasesRunWhileClosedAndEndWithTheCompany() throws {
         var (e, id) = try cafe()
         e.update { s, d, ctx in
@@ -150,15 +148,13 @@ final class ModelRulesTests: XCTestCase {
         }
     }
 
-    /// The same rule on a real job of a played builder: the client holds the trade's retention back on the milestone payments, the held money waits
-    /// as a receivable of that job, and once the job is complete it falls due after the defect period and then arrives.
     func testRetentionIsWithheldAndReleasedOnARealJob() throws {
         var (_, e, id) = try ProjectTradeTests.play("construction", seed: 7, years: 1)
         var rate = 0.0
         e.update { _, d, _ in rate = d.catalog["construction"]?.trait("retention") ?? 0 }
         XCTAssertGreaterThan(rate, 0)
-        var held: [Int: Double] = [:]      // job id: the amount held back while the job was in hand
-        var released: [Int: Int] = [:]     // job id: the week its held money fell due
+        var held: [Int: Double] = [:]
+        var released: [Int: Int] = [:]
         var paidOut: Set<Int> = []
         for _ in 0..<(26 * 7 * 3) {
             e.nextDay()

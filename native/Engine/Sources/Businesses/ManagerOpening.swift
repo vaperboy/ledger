@@ -3,14 +3,9 @@ import GameCore
 import Countries
 import Finance
 
-/// A new place with a manager in charge opens day by day: the manager hires up to the staffing plan, buys the equipment the trade needs to serve
-/// the customers expected so far and tops up stock, all within the budget tier. Expectations start modest and grow each week; a head office or
-/// owner order to grow lifts them.
 public enum ManagerOpening {
-    /// Weeks after opening during which the manager is still building the place up.
     static let windowWeeks = 8
 
-    /// Share of the standard customer load the manager buys for: half at first, a tenth more every week, more when told to grow.
     static func expectedShare(_ co: Company, week: Int) -> Double {
         let age = max(0, week - (co.openedWeek ?? co.foundedWeek))
         return min(1, 0.5 + 0.1 * Double(age) + (ManagerModel.direction(of: co) == .grow ? 0.2 : 0))
@@ -30,8 +25,6 @@ public enum ManagerOpening {
         }
     }
 
-    /// One hire of the staffing plan's longest vacancy that the manager may make alone and the company's cash carries. No wait for a search:
-    /// a place that is opening needs its people now.
     private static func hireOne(_ s: inout GameState, _ ci: Int, _ bd: Trade, data: GameData) -> Bool {
         let co = s.companies[ci]
         guard let boss = StaffingPlan.hirer(s, co, data: data) else { return false }
@@ -50,7 +43,6 @@ public enum ManagerOpening {
         return false
     }
 
-    /// Buy what is missing of the equipment the trade needs, for the customers expected so far, as far as the budget and the cash allow.
     private static func buyEquipment(_ s: inout GameState, _ ci: Int, _ bd: Trade, data: GameData) -> Bool {
         let co = s.companies[ci]
         let w = World(state: s, data: data)
@@ -66,7 +58,6 @@ public enum ManagerOpening {
             var q = missing
             while q >= 1, !(ManagerModel.withinBudget(co, amount: unit * q, s, data: data) && co.cash >= unit * q + weekCost * 3) { q -= 1 }
             if q < 1 {
-                // One unit is above the manager's budget: the owner is told once and decides.
                 var fl = s.companies[ci].value("flags")
                 if fl["opnAsk_\(e.id)"].isNull {
                     fl["opnAsk_\(e.id)"] = 1; s.companies[ci].set("flags", fl)

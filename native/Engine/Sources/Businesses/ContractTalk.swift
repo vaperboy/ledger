@@ -4,25 +4,6 @@ import Countries
 import Employees
 import Finance
 
-/// ONE contract discussion per employee: the single door for everything that changes the terms of a person who already works for you.
-/// Either side can open it (you from the profile, or the person with a request that reaches the Inbox). The topics are
-///  - pay rise, promotion (title, duties, authority), hours, pay basis (fixed / mix / commission with a rate, a fixed salary for an hourly worker),
-///  - bonus (a manager's profit share, a seller's commission rate), benefits (the company's perks, an own car with mileage),
-///  - notice (extra contractual weeks, both ways), and moving to another store of the chain (a manager: to a company without one).
-/// Nothing here is a second copy of a rule. The last step of every topic is the engine action that always existed (`StaffTalks.raise`,
-/// `ManagerModel.offerPromotion`, `StaffProfile.setPayModel`, `StaffTalks.setStaffHours`, `StaffPerks.toggle`, `Chains.lendWorker` ...), and the answer to an
-/// ask is the shared `Negotiation` (patience, temperament, now and then an unrealistic figure, from `negotiation.json`).
-///
-/// Two rules are binding:
-///  - Nobody who works for you ever refuses MORE pay for the same job. A rise is always taken. A person's counter can only ask for more than what is
-///    on the table; when their patience is gone they take what is offered (and are not happy about it), they do not walk away. Hours, a commission-only
-///    pay basis and moving are not "more pay", so a person may be unwilling there, and the preview says so beforehand.
-///  - You may decline, or delay, a fair request. That has real consequences, shown before you confirm in words (how likely they are to start looking
-///    elsewhere, never a percentage): the `denied` mark of `StaffWeek.quitOdds`, the mood, and what it costs a month and a year.
-///  - A person may refuse what costs them: a big cut in hours, a change of role, a move to a less secure pay plan. How likely they are to say no depends on
-///    their temperament, on whether they feel let down, and on whether they are in a good mood; never on their age. Pay rises are never refused.
-///
-/// An open talk is kept on the person under the key `ctalk`, so a saved game keeps it; the key exists only while a talk is open.
 public enum ContractTalk {
     public enum Topic: String, CaseIterable, Sendable {
         case payRise, promotion, hours, payBasis, bonus, benefits, term, notice, move
@@ -42,8 +23,6 @@ public enum ContractTalk {
     }
 
     public enum Opener: String, Sendable { case employer, employee }
-
-    // MARK: Data
 
     struct Rules {
         var delayWeeks = 4
@@ -67,21 +46,9 @@ public enum ContractTalk {
         return r
     }()
 
-    /// The extra notice weeks a contract can agree.
     public static var noticeExtraChoices: [Int] { rules.noticeExtra }
     public static var delayWeeks: Int { rules.delayWeeks }
 
-    // MARK: What is on the table
-
-    /// One thing proposed: a topic, a figure and a choice inside the topic.
-    ///  - payRise: `amount` = the rise as a share (0.05 = +5 %).
-    ///  - promotion: `choice` = the post (`PromotionPost.id`), `amount` = the monthly pay offered, `terms` = authority (the budget) and shares.
-    ///  - hours: `choice` "hours" (`amount` = hours a week), "full", "part" (part time all year for a seasonal worker) or "season:<id>".
-    ///  - payBasis: `choice` "fix", "mix", "com" (`amount` = the commission share, 0 = the usual one) or "salary" (an hourly worker's fixed salary).
-    ///  - bonus: `amount` = a manager's profit share (0 to 0.3) or a seller's commission share.
-    ///  - benefits: `choice` "perk:<id>" or "ownCar", `amount` 1 = on, 0 = off.
-    ///  - notice: `amount` = extra weeks of notice, both ways.
-    ///  - move: `choice` = the company id they move to.
     public struct Proposal: Equatable, Sendable {
         public var topic: Topic
         public var amount: Double
@@ -101,21 +68,15 @@ public enum ContractTalk {
         }
     }
 
-    /// An open discussion with one person.
     public struct Talk: Equatable, Sendable {
         public var opener: Opener
-        /// For a request of theirs: what they ask, then (after a counter of yours) what they ask now. For yours: their latest counter.
         public var proposal: Proposal
-        /// Their first ask (a request), as a share for a rise and as pay for a promotion; 0 when you opened the talk.
         public var ask = 0.0
-        /// Your last offer, 0 if none.
         public var offered = 0.0
         public var week = 0
-        /// A delay you gave: the week by which an answer is due (0 = none).
         public var delayUntil = 0
         public var reason = ""
         public var neg = Negotiation.State()
-        /// Their latest counter is the last word (the next offer that falls short ends the rounds: they settle).
         public var isFinal = false
 
         public var json: JSONValue {
@@ -134,7 +95,6 @@ public enum ContractTalk {
 
     static let key = "ctalk"
 
-    /// The talk kept on this person, if one is open.
     static func talk(of n: Person) -> Talk? { Talk(json: n.value(key)) }
     static func store(_ t: Talk, _ s: inout GameState, personID: Int) {
         guard var n = s.people[personID] else { return }
@@ -146,8 +106,6 @@ public enum ContractTalk {
     }
 
     public static func openTalk(_ s: GameState, personID: Int) -> Talk? { s.people[personID].flatMap { talk(of: $0) } }
-
-    // MARK: Who the talk is with
 
     struct Subject {
         var ci: Int
@@ -164,12 +122,9 @@ public enum ContractTalk {
         return Subject(ci: ci, person: n, member: m)
     }
 
-    // MARK: What can be discussed
-
     public struct TopicInfo: Equatable, Sendable, Identifiable {
         public var topic: Topic
         public var available: Bool
-        /// Why not (empty when available).
         public var why: String
         public var id: String { topic.rawValue }
     }
@@ -178,9 +133,7 @@ public enum ContractTalk {
         public var id: String
         public var title: String
         public var detail: String
-        /// Benefits only: whether it is on now.
         public var on: Bool?
-        /// A promotion post: the pay they will ask for.
         public var amount: Double?
     }
 
@@ -219,7 +172,6 @@ public enum ContractTalk {
         s.companies.filter { $0.id != id && $0.managerID == nil && $0.status.isLive && $0.type != "hold" && data.catalog[$0.type]?.family != "club" }
     }
 
-    /// The options inside a topic (posts, ways of paying, perks, places).
     public static func choices(_ s: GameState, companyID: Int, personID: Int, topic: Topic, data: GameData) -> [Choice] {
         guard let sub = subject(s, companyID: companyID, personID: personID) else { return [] }
         let co = s.companies[sub.ci]
@@ -304,7 +256,6 @@ public enum ContractTalk {
     static func fmtPct(_ x: Double) -> String { "\(String(format: "%g", (x * 100 * 10).rounded() / 10))%" }
     static func fmtMonths(_ x: Double) -> String { x == 1 ? "1 month" : "\(String(format: "%g", x)) months" }
 
-    /// A benefit choice "perk:<id>" (the whole company) or "perk:<id>:<role group>".
     static func perkChoice(_ choice: String) -> (StaffPerks.Perk, String?)? {
         guard choice.hasPrefix("perk:") else { return nil }
         let parts = choice.dropFirst(5).split(separator: ":", omittingEmptySubsequences: false).map(String.init)
@@ -313,64 +264,43 @@ public enum ContractTalk {
         return (p, nil)
     }
 
-    // MARK: Who decides (delegation)
-
-    /// May the manager decide this on your behalf? The one budget rule: free decides anything, normal up to its monthly pay limit, tight nothing
-    /// (the same rule the manager follows in `ManagerModel`'s pay reviews).
     public static func managerMayDecide(_ co: Company, extraMonthly: Double, _ s: GameState, data: GameData) -> Bool {
         ManagerModel.withinBudget(co, amount: extraMonthly, monthly: true, s, data: data)
     }
 
     public struct Handler: Equatable, Sendable { public var name: String; public var level: Int; public var payLimit: Double }
 
-    /// The manager who may handle a company's contract talks (normal or free budget), with the monthly pay limit; nil when they all come to you.
     public static func handler(_ s: GameState, companyID: Int, data: GameData) -> Handler? {
         guard let co = s.company(companyID), let boss = ManagerModel.decisionChain(s, co, data: data).first(where: { $0.kind == "mgr" }), boss.level >= 1 else { return nil }
         let payLimit = ManagerModel.budget(of: co).payLimit(World(state: s, data: data).currency(co), monthlyRevenue: ManagerModel.recentMonthlyRevenue(co))
         return Handler(name: boss.name, level: boss.level, payLimit: payLimit)
     }
 
-    // MARK: Consequences
-
     public struct Consequences: Equatable, Sendable {
-        /// Not possible, with the reason; the rest is empty then.
         public var blocked = ""
         public var costBefore = 0.0
         public var costAfter = 0.0
-        /// How likely they are to start looking elsewhere, now and if this is agreed (nil for a manager, who has no such model). Words, not a probability.
         public var quitRiskBefore: QuitRisk?
         public var quitRiskAfter: QuitRisk?
-        /// For a request of theirs: the same if you decline it.
         public var quitRiskIfDeclined: QuitRisk?
-        /// This person's employer cost before and after (the one `EmployerCost` rule), for the monthly and annual difference of THIS change.
         public var employerBefore: EmployerCost.Breakdown?
         public var employerAfter: EmployerCost.Breakdown?
-        /// Contracted hours a week before and after (a manager: 0).
         public var hoursBefore = 0.0
         public var hoursAfter = 0.0
-        /// What it does to payroll (wages, charges, leave cover, benefits), in words.
         public var payrollImpact = ""
-        /// What it does to the work the business can do, in words.
         public var operationalImpact = ""
-        /// They may well say no to this (a cut in hours, a change of role, a less secure pay plan). Words only; the answer comes when you ask.
         public var mayRefuse = false
-        /// What changes, in words.
         public var lines: [String] = []
-        /// What the country's labour data requires or sets.
         public var labour: [String] = []
-        /// Others the change reaches.
         public var peers: [String] = []
-        /// Risks and who may refuse.
         public var risks: [String] = []
         public var costPerMonth: Double { costAfter - costBefore }
         public var costPerYear: Double { costPerMonth * 12 }
         public var hoursDifference: Double { hoursAfter - hoursBefore }
-        /// This person's own monthly and annual difference.
         public var personMonthlyDifference: Double { (employerAfter?.totalMonthly ?? 0) - (employerBefore?.totalMonthly ?? 0) }
         public var personAnnualDifference: Double { personMonthlyDifference * 12 }
     }
 
-    /// How likely a person is to hand in notice, in words.
     public enum QuitRisk: String, Sendable {
         case unlikely, possible, likely
         public var words: String {
@@ -383,13 +313,11 @@ public enum ContractTalk {
         static func band(_ p: Double?) -> QuitRisk? { p.map { $0 < 0.15 ? .unlikely : $0 < 0.4 ? .possible : .likely } }
     }
 
-    /// What the company pays a month for its people and perks: wages with the employer's charges, the manager and his profit share, perks, own-car mileage.
     static func employerCost(_ s: GameState, companyID: Int, data: GameData) -> Double {
         guard let co = s.company(companyID) else { return 0 }
-        return EmployerCosts.company(co, state: s, data: data).totalMonthly   // the one employer-cost rule (EmployerCost)
+        return EmployerCosts.company(co, state: s, data: data).totalMonthly
     }
 
-    /// The chance that this worker hands in notice within a year, from the weekly odds of `StaffWeek` (and the pay gap of `StaffRoutine`).
     static func quitYear(_ s: GameState, companyID: Int, personID: Int, data: GameData, declined: Bool = false) -> Double? {
         guard let co = s.company(companyID), var m = co.staff.first(where: { $0.id == personID }), let n = s.people[personID], let bd = data.catalog[co.type] else { return nil }
         if declined { m.set("denied", s.week); m.happyUntilWeek = 0 }
@@ -403,8 +331,6 @@ public enum ContractTalk {
         return 1 - pow(1 - p, Double(rules.yearWeeks))
     }
 
-    /// What agreeing to this would do, worked out by doing it on a copy of the game: the very engine action that runs when you confirm, so the preview
-    /// cannot drift from the real thing. Nothing in `s` changes.
     public static func preview(_ s: GameState, companyID: Int, personID: Int, proposal p: Proposal, asRequest: Bool = false, data: GameData) -> Consequences {
         var c = Consequences()
         guard let sub = subject(s, companyID: companyID, personID: personID) else { c.blocked = "This person no longer works here."; return c }
@@ -533,12 +459,8 @@ public enum ContractTalk {
         return c
     }
 
-    // MARK: The last step of every topic
-
     enum Done { case ok(String), notPossible(String), unwilling(String), resigned(String) }
 
-    /// Is this a change they may refuse? A big cut in hours, a change of role, a move to a less secure pay plan (never more pay), and how likely they are to say no,
-    /// by temperament; being let down by a broken promise makes it likelier, a good mood less likely. nil when it is not that kind of change.
     static func refusalLikelihood(_ sub: Subject, _ p: Proposal, week: Int) -> Double? {
         var applies = false
         switch p.topic {
@@ -571,8 +493,6 @@ public enum ContractTalk {
         }
     }
 
-    /// Do it: the engine action behind each topic, with the contract history written and promises checked. `refuses: false` for the preview and for what
-    /// they asked for themselves.
     static func applyFinal(_ s: inout GameState, _ sub: Subject, _ p: Proposal, data: GameData, refuses: Bool = true) -> Done {
         if refuses, let why = refusal(sub, p, week: s.week) { return .unwilling(why) }
         let before = sub.member.map { ContractHistory.snapshot($0) }
@@ -680,7 +600,7 @@ public enum ContractTalk {
             }
             guard let (perk, group) = perkChoice(p.choice) else { return .notPossible("That is not a benefit.") }
             guard StaffPerks.set(&s, companyID: co.id, perk: perk.id, on: p.amount != 0, group: group) else { return .notPossible("\(perk.name) cannot be given to that group.") }
-            if perk.id == "car", p.amount != 0 { CompanyCarPerk.sync(&s, companyIndex: sub.ci, data: data) }   // the leased cars arrive at once
+            if perk.id == "car", p.amount != 0 { CompanyCarPerk.sync(&s, companyIndex: sub.ci, data: data) }
             return .ok("\(perk.name) is now \(p.amount != 0 ? "on" : "off") for " + (group.flatMap { StaffPerks.roleGroup($0)?.name.lowercased() } ?? "the company") + ".")
         case .term:
             guard let m = sub.member else { return .notPossible("Not for a manager.") }
@@ -719,41 +639,26 @@ public enum ContractTalk {
         }
     }
 
-    // MARK: Replies
-
     public enum Reply: Equatable, Sendable {
-        /// Done: the engine action ran.
         case agreed(String)
-        /// They ask for more than you offered; the figure is in the unit of the proposal (a share for a rise, pay for a promotion).
         case counter(amount: Double, isFinal: Bool, String)
-        /// Their patience is gone: they take what you offered and are not happy about it. Done.
         case settled(String)
-        /// You delayed an answer to their request.
         case delayed(untilWeek: Int, String)
-        /// You declined their request.
         case declined(String)
-        /// Unwilling (hours, commission only): not more pay, so a person may be.
         case unwilling(String)
         case resigned(String)
         case notPossible(String)
 
-        /// Did the terms change?
         public var changedTerms: Bool {
             switch self { case .agreed, .settled, .resigned: return true; default: return false }
         }
     }
 
-
-    // MARK: You propose
-
-    /// You put something to them. A rise is taken at once. A promotion goes through `Negotiation` (they ask for more, never less). The rest is the
-    /// engine action: the person may be unwilling about hours and commission only, not about pay.
     public static func propose(_ s: inout GameState, companyID: Int, personID: Int, proposal p: Proposal, data: GameData) -> Reply {
         guard let sub = subject(s, companyID: companyID, personID: personID) else { return .notPossible("This person no longer works here.") }
         let existing = openTalk(s, personID: personID).flatMap { $0.proposal.topic == p.topic && ($0.proposal.choice == p.choice || p.topic != .promotion) ? $0 : nil }
         var talk = existing ?? Talk(opener: .employer, proposal: p, week: s.week)
         func finish() { if existing != nil { close(&s, personID: personID) } }
-        // A request of theirs for a rise that you answer with your own figure is a negotiation of the rise.
         if p.topic == .payRise, talk.isRequest, talk.ask > 0 { return negotiateRise(&s, sub, p.amount, talk: &talk, data: data) }
         if p.topic == .promotion {
             var neg = talk.neg
@@ -786,8 +691,6 @@ public enum ContractTalk {
         }
     }
 
-    /// Your figure against the rise they asked for. They ask for more (never less) through the shared `Negotiation`; a figure at or above their ask is taken;
-    /// when their patience is gone they take your last figure and stay unhappy.
     static func negotiateRise(_ s: inout GameState, _ sub: Subject, _ offer: Double, talk: inout Talk, data: GameData) -> Reply {
         let id = sub.person.id
         guard offer > 0 else { return .notPossible("A raise has to be more than nothing.") }
@@ -819,10 +722,6 @@ public enum ContractTalk {
         }
     }
 
-    // MARK: They ask
-
-    /// A request of theirs reaches you: stored on the person and sent to the Inbox, where you can agree, delay or decline it (or open the discussion
-    /// and answer with a figure of your own). Called from the weekly staff pass.
     static func employeeAsks(_ s: inout GameState, companyIndex i: Int, staffID: Int, topic: Topic, data: GameData) {
         guard let k = s.companies[i].staff.firstIndex(where: { $0.id == staffID }), let n = s.people[staffID] else { return }
         let co = s.companies[i], m = co.staff[k]
@@ -868,8 +767,6 @@ public enum ContractTalk {
         }
         s.companies[i].staff = st
         store(talk, &s, personID: staffID)
-        // With a manager in charge the request goes to the manager first: decided inside their authority (the same rule as leaving it to them), otherwise
-        // it comes to the owner through the same Inbox flow, saying who passed it on.
         if topic == .promotion || topic == .hours, let mid = s.companies[i].managerID, let boss = s.people[mid] {
             let r = leaveToManager(&s, companyID: co.id, personID: staffID, data: data)
             if r.changedTerms { return }
@@ -880,7 +777,6 @@ public enum ContractTalk {
                      action: "staffx", data: .object(["t": .string(kind), "sid": .number(Double(staffID)), "ask": .number(talk.proposal.amount), "post": .string(talk.proposal.choice)]), expiresWeek: s.week + 3)
     }
 
-    /// Should this person raise a request of the new kinds this week? Deterministic (no random draw), from the person and the data.
     static func requestTrigger(_ m: StaffMember, _ n: Person, company co: Company, week: Int, salesRoles: Set<String>, tenure ten: Double) -> StaffEvent? {
         guard m.noticeWeeks == 0, m.value("flag").isNull, !m.flag("seas") else { return nil }
         func due(_ key: String, _ every: Int) -> Bool { let w = m.int(key); return w == 0 || week - w >= every }
@@ -890,19 +786,14 @@ public enum ContractTalk {
         return nil
     }
 
-    // MARK: You answer
-
     public enum Decision: Equatable, Sendable {
         case accept
-        /// Your own figure: a share for a rise, pay for a promotion, hours for hours.
         case counter(Double)
         case delay
         case decline
-        /// Instead of deciding now, promise something (a review, training ...) by a date. They may take it well or not, by temperament.
         case promise(StaffPromises.Draft)
     }
 
-    /// Answer a request of theirs: agree, counter, delay or decline. You, the employer, may decline; they never decline a rise.
     public static func respond(_ s: inout GameState, companyID: Int, personID: Int, decision: Decision, data: GameData) -> Reply {
         guard let sub = subject(s, companyID: companyID, personID: personID) else { return .notPossible("This person no longer works here.") }
         guard let talk = openTalk(s, personID: personID), talk.isRequest else { return .notPossible("There is no request from them to answer.") }
@@ -923,7 +814,7 @@ public enum ContractTalk {
                 let r = ManagerModel.offerPromotion(&s, companyID: s.companies[sub.ci].id, personID: id, post: p.choice, monthlyWage: go.amount, terms: p.terms, negotiation: &neg, data: data)
                 if case .accepted(let text) = r { out = .agreed(text); ContractHistory.record(&s, companyID: s.companies[sub.ci].id, staffID: id, kind: "role", text: text) } else if case .unavailable(let text) = r { out = .notPossible(text) } else { out = .notPossible("They want more for this job.") }
             } else {
-                switch applyFinal(&s, sub, go, data: data, refuses: false) {   // they asked for it themselves
+                switch applyFinal(&s, sub, go, data: data, refuses: false) {
                 case .ok(let text): out = .agreed(text)
                 case .notPossible(let why): out = .notPossible(why)
                 case .unwilling(let why): out = .unwilling(why)
@@ -932,7 +823,7 @@ public enum ContractTalk {
             }
             if out.changedTerms { close(&s, personID: id) }
             if p.topic == .payRise || p.topic == .promotion, out.changedTerms, let k = s.companies[sub.ci].staff.firstIndex(where: { $0.id == id }) {
-                var st = s.companies[sub.ci].staff; st[k].happyUntilWeek = max(st[k].happyUntilWeek, s.week + 26); s.companies[sub.ci].staff = st   // a request granted
+                var st = s.companies[sub.ci].staff; st[k].happyUntilWeek = max(st[k].happyUntilWeek, s.week + 26); s.companies[sub.ci].staff = st
             }
             return out
         case .counter(let x):
@@ -953,8 +844,6 @@ public enum ContractTalk {
         }
     }
 
-    /// You turn a fair request down: the consequences that always existed for a refused raise (the `denied` mark: more quit risk for half a year, the mood
-    /// line) and the end of their cheer; for a manager the old consequence of a refused raise.
     static func declineRequest(_ s: inout GameState, _ sub: Subject, _ talk: Talk, data: GameData) -> String {
         let first = ManagerModel.firstName(sub.person.name)
         if sub.isManager {
@@ -970,8 +859,6 @@ public enum ContractTalk {
         return "\(first) feels turned down" + (after.map { ", and is now \($0.words)" } ?? "") + (reaction.map { "; \(first) \($0)." } ?? ".")
     }
 
-    /// Put a promise in place of a decision: the talk is closed, the promise is recorded with its date and the real check, and they take it as a flexible or a
-    /// stubborn person would (some take it as a polite no).
     @discardableResult
     public static func promise(_ s: inout GameState, companyID: Int, personID: Int, draft: StaffPromises.Draft) -> Reply {
         guard let sub = subject(s, companyID: companyID, personID: personID) else { return .notPossible("This person no longer works here.") }
@@ -985,7 +872,6 @@ public enum ContractTalk {
         guard StaffPromises.make(&s, companyID: cid, personID: sub.person.id, draft: d) != nil else { return .notPossible("Something like that is already promised to \(first).") }
         if closing { close(&s, personID: sub.person.id) }
         ContractHistory.record(&s, companyID: cid, staffID: sub.person.id, kind: "promise", text: "Promised: " + StaffPromises.text(for: d, now: s.week))
-        // a stubborn person hears a promise as a delay
         if Hiring.temperament(of: sub.person).id == "stubborn", HashedRandom.first("prom:\(sub.person.id):\(s.week)") < 0.35 {
             return .agreed("\(first) takes the promise, but says they will believe it when they see it.")
         }
@@ -995,8 +881,6 @@ public enum ContractTalk {
         return .agreed("\(first) accepts your word: \(StaffPromises.text(for: d, now: s.week))")
     }
 
-    /// Leave a request to the manager: they decide it if it is inside their limit (level 2: anything, level 1: up to the pay limit on their card),
-    /// by agreeing a fair request; otherwise it stays with you.
     public static func leaveToManager(_ s: inout GameState, companyID: Int, personID: Int, data: GameData) -> Reply {
         guard let sub = subject(s, companyID: companyID, personID: personID), !sub.isManager else { return .notPossible("This person no longer works here.") }
         guard let talk = openTalk(s, personID: personID), talk.isRequest else { return .notPossible("There is no request from them to answer.") }
@@ -1014,13 +898,12 @@ public enum ContractTalk {
         return r
     }
 
-    /// Answer a request through its Inbox message (agree, delay, decline). The same engine path as answering in the discussion.
     static func answerMessage(_ s: inout GameState, message m: Message, option idx: Int, data: GameData) {
         guard let i = s.companyIndex(m.companyID) else { return }
         let d = m.value("data"), sid = d["sid"].int
         guard let sub = subject(s, companyID: s.companies[i].id, personID: sid) else { return }
         var talk = openTalk(s, personID: sid)
-        if talk == nil {   // the talk was forgotten; the message still says what they asked
+        if talk == nil {
             let topic: Topic = d["t"].string == "fixask" ? .payBasis : d["t"].string == "promoask" ? .promotion : d["t"].string == "hoursask" ? .hours : .payRise
             var t = Talk(opener: .employee, proposal: Proposal(topic, amount: d["ask"].double, choice: topic == .payBasis ? "salary" : d["post"].string), week: s.week)
             t.ask = d["ask"].double
@@ -1031,9 +914,6 @@ public enum ContractTalk {
         _ = respond(&s, sub, tk, idx == 0 ? .accept : idx == 1 ? .delay : .decline, data: data)
     }
 
-    // MARK: Weekly
-
-    /// Delays that ran out count as a decline (you promised an answer and did not give one); talks nobody has touched for a while are forgotten.
     public static func weekly(_ s: inout GameState, data: GameData) {
         for ci in s.companies.indices where s.companies[ci].status.isLive {
             var ids = s.companies[ci].staff.map { $0.id }
@@ -1049,7 +929,6 @@ public enum ContractTalk {
                 }
             }
         }
-        // A person who has left keeps no open request: it is forgotten with the same delay (nobody is there to answer it).
         for id in s.people.keys.sorted() {
             guard let n = s.people[id], n.employerID == 0, let talk = talk(of: n), talk.delayUntil == 0,
                   s.week - max(talk.week, talk.neg.week) > Negotiation.memoryWeeks else { continue }

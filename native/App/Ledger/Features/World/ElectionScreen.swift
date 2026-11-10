@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Election: drawn as a ballot paper. White sheet, black rules, a ballot blue. A four-step strip (nomination, voting, count, result), the
-/// candidates as boxes to mark, and the count only after voting has closed.
 struct ElectionScreen: View {
     var e: GameEngine
     var r: CountryRead
@@ -19,7 +17,6 @@ struct ElectionScreen: View {
     private var election: Election? { r.gov.election }
     private var citizen: GovCitizen { GovernmentBridge.citizen(e.state, r.world) }
 
-    /// 0 nomination, 1 voting, 2 counted, 3 settled; -1 when nothing is under way.
     private var phase: Int {
         guard let el = election else { return -1 }
         switch el.status {
@@ -48,8 +45,6 @@ struct ElectionScreen: View {
         .outsideScreen(.ballot)
         .accessibilityIdentifier("country-election")
     }
-
-    // MARK: Sheet head and steps
 
     private var sheetHead: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -99,8 +94,6 @@ struct ElectionScreen: View {
         if let o = r.gov.office { return "\(o.name) holds the office until \(CivicWords.date(o.termEnd)). A new cycle opens when the term ends." }
         return "No vote is under way. A new cycle opens soon after the last one ends."
     }
-
-    // MARK: What you can do now
 
     @ViewBuilder private var stateBlock: some View {
         if let el = election {
@@ -169,8 +162,6 @@ struct ElectionScreen: View {
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(P.accent2, lineWidth: 2))
     }
-
-    // MARK: The paper
 
     private func ballotPaper(_ el: Election) -> some View {
         let counts: [String: Int] = Dictionary(uniqueKeysWithValues: (r.gov.tally() ?? []).map { ($0.account, $0.votes) })
@@ -265,8 +256,6 @@ struct ElectionScreen: View {
         }
     }
 
-    // MARK: Actions
-
     private func tradeName(_ id: String) -> String { e.data.catalog.trades[id]?.name ?? id }
 
     private func cast(_ c: ElectionCandidate) {
@@ -291,9 +280,6 @@ struct ElectionScreen: View {
     }
 }
 
-// MARK: Standing
-
-/// One promise being drafted.
 struct PromiseDraft: Equatable {
     var kind: CampaignPromise.Kind
     var on = false
@@ -306,7 +292,6 @@ struct PromiseDraft: Equatable {
         switch kind { case .transferTax: return "Transfer tax"; case .gainsTax: return "Gains tax"; case .priceSupport: return "Price support" }
     }
 
-    /// A first value one point away from today's rate, so the first thing shown is a promise that could be kept.
     static func start(_ kind: CampaignPromise.Kind, policy: GovPolicy) -> PromiseDraft {
         func away(_ cur: Double, _ range: ClosedRange<Double>) -> Double {
             let up: Double = cur + GovPolicy.step
@@ -320,8 +305,6 @@ struct PromiseDraft: Equatable {
     }
 }
 
-/// The candidacy form: a manifesto, up to three promises with a live check of each against what the office can do, then a separate
-/// confirmation that names the fee and says it is not returned.
 struct StandForm: View {
     var e: GameEngine
     var r: CountryRead
@@ -440,8 +423,6 @@ struct StandForm: View {
             .background(RoundedRectangle(cornerRadius: 4).fill(P.cardDeep))
         }
     }
-
-    // MARK: Confirmation
 
     private var confirmPage: some View {
         VStack(alignment: .leading, spacing: 16) {

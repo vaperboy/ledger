@@ -6,12 +6,6 @@ import Events
 import Businesses
 import Simulation
 
-/// Deals between players: opening your franchise to players for a time you choose, showing a company you sell to players, taking up a franchise another
-/// player offers, and buying a company another player puts up. The rules are `PlayerDeals`; the other players come from `PlayerDealsStore`.
-
-// MARK: Franchising to players
-
-/// On the franchisor's page: open the franchise to other players for a chosen number of days, see how long it stays open, close it early.
 struct FranchiseToPlayersCard: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var deals: PlayerDealsStore = PlayerDealsStore.shared
@@ -67,7 +61,6 @@ struct FranchiseToPlayersCard: View {
     }
 }
 
-/// On the Franchises page: franchises that other players offer. Taking one up adds it to the brands above, where the usual steps follow (apply, meet them, start).
 struct PlayerFranchiseShelf: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var deals: PlayerDealsStore = PlayerDealsStore.shared
@@ -135,9 +128,6 @@ struct PlayerFranchiseShelf: View {
     }
 }
 
-// MARK: Selling a company to players
-
-/// On the sale page: show the company to other players for a chosen number of days. Their offers arrive beside the others and are accepted, countered or declined the same way.
 struct SaleToPlayersCard: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var deals: PlayerDealsStore = PlayerDealsStore.shared
@@ -187,9 +177,6 @@ struct SaleToPlayersCard: View {
     }
 }
 
-// MARK: Buying another player's company
-
-/// The companies other players have put up for sale, cheapest first. A row opens the offer sheet.
 struct PlayerCompanyOffers: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var deals: PlayerDealsStore = PlayerDealsStore.shared
@@ -230,7 +217,6 @@ struct PlayerCompanyOffers: View {
     }
 }
 
-/// One company for sale by a player: what a buyer may see, an offer the seller answers (yes, a price of their own, or no), and the purchase with every cost shown.
 struct PlayerCompanyOfferSheet: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var deals: PlayerDealsStore = PlayerDealsStore.shared

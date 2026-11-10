@@ -5,17 +5,13 @@ import Finance
 import Businesses
 import Simulation
 
-/// How you sell: changing a method costs a changeover, a few weeks of reduced capacity and the licences it needs; nothing
-/// is promised; chain standards and franchise agreements lock the choice; a chain-wide change is quoted per store first.
 final class KnobChangeTests: XCTestCase {
-    /// An open company of `trade` with plenty of cash.
     private func open(_ e: inout GameEngine, _ trade: String) -> Int {
         let id = ChainsTests.start(&e, trade)
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         return id
     }
 
-    /// A single-choice knob and two different options of it.
     private func singleKnob(_ e: GameEngine, _ trade: String) throws -> (Knob, Int, Int) {
         let k = try XCTUnwrap(e.data.catalog[trade]?.knobs.first { !$0.isMulti && $0.options.count >= 3 && $0.options.allSatisfy { $0.requiredDocs.isEmpty } })
         return (k, k.defaultIndex, (k.defaultIndex + 1) % k.options.count)
@@ -39,7 +35,6 @@ final class KnobChangeTests: XCTestCase {
         XCTAssertTrue(co.value("mods").array.contains { $0["k"].string == "cap" && $0["m"].double == 0.75 })
         XCTAssertEqual(co.value("hys56c")["n"].int, q.transitionWeeks)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        // the reduced capacity ends by itself
         ChainsTests.play(&e, days: 7 * (q.transitionWeeks + 2))
         XCTAssertFalse(try XCTUnwrap(e.state.company(id)).value("mods").array.contains { $0["k"].string == "cap" && $0["m"].double == 0.75 })
     }
@@ -119,7 +114,6 @@ final class KnobChangeTests: XCTestCase {
         e.releaseChainKnob(chainID: chain, knob: k.id)
         e.update { s, _, _ in
             for id in [first, second] { if let i = s.companyIndex(id) { var kn = s.companies[i].value("knob"); kn[k.id] = .number(Double(from)); s.companies[i].set("knob", kn) } }
-            // the second store cannot pay
             if let i = s.companyIndex(second) { Payments.companyPays(&s, companyID: second, amount: max(0, s.companies[i].cash - 10), category: nil) }
         }
         let plan = try XCTUnwrap(e.chainKnobPlan(chainID: chain, knob: k.id, value: to))
@@ -134,7 +128,6 @@ final class KnobChangeTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(e.state.company(second)).value("knob")[k.id].int, from, "the store that could not change keeps its choice")
         XCTAssertEqual(try XCTUnwrap(e.state.company(second)).cash, cash1)
         XCTAssertEqual(cash0 - (try XCTUnwrap(e.state.company(first)).cash), firstQuote.totalCost, accuracy: 1)
-        // the weekly chain turn does not quietly override the exception or charge anything more
         ChainsTests.play(&e, days: 14)
         XCTAssertEqual(try XCTUnwrap(e.state.company(second)).value("knob")[k.id].int, from)
         XCTAssertNotNil(e.knobGovernedBy(companyID: first, knob: k.id))

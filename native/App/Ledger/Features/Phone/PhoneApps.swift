@@ -14,7 +14,6 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     case profile
     var id: String { rawValue }
 
-    /// The apps on the Phone's grid. Season is opened from Home and the Store; Profile from Home.
     static var launcher: [PhoneApp] { allCases.filter { $0 != .season && $0 != .profile } }
 
     var title: String {

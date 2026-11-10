@@ -5,7 +5,6 @@ import Employees
 import Businesses
 import Simulation
 
-/// One applicant on the Applicants page: the engine's applicant (not made Identifiable), the company they answered, and what they would ask.
 struct ApplicantRowItem: Identifiable {
     var id: String
     var companyID: Int
@@ -15,7 +14,6 @@ struct ApplicantRowItem: Identifiable {
     var market: Double?
 }
 
-/// The target of "Hear them out": the existing terms flow for this person and company.
 struct ApplicantTalk: Identifiable, Hashable {
     var companyID: Int
     var personID: Int
@@ -26,19 +24,14 @@ enum ApplicantSort: String, CaseIterable, Hashable {
     case best = "Best match", wage = "Lowest wage ask", newest = "Newest"
 }
 
-/// Everyone who answered a job ad or agency search, in one page: how many wait (the hero), company and role filters with a sort menu, then one
-/// `ApplicantRow` per applicant (the same row as the hire page). "Talk terms" opens the same terms page as the hire flow (`HireOnePage`). Reached from the inbox, Team, the hire page and Group Management
-/// through `GameStore.openApplicants`; Back returns to where the player came from (the page is a route on the tab's stack).
 struct ApplicantsView: View {
     @EnvironmentObject var store: GameStore
     @State private var companySel: Int
     @State private var roleSel: String
     @State private var sort: ApplicantSort = .best
     @State private var talk: ApplicantTalk?
-    /// No list shows more than 40 rows at once; `Show more` adds 40.
     @State private var limit = 40
     @State private var showHire = false
-    /// The applicant whose CV is open.
     @State private var openID: String?
     @State private var pending: PendingAction?
 
@@ -54,8 +47,6 @@ struct ApplicantsView: View {
             EmptyState(title: "Nothing to show.").appScreen(title: "Applicants", tab: store.tab)
         }
     }
-
-    // MARK: Data
 
     private func hasAd(_ co: Company) -> Bool {
         let today: Int = (store.engine?.state.week ?? 0) * 7 + (store.engine?.state.day ?? 0)
@@ -100,8 +91,6 @@ struct ApplicantsView: View {
         }
     }
 
-    // MARK: Screen
-
     private func screen(_ e: GameEngine) -> some View {
         let cos: [Company] = companies(e)
         let all: [ApplicantRowItem] = items(e, cos)
@@ -124,7 +113,6 @@ struct ApplicantsView: View {
         .appScreen(title: "Applicants", tab: store.tab)
     }
 
-    /// How many people wait to talk terms, and where.
     private func hero(_ e: GameEngine, _ cos: [Company], _ shown: [ApplicantRowItem]) -> some View {
         let n: Int = shown.count
         let place: String = companySel == 0 ? (cos.count == 1 ? cos[0].name : "\(cos.count) companies") : (e.state.company(companySel)?.name ?? "")
@@ -137,8 +125,6 @@ struct ApplicantsView: View {
         if companySel != 0 { return companySel }
         return cos.first?.id ?? 0
     }
-
-    // MARK: Filters
 
     private func filters(_ e: GameEngine, _ cos: [Company], _ all: [ApplicantRowItem], _ roles: [String]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -193,8 +179,6 @@ struct ApplicantsView: View {
         HireChip(title: title, on: on) { Haptics.choose(); action() }
     }
 
-    // MARK: List
-
     private func list(_ e: GameEngine, _ rows: [ApplicantRowItem]) -> some View {
         LazyVStack(spacing: 0) {
             ForEach(Array(rows.prefix(limit).enumerated()), id: \.element.id) { n, r in
@@ -222,8 +206,6 @@ struct ApplicantsView: View {
                             onTalk: { talk = tag })
     }
 
-    // MARK: Empty
-
     private func emptyState(_ e: GameEngine, _ cos: [Company]) -> some View {
         let canHire: Bool = hireTarget(cos) != 0
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
@@ -238,7 +220,6 @@ struct ApplicantsView: View {
     }
 }
 
-/// The "Applicants" row with a count, for the company Team tab and Group Management: opens the Applicants page for that company.
 struct ApplicantsLinkRow: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -255,8 +236,6 @@ struct ApplicantsLinkRow: View {
 }
 
 extension GameStore {
-    /// Opens the Applicants page (all companies when `companyID` is nil; all roles when `role` is nil) on the tab the player is on, so Back
-    /// returns to where they came from.
     func openApplicants(companyID: Int?, role: String?) {
         let route: CompanyRoute = .applicants(companyID ?? 0, role ?? "")
         Task { @MainActor [weak self] in self?.push(route) }

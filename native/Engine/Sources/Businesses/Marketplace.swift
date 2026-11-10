@@ -3,18 +3,13 @@ import GameCore
 import Countries
 import Finance
 
-/// One used item for sale on the Marketplace (the Phone app). Everything here is what the buyer can see; the item's real condition (`wear`)
-/// and what it is really worth (`fairValue`) stay inside the engine until the item is bought (`Marketplace.reveal`).
 public struct MarketListing: Sendable, Identifiable, Equatable {
     public var id: String
-    /// Art/item family: the vehicle model id (`car_s`, `van_box` ...) or the trade equipment id.
     public var family: String
     public var title: String
-    /// What the ad says about the condition, for example "Good condition, 82,000 km".
     public var blurb: String
     public var sellerName: String
     public var city: String
-    /// Unrounded, in the company's currency units.
     public var askingPrice: Double
     public var postedDay: Int
 
@@ -24,8 +19,6 @@ public struct MarketListing: Sendable, Identifiable, Equatable {
     }
 }
 
-/// A talk with the seller of one listing. (Named `MarketNegotiation` because `Negotiation` is the module that already decides pay and
-/// price talks; this one reuses its patience and temperament tables.)
 public struct MarketNegotiation: Sendable, Equatable {
     public enum Mood: String, Sendable { case open, reluctant, refusing }
     public var listingID: String
@@ -41,17 +34,13 @@ public struct MarketNegotiation: Sendable, Equatable {
     }
 }
 
-/// The used-goods marketplace: a deterministic pool of second-hand cars, vans, equipment and furniture, the haggling with the seller and the
-/// buying. Nothing in the pool is stored: week by week "cohorts" of listings are drawn from the game seed, each living two to six weeks, so the pool
-/// is the same every time it is read. What the game remembers (`rest["mkt"]`): open talks, listings already bought, listings whose seller refused
-/// this buyer, and what was revealed after a purchase.
 public enum Marketplace {
     public static let lemonShare = 0.12, bargainShare = 0.04, noTalkShare = 0.15
     static let cohortWeeks = 6
 
     struct Hidden {
         var wear: Double, visWear: Double, fair: Double, aware: Double
-        var kind: Int   // 0 normal, 1 bargain, 2 lemon
+        var kind: Int
         var noTalk: Bool, vehicle: Bool
         var equipmentID: String, modelID: String
         var year: Int, km: Int, age: Int
@@ -62,8 +51,6 @@ public enum Marketplace {
     struct Entry { var l: MarketListing; var h: Hidden }
 
     struct Family { var key: String; var e: EquipmentSpec?; var model: String?; var weight: Double }
-
-    // MARK: Pool
 
     static func families(_ co: Company, _ bd: Trade, _ tables: TradeTables) -> [Family] {
         var out: [Family] = []
@@ -94,7 +81,6 @@ public enum Marketplace {
         visWear < 0.2 ? "Excellent condition" : visWear < 0.35 ? "Good condition" : visWear < 0.5 ? "Normal wear for its age" : "Used hard, but runs"
     }
 
-    /// Everything live this week for this company (bought, refused and expired listings are left out).
     static func pool(_ s: GameState, companyID: Int, data: GameData) -> [Entry] {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return [] }
         let w = World(state: s, data: data)
@@ -184,12 +170,9 @@ public enum Marketplace {
         pool(s, companyID: companyID, data: data).first { $0.l.id == listingID }
     }
 
-    /// What it would cost to put right what the seller did not say about.
     static func repairEstimate(_ h: Hidden, mechanic: Bool) -> Double {
         h.fair * 0.3 * max(0, h.wear - 0.15) * (mechanic ? 0.75 : 1)
     }
-
-    // MARK: Memory
 
     static func state(_ s: GameState) -> JSONValue { s.rest["mkt"] ?? .object([:]) }
     static func negKey(_ companyID: Int, _ id: String) -> String { "\(companyID):\(id)" }
@@ -209,8 +192,6 @@ public enum Marketplace {
         m["neg"] = neg
         s.rest["mkt"] = m
     }
-
-    // MARK: Talking
 
     static let openWords = ["The seller is open to a sensible offer.", "The seller says the price can move a little.", "The seller is in no hurry, but is listening."]
     static let noTalkWords = ["The seller says the price is the price.", "The seller will not discuss the price.", "The seller has had other offers and will not haggle."]
@@ -236,8 +217,6 @@ public enum Marketplace {
         return n
     }
 
-    /// Ask for a lower price. Each push costs a unit of patience; a seller who knows of faults gives more, one who sits on a bargain gives little.
-    /// Pushing a seller who has given up ends it: the listing is closed to this buyer for good.
     public static func push(_ s: inout GameState, listingID: String, companyID: Int, data: GameData) -> MarketNegotiation {
         let blank = MarketNegotiation(listingID: listingID, price: 0, canDiscuss: false, patienceLeft: 0, mood: .refusing, lastMessage: "That listing is gone.")
         guard let e = entry(s, listingID: listingID, companyID: companyID, data: data), let first = begin(&s, listingID: listingID, companyID: companyID, data: data) else { return blank }
@@ -277,8 +256,6 @@ public enum Marketplace {
         return n
     }
 
-    // MARK: Buying
-
     public enum BuyResult: Equatable, Sendable { case ok, refused(String) }
 
     public static func buy(_ s: inout GameState, listingID: String, companyID: Int, price: Double, data: GameData, by: String = "me", quiet: Bool = false) -> BuyResult {
@@ -314,7 +291,6 @@ public enum Marketplace {
         rev[negKey(companyID, listingID)] = .string(text)
         m["rev"] = rev
         s.rest["mkt"] = m
-        // A purchase a buyer or manager made on his own is reported once a week by the caller (`quiet`), never as a message per car.
         if !quiet { s.addMessage(kind: "info", from: h.seller, title: "About the \(e.l.title) you bought", body: text, companyID: companyID, tone: h.kind == 2 ? "bad" : "n") }
         return .ok
     }
@@ -334,7 +310,6 @@ public enum Marketplace {
         return t.isNull ? nil : t.string
     }
 
-    /// Housekeeping once a week: forget talks and purchases of listings that have expired.
     public static func weekly(_ s: inout GameState) {
         guard var m = s.rest["mkt"], !m.isNull else { return }
         let cutoff = s.week - cohortWeeks - 2

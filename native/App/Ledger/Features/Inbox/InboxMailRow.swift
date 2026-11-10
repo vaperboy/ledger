@@ -4,7 +4,6 @@ import Simulation
 import Businesses
 
 extension Message {
-    /// The sender's icon circle in the Inbox: payroll from the bank, people matters from a person, otherwise by urgency and tone.
     var inboxGlyph: String {
         if doc != nil { return Glyph.reports }
         if actionID.hasPrefix("pay29") { return Glyph.bank }
@@ -12,17 +11,14 @@ extension Message {
         if status == "open" { return tone == "bad" ? Glyph.warning : Glyph.inbox }
         switch tone { case "bad": return Glyph.warning; case "good": return Glyph.check; default: return Glyph.news }
     }
-    /// The avatar colour for a sender in the Inbox, from the messages palette.
     func inboxTint(_ p: OutsidePalette) -> Color {
         if status == "open" { return tone == "bad" ? p.loss : p.accent }
         switch tone { case "good": return p.gain; case "bad": return p.loss; case "warn": return p.caution; default: return p.inkSoft }
     }
-    /// The letter in the avatar circle: the first letter of the sender's name.
     var inboxInitial: String { String(from.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased() }
 }
 
 extension Message {
-    /// Row icon: money, people, customers, rivals, property or other, from what the message is about.
     var inboxCategoryGlyph: String {
         let words: String = (title + " " + body).lowercased()
         if actionID.hasPrefix("pay29") || ["loan", "tax", "invoice", "bank", "fine", "payment", "overdraft"].contains(where: { words.contains($0) }) { return Glyph.bank }
@@ -35,7 +31,6 @@ extension Message {
 }
 
 extension View {
-    /// A list row without the system chrome: page background, a hairline underneath, mail-width insets.
     func mailRowStyle() -> some View {
         self.listRowBackground(Color.clear)
             .listRowSeparatorTint(OutsidePalette.game.hairline)
@@ -43,8 +38,6 @@ extension View {
     }
 }
 
-/// One message in the mail-style list: unread dot, sender icon circle, sender and time, subject, a two-line preview, and (for
-/// a decision) how long it waits. The company link is its own button so it works without opening the message.
 struct InboxMailRow: View {
     private var P: OutsidePalette { .game }
     @EnvironmentObject var store: GameStore
@@ -52,16 +45,13 @@ struct InboxMailRow: View {
     var week: Int
     var pinned: Bool
     var openDetail: () -> Void
-    /// A decision with one to three options is answered from the row (the same confirmation rules apply).
     var answer: ((Int) -> Void)? = nil
-    /// Set while the first-steps guide is running: a gentle marker on the messages worth opening next.
     var guided: Bool = false
 
     private var open: Bool { message.status == "open" }
     private var unread: Bool { open || !message.isRead }
     private func text(_ s: String) -> String { (store.engine?.displayText(s, companyID: message.companyID) ?? s).tidyMoney }
 
-    /// With more than one company the company name leads the title.
     private var title: String {
         let t: String = text(message.title)
         guard let e = store.engine, message.companyID != 0, e.state.companies.filter({ $0.status.isLive }).count > 1,
@@ -69,7 +59,6 @@ struct InboxMailRow: View {
         return co.name + " \u{00B7} " + t
     }
 
-    /// One grey line: what happens if it is left (a decision), what came of it (an answered one), else the text.
     private var consequence: String {
         let e: GameEngine? = store.engine
         let raw: String = (open ? e?.expiryOutcome(message) : e?.answeredOutcome(message)) ?? message.body
@@ -86,7 +75,6 @@ struct InboxMailRow: View {
         .padding(.vertical, Theme.Space.m)
     }
 
-    /// The options as buttons under the row, side by side when they fit, else stacked; the first (the suggested answer) in the accent.
     private func inlineOptions(_ answer: @escaping (Int) -> Void) -> some View {
         let labels: [String] = message.options.map { (o: JSONValue) -> String in text(o["l"].string) }
         return ViewThatFits(in: .horizontal) {
@@ -144,14 +132,11 @@ struct InboxMailRow: View {
     }
 }
 
-/// The sender's round avatar in the messages app: a filled circle in the sender's colour with the first letter of the name; a message
-/// with no usable letter shows its icon instead.
 struct InboxAvatar: View {
     var initial: String
     var glyph: String
     var tint: Color
     var size: CGFloat = 44
-    /// The portrait key of the person the message is about or from (`Person.faceKey`); the circle below stays the fallback.
     var face: String? = nil
 
     var body: some View {
@@ -173,8 +158,6 @@ struct InboxAvatar: View {
 }
 
 extension Message {
-    /// The portrait of the person a message is about or from: the person id the message carries (`sid`, `npc`, `pid`), otherwise the manager
-    /// of its company when the sender is named like them ("Mia, manager"). Nil when it is about nobody in particular.
     func inboxFace(_ engine: GameEngine?) -> String? {
         guard let engine else { return nil }
         let d: JSONValue = value("data")

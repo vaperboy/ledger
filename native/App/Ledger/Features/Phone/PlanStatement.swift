@@ -5,14 +5,10 @@ import Finance
 import Countries
 import Simulation
 
-/// The start-up statement of a new company, shared by both New company screens: what is mandatory, what is optional and chosen, deposits that come
-/// back, fees, working capital kept in the company, and the cash that is left (with the personal reserve kept visible). Nothing optional is
-/// bought unless it is switched on here; every other choice is shown with its price. All figures come from `GameEngine.newCompanyPlan`.
 struct PlanStatement: View {
     var plan: NewCompanyPlan
     var cur: Currency
     @Binding var choices: SetupChoices
-    /// Applying an alternative that changes something outside the choices (rent instead of buy, smaller size) is up to the screen.
     var onAlternative: (PlanAlternative) -> Void = { _ in }
 
     private static let columns: [TableColumn] = [TableColumn(title: "What"), TableColumn(title: "Amount", width: 96)]
@@ -51,8 +47,6 @@ struct PlanStatement: View {
         }
     }
 
-    // MARK: Optional items
-
     @ViewBuilder private var optionalChoices: some View {
         let hasStock: Bool = plan.estimate.stock > 0
         if hasStock {
@@ -65,8 +59,6 @@ struct PlanStatement: View {
     }
 
     private func stockTitle(_ s: SetupChoices.Stock) -> String { s == .full ? "Full stock" : s == .half ? "Half" : "None" }
-
-    // MARK: Cash left
 
     @ViewBuilder private var remainingCash: some View {
         let tint: Color = plan.keepsReserve ? Theme.gain : Theme.caution
@@ -87,8 +79,6 @@ struct PlanStatement: View {
             QuietButton(title: "Put in all my money instead (\(cur.tidyShort(max(0, plan.available - plan.registrationAndCapital))))") { choices.putInto = max(0, plan.available - plan.registrationAndCapital) }
         }
     }
-
-    // MARK: Alternatives
 
     private var alternatives: some View {
         CardSection("Cheaper ways to start") {

@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The book of an insurance company, bank or investment fund: policies, loans and deposits, or assets under management.
-/// Flat rows between hairlines, no boxes.
 struct CompanyFinanceBook: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -38,8 +36,6 @@ struct CompanyFinanceBook: View {
         }
         .padding(.vertical, Theme.Space.xs)
     }
-
-    // MARK: Insurance
 
     private func insurer(_ b: FinanceBook, _ cur: Currency) -> some View {
         let products = engine.insuranceProducts(companyID: company.id)
@@ -103,8 +99,6 @@ struct CompanyFinanceBook: View {
         }
     }
 
-    // MARK: Bank
-
     private func bank(_ b: FinanceBook, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             KeyFigures(items: [
@@ -123,8 +117,6 @@ struct CompanyFinanceBook: View {
         }
     }
 
-    // MARK: Fund
-
     private func fund(_ b: FinanceBook, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             KeyFigures(items: [
@@ -138,8 +130,6 @@ struct CompanyFinanceBook: View {
                 .textStyle(.caption, tint: Theme.inkFaint)
         }
     }
-
-    // MARK: Actions
 
     private func confirmToggle(_ p: ProductRow, _ cur: Currency) {
         if p.isOffered {

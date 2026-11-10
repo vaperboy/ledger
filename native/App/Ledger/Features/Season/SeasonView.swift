@@ -2,8 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// The Season Pass screen: this season's progress in words and a bar, a horizontal track of 30 tiers with the free row and the premium
-/// row (included in Ledger Plus), a claim action, how XP is earned and the player's collection. Nothing here pulses or animates.
 struct SeasonView: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
@@ -28,8 +26,6 @@ struct SeasonView: View {
         .ledgerBackground()
         .onAppear { model.refreshSeason() }
     }
-
-    // MARK: Summary
 
     private var summaryCard: some View {
         let left: Int = pass.daysLeft(today: model.today)
@@ -58,8 +54,6 @@ struct SeasonView: View {
         .padding(16)
         .liquidGlass(cornerRadius: Theme.Radius.hero)
     }
-
-    // MARK: Track
 
     private var trackSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -139,14 +133,12 @@ struct SeasonView: View {
         if !got.isEmpty { announce(got) }
     }
 
-    /// The standard small success popup, naming what was claimed.
     private func announce(_ rewards: [SeasonReward]) {
         Haptics.success()
         let text: String = rewards.count <= 3 ? rewards.map(effect).joined(separator: "\n") : "\(rewards.count) rewards, including \(effect(rewards[0]))"
         store.tell(rewards.count == 1 ? "Reward claimed" : "Rewards claimed", text, tone: "good")
     }
 
-    /// What claiming one reward did, in words: gold goes to the wallet, a box waits in the Store, the rest joins the collection below.
     private func effect(_ r: SeasonReward) -> String {
         switch r.kind {
         case .gold: return "\(r.title) added to your gold wallet in the Store."
@@ -155,7 +147,6 @@ struct SeasonView: View {
         }
     }
 
-    /// Premium needs Ledger Plus itself (Pro alone is not enough), so the paywall is asked for directly.
     private func openPaywall() {
         ent.paywall = PaywallRequest(title: "Season Pass: Plus rewards", feature: nil)
     }
@@ -177,8 +168,6 @@ struct SeasonView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: How XP is earned
-
     private var earnSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("How XP is earned").capsLabel()
@@ -197,8 +186,6 @@ struct SeasonView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
-
-    // MARK: Collection
 
     private var collection: [SeasonReward] { SeasonRewards.all.filter { pass.owned.contains($0.id) && $0.kind != .box && $0.kind != .gold } }
 
@@ -227,12 +214,10 @@ struct SeasonView: View {
         }
     }
 
-    /// The reward's drawn art (see `ItemArt`).
     private func swatch(_ r: SeasonReward) -> some View {
         ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 36)
     }
 
-    /// The tint of the equipped reward of a kind (a theme's first colour), nil when none is chosen.
     private func tint(for kind: String) -> Color? {
         guard let id = pass.equipped[kind], let c = SeasonRewards.all.first(where: { $0.id == id })?.colors.first else { return nil }
         return Color(hex: c)

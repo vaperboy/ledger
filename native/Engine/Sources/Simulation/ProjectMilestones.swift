@@ -4,10 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// One time-bound piece of project work with its milestones, for the Projects tab: a job in hand, an event booking, a tender to bid on or
-/// awaiting a decision, or a real-estate development. Read-only: every figure comes from the records the project engine already keeps
-/// (`fm.jobs`, `fm.proj`, the tenders); nothing here is a rule and nothing is invented. Where the engine keeps no date (a job's finish,
-/// the start of a development) the field is nil and the screen says so.
 public struct ProjectTimeline: Identifiable, Equatable, Sendable {
     public enum Kind: String, Sendable { case job, event, tender, bid, development }
     public enum StageState: String, Sendable { case done, current, upcoming }
@@ -15,7 +11,6 @@ public struct ProjectTimeline: Identifiable, Equatable, Sendable {
         public var name: String
         public var detail: String
         public var state: StageState
-        /// The game week the stage starts or falls due, when the engine knows it.
         public var week: Int?
     }
 
@@ -24,36 +19,24 @@ public struct ProjectTimeline: Identifiable, Equatable, Sendable {
     public var companyName: String
     public var kind: Kind
     public var title: String
-    /// Client, buyer or the development's size.
     public var subtitle: String
-    /// When the work was taken on, if the engine records it.
     public var startWeek: Int?
-    /// The next date that matters: event day, bid closing, decision, end of the current development stage.
     public var dueWeek: Int?
     public var stages: [Stage]
     public var progress: Double?
-    /// What the client pays, the tender is worth, or the development is expected to sell for.
     public var value: Double
-    /// Money spent on it so far where the engine tracks it (developments: land plus building; tenders: the cost of the bid); nil for jobs.
     public var costSoFar: Double?
     public var costBudget: Double?
-    /// Money already received (jobs).
     public var receivedSoFar: Double?
-    /// What is holding it up now, or nil.
     public var blocking: String?
-    /// What it costs you if it runs late, in the engine's own terms.
     public var ifLate: String
-    /// The money that the "if late" sentence is about (still to be paid, loan outstanding, tied up), in the company's currency.
     public var atStake: Double?
     public var atStakeLabel: String
-    /// True when the engine records a delay on it.
     public var delayed: Bool
-    /// Weeks past the planned finish of a job still open (0 when it is not late or the job has no recorded finish).
     public var overdueWeeks: Int = 0
 }
 
 public extension GameEngine {
-    /// Every open project item across the live project companies. Order: by company, then the engine's own order.
     func projectTimelines() -> [ProjectTimeline] {
         var out: [ProjectTimeline] = []
         let now = state.week
@@ -146,7 +129,6 @@ public extension GameEngine {
                 ? "You are paid in full only when it is finished, so a late finish delays everything still to come."
                 : "The last part is paid only when it is finished, so a late finish delays that cash."
         }
-        // A job's planned finish is recorded when it is taken on; a job from an older save has none and shows none.
         let planned: Int? = (!board.isEvent && !j.value("due").isNull) ? j.dueWeek : nil
         if let planned, !board.isEvent, let last = stages.indices.last { stages[last].week = planned }
         return ProjectTimeline(id: "j\(co.id)-\(j.id)", companyID: co.id, companyName: co.name, kind: kind, title: row.title, subtitle: j.client,

@@ -4,15 +4,12 @@ import Countries
 import Businesses
 import Simulation
 
-/// The first choice of a new company: the starter products or services the trade can begin with, one selectable row each (market price
-/// and kind), a primary button to confirm, and the path to add your own. Shown by `ItemsList` while `needsFirstItemChoice` is true.
 struct FirstItemPicker: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     var noun: String
     var onAddOwn: () -> Void
-    /// Called with the id of the item that was picked, so the caller can ask who supplies it.
     var onChosen: (String) -> Void = { _ in }
     @State private var picked: String?
     @Environment(\.outsidePalette) private var P

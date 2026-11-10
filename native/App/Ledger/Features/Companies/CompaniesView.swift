@@ -4,16 +4,11 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Home tab: one screen with net worth, what needs the owner and the companies that need attention most (every company in a
-/// table on iPad). Next day floats at the bottom right (`NextDayDock`).
 struct CompaniesView: View {
     enum Sort: String, CaseIterable, Hashable { case attention = "Needs attention", profit = "Profit", revenue = "Revenue", cash = "Cash", name = "Name" }
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// The safe-area insets this screen's layout really respects, measured outside the page; nil until the first layout pass. Where the
-    /// hosting container ignores a safe area the page would draw under the status bar or the tab bar: the difference to the device's
-    /// own insets is added back as padding.
     @State private var ownInsets: EdgeInsets?
     @State private var sort: Sort = .attention
     @State private var showAll = false
@@ -22,9 +17,7 @@ struct CompaniesView: View {
         NavigationStack(path: Binding(get: { store.path(for: .company) }, set: { store.setPath($0, for: .company) })) {
             Group {
                 if let e = store.engine {
-                    // Health reads every company's books: once per engine change, not on every render of the always-alive Home tab.
                     let healths: [(co: Company, h: CompanyHealth)] = store.memo("homeRows") { (g: GameEngine) -> [(co: Company, h: CompanyHealth)] in
-                        // Live companies only (open, setting up, closed for a while): a sold, wound-up or bankrupt one never shows here.
                         g.state.companies.filter { $0.type != "hold" && $0.status.isLive }.map { (co: $0, h: g.companyHealth($0)) }
                     } ?? []
                     let rows = healths.sorted(by: order)
@@ -40,8 +33,6 @@ struct CompaniesView: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: NextDayDock.reserve) }
                 }
             }
-            // The dock is attached before `ledgerBackground()` adds the tab bar clearance (a bottom inset, 0 on iPad where the sidebar
-            // replaces the bar), so it sits that far above the bottom edge plus its own gap and never under the bar.
             .overlay(alignment: .bottomTrailing) {
                 if let e = store.engine { NextDayDock(engine: e).padding(.bottom, NextDayDock.gap) }
             }
@@ -61,7 +52,6 @@ struct CompaniesView: View {
         }
     }
 
-    /// What the device reserves at an edge beyond what this screen's layout already keeps clear (0 once they agree).
     private var missingTop: CGFloat {
         guard let own = ownInsets else { return 0 }
         return max(0, Theme.windowInsets.top - own.top)
@@ -71,22 +61,12 @@ struct CompaniesView: View {
         return max(0, Theme.windowInsets.bottom - own.bottom)
     }
 
-    // MARK: The Home page
-
-    /// iPhone: one screen without scrolling, as many companies as the height allows (five down to one, tighter spacing from the fourth
-    /// candidate on); only at very large text sizes does it fall back to a scroll. iPad: one scroll with the full company table.
     @ViewBuilder private func homeScreen(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
         if sizeClass == .regular {
             ScrollView(.vertical) { page(e, rows: rows, limit: nil, compact: false) }
                 .scrollIndicators(.hidden)
         } else {
             if rows.count <= 1 {
-                // Height budget at regular text size on the shortest phone (667 pt tall: 20 top inset, 90 tab bar clearance, 64 dock
-                // reserve, 20 page padding leave about 470 pt). Blocks, full / compact: top line 44 / 44, net worth hero 200 / 175
-                // (figure 50, change line 20, balance row 52, chart 36 / 28), milestone line 32, insight strip 88, needs-you card
-                // 140 / 120, companies about 110 (one company card), gaps 16 / 12 each. Full is about 650, so each step below drops the least
-                // important block: compact, no milestone (-32), no insight strip (-100), no balance row (-52), no chart (-28):
-                // about 390, which fits. The last step is never a scroll; only very large text can clip it.
                 ViewThatFits(in: .vertical) {
                     page(e, rows: rows, limit: 1, compact: false, fills: true)
                     page(e, rows: rows, limit: 1, compact: true, fills: true)
@@ -117,12 +97,10 @@ struct CompaniesView: View {
         HomeSummary(engine: e, compact: compact, fills: fills, chart: chart, trim: trim, onNewCompany: { store.push(.newCompany, on: .company) }) {
             companiesBlock(e, rows: rows, limit: limit, compact: compact)
         }
-        // The header starts below the status bar / Dynamic Island: `missingTop` is the part of the real inset the layout does not already keep clear.
         .padding(.horizontal, Theme.Space.page).padding(.top, (compact ? Theme.Space.xs : Theme.Space.s) + missingTop).padding(.bottom, Theme.Space.m)
         .frame(maxWidth: 1100).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    /// The companies, worst first: the top `limit` rows and "All N", which opens the full list in a popup (nil: every company, iPad).
     @ViewBuilder private func companiesBlock(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool) -> some View {
         if rows.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -171,7 +149,6 @@ struct CompaniesView: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.co.id) { (i: Int, r: (co: Company, h: CompanyHealth)) in
                     if i > 0 { Hairline().padding(.leading, CompanyRow.textInset) }
-                    // The same push as the iPad table, on the Home stack.
                     Button { Haptics.tap(); store.push(.company(r.co.id), on: .company) } label: { CompanyRow(engine: e, company: r.co, health: r.h) }
                         .buttonStyle(PressableStyle())
                         .accessibilityHint("Opens the company")
@@ -195,7 +172,6 @@ struct CompaniesView: View {
         }
     }
 
-    /// 0 is most urgent: out of cash, struggling or short of runway come before healthy companies; closed and setting up sit in between.
     static func urgency(_ co: Company, _ h: CompanyHealth) -> Int {
         if co.status == .setup { return 2 }
         if co.status == .closed { return 3 }
@@ -207,7 +183,6 @@ struct CompaniesView: View {
 
 }
 
-/// The popup behind "All N" on Home: every live company, worst first, one tap to open it.
 struct AllCompaniesList: View {
     var engine: GameEngine
     var rows: [(co: Company, h: CompanyHealth)]
@@ -230,7 +205,6 @@ struct AllCompaniesList: View {
     }
 }
 
-/// iPad: every company side by side, one row each.
 struct CompanyTable: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -277,7 +251,6 @@ struct CompanyTable: View {
     }
 }
 
-/// "Self-funding", or how many weeks the cash lasts at the current rate of loss.
 enum RunwayText {
     static func of(_ h: CompanyHealth) -> String {
         guard let w = h.runwayWeeks else { return h.profitTTM > 0 || h.label == "New" ? "Self-funding" : "–" }
@@ -369,7 +342,6 @@ struct CompanyRow: View {
     }
 }
 
-/// Who runs a company day to day, in two words for list rows: the manager (or the boss above), "You", or "No one".
 enum RunBy {
     static func name(_ e: GameEngine, _ co: Company) -> String {
         guard co.status.isLive, co.type != "hold" else { return "–" }

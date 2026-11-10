@@ -3,8 +3,6 @@ import GameCore
 import Countries
 import Businesses
 
-/// The arithmetic of the energy, salmon and football models must equal the original's on the same inputs.
-/// Golden/special_trades.json was produced by tools/ref/snippets/special_trades.js (random draws fixed, see the script).
 final class SpecialTradesDifferentialTests: XCTestCase {
     func golden() throws -> JSONValue { try Golden.load("special_trades") }
 
@@ -13,7 +11,7 @@ final class SpecialTradesDifferentialTests: XCTestCase {
         XCTAssertEqual(g["power"].array.count, 36)
         for c in g["power"].array {
             let src = EnergyModel.sources[c["src"].int]
-            let r = EnergyModel.powerWeek(megawattsBought: c["bought"].double, building: c["building"].double, 
+            let r = EnergyModel.powerWeek(megawattsBought: c["bought"].double, building: c["building"].double,
                                           month: GameCalendar.month(week: c["week"].int), source: src, hedge: c["hedge"].int, capacityFactor: 0.36, opexRate: 0.025,
                                           condition: c["cond"].double, technicianFTE: c["fte"].double, capacityModifier: c["capMod"].double,
                                           demandModifier: c["demMod"].double, economyPower: c["econPower"].double, inflationIndex: pow(1 + c["infl"].double, Double(c["week"].int) / 52), noise: c["noise"].double)
@@ -76,7 +74,6 @@ final class SpecialTradesDifferentialTests: XCTestCase {
             let mine = FootballModel.generateClubs(country: book[cc]!, seed: g["seed"].int)
             XCTAssertEqual(mine.count, list.array.count, cc)
             for (a, b) in zip(mine, list.array) {
-                // The bundled UK and US surname lists are one name shorter than the original's, which shifts the generated names.
                 if !["UK", "US"].contains(cc) || a["id"].string.hasSuffix(":0") { XCTAssertEqual(a["name"].string, b["name"].string, "\(cc) \(b["id"].string)") }
                 XCTAssertEqual(a["city"].string, b["city"].string, cc)
                 XCTAssertEqual(a["val"].double, b["val"].double, "\(cc) value of \(b["name"].string)")

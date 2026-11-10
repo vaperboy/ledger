@@ -7,8 +7,6 @@ import Businesses
 import Simulation
 import Investments
 
-/// LEDGER_MOCKDATA=<path>: plays a richer demo game (six companies, about fourteen months) and writes the figures the design
-/// mockups use, in pounds, so mockups show real game output instead of invented numbers. Not part of the regular suite.
 final class MockDataExport: XCTestCase {
     func testExportMockData() throws {
         guard let path = ProcessInfo.processInfo.environment["LEDGER_MOCKDATA"] else { return }

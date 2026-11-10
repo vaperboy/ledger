@@ -2,19 +2,14 @@ import Foundation
 import GameCore
 import Countries
 
-/// Competitors and your own other outlets. Originals: `rivalMult`, `disMult`, `ownShare`, `reachOf`.
 public enum Competition {
-    /// How rivals in the same city and trade take customers from you, given your price against theirs.
-    /// Original: `rivalMult` (price_moves_and_lawsuits.js).
     public static func rivalFactor(_ co: Company, _ w: World) -> Double {
         guard let m = w.market(for: co) else { return 1 }
         let pi = m["pi"].double == 0 ? 1 : m["pi"].double
         let r0 = Pricing.priceIndex(co, w) / pi
         let dv = r0 - 1
         let ratio = 1 + dv * min(1, abs(dv) / 0.06)
-        // A market whose last rival has gone and not yet been replaced has nobody to take customers (see `Rivals.vacant`).
         let n = Rivals.vacant(m, week: w.week) ? 0 : m["n"].double
-        // A name people know and trust is not easily taken from you (`Balance.Mastery.rivalMoat`).
         let moat = w.balance.mastery.rivalMoat * clamp((co.awareness - 30) / 70, 0, 1) * clamp((co.reputation - 40) / 60, 0, 1)
         var mult = 1 - min(0.3 + CityMarket.rivalCapBoost(co, w), 0.035 * n) * (0.7 + 0.5 * m["str"].double) * (1 - moat)
         mult *= Rivals.strengthFactor(m, week: w.week)
@@ -25,7 +20,6 @@ public enum Competition {
         return push != 0 ? clamp(v * (1 - push * 0.3), 0.2, 1.25) : v
     }
 
-    /// A cheap rival that entered with a loophole hits expensive operations hardest. Original: `disMult`.
     static func cheapRivalFactor(_ co: Company, _ m: JSONValue, _ w: World) -> Double {
         let dis = m["dis"]
         if dis.isNull { return 1 }
@@ -35,11 +29,8 @@ public enum Competition {
         return 1 - clamp(dis["depth"].double * expo * (1 - shield), 0, 0.45)
     }
 
-    // MARK: Own outlets
-
     static func isFootTraffic(_ kind: String) -> Bool { ["shop", "kitchen", "hotel", "gym", "clinic"].contains(kind) }
 
-    /// How much two of your outlets in the same city fish in the same pond. Original: `cityOverlap`, `ownOverlap`.
     static func overlap(_ a: Company, _ b: Company, _ w: World) -> Double {
         let pop = w.city(a)?.population ?? 100
         var ov = clamp(0.25 * (300 / (pop == 0 ? 100 : pop)).squareRoot(), 0.12, 0.8) * w.balance.mastery.overlapScale
@@ -57,7 +48,6 @@ public enum Competition {
         return min(0.9, ov)
     }
 
-    /// Your share of the local customers when you run several outlets of the same trade in a city. Original: `ownShare`.
     public static func ownOutletShare(_ co: Company, _ w: World) -> Double {
         var t = 0.0
         for c in w.state.companies where c.id != co.id && c.status == .open && c.type == co.type && c.cityID == co.cityID && c.countryCode == co.countryCode {
@@ -66,7 +56,6 @@ public enum Competition {
         return 1 / (1 + t)
     }
 
-    /// Number of outlets of this trade you own (including franchise units). Original: `chainOutlets`.
     public static func chainOutlets(_ co: Company, _ w: World) -> Int {
         var n = 0
         for c in w.state.companies where c.type == co.type && c.status.isLive {
@@ -77,13 +66,11 @@ public enum Competition {
                 for m in fr["masters"].array where Double(w.week) >= m["ready"].double { n += m["n"].int }
             }
         }
-        // A franchisee belongs to a brand with many units. Original: `chainOutlets`, `co.franchise.brandId`.
         let brandID = co.value("franchise")["brandId"]
         if !brandID.isNull, let b = FranchiseBrands.brand(brandID.string, w) { n = max(n, b.units + 1) }
         return max(1, n)
     }
 
-    /// Chain reach multiplier on demand: many outlets build a known brand. Original: `reachOf(co).mult`.
     public static func chainReachFactor(_ co: Company, _ w: World) -> Double {
         1 + w.balance.mastery.chainReach * log2(Double(chainOutlets(co, w)))
     }

@@ -1,7 +1,6 @@
 import SwiftUI
 import Simulation
 
-/// A small filled triangle like a stock ticker: pointing up for money in or a gain, down for money out or a loss.
 struct StockTriangle: Shape {
     var up: Bool
     func path(in rect: CGRect) -> Path {
@@ -20,11 +19,9 @@ struct StockTriangle: Shape {
     }
 }
 
-/// The triangle in its colour: `good` picks green or red, `up` the direction. Hidden from VoiceOver (the amount's label says it).
 struct StockArrow: View {
     var up: Bool
     var good: Bool
-    /// Side of the triangle; nil scales with the body text.
     var side: CGFloat? = nil
     @Environment(\.outsidePalette) private var P
     @ScaledMetric(relativeTo: .body) private var scaled: CGFloat = 8
@@ -38,22 +35,15 @@ struct StockArrow: View {
     }
 }
 
-/// The one way a money movement is listed: a green up arrow and the amount for money in or a gain, a red down arrow and the amount (no plus or
-/// minus sign) for money out or a loss, nothing for zero. `gain` is the signed result (positive = good); `amount` is the figure shown when it
-/// differs from it (a cost that rose shows its size, and counts as a loss). `format` receives the positive size and is the store's money
-/// formatting. VoiceOver reads "up" or "down" and the amount. `live` counts the figure to its new value when it changes.
 struct ArrowAmount: View {
     var gain: Double
     var amount: Double? = nil
     var format: (Double) -> String
     var live: Bool = false
-    /// With `live`: finish counting at once (a briefing that is skipped).
     var instant: Bool = false
-    /// With `live`: roll the digits that change (green when it got better, red when worse) instead of counting up from nothing.
     var roll: Bool = false
     var step: TextStep = .body
     var weight: Font.Weight? = nil
-    /// A font instead of the text step (heroes), with the triangle's side to match.
     var font: Font? = nil
     var arrowSide: CGFloat? = nil
     @Environment(\.outsidePalette) private var P
@@ -90,7 +80,6 @@ struct ArrowAmount: View {
     }
 }
 
-/// The text step, or a given font, applied to a rolling figure.
 private struct OptionalFont: ViewModifier {
     var font: Font?
     var step: TextStep
@@ -100,14 +89,10 @@ private struct OptionalFont: ViewModifier {
     }
 }
 
-/// How a figure moved against the period before, in words: an arrow in the direction it moved (green when that is good news, red when not)
-/// and "up 12% on last week" (the amount when no share can be given). Nothing when there is no earlier figure; "level on last week" when it did not move.
 struct ChangeNote: View {
     var now: Double
     var before: Double?
-    /// A cost: a rise is bad news.
     var isCost: Bool = false
-    /// "last week", "last month", "last year".
     var against: String
     var format: (Double) -> String
     var step: TextStep = .caption

@@ -3,55 +3,43 @@ import GameCore
 import Countries
 import Finance
 
-/// One line of the item list, for the screen.
 public struct SalesItem: Equatable, Identifiable, Sendable {
     public var id: String
     public var name: String
     public var isService: Bool
-    /// The player's price (before any discount) and the market price, in accounting units like `Pricing.ticket`.
     public var price: Double
     public var marketPrice: Double
     public var discountPercent: Double
     public var discountWeeksLeft: Int
     public var weeklyUnits: Double
     public var weeklyRevenue: Double
-    /// Demand against selling at the market price (0.2 = 20% more, -0.1 = 10% fewer), discount included.
     public var demandChange: Double
     public var listedForGroup: Bool
     public var revenueWeight: Double
-    /// Who sets this price: the owner, or the advisor or manager who was hired for it.
     public var priceSetter: SalesItems.PriceSetter = .owner
-    /// The cheapest and dearest price the owner may set, as multiples of the market price (the dearest depends on the trade).
     public var priceFloor: Double = SalesItems.priceFloor
     public var priceCeiling: Double = SalesItems.priceCeiling
     public var minPrice: Double { marketPrice * priceFloor }
     public var maxPrice: Double { marketPrice * priceCeiling }
 }
 
-/// What a price and a discount would do to one item in a normal week.
 public struct ItemForecast: Equatable, Sendable {
     public var units: Double
     public var revenue: Double
-    /// Weekly profit of the item compared with now (item revenue minus its cost of sales).
     public var profitChange: Double
     public var demandChange: Double
-    /// The price against what customers see as fair (0.1 = 10% above, -0.1 = 10% below).
     public var marketPosition: Double = 0
 }
 
-/// A listed item of another company of the owner, which this company can buy.
 public struct OwnListing: Equatable, Identifiable, Sendable {
     public var id: String { "\(sellerID):\(itemID):\(equipmentID)" }
     public var sellerID: Int
     public var sellerName: String
     public var itemID: String
     public var itemName: String
-    /// Price per unit, with the item's discount.
     public var price: Double
-    /// The item of the buyer's TechPro list that the purchase puts in the company.
     public var equipmentID: String
     public var equipmentName: String
-    /// How many units the seller can supply this week with the capacity it has left (see `OwnListings.spareUnits`).
     public var available: Int = 0
 }
 
@@ -75,7 +63,6 @@ public extension SalesItems {
         }
     }
 
-    /// Pure: what `price` (accounting units, absolute) with a discount does to one item.
     static func forecast(_ s: GameState, companyID: Int, itemID: String, price: Double, discountPercent: Double, data: GameData) -> ItemForecast {
         guard let co = s.company(companyID), let bd = data.catalog[co.type], let it = items(co, bd).first(where: { $0.id == itemID }) else {
             return ItemForecast(units: 0, revenue: 0, profitChange: 0, demandChange: 0)
@@ -93,8 +80,6 @@ public extension SalesItems {
         if cap > 0, atMarket * gNew > cap { scale = cap / (atMarket * gNew) }
         let unitsNew = atMarket * it.unitShare * dmNew * scale
         let unitsNow = atMarket * it.unitShare * dmNow
-        // A used car dealer's cost of a sale is what its cars cost (price, repairs), not a share of the trade's ticket: with the generic ratio a price
-        // change always looked like a loss, and the profit at the market price like zero.
         let cost = market * (co.type == UsedCarDealer.tradeID ? (UsedCarDealer.costRatio(co) ?? bd.costOfSales) : bd.costOfSales)
         let revNew = unitsNew * market * mult, revNow = unitsNow * market * it.effectiveMultiplier
         return ItemForecast(units: unitsNew, revenue: revNew, profitChange: (revNew - unitsNew * cost) - (revNow - unitsNow * cost), demandChange: dmNew - 1,
@@ -108,7 +93,6 @@ public extension SalesItems {
         store(&s, i, list)
     }
 
-    /// Why an item cannot be changed, or nil.
     static func refusal(_ s: GameState, companyID: Int, itemID: String?, data: GameData) -> String? {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return "That company no longer exists." }
         guard co.status == .open else { return "Only an open company sets item prices." }
@@ -140,8 +124,6 @@ public extension SalesItems {
         }
     }
 
-    /// A new item takes a tenth of the customers at the company's going price; the others make room. It also brings new customers: the demand
-    /// lift of `MarketPressure.addedLift` (the same figure the add-item estimate shows) ramps into demand over a few weeks and stays.
     static func add(_ s: inout GameState, companyID: Int, name: String, isService svc: Bool, data: GameData) {
         settlePick(&s, companyID: companyID, keeping: nil, data: data)
         if let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] {

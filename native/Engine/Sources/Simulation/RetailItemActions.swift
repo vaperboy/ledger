@@ -4,9 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// Actions for the screens: real catalogue items to add, and repair orders from one company of yours to a garage of yours.
 public extension GameEngine {
-    /// Items from the trade's real catalogue that this company does not sell yet.
     func retailAddableItems(companyID: Int) -> [RetailItems.Def] { RetailItems.addable(state, companyID: companyID, data: data) }
 
     @discardableResult
@@ -17,12 +15,10 @@ public extension GameEngine {
         }
     }
 
-    /// What a garage of yours would charge a company of yours for a repair and how long it takes.
     func carRepairQuote(garageID: Int, kind: String, scale: Double = 1) -> RepairQuote? {
         RetailItems.carRepairQuote(state, garageID: garageID, kind: kind, scale: scale, data: data)
     }
 
-    /// Garages of yours that could repair for this company.
     func carRepairGarages(for companyID: Int) -> [Int] { CarRepairJobs.garages(for: companyID, state, data: data) }
 
     @discardableResult

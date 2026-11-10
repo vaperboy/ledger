@@ -1,7 +1,6 @@
 import SwiftUI
 import Charts
 
-/// Revenue and profit by month on a hairline grid: a champagne line for revenue, a green one for profit, labels at the right.
 struct RevenueProfitChart: View {
     var revenue: [Double]
     var profit: [Double]
@@ -39,7 +38,6 @@ struct RevenueProfitChart: View {
     }
 }
 
-/// The key to a chart: a short line in each series colour and its name.
 struct ChartKey: View {
     var items: [(String, Color)]
     var body: some View {

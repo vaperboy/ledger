@@ -42,10 +42,7 @@ struct AuctionsApp: View {
     }
 }
 
-// MARK: Rows
-
 @MainActor private enum AuctionLook {
-    /// Whether the player has bid here, and whether they lead.
     static func stance(_ a: Auction) -> String? {
         if a.seller == GoldVault.meID { return "Yours" }
         if a.leader == GoldVault.meID { return a.status == .live ? "You lead" : (a.status == .sold ? "You won" : "Returned") }
@@ -87,7 +84,6 @@ struct LiveAuctionsList: View {
     @Binding var rarity: BoxRarity?
     private let session = StoreSession.shared
 
-    /// Live, not the player's own, and of the chosen rarity.
     private func shown(_ a: Auction, now: Double) -> Bool {
         guard a.status == .live, a.endsAt > now, a.seller != GoldVault.meID else { return false }
         guard let wanted = rarity else { return true }
@@ -172,8 +168,6 @@ struct MyAuctionsList: View {
         }
     }
 }
-
-// MARK: Detail
 
 struct AuctionDetailView: View {
     var auctionID: String
@@ -302,8 +296,6 @@ struct AuctionDetailView: View {
     }
 }
 
-// MARK: Bid popup
-
 struct BidCard: View {
     var auctionID: String
     private let session = StoreSession.shared
@@ -359,8 +351,6 @@ struct BidCard: View {
         .accessibilityLabel(symbol == "plus" ? "Raise the bid" : "Lower the bid")
     }
 }
-
-// MARK: Listing popup
 
 struct ListingCard: View {
     var item: ArtifactItem

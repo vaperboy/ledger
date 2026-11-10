@@ -4,17 +4,9 @@ import Countries
 import Employees
 import Finance
 
-/// Finding and hiring people. Original: `genCand`, `searchWorkers`, `hireWorkerCore` (engine/people/people.js).
-///
-/// A candidate has a *true* skill and a *claimed* skill: some exaggerate. Checking references or a trial week
-/// reveals more. People ask for pay by their skill, age and the local market.
 public enum Hiring {
-    /// `network` is DEPRECATED for the player: the Hiring screen offers `ads` (job ad: `JobAds`) and `agency` (`Agency`). It stays for old saves and
-    /// the automatic hirers (managers, auto-staffing, start-ups) that search without a fee.
     public enum SearchMode: Sendable { case ads, network, agency }
 
-    /// Candidate pools decide who turns up (skill range, experience, how often a CV is padded). They do NOT move pay: asks follow experience and skill
-    /// (`askSpread`). The age is only a portrait detail that goes with the pool.
     static let tiers: [String: (age: (Int, Int), skill: (Double, Double), exp: (Double, Double), lie: Double)] = [
         "young": ((18, 24), (12, 48), (0, 1.5), 0.3),
         "mid": ((25, 40), (35, 78), (2, 12), 0.22),
@@ -27,8 +19,6 @@ public enum Hiring {
 
     static func personName(_ c: Country, _ r: inout DeterministicRandom) -> String { r.pick(c.firstNames) + " " + r.pick(c.lastNames) }
 
-    /// What the job normally pays on this labour market: the role, the city, the economy and the country's pay spread, and nothing about the person.
-    /// This is where a pay discussion starts, from the employer's side. Experience and skill only decide whether someone takes it, wants more or would take less.
     public static func marketWage(role: String, company co: Company?, state s: GameState, data: GameData) -> Double {
         let w = World(state: s, data: data)
         let base = w.catalog.tables.roles[role]?.baseMonthlyWage ?? 40000
@@ -38,7 +28,6 @@ public enum Hiring {
         return roundTo(base * cityWage * w.inflationIndex * spread, step: 100)
     }
 
-    /// Make a new candidate for a role and store them on the labour market. Original: `genCand`.
     @discardableResult
     public static func generateCandidate(role: String, company co: Company?, tier requested: String? = nil, faces: Bool = true, state s: inout GameState, data: GameData) -> Person {
         let w = World(state: s, data: data)
@@ -53,7 +42,6 @@ public enum Hiring {
         let exp = jsRound(s.random.range(T.exp.0, T.exp.1) * 2) / 2
         let superOne = s.random.chance(["sales", "cardealer", "estate"].contains(role) ? 0.04 : 0.015)
         if superOne { skill = Double(s.random.int(88, 100)) }
-        // a company with good perks draws better people, with fewer bad habits, who ask a little less (StaffPerks)
         let pull = co.map { StaffPerks.pull($0, role: role) } ?? 0
         if pull > 0 && !superOne { skill = min(97, skill + jsRound(pull * s.random.range(2, 7))) }
         let claimSkill = lie ? clamp(skill + Double(s.random.int(8, 28)), 0, 98) : clamp(skill + Double(s.random.int(-4, 4)), 0, 98)
@@ -78,14 +66,12 @@ public enum Hiring {
         p.role = role
         p.set("tier", tier); p.skill = skill; p.claimedSkill = claimSkill
         p.set("exp", exp); p.set("claimExp", claimExp); p.set("lie", lie)
-        // people also differ in what they want apart from skill: some take the going rate gladly, some hold out for more
         p.askingMonthlyWage = roundTo(ask * (0.92 + 0.16 * HashedRandom.first("ask:\(p.id)")), step: 100)
         if let t = trait { p.set("trait", t) }
         p.set("rel", rel); p.set("super", superOne); p.set("resume", resume)
         p.set("checked", 0); p.set("trial", 0); p.employerID = 0
         p.set("pers", pers); p.set("sec", sec); p.set("golden", golden)
         s.people[p.id] = p
-        // Automatic hiring (managers, auto-staffing) looks at many people nobody sees: they get a portrait only if hired (FaceBook.sweep).
         if faces { FaceBook.assign(personID: p.id, countryCode: country.code, style: FaceBook.style(for: p, trade: co.flatMap { data.catalog[$0.type] }), state: &s) }
         return p
     }
@@ -101,10 +87,8 @@ public enum Hiring {
         return name
     }
 
-    /// What a search costs the company. Searching for staff is free in the game; a manager's search and a head-office search are priced elsewhere.
     public static func searchFee(_ mode: SearchMode) -> Double { 0 }
 
-    /// How many people a search brings.
     public static func applicantsFound(_ mode: SearchMode) -> ClosedRange<Int> {
         switch mode {
         case .agency: return 6...9
@@ -113,7 +97,6 @@ public enum Hiring {
         }
     }
 
-    /// Advertise, ask around or use an agency. Ads are cheap but bring few; an agency finds more, better ones.
     public static func search(role: String, company co: Company, mode: SearchMode, faces: Bool = true, state s: inout GameState, data: GameData) -> [Person] {
         let range = applicantsFound(mode)
         let n = s.random.int(range.lowerBound, range.upperBound)
@@ -125,38 +108,22 @@ public enum Hiring {
         return out
     }
 
-    /// `ok`: hired. `taken`: has another job. `refused`: the offer was an insult, no figure named. `countered`: they name their own figure
-    /// (a hire at that wage is accepted; it may be an unrealistic one, which is for the player to judge). `walkedAway`: patience gone, the person
-    /// took another job and is no longer on the market.
     public enum HireResult: Equatable { case ok, taken, refused, countered(Negotiation.Counter), walkedAway
-        /// They would take the job on the pay figure but will not work on the pay plan offered (commission only, for someone who wants security); they stay on the market.
         case planRefused }
 
-    /// What kind of job is offered: full time (hours 0), part time or seasonal (months 1-12), and the pay basis of a full-timer
-    /// (nil = the custom for the job). Original: `HIRE_HOURS`, `HIRE_SEAS`, `HIRE_BASIS` (engine/people/people.js).
     public struct Terms: Equatable, Sendable {
         public var hours: Double = 0
         public var seasonMonths: [Int]? = nil
         public var basis: String? = nil
-        /// An estate agent who uses their own car for work, paid by mileage. Original: `ui.carc` ("own").
         public var ownCar = false
-        /// The pay plan of a full-time seller: "mix" (the wage offered is the base salary, commission on top), "com" (commission only: no base at all; the
-        /// figure offered is the pay they expect to earn), or nil / "fix" for a plain salary. Only for jobs the data lets sell on commission.
         public var payPlan: String? = nil
-        /// The commission share of the plan; 0 = the plan's usual one.
         public var commissionRate = 0.0
-        /// A fixed-term contract of this many weeks (one of `FixedTerm.termChoices`); 0 = permanent.
         public var fixedTermWeeks = 0
-        /// The working percentage, 10-100 (20, 50, 80 and 100 are the usual ones). 0 = not given: `hours` decides. 100 = full time.
         public var percent = 0.0
-        /// A seasonal job that ends with its season: the number of seasons it runs (0 = it returns every year, as before).
         public var seasonCount = 0
-        /// A bonus plan (`WorkerBonus.Level.id`) and expense reimbursements (`StaffExpenses.Item.id`) that come with the job.
         public var bonusPlan: String? = nil
         public var expenseItems: [String] = []
-        /// Promises made in the talk, recorded when the person joins.
         public var promises: [StaffPromises.Draft] = []
-        /// What the job is expected to grow into: "responsibility", "career", "training".
         public var expectations: [String] = []
         public init(hours: Double = 0, seasonMonths: [Int]? = nil, basis: String? = nil, ownCar: Bool = false, payPlan: String? = nil, commissionRate: Double = 0, fixedTermWeeks: Int = 0,
                     percent: Double = 0, seasonCount: Int = 0, bonusPlan: String? = nil, expenseItems: [String] = [], promises: [StaffPromises.Draft] = [], expectations: [String] = []) {
@@ -164,7 +131,6 @@ public enum Hiring {
             self.fixedTermWeeks = fixedTermWeeks
             self.percent = percent; self.seasonCount = seasonCount; self.bonusPlan = bonusPlan; self.expenseItems = expenseItems; self.promises = promises; self.expectations = expectations
         }
-        /// Contracted hours a week: from the working percentage when given, else `hours`; 0 = a full week.
         public var effectiveHours: Double {
             if percent > 0 { return percent >= 100 ? 0 : percent / 100 * StaffModel.fullWeekHours }
             return hours
@@ -172,7 +138,6 @@ public enum Hiring {
         public var isPartTime: Bool { effectiveHours > 0 || seasonMonths != nil }
     }
 
-    /// The staff record a hire at this wage and these terms would have, for cost previews only (nothing is stored). The real record is made in `hire`.
     static func previewRecord(person n: Person, offered: Double, terms: Terms, company co: Company, week: Int, data: GameData) -> StaffMember {
         var m = StaffMember(raw: [:])
         m.id = n.id; m.set("role", n.role)
@@ -186,11 +151,9 @@ public enum Hiring {
         return m
     }
 
-    /// A paid trial week (a quarter of the market wage for the role) shows how good someone really is, give or take a few points.
-    /// Returns what the week showed as observations (never a skill figure), or nil if the person or company is unknown or the company cannot pay. Original: `trialWeek`, `ACT.trial`.
     public static func trialWeek(_ personID: Int, for companyID: Int, state s: inout GameState, data: GameData) -> [WorkLog.Observation]? {
         guard var n = s.people[personID], n.employerID == 0, s.companyIndex(companyID) != nil else { return nil }
-        guard (n.raw["trial"]?.double ?? 0) == 0 else { return nil }   // one trial week per candidate (the result is kept in `trialRes`)
+        guard (n.raw["trial"]?.double ?? 0) == 0 else { return nil }
         let trialCost = jsRound(marketWage(role: n.role, company: s.companies[s.companyIndex(companyID)!], state: s, data: data) / 4)
         guard Payments.companyPays(&s, companyID: companyID, amount: trialCost, category: "wages", label: "Trial week") else { return nil }
         n.set("trial", 1)
@@ -200,18 +163,14 @@ public enum Hiring {
         return seen
     }
 
-    /// The candidate a sensible manager would pick: the most skill for the money, among people who can do the job.
     public static func bestValue(_ cands: [Person]) -> Person {
         let able = cands.filter { $0.skill >= 35 }
         let pool = able.isEmpty ? cands : able
         return pool.max { valueScore(skill: $0.skill, price: $0.askingMonthlyWage) < valueScore(skill: $1.skill, price: $1.askingMonthlyWage) } ?? cands[0]
     }
 
-    /// How much skill a wage buys: the one measure of "skill for the money" (a baseline of 0.5 so that a weak person is worth something).
     static func valueScore(skill: Double, price: Double) -> Double { (0.5 + skill / 100) / max(1, price) }
 
-    /// The pay basis a hire gets and what the person makes of an offer on it: a fixed salary where hours are the custom, or hours for
-    /// someone who would rather have a salary, is worth a little more or less to them than the same figure on the other basis.
     static func payBasis(_ n: Person, terms: Terms, fixedSalaryRoles: Set<String>) -> (basis: String, factor: Double) {
         let part = terms.isPartTime
         let basis = part ? (terms.basis == "fix" ? "fix" : "hour") : terms.basis ?? (fixedSalaryRoles.contains(n.role) ? "fix" : "hour")
@@ -220,19 +179,11 @@ public enum Hiring {
         return (basis, factor)
     }
 
-    /// How asking pay rises with skill (a candidate who exaggerates asks a little extra). Candidates are made with it, and whoever weighs
-    /// them (`AutoHire`) uses the same curve to judge what someone of a given skill is worth.
     static func skillCurve(_ skill: Double, lie: Bool = false, experience: Double = 6) -> Double { askSpread(skill: skill, experience: experience, lie: lie) }
-    /// What someone of this skill (and typical experience for the age group) would ask, as a multiple of the going rate for the job.
     static func askCurve(tier: String, skill: Double) -> Double { askSpread(skill: skill, experience: (tiers[tier]!.exp.0 + tiers[tier]!.exp.1) / 2) }
 
-    /// The employer id of someone who took a job somewhere else while the talk went on: no longer on the market.
     public static let goneElsewhere = -9
 
-    // MARK: The candidate's side of a pay talk (every kind of hire uses it)
-
-    /// What a person would say in a pay talk, from their hidden ask: they open at it and settle for a little less, by temperament. `factor`
-    /// is how an offer converts into what they value (pay basis, a profit share): the figures are returned in offer units.
     public static func position(for n: Person, factor f: Double = 1) -> Negotiation.Position {
         let f = f > 0 ? f : 1
         return Negotiation.position(opening: n.askingMonthlyWage / f, direction: .higher, temperament: temperament(of: n), key: "\(n.id)")
@@ -242,9 +193,6 @@ public enum Hiring {
         Negotiation.temperament(personality: n.str("pers").isEmpty ? nil : n.str("pers"), key: "\(n.id)")
     }
 
-    /// The person answers an offer made by `employer` for a post of `rank` (see `Negotiation`). Keeps the talk on the person's record, ends it on
-    /// an accept, and on a walk away takes the person off the market and says so. The caller does the rest of the hire after an accept and must
-    /// read the person again after this call.
     public static func answer(personID: Int, employer: Int, rank: String, offer: Double, factor: Double = 1, currency: Currency, about: Double,
                               state s: inout GameState) -> Negotiation.Response {
         guard var n = s.people[personID] else { return Negotiation.Response(.refuse) }
@@ -263,27 +211,21 @@ public enum Hiring {
         return r
     }
 
-    /// The same question with nothing changed on the person: what would they answer to this offer? Used by someone who weighs several people
-    /// before choosing one (`AutoHire`); the talk is kept in `talk`. It uses the game's random numbers like the real thing.
     public static func probe(_ n: Person, offer: Double, factor: Double = 1, rank: String, talk: inout Negotiation.State, currency: Currency, about: Double,
                              state s: inout GameState) -> Negotiation.Response {
         Negotiation.respond(offer: offer, position: position(for: n, factor: factor), temperament: temperament(of: n), rank: rank, state: &talk,
                             week: s.week, step: currency.stepSize(about: about), random: &s.random)
     }
 
-    /// Make an offer. At or above what the person would settle for (hidden from the player) they accept; below it they counter, refuse an insult,
-    /// or, when their patience for this kind of post is gone, walk away. Original: `hireWorkerCore` (the answer is the shared `Negotiation`).
     public static func hire(_ personID: Int, into companyID: Int, monthlyWage offered: Double, state s: inout GameState, data: GameData,
                             terms: Terms = Terms(), fixedSalaryRoles: Set<String> = Hiring.fixedSalaryNorm) -> HireResult {
         guard let ci = s.companyIndex(companyID), let n0 = s.people[personID] else { return .refused }
         if n0.employerID != 0 { return .taken }
-        // No offer goes below the minimum pay of the company's country; a lower one is raised to it (pay is per full-time week).
         let world = World(state: s, data: data)
         let wage0 = max(offered, world.minimumWage(s.companies[ci]))
         if wage0 > offered { s.note("The offer to \(n0.name) was raised to the minimum wage of \(world.country(s.companies[ci]).name).", companyID: companyID) }
         let part = terms.isPartTime
         let (basis, _) = payBasis(n0, terms: terms, fixedSalaryRoles: fixedSalaryRoles)
-        // Terms that cannot be agreed (a percentage out of range, more hours than the person can work, a bad date) are refused with a reason, never cut silently.
         if termsProblem(person: n0, terms: terms, company: s.companies[ci], state: s, data: data) != nil { return .planRefused }
         let factor = talkFactor(person: n0, terms: terms, company: s.companies[ci], state: s, data: data)
         let reply = answer(personID: personID, employer: companyID, rank: "worker", offer: wage0, factor: factor,
@@ -295,19 +237,15 @@ public enum Hiring {
         case .accept: break
         }
         guard var n = s.people[personID] else { return .refused }
-        // A pay plan on commission: allowed for a job the data lets sell in this trade; someone who wants security may not take commission only.
         let plan: String? = (!part && (terms.payPlan == "mix" || terms.payPlan == "com") && PayPlans.eligible(role: n.role, trade: s.companies[ci].type, salesRoles: data.catalog.tables.salesRoles)) ? terms.payPlan : nil
         if plan == "com", n.num("sec") > 0.65, s.random.chance(0.6) { return .planRefused }
-        // Someone who needs security does not take a fixed-term job (see FixedTerm.wantsPermanent).
         var term = workingFixedTermWeeks.contains(terms.fixedTermWeeks) ? terms.fixedTermWeeks : 0
-        // A seasonal job that runs for a number of seasons ends with the last of them.
         var seasonEnd: Int? = nil
         if terms.seasonCount > 0, let months = terms.seasonMonths {
             guard let e = StaffTalks.seasonEnd(months: months, fromWeek: s.week, occurrences: terms.seasonCount) else { return .planRefused }
             seasonEnd = e; term = max(1, e - s.week)
         }
         if term > 0, FixedTerm.wantsPermanent(n) { return .planRefused }
-        // A first fixed term longer than the country's maximum is not offered (optional labour data; none by default).
         if term > 0, FixedTerm.renewalBlock(World(state: s, data: data).labour(s.companies[ci]), StaffMember(raw: [:]), weeks: term, now: s.week) != nil { return .planRefused }
         n.employerID = companyID
         s.people[personID] = n
@@ -321,7 +259,7 @@ public enum Hiring {
         if let plan {
             let rate = terms.commissionRate > 0 ? terms.commissionRate : (PayPlans.mode(plan)?.defaultRate ?? 0)
             m.set("pay", .object(["m": .string(plan), "rate": .number(rate)])); m.set("commEma", 0)
-            if plan == "com" { m.monthlyWage = 0 }   // commission only has no base
+            if plan == "com" { m.monthlyWage = 0 }
             if PayPlans.isExtra(role: m.role, trade: s.companies[ci].type, salesRoles: data.catalog.tables.salesRoles) { m.set("ppx", 1) }
         }
         if term > 0 { m.set("ft", s.week + term); m.set("ftl", term); m.set("fts", s.week) }
@@ -337,7 +275,6 @@ public enum Hiring {
         return .ok
     }
 
-    /// Roles where a fixed salary is the custom from the start. Original: `FIX_NORM`.
     public static let fixedSalaryNorm: Set<String> = ["dentist", "dentnurse", "vintner", "physio", "lawyer", "paralegal", "acct", "dev", "designer", "marketer",
                                                       "consult", "foreman", "engineer", "architect", "fishtech", "underw", "claims", "banker", "credit", "analyst", "propm"]
 }

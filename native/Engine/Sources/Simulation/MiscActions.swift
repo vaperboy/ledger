@@ -4,33 +4,21 @@ import Countries
 import Finance
 import Businesses
 
-/// Small player actions of the original that belong to none of the bigger systems: renaming, closing and winding up
-/// a company, and a few switches on a company.
-/// Original: features/company/rename_and_rebrand.js, features/people/owner_hours_clients_assistants.js (`clgo`, `reopen`),
-/// engine/core/api.js `windUp`, ui/company/money.js `ccheck`, ui/company/family.js `autostock`,
-/// features/sales/realistic_odds.js `inflset`.
 public extension GameEngine {
     enum RenameResult: Equatable, Sendable { case ok, tooShort, nameTaken, notEnoughCash, partOfChain, unknown }
     enum CloseResult: Equatable, Sendable { case ok, unknown, notOpen }
 
-    /// New name and signs for one company. Original: `renameCost`.
     func renameCost(companyID: Int) -> Double {
         guard let co = state.company(companyID) else { return 0 }
         let cur = context.currency(co.countryCode, state)
         return jsRound((cur.scaledPrice(2500) + cur.scaledPrice(15000) * co.size) / 500) * 500
     }
 
-    /// Cost for one store of a chain to rebrand. Original: `rebrandCost`.
     func rebrandCost(companyID: Int) -> Double {
         guard let co = state.company(companyID) else { return 0 }
         return jsRound(context.currency(co.countryCode, state).scaledPrice(40000) * co.size / 1000) * 1000
     }
 
-    private func nameIsTaken(_ n: String, except ids: Set<Int>) -> Bool {
-        state.companies.contains { $0.status.isLive && !ids.contains($0.id) && $0.name.lowercased() == n.lowercased() }
-    }
-
-    /// Original: `ACT.rn56go`. A third of those who knew the old name lose track of you.
     @discardableResult mutating func renameCompany(companyID: Int, to newName: String) -> RenameResult {
         let n = newName.trimmingCharacters(in: .whitespaces)
         var r = RenameResult.unknown
@@ -53,7 +41,6 @@ public extension GameEngine {
         return r
     }
 
-    /// Every store of the chain gets the new name; each pays its own signs. Original: `ACT.rb56go`.
     @discardableResult mutating func renameChain(chainID: Int, to newName: String) -> RenameResult {
         let n = newName.trimmingCharacters(in: .whitespaces)
         var r = RenameResult.unknown
@@ -86,7 +73,6 @@ public extension GameEngine {
         return r
     }
 
-    /// Close a company for some weeks; a rented space can be given up (three months' rent, deposit back). Original: `ACT.clgo`.
     @discardableResult mutating func closeCompany(companyID: Int, weeks: Int, giveUpRent: Bool = false, pauseSubscriptions: Bool = false) -> CloseResult {
         var r = CloseResult.unknown
         update { s, _, _ in
@@ -107,7 +93,6 @@ public extension GameEngine {
         return r
     }
 
-    /// Original: `ACT.reopen`.
     @discardableResult mutating func reopenCompany(companyID: Int) -> CloseResult {
         var r = CloseResult.unknown
         update { s, _, _ in
@@ -120,10 +105,9 @@ public extension GameEngine {
         return r
     }
 
-    /// What winding the company up would pay you: its assets fetch about 55%, debts and loans come first. Original: `windUp`.
     func windUpEstimate(companyID: Int) -> Double {
         guard let co = state.company(companyID), co.status.isLive else { return 0 }
-        if state.isBranch(co) { return 0 }   // closing a branch pays the chain, not you (branchClosurePlan)
+        if state.isBranch(co) { return 0 }
         let (rest, _) = Self.windUpFigures(co, state)
         return max(0, rest) * co.ownership / 100
     }
@@ -139,14 +123,12 @@ public extension GameEngine {
         return (cash - loans - bills, loans + bills)
     }
 
-    /// Everything sold at a discount, staff released, loans repaid as far as the money goes. Original: `ACT.winduo` / `windUp`.
     @discardableResult mutating func windUpCompany(companyID: Int) -> Bool {
-        // A branch is not wound up as a company: it is closed, and what is left goes to the chain.
         if isBranch(companyID: companyID) { if case .success = closeBranch(storeID: companyID) { return true }; return false }
         var done = false
         update { s, _, _ in
             guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return }
-            HeldMoney.settle(&s, companyID: companyID)   // the days of this week not yet released belong to the company being closed down
+            HeldMoney.settle(&s, companyID: companyID)
             let co = s.companies[i]
             let cash: Double = max(0, co.cash) + max(0, CompanyFigures.assets(co) - co.cash) * 0.55
             let ownLoans = s.loans.filter { $0.companyID == co.id }
@@ -186,21 +168,16 @@ public extension GameEngine {
         return done
     }
 
-    /// The personal guarantee on a company loan and whether the bank will talk about releasing it (it stays until the bank agrees).
     func guaranteeTerms(loanID: Int) -> LoanGuarantee.Terms? { LoanGuarantee.terms(state, loanID: loanID) }
 
-    /// Bank discussion: offer `extraMargin` (a yearly rate added to the loan's margin) for the release of the personal guarantee.
-    /// The bank accepts, counters, refuses or ends the talk (shared `Negotiation`).
     @discardableResult mutating func offerGuaranteeRelease(loanID: Int, extraMargin: Double) -> LoanGuarantee.Answer {
         var r = LoanGuarantee.Answer.notPossible("That loan no longer exists.")
         update { s, _, _ in r = LoanGuarantee.offer(&s, loanID: loanID, extraMargin: extraMargin) }
         return r
     }
 
-    /// Check customers' credit before selling on account (a switch). Original: `ACT.ccheck`.
     mutating func setCreditCheck(companyID: Int, on: Bool) { setFlag(companyID, "ccheck", on) }
 
-    /// Let prices follow inflation by themselves or hold them where you set them. Original: `ACT.inflset`.
     mutating func setInflationHold(companyID: Int, hold: Bool) {
         update { s, _, _ in
             guard let i = s.companyIndex(companyID) else { return }
@@ -209,34 +186,23 @@ public extension GameEngine {
         }
     }
 
-    // MARK: Staff: employment types, trial week, pay model, car
-
-    /// THE way to hire a candidate (every worker hire goes through here to `Hiring.hire`): checks the offer against the ask, lifts it to the minimum wage,
-    /// books the hire, makes the staff record and its paperwork, and answers `.ok`, `.taken` (has a job) or `.refused` (offer too low, or unknown person/company).
-    /// Terms: full time with a chosen pay basis (the default), part time (weekly hours), seasonal (months), own car (estate agents only). Original: `HIRE_HOURS`, `HIRE_SEAS`, `HIRE_BASIS`, `ACT.offer` + `carc`.
     @discardableResult
     mutating func hire(personID: Int, companyID: Int, monthlyWage: Double, terms: Hiring.Terms = Hiring.Terms()) -> Hiring.HireResult {
         var r = Hiring.HireResult.refused
-        if let co = state.company(companyID), Workplaces.hireBlock(co, role: state.people[personID]?.role, data: data) != nil { return .refused }   // no free place; `hireBlock(companyID:)` says why
+        if let co = state.company(companyID), Workplaces.hireBlock(co, role: state.people[personID]?.role, data: data) != nil { return .refused }
         update { s, data, _ in r = Hiring.hire(personID, into: companyID, monthlyWage: monthlyWage, state: &s, data: data, terms: terms) }
         return r
     }
-    /// The months of the year a seasonal hire would be for by default: the busy months of the trade.
     func busyMonths(companyID: Int) -> [Int] { state.company(companyID).map { StaffTalks.busyMonths($0, data: data) } ?? [] }
 
-    /// What the job normally pays here at full time: the employer's opening offer in a pay discussion, the same for everyone in the role.
     func marketWage(role: String, companyID: Int) -> Double { Hiring.marketWage(role: role, company: state.company(companyID), state: state, data: data) }
 
-    /// Pay for a trial week and see what the person can really do. Original: `ACT.trial`.
-    /// The observations from the simulated week (completed work, mistakes, pace, lateness, how much guidance they needed), nil if it could not be done.
     mutating func startTrialWeek(personID: Int, companyID: Int) -> [WorkLog.Observation]? {
         var r: [WorkLog.Observation]?
         update { s, data, _ in r = Hiring.trialWeek(personID, for: companyID, state: &s, data: data) }
         return r
     }
-    /// Roles that sell and can be paid by commission.
     var salesRoles: Set<String> { data.catalog.tables.salesRoles }
-    // MARK: Chains, complaints, premises, accountant, development
 
     @discardableResult mutating func lendWorker(from: Int, to: Int, role: String) -> Bool {
         var r = false
@@ -252,7 +218,6 @@ public extension GameEngine {
         update { s, d, _ in r = CompanySetup.giveUpPremises(&s, companyID: companyID, data: d) }
         return r
     }
-    /// The accountants on offer in the company's country: id, name, fee a month, rating (1 to 5), and whether it is the current one.
     func accountantChoices(companyID: Int) -> [(id: Int, name: String, fee: Double, rating: Double, current: Bool)] {
         guard let co = state.company(companyID) else { return [] }
         var tmp = state
@@ -271,12 +236,10 @@ public extension GameEngine {
         return r
     }
 
-    /// The product-expansion form's read: cost, weeks, odds, requirements and the cash left, nothing paid.
     func developmentPlan(companyID: Int, project: String) -> Development.Plan? {
         guard let co = state.company(companyID) else { return nil }
         return Development.plan(for: co, project: project, state: state, data: data)
     }
-    /// Cancel the running project; the unspent part of its cost returns to the company.
     @discardableResult
     mutating func cancelDevelopment(companyID: Int) -> Double? {
         var r: Double?
@@ -284,31 +247,23 @@ public extension GameEngine {
         return r
     }
 
-    // MARK: Goals
-
-    /// "yyyy-m-d" of a real date, the key of the daily goal.
     static func dayString(_ date: Date) -> String {
         let c = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: date)
         return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
     }
 
-    /// Today's goal with its streak (the streak grows the first time the goal is seen done).
     mutating func dailyGoal(now: Date = Date()) -> PlayerGoals.DailyGoal? {
         var r: PlayerGoals.DailyGoal?
         let cur = homeCurrency
         update { s, d, _ in r = PlayerGoals.dailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
         return r
     }
-    /// True when the player turned the daily mission off (it is optional).
     var dailyGoalsOff: Bool { PlayerGoals.dailyGoalsOff(state) }
     mutating func setDailyGoalsOff(_ off: Bool) { update { s, _, _ in PlayerGoals.setDailyGoalsOff(&s, off) } }
-    /// Celebrations earned and not yet shown (trophies, ambition milestones, finished ladder goals).
     var pendingCelebrations: [Celebration] { Celebrations.pending(state) }
-    /// The same waiting list as the popup needs it: id, title, detail, tier and art key.
     func pendingAwards() -> [AwardInfo] {
         Celebrations.pending(state).map { AwardInfo(id: String($0.id), title: $0.title, detail: $0.detail, tier: $0.tier, artKey: $0.art) }
     }
-    /// The player has seen them: hands the queue over and clears it.
     mutating func takeCelebrations() -> [Celebration] {
         var r: [Celebration] = []
         update { s, _, _ in r = Celebrations.take(&s) }

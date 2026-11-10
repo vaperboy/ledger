@@ -6,8 +6,6 @@ import Finance
 @testable import Investments
 @testable import Simulation
 
-/// Difficulty modes and the success-scaled threats: the mode is kept in the save and set once at the start, it moves the first-year
-/// protections and the event ramp, and the threats stay capped.
 final class DifficultyThreatTests: XCTestCase {
     func fresh(_ d: Difficulty = .classic) throws -> GameEngine {
         try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test Co",
@@ -56,7 +54,6 @@ final class DifficultyThreatTests: XCTestCase {
         XCTAssertLessThan(Difficulty.hard.badEventCapWeeks, Difficulty.classic.badEventCapWeeks)
     }
 
-    /// Every slide into a crash or a bear market is announced one to three weeks ahead.
     func testMarketDownturnsAreWarnedAhead() throws {
         for d in Difficulty.allCases {
             var s = try fresh(d).state

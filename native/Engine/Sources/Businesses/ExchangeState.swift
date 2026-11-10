@@ -1,28 +1,21 @@
 import Foundation
 import GameCore
 
-/// A share that trades on the exchange. Kinds: "com" (a raw material, priced by world supply and demand), "srv" (the World Bank and the World Index, priced by the server's market and always
-/// open to trade at the close), "own" (a holding of yours that went public) and "ext" (another player's listing, mirrored from the server).
 public struct ExchangeInstrument: Equatable, Identifiable, Sendable {
     public var id: String
     public var name: String
     public var kind: String
-    /// Shares in issue.
     public var shares: Int
-    /// Value per share as last reported (the price band hangs on it).
     public var nav: Double
     public var close: Double
     public var previousClose: Double
-    /// Game day number of the last close (-1: none yet).
     public var closeDay: Int
     public var listedDay: Int
     public var holdingID: Int
     public var volume: Int
-    /// Day of the last dividend declaration (-1: none).
     public var dividendDay: Int
     public var dividendPerShare: Double
     public var halted: Bool
-    /// Weekly-day closes, oldest first.
     public var history: [Double]
 
     public var isOwn: Bool { kind == "own" }
@@ -34,9 +27,7 @@ public struct ExchangeInstrument: Equatable, Identifiable, Sendable {
 public struct ExchangePosition: Equatable, Sendable {
     public var instrument: String
     public var shares: Int
-    /// What the shares cost in all, fees included (the basis for the gains tax).
     public var cost: Double
-    /// Game day number of the latest purchase (a dividend needs the share held from the day before).
     public var since: Int
 }
 
@@ -50,15 +41,12 @@ public struct ExchangeOpenOrder: Equatable, Identifiable, Sendable {
     public var day: Int
 }
 
-/// The player's side of the exchange, kept in `rest["xch"]`.
 public struct ExchangeBook: Equatable, Sendable {
     public var instruments: [String: ExchangeInstrument] = [:]
     public var positions: [String: ExchangePosition] = [:]
     public var orders: [ExchangeOpenOrder] = []
     public var nextSeq = 1
-    /// Game day number of the last day the exchange ran.
     public var lastRun = -1
-    /// Gains realised on the exchange (sales of shares you bought), for the trading board.
     public var realised = 0.0
 
     public init() {}
@@ -95,6 +83,5 @@ public struct ExchangeBook: Equatable, Sendable {
 
     public func openSells(_ instrument: String) -> Int { orders.filter { $0.instrument == instrument && $0.side == .sell }.reduce(0) { $0 + $1.shares } }
     public func openBuys(_ instrument: String) -> Int { orders.filter { $0.instrument == instrument && $0.side == .buy }.reduce(0) { $0 + $1.shares } }
-    /// Money promised to open buy orders (at their limits).
     public var committed: Double { orders.filter { $0.side == .buy }.reduce(0) { $0 + Double($1.shares) * $1.limit } }
 }

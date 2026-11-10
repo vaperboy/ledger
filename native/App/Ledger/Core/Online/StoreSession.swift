@@ -8,9 +8,6 @@ struct AuctionPurse {
     var format: (Int) -> String
 }
 
-/// The player's store state for the views: gold, box stock, cabinet and the auctions, kept up to date from the services.
-/// Shared, because the Season Pass hands out boxes and gold from outside the store screens. Cosmetics won or bought go to the
-/// wardrobe (`SeasonModel`), where the player picks what to wear.
 @MainActor @Observable
 final class StoreSession {
     static let shared = StoreSession()
@@ -18,14 +15,11 @@ final class StoreSession {
     private(set) var state = StoreState()
     private(set) var auctions: AuctionsSnapshot?
     private(set) var loaded = false
-    /// One plain line for the screen that started the last call.
     var problem: String?
-    /// What happened to the player's auctions since they last looked, one line each.
     private(set) var notes: [String] = []
     private(set) var pendingOpening: BoxOpening?
     @ObservationIgnored private var opening = false
 
-    /// Set by the game store: pays a box's cash prize (reference-economy amount, the opening's id) into the running game.
     @ObservationIgnored var moneyPrizeHandler: ((Int, String) -> Void)?
     @ObservationIgnored var purse: (() -> AuctionPurse?)?
     @ObservationIgnored var cashHandler: ((Int, String, String) -> Void)?
@@ -53,8 +47,6 @@ final class StoreSession {
     }
 
     private func message(_ error: Error) -> String { (error as? LocalizedError)?.errorDescription ?? "That did not work. Try again." }
-
-    // MARK: Gold and the store
 
     @discardableResult
     func buyPack(_ pack: GoldPack) async -> Bool {
@@ -114,7 +106,6 @@ final class StoreSession {
 
     func acknowledgeOpening() { pendingOpening = nil }
 
-    /// Boxes and gold from a claimed Season Pass reward.
     func receiveSeason(_ r: SeasonReward) {
         guard r.kind == .box || r.kind == .gold else { return }
         Task { state = await store.grantFromSeason(boxes: r.kind == .box ? r.amount : 0, gold: r.kind == .gold ? r.amount : 0) }
@@ -123,8 +114,6 @@ final class StoreSession {
     private func grantCollections(_ done: [ArtifactCollection]) {
         for c in done { SeasonModel.shared.grantOwned(c.rewardID) }
     }
-
-    // MARK: Auctions
 
     func refreshAuctions() async {
         guard let p = purse?() else { return }

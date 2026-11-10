@@ -3,13 +3,9 @@ import GameCore
 import Simulation
 import Businesses
 
-/// The Phone tab: a home screen of apps (time and date, a 4-column grid with red bubbles). Market and Store are apps here. Each app opens
-/// as a pushed full screen with its own `AppHeader` and a round back button to this home. The tab owns the navigation stack: apps and the
-/// companies they link to are pushed on it, so Back always returns to where the player came from.
 struct PhoneHome: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.tabBarClearance) private var clearance
-    /// The Phone stack lives in the store; opening an app from the grid pushes through it like every other link.
     private var path: PhonePath { PhonePath(store: store) }
 
     var body: some View {
@@ -50,7 +46,6 @@ struct PhoneHome: View {
         .accessibilityIdentifier("phone-home")
     }
 
-    /// Where the app's gate stands; everything is open when no game is loaded.
     private func gateState(_ app: PhoneApp) -> GateVisibility {
         guard let e = store.engine else { return GateVisibility.open }
         return app.visibility(e)
@@ -66,7 +61,6 @@ struct PhoneHome: View {
         }
     }
 
-    /// "Tuesday 2 February 2027": the game's date.
     private var dateLine: String {
         guard let e = store.engine else { return "" }
         let d = GameCalendar.date(week: e.state.week, dayOffset: e.state.day)
@@ -76,7 +70,6 @@ struct PhoneHome: View {
     }
 }
 
-/// What the Phone home's `path.append(.app(app))` calls become: a push through the store.
 @MainActor struct PhonePath {
     var store: GameStore
     func append(_ page: NavRoute) { store.setPhonePath(store.phonePath + [page]) }

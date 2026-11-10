@@ -4,8 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The reads behind the Company screens batch: standing words, the market-analyst gate for the share graph, development named for the
-/// trade, and the review data the Reviews app shows (your own and the rivals').
 final class CompanyBatchReadsTests: XCTestCase {
     func testAwarenessWordsFollowTheThresholds() {
         XCTAssertEqual(StandingWords.awareness(0), "Unknown")

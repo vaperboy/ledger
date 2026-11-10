@@ -5,9 +5,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// One open post on an entity's Management tab. It says what the post is, who hires into it (the boss above, with the authority the owner gave
-/// them: `HierarchyHiring`) and gives the owner their own way in: pay for a search and talk terms with a candidate in the one two-page hiring flow.
-/// The owner can always hire into any post, whatever the boss above is doing; the boss's own hires and requests reach the Inbox.
 struct OpenPostRow: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

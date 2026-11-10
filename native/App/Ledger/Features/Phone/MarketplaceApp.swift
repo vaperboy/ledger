@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Marketplace (Phone, warm teal): every used item for sale from private sellers. A grid with filters and a sort in a fixed header, a product
-/// page per listing and a price talk in a centred popup (`MarketplaceListing.swift`). The engine owns listings, sellers and prices.
 struct MarketplaceApp: View {
     private let P = OutsidePalette.marketplace
     @EnvironmentObject var store: GameStore
@@ -34,8 +32,6 @@ struct MarketplaceApp: View {
             .safeAreaInset(edge: .top, spacing: 0) { VStack(spacing: 0) { band; header } }
     }
 
-    // MARK: Chrome
-
     private var band: some View {
         ShopBand(title: "Marketplace", glyph: Glyph.marketplace, color: P.accent, onBack: { back() }, backLabel: openID == nil ? "Back to Phone" : "Back")
             .environment(\.outsidePalette, P)
@@ -45,7 +41,6 @@ struct MarketplaceApp: View {
         if openID != nil { openID = nil } else { dismiss() }
     }
 
-    /// The filters stay pinned under the bar while the listings scroll.
     @ViewBuilder private var header: some View {
         if openID == nil, let e = store.engine, let co = current(e) {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -66,7 +61,6 @@ struct MarketplaceApp: View {
         }
     }
 
-    /// A used car dealer buys cars only with a free lot space: the spaces are shown above the listings.
     @ViewBuilder private func lotLine(_ e: GameEngine, _ co: Company) -> some View {
         if co.type == UsedCarDealer.tradeID, let lot = e.usedCarLot(companyID: co.id) {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
@@ -97,8 +91,6 @@ struct MarketplaceApp: View {
         .accessibilityIdentifier("mk-sort")
     }
 
-    // MARK: Data
-
     private func shoppers(_ e: GameEngine) -> [Company] {
         e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }
     }
@@ -128,8 +120,6 @@ struct MarketplaceApp: View {
             }
         }
     }
-
-    // MARK: Pages
 
     @ViewBuilder private var page: some View {
         if let e = store.engine, let co = current(e) {
@@ -181,7 +171,6 @@ struct MarketplaceApp: View {
     }
 }
 
-/// One listing in the grid, classifieds style: the photo, the price in bold, the title and the city.
 struct MarketplaceTile: View {
     @Environment(\.outsidePalette) private var P
     var listing: MarketListing

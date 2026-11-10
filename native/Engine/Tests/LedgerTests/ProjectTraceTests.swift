@@ -4,7 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// LEDGER_PTRACE=<trade>: what a project company does, quarter by quarter (for balancing).
 final class ProjectTraceTests: XCTestCase {
     func testTrace() throws {
         guard let trade = ProcessInfo.processInfo.environment["LEDGER_PTRACE"] else { return }

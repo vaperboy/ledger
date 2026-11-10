@@ -9,7 +9,6 @@ public enum BoxRarity: String, Codable, CaseIterable, Sendable, Comparable {
 }
 
 public enum BoxKind: String, Codable, CaseIterable, Sendable, Identifiable {
-    /// Given by the Season Pass; never sold.
     case free
     case cabinet
     case grand
@@ -21,7 +20,6 @@ public enum BoxKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .grand: return "Grand box"
         }
     }
-    /// Gold price; 0 for the free box.
     public var price: Int {
         switch self {
         case .free: return 0
@@ -32,13 +30,11 @@ public enum BoxKind: String, Codable, CaseIterable, Sendable, Identifiable {
     public var isPaid: Bool { price > 0 }
 }
 
-/// What a row of the odds table hands out. Gold is a small prize: never more than the box costs.
 public enum BoxPrizeClass: Equatable, Sendable {
     case cosmetic, artifact, gold(Int)
     case money(Int)
 }
 
-/// One line of a box's published odds. `weight` is in basis points (out of 10,000).
 public struct BoxRow: Equatable, Sendable {
     public var rarity: BoxRarity
     public var prize: BoxPrizeClass
@@ -46,7 +42,6 @@ public struct BoxRow: Equatable, Sendable {
     public var percent: Double { Double(weight) / 100 }
 }
 
-/// What came out of a box.
 public struct BoxResult: Equatable, Sendable {
     public enum Content: Equatable, Sendable {
         case cosmetic(String)
@@ -56,7 +51,6 @@ public struct BoxResult: Equatable, Sendable {
     }
     public var rarity: BoxRarity
     public var content: Content
-    /// True when the guarantee decided this box (a rare or better was owed).
     public var guaranteed: Bool
 }
 
@@ -78,16 +72,13 @@ public struct BoxHaul: Equatable, Sendable {
     }
 }
 
-/// The count towards the guaranteed rare. Applies to paid boxes: after `threshold - 1` boxes without a rare or better, the next one has one.
 public struct BoxPity: Codable, Equatable, Sendable {
     public static let threshold = 10
-    /// Paid boxes opened since the last rare or better.
     public var sinceRare = 0
     public init(sinceRare: Int = 0) { self.sinceRare = sinceRare }
 
     public var nextIsGuaranteed: Bool { sinceRare >= Self.threshold - 1 }
 
-    /// The count in words.
     public var text: String {
         if nextIsGuaranteed { return "Your next paid box is guaranteed to hold a rare or better item." }
         let left: Int = Self.threshold - sinceRare
@@ -99,10 +90,8 @@ public struct BoxPity: Codable, Equatable, Sendable {
     }
 }
 
-/// The published odds of every box, and the rules that keep paid boxes from paying out gold. Pure data and arithmetic.
 public enum BoxOdds {
     public static let totalWeight = 10_000
-    /// Chance (basis points) that a gold prize from a free box is doubled: 1 in 100.
     public static let doubleGoldChance = 100
 
     private static func r(_ rarity: BoxRarity, _ prize: BoxPrizeClass, _ w: Int) -> BoxRow { BoxRow(rarity: rarity, prize: prize, weight: w) }
@@ -127,14 +116,12 @@ public enum BoxOdds {
         }
     }
 
-    /// Chance of each rarity in percent (0...100), from the table.
     public static func rarityPercent(_ kind: BoxKind) -> [(rarity: BoxRarity, percent: Double)] {
         BoxRarity.allCases.map { (rar: BoxRarity) in
             (rar, Double(rows(kind).filter { $0.rarity == rar }.reduce(0) { $0 + $1.weight }) / 100)
         }
     }
 
-    /// Average gold a box hands out, counting the rare doubling of a free box's gold.
     public static func expectedGold(_ kind: BoxKind) -> Double {
         let boost: Double = kind == .free ? 1 + Double(doubleGoldChance) / Double(totalWeight) : 1
         return rows(kind).reduce(0.0) { sum, row in
@@ -143,7 +130,6 @@ public enum BoxOdds {
         }
     }
 
-    /// The biggest gold prize a box can hold, doubled where doubling applies.
     public static func largestGold(_ kind: BoxKind) -> Int {
         let top: Int = rows(kind).reduce(0) { m, row in
             if case .gold(let g) = row.prize { return max(m, g) }
@@ -170,7 +156,6 @@ public enum BoxOdds {
         return largestGold(kind) <= 50 && moneyPercent(kind) <= 2
     }
 
-    /// The disclosure lines for a box: the prize and its chance, e.g. "Rare artifact" and "10.00%".
     public static func disclosure(_ kind: BoxKind) -> [(title: String, percent: Double)] {
         rows(kind).map { row in
             let what: String
@@ -184,10 +169,6 @@ public enum BoxOdds {
         }
     }
 
-    // MARK: Opening
-
-    /// Opens a box. `seed` makes the result repeatable (the real server would roll it; the stand-in uses a fresh seed each time).
-    /// The pity count moves only for paid boxes. Cosmetics the player owns are not offered again: that prize becomes an artifact of the same rarity.
     public static func open(_ kind: BoxKind, pity: BoxPity, ownedCosmetics: Set<String>, seed: String) -> (result: BoxResult, pity: BoxPity) {
         var rng = HashedRandom("box|" + seed)
         let guaranteed: Bool = kind.isPaid && pity.nextIsGuaranteed

@@ -6,7 +6,6 @@ import Finance
 import Events
 import Simulation
 
-/// Commit to a fund: pick the size, read the engine's check (net worth it needs against yours, the most you may commit), then confirm.
 struct FundCommitSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -71,8 +70,6 @@ struct FundCommitSheet: View {
     }
 }
 
-/// Sell a fund stake on the secondary market. The engine quotes the price; the owner may ask for 0.5 to 1.4 times that, and the buyer takes
-/// it, counters, or declines with a reason. Everything the fund still pays out is given up.
 struct FundSellSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss

@@ -3,8 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// Last-seen markers of the Phone apps, kept in UserDefaults. `ints` holds message ids per app ("m.bank") and the highest market event id
-/// ("market"); `texts` holds the newest news line ("news") and the weather warnings ("weather").
 struct UpdateMarks: Codable, Equatable {
     var ints: [String: Int] = [:]
     var texts: [String: String] = [:]
@@ -19,11 +17,9 @@ struct UpdateMarks: Codable, Equatable {
     }
 }
 
-/// The apps whose updates are told by messages, and how a message finds its app.
 enum UpdateFeed {
     static let messageApps: [PhoneApp] = [.inbox, .bank, .market, .news, .weather, .airStay, .techPro, .atlas, .marketplace]
 
-    /// The app a message belongs to, from who sent it. Anything unknown stays in the Inbox.
     static func app(of m: Message) -> PhoneApp {
         let f: String = m.from.lowercased()
         func has(_ words: [String]) -> Bool { words.contains { (w: String) -> Bool in f.contains(w) } }
@@ -41,7 +37,6 @@ enum UpdateFeed {
 
     static func maxMessageID(_ e: GameEngine) -> Int { e.state.inbox.map { (m: Message) -> Int in m.id }.max() ?? 0 }
     static func maxMarketID(_ e: GameEngine) -> Int { e.marketEvents(limit: 1).first?.id ?? 0 }
-    /// Listings posted after the marker (the day of the newest listing seen), over every live company.
     static func freshListings(_ e: GameEngine, marks: UpdateMarks) -> Int {
         guard let seen = marks.ints["marketplace"] else { return 0 }
         return MarketplaceBridge.newestDay(e, after: seen).count
@@ -50,7 +45,6 @@ enum UpdateFeed {
     static func newsSignature(_ e: GameEngine) -> String { e.news.first.map { (n: NewsItem) -> String in newsKey(n) } ?? "" }
     static func weatherSignature(_ e: GameEngine) -> String { e.bigWeatherWarnings().map { (w: WeatherEvents.BigWarning) -> String in w.title }.joined(separator: "|") }
 
-    /// News lines newer than the marker (newest first; a marker that is gone counts the list, at most 9).
     static func freshNews(_ e: GameEngine, marks: UpdateMarks) -> [NewsItem] {
         let all: [NewsItem] = e.news
         guard let sig = marks.texts["news"] else { return [] }
@@ -58,7 +52,6 @@ enum UpdateFeed {
         return Array(all.prefix(idx))
     }
 
-    /// A notice the owner should hear about: addressed to the owner, or to a desk with nobody handling it.
     static func ownerRelevant(_ m: Message) -> Bool { m.isOwnerAddressed || m.handledBy.isEmpty }
 
     static func freshMessages(_ e: GameEngine, _ app: PhoneApp, marks: UpdateMarks) -> [Message] {
@@ -71,7 +64,6 @@ enum UpdateFeed {
         return e.marketEvents(limit: 30).filter { (m: MarketEvent) -> Bool in m.id > seen }
     }
 
-    /// The badge of one app against a set of markers; never negative.
     @MainActor static func count(_ e: GameEngine, _ app: PhoneApp, marks: UpdateMarks) -> Int {
         switch app {
         case .inbox:
@@ -97,14 +89,11 @@ enum UpdateFeed {
 }
 
 extension GameStore {
-    /// The update count behind an app's red badge: new since the app was last opened (Inbox: unread and open decisions).
     func appBadge(_ app: PhoneApp) -> Int {
         guard let e = engine else { return 0 }
         return max(0, UpdateFeed.count(e, app, marks: seenMarks))
     }
 
-    /// Every launcher app with a badge above zero.
-    /// Kept until the engine or `seenMarks` changes (the tab bar, Home and the Phone read it on every render).
     var phoneBadges: [PhoneApp: Int] {
         memo("badges") { (_: GameEngine) -> [PhoneApp: Int] in
             var out: [PhoneApp: Int] = [:]
@@ -116,7 +105,6 @@ extension GameStore {
         } ?? [:]
     }
 
-    /// The number on the Phone tab: every badge added up.
     var waitingCount: Int { phoneBadges.values.reduce(0, +) }
 
     private func fill(_ m: inout UpdateMarks, _ e: GameEngine) {
@@ -146,7 +134,6 @@ extension GameStore {
         }
     }
 
-    /// Seeds missing (or stale, from another game) markers to "now", so old items never replay as updates.
     func seedUpdateMarks() {
         guard let e = engine else { return }
         var s: UpdateMarks = seenMarks
@@ -154,7 +141,6 @@ extension GameStore {
         if s != seenMarks { seenMarks = s; s.save("seen") }
     }
 
-    /// The player opened the app: everything up to now counts as seen.
     func markSeen(_ app: PhoneApp) {
         guard let e = engine else { return }
         var s: UpdateMarks = seenMarks

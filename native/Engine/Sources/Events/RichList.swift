@@ -4,8 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// The rich list of the home country and the yearly business awards.
-/// Original: features/world/rich_list.js (round 57) and the awards in features/player/goals_and_awards.js (round 56).
 public enum RichList {
     public struct Person: Equatable, Identifiable {
         public var rank: Int
@@ -20,7 +18,6 @@ public enum RichList {
         public var previous: Int?
         public var best: Int?
         public var netWorth: Double
-        /// Top ten, or the rows around you, or the way in.
         public var top: [Person]
         public var around: [Person]
         public var hundredth: Double
@@ -29,12 +26,10 @@ public enum RichList {
     static let exponent = 0.75
     static let sources = ["shipping", "property", "retail", "oil and gas", "software", "banking", "fish farming", "hotels", "food", "media", "industry", "inheritance", "investments", "telecoms", "construction"]
 
-    /// Wealth of number one: it grows with the size of the economy. Original: `top1`.
     static func topFortune(_ country: Country, _ currency: Currency) -> Double {
         currency.scaledPrice(120e9) * pow(max(0.5, country.populationMillions / 5.5), 0.8) * max(0.4, country.wageLevel)
     }
 
-    /// The top 100 of a country: the same people every time for this game. Original: `people`.
     public static func people(_ s: GameState, country: Country, currency: Currency) -> [Person] {
         let w1 = topFortune(country, currency)
         var list: [Person] = []
@@ -49,12 +44,11 @@ public enum RichList {
         return list
     }
 
-    /// Your place: in the top 100, or estimated from the curve below it. Original: `rankOf`.
     public static func rank(of wealth: Double, in list: [Person], topFortune w1: Double) -> Int? {
         if let i = list.firstIndex(where: { wealth >= $0.wealth }) { return i + 1 }
         if wealth <= 0 { return nil }
         let est = pow(w1 / wealth, 1 / exponent).rounded()
-        return max(101, est.isFinite ? Int(min(est, Double(1 << 40))) : 1 << 40)   // a net worth of a few cents would overflow Int
+        return max(101, est.isFinite ? Int(min(est, Double(1 << 40))) : 1 << 40)
     }
 
     public static func standing(_ s: GameState, data: GameData, context fc: FinanceContext) -> Standing {
@@ -79,7 +73,6 @@ public enum RichList {
                         top: Array(all.prefix(10)), around: around, hundredth: list[99].wealth)
     }
 
-    /// Month end: remember the place, and tell the big moments. Original: 'the rich list' step.
     static func monthly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         guard GameCalendar.isMonthEnd(week: s.week) else { return }
         let st = standing(s, data: data, context: fc)
@@ -100,7 +93,6 @@ public enum RichList {
     }
 }
 
-/// The business awards, held at every year end once you have been in business for half a year.
 public enum Awards {
     public static let categories: [(id: String, name: String)] = [
         ("boty", "Business of the year"), ("emp", "Employer of the year"), ("rated", "Best rated business"),
@@ -123,7 +115,6 @@ public enum Awards {
 
     static func monthlyRevenue(_ co: Company) -> Double { co.lastWeekRevenue }
 
-    /// Year end: decided by where you rank, your staff's mood, your reputation and your growth. Original: `judge`.
     static func yearly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         guard GameCalendar.isYearEnd(week: s.week) else { return }
         let live = s.companies.filter { $0.status == .open && $0.type != "hold" }
@@ -134,7 +125,6 @@ public enum Awards {
         let st = RichList.standing(s, data: data, context: fc)
         let cur = fc.homeCurrency(s), country = fc.homeCountry(s)
         let nw = st.netWorth
-        // Where the companies rank in the country by sales and by growth (the list of the biggest companies), not the rich list.
         let rk = CompanyRanking.yourRank(s, data: data, scope: .country, metric: .revenue)?.rank ?? 1_000_000
         let growRank = CompanyRanking.yourRank(s, data: data, scope: .country, metric: .growth)?.rank ?? 1_000_000
         func otherName() -> String {
@@ -179,7 +169,6 @@ public enum Awards {
         s.addMessage(from: "Business awards", title: "Business awards \(year)", body: n > 0 ? "You took home \(n) \(n == 1 ? "award" : "awards")." : "No award this year. The room still knows your name.", tone: n > 0 ? "good" : "n")
     }
 
-    /// Everything that happens once a week for trophies, awards, the rich list and company sales.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         CompanySale.weekly(&s, data: data, context: fc)
         RivalBids.weekly(&s, data: data, context: fc)

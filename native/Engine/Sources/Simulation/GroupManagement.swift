@@ -3,17 +3,12 @@ import GameCore
 import Employees
 import Businesses
 
-/// Who manages whom, for the Group screen. For every company: who runs it day to day (the store manager, or you), and the people above that
-/// person in the delegation chain of `ManagerModel.decisionChain` (regional manager, chain manager, chain CEO or managing director, group
-/// managing director), each with the authority they have been given. Staff are not listed: they report to the manager of their company,
-/// and the Team tab and the company's People section show them. Nothing here is stored; it reads the same records as the Team tab.
 public struct GroupManagement: Sendable {
     public struct Rung: Identifiable, Sendable {
         public var id: String
         public var personID: Int
         public var title: String
         public var name: String
-        /// 0 asks you, 1 decides within your limits, 2 decides on their own.
         public var authority: Int
         public var authorityText: String
     }
@@ -22,26 +17,19 @@ public struct GroupManagement: Sendable {
         public var id: Int
         public var name: String
         public var isHolding: Bool
-        /// The chain or holding it belongs to; nil for a company that stands alone.
         public var groupName: String?
         public var isChain: Bool
-        /// Who runs it day to day; nil means you do.
         public var runner: Rung?
-        /// Who stands above the runner, nearest first. The last rung answers to you.
         public var above: [Rung]
         public var staff: Int
-        /// The one who decides first when something needs a decision: the runner, or the nearest boss, or you.
         public var firstToDecide: String { runner?.name ?? above.first?.name ?? "You" }
     }
 
     public var lines: [Line]
     public var groupOfficeEstablished: Bool
 
-    /// Companies nobody runs for you.
     public var runByYou: [Line] { lines.filter { $0.runner == nil && $0.above.isEmpty && !$0.isHolding } }
-    /// Companies with a manager (or a boss) between you and the staff.
     public var delegated: [Line] { lines.filter { $0.runner != nil || !$0.above.isEmpty } }
-    /// Distinct people in management posts across the group (runners and bosses).
     public var managerCount: Int {
         var seen = Set<Int>()
         for l in lines { if let r = l.runner { seen.insert(r.personID) }; for a in l.above { seen.insert(a.personID) } }

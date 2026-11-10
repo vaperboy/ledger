@@ -5,9 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// The three supplier gaps: the chain-wide supplier rule, payment terms with late-payment consequences, and negotiation of supplier deals.
 final class SupplierTermsTests: XCTestCase {
-    // MARK: Helpers
 
     private func chainOfCafes(_ e: inout GameEngine, stores: Int) throws -> (chain: Int, ids: [Int]) {
         let first = ChainsTests.start(&e, "cafe")
@@ -28,7 +26,6 @@ final class SupplierTermsTests: XCTestCase {
         return try XCTUnwrap(goods.options.first { $0.vendorID != nil && !$0.isCurrent }?.vendorID)
     }
 
-    /// Each company's paperwork clears and its model runs on its own weekday: play on until every one is open and the buyer has sold for a week.
     private func playUntilTrading(_ e: inout GameEngine, buyer: Int, _ others: Int...) {
         var extra = 0
         while extra < 20 * 7, !([buyer] + others).allSatisfy({ e.state.company($0)?.status == .open }) || (e.state.company(buyer)?.lastWeekRevenue ?? 0) <= 0 {
@@ -39,8 +36,6 @@ final class SupplierTermsTests: XCTestCase {
     private func setCash(_ e: inout GameEngine, _ id: Int, to v: Double) {
         e.update { s, _, _ in Ledger.set(&s, .company(id), to: v) }
     }
-
-    // MARK: 1. Chain-wide supplier rule
 
     func testChainRuleSwitchesEveryStoreLocksThemAndReleases() throws {
         var e = try ChainsTests.engine()
@@ -54,12 +49,10 @@ final class SupplierTermsTests: XCTestCase {
         XCTAssertEqual(applied.exceptions, 0, "\(applied.lines)")
         for id in ids { XCTAssertEqual(e.currentGoodsSupplier(companyID: id)?.id, vendor) }
         XCTAssertEqual(e.chainSupplierRules(chainID: chain).first?.providerName.isEmpty, false)
-        // mandatory: a store cannot switch on its own while the rule stands
         let before = ids[1]
         XCTAssertEqual(e.switchSupplier(companyID: before, input: "goods", to: .goodsVendor("auto")), .governed)
         XCTAssertEqual(e.supplierInputs(companyID: before).first { $0.id == "goods" }?.governedBy != nil, true)
         XCTAssertEqual(e.negotiateSupplier(companyID: before, input: "goods", vendorID: vendor, ask: 0.01), .notAllowed)
-        // "each store decides" releases it
         e.releaseChainSupplier(chainID: chain, input: "goods")
         XCTAssertTrue(e.chainSupplierRules(chainID: chain).isEmpty)
         XCTAssertNil(e.state.rest["chains"]?.array.first?["rules"]["sup"].object.keys.first, "no key left behind")
@@ -78,11 +71,9 @@ final class SupplierTermsTests: XCTestCase {
         XCTAssertEqual(e.currentGoodsSupplier(companyID: ids[0])?.id, vendor)
         XCTAssertNotEqual(e.state.company(ids[2])?.value("src")["v"].string, vendor, "the franchised unit keeps deciding for itself")
         XCTAssertEqual(e.supplierInputs(companyID: ids[2]).first { $0.id == "goods" }?.governedBy, nil)
-        // a store joining later follows the rule
         let late = ChainsTests.start(&e, "cafe")
         e.joinChain(chainID: chain, companyID: late, rename: false)
         XCTAssertEqual(e.currentGoodsSupplier(companyID: late)?.id, vendor)
-        // a company outside the chain (a holding's subsidiary, an independent) is never touched
         let other = ChainsTests.start(&e, "cafe")
         XCTAssertNotEqual(e.state.company(other)?.value("src")["v"].string, vendor)
         XCTAssertEqual(e.switchSupplier(companyID: other, input: "goods", to: .goodsVendor("auto")), .ok)
@@ -98,7 +89,6 @@ final class SupplierTermsTests: XCTestCase {
         e.joinChain(chainID: chain, companyID: second, rename: false)
         let cleaning = ChainsTests.start(&e, "cleaning")
         ChainsTests.play(&e, days: 10 * 7)
-        // the own cleaner has spare capacity now
         e.update { s, _, _ in
             let i = s.companyIndex(cleaning)!
             s.companies[i].set("lastW", .object(["units": 10, "rev": 1000, "cogs": 100, "D": 100, "cap": 500, "util": 0.1]))
@@ -111,7 +101,6 @@ final class SupplierTermsTests: XCTestCase {
         XCTAssertEqual(plan.exceptions, 0, "\(plan.lines)")
         XCTAssertEqual(e.supplyLink(buyer: first, kind: "clean")?.supplierID, cleaning)
         XCTAssertEqual(e.supplyLink(buyer: second, kind: "clean")?.supplierID, cleaning)
-        // a third store appears while the cleaner is full: it keeps its choice and is reported, the others stay
         e.releaseChainSupplier(chainID: chain, input: "clean")
         e.update { s, _, _ in
             s.rest["l27"] = .array([])
@@ -123,14 +112,11 @@ final class SupplierTermsTests: XCTestCase {
         XCTAssertTrue(plan.lines.allSatisfy { $0.reason?.contains("spare capacity") ?? false })
         XCTAssertNil(e.supplyLink(buyer: first, kind: "clean"))
         XCTAssertTrue(e.chainSupplierRules(chainID: chain).first?.plan.exceptions == 2, "the rule stands and shows who is outside it")
-        // it is retried when capacity frees up
         e.update { s, _, _ in s.companies[s.companyIndex(cleaning)!].set("lastW", .object(["units": 10, "rev": 1000, "cogs": 100, "D": 100, "cap": 500, "util": 0.1])) }
         plan = e.setChainSupplier(chainID: chain, input: "clean", to: rule)
         XCTAssertEqual(plan.exceptions, 0)
         XCTAssertEqual(e.chainSupplierChoices(chainID: chain, input: "clean").first { $0.change == rule }?.using, 2)
     }
-
-    // MARK: 2. Payment terms
 
     func testOwnCompanyInvoiceIsPayableAndReceivableThenSettles() throws {
         var e = try ChainsTests.engine()
@@ -149,12 +135,10 @@ final class SupplierTermsTests: XCTestCase {
         let recv = e.state.company(cleaning)?.receivables.filter { $0.int("ic") != 0 }.reduce(0) { $0 + $1.amount } ?? 0
         XCTAssertEqual(recv, owed, accuracy: 1, "the supplier holds exactly what the buyer owes")
         XCTAssertEqual(open.first?.providerName, e.state.company(cleaning)?.name)
-        // it falls due
         let rows = e.financeOverview(companyID: hotel).upcoming.filter { $0.title.hasPrefix("Invoice") }
         XCTAssertFalse(rows.isEmpty)
         XCTAssertEqual(rows.reduce(0) { $0 + $1.amount }, owed, accuracy: 1)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        // and settles: cash moves from the buyer to the supplier and the open amount stays about five weeks of supply, not growing
         ChainsTests.play(&e, days: 12 * 7)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
         let later = e.supplierInvoices(companyID: hotel)
@@ -162,7 +146,6 @@ final class SupplierTermsTests: XCTestCase {
         XCTAssertLessThanOrEqual(later.count, 7)
         XCTAssertEqual(e.state.company(hotel)?.payables["inv"] ?? 0, later.reduce(0) { $0 + $1.amount }, accuracy: 1)
         XCTAssertTrue(later.allSatisfy { $0.lateWeeks == 0 })
-        // back to weekly settlement: no new invoices
         XCTAssertTrue(e.setSupplyPaymentTerms(companyID: hotel, input: "clean", term: nil))
         XCTAssertNil(e.supplyLink(buyer: hotel, kind: "clean")?.termsID)
     }
@@ -180,7 +163,7 @@ final class SupplierTermsTests: XCTestCase {
         let intBuyer0 = e.state.company(hotel)?.books.year["int"] ?? 0
         let intSupplier0 = e.state.company(cleaning)?.books.year["int"] ?? 0
         for _ in 0..<(4 * 7) {
-            setCash(&e, hotel, to: -50_000_000_000)   // far below any overdraft room
+            setCash(&e, hotel, to: -50_000_000_000)
             ChainsTests.play(&e, days: 1)
         }
         let late = e.supplierInvoices(companyID: hotel).filter { $0.lateWeeks > 0 }
@@ -191,7 +174,6 @@ final class SupplierTermsTests: XCTestCase {
         XCTAssertEqual(e.state.company(hotel)?.payables["inv"] ?? 0, e.supplierInvoices(companyID: hotel).reduce(0) { $0 + $1.amount }, accuracy: 1)
         XCTAssertEqual(e.state.company(cleaning)?.receivables.filter { $0.int("ic") != 0 }.reduce(0) { $0 + $1.amount } ?? 0,
                        e.supplierInvoices(companyID: hotel).reduce(0) { $0 + $1.amount }, accuracy: 1)
-        // money back: everything overdue is paid, oldest first, and the debt disappears
         setCash(&e, hotel, to: 50_000_000_000)
         ChainsTests.play(&e, days: 2 * 7)
         XCTAssertTrue(e.supplierInvoices(companyID: hotel).allSatisfy { $0.lateWeeks == 0 })
@@ -200,24 +182,21 @@ final class SupplierTermsTests: XCTestCase {
 
     func testOutsideSupplierTermsLateFeeRelationshipDealAndCutOff() throws {
         var e = try ChainsTests.engine()
-        e.update { s, _, _ in s.week = max(s.week, 30) }   // suppliers cut a buyer off only from week 27 (balance.json firstYear)
+        e.update { s, _, _ in s.week = max(s.week, 30) }
         let cafe = ChainsTests.start(&e, "cafe")
         ChainsTests.play(&e, days: 6 * 7)
         let vendor = try goodsVendorID(e, cafe)
         XCTAssertEqual(e.switchSupplier(companyID: cafe, input: "goods", to: .goodsVendor(vendor)), .ok)
-        // a stranger gives no 60 days
         XCTAssertFalse(e.setGoodsPaymentTerms(companyID: cafe, term: "net60"))
         e.update { s, _, _ in Suppliers.bumpPublic(&s, vendor, by: 70) }
         let rel0 = Suppliers.relationship(e.state, vendor)
         XCTAssertTrue(e.setGoodsPaymentTerms(companyID: cafe, term: "net30"))
-        // a negotiated price is lost when payment is late
         e.update { s, _, _ in s.companies[s.companyIndex(cafe)!].set("sdl", .object(["goods": .object(["v": .string(vendor), "d": 0.02, "w": .number(Double(s.week))])])) }
         ChainsTests.play(&e, days: 3 * 7)
         XCTAssertFalse(e.supplierInvoices(companyID: cafe).isEmpty)
         XCTAssertEqual(e.state.company(cafe)?.payables["inv"] ?? 0, e.supplierInvoices(companyID: cafe).reduce(0) { $0 + $1.amount }, accuracy: 1)
         let rows = e.financeOverview(companyID: cafe).upcoming.filter { $0.title.hasPrefix("Invoice") }
         XCTAssertFalse(rows.isEmpty, "outside invoices show in what falls due")
-        // stop paying: invoices go late, the supplier cools, the deal goes, then suppliers want cash, then stop delivering
         var levels: [Int] = []
         for _ in 0..<(12 * 7) {
             setCash(&e, cafe, to: -50_000_000_000)
@@ -231,7 +210,6 @@ final class SupplierTermsTests: XCTestCase {
         XCTAssertEqual(levels.max(), 2)
         XCTAssertTrue(e.state.inbox.contains { $0.title.contains("Late payment:") })
         XCTAssertTrue(e.state.inbox.contains { $0.title.hasPrefix("Suppliers stop delivering") || $0.title.hasPrefix("Suppliers want cash") })
-        // the terms lapse when the relationship no longer carries them
         e.update { s, _, _ in
             var vr = s.rest["vr"]!; vr[vendor]["r"] = 10; s.rest["vr"] = vr
         }
@@ -270,28 +248,21 @@ final class SupplierTermsTests: XCTestCase {
         XCTAssertGreaterThan(account.totalPaid, 0)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
         _ = cash0
-        // some of the customer's invoices come in late (stranger: the highest chance); the company is told and earns the late interest
         let lateOnes = (co.value("accts").array.first?["lc"].double ?? 0) + (co.value("accts").array.first?["lw"].double ?? 0)
         let anyLate = lateOnes > 0 || theirs.contains { $0.int("ld") > 0 }
         XCTAssertTrue(anyLate, "a new customer paid at least once late in 20 weeks")
     }
-
-    // MARK: 3. Negotiation
 
     func testNegotiationAcceptCounterRefuseAndWalkAwayWithRelationshipEffect() throws {
         var e = try ChainsTests.engine()
         let cafe = ChainsTests.start(&e, "cafe")
         ChainsTests.play(&e, days: 4 * 7)
         let vendor = try goodsVendorID(e, cafe)
-        // taking the list terms needs no haggling
         XCTAssertEqual(e.negotiateSupplier(companyID: cafe, input: "goods", vendorID: vendor, ask: 0), .agreed(extra: 0))
         XCTAssertEqual(e.currentGoodsSupplier(companyID: cafe)?.id, vendor)
-        // an own company or a customer is not negotiated
         XCTAssertEqual({ if case .notNeeded = e.negotiateSupplier(companyID: cafe, input: "clean", vendorID: vendor, ask: 0.02) { return true } else { return false } }(), true)
         XCTAssertEqual(e.negotiateSupplier(companyID: cafe, input: "goods", vendorID: "V-XX-0", ask: 0.01), .notAllowed)
-        // far too much: an insult, no figure; the round is used
         XCTAssertEqual(e.negotiateSupplier(companyID: cafe, input: "goods", vendorID: vendor, ask: 0.9), .refused)
-        // a modest ask against a stranger: a counter (or an accept if the supplier has the room), never an insult
         var gotCounter: Negotiation.Counter?
         var rounds = 0
         var final: SupplyDeals.Talk = .notAllowed
@@ -308,7 +279,6 @@ final class SupplierTermsTests: XCTestCase {
         XCTAssertLessThanOrEqual(Suppliers.relationship(e.state, vendor), relBefore)
         XCTAssertEqual(e.negotiateSupplier(companyID: cafe, input: "goods", vendorID: vendor, ask: 0.01), .cooling(until: until))
         XCTAssertEqual(e.supplierInputs(companyID: cafe).first { $0.id == "goods" }?.options.first { $0.vendorID == vendor }?.coolingUntil, until)
-        // after the cooling-off, accepting the supplier's counter works and gives the deal
         ChainsTests.play(&e, days: 7 * 7)
         var accepted: SupplyDeals.Talk = .notAllowed
         if case .countered(let c) = e.negotiateSupplier(companyID: cafe, input: "goods", vendorID: vendor, ask: 0.012) {
@@ -329,7 +299,6 @@ final class SupplierTermsTests: XCTestCase {
             ChainsTests.play(&e, days: 3 * 7)
             let vendor = try goodsVendorID(e, cafe)
             e.update { s, _, _ in Suppliers.bumpPublic(&s, vendor, by: relationship) }
-            // an ask beyond a stranger's room but inside a friend's
             if case .agreed(let x) = e.negotiateSupplier(companyID: cafe, input: "goods", vendorID: vendor, ask: 0.02), x > 0 { return (true, 1) }
             var n = 1
             while n < 40 {
@@ -342,11 +311,8 @@ final class SupplierTermsTests: XCTestCase {
         let stranger = try run(relationship: 0), friend = try run(relationship: 85)
         XCTAssertFalse(stranger.accepted)
         XCTAssertTrue(friend.accepted || friend.rounds > stranger.rounds, "a friend gives more (\(friend)) than a stranger (\(stranger))")
-        // the same hidden room for the same relationship: replays give the same answers
         XCTAssertEqual(try run(relationship: 0).rounds, stranger.rounds)
     }
-
-    // MARK: Determinism, saves, play
 
     func testSavedGameKeepsInvoicesTermsDealsAndRules() throws {
         var e = try ChainsTests.engine()
@@ -410,7 +376,6 @@ final class SupplierTermsTests: XCTestCase {
             XCTAssertLessThanOrEqual(on.invoices, 14, "open invoices stay at a few weeks of supply, no unbounded growth: " + lines.last!)
             XCTAssertEqual(on.late, 0, "companies with cash pay on time: " + lines.last!)
             XCTAssertTrue(on.cash.isFinite && off.cash.isFinite)
-            // replay: same seed, same result
             let again = try runYear(seed: seed, terms: true)
             XCTAssertEqual(again.cash, on.cash, accuracy: 0.5, "deterministic")
             XCTAssertEqual(again.invoices, on.invoices)

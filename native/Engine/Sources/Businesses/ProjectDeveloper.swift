@@ -3,15 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Real-estate development: buy land, wait for zoning (which can be refused), build, sell the units. Original: `FAM.dev`
-/// (engine/company/family_project.js) and the "Development projects" screen (ui/company/family.js).
-///
-/// The money: land and building costs are paid in cash as they fall due but are not an expense; they build up as
-/// work in progress (an asset, `fm.assets`). Each unit sold books its share of that work in progress as cost of sales and
-/// its price as revenue, so profit arrives in lumps, years after the first payment. A construction loan (up to 70% of the
-/// building cost plus most of the land) is repaid from 70% of every sale.
 public enum ProjectDeveloper {
-    /// One development (a record in `fm.proj`; field names are the original's).
     public struct Project: JSONRecord, Identifiable {
         public var raw: [String: JSONValue]
         public init(raw: [String: JSONValue]) { self.raw = raw }
@@ -20,18 +12,14 @@ public enum ProjectDeveloper {
         public var units: Int { get { int("units") } set { set("units", newValue) } }
         public var land: Double { get { num("land") } set { set("land", newValue) } }
         public var build: Double { get { num("build") } set { set("build", newValue) } }
-        /// "zoning", "build", "sell" or "done"
         public var stage: String { get { str("st") } set { set("st", newValue) } }
-        /// Weeks left of the current stage.
         public var weeksLeft: Int { get { int("wl") } set { set("wl", newValue) } }
         public var sold: Int { get { int("sold") } set { set("sold", newValue) } }
         public var revenue: Double { get { num("rev") } set { set("rev", newValue) } }
         public var unitPrice: Double { get { num("price") } set { set("price", newValue) } }
         public var priceMultiplier: Double { get { num("priceMult", 1) } set { set("priceMult", newValue) } }
         public var spent: Double { get { num("spent") } set { set("spent", newValue) } }
-        /// Work in progress: what has been paid and not yet booked as cost of sales.
         public var workInProgress: Double { get { num("wip") } set { set("wip", newValue) } }
-        /// Cost overrun added to the building cost.
         public var overrun: Double { get { num("over") } set { set("over", newValue) } }
         public var loanID: Int { get { int("loan") } set { set("loan", newValue) } }
         public var delay: Int { get { int("delay") } set { set("delay", newValue) } }
@@ -40,11 +28,9 @@ public enum ProjectDeveloper {
 
     public enum StartResult: Equatable { case started(Int), notEnoughCash, loanRefused, notADeveloper }
 
-    /// What a project of a given size would cost and bring. Original: the numbers in `FAM.dev.start`.
     public struct Quote: Equatable {
         public var size: Double
         public var land: Double, build: Double, units: Int, fee: Double
-        /// Cash needed now: land (or its 35% down payment when financed) and the zoning work.
         public var cashNow: Double
         public var financed: Bool
         public var loanAmount: Double
@@ -75,7 +61,6 @@ public enum ProjectDeveloper {
                      unitPrice: unitPrice, expectedRevenue: unitPrice * Double(units) * w.economy.housing)
     }
 
-    /// Start a project. Original: `FAM.dev.start`.
     @discardableResult
     public static func start(_ s: inout GameState, companyID: Int, size sz: Double, financed: Bool, data: GameData, context: FinanceContext) -> StartResult {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], ProjectModel.isDeveloper(bd) else { return .notADeveloper }
@@ -116,7 +101,6 @@ public enum ProjectDeveloper {
         return .started(p.id)
     }
 
-    /// The manager's own baseline: with funds, a modest new project every so often.
     static func autoStart(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData, context: FinanceContext) {
         let co = s.companies[i]
         guard let mgr = co.managerID, s.people[mgr] != nil, co.status == .open else { return }
@@ -148,7 +132,6 @@ public enum ProjectDeveloper {
         var fm = s.companies[i].value("fm"); fm["autoW"] = .number(Double(s.week)); s.companies[i].set("fm", fm)
     }
 
-    /// Change the price of the units of a project (0.9 ... 1.1 of the standard). Original: `devprice`.
     public static func setPriceMultiplier(_ s: inout GameState, companyID: Int, projectID: Int, multiplier: Double) {
         guard let i = s.companyIndex(companyID) else { return }
         var list = projects(s.companies[i])
@@ -157,14 +140,13 @@ public enum ProjectDeveloper {
         setProjects(&s, i, list)
     }
 
-    /// The week of a developer: zoning, building, selling. Original: `FAM.dev.custom`.
     static func week(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData, context: FinanceContext) -> CompanyWeek.WeekContext {
         autoStart(&s, i, bd, data: data, context: context)
         let tw = bd.traits
         let id = s.companies[i].id
         var list = projects(s.companies[i])
         for k in list.indices where list[k].raw["wip"] == nil || list[k].raw["wip"] == .null {
-            list[k].workInProgress = max(0, list[k].land + list[k].spent) // older saves
+            list[k].workInProgress = max(0, list[k].land + list[k].spent)
         }
         let H = s.economy.housing
         let w = World(state: s, data: data)
@@ -181,7 +163,6 @@ public enum ProjectDeveloper {
             guard n > 0 else { return }
             let price = p.unitPrice * H * p.priceMultiplier
             let r = n * price
-            // Cost of sales: this share of everything spent on the project so far (work in progress).
             let cs = p.workInProgress * n / Double(p.units - p.sold)
             p.workInProgress -= cs
             cogs += cs
@@ -232,12 +213,10 @@ public enum ProjectDeveloper {
             }
             list[k] = p
         }
-        // Costs that came in after the last unit was sold
         for k in list.indices where list[k].stage == "done" && list[k].workInProgress > 0 {
             cogs += list[k].workInProgress
             list[k].workInProgress = 0
         }
-        // Finished projects leave the list (the count and the last few are kept for the screen).
         var fm = s.companies[i].value("fm")
         var finished = fm["finished"].array
         for p in list where p.stage == "done" {

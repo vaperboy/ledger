@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The global electricity price: demand from every company, supply from the world and the player's plants.
 final class EnergyMarketTests: XCTestCase {
     private let d = EnergyMarket.worldDemand, s = EnergyMarket.worldSupply
 
@@ -15,16 +14,13 @@ final class EnergyMarketTests: XCTestCase {
         XCTAssertGreaterThan(EnergyMarket.target(demand: d * 1.08, supply: s), even)
         XCTAssertGreaterThan(EnergyMarket.target(demand: d * 1.2, supply: s), EnergyMarket.target(demand: d * 1.08, supply: s))
         XCTAssertLessThan(EnergyMarket.target(demand: d, supply: s * 1.1), even)
-        // Far out it stays inside the band.
         XCTAssertEqual(EnergyMarket.target(demand: d * 9, supply: s), EnergyMarket.band.upperBound)
         XCTAssertEqual(EnergyMarket.target(demand: d, supply: s * 9), EnergyMarket.band.lowerBound)
     }
 
     func testOnePlantBarelyMovesThePrice() {
-        // A 30 MW wind park: about 1,800 MWh a week.
         let withPlant = EnergyMarket.target(demand: d, supply: s + 1_800)
         XCTAssertLessThan(abs(withPlant - 1), 0.01)
-        // A very large one (100 MW) still moves it by only a few percent.
         XCTAssertLessThan(abs(EnergyMarket.target(demand: d, supply: s + 6_000) - 1), 0.03)
     }
 
@@ -98,8 +94,6 @@ final class EnergyMarketTests: XCTestCase {
         XCTAssertEqual(price(1.25) / price(1.0), 1.25, accuracy: 1e-9)
     }
 
-    // MARK: Retired trades
-
     func testRetiredTradesAreNotOfferedButOwnedOnesStayOpen() throws {
         var e = try ChainsTests.engine("UK", seed: 3)
         let ids = Set(e.tradePickerRows().map { $0.tradeID })
@@ -109,7 +103,6 @@ final class EnergyMarketTests: XCTestCase {
             if case .success = e.startCompany(tradeID: t, cityID: e.state.player.cityID, fundWith: 1_000_000) { XCTFail("\(t) could be started") }
         }
         XCTAssertEqual(e.foundClub(countryCode: "UK"), .notAvailable)
-        // A saved company of a retired trade keeps trading.
         let casino = ChainsTests.start(&e, "casino")
         XCTAssertNotEqual(casino, 0)
         ChainsTests.play(&e, days: 14)

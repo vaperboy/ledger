@@ -2,33 +2,22 @@ import Foundation
 import GameCore
 import Countries
 
-/// Rivals answering low prices. When your price (company-wide, or your cheapest main item) stays more than 8 percent under the market price
-/// for 2 weeks in a row, each rival in the same trade and city that charges more than you looks at what to do. No random draws: the answer
-/// follows the rival's size, the market's aggression and the rival's strategy and health.
-///   score = 0.5 x size + 0.6 x aggression + strategy (cheap +0.15, expander +0.1, premium -0.15, quality -0.1)
-///   in trouble (fortune below 0): ignores you; score >= 0.75: cuts its price to just above yours and fights (a price war of 5 to 8 weeks);
-///   score >= 0.5: a marketing push (6 weeks); lower: ignores you.
-/// A fight takes demand from your companies there (fading to nothing) and raises their cost of sales 2 percent while it lasts. A rival answers at most
-/// once in 8 weeks. A company within 8 percent of the market never starts the count, so nothing changes for it.
 extension Rivals {
     static let undercutGap = 0.08
     static let undercutWeeks = 2
     static let reactionCooldown = 8
 
-    /// The lowest price a company effectively charges against the market's scale: its going price, or its cheapest main item (10 percent of customers or more).
     static func lowestOwnPrice(_ co: Company, myP: Double, bd: Trade) -> Double {
         let items = SalesItems.items(co, bd).filter { $0.unitShare >= 0.1 }
         let low = items.map { $0.effectiveMultiplier }.min() ?? 1
         return myP * min(1, low)
     }
 
-    /// 0...1 aggressiveness score of a rival towards an undercutting player.
     static func reactionScore(_ r: JSONValue, aggression: Double) -> Double {
         let bonus: Double = { switch strategyOf(r) { case "cheap": return 0.15; case "expander": return 0.1; case "premium": return -0.15; case "quality": return -0.1; default: return 0 } }()
         return 0.5 * r["size"].double + 0.6 * aggression + bonus
     }
 
-    /// Called from `behave` after the rivals' own weekly moves. Changes `riv` (a rival's price or campaign) and the player companies' demand pressure.
     static func priceReaction(_ s: inout GameState, idx: [Int], riv: inout [JSONValue], market m: JSONValue, bd: Trade, cityName: String, world w: World) {
         guard !riv.isEmpty else { return }
         let week = s.week
@@ -38,7 +27,7 @@ extension Rivals {
             let co = s.companies[ci]
             let myP = Pricing.priceIndex(co, w) / max(0.01, co.num("ig", 1))
             let own = lowestOwnPrice(co, myP: myP, bd: bd)
-            let ref = min(pi, 1)   // the going price is 1: a company at it never counts as undercutting, however dear its rivals are
+            let ref = min(pi, 1)
             let under = own < ref * (1 - undercutGap)
             let count = co.value("ucw").int
             if !under {

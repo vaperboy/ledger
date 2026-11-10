@@ -3,13 +3,9 @@ import GameCore
 import Countries
 import Finance
 
-/// The used car dealer's week: buying (a hired buyer or the manager), inspection and repair orders, forced sales, shoppers, reservations and the
-/// yard's costs. Nothing is clamped: a stuck car just loses value and sells slowly, and a sale books what it really brought in against what the car cost.
 extension UsedCarDealer {
-    /// How likely a shopper is to buy a car at this ratio of asking price to what it looks worth.
     static func accept(_ ratio: Double) -> Double { 1 / (1 + exp((ratio - 1.08) / 0.07)) }
 
-    /// A car customers can see is worn: not looked at yet, or its repair has not been done.
     static func looksWorn(_ c: JSONValue) -> Bool { !c["done"].bool || (!c["fx"].bool && c["rq"].double > 0) }
 
     static func week(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) -> CompanyWeek.WeekContext {
@@ -26,7 +22,6 @@ extension UsedCarDealer {
         var told: [(title: String, body: String)] = []
         let cur = w.currency(co)
 
-        /// A customer sale first runs the add-ons (loan, warranty, insurance); a bank that declines can lose the sale (the car stays). Forced sales skip them.
         @discardableResult
         func sell(_ k: Int, at price: Double, forced: String) -> Bool {
             let c = list[k]
@@ -46,7 +41,6 @@ extension UsedCarDealer {
             list.indices.filter { list[$0]["job"].isNull && list[$0]["res"].isNull }.max { week - list[$0]["wk"].int < week - list[$1]["wk"].int }
         }
 
-        // Cars that arrived last week are looked at: the yard cleans and prepares them, and the faults (hidden until now) come out as a repair quote.
         var spent = 0.0
         for k in list.indices where !list[k]["done"].bool && week - list[k]["wk"].int >= 1 {
             let fair = list[k]["fair"].double
@@ -70,7 +64,6 @@ extension UsedCarDealer {
             co.inventory += spent
         }
 
-        // Repairs that are due: the garage is paid (the money must be there) and the car is fixed. A reservation is sold now, at the reserved price.
         var reservedDone: [Int] = []
         for k in list.indices where !list[k]["job"].isNull && week >= list[k]["job"]["due"].int {
             s.companies[i] = co
@@ -86,7 +79,6 @@ extension UsedCarDealer {
             if let k = list.firstIndex(where: { $0["id"].int == carID }), !sell(k, at: list[k]["res"].double, forced: "") { list[k].removeKey("res") }
         }
 
-        // Forced sales, from real causes: the lot holds more cars than the premises have spaces for, or the account is overdrawn.
         let spaces = lotSpaces(co)
         while list.count > spaces, let k = oldest() {
             let price = jsRound(list[k]["fair"].double * (auctionShare + auctionSpread * rnd.next()))
@@ -99,8 +91,6 @@ extension UsedCarDealer {
             sell(k, at: price, forced: "overdrawn")
         }
 
-        // Shoppers: each looks at up to three cars and takes the best value, buying with a chance that falls as the price rises over what it looks
-        // worth and as the car gets old. A car at the garage cannot be driven away: the customer reserves it for when it is fixed.
         let m = markup(co)
         var shoppers = Int(D)
         if rnd.next() < D - Double(Int(D)) { shoppers += 1 }
@@ -121,7 +111,6 @@ extension UsedCarDealer {
             if list[best]["job"].isNull { _ = sell(best, at: price, forced: "") } else { list[best]["res"] = .number(price) }
         }
 
-        // Every car loses value, a stuck one faster, and costs its holding (storage, insurance, cleaning).
         var hold = 0.0
         for k in list.indices {
             let age = week - list[k]["wk"].int

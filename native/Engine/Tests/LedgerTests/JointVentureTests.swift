@@ -5,17 +5,13 @@ import Businesses
 import Events
 import Simulation
 
-/// Joint ventures: the pure voting and guard-rail rules, then invitations, planned and urgent meetings and what a passed item does to the books.
 final class JointVentureTests: XCTestCase {
-    // MARK: Rules
 
     func testMajorityByShareAndAbstentionByNotVoting() {
         let shares = ["me": 60, "p:a": 25, "p:b": 15]
-        // Only you vote: 60% of the shares cast, so the quorum is met and yes wins.
         var t = JVRules.tally(shares: shares, votes: ["me": .yes])
         XCTAssertEqual(t.yes, 60); XCTAssertEqual(t.abstain, 40)
         XCTAssertEqual(JVRules.decide(t, chair: .yes, chairUsedBefore: false), .passed)
-        // Two small partners against a small yes: no wins by shares, not by heads.
         t = JVRules.tally(shares: shares, votes: ["me": .yes, "p:a": .no, "p:b": .no])
         XCTAssertEqual(JVRules.decide(t, chair: .yes, chairUsedBefore: false), .passed, "60 against 40")
         t = JVRules.tally(shares: ["me": 30, "p:a": 40, "p:b": 30], votes: ["me": .yes, "p:a": .no, "p:b": .yes])
@@ -86,12 +82,9 @@ final class JointVentureTests: XCTestCase {
         XCTAssertGreaterThan(late, 0); XCTAssertLessThan(late, 60)
     }
 
-    // MARK: Play
-
     private let friendA = (id: "pl-a", name: "Ingrid Solheim", key: "pl-a")
     private let friendB = (id: "pl-b", name: "Oliver Whitfield", key: "pl-b")
 
-    /// A limited cafe that is open, owned by you alone.
     private func makeCompany(seed: Int) throws -> (engine: GameEngine, id: Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 300_000_000, why: "Test funds") }
@@ -100,7 +93,6 @@ final class JointVentureTests: XCTestCase {
         return (e, id)
     }
 
-    /// Invite and accept a friend at the fair price.
     @discardableResult
     private func join(_ e: inout GameEngine, _ id: Int, _ f: (id: String, name: String, key: String), pct: Double, role: String = "partner") throws -> Int {
         let price = e.jvFairPrice(companyID: id, pct: pct)
@@ -177,7 +169,6 @@ final class JointVentureTests: XCTestCase {
         XCTAssertEqual(msg.title, "CFO \(friendA.name) called an emergency meeting: Sales are falling")
         XCTAssertFalse(try XCTUnwrap(e.jointVenture(companyID: id)?.notes).isEmpty, "a local notification record exists")
         let level = e.state.company(id)!.priceLevel
-        // You (70%) vote yes; the CFO (30%) backed it by calling; nothing else is needed. The deadline passes and the item is counted.
         XCTAssertTrue(e.jvVote(companyID: id, meetingID: mid, itemID: item.id, choice: .yes))
         tick(&e, weeks: 2)
         let m = try XCTUnwrap(e.jointVenture(companyID: id)?.meetings.first { $0.id == mid })
@@ -192,7 +183,6 @@ final class JointVentureTests: XCTestCase {
         var (e, id) = try makeCompany(seed: 75)
         try join(&e, id, friendA, pct: 40)
         let item = try XCTUnwrap(e.jvMakeItem(companyID: id, kind: .price, steps: 1).item)
-        // The owner calls it but the caller's vote is only 60%; the partner (40%) votes no.
         guard case .called(let mid) = e.jvCallUrgent(companyID: id, reason: "Raise prices", items: [item]) else { return XCTFail() }
         let level = e.state.company(id)!.priceLevel
         XCTAssertTrue(e.jvVote(companyID: id, meetingID: mid, itemID: item.id, member: "p:" + friendA.id, choice: .no))
@@ -200,7 +190,6 @@ final class JointVentureTests: XCTestCase {
         let m = try XCTUnwrap(e.jointVenture(companyID: id)?.meetings.first { $0.id == mid })
         XCTAssertEqual(m.items[0].outcome, .passed, "60 yes against 40 no")
         XCTAssertEqual(e.state.company(id)!.priceLevel, level + 1)
-        // A meeting nobody but the partners' side attends: you abstain, they vote no, so quorum is met and it fails.
         let item2 = try XCTUnwrap(e.jvMakeItem(companyID: id, kind: .price, steps: -1).item)
         guard case .called(let m2) = e.jvCallUrgent(companyID: id, by: "p:" + friendA.id, reason: "Cut prices", items: [item2]) else { return XCTFail("called") }
         _ = e.jvVote(companyID: id, meetingID: m2, itemID: item2.id, choice: .no)
@@ -259,7 +248,6 @@ final class JointVentureTests: XCTestCase {
     func testPassedDividendIsAppliedByTheGameAndBooksStayBalanced() throws {
         var (e, id) = try makeCompany(seed: 79)
         try join(&e, id, friendA, pct: 20)
-        // Give the company retained profit: cash it earned.
         e.update { s, _, _ in Ledger.moveRaw(&s, .company(id), 4_000_000); if let i = s.companyIndex(id) { s.companies[i].shareCapital = 0 } }
         let top = Payments.maximumDividend(e.state.company(id)!, state: e.state, context: e.context)
         XCTAssertGreaterThan(top, 0)
@@ -317,9 +305,6 @@ final class JointVentureTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)!.status, .sold)
     }
 
-    // MARK: Selling, leaving, reminders
-
-    /// Gives the board's listing one offer, as the weekly market would.
     private func putOffer(_ e: inout GameEngine, _ id: Int, price: Double) {
         e.update { s, _, _ in
             var list = s.rest["sales"]?.array ?? []

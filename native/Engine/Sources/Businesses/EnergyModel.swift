@@ -4,21 +4,11 @@ import Countries
 import Employees
 import Finance
 
-/// Energy: the renewable power producer and the oil and gas company. Original: `FAM.energy` (engine/company/family_energy.js),
-/// the round-24 oil and gas steps (features/world/oil_and_gas.js) and `coTaxRate`.
-///
-/// Where things are kept (same keys as the original save, so an imported company carries on):
-///  power: `eq.turb.n` MW bought, `fm.build` [{n, ready}] MW still under construction;
-///  oil:   `fm.fields` [{id, name, st dev|prod|depleted, res (thousand bbl), q0, age, bv, wl, capex, plat, rbl}], `fm.assets`
-///         book value of the fields (counted as an asset), `fm.expl` this year's exploration spend, `fm.autoW`.
 public enum EnergyModel {
-    // MARK: Power
 
     public struct Source {
         public var name: String
-        /// capacity factor multiplier, cost, weeks to build
         public var cf: Double, cost: Double, buildWeeks: Int
-        /// output by calendar month
         public var seasonal: [Double]
     }
 
@@ -28,11 +18,9 @@ public enum EnergyModel {
         Source(name: "Solar park", cf: 0.31, cost: 0.55, buildWeeks: 26, seasonal: [0.1, 0.35, 0.9, 1.6, 2.1, 2.4, 2.3, 1.8, 1.0, 0.45, 0.1, 0.05]),
     ]
 
-    /// 0 wind, 1 hydro, 2 solar (the company's "Source" choice).
     public static func sourceIndex(_ co: Company) -> Int { min(2, max(0, co.value("knob")["src"].int)) }
     public static func source(of co: Company) -> Source { sources[sourceIndex(co)] }
 
-    /// Price strategy: 0 spot, 1 half hedged, 2 mostly hedged.
     public static let hedgeShare: [Double] = [0, 0.5, 0.9]
 
     public struct PowerResult: Equatable {
@@ -42,8 +30,6 @@ public enum EnergyModel {
         public var season = 1.0, crew = 1.0
     }
 
-    /// One week of a power plant, as a pure function of its inputs (so it can be compared with the original).
-    /// `noise` is one standard normal draw. Original: `FAM.energy.power`.
     public static func powerWeek(megawattsBought: Double, building: Double, month: Int, source src: Source, hedge: Int,
                                  capacityFactor tw: Double, opexRate: Double, condition cond: Double, technicianFTE: Double,
                                  capacityModifier: Double, demandModifier: Double, economyPower: Double, inflationIndex: Double, noise: Double) -> PowerResult {
@@ -66,7 +52,6 @@ public enum EnergyModel {
         return r
     }
 
-    /// Turbines ordered are built over time: they only produce when ready. Original: `FAM.energy.afterBuy`.
     static func afterBuy(_ s: inout GameState, _ i: Int, _ bd: Trade, equipmentID: String, quantity: Double) {
         guard bd.hasTrait("power"), equipmentID == "turb" else { return }
         var fm = s.companies[i].value("fm")
@@ -108,29 +93,23 @@ public enum EnergyModel {
         Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values))
     }
 
-    // MARK: Oil and gas
-
     static let neutralFields = ["Atlas", "Beacon", "Cormorant", "Delta", "Eagle", "Falcon", "Granite", "Harrier", "Ivory", "Juniper"]
     static let neutralDiscoveries = ["Aurora", "Boreas", "Cobalt", "Drake", "Ember", "Fulmar", "Gannet", "Heron"]
 
-    /// Long-run price per barrel and the share sold on term contracts. Original: the 'sell' knob in `FAM.energy.oil`.
     public static func oilPrice(contracts: Bool, economyOil: Double, inflationIndex: Double) -> Double {
         let lr = 780 * pow(inflationIndex, 0.5)
         let term = contracts ? 0.6 : 0.0
         return lr * economyOil * (1 - term) + lr * 0.95 * term
     }
 
-    /// Cost of lifting a barrel. Original: `R24.oilLift`.
     public static func liftingCost(materials: Double, inflationIndex: Double) -> Double {
         200 * (0.7 + 0.3 * materials) * pow(inflationIndex, 0.5)
     }
 
-    /// What a stake of `kbbl` thousand barrels costs. Original: `oilAcquire`.
     public static func stakePrice(kbbl: Double, economyOil: Double) -> Double { jsRound(kbbl * 1000 * 190 * pow(economyOil, 0.5)) }
 
     public static func explorationCost(inflationIndex: Double) -> Double { jsRound(300e6 * inflationIndex) }
 
-    /// One producing field for one week: the barrels (thousand), the book value used up. Original: the 'prod' branch.
     public static func fieldWeek(reserves: Double, initialRate q0: Double, age: Int, plateau: Double, capacityModifier: Double, crew: Double,
                                  noise: Double, bookValue: Double) -> (barrels: Double, depletion: Double) {
         let q = q0 * exp(-0.0028 * max(0, Double(age) - plateau)) * capacityModifier * (0.8 + 0.2 * crew) * (1 + noise * 0.03)
@@ -144,7 +123,6 @@ public enum EnergyModel {
         let id = co.id
         var fm = co.value("fm")
         var fields = fm["fields"].array
-        // A manager buys stakes in producing fields when there is money; frontier strategy adds exploration.
         let risk = co.value("knob")["risk"].isNull ? 1 : co.value("knob")["risk"].int
         let infl = s.economy.inflationIndex
         if let mid = co.managerID, s.people[mid] != nil, co.status == .open, Double(s.week) - (fm["autoW"].isNull ? -99 : fm["autoW"].double) >= 26,
@@ -212,7 +190,6 @@ public enum EnergyModel {
 
     public enum DealResult: Equatable { case ok, cash, hit, dry }
 
-    /// Buy a stake in a producing field. Original: `oilAcquire`.
     @discardableResult
     public static func acquire(_ s: inout GameState, _ i: Int, kbbl: Double, data: GameData) -> DealResult {
         let co = s.companies[i]
@@ -229,7 +206,6 @@ public enum EnergyModel {
         return .ok
     }
 
-    /// Drill an exploration well. Original: `oilExplore` with the round-24 steps (cost booked, plateau, the decision).
     @discardableResult
     public static func explore(_ s: inout GameState, _ i: Int, data: GameData) -> DealResult {
         let co = s.companies[i]
@@ -250,7 +226,6 @@ public enum EnergyModel {
             let names = data.countries.resolve(co.countryCode, orHome: s.homeCountryCode).pack["flavour"]["oilDiscoveries"].array.map { $0.string }
             let name = s.random.pick(names.isEmpty ? neutralDiscoveries : names) + " " + String(s.random.int(1, 9))
             let fid = s.makeID()
-            // plateau of about 14% of the reserves a year and full-cycle development costs (round-24 numbers)
             let res = vol
             let capex = jsRound(res * 1000 * 130 * pow(infl, 0.5))
             fields.append(.object(["id": .number(Double(fid)), "name": .string(name), "st": "dev", "res": .number(res), "q0": .number(res * 0.0028), "wl": 156,
@@ -277,8 +252,6 @@ public enum EnergyModel {
         return .dry
     }
 
-    /// When the company cannot pay this week's share of the development, the bank lends against the field (reserve-based
-    /// lending): interest only until the field produces, then repaid over seven years. Original: `R24.oilDevCash`.
     static func developmentCash(_ s: inout GameState, _ i: Int, field f: inout JSONValue, _ c: Double, data: GameData) {
         let co = s.companies[i]
         if co.cash >= c { return }
@@ -301,9 +274,6 @@ public enum EnergyModel {
         s.note("The bank lends \(currency(s, co, data).short(amt)) against \(f["name"].string) to finish development.", tone: "n", companyID: co.id)
     }
 
-    // MARK: Decisions and yearly steps
-
-    /// The owner's answer (or the default) on a discovery. Original: `oilChoice`.
     static func choose(_ s: inout GameState, companyIndex i: Int, field fid: Int, option idx: Int, sell: Double) {
         var fm = s.companies[i].value("fm")
         var fields = fm["fields"].array
@@ -325,7 +295,6 @@ public enum EnergyModel {
         }
     }
 
-    /// The player answers an "oil24" message. Original: `ACTS.oil24`.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int) {
         guard let i = s.companyIndex(m.companyID) else { return }
         let d = m.value("data")
@@ -334,9 +303,6 @@ public enum EnergyModel {
         choose(&s, companyIndex: i, field: d["f"].int, option: idx, sell: d["sell"].double)
     }
 
-    /// After the week's messages expired: a discovery nobody answered goes ahead (or a partner steps in if the cash is short),
-    /// and in Norway the state refunds 78% of exploration costs to a company with no taxable income, once a year.
-    /// Original: the 'oil_and_gas weekly' step.
     public static func weeklyAfter(_ s: inout GameState, data: GameData) {
         for k in s.inbox.indices {
             let m = s.inbox[k]
@@ -351,7 +317,6 @@ public enum EnergyModel {
         if s.week % 52 == 0 {
             for i in s.companies.indices {
                 let co = s.companies[i]
-                // The state refunds part of exploration costs where the country's data says so (`oilRefund`).
                 let share = data.countries.resolve(co.countryCode, orHome: s.homeCountryCode).pack["oilRefund"].double
                 guard co.type == "oilgas", share > 0, co.status != .bust, co.value("fm")["expl"].double > 0 else { continue }
                 let ref = jsRound(co.value("fm")["expl"].double * share)
@@ -363,8 +328,6 @@ public enum EnergyModel {
             }
         }
     }
-
-    // MARK: Reading for screens
 
     public struct PlantSummary: Equatable {
         public var megawatts: Double, building: Double, weeksToReady: Int?
@@ -380,7 +343,7 @@ public enum EnergyModel {
     public struct FieldInfo: Identifiable, Equatable {
         public var id: Int
         public var name: String
-        public var state: String          // dev, prod, depleted
+        public var state: String
         public var millionBarrelsLeft: Double
         public var weeksToProduction: Int
         public var bookValue: Double

@@ -1,9 +1,3 @@
--- Supply market between players: listings, contracts, weekly orders and the delivery record buyers read.
--- Rules mirror the engine's SupplyMarketRules / SupplyGuards / SupplyRecordRules. A supplier names what it offers, never what a sale is
--- worth: the unit price is always base value x the tier factor, and money moves only in the weekly run as settlements (see 0002).
--- The market clock is real time: a market week starts on Monday (UTC).
-
--- What each trade may supply (the engine's fixed catalogue). A trade not listed supplies nothing to other players.
 create table public.supply_trade_lines (
   trade_id text not null,
   line_id text not null,
@@ -34,14 +28,12 @@ create table public.supply_listings (
   lead_days int not null default 3 check (lead_days between 0 and 30),
   min_order int not null default 1 check (min_order >= 1),
   terms_days int not null default 14 check (terms_days in (0, 14, 30)),
-  -- What one unit is worth at the company's own prices; the price tier moves it. Currency of the supplier's game.
   unit_value numeric(14, 2) not null check (unit_value between 0.01 and 10000000),
   currency text not null check (currency ~ '^[A-Z]{3}$'),
   paused boolean not null default false,
   stopped boolean not null default false,
   expires_at timestamptz,
   created_at timestamptz not null default now(),
-  -- The delivery record (SupplyRecordRules.applying keeps these current; only the weekly run writes them).
   weeks_trading int not null default 0,
   orders_total int not null default 0,
   orders_on_time int not null default 0,
@@ -72,7 +64,6 @@ create table public.supply_contracts (
   signed_at timestamptz not null default now(),
   ended_at timestamptz,
   end_reason public.supply_end,
-  -- The buyer has been told about an end it did not choose (the fall back to the House supplier).
   acknowledged boolean not null default false,
   constraint contract_end_pair check ((ended_at is null) = (end_reason is null))
 );
@@ -80,7 +71,6 @@ create unique index supply_contract_active on public.supply_contracts (buyer_id,
 create index supply_contract_listing on public.supply_contracts (listing_id) where ended_at is null;
 create index supply_contract_supplier on public.supply_contracts (supplier_id) where ended_at is null;
 
--- What the supplier reports about a week (share of the promised units it really delivered, orders it sent late).
 create table public.supply_reports (
   listing_id uuid not null references public.supply_listings (id) on delete cascade,
   week date not null,
@@ -89,7 +79,6 @@ create table public.supply_reports (
   primary key (listing_id, week)
 );
 
--- A buyer's complaint or dispute about a week's delivery; one per contract and week.
 create table public.supply_complaints (
   contract_id uuid not null references public.supply_contracts (id) on delete cascade,
   week date not null,
@@ -123,7 +112,6 @@ revoke all on public.supply_trade_lines, public.supply_listings, public.supply_c
 grant select on public.supply_trade_lines, public.supply_listings, public.supply_contracts, public.supply_orders, public.supply_reports, public.supply_complaints to authenticated;
 
 create policy supply_lines_read on public.supply_trade_lines for select to authenticated using (true);
--- Everyone else reads listings through the functions below, which hide linked, blocked and stopped rows as needed.
 create policy supply_listings_own on public.supply_listings for select to authenticated using (owner_id = auth.uid());
 create policy supply_contracts_party on public.supply_contracts for select to authenticated using (buyer_id = auth.uid() or supplier_id = auth.uid());
 create policy supply_orders_party on public.supply_orders for select to authenticated
@@ -133,9 +121,6 @@ create policy supply_reports_own on public.supply_reports for select to authenti
 create policy supply_complaints_buyer on public.supply_complaints for select to authenticated
   using (exists (select 1 from public.supply_contracts c where c.id = contract_id and c.buyer_id = auth.uid()));
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Rules
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.supply_tier_factor(tier int) returns numeric language sql immutable as $$
   select (array[0.90, 1.00, 1.14])[least(2, greatest(0, tier)) + 1]::numeric;
 $$;
@@ -143,7 +128,6 @@ create function private.supply_unit_price(l public.supply_listings) returns nume
   select round(l.unit_value * private.supply_tier_factor(l.price_tier), 2);
 $$;
 
--- The weekly units a new supplier may take; null once its record is clean enough to lift the limit.
 create function private.supply_new_cap(clean_weeks int, disputes int) returns int language sql immutable as $$
   select case when clean_weeks >= 10 and disputes = 0 then null else 20 + 12 * clean_weeks end;
 $$;
@@ -154,7 +138,6 @@ create function private.supply_committed(listing uuid) returns int language sql 
   select coalesce(sum(units_per_week), 0)::int from public.supply_contracts where listing_id = listing and ended_at is null;
 $$;
 
--- Under four weeks or five orders there is too little to judge; otherwise 0.5 delivered + 0.3 on time + 0.2 clean sheet.
 create function private.supply_unproven(l public.supply_listings) returns boolean language sql immutable as $$
   select l.weeks_trading < 4 or l.orders_total < 5;
 $$;
@@ -170,7 +153,6 @@ create function private.supply_word(l public.supply_listings) returns text langu
               else 'Struggling' end;
 $$;
 
--- Why the buyer cannot use a listing; 'available' when it can. Same order of checks as SupplyGuards.availability.
 create function private.supply_availability(l public.supply_listings, buyer uuid, units int) returns text language plpgsql stable security definer set search_path = '' as $$
 begin
   if private.linked(buyer, l.owner_id) then return 'linkedAccount'; end if;
@@ -192,7 +174,6 @@ begin
     'priceTier', l.price_tier, 'qualityTier', l.quality_tier, 'capacityPerWeek', l.capacity_per_week, 'leadDays', l.lead_days,
     'minOrder', l.min_order, 'termsDays', l.terms_days, 'unitValue', l.unit_value, 'unitPrice', private.supply_unit_price(l),
     'currency', l.currency,
-    -- Opaque, but equal for linked accounts, so the app can grey out its own accounts without learning the key.
     'linkKey', md5(p.link_key),
     'isFriend', private.are_friends(viewer, l.owner_id), 'paused', l.paused, 'stopped', l.stopped, 'expiresAt', l.expires_at,
     'committedUnits', private.supply_committed(l.id), 'effectiveCapacity', private.supply_effective_capacity(l),
@@ -203,7 +184,6 @@ begin
       'cleanWeeks', l.clean_weeks, 'deliveredTrend', l.delivered_trend, 'onTimeTrend', l.on_time_trend, 'lifetimeUnits', l.lifetime_units));
 end $$;
 
--- Ends contracts on a listing (or all of a supplier's listings) at once; the buyers fall back to the House supplier.
 create function private.supply_end_contracts(p_listing uuid, p_supplier uuid, p_reason public.supply_end) returns int language plpgsql security definer set search_path = '' as $$
 declare n int;
 begin
@@ -217,9 +197,6 @@ create or replace function private.supply_open(uid uuid) returns boolean languag
   select exists (select 1 from public.supply_contracts where supplier_id = uid and ended_at is null);
 $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Supplier functions
--- ---------------------------------------------------------------------------------------------------------------------
 create function public.save_supply_listing(p_listing_id uuid, p_company_key text, p_company_name text, p_trade_id text, p_city text, p_region text,
   p_line_id text, p_price_tier int, p_quality_tier int, p_capacity int, p_lead_days int, p_min_order int, p_terms_days int, p_duration_days int,
   p_unit_value numeric, p_currency text) returns jsonb language plpgsql security definer set search_path = '' as $$
@@ -242,7 +219,6 @@ begin
     committed := private.supply_committed(l.id);
     if p_capacity < committed then raise exception 'capacity_below_commitments' using errcode = 'P0001'; end if;
     if p_line_id <> l.line_id or p_trade_id <> l.trade_id or p_company_key <> l.company_key then raise exception 'invalid_listing' using errcode = 'P0001'; end if;
-    -- A price change after signing counts against the record once per buyer under contract.
     select count(*) into active from public.supply_contracts where listing_id = l.id and ended_at is null;
     update public.supply_listings set company_name = p_company_name, city = coalesce(p_city, ''), region = coalesce(p_region, ''),
         price_tier = p_price_tier, quality_tier = p_quality_tier, capacity_per_week = p_capacity, lead_days = p_lead_days, min_order = p_min_order,
@@ -260,7 +236,6 @@ begin
   if not found then raise exception 'not_found' using errcode = 'P0001'; end if;
 end $$;
 
--- Stops a listing for good: its contracts end at once.
 create function public.stop_supply_listing(p_listing uuid) returns int language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin
@@ -269,7 +244,6 @@ begin
   return private.supply_end_contracts(p_listing, null, 'stopped');
 end $$;
 
--- A company went bankrupt (or was closed): every listing of it stops and its contracts end as bankrupt.
 create function public.supplier_company_closed(p_company_key text) returns int language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); n int := 0; l uuid;
 begin
@@ -296,7 +270,6 @@ begin
      from public.supply_orders o join public.supply_contracts c on c.id = o.contract_id where o.listing_id = p_listing), '[]'::jsonb);
 end $$;
 
--- The supplier says how a week went. Only values the rules allow are stored; the weekly run reads them.
 create function public.report_supply_week(p_listing uuid, p_delivered_pct int, p_late_orders int default 0) returns void language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); wk date := date_trunc('week', now())::date;
 begin
@@ -306,10 +279,6 @@ begin
     on conflict (listing_id, week) do update set delivered_pct = excluded.delivered_pct, late_orders = excluded.late_orders;
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Buyer functions
--- ---------------------------------------------------------------------------------------------------------------------
--- Listings for a line the caller may see: never blocked either way, never stopped. Unusable ones stay listed with their reason.
 create function public.supply_listings_for_line(p_line_id text) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin
@@ -334,7 +303,6 @@ create function private.supply_contract_json(c public.supply_contracts) returns 
     'endedAt', c.ended_at, 'endReason', c.end_reason);
 $$;
 
--- Signs (or replaces) the caller's contract for one line of one company. Every guard is checked here, whatever the app showed.
 create function public.sign_supply_contract(p_company_key text, p_line_id text, p_listing uuid, p_units int, p_currency text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); l public.supply_listings; why text; c public.supply_contracts;
@@ -344,7 +312,6 @@ begin
   select * into l from public.supply_listings where id = p_listing for update;
   if not found or l.line_id <> p_line_id or private.is_blocked_between(uid, l.owner_id) then raise exception 'not_found' using errcode = 'P0001'; end if;
   if l.currency <> p_currency then raise exception 'currency_mismatch' using errcode = 'P0001'; end if;
-  -- An existing contract for this line does not count against the new one's room.
   update public.supply_contracts set ended_at = now(), end_reason = 'replaced' where buyer_id = uid and buyer_company_key = p_company_key and line_id = p_line_id and ended_at is null;
   why := private.supply_availability(l, uid, p_units);
   if why <> 'available' then raise exception 'listing_%', why using errcode = 'P0001'; end if;
@@ -361,7 +328,6 @@ begin
    where buyer_id = uid and buyer_company_key = p_company_key and line_id = p_line_id and ended_at is null;
 end $$;
 
--- Active contracts, plus those the supplier ended that the buyer has not been told about (shown once, then acknowledged).
 create function public.my_supply_contracts() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); res jsonb;
 begin
@@ -383,14 +349,10 @@ begin
     on conflict (contract_id, week) do update set is_dispute = public.supply_complaints.is_dispute or excluded.is_dispute;
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- The weekly run (scheduled by the platform with the service role; not callable by clients).
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.run_supply_week(p_week date default date_trunc('week', now())::date) returns int language plpgsql security definer set search_path = '' as $$
 declare l public.supply_listings; r public.supply_reports; c public.supply_contracts; delivered int; asked int; late int; n_orders int; n_late int; n_prom int; n_del int;
         v_compl int; v_disp int; price numeric; revenue numeric; processed int := 0; pct int; late_left int; d_now numeric; o_now numeric;
 begin
-  -- Offers that ran out end their contracts first.
   for l in select * from public.supply_listings where not stopped and expires_at is not null and expires_at < now() loop
     perform private.supply_end_contracts(l.id, null, 'expired');
     update public.supply_listings set stopped = true where id = l.id;

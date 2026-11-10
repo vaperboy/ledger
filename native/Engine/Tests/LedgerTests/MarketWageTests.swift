@@ -4,8 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// A pay discussion starts from the employer's side with the going rate for the role, the same for every candidate whatever their experience.
-/// Skill and temperament decide who takes it: some are a bargain at that rate, some cost more than they are worth.
 final class MarketWageTests: XCTestCase {
     private func cafe() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 11)
@@ -26,7 +24,6 @@ final class MarketWageTests: XCTestCase {
         XCTAssertEqual(Set(people.map(\.role)), ["barista"])
     }
 
-    /// At the going rate some people are glad to take it (a bargain for the skill) and some want more; asks differ by more than skill alone.
     func testAtTheGoingRateSomeAreABargainAndSomeCostMore() throws {
         var (e, id) = try cafe()
         let market = e.marketWage(role: "barista", companyID: id)
@@ -35,7 +32,6 @@ final class MarketWageTests: XCTestCase {
         let takeIt = people.filter { $0.askingMonthlyWage <= market }
         let wantMore = people.filter { $0.askingMonthlyWage > market }
         XCTAssertFalse(takeIt.isEmpty); XCTAssertFalse(wantMore.isEmpty)
-        // able people tend to want more than the rate, weak people less: paying the rate to a weak one overpays, to a strong one is a bargain
         let avgSkill: ([Person]) -> Double = { $0.map(\.skill).reduce(0, +) / Double($0.count) }
         XCTAssertGreaterThan(avgSkill(wantMore), avgSkill(takeIt))
     }

@@ -3,18 +3,10 @@ import GameCore
 import Countries
 import Finance
 
-/// Item record v2. A company item (`SalesItems.Item`, key `items27`) is a title
-/// with a price. This adds the real thing behind it, per item, in a second record `itemsv2` = { itemID: record } on the company:
-/// model (STK stocked resale, MADE recipe, SVC service, BRK unique unit, RENT, PROJ, SUB), unit cost, extra cost per unit (repairs, prep), holding cost per
-/// week, stock, on order, lead time, capacity, supplier link, status, reservations, plans and a weekly sales and profit history.
-/// Nothing is written until something sets it, and no trade is switched on: `optedInTrades` is empty until an item trade group adds its trades.
-/// `SalesItems` itself, demand and every old save are untouched; an item without a record is read through `fallbackCost` (the trade's cost-of-sales share).
 public enum ItemModels {
-    /// Trades whose old titles-only items are migrated to records. Tests pass their own set.
     public static var optedInTrades: Set<String> { ItemTradeGroups.all }
     static let key = "itemsv2"
     public static let historyWeeks = 52
-    /// Weekly rate at which interested customers buy one unit at the fair price (a unique unit sits a few weeks on average).
     public static let baseSaleRate = 0.25
 
     public enum Model: String, CaseIterable, Sendable {
@@ -30,7 +22,6 @@ public enum ItemModels {
             case .sub: return "Subscription"
             }
         }
-        /// True when the item has units on hand that can run out.
         public var holdsStock: Bool { self == .stk || self == .made || self == .brk }
     }
 
@@ -50,31 +41,22 @@ public enum ItemModels {
     public struct Record: Equatable, Sendable {
         public var id: String
         public var model: Model
-        /// Buy or make price of one unit at list, accounting units.
         public var cost: Double = 0
-        /// Extra cost of one unit on top (repairs, prep, inspection).
         public var prep: Double = 0
-        /// Holding cost of one unit for one week (lot space, storage, finance).
         public var holdingPerWeek: Double = 0
         public var stock: Int = 0
         public var onOrder: Int = 0
         public var leadDays: Int = 0
-        /// Units (or hours, slots) the item can supply a week; 0 = not limited.
         public var capacity: Double = 0
         public var supplierID: String?
-        /// Fair value to customers; 0 = the market price of the item.
         public var fair: Double = 0
-        /// "" ready, "repair", "reserved", "listed", "retired".
         public var status: String = ""
         public var reserved: Int = 0
-        /// Week the stock arrived (for holding cost).
         public var since: Int?
         public var plans: [Plan] = []
         public var history: [Week] = []
         public init(id: String, model: Model) { self.id = id; self.model = model }
     }
-
-    // MARK: Storage
 
     static func decode(_ id: String, _ j: JSONValue) -> Record {
         var r = Record(id: id, model: Model(rawValue: j["m"].string) ?? .stk)
@@ -88,7 +70,6 @@ public enum ItemModels {
         return r
     }
 
-    /// Only fields that differ from the default are written.
     static func encode(_ r: Record) -> JSONValue {
         var o: [String: JSONValue] = ["m": .string(r.model.rawValue)]
         if r.cost != 0 { o["c"] = .number(r.cost) }
@@ -125,8 +106,6 @@ public enum ItemModels {
         s.companies[i].set(key, .object(o))
     }
 
-    // MARK: Cost, live profit and loss
-
     public enum Outcome: String, Sendable { case profit, loss, breakEven }
 
     public struct LiveProfit: Equatable, Sendable {
@@ -134,28 +113,22 @@ public enum ItemModels {
         public var cost: Double
         public var amount: Double
         public var outcome: Outcome
-        /// The word to show: "profit", "loss" or "break-even". Never "profit" for a loss and never a plain 0 for a real figure.
         public var word: String { outcome == .breakEven ? "break-even" : outcome.rawValue }
-        /// Margin on the price (0 when the price is 0).
         public var margin: Double { price > 0 ? amount / price : 0 }
     }
 
-    /// Cost of one unit held `weeksHeld` weeks: buy or make price after the supplier's relationship discount, plus prep, plus holding.
     public static func unitCost(_ r: Record, weeksHeld: Int = 0, supplierDiscount: Double = 0) -> Double {
         r.cost * (1 - max(0, min(1, supplierDiscount))) + r.prep + r.holdingPerWeek * Double(max(0, weeksHeld))
     }
 
-    /// Pure: what selling at `price` leaves after `cost` (and a selling cost share, e.g. a commission). Break-even only when the figure is truly zero.
     public static func liveProfit(price: Double, cost: Double, sellingShare: Double = 0) -> LiveProfit {
         let amount = price * (1 - sellingShare) - cost
         let eps = 1e-9 * max(1, abs(price), abs(cost))
         return LiveProfit(price: price, cost: cost, amount: amount, outcome: abs(amount) <= eps ? .breakEven : (amount > 0 ? .profit : .loss))
     }
 
-    /// Cost of an item that has no record yet: the trade's cost-of-sales share of the market price (what the books already assume).
     public static func fallbackCost(market: Double, _ bd: Trade) -> Double { market * bd.costOfSales }
 
-    /// Live profit or loss of any item of a company at a proposed price (accounting units).
     public static func liveProfit(_ s: GameState, companyID: Int, itemID: String, price: Double, data: GameData) -> LiveProfit? {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return nil }
         guard let it = SalesItems.items(co, bd).first(where: { $0.id == itemID }) else { return nil }
@@ -167,23 +140,16 @@ public enum ItemModels {
         return liveProfit(price: price, cost: fallbackCost(market: market, bd))
     }
 
-    // MARK: Sale probability
-
-    /// Weekly chance that one interested customer buys at `price` when fair value is `fair`: 1 - exp(-rate), rate falling with price against fair
-    /// value at the game's elasticity. No floor and no cap: a free item is bought at once, a far too dear one almost never.
     public static func saleProbability(price: Double, fair: Double, baseRate: Double = baseSaleRate) -> Double {
         guard fair > 0 else { return 0 }
         guard price > 0 else { return 1 }
         return 1 - exp(-baseRate * pow(price / fair, SalesItems.elasticity))
     }
 
-    /// Expected weeks until the item sells at that price.
     public static func expectedWeeks(price: Double, fair: Double) -> Double? {
         let p = saleProbability(price: price, fair: fair)
         return p > 0 ? 1 / p : nil
     }
-
-    // MARK: Supply
 
     public struct SupplyLine: Equatable, Sendable {
         public var vendorID: String
@@ -191,7 +157,6 @@ public enum ItemModels {
         public var relationshipWord: String
         public var discount: Double
         public var listCost: Double
-        /// What one unit costs from this supplier.
         public var buyPrice: Double
         public var leadDays: Int
         public var reliability: Double
@@ -202,7 +167,6 @@ public enum ItemModels {
         return Suppliers.relationshipDiscount(Suppliers.relationship(s, v))
     }
 
-    /// Where the item comes from now (the linked supplier), or nil.
     public static func supply(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> SupplyLine? {
         guard let co = s.company(companyID), let r = record(co, itemID: itemID), let v = r.supplierID,
               let vendor = Suppliers.vendor(s, id: v, data: data) else { return nil }
@@ -215,7 +179,6 @@ public enum ItemModels {
                           reliability: min(0.995, max(0.8, 0.85 + (v.rating - 2.6) / 2.2 * 0.14)))
     }
 
-    /// The suppliers that could supply this item (the company's goods suppliers), each with the price this item would cost from them.
     public static func offers(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> [SupplyLine] {
         guard needsSupplier(s, companyID: companyID, itemID: itemID, data: data), let co = s.company(companyID),
               let r = record(co, itemID: itemID) ?? provisional(s, co, itemID: itemID, data: data) else { return [] }
@@ -237,7 +200,6 @@ public enum ItemModels {
         return r
     }
 
-    /// One word for the list row.
     public static func statusWord(_ r: Record?, _ row: SalesItem) -> String {
         guard let r else { return row.isService ? "Service" : "On sale" }
         switch r.status {
@@ -250,9 +212,6 @@ public enum ItemModels {
         return r.model.label
     }
 
-    // MARK: Writes
-
-    /// Turn a titles-only item into a record: STK for goods, SVC for services, cost from the trade's cost-of-sales share. No stock. Idempotent.
     @discardableResult
     public static func migrateItem(_ s: inout GameState, companyID: Int, itemID: String, data: GameData) -> Bool {
         guard let i = s.companyIndex(companyID) else { return false }
@@ -262,7 +221,6 @@ public enum ItemModels {
         return true
     }
 
-    /// Migrate every item of one company. Returns how many records were created.
     @discardableResult
     public static func migrate(_ s: inout GameState, companyID: Int, data: GameData) -> Int {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return 0 }
@@ -271,7 +229,6 @@ public enum ItemModels {
         return n
     }
 
-    /// Migrate the open companies of the opted-in trades. With the empty registry this does nothing.
     @discardableResult
     public static func migrateOptedIn(_ s: inout GameState, data: GameData, trades: Set<String> = optedInTrades) -> Int {
         guard !trades.isEmpty else { return 0 }
@@ -291,7 +248,6 @@ public enum ItemModels {
         mutate(&s, companyID: companyID, itemID: itemID) { $0.supplierID = vendorID }
     }
 
-    /// Units arrive: stock goes up, the arrival week is kept for holding cost.
     public static func receive(_ s: inout GameState, companyID: Int, itemID: String, units: Int) {
         let week = s.week
         mutate(&s, companyID: companyID, itemID: itemID) { r in
@@ -302,7 +258,6 @@ public enum ItemModels {
         }
     }
 
-    /// Units sold out of stock; returns how many could be sold.
     @discardableResult
     public static func take(_ s: inout GameState, companyID: Int, itemID: String, units: Int) -> Int {
         var sold = 0
@@ -329,7 +284,6 @@ public enum ItemModels {
         mutate(&s, companyID: companyID, itemID: itemID) { log(&$0, week: week, units: units, revenue: revenue, profit: profit) }
     }
 
-    /// Weekly: every item that has a record gets this week's units, revenue and profit into its history. No record, no write.
     static func weeklyTick(_ s: inout GameState, _ i: Int, data: GameData) {
         guard !s.companies[i].value(key).isNull else { return }
         let id = s.companies[i].id

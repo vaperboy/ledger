@@ -3,14 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// IT security and cyber attacks. Every company chooses a protection level (none, basic, managed, a security team), offline backups
-/// and staff training; they cost a monthly fee. Attacks follow the UK Cyber Security Breaches Survey: a fake invoice, ransomware, a data
-/// leak, a website knocked offline. Losses go through `Incidents.loss` with category "cyber", so cyber insurance pays them.
-/// Original: features/world/cyber_attacks.js (`LV`, `ODDS`, `yearOdds`, `fraud`, `ransom`, `leak`, `down`, `ACTS.cy56r`, `ACTS.cy56l`, weekly step, screen).
-/// A manager looks after the level: at each month end, unless you picked one yourself (then yours stands until you hand it back),
-/// they choose the level that fits the size and the risk, keep offline backups on and book the yearly training (`managerKeeps`,
-/// original `secNeed`/`doSec` in features/people/manager_duties.js).
-/// Not ported: the chain override, the data-protection authority's local name.
 public enum Cyber {
     public static let levels: [(name: String, monthly: Double, text: String)] = [
         ("None", 0, "Only what came with the computers."),
@@ -41,14 +33,12 @@ public enum Cyber {
     static func trained(_ co: Company, week: Int) -> Bool { let t = co.value("cy56")["tr"]; return !t.isNull && week - t.int < 52 }
     static func exposure(_ co: Company, _ bd: Trade?) -> Double { exposureByTrade[co.type] ?? exposureByFamily[bd?.family ?? ""] ?? 1 }
 
-    /// Monthly fee for a level (and backups). Original: `monthly`.
     public static func monthly(_ co: Company, level: Int, backups: Bool, cur: Currency) -> Double {
         cur.scaledPrice(levels[level].monthly) * sizeFactor(co) + (backups ? cur.scaledPrice(400) * sizeFactor(co) : 0)
     }
 
     public static func trainingCost(_ co: Company, cur: Currency) -> Double { (cur.scaledPrice(450) * Double(max(1, heads(co))) / 100).rounded() * 100 }
 
-    /// The chance of a serious incident in a year. Original: `yearOdds`.
     public static func yearOdds(_ co: Company, week: Int, trade bd: Trade?) -> Double {
         let c = co.value("cy56")
         let size = clamp((Double(heads(co)) + 1) / 5, 0.6, 4).squareRoot()
@@ -68,8 +58,6 @@ public enum Cyber {
     }
 
     static func weeklyRevenue(_ co: Company, _ cur: Currency) -> Double { max(cur.scaledPrice(10000), co.value("lastW")["rev"].double) }
-
-    // MARK: Attacks
 
     static func fraud(_ s: inout GameState, _ i: Int, _ h: inout HashedRandom, cur: Currency, data: GameData) {
         let co = s.companies[i]
@@ -135,7 +123,6 @@ public enum Cyber {
         s.note("\(co.name)'s website and online sales were knocked offline by an attack for several days. Managed IT security would have stopped it.", tone: "bad", companyID: co.id)
     }
 
-    /// Force an attack (for tests). Kinds: fraud, ransom, leak, down.
     public static func hit(_ s: inout GameState, companyID: Int, kind: String, data: GameData) {
         guard let i = s.companyIndex(companyID) else { return }
         let cur = World(state: s, data: data).currency(s.companies[i])
@@ -148,9 +135,6 @@ public enum Cyber {
         }
     }
 
-    // MARK: Answers
-
-    /// Ransom: pay, restore, or call the team. Original: `ACTS.cy56r`.
     public static func answerRansom(_ s: inout GameState, message m: Message, option: Int, data: GameData) {
         guard let i = s.companyIndex(m.companyID) else { return }
         let co = s.companies[i], d = m.value("data"), id = co.id
@@ -182,7 +166,6 @@ public enum Cyber {
         }
     }
 
-    /// Leak: tell them or keep quiet. Original: `ACTS.cy56l`.
     public static func answerLeak(_ s: inout GameState, message m: Message, option: Int, data: GameData) {
         guard let i = s.companyIndex(m.companyID) else { return }
         let fine = m.value("data")["fine"].double
@@ -199,8 +182,6 @@ public enum Cyber {
         }
     }
 
-    // MARK: Player actions
-
     public static func setLevel(_ s: inout GameState, companyID: Int, level: Int) {
         guard let i = s.companyIndex(companyID) else { return }
         var c = s.companies[i].value("cy56"); c["lvl"] = .number(Double(min(3, max(0, level))))
@@ -215,16 +196,13 @@ public enum Cyber {
         s.companies[i].set("cy56", c)
     }
 
-    /// Does the manager pick the level here (no choice of yours standing)?
     public static func managerPicks(_ co: Company) -> Bool { co.managerID != nil && !co.value("cy56")["own"].bool }
 
-    /// Give the choice back to the manager. Original: `md56` switch.
     public static func leaveToManager(_ s: inout GameState, companyID: Int) {
         guard let i = s.companyIndex(companyID) else { return }
         var c = s.companies[i].value("cy56"); c["own"] = 0; s.companies[i].set("cy56", c)
     }
 
-    /// The level a manager would pick: 3 for 40+ heads or a high risk, 2 from 8 heads, else 1; never more than 3% of the month's sales. Original: `secNeed`.
     public static func levelNeeded(_ co: Company, week: Int, trade bd: Trade?, cur: Currency) -> Int {
         let o0 = yearOdds(co, week: week, trade: bd) / odds[min(3, max(0, co.value("cy56")["lvl"].int))]
         let hd = heads(co)
@@ -234,7 +212,6 @@ public enum Cyber {
         return lvl
     }
 
-    /// The manager's month: level, backups and training. Original: `doSec`.
     static func managerKeeps(_ s: inout GameState, _ i: Int, trade bd: Trade, data: GameData) {
         let co = s.companies[i]
         guard co.managerID != nil, let mgr = s.people[co.managerID!] else { return }
@@ -266,9 +243,6 @@ public enum Cyber {
         return nil
     }
 
-    // MARK: Weekly
-
-    /// Fees, unanswered attacks, a leak coming out, and new attacks. Original: the 'IT security and cyber attacks' week.after step.
     public static func weekly(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "hold" {
             guard let bd = data.catalog[s.companies[i].type] else { continue }
@@ -278,7 +252,6 @@ public enum Cyber {
             let mo = monthly(co, level: c["lvl"].int, backups: c["bk"].bool, cur: cur)
             if mo > 0 { Payments.companyPays(&s, companyID: co.id, amount: mo * 12 / 52, category: "oth", label: "IT security") }
             if GameCalendar.isMonthEnd(week: s.week) { managerKeeps(&s, i, trade: bd, data: data) }
-            // An unanswered attack: the safe choice.
             for k in s.inbox.indices {
                 let m = s.inbox[k]
                 guard m.companyID == co.id, (m.actionID == "cy56r" || m.actionID == "cy56l"), m.status == "done", m.int("pick") == -1, !m.flag("cy56d") else { continue }
@@ -297,7 +270,7 @@ public enum Cyber {
             } else if !hide.isNull, s.week - hide["w"].int >= 26 {
                 var cc = s.companies[i2].value("cy56"); cc["hide"] = .null; s.companies[i2].set("cy56", cc)
             }
-            if s.week - (co.openedWeek ?? co.foundedWeek) < 8 { continue }   // a brand new company is not on anyone's list yet
+            if s.week - (co.openedWeek ?? co.foundedWeek) < 8 { continue }
             guard h.next() < yearOdds(s.companies[i2], week: s.week, trade: bd) / 52 else { continue }
             let weights: [(String, Double)] = [("fraud", 0.5 * (trained(co, week: s.week) ? 0.5 : 1)), ("ransom", 0.15), ("leak", 0.2), ("down", online.contains(co.type) ? 0.25 : 0.03)]
             var r = h.next() * weights.reduce(0) { $0 + $1.1 }

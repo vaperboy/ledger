@@ -3,7 +3,6 @@ import XCTest
 import GameCore
 import Finance
 
-/// EntitlementGatesTests and AdPolicyTests (pure rules; StoreKit and the ad SDK live in the app).
 final class EntitlementGatesTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
@@ -57,12 +56,11 @@ final class EntitlementGatesTests: XCTestCase {
 final class AdPolicyTests: XCTestCase {
     private let t0 = Date(timeIntervalSince1970: 1_800_000_000)
 
-    /// A scripted 30-week game; each report is continued 7 real minutes after the last. Returns the weeks that showed an interstitial.
     private func script(m4Week: Int, weeks: Int = 30, minutesBetween: Double = 7, blocking: Set<Int> = [], e: EntitlementSnapshot = .free) -> [Int] {
         var l = AdLedger(), shown: [Int] = []
         for w in 1...weeks {
             let at = t0.addingTimeInterval(Double(w) * minutesBetween * 60)
-            if l.rolled(at).sessionsToday < 2 { l.beginSession(now: at); l.beginSession(now: at) }   // never the first session of the day
+            if l.rolled(at).sessionsToday < 2 { l.beginSession(now: at); l.beginSession(now: at) }
             let c = AdPolicy.Context(reportWeek: w, m4Done: w >= m4Week, blockingInboxOpen: blocking.contains(w), now: t0.addingTimeInterval(Double(w) * minutesBetween * 60), entitlements: e)
             if AdPolicy.reportContinued(c, &l) { shown.append(w) }
         }
@@ -115,7 +113,6 @@ final class AdPolicyTests: XCTestCase {
     }
 }
 
-/// The ad caps: real-time marks survive a new save, daily limits, quiet hour, paid players never see an offer.
 final class AdCapsTests: XCTestCase {
     private let t0 = Date(timeIntervalSince1970: 1_800_000_000)
 
@@ -190,7 +187,6 @@ final class AdCapsTests: XCTestCase {
     }
 }
 
-/// Payouts of the rewarded ads post through the ledger: the books balance and the caps hold.
 final class AdRewardsTests: XCTestCase {
     func testLabelsMatchTheLadderGrants() throws {
         var e = try ChainsTests.engine()
@@ -212,7 +208,6 @@ final class AdRewardsTests: XCTestCase {
         _ = ChainsTests.start(&e, "cafe")
         let cur = e.homeCurrency
         let grant = cur.scaledPrice(25_000)
-        // No ladder step pays cash now, so post a line the doubling recognises.
         e.update { s, _, _ in s.week = 6; Ledger.move(&s, .me, grant, why: "Start-up grant from the town") }
         var paid = 0.0
         let cashBefore = e.state.cash

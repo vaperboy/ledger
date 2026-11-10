@@ -5,16 +5,13 @@ import Finance
 import Businesses
 import Events
 
-/// A big change of the latest period: the market share of one of your companies (monthly snapshots) or an investment (the week's price move).
 public struct MarketMover: Identifiable, Equatable, Sendable {
     public enum Kind: String, Sendable { case marketShare, investment }
     public var id: String
     public var kind: Kind
     public var title: String
     public var detail: String
-    /// Share points (0...1 scale) for a market share, money for an investment.
     public var change: Double
-    /// The change against where it started (0.1 = up a tenth); movers are ranked by its size.
     public var relativeChange: Double
     public var isGain: Bool
     public var companyID: Int?
@@ -23,11 +20,8 @@ public struct MarketMover: Identifiable, Equatable, Sendable {
 
 public struct MarketOpportunity: Identifiable, Equatable, Sendable {
     public enum Kind: String, Sendable {
-        /// A rival whose owner wants to sell, or one in money trouble that may sell cheaply.
         case rivalForSale, rivalInTrouble
-        /// A city with strong demand for a trade you run and few rivals, where you have no company of that trade.
         case openCity
-        /// A fund or coin down 5% or more over four weeks.
         case fundDip
     }
     public var id: String
@@ -40,19 +34,14 @@ public struct MarketOpportunity: Identifiable, Equatable, Sendable {
     public var countryCode: String?
     public var tradeID: String?
     public var assetID: String?
-    /// The rival's value, the estimated start cost, or the asset's price.
     public var amount: Double?
 }
 
 public struct MarketThreat: Identifiable, Equatable, Sendable {
     public enum Kind: String, Sendable {
-        /// A rival selling at least 10% under you, or running a discount.
         case undercut
-        /// A rival that opened in the last eight weeks.
         case newEntrant
-        /// A cut-price newcomer working a loophole (it drags the whole market's prices).
         case cheapEntrant
-        /// Your share fell two points or more in the latest month.
         case losingShare
     }
     public var id: String
@@ -61,57 +50,44 @@ public struct MarketThreat: Identifiable, Equatable, Sendable {
     public var detail: String
     public var companyID: Int
     public var rivalID: Int?
-    /// 0...1, for ordering.
     public var severity: Double
 }
 
-/// The Market overview: your position across markets, everything invested, and what deserves a look.
 public struct MarketOverview: Equatable {
-    /// Your sales against all sales in your local markets together (nil without a local market).
     public var combinedShare: Double?
     public var markets: Int
-    /// Markets where you sell the most.
     public var marketsLed: Int
-    /// Your group's place by sales among the companies of your home country.
     public var groupRank: Int?
     public var groupRankOf: Int?
     public var invested: PortfolioTotals
-    /// Total value invested at each week's end, oldest first.
     public var investedHistory: [Double]
     public var movers: [MarketMover]
     public var opportunities: [MarketOpportunity]
     public var threats: [MarketThreat]
 }
 
-/// A country as a place to do business.
 public struct MarketCountry: Identifiable, Equatable, Sendable {
     public var id: String { code }
     public var code: String
     public var name: String, flag: String, region: String
     public var isHome: Bool
     public var populationMillions: Double
-    /// How much people buy (1 = the reference economy), and the price, rent and wage levels against it.
     public var marketStrength: Double
     public var priceLevel: Double, rentLevel: Double, wageLevel: Double
     public var corporateTax: Double, vatStandard: Double, dividendTax: Double, employerSocial: Double
     public var cities: Int
     public var yourCompanies: Int
-    /// A compliance desk at your head office makes registering there faster.
     public var hasDesk: Bool
 }
 
-/// A city as a place to open in. Levels are absolute (the country's level times the city's).
 public struct MarketCity: Identifiable, Equatable, Sendable {
     public var id: String
     public var name: String
     public var countryCode: String
-    /// Thousands of people.
     public var population: Double
     public var demand: Double
     public var priceLevel: Double, rentLevel: Double, wageLevel: Double
     public var touristIndex: Double
-    /// For the trade asked about: customers an average company can expect (1 = an average place), the word for it, and the rivals there
-    /// (the running market's count where you are, else the expected count).
     public var tradeID: String?
     public var tradeDemand: Double?
     public var tradeDemandLevel: CityMarket.DemandLevel?
@@ -121,7 +97,6 @@ public struct MarketCity: Identifiable, Equatable, Sendable {
 }
 
 public extension GameEngine {
-    // MARK: Overview
 
     var marketOverview: MarketOverview {
         let positions = marketPositions()
@@ -140,7 +115,6 @@ public extension GameEngine {
                               opportunities: marketOpportunities(), threats: marketThreats(positions: positions))
     }
 
-    /// Biggest changes first: market shares of your companies (latest month) and investments (latest week).
     func marketMovers(limit: Int = 4) -> [MarketMover] { marketMovers(positions: marketPositions(), portfolio: portfolio, limit: limit) }
 
     private func marketMovers(positions: [CompanyMarketPosition], portfolio pf: Portfolio, limit: Int = 4) -> [MarketMover] {
@@ -159,9 +133,6 @@ public extension GameEngine {
         return Array(out.sorted { (abs($0.relativeChange), $1.id) > (abs($1.relativeChange), $0.id) }.prefix(max(0, limit)))
     }
 
-    // MARK: Opportunities
-
-    /// Up to `limit` cards: a rival for sale (or in trouble), a city worth opening in, a dip in a fund.
     func marketOpportunities(limit: Int = 3) -> [MarketOpportunity] {
         var rivalCards: [MarketOpportunity] = []
         let rivals = marketRivals()
@@ -178,20 +149,17 @@ public extension GameEngine {
         var others: [MarketOpportunity] = []
         if let c = bestOpenCity() { others.append(c) }
         let dips = marketAssets.filter { !$0.closed && ($0.monthChange ?? 0) <= -0.05 }
-        // A fund's dip first (steadier), else the deepest dip of a coin.
         let deepest: ([MarketAsset]) -> MarketAsset? = { $0.min { ($0.monthChange ?? 0, $0.id) < ($1.monthChange ?? 0, $1.id) } }
         if let d = deepest(dips.filter { $0.kind != .crypto }) ?? deepest(dips.filter { $0.kind == .crypto }) {
             others.append(MarketOpportunity(id: "dip:\(d.id)", kind: .fundDip, title: "\(d.name) is down \(Int(saturating: (abs(d.monthChange ?? 0) * 100).rounded()))%",
                                             detail: "Over the last four weeks. Risk: \(d.risk.rawValue.lowercased()).", companyID: nil, rivalID: nil, cityID: nil,
                                             countryCode: nil, tradeID: nil, assetID: d.id, amount: d.price))
         }
-        // One of each kind first, then more rivals.
         var out = Array(rivalCards.prefix(1)) + others
         out += rivalCards.dropFirst()
         return Array(out.prefix(max(0, limit)))
     }
 
-    /// The city with the most demand per rival for a trade you run, where you have no company of that trade (home country and countries you are in).
     private func bestOpenCity() -> MarketOpportunity? {
         let trades = Array(Set(MarketMap.markets(state, data: data).filter { $0.kind == .local }.map { $0.type })).sorted()
         let codes = Array(Set(state.companies.filter { $0.status.isLive }.map { $0.countryCode } + [state.homeCountryCode])).sorted()
@@ -218,8 +186,6 @@ public extension GameEngine {
                                  detail: "High demand and \(b.rivals) rival\(b.rivals == 1 ? "" : "s").", companyID: nil, rivalID: nil, cityID: b.city.id,
                                  countryCode: b.country.code, tradeID: b.trade.id, assetID: nil, amount: cost)
     }
-
-    // MARK: Threats
 
     func marketThreats(limit: Int = 4) -> [MarketThreat] { marketThreats(positions: marketPositions(), limit: limit) }
 
@@ -263,9 +229,6 @@ public extension GameEngine {
         return Array(out.filter { seen.insert($0.id).inserted }.sorted { ($0.severity, $1.id) > ($1.severity, $0.id) }.prefix(max(0, limit)))
     }
 
-    // MARK: World
-
-    /// Every country: home first, then those you are in, then by name.
     func marketCountries() -> [MarketCountry] {
         let live = state.companies.filter { $0.status.isLive }
         let rows = data.countries.countries.map { c in
@@ -277,7 +240,6 @@ public extension GameEngine {
         return rows.sorted { ($0.isHome ? 0 : $0.yourCompanies > 0 ? 1 : 2, $0.name) < ($1.isHome ? 0 : $1.yourCompanies > 0 ? 1 : 2, $1.name) }
     }
 
-    /// The cities of a country, biggest first; with `tradeID`, the demand and rivals for that trade in each.
     func marketCities(countryCode: String, tradeID: String? = nil) -> [MarketCity] {
         guard let c = data.countries[countryCode] else { return [] }
         let tables = data.balance.cityMarket
@@ -298,15 +260,10 @@ public extension GameEngine {
         }
     }
 
-    /// One city's market in detail: households, incomes, demand and rivals per trade.
     func marketCityProfile(cityID: String, countryCode: String) -> CityMarket.Profile? {
         CityMarket.profile(cityID: cityID, countryCode: countryCode, state: state, data: data)
     }
 
-    // MARK: Rankings
-
-    /// The rich list of your home country, where you stand on it and the top of it.
     var richListStanding: RichList.Standing { RichList.standing(state, data: data, context: context) }
-    /// The business awards year by year.
     var awardYears: [Awards.Year] { Awards.years(state) }
 }

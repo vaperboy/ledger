@@ -3,10 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// What the weather brings besides customers: storm warnings, storm damage, securing your places, weather notices, tourist news
-/// (a festival, a travel guide, a scare), and the forecast for the screen. The weather itself is `Weather`.
-/// Originals: the 'weather warnings, storm damage, tourist news' step, `ACTS.wx56prep`, `X.stormName`, forecast part of `V.wx56`
-/// (features/world/weather_and_tourism.js).
 public enum WeatherEvents {
     public static let prepareAction = "wx56prep"
     public static func stormName(_ cc: String) -> String { CountryTraits.text(cc, "stormName") ?? "a storm" }
@@ -15,11 +11,8 @@ public enum WeatherEvents {
 
     static func state(_ s: GameState) -> JSONValue { s.rest["wx56"] ?? .object(["ev": .array([]), "prep": .object([:]), "sent": .object([:])]) }
 
-    // MARK: Reading
-
     public struct Forecast: Equatable, Sendable { public var week: Int; public var temperatureLow: Double; public var temperatureHigh: Double; public var kind: String; public var uncertain: Bool }
 
-    /// This week and the next three, in a country. The third week is uncertain. Original: `V.wx56` forecast.
     public static func forecast(_ s: GameState, _ data: GameData, country cc: String) -> (now: WeekWeather, ahead: [Forecast]) {
         let t = data.balance.weather, seed = s.seed
         let now = Weather.draw(country: cc, week: s.week, seed: seed, tables: t)
@@ -33,20 +26,14 @@ public enum WeatherEvents {
         return (now, out)
     }
 
-
-    // MARK: Big event warning
-
     public struct BigWarning: Equatable, Sendable {
         public var countryCode: String
         public var week: Int
-        /// "storm", "heat" or "flood"
         public var kind: String
         public var companyIDs: [Int]
         public var title: String
     }
 
-    /// Storms, heatwaves and floods (a week of near-constant heavy rain) due this week or in the next two, per country where an open
-    /// company stands, with the companies that can be hit. Reads the same draws as `forecast`; changes nothing.
     public static func bigWarnings(_ s: GameState, _ data: GameData) -> [BigWarning] {
         let t = data.balance.weather
         let open = s.companies.filter { $0.status == .open }
@@ -67,12 +54,10 @@ public enum WeatherEvents {
         return out
     }
 
-    /// Tourist events running in a country. Original: `S.wx56.ev`.
     public static func touristEvents(_ s: GameState, country cc: String) -> [(text: String, factor: Double, from: Int, until: Int, city: String?)] {
         state(s)["ev"].array.filter { $0["cc"].string == cc && $0["end"].int > s.week }.map { ($0["t"].string, $0["f"].double, $0["w0"].int, $0["end"].int, $0["city"].isNull ? nil : $0["city"].string) }
     }
 
-    /// How a company is moved this week: weather and tourists, as shares against normal. Original: the line on the "This week" card.
     public static func companyLine(_ s: GameState, _ data: GameData, companyID: Int) -> (weather: Double, tourists: Double, workingTime: Double, kind: String)? {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return nil }
         let e = Weather.effect(for: co, trade: bd, week: s.week, seed: s.seed, tables: data.balance.weather)
@@ -86,15 +71,12 @@ public enum WeatherEvents {
         co.value("prem")["m2"].double > 0 && !["fin", "hold", "club"].contains(data.catalog[co.type]?.family ?? "")
     }
 
-    // MARK: Weekly
-
     public static func weekly(_ s: inout GameState, data: GameData) {
         let ccs = Array(Set(s.companies.filter { $0.status == .open }.map { $0.countryCode })).sorted()
         let t = data.balance.weather
         for cc in ccs {
             let L = s.companies.filter { $0.status == .open && $0.countryCode == cc }
             let cur = Currency(country: data.countries.resolve(cc, orHome: cc), rates: ExchangeRates(drift: s.exchangeRates.values))
-            // the storm that just passed
             let now = Weather.draw(country: cc, week: s.week, seed: s.seed, tables: t)
             let key = "\(cc):\(s.week)"
             if now.kind == "storm" {
@@ -110,7 +92,6 @@ public enum WeatherEvents {
                 if hit == 0 && prep && !L.isEmpty { s.note("The storm passed. Your places were secured and nothing was damaged.", tone: "good") }
                 var st = state(s); var p = st["prep"]; p[key] = .null; st["prep"] = p; s.rest["wx56"] = st
             }
-            // next week's weather: a warning when it matters
             let nx = Weather.draw(country: cc, week: s.week + 1, seed: s.seed, tables: t)
             let nkey = "\(cc):\(s.week + 1)"
             if state(s)["sent"][nkey].bool { continue }
@@ -142,7 +123,6 @@ public enum WeatherEvents {
                 s.addMessage(kind: "info", from: "Weather service", title: "\(kindWords[nx.kind] ?? nx.kind) in \(countryName) next week (\(Int(nx.temperature))°)",
                              body: lines.joined(separator: " "), companyID: aff[0].id, tone: "n")
             }
-            // tourist news: about one a year per country, only where visitors matter to you
             let T = L.filter { co in data.catalog[co.type].map { DemandModel.touristShare(co, $0, World(state: s, data: data)) >= 0.06 } ?? false }
             if !T.isEmpty && !state(s)["ev"].array.contains(where: { $0["cc"].string == cc && $0["end"].int > s.week }) && s.random.chance(1.0 / 45) {
                 let co = T[Int(s.random.range(0, 1) * Double(T.count))], city = data.countries.city(co.cityID, preferring: cc)?.city.name ?? "town"
@@ -170,7 +150,6 @@ public enum WeatherEvents {
         st["sent"] = sent; if s.rest["wx56"] != nil || !st["ev"].array.isEmpty { s.rest["wx56"] = st }
     }
 
-    /// An insured loss: property insurance pays all but the excess. Original: `applyFx({ loss }, { cat: 'prop' })`.
     static func loss(_ s: inout GameState, companyID: Int, amount amt: Double, data: GameData) {
         guard let i = s.companyIndex(companyID) else { return }
         if s.companies[i].value("ins")["prop"].bool {
@@ -182,7 +161,6 @@ public enum WeatherEvents {
         Payments.companyPays(&s, companyID: companyID, amount: amt, category: "loss", label: "Storm damage")
     }
 
-    /// Answer the storm warning: secure the places (option 0) or take the risk. Original: `ACTS.wx56prep`.
     public static func answerPrepare(_ s: inout GameState, data: GameData, message m: Message, option idx: Int) {
         guard idx == 0 else { return }
         let d = m.value("data")

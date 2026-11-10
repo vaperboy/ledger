@@ -5,11 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Role effects against their cost: each extra role of `RoleEffects` should pay for itself modestly for a typical company of the trades
-/// where it is recommended (benefit about 105 to 130 percent of the wage a year), and about nothing for a company too small to need it.
-/// The helper runs the same company for a year twice from the same state: once as it is, once with the role given as a DUTY to a person already on the
-/// payroll (so the wage is the same in both and the cash difference is the effect alone), and averages over seeds. The wage it is compared with is what a
-/// person hired for the role costs a year, with the employer's charges.
 final class RoleTuningTests: XCTestCase {
     struct Measure { var value: Double; var wage: Double; var revenue: Double }
 
@@ -21,10 +16,9 @@ final class RoleTuningTests: XCTestCase {
             if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) { id = i }
             if let i = s.companyIndex(id) { s.companies[i].size = size }
             Payments.injectCash(&s, companyID: id, amount: 300_000_000)
-            _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(optionalEquipment: true))   // a typical company has its full kit
+            _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(optionalEquipment: true))
             if let i = s.companyIndex(id) {
                 s.companies[i].status = .open; s.companies[i].ownerHours = 40
-                // a typical company advertises (the manager's first campaign: a small budget on one channel)
                 var mkt = s.companies[i].value("mkt")
                 mkt["meta"] = .object(["b": .number(World(state: s, data: data).currency(s.companies[i]).scaledPrice(1500)), "since": .number(Double(s.week)), "lock": .number(Double(s.week))])
                 s.companies[i].set("mkt", mkt)
@@ -34,7 +28,6 @@ final class RoleTuningTests: XCTestCase {
         return (e, id)
     }
 
-    /// The yearly value of one role as a duty, the wage of a hire for it, and the company's revenue, averaged over the seeds.
     func measure(role: String, trade: String, size: Double, seeds: [Int], weeks: Int = 52) -> Measure? {
         var v = 0.0, w = 0.0, r = 0.0, n = 0.0
         for seed in seeds {
@@ -55,7 +48,6 @@ final class RoleTuningTests: XCTestCase {
         return n == 0 ? nil : Measure(value: v / n, wage: w / n, revenue: r / n)
     }
 
-    /// The tuning run: prints the table the numbers in come from. Set ROLE_TUNING=full for every trade and seed.
     func testRolesPayForThemselvesModestly() throws {
         let full = ProcessInfo.processInfo.environment["ROLE_TUNING"] == "full"
         let seeds = full ? [1, 2, 3, 4, 5, 6] : [1, 2]

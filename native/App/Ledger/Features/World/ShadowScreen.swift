@@ -5,9 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Off the books: illegal routes for a company and dirty tricks against a rival. Near-black with hazard amber. Every one of them goes through
-/// the same three beats: a plain warning, a separate "if you do this, this will happen" page, and only then a press-and-hold to go ahead.
-/// Nothing here ever shows how close a company is to being found out.
 struct ShadowScreen: View {
     var e: GameEngine
     var back: () -> Void
@@ -81,8 +78,6 @@ struct ShadowScreen: View {
     private func actTitle(_ a: Act) -> String {
         switch a { case .route(let r): return r.title; case .trick(let k): return k.title }
     }
-
-    // MARK: List
 
     private func listPage(_ co: Company) -> some View {
         let active: [IllegalRoute] = world.routes.active(co.id)
@@ -197,8 +192,6 @@ struct ShadowScreen: View {
         .buttonStyle(PressableStyle())
     }
 
-    // MARK: Target (tricks only)
-
     private func targetPage(_ co: Company, _ a: Act) -> some View {
         let names: [String] = e.rivalsOpen ? e.rivalMarkets().flatMap { (m: RivalMarket) -> [String] in m.cards.map { (c: RivalStories.Card) -> String in c.name } } : []
         let clean: String = target.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -226,14 +219,11 @@ struct ShadowScreen: View {
         }
     }
 
-    // MARK: Beat 1: the warning
-
     private func begin(_ a: Act, _ co: Company) {
         act = a
         issueWarning(co, a)
     }
 
-    /// Asks the engine for the plain warning; it is valid for a week and for one use.
     private func issueWarning(_ co: Company, _ a: Act) {
         var issued: RouteWarning? = nil
         let id: Int = co.id
@@ -267,8 +257,6 @@ struct ShadowScreen: View {
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(P.accent.opacity(0.7), lineWidth: 1.5))
     }
 
-    // MARK: Beat 2: what will happen
-
     private func confirmPage(_ co: Company, _ a: Act) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("If you do this, this will happen").font(.system(size: 24, weight: .semibold, design: .serif)).foregroundStyle(P.ink)
@@ -297,8 +285,6 @@ struct ShadowScreen: View {
         switch a { case .route: return "start it"; case .trick: return "do it" }
     }
 
-    /// The plain consequences, true to the engine's rules. `true` marks the one gain; everything else is a risk. How close the company is to
-    /// an audit is never shown, because it is never known.
     private func consequences(_ co: Company, _ a: Act) -> [(String, Bool)] {
         switch a {
         case .route(let rt):
@@ -326,8 +312,6 @@ struct ShadowScreen: View {
             ]
         }
     }
-
-    // MARK: Beat 3: doing it
 
     private func go(_ co: Company, _ a: Act) {
         guard let w = warning else { step = .list; return }
@@ -363,7 +347,6 @@ struct ShadowScreen: View {
     }
 }
 
-/// Diagonal hazard stripes.
 struct HazardStripe: View {
     var a: Color
     var b: Color

@@ -5,8 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// The first-item gate for models that work out their own week, starters added by a module after the choice, and the customers of a company that
-/// chose a single product.
 final class FirstItemGateTests: XCTestCase {
     private func pendingCompany(_ trade: String) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
@@ -20,7 +18,6 @@ final class FirstItemGateTests: XCTestCase {
         CompanyWeek.WeekContext(units: 5, rev: 100, cogs: 20, D: 5, cap: 10, util: 0.5, price: 20, paidDuringWeek: 0)
     }
 
-    /// Rental, developer and special-family models return their own week; while the first choice is open it sells nothing, and costs run on.
     func testGateZeroesSalesOfSelfModelledWeeks() throws {
         var ran = 0
         for trade in ["estate", "realdev"] {
@@ -43,14 +40,12 @@ final class FirstItemGateTests: XCTestCase {
         if ran == 0 { throw XCTSkip("no rental or developer trade could be started") }
     }
 
-    /// A pending company of a trade with its own week model earns nothing in a real week.
     func testPendingRentalCompanyBooksNoSales() throws {
         var (e, id) = try pendingCompany("estate")
         for _ in 0..<7 { _ = e.nextDay() }
         XCTAssertEqual(try XCTUnwrap(e.state.company(id)).lastWeekRevenue, 0, accuracy: 1e-9)
     }
 
-    /// Starters a module installs long after the choice stay hidden unless chosen; the owner's own items and units that follow assets stay visible.
     func testLateStartersStayHiddenUnlessChosen() throws {
         var (e, id) = try pendingCompany("bakery")
         let pick = try XCTUnwrap(e.firstItemChoices(companyID: id).first)
@@ -74,15 +69,12 @@ final class FirstItemGateTests: XCTestCase {
         XCTAssertFalse(e.salesItems(companyID: id).contains { $0.id == "w9x:7" })
     }
 
-    /// A company that chose one product does not take every customer the whole range would draw, and a dear product's ticket does not come on top
-    /// of the full customer count: its weekly sales potential stays within a sane range of a comparable company selling everything.
     func testSingleChosenProductStaysWithinASaneRangeOfTheFullRange() throws {
         let (e, id) = try pendingCompany("bakery")
         let starters = e.firstItemChoices(companyID: id)
         XCTAssertGreaterThanOrEqual(starters.count, 2)
         let i = try XCTUnwrap(e.state.companyIndex(id))
         let bd = try XCTUnwrap(e.data.catalog[e.state.companies[i].type])
-        // the same company with every starter on sale
         var full = e.state
         SalesItems.seedStarters(&full, i, data: e.data)
         full.companies[i].set(SalesItems.pickKey, .null)

@@ -4,9 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// A company that is still being set up has one screen: progress, then the full checklist of what is still missing, each row with its own
-/// action (fill in a document, buy equipment in TechPro Store, rent a place in AirStay). It opens by itself once every item is done and
-/// the paperwork is approved.
 struct CompanySetupScreen: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -53,8 +50,6 @@ struct CompanySetupScreen: View {
         }
     }
 
-    /// A new location of a chain can have a manager appointed instead of the owner doing the set-up by hand: the manager hires within the head
-    /// office plan's headcount and orders stock for the demand. With no manager the owner does all of it.
     @ViewBuilder private var managerCard: some View {
         if engine.chainOf(companyID: company.id) != nil {
             let has: Bool = company.managerID != nil
@@ -76,8 +71,6 @@ struct CompanySetupScreen: View {
         return kind != "none"
     }
 
-    /// Each missing item says where it is fixed and the row opens it: a document its form (check the terms, sign, send) unless it is
-    /// already in. Premises and equipment are bought in their apps; they and opening stock cash have no action here.
     @ViewBuilder private func row(_ it: OpeningChecklist.Item) -> some View {
         let docID: String = it.id.hasPrefix("doc:") ? String(it.id.dropFirst(4)) : ""
         let st: String = docID.isEmpty ? "" : (engine.state.company(company.id)?.value("docs")[docID]["st"].string ?? "")

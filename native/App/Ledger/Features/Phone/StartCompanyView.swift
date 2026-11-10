@@ -5,7 +5,6 @@ import Businesses
 import Finance
 import Simulation
 
-/// Start a company, screen 1: the player's cash, a guided way in (three questions, three matches) and the full list of trades.
 struct GuidedStartView: View {
     @EnvironmentObject var store: GameStore
     @StateObject private var estimator = StartEstimator()
@@ -48,7 +47,6 @@ struct GuidedStartView: View {
     }
 }
 
-/// The bar at the foot of a start screen that holds its actions.
 struct StartBar<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @ViewBuilder var content: () -> Content
@@ -62,7 +60,6 @@ struct StartBar<Content: View>: View {
     }
 }
 
-/// A small choice chip for the filters and the interest picker.
 struct StartChip: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -85,9 +82,6 @@ struct StartChip: View {
     }
 }
 
-// MARK: Help me choose
-
-/// Three questions: how much to spend, how much time, what interests the player.
 struct StartChooseView: View {
     @EnvironmentObject var store: GameStore
     @State private var budget: StartBudget = .small
@@ -148,9 +142,6 @@ struct StartChooseView: View {
     }
 }
 
-// MARK: Matches
-
-/// The three businesses that fit the answers, each with figures the engine worked out from trial runs.
 struct StartMatchesView: View {
     @EnvironmentObject var store: GameStore
     @EnvironmentObject var estimator: StartEstimator
@@ -232,9 +223,6 @@ struct StartMatchesView: View {
     }
 }
 
-// MARK: Browse
-
-/// Every trade that can be started, with search and four filters. Paybacks and risk fill in as the engine finishes its trial runs.
 struct StartBrowseView: View {
     @EnvironmentObject var store: GameStore
     @EnvironmentObject var estimator: StartEstimator

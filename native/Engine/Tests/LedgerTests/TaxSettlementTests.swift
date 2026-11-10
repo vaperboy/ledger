@@ -4,7 +4,6 @@ import Countries
 import Finance
 @testable import Simulation
 
-/// The year-end personal tax settlement (what is left after tax paid as it arose): itemised, paid from cash then savings, and a decision (not a forced sale) when the accounts cannot carry it.
 final class TaxSettlementTests: XCTestCase {
     private func game() throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
@@ -64,7 +63,6 @@ final class TaxSettlementTests: XCTestCase {
     func testWarningWhenTheBillExceedsLiquidFundsNearYearEnd() throws {
         var e = try game()
         e.update { s, data, ctx in
-            // Move to the last weeks of the year.
             while PersonalFinance.weeksToYearEnd(week: s.week) > 6 { s.week += 1 }
             s.tax.gains = ctx.homeCurrency(s).scaledPrice(10_000_000)
             TaxSettlement.refresh(&s, data: data, context: ctx)

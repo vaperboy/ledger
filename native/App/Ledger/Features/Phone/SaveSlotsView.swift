@@ -2,8 +2,6 @@ import SwiftUI
 import Simulation
 import SaveSystem
 
-/// Settings > Saves > Save slots (Ledger Pro): the game being played plus named copies. Built on the store's save
-/// functions; `current` is always the game being played and is never renamed or deleted here. Cloud backup (Ledger Plus) sits below.
 struct SaveSlotsView: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
@@ -118,8 +116,6 @@ struct SaveSlotsView: View {
             store.deleteSlot(r.id); reload()
         }
     }
-
-    // MARK: Cloud backup
 
     private var cloudLine: String {
         if !CloudConfig.iCloudReady { return "Needs iCloud set-up" }

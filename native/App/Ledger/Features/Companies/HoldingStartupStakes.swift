@@ -6,7 +6,6 @@ import Businesses
 import Events
 import Simulation
 
-/// The popups of a holding's startup stakes. One at a time, opened from a row.
 enum HoldingStartupSheet: Identifiable, Hashable {
     case back(Int), more(Int), sell(Int)
 
@@ -19,8 +18,6 @@ enum HoldingStartupSheet: Identifiable, Hashable {
     }
 }
 
-/// The holding's stakes in other founders' startups, each with its tier, and the pitches the holding could back. Paying and receiving go through
-/// the holding's own account.
 struct HoldingStartupStakes: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -54,7 +51,6 @@ struct HoldingStartupStakes: View {
         .centerSheet(item: $sheet, category: .detail, tone: .info) { (sh: HoldingStartupSheet) in sheetContent(sh) }
     }
 
-    /// A stake: stage, share and tier under the name, its value at the right. A live one opens a menu to buy more or sell part.
     private func stakeCard(_ s: StartupHolding.Stake, _ cur: Currency) -> some View {
         let id: Int = s.id
         let status: String = s.live ? s.stageName : (s.failed ? "Failed" : "Sold")

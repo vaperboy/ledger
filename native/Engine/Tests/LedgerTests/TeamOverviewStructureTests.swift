@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Who employs whom, by structure (owner's table): stand-alone companies, a chain, a holding, several separate companies under one owner.
-/// The group office is something the owner sets up; before that Team lists only each company's own posts.
 final class TeamOverviewStructureTests: XCTestCase {
     private func open(_ e: inout GameEngine, _ id: Int, ownerHours: Double = 0) {
         e.update { s, _, _ in
@@ -16,7 +14,6 @@ final class TeamOverviewStructureTests: XCTestCase {
         }
     }
 
-    /// Give a company a headcount by repeating its first staff member (ids are irrelevant to the headcount rules).
     private func scale(_ e: inout GameEngine, _ id: Int, to n: Int) throws {
         var done = false
         e.update { s, _, _ in
@@ -39,11 +36,9 @@ final class TeamOverviewStructureTests: XCTestCase {
         let g = groupScoped(o)
         XCTAssertTrue(g.members.isEmpty && g.vacancies.isEmpty, "two stand-alone companies: only each company's own posts")
         XCTAssertFalse(e.groupOfficeEstablished)
-        // The engine refuses a group managing director before the office exists.
         let cand = try XCTUnwrap(e.searchExecutive(.md)?.first)
         XCTAssertEqual(e.hireExecutive(.md, personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.3), .refused)
         XCTAssertTrue(e.groupManagingDirector.isNull)
-        // The owner establishes the office (the free home office): the group posts now exist, each employed by the group office.
         XCTAssertEqual(e.rentOffice(tier: "home"), .ok)
         o = e.teamOverview()
         XCTAssertTrue(o.groupOffice.established)
@@ -53,7 +48,6 @@ final class TeamOverviewStructureTests: XCTestCase {
         XCTAssertNotNil(o.vacancies.first { $0.id == "hq-pa" }, "the personal assistant is the one role a home office has a desk for")
         XCTAssertNil(o.vacancies.first { $0.id == "hq-law" }, "the in-house lawyer still opens with 3 companies (Headquarters.unlocked)")
         XCTAssertTrue(o.vacancies.filter { $0.scope == "group" }.allSatisfy { $0.employer == "Your group office" })
-        // Hired, the person is listed with the group scope and the group office as employer.
         XCTAssertEqual(e.hireExecutive(.md, personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.3), .ok)
         o = e.teamOverview()
         let m = try XCTUnwrap(o.members.first { $0.id == "md" })
@@ -88,7 +82,6 @@ final class TeamOverviewStructureTests: XCTestCase {
         XCTAssertTrue(heads.contains { $0.title == "Operations manager" })
         XCTAssertTrue(heads.allSatisfy { $0.employer == name && $0.scope != "group" && $0.scope != "chain" })
         XCTAssertTrue(groupScoped(o).vacancies.isEmpty && groupScoped(o).members.isEmpty, "one company, no group posts")
-        // Fill the HR post: the person is the company's employee.
         let cand = try XCTUnwrap(e.searchTeam(companyID: id, key: "hr")?.first)
         XCTAssertEqual(e.hireTeam(companyID: id, key: "hr", personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.3), .ok)
         let hr = try XCTUnwrap(e.teamOverview().members.first { $0.role == "HR manager" })
@@ -166,7 +159,6 @@ final class TeamOverviewStructureTests: XCTestCase {
         XCTAssertEqual(hit.employer, "Your group office"); XCTAssertEqual(hit.scope, "group"); XCTAssertNil(hit.companyID)
         XCTAssertTrue(e.teamPeopleSearch(query: hit.role).contains { $0.name == cand.name }, "found by job")
         XCTAssertTrue(e.teamPeopleSearch(query: "group office").contains { $0.name == cand.name }, "searchable by employer label")
-        // Company people are still found, with their company as employer, and nobody is listed twice.
         let ids = e.teamPeopleSearch(query: "a").map { $0.id }
         XCTAssertEqual(ids.count, Set(ids).count)
         let staffer = try XCTUnwrap(e.state.company(a)?.staff.first)

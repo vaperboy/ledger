@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Roles that work at customers' sites or remotely take no place at the premises; the hire flow offers a move when the desks are full.
 final class WorkplaceModeTests: XCTestCase {
     private func start(_ trade: String, seed: Int) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)

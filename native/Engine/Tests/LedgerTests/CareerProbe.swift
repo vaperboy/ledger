@@ -5,7 +5,6 @@ import Businesses
 import Countries
 @testable import Simulation
 
-/// Policy comparison (LEDGER_PLAYTEST=1): does skill matter? Prints wealth built per policy at the end of years 1 to 3.
 final class CareerProbe: XCTestCase {
     func run(_ code: String, _ trade: String, ads: Int, price: Double, expand: Bool) throws -> String {
         var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 7, story: .fresh, tradeID: trade, companyName: "T")

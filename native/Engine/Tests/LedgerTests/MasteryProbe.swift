@@ -5,12 +5,6 @@ import Businesses
 import Countries
 @testable import Simulation
 
-/// Skill-gap probe (LEDGER_MASTERY="UK:cafe,DE:bakery" LEDGER_POLICIES=idle,competent,expert LEDGER_MYEARS=5): wealth built by years 1/2/3/5, in thousands of
-/// price-index-adjusted home money (so countries compare).
-///   idle       does nothing (declines offers to buy the company)
-///   competent  one modest campaign on the best-fitting channel, nudges price with how busy the shop is each quarter, opens one more store in another city when cash allows
-///   expert     picks the campaign the planner's own payback figures favour, re-checks it every quarter, keeps price in step with how busy it is every month,
-///              hires when it turns customers away, opens up to three more stores in other cities when `Expansion.readiness` says the cash is there
 final class MasteryProbe: XCTestCase {
     static let channelIDs = ["google", "meta", "seo", "flyer", "local", "tiktok", "b2b", "ref", "bill"]
 
@@ -32,7 +26,6 @@ final class MasteryProbe: XCTestCase {
         let cities = e.homeCountry.cities.filter { $0.id != e.state.player.cityID }.sorted { abs(log($0.population / homePop)) < abs(log($1.population / homePop)) }.map { $0.id }
         var hires = 0
 
-        /// Best campaign by the planner's payback figure: channel, budget, net per week.
         func bestCampaign(_ co: Company) -> (String, Double, Double)? {
             var best: (String, Double, Double)? = nil
             for k in Self.channelIDs {
@@ -92,7 +85,6 @@ final class MasteryProbe: XCTestCase {
         for d in 1...(364 * years) {
             e.nextDay()
             for m in e.openDecisions where !m.options.isEmpty {
-                // a sensible owner never accepts an offer to buy the company, nor a forced sale
                 let opt = m.actionID.lowercased().contains("sale") || m.title.lowercased().contains("offer for") || m.title.lowercased().contains("wants to buy") ? m.options.count - 1 : policy != "idle" && m.title.contains("campaign is working") ? 1 : policy != "idle" && ((m.actionID == "emg37" && !m.title.contains("Cash is running")) || m.actionID == "prop") ? m.options.count - 1 : 0
                 if env["LEDGER_DEBUG"] != nil { print("DECISION \(policy) d\(d)", m.title, m.actionID, m.options.map { $0["l"].string }.joined(separator: " / ")) }
                 _ = e.answer(messageID: m.id, option: opt)
@@ -101,7 +93,6 @@ final class MasteryProbe: XCTestCase {
             if policy != "idle", d % 3 == 0 {
                 let fc = FinanceContext(countries: e.data.countries, trades: e.data.catalog)
                 for c in ids.compactMap({ e.state.company($0) }) where c.status == .open {
-                    // a careful owner keeps a cash buffer sized to the month, not just the week: stock and tax bills come in lumps
                     let buffer = max(fc.weeklyCost(c, e.state) * 6, (c.monthlyHistory.last?.revenue ?? 0) * 0.5)
                     guard c.cash < buffer else { continue }
                     let top = buffer * 2 - c.cash
@@ -111,7 +102,7 @@ final class MasteryProbe: XCTestCase {
             if policy != "idle" {
                 let live = ids.filter { e.state.company($0)?.status == .open }
                 if d % 28 == 0 && d > 60 && !off.contains("price") { for c in live { tendPrice(c, step: policy == "expert" ? 0.25 : 0.5) } }
-                if policy == "competent" && d % 91 != 0 { /* quarterly only */ }
+                if policy == "competent" && d % 91 != 0 {  }
                 if d % 91 == 0 && d > 60 && !off.contains("ads") { for c in live { setAds(c) } }
                 if env["LEDGER_HIRE"] != nil, d % 14 == 0 && d > 20 { for c in live { tendStaff(c) } }
                 if d % 28 == 0, !off.contains("exp"), ids.count < maxStores, d - lastStoreDay > (policy == "expert" ? 112 : 180) {
@@ -119,12 +110,10 @@ final class MasteryProbe: XCTestCase {
                     let ok = !cos.isEmpty && cos.allSatisfy { $0.monthlyHistory.count >= 6 && $0.monthlyHistory.suffix(6).reduce(0) { $0 + $1.profit } > 0 }
                     let yearRev = (cos.first?.monthlyHistory.suffix(12).reduce(0) { $0 + $1.revenue } ?? 0) / idx
                     if ok, yearRev > 2_500_000, let rd = Expansion.readiness(e.state, data: e.data, companyID: id, cityID: cities[min(ids.count - 1, cities.count - 1)]) {
-                        // pay out spare company cash so the owner holds the cover
                         for c in cos { let md = e.maximumDividend(companyID: c.id); if md > 0, c.cash > cur.scaledPrice(30_000) { let amt = min(md, c.cash - cur.scaledPrice(30_000)); _ = e.payDividend(companyID: c.id, amount: amt) } }
                         if env["LEDGER_DEBUG"] != nil { print("EXPAND d\(d) need=\(Int(rd.cashNeeded / idx / 1000))k liquid=\(Int(Payments.liquid(e.state) / idx / 1000))k co=\(cos.map { Int($0.cash / idx / 1000) }) md=\(cos.map { Int(e.maximumDividend(companyID: $0.id) / idx / 1000) })") }
                         if policy == "expert", Payments.liquid(e.state) < rd.cashNeeded {
                             let short = (rd.cashNeeded - Payments.liquid(e.state)) * 1.05
-                            // a careful expander borrows only what the bank offers and only while every store makes money
                             if e.loanOffer(kind: "biz", amount: short, companyID: nil).maximum >= short { _ = e.takeLoan(kind: "biz", amount: short, termMonths: 60, companyID: nil) }
                         }
                         if Payments.liquid(e.state) >= rd.cashNeeded {

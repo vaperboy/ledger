@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// A campaign can be given a length; it ends on its date, and the plan never states a reach or a customer count.
 final class CampaignDurationTests: XCTestCase {
     private func channel(_ e: GameEngine, minimum: Bool) throws -> String {
         try XCTUnwrap(e.marketing.channels.filter { $0.value.onlyInCountry == nil && !$0.value.isPrimeTime && (minimum ? $0.value.minimumWeeks > 0 : $0.value.minimumWeeks == 0) }.keys.sorted().first)
@@ -60,7 +59,6 @@ final class CampaignDurationTests: XCTestCase {
         XCTAssertEqual(e.setCampaign(companyID: id, channel: free, weeklyBudget: 40_000, weeks: 12), .done)
         XCTAssertEqual(e.setCampaign(companyID: id, channel: free, weeklyBudget: 0), .done)
         XCTAssertTrue(try XCTUnwrap(e.state.company(id)).value("mktEnd")[free].isNull)
-        // switching a running campaign to "until stopped" clears the date; changing the budget alone keeps it
         XCTAssertEqual(e.setCampaign(companyID: id, channel: free, weeklyBudget: 40_000, weeks: 8), .done)
         XCTAssertEqual(e.setCampaign(companyID: id, channel: free, weeklyBudget: 50_000), .done)
         XCTAssertFalse(try XCTUnwrap(e.state.company(id)).value("mktEnd")[free].isNull)

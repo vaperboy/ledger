@@ -5,28 +5,20 @@ import Finance
 import Businesses
 import Investments
 
-/// Personal tax around the year-end true-up: the monthly estimate of what is still to settle with its warning, monthly wealth tax,
-/// the overdraft line that grows with wealth, and the player's answer when the true-up is more than the accounts hold.
 public enum TaxSettlement {
-    /// Weeks before year end from which a bill larger than liquid funds is warned about.
     static let warnWeeks = 13
-    /// Weeks between estimate refreshes (about a month).
     static let refreshWeeks = 4
 
-    /// The player's share of what their companies are worth.
     static func ownedCompanyValue(_ s: GameState, data: GameData) -> Double {
         s.companies.filter { $0.status != .sold }.reduce(0) { $0 + Valuation.companyValue($1, state: s, trades: data.catalog) * $1.ownership / 100 }
     }
 
-    /// Pay this month's wealth tax (one twelfth of the year's amount, caught up for the months so far).
     static func withholdWealthTax(_ s: inout GameState, data: GameData, context: FinanceContext) {
         guard context.homeCountry(s).wealthRate > 0 else { return }
         let nw = Valuation.netWorth(s, trades: data.catalog).total
         PersonalFinance.withholdWealthTax(&s, context: context, netWorth: nw, ownedCompanyValue: ownedCompanyValue(s, data: data))
     }
 
-    /// Refresh the stored estimate (`rest["taxEst"]`) and the overdraft line about monthly; warn once a year when the coming true-up
-    /// (tax still to settle after what was paid as it arose) is more than the account holds.
     static func refresh(_ s: inout GameState, data: GameData, context: FinanceContext) {
         if let last = s.rest["taxEst"], !last.isNull, s.week - last["week"].int < refreshWeeks, s.week >= last["week"].int { return }
         let nw = Valuation.netWorth(s, trades: data.catalog).total
@@ -36,7 +28,7 @@ public enum TaxSettlement {
 
         let base = context.homeCurrency(s).scaledPrice(25000)
         var line = PersonalFinance.creditLine(s, base: base, netWorth: nw)
-        if line < s.overdraftLimit { line = max(line, min(s.overdraftLimit, -s.cash)) }   // the bank does not pull a line that is in use
+        if line < s.overdraftLimit { line = max(line, min(s.overdraftLimit, -s.cash)) }
         s.overdraftLimit = line
 
         let year = GameCalendar.year(week: s.week)
@@ -50,14 +42,12 @@ public enum TaxSettlement {
                      tone: "bad", sev: 2)
     }
 
-    /// The end-of-week hook: a decision nobody answered in time is collected from the account.
     static func collectIfRefused(_ s: inout GameState, context: FinanceContext) {
         guard s.tax.pending > 0 else { return }
         if s.inbox.contains(where: { $0.status == "open" && $0.actionID == PersonalFinance.dueAction }) { return }
         PersonalFinance.collectDeferred(&s, context: context)
     }
 
-    /// The answer to the "tax bill too large" decision. False leaves it open (nothing was sold or borrowed).
     @discardableResult
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData, context: FinanceContext) -> Bool {
         let owed = s.tax.pending
@@ -78,7 +68,7 @@ public enum TaxSettlement {
                 Brokerage.sell(&s, h.kind, h.symbol, fraction: f, currency: cur)
                 left -= h.value * f
             }
-            PersonalFinance.withholdNow(&s, context: context)   // the tax on the gains of these sales is paid at once
+            PersonalFinance.withholdNow(&s, context: context)
             Payments.playerPays(&s, owed, label: "Annual tax: balance paid from investments")
         case 1:
             let nw = Valuation.netWorth(s, trades: data.catalog).total
@@ -121,13 +111,11 @@ public enum TaxSettlement {
         return true
     }
 
-    /// The tax office's interest on an instalment arrangement, over the policy rate.
     static let planMargin = 0.02
     static let planMonths = 12
 
     struct Holding { var kind: Brokerage.Kind; var symbol: String; var value: Double }
 
-    /// Funds, shares and crypto the player holds, in the order they would be sold.
     static func marketHoldings(_ s: GameState) -> [Holding] {
         var out: [Holding] = []
         let kinds: [(Brokerage.Kind, String)] = [(.fund, "funds"), (.stock, "stocks"), (.crypto, "crypto")]
@@ -142,13 +130,11 @@ public enum TaxSettlement {
 }
 
 public extension GameEngine {
-    /// What the year's personal tax would be now (`annual`, `paidSoFar`, and `total` still to settle): the monthly stored estimate, or one worked out on the spot before the first refresh.
     func taxEstimate() -> PersonalFinance.TaxBreakdown {
         if let b = PersonalFinance.storedEstimate(state) { return b }
         let nw = Valuation.netWorth(state, trades: data.catalog).total
         return PersonalFinance.breakdown(state, context: context, netWorth: nw, ownedCompanyValue: TaxSettlement.ownedCompanyValue(state, data: data))
     }
 
-    /// The last year-end assessment, nil before the first.
     func lastTaxAssessment() -> PersonalFinance.TaxBreakdown? { PersonalFinance.lastAssessment(state) }
 }

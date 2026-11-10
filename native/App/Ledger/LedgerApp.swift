@@ -27,8 +27,6 @@ struct LedgerApp: App {
         UITabBar.appearance().standardAppearance = tabs
         UITabBar.appearance().scrollEdgeAppearance = tabs
         let serif = UIFont.systemFont(ofSize: 18, weight: .medium).fontDescriptor.withDesign(.serif).map { UIFont(descriptor: $0, size: 18) } ?? UIFont.systemFont(ofSize: 18)
-        // Fonts and colours of the titles only. Whether a bar is solid is decided per screen by `.ledgerScreen()` (applied by
-        // `ledgerBackground()`), not by this global appearance, so scrolled content never draws over the Back button.
         let bars = UINavigationBarAppearance()
         bars.configureWithTransparentBackground()
         bars.titleTextAttributes = [.foregroundColor: ivory, .font: serif]
@@ -56,7 +54,6 @@ struct LedgerApp: App {
                     if online.isSignedIn && scenePhase == .active { await online.runPresence(store: store) }
                 }
                 .onOpenURL { url in if online.receive(url: url) { store.openApp(.profile) } }
-                // Dark everywhere, except while a light outside app is on screen: then the status bar text turns dark too.
                 .preferredColorScheme(statusBar.light ? .light : .dark)
                 .tint(Theme.gold)
                 .toggleStyle(LedgerToggleStyle())

@@ -2,14 +2,8 @@ import Foundation
 import GameCore
 import Countries
 
-/// Who may appoint whom.
-/// The owner appoints the general manager, unless a CEO or managing director exists: then the CEO appoints. A general manager hires ordinary staff
-/// alone, but may NOT hire an assistant (deputy) manager without the confirmation of the level above: the CEO, or the owner when there is none.
-/// The manager's hire is therefore a proposal message ("asst", a decision for that level); the assistant exists only after it is confirmed.
 public struct AppointmentAuthority: Equatable, Sendable {
-    /// The rank that takes the decision (for an assistant: the manager who chose the person).
     public var decidedBy: Delegation.Rank
-    /// The rank that must confirm, nil when the decider can act alone.
     public var needsConfirmationFrom: Delegation.Rank?
     public var reason: String
 }
@@ -46,8 +40,6 @@ public enum Appointments {
         }
     }
 
-    /// The manager has chosen an assistant: post the proposal to the level above (the CEO, else the owner). Nothing is created until it is confirmed.
-    /// False when there is no manager, the company already has an assistant, the person is not free, or a proposal is already open.
     @discardableResult
     public static func propose(_ s: inout GameState, companyID: Int, personID: Int, monthlyWage w: Double, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID, let mgr = s.people[mid], let p = s.people[personID], p.employerID == 0,
@@ -66,7 +58,6 @@ public enum Appointments {
         return true
     }
 
-    /// The answer: option 0 confirms and the assistant is installed; anything else declines.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int) {
         let d = m.value("data")
         guard idx == 0, let ci = s.companyIndex(d["co"].int), s.companies[ci].status == .open, s.companies[ci].value("asst")["npc"].int == 0,

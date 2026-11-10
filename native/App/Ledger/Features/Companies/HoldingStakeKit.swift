@@ -5,12 +5,10 @@ import Finance
 import Businesses
 import Simulation
 
-/// A percentage as the holding screens show it: whole when it is whole, one decimal otherwise.
 func holdingPct(_ p: Double) -> String {
     p == p.rounded() ? "\(Int(p))%" : String(format: "%.1f%%", p)
 }
 
-/// The confirmation for moving money from the player's account into the holding's account.
 @MainActor
 func holdingInjectAction(store: GameStore, holdingID: Int, holdingName: String, amount: Double, cur: Currency) -> PendingAction {
     PendingAction(title: "Put \(cur.tidyShort(amount)) into \(holdingName)?", message: "The money moves from your personal account into the holding's own account. It stays there until the holding spends it.",
@@ -21,7 +19,6 @@ func holdingInjectAction(store: GameStore, holdingID: Int, holdingName: String, 
     }
 }
 
-/// What a stake tier means, in the plain words the engine gives it, with the percent it sits at.
 struct HoldingTierNote: View {
     var tier: HoldingStakes.Tier
     var percent: Double
@@ -35,7 +32,6 @@ struct HoldingTierNote: View {
     }
 }
 
-/// The four ranges, so a player knows what a share buys before choosing one.
 struct HoldingTierLegend: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -48,7 +44,6 @@ struct HoldingTierLegend: View {
     }
 }
 
-/// A holding's cash against what a deal needs, with a button to put the missing part in from the personal account.
 struct HoldingCashNeed: View {
     var holdingCash: Double
     var needed: Double
@@ -70,7 +65,6 @@ struct HoldingCashNeed: View {
     }
 }
 
-/// The three ways a holding holds a company: control (over 50%), a big stake (20% to 50%) or a small one (under 20%).
 enum HoldingStakeGroup: Int, CaseIterable, Identifiable {
     case controlled, big, small
 
@@ -84,7 +78,6 @@ enum HoldingStakeGroup: Int, CaseIterable, Identifiable {
         }
     }
 
-    /// What one stake of this kind is called on its row.
     var word: String {
         switch self {
         case .controlled: return "Controlled"
@@ -110,8 +103,6 @@ enum HoldingStakeGroup: Int, CaseIterable, Identifiable {
     }
 }
 
-/// One stake of a holding: the company, who runs it and how it is doing, its share of the value, ONE main action as a button and the rest
-/// under a "More" menu. The row opens nothing by itself, so it carries no chevron.
 struct HoldingStakeRow<More: View>: View {
     var tradeKey: String
     var title: String
@@ -124,7 +115,6 @@ struct HoldingStakeRow<More: View>: View {
     var runnerFace: String?
     var health: StructureNode.Health?
     var primary: String
-    /// Suffix of the accessibility identifiers ("held-12").
     var key: String
     var onPrimary: () -> Void
     @ViewBuilder var more: () -> More
@@ -180,7 +170,6 @@ struct HoldingStakeRow<More: View>: View {
         .padding(.vertical, Theme.Space.m)
     }
 
-    /// The manager's portrait and name, or "You run it" when nobody does.
     @ViewBuilder private var runner: some View {
         if !showRunner {
             EmptyView()

@@ -1,5 +1,3 @@
-# XcodeGen project definition. On a Mac:  brew install xcodegen && cd native/App && xcodegen generate && open Ledger.xcodeproj
-# The game engine is the Swift package in ../Engine; the app only contains screens.
 name: Ledger
 options:
   bundleIdPrefix: com.example
@@ -14,15 +12,6 @@ settings:
 packages:
   LedgerEngine:
     path: ../Engine
-  # Ads. Left out so the app builds without the SDK (Core/Ads falls back to PlaceholderAdProvider). To switch on real ads, uncomment
-  # these two packages and the two `package:` dependency lines of the Ledger target, add INFOPLIST_KEY GADApplicationIdentifier (a custom key:
-  # use an `info:` block or a plist) and SKAdNetworkItems, then fill AdConfig.release* in Core/Ads/AdProvider.swift. See Core/Ads/AdMobProvider.swift.
-  # GoogleMobileAds:
-  #   url: https://github.com/googleads/swift-package-manager-google-mobile-ads
-  #   exactVersion: 11.13.0
-  # GoogleUserMessagingPlatform:
-  #   url: https://github.com/googleads/swift-package-manager-google-user-messaging-platform
-  #   exactVersion: 2.7.0
 targets:
   Ledger:
     type: application
@@ -31,15 +20,6 @@ targets:
       - path: Ledger
         excludes:
           - "Resources/art/cells/**"
-          # Home mockups (native/App/Mockups) are review files: out of the release build.
-          - "../Mockups/**"
-          # The five art sheets were sliced into cells and are not read at runtime: they stay in the repo but out of the release build.
-          - "Resources/art/cars-sheet.jpg"
-          - "Resources/art/logos-sheet.jpg"
-          - "Resources/art/luxury-sheet.jpg"
-          - "Resources/art/premises-sheet.jpg"
-          - "Resources/art/trophies-sheet.jpg"
-      # The sliced art cells keep their folders (cells/<sheet>/<cell>.jpg and manifest.json), read by Design/ArtLibrary.swift.
       - path: Ledger/Resources/art/cells
         type: folder
         buildPhase: resources
@@ -54,18 +34,17 @@ targets:
             CFBundleURLSchemes: [ledger]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.ledger          # change to your own before App Store submission
-        TARGETED_DEVICE_FAMILY: "1,2"                          # iPhone and iPad
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.ledger
+        TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Ledger
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UILaunchScreen_BackgroundColor: LaunchBackground   # colour set in Assets.xcassets, #0F1011
-        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO                  # no custom encryption: skips the export-compliance question
+        INFOPLIST_KEY_UILaunchScreen_BackgroundColor: LaunchBackground
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        # INFOPLIST_KEY_NSUserTrackingUsageDescription: "Lets Ledger show ads that fit you. You can say no and still play."   # off until real ads (AltStore must declare it in the source)
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.games
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -102,7 +81,7 @@ schemes:
         Ledger: all
     run:
       config: Debug
-      storeKitConfiguration: Ledger.storekit     # local purchase testing in the simulator
+      storeKitConfiguration: Ledger.storekit
     test:
       config: Debug
       targets:

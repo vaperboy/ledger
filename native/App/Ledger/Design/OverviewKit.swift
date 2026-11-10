@@ -1,9 +1,5 @@
 import SwiftUI
 
-// The shared overview layout: figure cards, one bordered table whose rows each
-// open their own page or popup. Each screen still brings
-// its own content and icons; these pieces only draw. Money in every string must already come through the store or currency formatter.
-
 extension Glyph {
     static let ovKey = "M8 14 A4 4 0 1 0 8 6 A4 4 0 1 0 8 14 M11 10 H21 M17 10 V14"
     static let ovCoin = "M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 M9 12 H15 M9 9 H15"
@@ -11,7 +7,6 @@ extension Glyph {
     static let ovCalendar = "M5 5 H19 V20 H5 Z M5 10 H19 M9 3 V7 M15 3 V7"
 }
 
-/// The small champagne caps label above a block.
 private struct OverviewCaps: View {
     var text: String
     var body: some View {
@@ -19,17 +14,12 @@ private struct OverviewCaps: View {
     }
 }
 
-// MARK: Figure card
-
-/// One hero figure on a surface tile: a caps label, the display-size serif value and a grey or coloured line under it (the change against before).
 struct OverviewFigureCard: View {
     var label: String
     var value: String
     var note: String = ""
     var noteTint: Color = Theme.ivoryMuted
-    /// The number behind `value`: when it changes the figure rolls and flashes green or red. nil keeps the figure still.
     var live: Double? = nil
-    /// With `live`: the figure counts up to its value (from 0 the first time, from the old value when it changes) using this text.
     var countFormat: ((Double) -> String)? = nil
     var valueTint: Color = Theme.ivory
 
@@ -53,17 +43,12 @@ struct OverviewFigureCard: View {
     }
 }
 
-// MARK: Table
-
-/// One choice of a row that opens a small popup menu instead of a page.
 struct OverviewMenuItem: Identifiable {
     var id: String { title }
     var title: String
     var action: () -> Void
 }
 
-/// One row of an `OverviewTable`: an icon circle, a name with a grey line, a value with a small coloured note under it, a chevron.
-/// A row with `menu` entries opens that menu; otherwise a tap runs `action`.
 struct OverviewRowData: Identifiable {
     var id: String
     var glyph: String
@@ -73,12 +58,9 @@ struct OverviewRowData: Identifiable {
     var valueTint: Color = Theme.ivory
     var note: String = ""
     var noteTint: Color = Theme.ivoryFaint
-    /// The number behind `value` and its text: the value counts up to it (see `CountedFigure`) instead of showing at once.
     var live: Double? = nil
     var liveText: ((Double) -> String)? = nil
-    /// Show `live` as an arrow and amount (green up, red down) instead of text; `liveText` then formats the positive size.
     var arrow: Bool = false
-    /// The same figure in the period before, to show how it moved ("up 12% on last week") under the value; a cost counts a rise as bad news.
     var before: Double? = nil
     var isCost: Bool = false
     var against: String = ""
@@ -139,8 +121,6 @@ struct OverviewRow: View {
     }
 }
 
-/// The overview table: one surface group (no border) with a caps heading (and anything at its right, such as a period menu), the rows, and an
-/// optional "View all" link under them that opens the same table in full.
 struct OverviewTable<Trailing: View>: View {
     var title: String
     var rows: [OverviewRowData]
@@ -186,10 +166,3 @@ extension OverviewTable where Trailing == EmptyView {
         self.init(title: title, rows: rows, emptyText: emptyText, footer: footer, footerAction: footerAction, trailing: { EmptyView() })
     }
 }
-
-// MARK: Count tiles
-
-// MARK: Activity
-
-// MARK: Note
-

@@ -5,8 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// A franchise agreement can require the brand's approved supplier for an input (`franchise.supStd`, from `franchise_standards.json`).
-/// The single switch action honours it and says why.
 final class FranchiseSupplierStandardTests: XCTestCase {
     private func franchised(trade: String, minTier: Int, seeds: [Int]) throws -> (GameEngine, Int, FranchiseBrands.Brand)? {
         for seed in seeds {
@@ -38,17 +36,13 @@ final class FranchiseSupplierStandardTests: XCTestCase {
         XCTAssertEqual(e.currentGoodsSupplier(companyID: id)?.id, required, "the store starts on the approved supplier")
         let input = try XCTUnwrap(e.supplierInputs(companyID: id).first { $0.id == "goods" })
         XCTAssertTrue(input.governedBy?.contains(brand.name) ?? false, input.governedBy ?? "nil")
-        // switching to anything else is refused with the reason; the supplier does not move
         XCTAssertEqual(e.switchSupplier(companyID: id, input: "goods", to: .goodsVendor("auto")), .governed)
         if let other = input.options.first(where: { $0.vendorID != nil && $0.vendorID != required })?.vendorID {
             XCTAssertEqual(e.switchSupplier(companyID: id, input: "goods", to: .goodsVendor(other)), .governed)
         }
         XCTAssertEqual(e.currentGoodsSupplier(companyID: id)?.id, required)
-        // the approved supplier itself is allowed
         XCTAssertEqual(e.switchSupplier(companyID: id, input: "goods", to: .goodsVendor(required)), .ok)
-        // the same brand picks the same supplier every time
         XCTAssertEqual(try XCTUnwrap(found).1, id)
-        // other inputs stay free
         ChainsTests.play(&e, days: 28)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
         XCTAssertNil(e.supplierInputs(companyID: id).first { $0.id == "repair" }?.governedBy)

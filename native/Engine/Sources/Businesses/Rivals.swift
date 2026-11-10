@@ -3,13 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Named rivals: each local market has a few competing businesses with an owner, a size, a price of their own, discounts, marketing
-/// pushes, a mood towards you, and sometimes a group behind them. They live inside the market record (`rest["mk"][key]["riv"]`)
-/// that `WorldWeek.competitors` already keeps, so the number of rivals and the market price index stay one thing.
-/// Originals: `rivalsOfCore`, `rivalValue`, `meetRival`, `proposeBuy`, `acquireRival` (engine/world/rivals.js); `rivalWeek`
-/// (features/world/rivals_run_businesses.js); `pwWeek`, `warCalc` (price wars); `remember`, `rivalWeek`, `moodOf` (world_around_you.js).
-///
-/// Everything random here is drawn from text-seeded generators (`HashedRandom`), so it never disturbs the main random stream.
 public enum Rivals {
     static let noPrice: Set<String> = ["rent", "fin", "energy", "club", "hold"]
 
@@ -20,19 +13,17 @@ public enum Rivals {
         public var size: Double
         public var relationship: Double
         public var forSale: Bool
-        public var priceFactor: Double          // relative to the market (1 = the going price)
-        public var discountPercent: Int?        // running campaign
+        public var priceFactor: Double
+        public var discountPercent: Int?
         public var marketing: Bool
         public var holdingPrices: Bool
         public var groupID: String?
-        public var known: Bool                  // has noticed you
+        public var known: Bool
         public var memory: [(week: Int, text: String, change: Double)]
-        public var strategy: String = "cheap"   // cheap, premium, quality or expander (old saves get one from their id)
-        public var fortune: Double = 1          // 1 = healthy; below 0 = in trouble; below -0.5 = out of money
+        public var strategy: String = "cheap"
+        public var fortune: Double = 1
         public static func == (a: Rival, b: Rival) -> Bool { a.id == b.id && a.size == b.size && a.relationship == b.relationship }
     }
-
-    // MARK: Reading
 
     public static func key(_ co: Company) -> String { co.type + "|" + co.cityID }
 
@@ -51,11 +42,8 @@ public enum Rivals {
               strategy: strategyOf(r), fortune: fortuneOf(r))
     }
 
-    // MARK: Strategy, fortune and how they reach your demand (no counterpart in the original, which only has strategies for groups)
-
     public static let strategies = ["cheap", "premium", "quality", "expander"]
 
-    /// A rival's way of competing; saves from before this existed get a stable one from the id.
     static func strategyOf(_ r: JSONValue) -> String {
         let s = r["st"].string
         return strategies.contains(s) ? s : strategies[abs((String(r["id"].int) + "st").hashValueStable) % strategies.count]
@@ -72,7 +60,6 @@ public enum Rivals {
         }
     }
 
-    /// How attractive a rival is to customers compared with an average one (1 = average): price, strategy and health.
     static func appeal(_ r: JSONValue, week: Int) -> Double {
         var a = 1 + (1 - effectivePrice(r, week: week)) * 0.6
         switch strategyOf(r) { case "premium": a += 0.06; case "quality": a += 0.12; case "expander": a += 0.04; default: break }
@@ -81,8 +68,6 @@ public enum Rivals {
         return a
     }
 
-    /// What the named rivals' size, price, quality and health do to your share of the market: a big, cheap, healthy rival takes customers,
-    /// a failing one releases them. 1 when there is nobody written down yet. Clamped to 0.88...1.1.
     public static func strengthFactor(_ m: JSONValue, week: Int) -> Double {
         let riv = m["riv"].array
         guard !riv.isEmpty else { return 1 }
@@ -90,10 +75,8 @@ public enum Rivals {
         return clamp(1 - 0.25 * (p - 1), 0.88, 1.1)
     }
 
-    /// A market whose last rival has gone and has not yet been replaced.
     public static func vacant(_ m: JSONValue, week: Int) -> Bool { m["riv"].array.isEmpty && m["vac"].double > Double(week) }
 
-    /// Local hiring costs while a strong rival is growing there (a few percent, for a year). Hook for `Hiring.generateCandidate`.
     public static func hiringPressure(_ s: GameState, _ co: Company) -> Double {
         guard let h = s.rest["mk"]?[key(co)]["hire"], !h.isNull, Double(s.week) < h["until"].double else { return 1 }
         return clamp(h["f"].double, 1, 1.08)
@@ -101,7 +84,6 @@ public enum Rivals {
 
     static func running(_ camp: JSONValue, _ week: Int) -> Bool { !camp.isNull && Double(week) < camp["end"].double }
 
-    /// A rival's own price relative to the market. Original: `R18.effP`.
     static func effectivePrice(_ r: JSONValue, week: Int) -> Double {
         let pm = r["pm16"].isNull ? 1 : r["pm16"].double
         let ig = r["ig16"].isNull ? 1 : r["ig16"].double
@@ -110,20 +92,15 @@ public enum Rivals {
 
     static func initialPrice(seed: Int, id: Int) -> Double { jsRound((0.82 + HashedRandom.first("\(seed):rp:\(id)") * 0.4) * 1000) / 1000 }
 
-    /// What a rival charges in money terms (for comparing with your own ticket). Original: `rivPrice`.
     public static func price(_ co: Company, _ r: Rival, _ w: World) -> Double {
         guard let bd = w.trade(co) else { return 0 }
         return Pricing.ticket(co, bd, w) / max(0.01, Pricing.priceIndex(co, w)) * r.priceFactor
     }
 
-    // MARK: Numbers an analyst could read
-
-    /// A rival's sales in a year; the same formula everywhere so the screens agree. Original: `truth(co, r).rev`, `rivRev`.
     public static func yearlyRevenue(_ bd: Trade, _ r: Rival, _ w: World, _ co: Company) -> Double {
         (bd.normalDemand == 0 ? 1 : bd.normalDemand) * bd.ticket * (w.city(co)?.demand ?? 1) * r.size * 0.9 * 52
     }
 
-    /// What the rival business is worth. Original: `rivalValue`.
     public static func value(_ bd: Trade, _ r: Rival, _ w: World, _ co: Company) -> Double {
         let rev = yearlyRevenue(bd, r, w, co) / 52
         return roundTo(rev * 52 * (max(0.04, bd.margin) * 4.5 + 0.15), 1000)
@@ -133,14 +110,11 @@ public enum Rivals {
         clamp(bd.margin + (HashedRandom.first("\(seed):m:\(r.id)") - 0.5) * 0.14, -0.12, 0.45)
     }
 
-    /// How many weeks a rival could keep losing money. Original: `rivRun`.
     public static func holdOut(_ r: Rival, seed: Int) -> Int { Int(saturating: jsRound(6 + r.size * 8 + HashedRandom.first(String(r.id)) * 4)) }
 
     public static func staffCount(_ bd: Trade, _ r: Rival) -> Int { max(1, Int(saturating: jsRound(bd.standardStaff.reduce(0) { $0 + $1.count } * r.size))) }
 
     static func roundTo(_ v: Double, _ step: Double) -> Double { (v / step).rounded() * step }
-
-    // MARK: Making rivals
 
     static func nextID(_ s: inout GameState) -> Int {
         let n = (s.rest["rivSeq"]?.int ?? 9_000_000) + 1
@@ -148,7 +122,6 @@ public enum Rivals {
         return n
     }
 
-    /// Fill a market with its named rivals (the same every time for this game). Original: `rivalsOfCore`.
     @discardableResult
     static func ensure(_ s: inout GameState, key: String, trade bd: Trade, countryCode: String, data: GameData) -> [String] {
         guard var mk = s.rest["mk"], !mk[key].isNull else { return [] }
@@ -156,16 +129,14 @@ public enum Rivals {
         var riv = m["riv"].array
         let want = min(5, max(1, m["n"].int))
         guard riv.count < want || riv.count > want + 1 else {
-            if !m["vac"].isNull { m["vac"] = .null; mk[key] = m; s.rest["mk"] = mk }   // nobody to replace any more
+            if !m["vac"].isNull { m["vac"] = .null; mk[key] = m; s.rest["mk"] = mk }
             return []
         }
-        // A vacated market stays empty (or short) for a while before a newcomer arrives.
         if riv.count < want, Double(s.week) < m["vac"].double { return [] }
         let before = riv.count
         let country = data.countries[countryCode] ?? data.countries.countries[0]
         let taken = Set(riv.map { $0["name"].string } + s.companies.map { $0.name })
         var used = taken
-        // Players' own companies in this trade and city come first; computer rivals fill the market only when no player is there.
         let real = RealRivals.matching(s, key: key, trade: bd, countryCode: countryCode, data: data)
         for rc in real where riv.count < want && !used.contains(rc.name) {
             used.insert(rc.name)
@@ -180,7 +151,7 @@ public enum Rivals {
                                 "w0": .number(Double(s.week))]))
         }
         while riv.count < want && real.isEmpty {
-            var h = HashedRandom("\(s.seed):rivals:\(key):\(riv.count + 7 * m["gone"].int)")   // a rival that closed does not come back under the same name
+            var h = HashedRandom("\(s.seed):rivals:\(key):\(riv.count + 7 * m["gone"].int)")
             var name = ""
             for g in 0..<40 {
                 var r = DeterministicRandom(seed: Int(h.next() * 1_000_000_000) &+ g)
@@ -194,7 +165,7 @@ public enum Rivals {
             let size = jsRound((0.45 + h.next() * 1.05) * 100) / 100
             let rel = jsRound(30 + h.next() * 25), listed = h.next() < 0.12
             let nx = Double(s.week + 4 + Int(h.next() * 14))
-            let st = strategies[Int(h.next() * Double(strategies.count)) % strategies.count]   // drawn last so the older draws stay as they were
+            let st = strategies[Int(h.next() * Double(strategies.count)) % strategies.count]
             let fort = jsRound((0.7 + h.next() * 0.7) * 100) / 100
             let bias = st == "cheap" ? 0.93 : st == "premium" ? 1.08 : 1
             riv.append(.object(["id": .number(Double(id)), "name": .string(name), "owner": .string(owner), "size": .number(size),
@@ -211,14 +182,12 @@ public enum Rivals {
         return added
     }
 
-    /// The market a rival (by the id its card carries) belongs to; nil when no such rival is on any market.
     public static func marketKey(ofRival id: Int, in s: GameState) -> String? {
         guard id != 0 else { return nil }
         for (key, m) in (s.rest["mk"] ?? .null).object where m["riv"].array.contains(where: { $0["id"].int == id }) { return key }
         return nil
     }
 
-    /// A dirty trick lands on a rival: its health (`fort`) falls by the points times 0.04 and it remembers who it blames. False when there is no such rival.
     package static func hurt(_ s: inout GameState, rivalID: Int, points: Double) -> Bool {
         guard let key = marketKey(ofRival: rivalID, in: s) else { return false }
         let week = s.week
@@ -232,7 +201,6 @@ public enum Rivals {
         return true
     }
 
-    /// Change one rival record in place.
     static func mutate(_ s: inout GameState, key: String, id: Int, _ body: (inout JSONValue) -> Void) {
         guard var mk = s.rest["mk"], !mk[key].isNull else { return }
         var m = mk[key]
@@ -244,8 +212,6 @@ public enum Rivals {
         s.rest["mk"] = mk
     }
 
-    // MARK: Memory (world_around_you.js: rivals remember)
-
     static let temperaments = [("Proud", "takes things personally"), ("Calm", "thinks before acting"), ("Hot-headed", "hits back fast"),
                                ("Calculating", "waits for the right moment"), ("Old-school", "values a handshake"), ("Ambitious", "wants to be number one")]
     static let grudges: [(String, Double)] = [("Forgives quickly", 0.92), ("Holds a grudge", 0.97), ("Never forgets", 1)]
@@ -253,7 +219,6 @@ public enum Rivals {
     public static func temperament(_ r: Rival) -> (name: String, text: String) { let t = temperaments[abs(String(r.id).hashValueStable) % temperaments.count]; return (t.0, t.1) }
     static func grudge(_ r: Rival) -> (String, Double) { grudges[abs((String(r.id) + "g").hashValueStable) % grudges.count] }
 
-    /// A rival writes something down about you and thinks differently of you. Original: `remember`.
     static func remember(_ r: inout JSONValue, week: Int, text: String, change d: Double) {
         var mem = r["mem31"].array
         mem.insert(.object(["w": .number(Double(week)), "t": .string(text), "d": .number(d)]), at: 0)
@@ -286,17 +251,13 @@ public enum Rivals {
         }
     }
 
-    // MARK: The weekly life of the rivals
-
-    /// Original: `rivalWeek` (rivals_run_businesses), `cutsWeek`, `pwWeek` and the world-around-you memory.
     public static func weekly(_ s: inout GameState, data: GameData) {
-        // Group the open companies by market
         var byMarket: [String: [Int]] = [:]
         for (i, c) in s.companies.enumerated() where c.status == .open && c.type != "hold" && c.type != "club" { byMarket[key(c), default: []].append(i) }
         for k in byMarket.keys.sorted() {
             guard let idx = byMarket[k], let first = idx.first, let bd = data.catalog[s.companies[first].type] else { continue }
             let newcomers = ensure(&s, key: k, trade: bd, countryCode: s.companies[first].countryCode, data: data)
-            if let nc = newcomers.first, (s.rest["mk"]?[k]["gone"].int ?? 0) > 0 {   // a replacement after a closure, not the first fill
+            if let nc = newcomers.first, (s.rest["mk"]?[k]["gone"].int ?? 0) > 0 {
                 let city = data.countries.city(s.companies[first].cityID, preferring: s.companies[first].countryCode)?.city.name ?? "town"
                 for i in idx { s.note("\(nc) opens in \(city), a new \(bd.name.lowercased()) competitor.", tone: "n", companyID: s.companies[i].id) }
             }
@@ -310,7 +271,7 @@ public enum Rivals {
         if GameCalendar.isMonthEnd(week: s.week) { monthly(&s) }
         RivalGroups.weekly(&s, data: data)
         WorldAround.weekly(&s, data: data)
-        Threat.weekly(&s, data: data)   // rival bids for key accounts and staff, complaint debt (Threat.swift)
+        Threat.weekly(&s, data: data)
     }
 
     static func behave(_ s: inout GameState, key k: String, idx: [Int], bd: Trade, data: GameData) {
@@ -324,12 +285,11 @@ public enum Rivals {
         let w = World(state: s, data: data)
         let cityName = data.countries.city(co0.cityID, preferring: co0.countryCode)?.city.name ?? "town"
         let newYear = week / 52 != (week - 1) / 52
-        let sharp = Difficulty.of(s).rivalSharpness   // Hard: rivals open, discount and phone more often; Sandbox: less
+        let sharp = Difficulty.of(s).rivalSharpness
         let infl = s.economy.inflation
         let util = co0.value("lastW")["util"].isNull ? 0.7 : co0.value("lastW")["util"].double
         let myP = Pricing.priceIndex(co0, w) / max(0.01, co0.num("ig", 1))
         var notes: [(String, String)] = []
-        // Rivals that matched your cut carry it into their own prices.
         if !m["pil16"].isNull, m["pi"].double < m["pil16"].double - 0.02 {
             for j in riv.indices { riv[j]["pm16"] = .number(clamp(riv[j]["pm16"].double * m["pi"].double / m["pil16"].double, 0.7, 1.6)) }
         }
@@ -345,7 +305,6 @@ public enum Rivals {
                 if holds { notes.append(("\(name) is holding last year's prices in \(cityName).", "n")) }
             }
             if r["hold16"].bool { r["ig16"] = .number(r["ig16"].double * (1 + infl / 52)) }
-            // Regular price reviews: small steps, up when busy, down when quiet or when you are much cheaper.
             if Double(week) >= r["nx16"].double {
                 r["nx16"] = .number(Double(week + 8 + Int(h.next() * 15)))
                 let dir = (-0.4 + h.next()) + (util > 0.9 ? 0.4 : 0) - (myP < effectivePrice(r, week: week) - 0.08 ? 0.5 : 0) - (r["size"].double < 0.7 ? 0.2 : 0)
@@ -355,7 +314,6 @@ public enum Rivals {
                     if abs(step) >= 0.04 { notes.append(("\(name) \(step > 0 ? "raised" : "cut") its prices about \(Int(saturating: jsRound(abs(step) * 100)))%.", step > 0 ? "n" : "bad")) }
                 }
             }
-            // Discounts where the trade does them
             if running(r["camp16"], week) == false { r["camp16"] = .null }
             let dm = PriceMoves.maxDiscount(co0.type)
             if dm > 0, r["camp16"].isNull, h.next() < (0.012 + (util < 0.6 ? 0.01 : 0)) * sharp {
@@ -363,8 +321,7 @@ public enum Rivals {
                 let end = week + 1 + Int(h.next() * 3)
                 r["camp16"] = .object(["pct": .number(Double(pct)), "end": .number(Double(end))])
                 notes.append(("\(name) runs \(pct)% off for \(end - week) week\(end - week > 1 ? "s" : "").", "bad"))
-                // The offer takes demand from your companies in this trade and city for 6 weeks, fading; more when your price is above the rival's.
-                if Double(week) >= r["lw27"].double + 6 {   // a rival's offers count (and make news) at most once in 6 weeks
+                if Double(week) >= r["lw27"].double + 6 {
                 r["lw27"] = .number(Double(week))
                 var worst = 0.0
                 let sizeF = clamp(r["size"].double, 0.5, 1.5)
@@ -379,23 +336,19 @@ public enum Rivals {
                                  consequence: "Demand about \(max(1, Int(saturating: (worst * 100).rounded())))% lower, fading over 6 weeks.")
                 }
             }
-            // Marketing pushes
             if !r["mkt16"].isNull, Double(week) >= r["mkt16"].double { r["mkt16"] = .null; r["size"] = .number(jsRound(r["size"].double * 1.01 * 100) / 100) }
             if r["mkt16"].isNull, h.next() < 0.01 {
                 r["mkt16"] = .number(Double(week + 4 + Int(h.next() * 7)))
                 notes.append(("\(name) started a big marketing campaign.", "n"))
             }
-            // Selling shares to grow
             if !r["listed"].bool, !r["sold16"].bool, r["size"].double > 1.1, h.next() < 0.0015 {
                 r["sold16"] = true
                 r["size"] = .number(jsRound(r["size"].double * 1.15 * 100) / 100)
                 s.news("\(name) sells a stake to investors and plans to grow.")
                 notes.append(("\(name) raised money by selling shares. Expect them to expand.", "n"))
             }
-            // A stray price war victim's memory fades is handled in `remember`.
             riv[j] = r
         }
-        // Opening next to you
         var hm = HashedRandom("\(s.seed):next:\(week):\(k)")
         let busy = cos.contains { $0.value("lastW")["util"].double > 0.85 || Reviews.rating($0) > 4 }
         if hm.next() < 0.0025 * (m["aggr"].isNull ? 1 : m["aggr"].double) * sharp, busy, let bigK = riv.indices.max(by: { riv[$0]["size"].double < riv[$1]["size"].double }) {
@@ -409,9 +362,7 @@ public enum Rivals {
                          body: "\(bn) has opened a new site a few doors from \(tgt.name) in \(cityName). Expect fewer walk-ins for a while. You can answer with prices, marketing or a discount under Price moves.",
                          companyID: tgt.id, tone: "bad", sev: 1)
         }
-        // Rivals answering a player who stays well under the market price (`PriceReaction.swift`).
         priceReaction(&s, idx: idx, riv: &riv, market: m, bd: bd, cityName: cityName, world: w)
-        // The market price index is what the rivals actually charge, weighted by size.
         let wts = riv.map { $0["size"].double * ($0["mkt16"].isNull ? 1 : 1.1) }
         let tot = wts.reduce(0, +)
         if tot > 0 {
@@ -428,11 +379,6 @@ public enum Rivals {
         rivalCalls(&s, cos: idx, market: m, riv: riv, bd: bd, data: data)
     }
 
-    // MARK: Calls from rival owners (price matching, price fixing)
-
-    /// A rival owner calls when your price has fallen clearly under the market's ("match") or now and then to ask what is up ("chat").
-    /// Only a real cut makes them call. The illegal answers set the company's collusion flag: the market price index rises, and each week
-    /// there is a small chance the authority finds out (`collusionWeek`). Original: `rivalCall` (economy_markets.js), 'rivalCall.before/after'.
     static func rivalCalls(_ s: inout GameState, cos idx: [Int], market m: JSONValue, riv: [JSONValue], bd: Trade, data: GameData) {
         guard !riv.isEmpty else { return }
         let w = World(state: s, data: data)
@@ -469,7 +415,6 @@ public enum Rivals {
                     .option("Hint at a price understanding", "Illegal collusion.", effects: ["coord": true])]
         }
         if co.managerID != nil, let mgr = s.people[co.managerID!], ManagerModel.budget(of: co).actsAlone {
-            // A manager with authority takes the call and holds the line (the original's manager never agrees to collude).
             s.addMessage(from: co.name, title: "Rival call handled by \(mgr.name)", body: title, companyID: co.id)
             return
         }
@@ -477,7 +422,6 @@ public enum Rivals {
         if let k = s.inbox.firstIndex(where: { $0.id == id }) { s.inbox[k].set("ev", "rival_call"); s.inbox[k].set("cat", "none") }
     }
 
-    /// The authority finds out about a price understanding: a fine of 8% of turnover, reputation down. Original: the 'coll' check in `weekCore`.
     static func collusionWeek(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status == .open || s.companies[i].status == .closed {
             guard data.balance.firstYear.competitionAuthorityActive(s), s.companies[i].value("flags")["coll"].double != 0, s.random.chance(0.02) else { continue }
@@ -493,7 +437,6 @@ public enum Rivals {
         }
     }
 
-    /// What rivals notice and remember. Original: `rivalWeek` (world_around_you.js).
     static func remember(_ s: inout GameState, key k: String, idx: [Int], data: GameData) {
         guard let riv = s.rest["mk"]?[k]["riv"].array, !riv.isEmpty else { return }
         let w = World(state: s, data: data)
@@ -522,7 +465,6 @@ public enum Rivals {
         }
     }
 
-    /// Once a month rivals' relationships drift to neutral and some come up for sale. Original: `rivalMonth`.
     static func monthly(_ s: inout GameState) {
         guard var mk = s.rest["mk"] else { return }
         for key in mk.object.keys.sorted() {
@@ -540,14 +482,11 @@ public enum Rivals {
         s.rest["mk"] = mk
     }
 
-    // MARK: Price war
-
     public struct WarEstimate {
         public var holdOutWeeks: Int, yourWeeks: Int, toYou: Double, odds: Double, cost: Double, yourShare: Double
         public var biggestOther: Rival?
     }
 
-    /// What a price war looks like before it starts. Original: `warCalc`.
     public static func warEstimate(_ s: GameState, _ co: Company, rival r: Rival, weeks wk: Int, data: GameData) -> WarEstimate? {
         let w = World(state: s, data: data)
         guard let bd = w.trade(co) else { return nil }
@@ -565,7 +504,6 @@ public enum Rivals {
                            biggestOther: others.max { $0.size < $1.size })
     }
 
-    /// Cut prices to the floor for some weeks to push one rival out. Original: `ACT.pwgo`.
     @discardableResult
     public static func startPriceWar(_ s: inout GameState, companyID: Int, rivalID: Int, weeks: Int, data: GameData) -> String? {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open else { return "Only an open company can start a price war." }
@@ -589,7 +527,6 @@ public enum Rivals {
         s.companies[i].set("flags", f)
     }
 
-    /// Each week of a war: the price stays at the floor, the loss adds up, and at the end the rival folds or survives. Original: `pwWeek`.
     static func priceWarWeek(_ s: inout GameState, _ i: Int, data: GameData) {
         let co = s.companies[i]
         let pw = co.value("flags")["pw"]
@@ -611,7 +548,6 @@ public enum Rivals {
                 s.companies[j].awareness = min(100, s.companies[j].awareness + 6 + 10 * to)
                 if let bd = data.catalog[s.companies[j].type] { s.companies[j].size = min(bd.maxSize, s.companies[j].size + r.size * to * 0.25) }
             }
-            // The customers spread out: what does not come to you goes to the rivals still standing.
             if var mk = s.rest["mk"], !mk[k].isNull {
                 var riv = mk[k]["riv"].array
                 let oth = riv.reduce(0) { $0 + $1["size"].double }
@@ -641,16 +577,11 @@ public enum Rivals {
         mk[k]["riv"] = .array(mk[k]["riv"].array.filter { $0["id"].int != id })
         mk[k]["n"] = .number(max(1, mk[k]["n"].double - 1))
         mk[k]["gone"] = .number(mk[k]["gone"].double + 1)
-        // The gap stays open for a while; a newcomer then arrives under a new name (`ensure`).
         let delay = 26 + Int(HashedRandom.first("\(s.seed):vac:\(k):\(mk[k]["gone"].int)") * 40)
         mk[k]["vac"] = .number(Double(s.week + delay))
         s.rest["mk"] = mk
     }
 
-    // MARK: A rival's year
-
-    /// Once a year each rival's fortune moves with the economy cycle, the policy rate, its own price and strategy, and how you behave
-    /// against it; one that runs out of money closes, and a strong expander may open in a nearby city.
     static func fortuneYear(_ s: inout GameState, data: GameData) {
         guard var mk = s.rest["mk"] else { return }
         let w = World(state: s, data: data)
@@ -674,16 +605,15 @@ public enum Rivals {
                 default: d -= 0.12
                 }
                 for co in mine {
-                    if Pricing.priceIndex(co, w) / max(0.01, co.num("ig", 1)) < price - 0.08 { d -= 0.2 }   // you undercut it
+                    if Pricing.priceIndex(co, w) / max(0.01, co.num("ig", 1)) < price - 0.08 { d -= 0.2 }
                     if Reviews.rating(co) > 4.2 { d -= 0.1 }
                     if co.awareness > 60 { d -= 0.05 }
                 }
-                if !(r["g27"].isNull || r["g27"].string.isEmpty || r["g27"].string == "0") { d += 0.15 }   // a group behind it
+                if !(r["g27"].isNull || r["g27"].string.isEmpty || r["g27"].string == "0") { d += 0.15 }
                 d += (HashedRandom.first("\(s.seed):fort\(year):\(r["id"].int)") - 0.5) * 0.6
                 let f0 = fortuneOf(r)
                 let f = clamp(f0 + (1 - f0) * 0.15 + d, -1.5, 4)
                 r["fort"] = .number(jsRound(f * 100) / 100)
-                // Health shows in size: a rival doing well grows, one in trouble shrinks.
                 let g = clamp((f - 1) * 0.03, -0.06, 0.05) + (st == "expander" && f > 1 ? 0.03 : 0)
                 r["size"] = .number(clamp(jsRound(r["size"].double * (1 + g) * 100) / 100, 0.3, 2.2))
                 if st == "expander", f > 1.4, r["size"].double >= 0.9, HashedRandom.first("\(s.seed):expand\(year):\(r["id"].int)") < 0.35 {
@@ -701,7 +631,6 @@ public enum Rivals {
         for x in closing { bankrupt(&s, key: x.key, id: x.id, data: data) }
     }
 
-    /// A rival with no money left closes. You hear about it if you are in that market.
     static func bankrupt(_ s: inout GameState, key k: String, id: Int, data: GameData) {
         guard let r = rivals(s, key: k).first(where: { $0.id == id }) else { return }
         removeRival(&s, key: k, id: id)
@@ -720,7 +649,6 @@ public enum Rivals {
         if !ours.isEmpty { s.news("\(r.name) closes after running out of money.") }
     }
 
-    /// A strong expander opens a second site in a nearby city where you also trade, as the same named business.
     static func expand(_ s: inout GameState, key k: String, id: Int, data: GameData) {
         guard let from = s.rest["mk"]?[k]["riv"].array.first(where: { $0["id"].int == id }), let bar = k.firstIndex(of: "|") else { return }
         let type = String(k[..<bar]), home = String(k[k.index(after: bar)...])
@@ -758,11 +686,8 @@ public enum Rivals {
         }
     }
 
-    // MARK: Talking to and buying rivals
-
     public enum MeetResult: Equatable { case ok, wait, cash, missing }
 
-    /// Lunch with the owner. Original: `meetRival`.
     public static func meet(_ s: inout GameState, companyID: Int, rivalID: Int, data: GameData) -> MeetResult {
         guard let co = s.company(companyID), let r = rivals(s, for: co).first(where: { $0.id == rivalID }) else { return .missing }
         let raw = s.rest["mk"]?[key(co)]["riv"].array.first { $0["id"].int == rivalID }?["meet"].double ?? -99
@@ -784,17 +709,16 @@ public enum Rivals {
         case ignore(String), accept(price: Double, message: String), counter(price: Double, message: String), reject(String)
     }
 
-    /// Offer to buy a rival at a multiple of its value. Original: `proposeBuy` with the group's terms.
     public static func proposeBuy(_ s: inout GameState, companyID: Int, rivalID: Int, multiple mult0: Double, data: GameData) -> OfferReply? {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return nil }
         let k = key(co)
         guard let r = rivals(s, key: k).first(where: { $0.id == rivalID }) else { return nil }
         let w = World(state: s, data: data)
         let raw = s.rest["mk"]?[k]["riv"].array.first { $0["id"].int == rivalID } ?? .null
-        let hostedBy = StaffPerks.rivalFactor(s, rivalID: rivalID)   // an owner you hosted judges the offer a little better
-        var mult = mult0 * Luxury.offerBonus(s) * hostedBy, listed = r.forSale   // a serious-buyer perk of your luxury goods
+        let hostedBy = StaffPerks.rivalFactor(s, rivalID: rivalID)
+        var mult = mult0 * Luxury.offerBonus(s) * hostedBy, listed = r.forSale
         var scale = hostedBy
-        let dealer = Ambitions.buyPriceFactor(s, data)   // the market dominator perk: owners judge the offer better, the price paid stays
+        let dealer = Ambitions.buyPriceFactor(s, data)
         mult *= dealer; scale *= dealer
         if let g = RivalGroups.group(s, id: r.groupID) {
             if g.inTrouble { listed = true; mult *= 1.45; scale *= 1.45 } else { mult /= 1.15 }
@@ -809,11 +733,9 @@ public enum Rivals {
             return .ignore("\(r.owner) never replies to your offer.")
         }
         let need = (listed ? 0.95 : 1.55) * (1.1 - r.relationship / 400)
-        // The owner answers through the shared Negotiation, in multiples of the value: it would sell at `need`, opens a little above it, has the patience
-        // of a deal (three lowball offers used to end contact), and may now and then counter with a figure out of reach.
         let temper = Negotiation.temperament(personality: nil, key: "rival:\(rivalID)")
         var talk = raw["neg"].isNull ? Negotiation.State() : Negotiation.State(json: raw["neg"])
-        if talk.isOpen && s.week - talk.week > Negotiation.memoryWeeks { talk = Negotiation.State() }   // an old talk is forgotten
+        if talk.isOpen && s.week - talk.week > Negotiation.memoryWeeks { talk = Negotiation.State() }
         let position = Negotiation.position(reservation: need, direction: .higher, temperament: temper, key: "rival:\(rivalID)")
         let reply = Negotiation.respond(offer: mult, position: position, temperament: temper, rank: "deal", state: &talk, week: s.week, step: 0.01, random: &s.random)
         func keep(_ t: Negotiation.State) { mutate(&s, key: k, id: rivalID) { $0["neg"] = t.isOpen ? t.json : .null } }

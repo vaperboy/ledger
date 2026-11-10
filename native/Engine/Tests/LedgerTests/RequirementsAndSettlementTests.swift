@@ -6,8 +6,6 @@ import Finance
 @testable import Simulation
 import Events
 
-/// Expansion gates are real requirements (no waiting-time gates), trophies only when earned, the lawsuit settlement path
-/// keeps wages first, and a paid judgment leaves neither a liability nor a payroll alert.
 final class RequirementsAndSettlementTests: XCTestCase {
     func cafeGame() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242)
@@ -26,8 +24,6 @@ final class RequirementsAndSettlementTests: XCTestCase {
         .object(["claim": .number(claim), "fee": 0, "who": "A. Customer", "big": false, "p": 0.5, "settle": .number(claim / 2), "wks": 0, "why": "says you broke the terms"])
     }
 
-    // MARK: D
-
     func testFreshGameHasNoTrophies() throws {
         let (e, _) = try cafeGame()
         XCTAssertTrue(Trophies.entries(e.state).allSatisfy { $0.reachedWeek == nil }, "nothing is granted before its condition")
@@ -35,7 +31,6 @@ final class RequirementsAndSettlementTests: XCTestCase {
 
     func testChainRequirementsAreRealLifePapers() throws {
         let (e, id) = try cafeGame()
-        // Real basis: a registered trademark and an operations manual; no cash, reputation or record gates.
         let r = Chains.requirements(e.state, e.state.company(id)!)
         XCTAssertEqual(r.map { $0.key }, ["trademark", "ops_manual"])
         XCTAssertFalse(r.contains { $0.title.lowercased().contains("cash") || $0.title.lowercased().contains("customers like") })
@@ -48,8 +43,6 @@ final class RequirementsAndSettlementTests: XCTestCase {
         XCTAssertFalse(r.contains { $0.title.lowercased().contains("cash") })
         XCTAssertEqual(r.map { $0.key }, ["proven", "trademark", "ops_manual", "fran", "support"])
     }
-
-    // MARK: E
 
     func testSettlementKeepsWagesFirstAndRecordsTheRest() throws {
         var (e, id) = try cafeGame()

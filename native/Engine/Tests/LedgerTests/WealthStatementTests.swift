@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 @testable import Simulation
 
-/// Net worth with public holdings at the last close, private companies at a discount, a breakdown in words, and the leaderboards.
 final class WealthStatementTests: XCTestCase {
     func game() throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5, story: .fresh, tradeID: "kiosk")
@@ -31,7 +30,6 @@ final class WealthStatementTests: XCTestCase {
         XCTAssertEqual(after.exchange, 120_000, accuracy: 0.01)
         XCTAssertEqual(after.total - before.total, 120_000, accuracy: 0.01)
         XCTAssertEqual(after.investments - before.investments, 120_000, accuracy: 0.01)
-        // The goals reading counts them too.
         XCTAssertEqual(Valuation.netWorth(e.state, trades: e.data.catalog, forGoals: true).exchange, 120_000, accuracy: 0.01)
     }
 
@@ -68,7 +66,6 @@ final class WealthStatementTests: XCTestCase {
         let w = e.wealth
         let line = try XCTUnwrap(w.lines.first { $0.id == "listed" })
         XCTAssertEqual(line.amount, Double(CapTable.initialShares) * 60 * (1 - Wealth.blockDiscount), accuracy: 1)
-        // The stake is counted once: no private-company line for it.
         XCTAssertNil(w.lines.first { $0.id == "private" && $0.amount > 0.5 })
     }
 
@@ -90,15 +87,13 @@ final class WealthStatementTests: XCTestCase {
 
     func testTradingResultCountsSoldAndHeldShares() throws {
         var e = try game()
-        holdIndex(&e, shares: 100, close: 100)   // cost 90 a share, worth 100
+        holdIndex(&e, shares: 100, close: 100)
         e.update { s, _, _ in var b = ExchangeBook(s); b.realised = 500; b.write(to: &s) }
         XCTAssertEqual(PublicExchange.tradingResult(e.state), 500 + 100 * 10, accuracy: 0.01)
         let sub = e.leaderboardSubmission(playerID: "me")
         XCTAssertEqual(sub.tradingResult, 1500, accuracy: 0.01)
         XCTAssertEqual(sub.name, "T")
     }
-
-    // MARK: Leaderboards
 
     func sub(_ id: String, _ nw: Double, _ tr: Double = 0) -> LeaderboardSubmission { LeaderboardSubmission(playerID: id, name: id, week: 1, netWorth: nw, tradingResult: tr) }
 
@@ -108,7 +103,7 @@ final class WealthStatementTests: XCTestCase {
         XCTAssertEqual(v.count, 31)
         XCTAssertEqual(v.top.count, 10)
         XCTAssertEqual(v.top.first?.id, "p30")
-        XCTAssertEqual(v.you?.rank, 16)   // above p15 (1500), below p16 (1600)
+        XCTAssertEqual(v.you?.rank, 16)
         XCTAssertEqual(v.you?.isYou, true)
         XCTAssertEqual(v.around.first { $0.isYou }?.rank, 16)
         XCTAssertLessThanOrEqual(v.around.count, 7)

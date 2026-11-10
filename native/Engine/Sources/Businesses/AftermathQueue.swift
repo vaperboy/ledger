@@ -1,15 +1,11 @@
 import Foundation
 import GameCore
 
-/// Follow-up events that arrive some weeks after something happened (a lost lawsuit, a breakdown, a key worker leaving ...).
-/// A follow-up is queued with a delay, fires once when it falls due, and then waits out a cooldown for that company so
-/// the same story cannot pile up. The events themselves live in `Aftermath` (Events/Aftermath.swift).
 public enum AftermathQueue {
     public struct Item { public var id: Int, companyID: Int, week: Int, kind: String }
 
     static func cooldownKey(_ kind: String) -> String { "aftc_" + kind }
 
-    /// Queue `kind` for a company, `delay` weeks from now. Ignored while one is already queued or the company is in cooldown.
     @discardableResult
     public static func schedule(_ s: inout GameState, companyID: Int, kind: String, delay: Int) -> Bool {
         guard let i = s.companyIndex(companyID) else { return false }
@@ -26,7 +22,6 @@ public enum AftermathQueue {
             .map { Item(id: $0["id"].int, companyID: $0["co"].int, week: $0["w"].int, kind: $0["k"].string) }
     }
 
-    /// Take out what is due this week. Each item is returned once; the company's cooldown for that kind starts.
     public static func takeDue(_ s: inout GameState, cooldownWeeks: Int = 12) -> [Item] {
         let q = s.rest["aft"]?.array ?? []
         var keep: [JSONValue] = [], due: [Item] = []

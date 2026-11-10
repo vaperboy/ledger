@@ -5,8 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Audit part 2: a profitable limited company for one fiscal year in each of the 23 countries.
-/// Tax = rate x (profit - loss carried forward), worked out on the profit so far each month and paid in that month; the year end only trues it up.
 final class CorporateTaxProfitableTests: XCTestCase {
     func testProfitableLimitedCompanyPaysRateTimesProfitAfterLossCarryInEveryCountry() throws {
         let codes = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 1).data.countries.countries.map { $0.code }
@@ -23,7 +21,7 @@ final class CorporateTaxProfitableTests: XCTestCase {
                 s.companies[i].status = .open
                 s.companies[i].lossCarryForward = carry
                 s.companies[i].payables["tax"] = 0
-                Ledger.moveRaw(&s, .company(id), 100_000_000)   // the account can carry the tax
+                Ledger.moveRaw(&s, .company(id), 100_000_000)
                 let rate = data.countries.resolve(s.companies[i].countryCode, orHome: s.homeCountryCode).corporateTax
                 XCTAssertGreaterThan(rate, 0.05, code); XCTAssertLessThan(rate, 0.5, code)
                 let cash0 = s.companies[i].cash, paid0 = s.stats.taxPaid
@@ -44,7 +42,6 @@ final class CorporateTaxProfitableTests: XCTestCase {
                 let c2 = s.companies[s.companyIndex(id)!]
                 XCTAssertFalse(c2.taxDue, "\(code) no arrears at the year end")
                 XCTAssertEqual(c2.taxPrevYear, 0, accuracy: 1, code)
-                // The next month of the new year charges nothing for the old one.
                 var b = s.companies[i].books; b.month = [:]; s.companies[i].books = b
                 let before = s.companies[i].cash
                 MonthEnd.closeMonth(&s, companyIndex: i, data: data, context: ctx)
@@ -54,7 +51,6 @@ final class CorporateTaxProfitableTests: XCTestCase {
         }
     }
 
-    /// Tax paid on a profit that later turns into a loss comes back as a refund, and the loss is carried forward as before.
     func testTaxPaidOnProfitSoFarIsRefundedWhenTheYearTurnsToALoss() throws {
         var e = try GameEngine.newGame(countryCode: "US", playerName: "T", seed: 12)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }

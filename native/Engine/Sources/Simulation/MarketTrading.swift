@@ -6,56 +6,40 @@ import Businesses
 import Investments
 import Events
 
-/// Something that can be bought: a fund, a crypto coin, or more money for your fund manager. Shares in single listed companies are not offered.
 public struct MarketAsset: Identifiable, Equatable, Sendable {
-    /// "fund:idx", "fund:bond", "fund:mm", "crypto:<symbol>", "managed:fm".
     public var id: String
     public var kind: MarketAssetKind
     public var symbol: String
     public var name: String
     public var price: Double
-    /// Price change over the last week and the last four weeks, as shares (nil without enough history).
     public var weekChange: Double?
     public var monthChange: Double?
-    /// Weekly prices, oldest first.
     public var history: [Double]
     public var risk: MarketRisk
-    /// A holding's treasury may hold it (funds only).
     public var holdingsMayBuy: Bool
-    /// Trading has stopped (a collapsed coin).
     public var closed: Bool
-    /// One line on the costs of trading it.
     public var costNote: String
 }
 
-/// What a purchase or sale would do, from the same rules the trade applies. Nothing changes until `marketBuy` / `marketSell`.
 public struct MarketQuote: Equatable, Sendable {
     public enum Side: String, Sendable { case buy, sell }
     public var side: Side
-    /// The asset bought, or the position sold.
     public var assetID: String
     public var positionID: String?
     public var owner: PortfolioOwner
-    /// Buying: the money put in, before the fee. Selling: the market value of the units sold.
     public var amount: Double
     public var units: Double
-    /// Price of one unit at the market, and the price the trade really gets (crypto trades 0.8% off the market price).
     public var price: Double
     public var tradePrice: Double
-    /// The broker's fee or the sale cost, what the spread costs, and the label to show for the fee.
     public var fee: Double
     public var spreadCost: Double
     public var feeLabel: String
-    /// Buying: what leaves the owner's account (amount plus fee, negative). Selling: what reaches it.
     public var cashChange: Double
-    /// Money the owner can pay with, and what is left after the trade.
     public var available: Double
     public var cashAfter: Double
     public var minimum: Double
-    /// Selling: the cost basis of the units sold and the realised result (what reaches the account minus that basis).
     public var costBasisSold: Double
     public var realizedGain: Double
-    /// Why it would not go through (nil when it would).
     public var refusal: String?
 }
 
@@ -63,14 +47,12 @@ public struct MarketTradeResult: Equatable, Sendable {
     public var done: Bool
     public var refusal: String?
     public var units: Double
-    /// Money in (+) or out (-) of the owner's account.
     public var cashChange: Double
     public var fee: Double
     public var realizedGain: Double
 }
 
 public extension GameEngine {
-    /// Everything that can be bought, funds first. Shares in single companies are not offered (shares you already hold can be sold).
     var marketAssets: [MarketAsset] {
         var out: [MarketAsset] = []
         let cur = homeCurrency
@@ -105,9 +87,6 @@ public extension GameEngine {
         return out
     }
 
-    // MARK: Quotes
-
-    /// What buying `amount` of an asset for an owner would do.
     func marketQuote(asset: String, owner: PortfolioOwner, amount: Double) -> MarketQuote {
         let amt = amount.rounded()
         let parts = asset.split(separator: ":", maxSplits: 1).map(String.init)
@@ -164,13 +143,11 @@ public extension GameEngine {
         return q
     }
 
-    /// What selling `units` of a position would do (more than is held sells everything).
     func marketSellQuote(position: String, units: Double) -> MarketQuote {
         guard let p = portfolio.positions.first(where: { $0.id == position }) else { return Self.noPosition(position) }
         return sellQuote(p, fraction: p.units > 0 ? units / p.units : 0)
     }
 
-    /// What selling `amount` (market value) of a position would do.
     func marketSellQuote(position: String, amount: Double) -> MarketQuote {
         guard let p = portfolio.positions.first(where: { $0.id == position }) else { return Self.noPosition(position) }
         return sellQuote(p, fraction: p.value > 0 ? amount / p.value : 0)
@@ -233,9 +210,6 @@ public extension GameEngine {
         return q
     }
 
-    // MARK: Trading
-
-    /// Buy `amount` of an asset for you (your account) or for a holding (its cash). Refused with the quote's reason.
     @discardableResult
     mutating func marketBuy(asset: String, owner: PortfolioOwner, amount: Double) -> MarketTradeResult {
         let q = marketQuote(asset: asset, owner: owner, amount: amount)
@@ -262,14 +236,12 @@ public extension GameEngine {
         return MarketTradeResult(done: true, refusal: nil, units: q.units, cashChange: ownerCash(owner) - before, fee: q.fee, realizedGain: 0)
     }
 
-    /// Sell `units` of a position (more than is held sells everything).
     @discardableResult
     mutating func marketSell(position: String, units: Double) -> MarketTradeResult {
         guard let p = portfolio.positions.first(where: { $0.id == position }) else { return Self.refused("There is nothing held to sell.") }
         return sell(p, fraction: p.units > 0 ? units / p.units : 0)
     }
 
-    /// Sell `amount` of a position's market value.
     @discardableResult
     mutating func marketSell(position: String, amount: Double) -> MarketTradeResult {
         guard let p = portfolio.positions.first(where: { $0.id == position }) else { return Self.refused("There is nothing held to sell.") }
@@ -292,7 +264,6 @@ public extension GameEngine {
         let before = ownerCash(p.owner)
         let parts = p.id.split(separator: ":").map(String.init)
         let key = parts[1], sym = parts.count > 2 ? parts[2] : ""
-        // A sale of (almost) everything sells exactly everything, so no dust is left behind.
         let whole = f > 0.9999
         switch p.owner {
         case .player:
@@ -314,7 +285,6 @@ public extension GameEngine {
         }
         let change = ownerCash(p.owner) - before
         if change == 0 && q.cashChange != 0 { return Self.refused("The sale did not go through.") }
-        // The tax on the gain is paid at the sale, after the proceeds are measured.
         if case .player = p.owner { update { s, _, ctx in PersonalFinance.withholdNow(&s, context: ctx) } }
         return MarketTradeResult(done: true, refusal: nil, units: q.units, cashChange: change, fee: q.fee, realizedGain: change - q.costBasisSold)
     }

@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// TechPro "My items": what a company owns (units, condition, warranty, software and plans, the fleet), in the store's own look.
-/// Selling, servicing, cancelling a plan and ending a lease happen here.
 struct TechProOwnedView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -43,7 +41,6 @@ struct TechProOwnedView: View {
         }
     }
 
-    /// The condition of the kit as the one figure, with how much is owned and how much is away for repair.
     private func hero(_ e: GameEngine, _ list: [EquipmentMarket.Owned]) -> some View {
         let units: Int = list.reduce(0) { (s: Int, o: EquipmentMarket.Owned) -> Int in s + o.units.count + o.vehicles.count }
         let repairs: Int = list.reduce(0) { (s: Int, o: EquipmentMarket.Owned) -> Int in
@@ -55,7 +52,6 @@ struct TechProOwnedView: View {
                         noteTint: repairs > 0 ? P.loss : nil, valueTint: h.map { (x: Double) -> Color in tint(x) == P.inkSoft ? P.ink : tint(x) })
     }
 
-    /// What the business still needs to run properly (the engine's own needs list): each row opens the item in the store.
     @ViewBuilder private func missingSection(_ e: GameEngine) -> some View {
         let missing: [EquipmentMarket.Need] = e.equipmentNeeds(companyID: companyID).filter { (n: EquipmentMarket.Need) -> Bool in n.need > 0 && n.have + n.leased < n.need }
         if !missing.isEmpty {
@@ -72,7 +68,6 @@ struct TechProOwnedView: View {
         }
     }
 
-    /// One item: picture, name and the line that matters, its actions in "…", then a short line per unit or vehicle.
     private func itemBlock(_ e: GameEngine, _ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack(alignment: .center, spacing: Theme.Space.m) {
@@ -122,14 +117,12 @@ struct TechProOwnedView: View {
         }
     }
 
-    /// The item's picture from the items sheet, or the department's icon.
     private func itemThumb(_ o: EquipmentMarket.Owned) -> some View {
         let group: String = o.kind == "soft" ? "software" : "equipment"
         let key: String = ArtLibrary.itemKey(group: group, familyKey: o.equipmentID, seed: o.equipmentID) ?? ""
         return ShopThumb(glyph: o.kind == "veh" ? Glyph.vehicle : (o.kind == "soft" ? Glyph.software : Glyph.hardware), item: key)
     }
 
-    /// The one unit of an item that has a single unit and no vehicles: shown on the item's own row.
     private func single(_ o: EquipmentMarket.Owned) -> EquipmentMarket.UnitRow? {
         o.units.count == 1 && o.vehicles.isEmpty ? o.units.first : nil
     }
@@ -140,7 +133,6 @@ struct TechProOwnedView: View {
 
     private func tint(_ c: Double) -> Color { c >= 0.8 ? P.gain : c >= 0.48 ? P.inkSoft : P.loss }
 
-    /// A unit: name and year, warranty or repair, its wear on the right, and Sell in its own small menu.
     private func unitRow(_ o: EquipmentMarket.Owned, _ u: EquipmentMarket.UnitRow, _ number: Int) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.s) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
@@ -182,9 +174,6 @@ struct TechProOwnedView: View {
         return line
     }
 
-    // MARK: Actions
-
-    /// `hold`: the red hold-to-confirm (selling everything); one unit, a plan or a lease is an ordinary warning.
     private func ask(_ title: String, _ message: String, _ button: String, hold: Bool = false, icon: String = "tag", _ run: @escaping () -> Void) {
         pending = PendingAction(title: title, message: message, button: button, destructive: hold, tone: hold ? .danger : .warning, icon: icon, run: run)
     }

@@ -5,9 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// One loan: what is left, the terms, the schedule from the live balance, this month's instalment paid now (taken once), an early
-/// payoff with its quote (balance plus the interest accrued since the last month end), part repayment, and, for a company loan you guaranteed, the
-/// bank discussion about releasing the guarantee. Every action is the engine's and reports its result.
 struct LoanDetailSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -48,8 +45,6 @@ struct LoanDetailSheet: View {
         return (e.state.company(rec.companyID)?.name ?? "the company") + "'s account"
     }
 
-    // MARK: Content
-
     @ViewBuilder private func content(_ e: GameEngine, _ rec: LoanRecord) -> some View {
         let cur: Currency = currency(e, rec)
         VStack(alignment: .leading, spacing: 14) {
@@ -80,9 +75,6 @@ struct LoanDetailSheet: View {
         }
     }
 
-    // MARK: Actions
-
-    /// The money actions stay pinned under the scrolling detail.
     private func actions(_ e: GameEngine, _ rec: LoanRecord, _ cur: Currency) -> some View {
         VStack(spacing: 10) {
             if !rec.thisMonthSettled {
@@ -142,8 +134,6 @@ struct LoanDetailSheet: View {
         }
     }
 
-    // MARK: Schedule
-
     private func scheduleCard(_ e: GameEngine, _ rec: LoanRecord, _ cur: Currency) -> some View {
         let rows: [LoanScheduleRow] = e.loanSchedule(loanID: rec.id)
         let columns: [TableColumn] = [TableColumn(title: "Date"), TableColumn(title: "Pay", width: 78), TableColumn(title: "Left", width: 78)]
@@ -162,8 +152,6 @@ struct LoanDetailSheet: View {
             }
         }
     }
-
-    // MARK: Guarantee renegotiation
 
     @ViewBuilder private func guarantee(_ e: GameEngine, _ rec: LoanRecord) -> some View {
         if rec.personallyGuaranteed, let t = e.guaranteeTerms(loanID: rec.id) {
@@ -233,7 +221,6 @@ struct LoanDetailSheet: View {
     }
 }
 
-/// The ivory block at the top of the loan: what is left to pay, how much is repaid, in the colours of the Banking mockup.
 private struct LoanSummaryPanel: View {
     @Environment(\.outsidePalette) private var P
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

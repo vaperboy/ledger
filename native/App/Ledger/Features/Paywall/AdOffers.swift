@@ -1,8 +1,6 @@
 import SwiftUI
 import Simulation
 
-/// On a week report: watch an ad and the grant paid this week is paid once more (capped), as its own line on the bank statement.
-/// Shown only to free players, outside the first four weeks, once a game week and three times a real day (`AdCoordinator.doubleOffer`).
 struct DoubleGrantLink: View {
     @EnvironmentObject private var store: GameStore
     @Environment(AdCoordinator.self) private var ads
@@ -28,7 +26,6 @@ struct DoubleGrantLink: View {
     }
 }
 
-/// On the game-over screen: watch an ad and the game reopens with a fresh stake. Once per save, free players only (`AdCoordinator.secondChanceOffer`).
 struct SecondChanceOffer: View {
     @EnvironmentObject private var store: GameStore
     @Environment(AdCoordinator.self) private var ads

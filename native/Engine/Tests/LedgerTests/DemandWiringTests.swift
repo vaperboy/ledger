@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Wiring of demand, seasons, rivals, price holds and marketing.
 final class DemandWiringTests: XCTestCase {
     private func engineWithCafe(weeks: Int) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242)
@@ -53,7 +52,7 @@ final class DemandWiringTests: XCTestCase {
     }
 
     func testRivalThatClosedDoesNotComeBackAsTheSameBusiness() throws {
-        var (e, id) = try engineWithCafe(weeks: 6)   // set-up takes three weeks; the market record appears the week after it opens
+        var (e, id) = try engineWithCafe(weeks: 6)
         e.update { s, data, _ in
             guard let co = s.company(id), let bd = data.catalog[co.type] else { return XCTFail("no company") }
             let k = Rivals.key(co)

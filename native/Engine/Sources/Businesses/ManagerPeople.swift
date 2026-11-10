@@ -4,17 +4,11 @@ import Countries
 import Employees
 import Finance
 
-/// Managers as people: finding, hiring, authority, leaving; assistant managers; promotions. These extend `ManagerModel`.
-/// Originals: `genManager`, `hireManager`, `mgrResign`, `fireManager` (engine/people/people.js), `ACT.mgr*` (ui/company/people.js),
-/// the assistant manager (features/people/owner_hours_clients_assistants.js) and the promotion talk (worker_roles_and_promotions.js).
 extension ManagerModel {
-    // MARK: Who they are
 
-    /// The six things a manager is judged on. Original: `MQ`.
     public static let skillKeys: [(key: String, label: String)] = [
         ("ops", "Day-to-day operations"), ("people", "Leading people"), ("sales", "Winning customers"),
         ("fin", "Numbers and cost control"), ("risk", "Compliance and risk"), ("ethic", "Integrity")]
-    /// Job titles by manager type. Original: `MGR_TYPES`.
     public static let typeTitles: [String: String] = [
         "gen": "General manager", "ops": "Operations manager", "host": "Restaurant and kitchen manager", "site": "Site foreman",
         "sales": "Sales-driven manager", "tech": "Technical manager", "fin": "Financial / compliance manager", "ind": "Industrial plant manager",
@@ -25,20 +19,14 @@ extension ManagerModel {
     static let resumes = ["Previously ran a business unit.", "Former operations lead at a regional chain.", "Started as staff and rose to manager.",
                           "Consultant turned operator.", "Managed a competitor for years."]
 
-    /// What a manager's job starts from at the reference economy: it grows with the people they run. Candidates ask a multiple of it by skill,
-    /// age and experience (`generateCandidate`); the going rate is what the job pays before anything about the person.
     static func payBase(heads: Double) -> Double { 40000 + min(60000, heads * 2200) }
 
-    /// What a manager of this skill, age group and experience asks: the base for the company's size by skill, age group and experience, in this
-    /// city and economy. Candidates are made with it; whoever weighs them (`AutoHire`) uses it to judge what a given skill is worth.
     static func askingPay(heads: Double, skill: Double, tier: String, experience exp: Double, cityWage: Double, inflation: Double) -> Double {
         var pay = payBase(heads: heads) * (0.85 + skill / 400) * cityWage * inflation
         pay *= 0.82 + 0.18 * min(1, exp / 9)
         return pay
     }
 
-    /// The going monthly rate for a store manager at this company: its size, its city and the economy, and nothing about the person.
-    /// This is where a manager's pay discussion starts, from the employer's side.
     public static func managerGoingRate(company co: Company?, state s: GameState, data: GameData) -> Double {
         let w = World(state: s, data: data)
         let country = co.map { w.country($0) } ?? w.countries[s.homeCountryCode]!
@@ -46,19 +34,16 @@ extension ManagerModel {
         let cur = Currency(country: country, rates: w.rates)
         return cur.roundedStep(payBase(heads: Double(co?.staff.count ?? 3)) * cityWage * w.inflationIndex, about: 500)
     }
-    /// An assistant manager is paid this share of what a manager asks.
     static let assistantPayShare = 0.5
     public static func assistantGoingRate(company co: Company?, state s: GameState, data: GameData) -> Double {
         let w = World(state: s, data: data)
         let country = co.map { w.country($0) } ?? w.countries[s.homeCountryCode]!
         return Currency(country: country, rates: w.rates).roundedStep(managerGoingRate(company: co, state: s, data: data) * assistantPayShare, about: 500)
     }
-    /// What a post on the management team pays relative to a manager: the managing director, a regional manager, or a department head.
     static func teamPayFactor(_ key: String) -> Double {
         key == "ceo" ? 2.4 : key == "reg" ? 1.6 : teamRoles.first { $0.key == key }?.payFactor ?? 1
     }
 
-    /// A manager on the labour market. Original: `genManager` with the round 22 pay step.
     @discardableResult
     public static func generateCandidate(company co: Company?, type: String, faces: Bool = true, state s: inout GameState, data: GameData) -> Person {
         let w = World(state: s, data: data)
@@ -95,11 +80,8 @@ extension ManagerModel {
         return p
     }
 
-    /// What every executive search costs (manager, team role, chain or group executive; the App's button labels read this too).
-    /// 15,000 at the reference level, scaled by the country's price level.
     public static func searchFee(currency cur: Currency) -> Double { cur.scaledPrice(15000) }
 
-    /// Executive search: a fee, and four candidates, three of the trade's own type. Original: `ACT.mgrsearch`.
     public static func search(_ s: inout GameState, companyID: Int, data: GameData) -> [Person]? {
         guard let ci = s.companyIndex(companyID), let bd = data.catalog[s.companies[ci].type] else { return nil }
         let cur = World(state: s, data: data).currency(s.companies[ci])
@@ -112,9 +94,6 @@ extension ManagerModel {
         return out
     }
 
-    /// "Find a successor": pay for the executive search for the company's manager's replacement and keep the candidates (`succ`) for the
-    /// hiring page. Asked after a resignation or three bad months; a search already running is not paid twice. Original: the choice opens
-    /// the hiring page (`UI.go('mgrhire')`), where `ACT.mgrsearch` starts the search.
     @discardableResult
     public static func findSuccessor(_ s: inout GameState, companyID: Int, data: GameData) -> [Person]? {
         guard let ci = s.companyIndex(companyID), s.companies[ci].managerID != nil else { return nil }
@@ -131,13 +110,11 @@ extension ManagerModel {
                      body: "The search found \(list.count): \(lines). Interview them and hire one on the Team page.", companyID: companyID, tone: "good", status: "done")
         return list
     }
-    /// The people a successor search found who are still free to hire.
     public static func successorCandidates(_ s: GameState, companyID: Int) -> [Person] {
         guard let co = s.company(companyID), s.week - co.int("succW") <= 26 else { return [] }
         return co.value("succ").array.compactMap { s.people[$0.int] }.filter { $0.employerID == 0 }
     }
 
-    /// What a candidate says about one skill: their claim, unless the answer slips. Three questions each. Original: `interview`.
     @discardableResult
     public static func interview(_ s: inout GameState, personID: Int, key: String) -> Double? {
         guard var n = s.people[personID], skillKeys.contains(where: { $0.key == key }) else { return nil }
@@ -154,7 +131,6 @@ extension ManagerModel {
         return jsRound(slip)
     }
 
-    /// Pay for a reference check; it shows what the person is really like. Original: `ACT.mgrref`.
     public static func referenceCheck(_ s: inout GameState, personID: Int, companyID: Int, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID), var n = s.people[personID] else { return false }
         let fee = World(state: s, data: data).currency(s.companies[ci]).scaledPrice(2500)
@@ -164,19 +140,13 @@ extension ManagerModel {
         return true
     }
 
-    /// A rough overall mark for a manager (0-100). Original: `qOf`.
     public static func overall(_ n: Person) -> Double {
         let st = n.value("stats")
         return (st["ops"].double + st["people"].double + st["sales"].double + st["fin"].double + st["risk"].double) / 5
     }
 
-    // MARK: Hiring, leaving, authority
-
-    /// As `Hiring.HireResult`: `refused` is an insult with no figure named, `countered` names their own figure, `walkedAway` means the person took another job.
     public enum HireResult: Equatable { case ok, taken, refused, needsPremises, countered(Negotiation.Counter), walkedAway }
 
-    /// Make a person the company's manager: they run it, the owner steps back to no hours. Original: `hireManagerCore` plus the round 22
-    /// steps (a baseline to be measured against, routine authority from the first day).
     static func appoint(_ s: inout GameState, companyIndex ci: Int, person n: Person, wage: Double, data: GameData) {
         var co = s.companies[ci]
         if let old = co.managerID, old != n.id, var o = s.people[old] { o.employerID = 0; s.people[old] = o }
@@ -193,7 +163,6 @@ extension ManagerModel {
         co.ownerHours = 0
         co.set("mood", 60)
         var fl = co.value("flags"); fl["fraud"] = 0; co.set("flags", fl)
-        // An appointed manager decides routine matters from the first day unless the owner chose a budget.
         let cur = World(state: s, data: data).currency(co)
         let chosen = Budget.isChosen(co.value("auth"))
         let b: Budget = chosen ? Budget.of(co.value("auth")) : max(Budget.of(co.value("auth")), .normal)
@@ -203,21 +172,17 @@ extension ManagerModel {
         var p = n; p.employerID = co.id; s.people[n.id] = p
     }
 
-    /// What a profit share is worth to a manager each month: the recent monthly profit times the share, less 30% for the risk. Original: `bonusWorth`.
     public static func bonusWorth(_ co: Company, _ share: Double) -> Double {
         guard share > 0 else { return 0 }
         let h = co.monthlyHistory.suffix(3)
         return max(0, h.reduce(0) { $0 + $1.profit } / Double(max(1, min(3, h.count)))) * share * 0.7
     }
 
-    /// Offer the job. At or above what the person would settle for (hidden) they accept; below it they counter, refuse an insult or walk away
-    /// (the shared `Negotiation`; managers have more patience than workers). Original: `hireManager`.
     public static func hire(_ s: inout GameState, personID: Int, companyID: Int, monthlyWage proposed: Double, profitBonus bonus: Double = 0, data: GameData) -> HireResult {
         guard let ci = s.companyIndex(companyID), let n0 = s.people[personID], let bd = data.catalog[s.companies[ci].type] else { return .refused }
         if n0.employerID != 0 { return .taken }
         let w = World(state: s, data: data)
-        let wage = max(proposed, w.minimumWage(s.companies[ci]))   // never below the minimum wage
-        // a share of the profit counts towards the package (a manager weighs it at 70% of what the last months' profit would pay)
+        let wage = max(proposed, w.minimumWage(s.companies[ci]))
         let share = clamp(bonus, 0, 0.3)
         let worth = bonusWorth(s.companies[ci], share)
         let offered = wage + worth
@@ -234,7 +199,6 @@ extension ManagerModel {
         return .ok
     }
 
-    /// Dismiss the manager: notice and severance by the country's labour law, and the owner runs it again. Original: `fireManager`.
     @discardableResult
     public static func fire(_ s: inout GameState, companyID: Int, data: GameData) -> Double {
         Dismissal.dismissManager(&s, companyID: companyID, data: data)?.total ?? 0
@@ -248,8 +212,6 @@ extension ManagerModel {
         s.companies[ci].ownerHours = 40
     }
 
-    /// Give the manager a raise (the contract talk's pay rise; the original's button gave 8 %, which still lifts the mood by the full 8 points).
-    /// Original: `ACT.mgrraise` in ui/company/people.js.
     public static func raiseManager(_ s: inout GameState, companyID: Int, percent: Double = 0.08, data: GameData) {
         guard let ci = s.companyIndex(companyID), s.companies[ci].managerID != nil, percent > 0 else { return }
         let cur = World(state: s, data: data).currency(s.companies[ci])
@@ -259,13 +221,11 @@ extension ManagerModel {
 
     static func mood(_ co: Company) -> Double { co.value("mood").isNull ? 60 : co.num("mood") }
 
-    /// How much experience a manager keeps when moved from one business to another. Original: `moveLoss`.
     public static func moveFactor(from a: Company, to b: Company, data: GameData) -> Double {
         if a.type == b.type { return 1 }
         return data.catalog[a.type]?.family == data.catalog[b.type]?.family ? 0.9 : 0.7
     }
 
-    /// Move the manager to another company without one. Original: `ACT.mgrmovego`.
     public static func move(_ s: inout GameState, fromCompanyID a: Int, toCompanyID b: Int, data: GameData) -> Bool {
         guard let ai = s.companyIndex(a), let bi = s.companyIndex(b), let mid = s.companies[ai].managerID, s.companies[bi].managerID == nil,
               var n = s.people[mid], let tb = data.catalog[s.companies[bi].type], tb.family != "club" else { return false }
@@ -275,14 +235,13 @@ extension ManagerModel {
         let wage = s.companies[ai].managerMonthlyWage, md = mood(s.companies[ai]), bonus = s.companies[ai].managerProfitBonus
         stepDown(&s, ai)
         appoint(&s, companyIndex: bi, person: n, wage: wage, data: data)
-        s.companies[bi].managerProfitBonus = bonus   // the profit share goes with the manager
+        s.companies[bi].managerProfitBonus = bonus
         s.companies[bi].set("mood", md)
         s.note("\(n.name) now manages \(s.companies[bi].name).", tone: "n", companyID: b)
         GrowthPaths.installSuccessor(&s, companyID: a, data: data)
         return true
     }
 
-    /// The manager resigns; they work three to six months of notice. Original: `mgrResign`.
     public static func resign(_ s: inout GameState, companyIndex ci: Int, why: String, to rival: String = "") {
         let co = s.companies[ci]
         guard let mid = co.managerID, let n = s.people[mid], co.value("mgrNotice").isNull else { return }
@@ -297,7 +256,6 @@ extension ManagerModel {
                      action: ManagerTargets.successorAction, data: .object(["co": .number(Double(co.id))]), expiresWeek: s.week + wk)
     }
 
-    /// The last day of the notice: they go, and you run the company until there is a new manager. Original: `mgrNoticeWeek`.
     static func noticeWeek(_ s: inout GameState, companyIndex ci: Int, data: GameData) {
         let t = s.companies[ci].value("mgrNotice")
         if t.isNull { return }
@@ -310,12 +268,11 @@ extension ManagerModel {
         s.note("\(n?.name ?? "Your manager") has left \(s.companies[ci].name)\(to.isEmpty ? "" : " for \(to)"). You run it yourself until you hire a new manager.", tone: "bad", companyID: s.companies[ci].id)
     }
 
-    /// A rival group makes the manager an offer. Rare, and likelier when the manager is unhappy. The answers: match it, or let them go.
     static func rivalOffer(_ s: inout GameState, companyIndex ci: Int, data: GameData) {
         let co = s.companies[ci]
         guard let mid = co.managerID, let n = s.people[mid], co.value("mgrNotice").isNull, s.week - co.int("mgrW0") > 26 else { return }
         let open = s.inbox.contains { $0.companyID == co.id && $0.status == "open" && $0.actionID == "mgrpoach" }
-        let underpaid = co.managerMonthlyWage < managerGoingRate(company: co, state: s, data: data) * 0.9   // poached more easily when underpaid
+        let underpaid = co.managerMonthlyWage < managerGoingRate(company: co, state: s, data: data) * 0.9
         guard !open, s.random.chance(0.0015 + (mood(co) < 45 ? 0.003 : 0) + (overall(n) > 70 ? 0.0015 : 0) + (underpaid ? 0.004 : 0)) else { return }
         let cur = World(state: s, data: data).currency(co)
         let up = cur.roundedStep(co.managerMonthlyWage * 0.15, about: 100)
@@ -326,14 +283,11 @@ extension ManagerModel {
                      action: "mgrpoach", data: .object(["up": .number(up), "npc": .number(Double(n.id))]), expiresWeek: s.week + 2)
     }
 
-    // MARK: Assistant managers
-
     public static let assistantDuties: [(key: String, title: String, text: String)] = [
         ("comp", "Customer complaints", "Answers complaints before they become reviews"),
         ("insure", "Insurance", "Keeps basic insurance in place"),
         ("equip", "Equipment and stock", "Services worn equipment and keeps stock up")]
 
-    /// Job ad for an assistant: a fee and three candidates, paid more than a worker and less than a manager. Original: `ACT.asstsearch`.
     public static func searchAssistants(_ s: inout GameState, companyID: Int, data: GameData) -> [Person]? {
         guard let ci = s.companyIndex(companyID) else { return nil }
         let cur = World(state: s, data: data).currency(s.companies[ci])
@@ -352,11 +306,8 @@ extension ManagerModel {
         }
     }
 
-    /// The answer to an offer for a management post: `refused` is an insult with no figure named, `countered` names their own figure,
-    /// `walkedAway` means the person took another job.
     public enum OfferResult: Equatable { case ok, refused, taken, countered(Negotiation.Counter), walkedAway }
 
-    /// Maps the shared answer of a pay talk to the result of a management offer; `.accept` is not mapped (the caller carries on).
     static func offerResult(_ a: Negotiation.Answer) -> OfferResult? {
         switch a {
         case .accept: return nil
@@ -366,7 +317,6 @@ extension ManagerModel {
         }
     }
 
-    /// Original: `hireAsst`.
     public static func hireAssistant(_ s: inout GameState, personID: Int, companyID: Int, monthlyWage w: Double, data: GameData) -> OfferResult {
         guard let ci = s.companyIndex(companyID), let n0 = s.people[personID] else { return .refused }
         if n0.employerID != 0 { return .taken }
@@ -379,7 +329,6 @@ extension ManagerModel {
         return .ok
     }
 
-    /// Up to two jobs. Original: `ACT.asstduty`.
     public static func toggleAssistantDuty(_ s: inout GameState, companyID: Int, duty: String) -> Bool {
         guard let ci = s.companyIndex(companyID), s.companies[ci].value("asst")["npc"].int != 0 else { return false }
         var a = s.companies[ci].value("asst")
@@ -392,7 +341,6 @@ extension ManagerModel {
         return true
     }
 
-    /// One month of pay as notice. Original: `ACT.asstfire`.
     public static func fireAssistant(_ s: inout GameState, companyID: Int, data: GameData) {
         guard let ci = s.companyIndex(companyID) else { return }
         let a = s.companies[ci].value("asst")
@@ -403,14 +351,12 @@ extension ManagerModel {
         s.companies[ci].set("asst", .null)
     }
 
-    /// Skill (0-1) of the assistant if they look after this duty, else nil. The complaints step uses it.
     public static func assistantSkill(_ co: Company, duty: String, people: [Int: Person]) -> Double? {
         let a = co.value("asst")
         guard a["npc"].int != 0, a["duties"].array.contains(where: { $0.string == duty }), let n = people[a["npc"].int] else { return nil }
         return (n.skill.isZero ? 55 : n.skill) / 100
     }
 
-    /// Weekly: pay, and the jobs they were given. Original: `asstWeek`.
     static func assistantWeek(_ s: inout GameState, companyIndex ci: Int, data: GameData) {
         let co = s.companies[ci]
         let a = co.value("asst")
@@ -434,7 +380,6 @@ extension ManagerModel {
         }
     }
 
-    /// Leadership numbers for a worker who becomes a manager, from their skill. Original: `ensureStats`.
     static func ensureStats(_ n: inout Person, role: String) {
         let b = n.skill
         func z(_ k: String) -> Double { (HashedRandom.first("st11:\(n.id):\(k)") - 0.5) * 20 }
@@ -452,9 +397,6 @@ extension ManagerModel {
 }
 
 extension ManagerModel {
-    /// A manager's pay is a fixed cost whatever the trade earns, so it swamps a very small company (Nov 3 balance report: an owner who hired a manager
-    /// into barber, car wash, consulting or web design lost 13-20% a year). For a company with no manager and 0 or 1 staff: a one-line warning when the
-    /// going manager rate is not clearly covered by the recent monthly profit; nil when the appointment is fine (or the company is not small, or has no record yet).
     public static func managerWarning(_ s: GameState, companyID: Int, data: GameData) -> String? {
         guard let co = s.company(companyID), co.managerID == nil, co.staff.count <= 1 else { return nil }
         let h = co.monthlyHistory.suffix(3)
@@ -465,6 +407,5 @@ extension ManagerModel {
         let cur = World(state: s, data: data).currency(co)
         return "A manager costs about \(cur.display(wage)) a month; this company earns about \(cur.display(max(0, profit))): you would likely lose money."
     }
-    /// The recent monthly profit must be at least this many times the manager's pay, or the appointment is warned against.
     static let warningCover = 1.5
 }

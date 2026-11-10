@@ -5,8 +5,6 @@ import Businesses
 import Finance
 import Simulation
 
-/// Start one trade: how (on your own or under a franchise brand), where, what size, which premises, then the whole
-/// cost, what is left and the risks, before anything is confirmed. All numbers come from `GameEngine.newCompanyPlan`.
 struct TradeDetailView: View {
     private enum Way: String, CaseIterable, Hashable { case independent = "On your own", brand = "Under a brand" }
     @EnvironmentObject var store: GameStore
@@ -22,7 +20,6 @@ struct TradeDetailView: View {
     @State private var choices = SetupChoices()
     @State private var accountantID: Int?
 
-    /// `startUnderBrand` opens on the franchise brands (the link from the set-up step); otherwise on starting alone.
     init(tradeID: String, startUnderBrand: Bool = false) {
         self.tradeID = tradeID
         _way = State(initialValue: startUnderBrand ? .brand : .independent)
@@ -75,9 +72,6 @@ struct TradeDetailView: View {
         }
     }
 
-    // MARK: Funding first
-
-    /// A funding gauge instead of a figure card: how much of the start-up cost your money covers, then the verdict under it.
     private func summary(_ t: Trade, _ plan: NewCompanyPlan?, _ ban: String?, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text(t.blurb.tidyMoney).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
@@ -106,8 +100,6 @@ struct TradeDetailView: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: Where and how
-
     @ViewBuilder private func whereAndHow(_ t: Trade, _ country: Country, _ city: String) -> some View {
         CardSection("Where and how") {
             Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
@@ -123,19 +115,14 @@ struct TradeDetailView: View {
         }
     }
 
-    // MARK: Premises
-
     @ViewBuilder private func premises(_ t: Trade, _ plan: NewCompanyPlan, _ cur: Currency) -> some View {
         PremisesPicker(plan: plan, cur: cur, rentIndex: $rentIndex, buying: $buying)
     }
-
-    // MARK: Cost, risks
 
     private static let costColumns: [TableColumn] = [TableColumn(title: "Cost line"), TableColumn(title: "Amount", width: 96)]
 
     private struct CostLine: Identifiable { var id: String { label }; var label: String; var amount: String }
 
-    /// The cost as a ledger statement in a sharp table: one line per item, the total, then what leaves your cash.
     @ViewBuilder private func costLines(_ plan: NewCompanyPlan, _ cur: Currency) -> some View {
         let est = plan.estimate
         let items: [(String, Double)] = [
@@ -158,7 +145,6 @@ struct TradeDetailView: View {
         }
     }
 
-    /// Risks as a ruled list with a warning mark each, not a card of loose text.
     @ViewBuilder private func risks(_ plan: NewCompanyPlan) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Risks").capsLabel().padding(.bottom, 6)
@@ -174,7 +160,6 @@ struct TradeDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// An alternative that is not only a choice: rent instead of buy, a smaller size.
     private func applyAlternative(_ alt: PlanAlternative, _ t: Trade) {
         switch alt.id {
         case "rent": buying = false
@@ -182,8 +167,6 @@ struct TradeDetailView: View {
         default: break
         }
     }
-
-    // MARK: Brands
 
     @ViewBuilder private func brandList(_ e: GameEngine, _ brands: [FranchiseBrands.Brand], _ cur: Currency) -> some View {
         CardSection("Franchise brands for this trade") {
@@ -195,8 +178,6 @@ struct TradeDetailView: View {
             }
         }
     }
-
-    // MARK: Confirmation and result
 
     private func confirmation(_ e: GameEngine, _ t: Trade, _ plan: NewCompanyPlan, _ city: String, _ cityName: String, _ cur: Currency) -> PendingAction {
         let place: String = {
@@ -238,8 +219,6 @@ struct TradeDetailView: View {
     }
 }
 
-/// Where the new company works: rent or buy one of the places the engine lists, with what it costs up front. Shared by starting on your own
-/// and starting a unit under a brand, so the choice looks and reads the same in both.
 struct PremisesPicker: View {
     @EnvironmentObject var store: GameStore
     var plan: NewCompanyPlan
@@ -278,7 +257,6 @@ struct PremisesPicker: View {
         }
     }
 
-    /// The picture slot of a place: the kind of premises this trade works in (office, shop, kitchen and so on).
     private func premisesThumb(_ o: NewCompanyPlan.PremisesOption) -> ThumbSpec {
         let kind: String = store.engine?.data.catalog[plan.tradeID]?.premisesKind ?? "office"
         return ThumbSpec(kind: .premisesPhoto, key: ArtLibrary.premisesKey(kind: kind, squareMetres: o.squareMetres), glyph: Glyph.home, shape: .wide)

@@ -8,12 +8,7 @@ import Investments
 import Events
 @testable import Simulation
 
-/// Audit part 4b: (1) the same seed and the same actions give the same game, to the last digit; (2) a rich game saved and loaded plays on
-/// exactly as the one that was never saved, and old saves still load; (3) every date-fired item of a three-year game fires the right number
-/// of times on the right dates.
 final class DeterminismSavesDatesTests: XCTestCase {
-
-    // MARK: Helpers
 
     static func fund(_ e: inout GameEngine, _ amount: Double = 100_000_000) {
         let a = e.homeCurrency.scaledPrice(amount)
@@ -33,7 +28,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         return id
     }
 
-    /// Paperwork a business needs to chain or franchise, and a VAT registration.
     static func season(_ e: inout GameEngine, _ id: Int) {
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
@@ -47,7 +41,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         }
     }
 
-    /// One day, answering the questions a careful player always answers the same way (payroll approvals, franchise talks).
     static func play(_ e: inout GameEngine, days: Int) {
         for _ in 0..<days {
             e.nextDay()
@@ -55,7 +48,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         }
     }
 
-    /// A game with many systems running: chain, franchise brand unit, franchisor, luxury, equipment, loans, deposit, startups, rivals, reports.
     static func richGame(seed: Int) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "NO", playerName: "Rich", seed: seed)
         fund(&e, 2_000_000_000)
@@ -69,13 +61,11 @@ final class DeterminismSavesDatesTests: XCTestCase {
             e.setChainRule(chainID: chain, rule: .price(1))
             _ = e.openLocation(chainID: chain, cityID: e.state.player.cityID)
         }
-        // A franchisor
         e.update { s, _, _ in
             if let i = s.companyIndex(barber) {
                 s.companies[i].set("fr", .object(["on": 1, "fee": 150_000, "roy": 0.06, "supp": 0, "share": 0.45, "brand": 30, "mkt": 0.02, "units": .array([]), "app": .array([]), "w0": .number(Double(s.week))]))
             }
         }
-        // A franchise unit under somebody else's brand
         if let brand = ["gym", "carclean", "bakery", "cafe"].lazy.compactMap({ t in
             FranchiseBrands.brands(t, country: "NO", World(state: e.state, data: e.data)).first { $0.openness == "open" }
         }).first, e.applyToFranchiseBrand(brand.id, country: "NO") == .ok {
@@ -85,19 +75,15 @@ final class DeterminismSavesDatesTests: XCTestCase {
                 _ = e.startFranchisedCompany(brandID: brand.id, cityID: e.state.player.cityID, name: "Unit", fundWith: e.homeCurrency.scaledPrice(30_000_000))
             }
         }
-        // Luxury
         for item in Luxury.categories.prefix(4).compactMap({ $0.items.first }) { _ = e.buyLuxury(itemID: item.id) }
-        // Equipment
         e.update { s, data, _ in
             for id in [cafe, barber, bakery] {
                 guard let i = s.companyIndex(id), let bd = data.catalog[s.companies[i].type], let eq = bd.equipment.first else { continue }
                 _ = CompanySetup.buyEquipment(&s, companyID: id, equipmentID: eq.id, quantity: 1, data: data)
             }
         }
-        // Money
         _ = e.takeLoan(kind: "biz", amount: e.homeCurrency.scaledPrice(500_000), termMonths: 36, companyID: bakery)
         e.update { s, _, _ in _ = Brokerage.openDeposit(&s, amount: s.cash * 0.01, weeks: 30) }
-        // Startups
         e.update { s, data, _ in _ = Startups.pitches(&s, data: data) }
         play(&e, days: 60 * 7)
         if let p = Startups.pitchesOnOffer(e.state).first { _ = e.investInStartup(pitchID: p.id, amount: p.raise * 0.05) }
@@ -106,7 +92,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
 
     static func tree(_ s: GameState) throws -> JSONValue { try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(s)) }
 
-    /// The first place where two states differ, for a readable failure.
     static func firstDifference(_ a: JSONValue, _ b: JSONValue, _ path: String = "") -> String? {
         switch (a, b) {
         case (.object(let x), .object(let y)):
@@ -128,8 +113,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         XCTFail("\(what): " + (Self.firstDifference(try Self.tree(a.state), try Self.tree(b.state)) ?? "states differ outside the saved fields"), file: file, line: line)
     }
 
-    // MARK: (1) Determinism
-
     func testSameSeedSameActionsGiveTheSameGameExactly() throws {
         var a = try Self.richGame(seed: 31337), b = try Self.richGame(seed: 31337)
         try assertSame(a, b, "after building")
@@ -137,12 +120,11 @@ final class DeterminismSavesDatesTests: XCTestCase {
             Self.play(&a, days: 7); Self.play(&b, days: 7)
             if a.state != b.state { try assertSame(a, b, "week \(w) after the build"); return }
         }
-        XCTAssertEqual(a.state.cash, b.state.cash)   // exactly, not "to 1e-9"
+        XCTAssertEqual(a.state.cash, b.state.cash)
         let other = try Self.richGame(seed: 31338)
         XCTAssertNotEqual(other.state.random.state, a.state.random.state, "a different seed must give a different game")
     }
 
-    /// Sums over stored dictionaries add in key order, so they do not depend on how the dictionary was built.
     func testSumsOverDictionariesAreOrderStable() {
         let keys = (0..<60).map { "eq\($0)" }
         func company(_ order: [String]) -> Company {
@@ -165,8 +147,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         XCTAssertEqual(fa, CompanyFigures.weeklyCostEstimate(c, fixedCost: 100, country: k))
     }
 
-    // MARK: (2) Saves
-
     func testRichGameSavesLoadsAndPlaysOnIdentically() throws {
         var e = try Self.richGame(seed: 777)
         Self.play(&e, days: 10 * 7)
@@ -184,13 +164,10 @@ final class DeterminismSavesDatesTests: XCTestCase {
             if e.state != b.state { try assertSame(e, b, "week \(w) after loading"); return }
         }
         XCTAssertTrue(Ledger.gaps(b.state).isEmpty, "\(Ledger.gaps(b.state))")
-        // Saved again and again does not change it.
         try store.save(b.state, summary: store.summary(of: b.state, trades: b.data.catalog))
         XCTAssertEqual(try store.load(), b.state)
     }
 
-    /// Saves from before reports, rivals, reviews, chains, luxury, equipment and the decisions queue: they load, play for a year, the books balance
-    /// and the newer systems start up by themselves.
     func testOldSavesLoadAndPlayForAYear() throws {
         let (data, events, marketing) = try GameEngine.loadResources()
         for name in ["save_cafe_week3", "save_cafe_week15", "save_uk25", "save_projects"] {
@@ -203,7 +180,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
             XCTAssertLessThanOrEqual(Ledger.gaps(e.state).count, gaps0, "\(name): playing must not open gaps in the books")
             XCTAssertGreaterThanOrEqual(e.reports(.week).count, 20, "\(name): weekly reports start by themselves")
             XCTAssertGreaterThanOrEqual(e.reports(.year).count, 1, name)
-            // and the result saves and loads again
             let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ledger-old-\(UUID().uuidString)")
             defer { try? FileManager.default.removeItem(at: dir) }
             let store = try SaveStore(directory: dir)
@@ -219,18 +195,15 @@ final class DeterminismSavesDatesTests: XCTestCase {
         XCTAssertThrowsError(try NativeSaveFormat.check(["version": 1]))
     }
 
-    // MARK: (3) Dates
-
     struct Ev { var kind: String; var co: Int; var week: Int; var day: Int; var month = 0; var note = "" }
 
     static func isoDay(week: Int, day: Int) -> Int { GameCalendar.startDay + week * 7 + day }
     static func lastDayOfMonth(_ y: Int, _ m0: Int) -> Int {
         GameCalendar.daysFromCivil(year: m0 == 11 ? y + 1 : y, month: m0 == 11 ? 1 : m0 + 2, day: 1) - 1
     }
-    /// The 15th, or the Friday before when it is a weekend. Written out here, independent of the engine.
     static func expectedPayDay(year: Int, month0: Int) -> Int {
         let d = GameCalendar.daysFromCivil(year: year, month: month0 + 1, day: 15)
-        let weekday = ((d % 7) + 7 + 3) % 7   // 0 Monday ... 6 Sunday
+        let weekday = ((d % 7) + 7 + 3) % 7
         return weekday == 5 ? d - 1 : weekday == 6 ? d - 2 : d
     }
     static func months(from a: Int, to b: Int) -> [(year: Int, month0: Int, index: Int)] {
@@ -253,7 +226,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         var filing = 0
     }
 
-    /// Plays `weeks` weeks of a seeded game with three companies and records every dated thing that happens.
     func playDated(country: String, weeks: Int) throws -> Dated {
         var e = try GameEngine.newGame(countryCode: country, playerName: "Dates", seed: 2026)
         Self.fund(&e, 200_000_000)
@@ -267,10 +239,9 @@ final class DeterminismSavesDatesTests: XCTestCase {
             for id in ids {
                 guard let i = s.companyIndex(id) else { continue }
                 var docs = s.companies[i].value("docs"); docs["vat"] = .object(["st": "ok", "done": 0, "ok": 0]); s.companies[i].set("docs", docs)
-                s.companies[i].managerID = 0   // a hired manager replaces people who leave, so the three shops keep trading for three years
+                s.companies[i].managerID = 0
             }
         }
-        // A 36 month loan for the café, a fixed deposit, a fixed-term worker.
         let loan = e.takeLoan(kind: "biz", amount: e.homeCurrency.scaledPrice(300_000), termMonths: 36, companyID: ids[0])
         XCTAssertEqual(loan, .ok, "\(country): the business loan is granted")
         let depositWeeks = min(30, max(4, weeks / 3))
@@ -305,7 +276,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
             let outcome = e.nextDay()
             for m in e.openDecisions {
                 if m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-                else if m.actionID == FixedTerm.action { e.answer(messageID: m.id, option: 1) }   // let it end on its date
+                else if m.actionID == FixedTerm.action { e.answer(messageID: m.id, option: 1) }
             }
             let w = e.state.week, d = e.state.day, t = Payday.dayNumber(week: w, day: d)
             for m in outcome.newMessages {
@@ -332,7 +303,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
                 snaps[id] = sn
                 if co.cash < floor { e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: floor * 2) } }
             }
-            // Loans: an instalment is a fall in the balance; a missed one raises it.
             for l in e.state.loans {
                 if let before = loanBalances[l.id] {
                     if l.balance < before - 0.005 { out.events.append(Ev(kind: "instalment", co: l.companyID, week: w, day: d, month: l.id)) }
@@ -370,7 +340,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         print("DATES \(country) weeks=\(W) filing=\(r.filing):", counts.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: " "))
         XCTAssertTrue(r.events.filter { $0.kind == "latePayroll" || $0.kind == "missedInstalment" }.isEmpty, tag("nothing is late or missed in a well-funded game: \(r.events.filter { $0.kind == "latePayroll" || $0.kind == "missedInstalment" }.prefix(3))"))
 
-        // Pay day: once a month per company, on the 15th (the Friday before on a weekend), and a "Payday" message that day.
         let expectedPay = calendar.map { Self.expectedPayDay(year: $0.year, month0: $0.month0) }.filter { $0 > start && $0 <= end }
         let payIndexes = calendar.filter { Self.expectedPayDay(year: $0.year, month0: $0.month0) > start && Self.expectedPayDay(year: $0.year, month0: $0.month0) <= end }.map { $0.index }
         for id in r.companies {
@@ -382,7 +351,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(r.paydayMessageDays.count, expectedPay.count - 1, tag("only a pay day before any wages have accrued goes without a message"))
         if W == 156 { XCTAssertEqual(payIndexes.count, 36, tag("36 payrolls in three years")) }
 
-        // Rent and supplier bills: the last day of each month.
         let lastDays = calendar.map { Self.lastDayOfMonth($0.year, $0.month0) }.filter { $0 > start && $0 <= end }
         let billIndexes = calendar.filter { Self.lastDayOfMonth($0.year, $0.month0) > start && Self.lastDayOfMonth($0.year, $0.month0) <= end }.map { $0.index }
         for id in r.companies {
@@ -391,7 +359,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
             XCTAssertEqual(ev.map(at), lastDays, tag("company \(id): bills on the last day of the month"))
         }
 
-        // Month close: the real last day of the month, once per month. It falls in the last week that starts inside the month.
         func closeDay(_ w: Int) -> Int? { (0..<7).first { GameCalendar.isMonthEnd(week: w, day: $0) } }
         let closeWeeks = (1...W).filter { w in
             guard GameCalendar.isMonthEnd(week: w), let d = closeDay(w) else { return false }
@@ -404,7 +371,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
             XCTAssertEqual(ev.map { $0.month }, closeWeeks.map { GameCalendar.monthIndex(week: $0) }, tag("company \(id): month numbers"))
         }
 
-        // VAT: only at closes whose month ends a filing period, once each.
         let filingWeeks = closeWeeks.filter { GameCalendar.monthIndex(week: $0) % r.filing == r.filing - 1 }
         for id in r.companies {
             let ev = r.events.filter { $0.kind == "vat" && $0.co == id }
@@ -416,7 +382,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
             if charges != nil, charges!.week < 8, r.filing == 1 && W == 156 { XCTAssertGreaterThanOrEqual(ev.count, 35, tag("12 filings a year where VAT is filed monthly")) }
         }
 
-        // Loan instalments: one per month close, no gaps, from the first close; the 36 month loan ends after 36 (35 to 36 allowed for the weeks-to-months rounding).
         let byLoan = Dictionary(grouping: r.events.filter { $0.kind == "instalment" }, by: { $0.month })
         XCTAssertGreaterThanOrEqual(byLoan.count, 2, tag("the start-up loan and the business loan both run"))
         for (loanID, ev) in byLoan.sorted(by: { $0.key < $1.key }) {
@@ -430,7 +395,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
             XCTAssertTrue(biz.contains { $0.note == "last" }, tag("the 36 month loan is paid off and gone"))
         }
 
-        // Year end: company tax is paid at the month closes from the profit so far (never between them); the personal true-up runs at each year end.
         let yearEnds = (1...W).filter { w in
             guard GameCalendar.isYearEnd(week: w), let d = (0..<7).first(where: { GameCalendar.isYearEnd(week: w, day: $0) }) else { return false }
             return Self.isoDay(week: w, day: d) <= end
@@ -441,7 +405,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
             XCTAssertTrue(paid.allSatisfy { closeWeeks.contains($0.week) && $0.day == closeDay($0.week) }, tag("company \(id): tax is paid only at a month close: \(paid.map { $0.week })"))
         }
 
-        // Expiry dates: a fixed deposit pays out in the week it ends, a fixed-term worker leaves on the date and was asked before it.
         let depositEnd = meta.week
         if depositEnd <= W { XCTAssertEqual(r.events.filter { $0.kind == "depositMatured" }.map { $0.week }, [depositEnd], tag("the deposit pays out exactly when it ends")) }
         let fixedEnd = meta.month
@@ -466,9 +429,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         checkDates(r, country: code)
     }
 
-    // MARK: Expiry dates of leases and franchise terms
-
-    /// A commercial tenant's lease ends in the week it runs out: the space is free again and a note says so.
     func testTenantLeaseEndsExactlyOnTheDateItRunsOut() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
         Self.fund(&e, 5_000_000_000)
@@ -480,7 +440,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         func leased() -> Double { e.state.company(id)?.properties.first { $0.id == pid }?.leasedUnits ?? -1 }
         XCTAssertEqual(leases(), 1)
         XCTAssertGreaterThan(leased(), 0)
-        // the lease as signed runs for years; bring its last week forward so the test plays weeks, not years
         let until = e.state.week + 3
         e.update { s, _, _ in
             guard let i = s.companyIndex(id), let k = s.companies[i].properties.firstIndex(where: { $0.id == pid }) else { return }
@@ -498,7 +457,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    /// A franchised unit is asked what it wants when the brand's term ends, never before; a question nobody answers ends the contract.
     func testFranchiseUnitTermEndAsksOnTheDateAndSilenceEndsTheBrand() throws {
         var e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 12)
         Self.fund(&e, 3_000_000_000)

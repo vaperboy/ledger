@@ -5,12 +5,6 @@ import Finance
 import Businesses
 import Investments
 
-// The Bank app's read model: pick an account, then manage it. Only reshapes what the engine already keeps:
-// `financeOverview` (what is coming), `companyMovements` and the player's statement (what went through), `Banking` (rates), the loans in the
-// state, `reports` (statements) and `payrollAlerts`. Nothing here changes the game. Loans are never an account of their own: a loan belongs
-// to the account it was taken for (the player's, or a company's) and is listed inside that account.
-
-/// Which account: the player's own, the investments, or a company's.
 public enum BankAccountID: Hashable, Sendable, Identifiable {
     case personal, investments, company(Int)
     public var id: String {
@@ -19,45 +13,35 @@ public enum BankAccountID: Hashable, Sendable, Identifiable {
     public var companyID: Int? { if case .company(let n) = self { return n }; return nil }
 }
 
-/// One row of the "pick an account" screen.
 public struct BankAccountRow: Identifiable, Equatable, Sendable {
     public enum Kind: String, Sendable { case personal, investments, company }
     public var id: BankAccountID
     public var kind: Kind
     public var name: String
-    /// Companies: the trade and the city ("Café · London"); empty for the other accounts.
     public var detail: String
     public var companyID: Int?
-    /// The balance of the account (the current account; for investments the value of what is held).
     public var balance: Double
     public var loanCount: Int
-    /// A payroll waits on the owner at this account (the red bubble). `alertNote` says which.
     public var hasAlert: Bool
     public var alertNote: String?
 }
 
-/// The "pick an account" screen.
 public struct BankAccounts: Equatable, Sendable {
     public var rows: [BankAccountRow]
-    /// Every balance added up (the account, investments, company accounts).
     public var total: Double
-    /// What falls due in the next 30 days across everything, and whether the cash on hand covers it.
     public var dueWithin30Days: Double
     public var isCovered: Bool
-    /// Accounts with an alert: the number on the Bank app's icon.
     public var alertCount: Int
 }
 
 public struct BankLoan: Identifiable, Equatable, Sendable {
     public var id: Int
     public var name: String
-    /// "start", "biz", "cons", "mort" or "lomb".
     public var kind: String
     public var balance: Double
     public var originalAmount: Double
     public var monthlyPayment: Double
     public var yearlyRate: Double
-    /// Instalments left at today's payment (nil when the payment does not cover the interest).
     public var monthsLeft: Int?
     public var isGuaranteed: Bool
 }
@@ -65,16 +49,13 @@ public struct BankLoan: Identifiable, Equatable, Sendable {
 public struct BankTransaction: Identifiable, Equatable, Sendable {
     public var id: String
     public var week: Int
-    /// The day of the week, when the account keeps it (the player's own statement does; a company's movements are kept by week).
     public var day: Int?
     public var dateText: String
     public var amount: Double
     public var label: String
-    /// payroll, bills, tax, owner or other.
     public var category: String
 }
 
-/// A statement the account can show: the newest report of that length, and how many are kept.
 public struct BankStatementEntry: Identifiable, Equatable, Sendable {
     public var id: String { kind.rawValue }
     public var kind: ReportKind
@@ -83,7 +64,6 @@ public struct BankStatementEntry: Identifiable, Equatable, Sendable {
     public var latestTitle: String?
 }
 
-/// One statement of one account: the period, the balance at each end and what went through in between.
 public struct BankStatement: Equatable, Sendable {
     public var kind: ReportKind
     public var reportID: Int
@@ -91,39 +71,30 @@ public struct BankStatement: Equatable, Sendable {
     public var range: String
     public var opening: Double
     public var closing: Double
-    /// Movements the account still keeps for the period, newest first (a company keeps its latest 40, the player 600).
     public var lines: [BankTransaction]
     public var moneyIn: Double
     public var moneyOut: Double
 }
 
-/// "Manage one account".
 public struct BankAccountDetail: Equatable, Sendable {
     public var id: BankAccountID
     public var name: String
     public var detail: String
     public var balance: Double
-    /// What can be spent now: the balance plus the room left on the overdraft (never below 0).
     public var available: Double
     public var overdraftLimit: Double
     public var overdraftUsed: Double
-    /// Yearly interest charged on an overdrawn account (nil for the investments).
     public var overdraftRate: Double?
-    /// How much the account moved so far this month (nil when the books cannot say yet).
     public var monthChange: Double?
     public var alert: PayrollAlert?
-    /// What is coming: payroll, rent and supplier bills, tax, loan instalments, soonest first.
     public var upcoming: [Obligation]
     public var recent: [BankTransaction]
-    /// Personal account only: the fixed deposits.
     public var deposits: [DepositInfo]
-    /// The loans taken for this account (none for the investments).
     public var loans: [BankLoan]
     public var statements: [BankStatementEntry]
 }
 
 public extension GameEngine {
-    // MARK: Accounts
 
     func bankAccounts() -> BankAccounts {
         let s = state
@@ -174,9 +145,6 @@ public extension GameEngine {
         }
     }
 
-    // MARK: Transactions and statements
-
-    /// What went through the account, newest first.
     func bankTransactions(_ id: BankAccountID, limit: Int = 40) -> [BankTransaction] {
         switch id {
         case .personal:
@@ -191,7 +159,6 @@ public extension GameEngine {
         }
     }
 
-    /// One statement of the account: the newest of that length, or the one with `reportID`. Nil when none has closed yet.
     func bankStatement(_ id: BankAccountID, kind: ReportKind, reportID: Int? = nil) -> BankStatement? {
         guard id != .investments else { return nil }
         let all = reports(kind)
@@ -213,8 +180,6 @@ public extension GameEngine {
                              moneyIn: lines.filter { $0.amount > 0 }.reduce(0) { $0 + $1.amount }, moneyOut: -lines.filter { $0.amount < 0 }.reduce(0) { $0 + $1.amount })
     }
 
-    // MARK: Pieces
-
     private func statementEntries() -> [BankStatementEntry] {
         ReportKind.allCases.map { k in
             let r = reports(k)
@@ -227,13 +192,11 @@ public extension GameEngine {
                         category: Self.movementKind(l.label).rawValue)
     }
 
-    /// The loans taken for an account: the player's own on the account, a company's on its account.
     private func loans(for id: BankAccountID) -> [BankLoan] {
         let owner = id.companyID ?? 0
         guard id == .personal || id.companyID != nil else { return [] }
         return state.loans.filter { $0.companyID == owner && $0.balance > 0 }.map { l in
             let p = loanPayoff(loanID: l.id)
-            // The instalment shown is the instalment collected (one rule: `Banking.instalment`).
             let inst = Banking.instalment(of: l, state: state, context: context)
             return BankLoan(id: l.id, name: l.name, kind: l.kind, balance: l.balance, originalAmount: l.originalAmount, monthlyPayment: l.kind == "start" ? l.monthlyPayment : inst.payment,
                             yearlyRate: p?.yearlyRate ?? Banking.rate(of: l, state: state), monthsLeft: p?.monthsLeft, isGuaranteed: l.isGuaranteed)

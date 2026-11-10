@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Repair and upkeep bills can be put on payment terms like goods (`SupplyTerms`): cash on delivery, 30 or 60 days.
 final class RepairTermsTests: XCTestCase {
     private func setup(seed: Int = 11) throws -> (GameEngine, Int, String) {
         var e = try ChainsTests.engine("NO", seed: seed)

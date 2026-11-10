@@ -4,8 +4,6 @@ import Countries
 import Events
 import Simulation
 
-/// Board meetings of a joint venture: the next planned meeting and the open ones, urgent meetings (and calling one), and the history with what each
-/// vote decided. Votes are cast in a popup; a vote not cast by the deadline counts as an abstention. Rules: `JVRules`, `JointVenture`.
 struct JointVentureMeetingsView: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
@@ -51,8 +49,6 @@ struct JointVentureMeetingsView: View {
         .task { JointVentureCoordinator.shared.attach(online.service); await JointVentureCoordinator.shared.sync(store) }
     }
 
-    // MARK: Parts
-
     @ViewBuilder private func upcoming(_ e: GameEngine, _ co: Company, _ st: JointVenture.State, _ live: [JointVenture.Meeting], _ week: Int) -> some View {
         if live.isEmpty {
             Card(padding: Theme.Space.l) {
@@ -93,8 +89,6 @@ struct JointVentureMeetingsView: View {
         }
         ForEach(closed) { (m: JointVenture.Meeting) in meetingCard(e, co, m) }
     }
-
-    // MARK: A meeting
 
     private func meetingCard(_ e: GameEngine, _ co: Company, _ m: JointVenture.Meeting) -> some View {
         let names: [String: String] = Dictionary(uniqueKeysWithValues: e.jvStakes(companyID: co.id).map { ($0.id, $0.isYou ? "You" : $0.name) })
@@ -137,7 +131,6 @@ struct JointVentureMeetingsView: View {
     }
 }
 
-/// Who voted how: a green up arrow for, a red down arrow against, a word for abstained or not yet.
 private struct FlowVotes: View {
     var votes: [String: JVRules.Choice]
     var names: [String: String]
@@ -160,9 +153,6 @@ private struct FlowVotes: View {
     }
 }
 
-// MARK: - The voting popup
-
-/// The agenda of one meeting with what each item does, how the votes stand in words, and For / Against / Abstain for each.
 struct JVVoteSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -205,7 +195,6 @@ struct JVVoteSheet: View {
         }
     }
 
-    /// How the vote stands, in words: shares for and against among all.
     private func standing(_ e: GameEngine, _ it: JointVenture.Item) -> some View {
         let t = e.jvTally(companyID: companyID, meetingID: meetingID, itemID: it.id)
         let words: String = t.map { "For \(Int($0.yesPercent.rounded()))% · against \(Int($0.noPercent.rounded()))% · not yet decided \(Int((100 - $0.yesPercent - $0.noPercent).rounded()))%" } ?? ""
@@ -229,9 +218,6 @@ struct JVVoteSheet: View {
     }
 }
 
-// MARK: - Calling an emergency meeting
-
-/// Pick what to put to the partners and why. Any owner, and the chair or CFO, may call one; it opens at once and closes in a week.
 struct JVCallSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss

@@ -9,7 +9,6 @@ private extension GameEngine {
     mutating func w7week() { for _ in 0..<7 { _ = nextDay() } }
 }
 
-/// Construction, electrician, plumber, handyman, engineering office, security (PROJ and job-contract model).
 final class JobContractsTests: XCTestCase {
     let trades = ["construction", "electrician", "plumber", "handy", "engcons", "security"]
 
@@ -28,7 +27,6 @@ final class JobContractsTests: XCTestCase {
         return try XCTUnwrap(JobContracts.facts(e.state, companyID: id, itemID: it.id, data: e.data))
     }
 
-    /// A company that has traded: last week's customers set (a fresh test company has no staff to serve anyone yet).
     func traded(_ e: inout GameEngine, _ id: Int, units: Double) {
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
@@ -68,7 +66,7 @@ final class JobContractsTests: XCTestCase {
 
     func testInstallGivesTheRealMenuAndKeepsTheBooksNeutral() throws {
         for t in trades {
-            var (e, id) = try start(t, weeks: 0)   // the weekly hook installs the items by itself: install on a fresh company
+            var (e, id) = try start(t, weeks: 0)
             let before = e.salesItems(companyID: id)
             var made = 0
             e.update { s, d, _ in made = JobContracts.install(&s, companyID: id, data: d) }
@@ -124,7 +122,6 @@ final class JobContractsTests: XCTestCase {
         XCTAssertFalse(rewire.document.isEmpty)
         XCTAssertTrue(plan.isRecurring)
         XCTAssertEqual(plan.recurringPerPeriod, plan.members * plan.visitsPerPeriod * plan.price, accuracy: 1e-6)
-        // The live profit and loss of the item page uses the same real cost.
         let co = try XCTUnwrap(e.state.company(id)), bd = try XCTUnwrap(e.data.catalog["electrician"])
         let it = try XCTUnwrap(SalesItems.items(co, bd).first { $0.name == "Rewire (3-bed house)" })
         let lp = try XCTUnwrap(ItemModels.liveProfit(e.state, companyID: id, itemID: it.id, price: rewire.price * 0.5, data: e.data))
@@ -167,7 +164,6 @@ final class JobContractsTests: XCTestCase {
 
     func testHandyKitStockRunsDownAndIsReordered() throws {
         var (e, id) = try start("handy", weeks: 6, setup: true)
-        // A steady, known volume: a young firm's own whole daily sales can be too few for the kit (a few percent of the jobs) to sell down in 16 weeks.
         traded(&e, id, units: 400)
         e.update { s, d, _ in JobContracts.install(&s, companyID: id, data: d) }
         var sawOrder = false, sawArrival = false
@@ -230,8 +226,6 @@ final class JobContractsTests: XCTestCase {
         let back = try JSONDecoder().decode(JSONValue.self, from: json)
         XCTAssertTrue(back == co.value("itemsv2"))
     }
-
-    // MARK: Two-year survival probe (LEDGER_JOBS_PROBE=1; slow)
 
     struct Result { var y1: Double; var y2: Double; var status: String }
 

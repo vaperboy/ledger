@@ -4,8 +4,6 @@ import Finance
 import Simulation
 @testable import Businesses
 
-/// What a bought rival becomes (merge, close, branch, franchise office), a site beside a rival, a purchase with a loan from your own bank
-/// and the answers to a rival's price cut (original `rivhow`, `branchgo`, `rivfin27`, `rm27`).
 final class RivalAbsorbTests: XCTestCase {
     private func engineWithCafe(weeks: Int = 8, seed: Int = 777) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -36,7 +34,6 @@ final class RivalAbsorbTests: XCTestCase {
         XCTAssertGreaterThan(extra, 0)
         XCTAssertEqual(extra, (p * 0.08 / 1000).rounded() * 1000)
 
-        // not enough money: nothing happens
         let cash00 = e.state.cash
         XCTAssertEqual(e.absorbRival(companyID: id, rivalID: r.id, price: 1e13, how: .merge), .notEnoughCash)
         XCTAssertEqual(e.state.cash, cash00)
@@ -51,7 +48,7 @@ final class RivalAbsorbTests: XCTestCase {
         XCTAssertGreaterThan(try XCTUnwrap(e.state.company(id)).awareness, aware0, "their customers come over")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
 
-        guard let r2 = Rivals.rivals(e.state, for: try XCTUnwrap(e.state.company(id))).first else { return }   // a market with one rival only: done
+        guard let r2 = Rivals.rivals(e.state, for: try XCTUnwrap(e.state.company(id))).first else { return }
         let p2 = price(e, id, r2), extra2 = e.absorbRivalExtraCost(how: .shut, price: p2)
         XCTAssertEqual(extra2, (p2 * 0.12 / 1000).rounded() * 1000)
         let before2 = e.state.cash
@@ -66,7 +63,6 @@ final class RivalAbsorbTests: XCTestCase {
         var (e, id) = try engineWithCafe()
         let r = try firstRival(e, id)
         let p = price(e, id, r)
-        // a franchise office needs the franchise system
         XCTAssertEqual(e.absorbRival(companyID: id, rivalID: r.id, price: p, how: .franchiseOldOwner), .failed("Franchise offices need your franchise system first."))
 
         let n0 = e.state.companies.count
@@ -74,7 +70,6 @@ final class RivalAbsorbTests: XCTestCase {
         XCTAssertEqual(e.state.companies.count, n0 + 1)
         let b = try XCTUnwrap(e.state.company(branchID))
         XCTAssertEqual(b.value("branch")["of"].int, id)
-        // Branches are named by place, never by a number, and each name is its own.
         XCTAssertNotEqual(b.name, try XCTUnwrap(e.state.company(id)).name)
         XCTAssertNil(b.name.split(separator: " ").last.flatMap { Int($0) }, "the name is not numbered: \(b.name)")
         XCTAssertEqual(e.state.companies.filter { $0.name == b.name }.count, 1, "the name is unique: \(b.name)")
@@ -111,7 +106,6 @@ final class RivalAbsorbTests: XCTestCase {
         XCTAssertEqual(site.value("branch")["r"].int, r.id)
         XCTAssertEqual(site.value("docs")["fran"]["st"].string, "ok")
         XCTAssertTrue(site.name.hasPrefix(try XCTUnwrap(e.state.company(id)).name))
-        // once it is open it takes 0.006 of the rival's size every week
         e.update { s, _, _ in s.companies[s.companyIndex(nid)!].status = .open }
         let size0 = try XCTUnwrap(Rivals.rivals(e.state, for: site).first { $0.id == r.id }).size
         let aware0 = try XCTUnwrap(e.state.company(nid)).awareness
@@ -122,7 +116,6 @@ final class RivalAbsorbTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    /// A bank the player already owned (new banks can no longer be started).
     static func ownedBank(_ e: inout GameEngine) -> Int {
         var id = 0
         e.update { s, data, ctx in
@@ -170,9 +163,7 @@ final class RivalAbsorbTests: XCTestCase {
         let p = price(e, id, r)
         let room = e.ownBankRoom()
         XCTAssertEqual(room, 100_000_000, accuracy: 1.0, "a quarter of its capital")
-        // more than it may lend: refused
         XCTAssertEqual(e.buyRivalWithOwnBank(companyID: id, rivalID: r.id, price: p, amount: room + 10_000_000), .bankCannotLend)
-        // a rival that is not there: the loan is undone
         let loans0 = e.state.loans.count, cash0 = e.state.cash, bank0 = try XCTUnwrap(e.state.company(bankID)).cash
         XCTAssertEqual(e.buyRivalWithOwnBank(companyID: id, rivalID: -5, price: p, amount: 1_000_000), .ok(.failed("That rival is gone.")))
         XCTAssertEqual(e.state.loans.count, loans0)
@@ -192,9 +183,6 @@ final class RivalAbsorbTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    // MARK: Answering a price cut
-
-    /// A running price cut of 15% by the first rival, with the demand effect it puts on the cafe.
     private func withPriceCut(_ e: inout GameEngine, _ id: Int, _ r: Rivals.Rival) {
         e.update { s, _, _ in
             let co = s.company(id)!
@@ -206,7 +194,6 @@ final class RivalAbsorbTests: XCTestCase {
         }
     }
 
-    /// True if the company has a demand effect of this size (other events may add their own).
     private func hasDemandMod(_ e: GameEngine, _ id: Int, _ m: Double) -> Bool {
         (e.state.company(id)?.value("mods").array ?? []).contains { $0["k"].string == "dem" && abs($0["m"].double - m) < 1e-9 }
     }
@@ -224,7 +211,6 @@ final class RivalAbsorbTests: XCTestCase {
         XCTAssertTrue(hasDemandMod(e, id, 1), "your customers stay")
         XCTAssertEqual(e.rivalPriceCut(companyID: id, rivalID: r.id)?.answered, "matched their price")
         XCTAssertEqual(e.answerPriceCut(companyID: id, rivalID: r.id, answer: .quality), .failed("This has passed."), "one answer only")
-        // the cut ends: the old price comes back
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             var f = s.companies[i].value("flags"); f["match27"]["end"] = .number(Double(s.week)); s.companies[i].set("flags", f)

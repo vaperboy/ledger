@@ -4,8 +4,6 @@ import Countries
 import Employees
 import Finance
 
-/// Starting a company: choosing trade, city, legal form and size; the paperwork, premises, equipment and people it
-/// needs. Original: `startCompany`, `newCompany`, `setupEstimate`, `autoSetup` (engine/core/api.js, company.js).
 public enum CompanySetup {
     public struct Listing: Equatable, Identifiable, Sendable {
         public var id: Int { index }
@@ -13,7 +11,6 @@ public enum CompanySetup {
         public var name: String
         public var squareMetres: Double
         public var rentFactor: Double
-        /// Footfall / location quality (1 = standard)
         public var location: Double
         public var landlord: String
         public init(index: Int, name: String, squareMetres: Double, rentFactor: Double, location: Double, landlord: String) {
@@ -23,7 +20,6 @@ public enum CompanySetup {
 
     public enum StartError: Error, Equatable { case banned(String), notEnoughCash, notAllowedHere, notYetAvailable }
 
-    /// Size a new company starts at, between the trade's minimum and the city's natural size. Original: `startSize`.
     public static func recommendedSize(_ bd: Trade, city: Country.City, brandStrength: Double = 0) -> Double {
         let target = clamp(jsRound(city.demand * 20) / 20, 0.4, 2.2)
         let tgt = clamp(target, bd.minSize, bd.maxSize)
@@ -31,15 +27,11 @@ public enum CompanySetup {
         return max(bd.minSize, jsRound((bd.minSize + (tgt - bd.minSize) * k) * 20) / 20)
     }
 
-    /// Reason this trade is not allowed in a country, if any. Original: `legalStatus`.
     public static func banReason(_ tradeID: String, country: Country) -> String? {
         let b = country.pack["banned"][tradeID]
         return b.isNull ? nil : b.string
     }
 
-    // MARK: Names
-
-    /// A company name that sounds local. Original: `brandCoName` (framework.js; the richer `R25.nameFor` is not ported).
     static func generateName(country: Country, family: String, _ r: inout DeterministicRandom) -> String {
         let endings = country.pack["names"]["companyEnd"]
         let list: [String]
@@ -59,7 +51,6 @@ public enum CompanySetup {
         return (starts.isEmpty ? "Nova" : r.pick(starts)) + " " + end
     }
 
-    /// A coined brand word from a local root and a local ending (`names.coinEnd` in the country's data). Original: `coinName`.
     static func coined(_ starts: [String], endings: [String], _ r: inout DeterministicRandom) -> String {
         let endings = endings.isEmpty ? ["ia", "ex", "ora", "on", "ix"] : endings
         var root = starts.isEmpty ? "Nova" : r.pick(starts).filter { $0.isLetter }
@@ -69,13 +60,10 @@ public enum CompanySetup {
         return root + tail
     }
 
-    // MARK: Premises
-
     static let premisesWords = ["Properties", "Estates", "Commercial", "Real Estate", "Holdings", "Property Group"]
 
-    /// Five places to rent (the original's `PL_TIERS`), from a back street unit to a central location; a new list every half year. Original: `premListings`.
     public static func listings(for co: Company, _ bd: Trade, _ w: World) -> [Listing] {
-        if PremisesExtras.isHomeTrade(bd) { return PremisesExtras.listings(co, bd, w) }   // a trade that started at home looks for a workshop or office
+        if PremisesExtras.isHomeTrade(bd) { return PremisesExtras.listings(co, bd, w) }
         guard let kind = bd.premisesKind, kind != "none", kind != "home" else { return [] }
         var r = HashedRandom("\(w.state.seed):pl:\(co.type):\(co.cityID):\(w.week / 26)")
         let country = w.country(co)
@@ -94,7 +82,6 @@ public enum CompanySetup {
 
     public enum PremisesResult: Equatable { case ok, notEnoughCash, bad }
 
-    /// What a listing costs: rent a year per m², monthly rent, the 3-month deposit, fit-out, and (if bought) the price and the down payment.
     public struct PremisesTerms: Equatable {
         public var rentPerM2Year: Double
         public var monthlyRent: Double
@@ -105,7 +92,6 @@ public enum CompanySetup {
         public var squareMetres: Double
     }
 
-    /// Terms of renting or buying a listing. Rent is per m² per year, adjusted for the city, the listing and inflation since the start.
     public static func premisesTerms(_ co: Company, _ listing: Listing, data: GameData, world w: World) -> PremisesTerms? { premisesTerms(co, listing, catalog: data.catalog, world: w) }
 
     public static func premisesTerms(_ co: Company, _ listing: Listing, catalog: TradeCatalog, world w: World) -> PremisesTerms? {
@@ -119,8 +105,6 @@ public enum CompanySetup {
         return PremisesTerms(rentPerM2Year: rent, monthlyRent: rent * m2 / 12, deposit: rent * m2 / 12 * 3, fitOut: fit, purchasePrice: price, downPayment: price * 0.35, squareMetres: m2)
     }
 
-    /// Rent (or buy, with a commercial mortgage: 35% down, 15 years) premises. A deposit on the place being left is returned.
-    /// Original: `setPrem`.
     public static func setPremises(_ s: inout GameState, companyID: Int, listing lst: Listing?, buy: Bool = false, data: GameData) -> PremisesResult {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], let kind0 = bd.premisesKind,
               case let kind = (PremisesExtras.isHomeTrade(bd) && lst != nil) ? PremisesExtras.placeKind(bd) : kind0,
@@ -131,11 +115,9 @@ public enum CompanySetup {
         }
         let w = World(state: s, data: data)
         guard let lst = lst, let t0 = premisesTerms(s.companies[i], lst, data: data, world: w) else { return .bad }
-        // The deposit of the place being left comes back first.
         let old = s.companies[i].value("prem")
         let refund = old["dep"].double > 0 && !old["owned"].bool ? old["dep"].double : 0
         let co = s.companies[i]
-        // A franchise unit with the franchisor's building: 15 % off the rent and no deposit. Original: `setPrem` (`franchise.bld`).
         let franchiseBuilding = !buy && co.value("franchise")["bld"].bool
         var t = t0
         if franchiseBuilding { t.rentPerM2Year *= 0.85; t.monthlyRent *= 0.85; t.deposit = 0 }
@@ -166,28 +148,22 @@ public enum CompanySetup {
         return .ok
     }
 
-    // MARK: Equipment and vehicles
-
-    /// Price of one piece of equipment today. Original: `eqPrice` (standard class, no brand discount).
     public static func equipmentPrice(_ e: EquipmentSpec, company co: Company, _ w: World) -> Double {
         let raw = (e.cost * w.inflationIndex * w.country(co).costIndex).rounded()
         let fx = w.rates.rate(w.country(co))
         return Currency.nicePrice(raw / fx) * fx
     }
 
-    /// Whether a piece is needed to open and trade: required, setting the capacity, or what people need to do their work (a sales car).
     static func opensTheTrade(_ e: EquipmentSpec, _ bd: Trade, tables: TradeTables) -> Bool {
         e.opensTheTrade || PersonalEquipment.rule(bd, e, tables: tables) != nil
     }
 
-    /// How many of each piece a company of this size needs. Original: `stdEq`.
     public static func standardEquipment(_ bd: Trade, size: Double) -> [String: Double] {
         var out: [String: Double] = [:]
         for e in bd.equipment where e.standardCount > 0 { out[e.id] = max(1, jsRound(e.standardCount * size)) }
         return out
     }
 
-    /// People a company of this size normally employs. Original: `stdStaff` (+ small-firm step).
     public static func standardStaff(_ bd: Trade, size: Double) -> [(role: String, count: Int)] {
         var base: [(role: String, count: Int)] = bd.standardStaff.map { (role: $0.role, count: Int(max(1, jsRound($0.count * size)))) }
         if size <= 0.6 {
@@ -204,10 +180,7 @@ public enum CompanySetup {
         if let model = e.vehicleModels?.first, let v = data.catalog.tables.vehicles[model] {
             for _ in 0..<Int(q) {
                 let price = jsRound(roundTo(v.price * w.inflationIndex, step: 1000))
-                // Like a real firm (and the original's autoSetup): buy outright when the cash is there, otherwise finance with
-                // 20% down and a five-year loan secured on the vehicle, otherwise lease. Original: `buyVehCore`.
                 let cash = s.companies[i].cash
-                // `forceFinancing` (a manager buying within a budget that counts the 20% down payment) never buys a vehicle outright.
                 let mode = cash >= price && !forceFinancing && !(preferFinancing && cash < price * 3) ? "own" : cash >= price * 0.2 ? "fin" : "lease"
                 _ = addVehicle(&s, companyIndex: i, e, model: model, modelName: v.name, price: price, mode: mode, brand: nil, data: data)
             }
@@ -221,8 +194,6 @@ public enum CompanySetup {
         return true
     }
 
-    /// Put bought equipment into the company's books: the record, its units, the brand's output and reliability. The money has
-    /// been paid already. Used by the standard purchase and by the equipment market. Original: `setupEqRec`.
     static func addEquipment(_ s: inout GameState, companyIndex i: Int, _ e: EquipmentSpec, tradeID: String, quantity q: Double, totalPrice price: Double,
                              brand: EquipmentMarket.Brand?, used: EquipmentMarket.UsedOffer?, data: GameData) {
         var eq = s.companies[i].value("eq")
@@ -249,8 +220,6 @@ public enum CompanySetup {
         if let bd = data.catalog[tradeID] { SpecialFamilies.afterBuy(&s, companyIndex: i, bd, equipmentID: e.id, quantity: q) }
     }
 
-    /// Add one vehicle: paid for in full (`own`), on a loan with 20% down (`fin`) or leased (`lease`). The first payment is made here.
-    /// Returns false when the money for it is not there. Original: `buyVehCore`.
     static func addVehicle(_ s: inout GameState, companyIndex i: Int, _ e: EquipmentSpec, model: String, modelName: String, price: Double, mode: String,
                            brand: EquipmentMarket.Brand?, prepaid: Bool = false, data: GameData) -> Bool {
         let companyID = s.companies[i].id
@@ -281,10 +250,6 @@ public enum CompanySetup {
         return true
     }
 
-    // MARK: Creating a company
-
-    /// Create a company in the setup state. Every company is a limited company: it needs share capital, a registration fee and an
-    /// accountant, and its owner is liable only for what was put in (plus loans signed personally).
     public static func create(_ s: inout GameState, tradeID: String, cityID: String, size: Double? = nil, name: String? = nil,
                               countryCode: String? = nil, accountantID: Int? = nil, data: GameData, context: FinanceContext) -> Result<Int, StartError> {
         guard let bd = data.catalog[tradeID] else { return .failure(.notAllowedHere) }
@@ -317,11 +282,9 @@ public enum CompanySetup {
         co.set("ins", .object([:])); co.set("flags", .object([:])); co.set("fm", .object([:]))
         co.set("lossCarry", 0); co.set("dist", 0); co.set("capital", 0); co.set("inj", 0); co.set("ownerSalary", 0)
         co.set("unitsW", 0); co.set("mgrQ", 0); co.set("eqc", 1); co.set("books", 0.5); co.set("group", 0)
-        // What the owner's own work would cost to replace: a buyer has to pay someone to do it. Used to value the company.
         if let role = bd.standardStaff.first?.role, let base = data.catalog.tables.roles[role]?.baseMonthlyWage, bd.ownerFTE > 0 {
             co.set("ownWage", .number(jsRound(Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, rates: World(state: s, data: data).rates))))
         }
-        // A brand-new name is known only to friends and family.
         co.awareness = min(co.awareness, 10)
         s.companies.append(co)
         let i = s.companies.count - 1
@@ -335,15 +298,12 @@ public enum CompanySetup {
         s.companies[i].addTransaction(week: s.week, amount: country.shareCapitalMinimum, label: "Share capital paid in")
         chooseAccountant(&s, companyID: id, accountantID: accountantID, data: data)
         if abroad { Payments.playerPays(&s, abroadFee, label: "Local representative, travel and legal counsel abroad", companyID: id) }
-        // The owner works there within the hours they have left.
         let used = CapacityModel.ownerHoursCommitted(s, except: id)
         let hours = max(0, (min(s.companies[i].ownerHours, 80 - used, max(10, 55 - used)) / 5).rounded(.down) * 5)
         s.companies[i].ownerHours = hours
         return .success(id)
     }
 
-    /// Give up rented or owned premises and work from home again: an owned place is sold at its value and the mortgage paid off,
-    /// a rented one returns the deposit. Original: `ACT.home37`.
     public static func giveUpPremises(_ s: inout GameState, companyID: Int, data: GameData) -> Bool {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], bd.premisesKind == "home" else { return false }
         let prem = s.companies[i].value("prem")
@@ -372,35 +332,22 @@ public enum CompanySetup {
         s.companies[i].set("docs", docs)
     }
 
-    // MARK: Cost estimate
-
     public struct Estimate: Equatable {
         public var documents = 0.0, equipment = 0.0, vehicles = 0.0, premises = 0.0, stock = 0.0, firstPayroll = 0.0, buffer = 0.0
-        /// The parts of `equipment` and `vehicles` the trade cannot open without; the rest is optional.
         public var requiredEquipment = 0.0, requiredVehicles = 0.0
-        /// What the required equipment takes up front: a down payment where the piece can be financed, the full price where it cannot.
         public var requiredEquipmentUpfront = 0.0
-        /// The cheapest rented place on offer (three months' deposit plus fit-out); the standard place priced in `premises` when the trade lists none.
         public var premisesLeast = 0.0
-        /// The first month's employer cost of the minimum viable team (the first staff line only); `firstPayroll` is the whole standard team.
         public var minimumPayroll = 0.0
-        /// The part of `premises` that is fit-out (the rest is the three months' rent deposit); for the cost breakdown screens.
         public var premisesFitOut = 0.0
-        /// Rent a month of the standard place the estimate prices (0 when the trade needs none).
         public var monthlyRent = 0.0
-        /// Down payment and fees on a first property (rental businesses).
         public var property = 0.0
         public var registration = 0.0, shareCapital = 0.0, abroad = 0.0
-        /// Wages and rent paid while a long licence is awaited (original: `r.wait` in `setupEstimate`)
         public var wait = 0.0
-        /// What must be paid to open at all: papers, a place, registration and capital, the equipment and vehicles the trade cannot open without. Stock can be left out, a team can be hired later.
         public var minimumToOpen: Double { documents + premisesLeast + property + wait + registration + shareCapital + abroad + requiredEquipmentUpfront + requiredVehicles }
         public var total: Double { documents + equipment + vehicles + premises + stock + firstPayroll + buffer + property + registration + abroad + wait }
-        /// Money that must be in the player's account first (registration, capital) plus money to put in the company
         public var personalOutlay: Double { registration + shareCapital + abroad }
     }
 
-    /// What it takes to start this business, on the new-company screen. Original: `setupEstimate`.
     public static func estimate(tradeID: String, cityID: String, size: Double, countryCode: String? = nil, state s: GameState, data: GameData) -> Estimate? {
         guard let bd = data.catalog[tradeID] else { return nil }
         let code = countryCode ?? s.homeCountryCode
@@ -452,9 +399,7 @@ public enum CompanySetup {
         }
         r.buffer = bd.weeklyFixedCosts * 6 * pow(size, 0.9) * city.rent * 0.5 + SpecialFamilies.extraStartupBuffer(bd, size: size, country: country)
         RentalFinance.addEstimate(&r, bd, size: size, city: city, currency: w.currency(co), tmp, w)
-        // Contractors wait weeks for the first jobs and the first payments: a bigger cash buffer. Original: `setupEstimate` step.
         if bd.family == "project" && !bd.hasTrait("dev") { r.buffer *= 3.5 }
-        // Months spent waiting for a licence cost wages and rent too (a wait of more than 8 weeks). Original: `r.wait`.
         let longest = Documents.needed(co, bd, w).compactMap { Documents.definition($0, country: country, tables: data.catalog.tables)?.weeks }.max() ?? 0
         if longest > 8 { r.wait = (r.firstPayroll + monthlyRent + vehicleFull * 0.012) * Double(longest - 4) / 4.33 * 1.15 }
         let cur = Currency(country: country, rates: w.rates)
@@ -468,22 +413,13 @@ public enum CompanySetup {
         return r
     }
 
-    // MARK: Quick setup
-
-    /// How far quick set-up may go. The default buys only what the trade needs to open and trade (`opensTheTrade`), never the optional extras, and does not look at the cash left.
-    /// A player-facing start passes a budget: required equipment only unless asked, the minimum viable team, and no hire the company's cash cannot
-    /// carry for `payrollMonthsReserve` months. Anything left out is returned (never bought silently) so the screen can show it with its cost.
     public struct SetupOptions: Equatable, Sendable {
         public enum Team: String, Equatable, Sendable { case minimum, standard }
         public var team: Team = .standard
         public var optionalEquipment = false
-        /// nil: hire without looking at cash. A number: hire only while cash covers (wages so far + this one + rent) for that many months.
         public var payrollMonthsReserve: Double? = nil
-        /// A business that was bought brings its equipment and people with it: set-up neither buys the equipment nor hires the team.
         public var equipmentInPlace = false
         public var teamInPlace = false
-        /// Apply for the documents, rent a standard place and buy the first property by itself. The player's own start sets all three to false:
-        /// they fill in and sign the documents and choose the place themselves.
         public var applyDocuments = true
         public var autoPremises = true
         public var buyProperty = true
@@ -491,18 +427,15 @@ public enum CompanySetup {
             self.team = team; self.optionalEquipment = optionalEquipment; self.payrollMonthsReserve = payrollMonthsReserve
             self.equipmentInPlace = equipmentInPlace; self.teamInPlace = teamInPlace
         }
-        /// What a player start uses: required equipment, the minimum team, wages covered for two months.
         public static let careful = SetupOptions(team: .minimum, optionalEquipment: false, payrollMonthsReserve: 2)
     }
 
-    /// One thing quick set-up did not buy or hire, with its cost, so it can be offered as an optional extra.
     public struct SetupSkipped: Equatable, Sendable, Identifiable {
         public enum Kind: String, Equatable, Sendable { case staff, equipment, vehicle }
         public var id: String
         public var kind: Kind
         public var title: String
         public var count: Int
-        /// Staff: employer cost a month for all of them. Equipment and vehicles: the price now (a vehicle: its down payment).
         public var cost: Double
         public var reason: String
     }
@@ -513,11 +446,6 @@ public enum CompanySetup {
         public init(log: [String] = [], skipped: [SetupSkipped] = []) { self.log = log; self.skipped = skipped }
     }
 
-    /// Do everything a company needs to open with sensible standard choices: apply for all documents, rent a
-    /// standard place, buy the equipment needed to open and trade, hire the standard team. It then opens by itself once the
-    /// paperwork is approved. Returns what could not be done (usually: not enough cash). Original: `autoSetup`.
-    /// The original makes one offer to the median-priced candidate per job and does not retry a refusal; the app retries and picks the
-    /// best value. `faithfulHiring` switches to the original's way (used only by the statistical comparison tests).
     public static func quickSetup(_ s: inout GameState, companyID: Int, data: GameData, faithfulHiring: Bool = false) -> [String] {
         quickSetupReport(&s, companyID: companyID, data: data, faithfulHiring: faithfulHiring, options: SetupOptions()).log
     }
@@ -540,7 +468,6 @@ public enum CompanySetup {
             }
         }
         let need = standardEquipment(bd, size: s.companies[i].size)
-        // Fixed equipment first, vehicles last: vehicles can be financed or leased, a counter cannot.
         for e in bd.equipment.filter({ $0.vehicleModels == nil }) + bd.equipment.filter({ $0.vehicleModels != nil }) {
             let q = need[e.id] ?? (e.isRequired ? 1 : 0)
             if q <= 0 || options.equipmentInPlace { continue }
@@ -566,7 +493,6 @@ public enum CompanySetup {
         return rep
     }
 
-    /// A bought business brings its fixed equipment (not vehicles) with it, at the used price the purchase already covers. Returns the pieces moved.
     @discardableResult
     public static func transferEquipment(_ s: inout GameState, companyID: Int, data: GameData) -> Int {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return 0 }
@@ -582,8 +508,6 @@ public enum CompanySetup {
         return moved
     }
 
-    /// The people of a bought business keep their jobs: the standard team of its size is taken on at today's market pay. Returns how many and
-    /// the retention bonus (one month's pay each) the buyer owes them.
     public static func transferStaff(_ s: inout GameState, companyID: Int, data: GameData) -> (people: Int, retention: Double) {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return (0, 0) }
         var rep = SetupReport()
@@ -592,8 +516,6 @@ public enum CompanySetup {
         return (staff.count, staff.reduce(0) { $0 + $1.monthlyWage })
     }
 
-    /// Whether the company's cash carries the people already on the payroll, one more at `extra` a month and the rent for `months`.
-    /// On top of the wages and rent for `months`, one more month of rent and of the company's loan instalments is always held back.
     private static func carries(_ co: Company, extraMonthly extra: Double, months: Double, loans: [Loan]) -> Bool {
         let payroll = co.staff.reduce(0.0) { $0 + $1.monthlyWage * $1.partTimeShare }
         let rent = co.value("prem")["rent"].double
@@ -616,7 +538,6 @@ public enum CompanySetup {
                 continue
             }
             var attempts = 0; let allowed = faithfulHiring ? max(0, n) : 6
-            // faithfulHiring (balance comparison with the original only): one offer to the median-priced candidate, no retry.
             while n > 0 && attempts < allowed {
                 if let months = options.payrollMonthsReserve, !carries(s.companies[i], extraMonthly: wage, months: months, loans: s.loans) {
                     rep.skipped.append(SetupSkipped(id: "staff:\(st.role)", kind: .staff, title: roleName, count: n, cost: wage * Double(n),

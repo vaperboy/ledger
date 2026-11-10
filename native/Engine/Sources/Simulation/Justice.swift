@@ -1,10 +1,6 @@
 import Foundation
 import GameCore
 
-// Convictions and the public watchlist. A conviction can carry a fine (paid to the country's treasury) and bans from trading, standing for
-// office and voting. A quashed conviction ends its bans and gives the fine back out of the treasury. Only grave cases reach the public
-// watchlist; others are visible to the player alone, and to others only as a count.
-
 public struct PlayerConviction: Codable, Equatable, Identifiable, Sendable {
     public enum Kind: String, Codable, Sendable { case taxEvasion, fraud, unsafeGoods, smuggling, bribery, counterfeiting, harassment, sabotage }
     public var id: Int
@@ -40,7 +36,6 @@ public struct Justice: Codable, Equatable, Sendable {
 
     public init() {}
 
-    /// Records a conviction. The caller moves the fine to the treasury. A grave one is also put on the public watchlist.
     @discardableResult
     mutating func record(account: String, name: String, kind: PlayerConviction.Kind, summary: String, fine: Double, country: String, week: Int,
                          tradeBanWeeks: Int = 0, officeBanWeeks: Int = 0, voteBanWeeks: Int = 0, grave: Bool) -> PlayerConviction {
@@ -54,7 +49,6 @@ public struct Justice: Codable, Equatable, Sendable {
         return c
     }
 
-    /// Overturned: bans end and the entry leaves the watchlist. Returns the conviction so the caller can refund the fine.
     mutating func quash(_ id: Int) -> PlayerConviction? {
         guard let i = convictions.firstIndex(where: { $0.id == id && !$0.quashed }) else { return nil }
         convictions[i].quashed = true
@@ -71,7 +65,6 @@ public struct Justice: Codable, Equatable, Sendable {
         }
     }
 
-    /// What other players may know: how many convictions stand.
     public func count(_ account: String) -> Int { convictions.filter { $0.account == account && !$0.quashed }.count }
     public func own(_ account: String) -> [PlayerConviction] { convictions.filter { $0.account == account } }
 }

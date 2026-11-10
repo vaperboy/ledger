@@ -6,8 +6,6 @@ import Finance
 @testable import Events
 import Simulation
 
-/// Buying from other players: landed cost, what a trade really needs, contracts in the buyer's books (price, quality, short deliveries), the listings kept in the
-/// save, one-off orders that travel and the notices and stock insurance that go with them.
 final class PlayerSupplyTests: XCTestCase {
     private func listing(_ id: String, trade: String = "farm", line: String = "goods", price: Int = 1, quality: Int = 1, country: String = "UK", companyID: Int? = nil) -> SupplyListing {
         SupplyListing(id: id, ownerID: "owner-\(id)", ownerName: "Name \(id)", profileCode: "P-\(id)", companyName: "Co \(id)", companyID: companyID, tradeID: trade, tradeName: trade.capitalized,
@@ -16,7 +14,6 @@ final class PlayerSupplyTests: XCTestCase {
                       country: country)
     }
 
-    /// An open company of the trade with a full week of trading on record (what one unit costs it, what it carried).
     private func engine(trade: String = "grocery") throws -> (GameEngine, Int) {
         var e = try ChainsTests.engine("UK", seed: 777)
         let id = ChainsTests.start(&e, trade)
@@ -31,8 +28,6 @@ final class PlayerSupplyTests: XCTestCase {
     private func contract(_ id: String, buyer: Int, line: String = "goods", listing l: String, units: Int = 20) -> SupplyContract {
         SupplyContract(id: id, buyerCompanyID: buyer, lineID: line, listingID: l, supplierOwnerID: "owner-\(l)", supplierName: "Name \(l)", unitsPerWeek: units, startDay: 0)
     }
-
-    // MARK: Landed cost
 
     func testFarCheapSupplierLosesToANearerOne() {
         let near = listing("near", trade: "workshop", price: 1, country: "DE")
@@ -67,8 +62,6 @@ final class PlayerSupplyTests: XCTestCase {
         XCTAssertEqual(none.landedPerUnit, 0)
     }
 
-    // MARK: Needs
-
     func testEveryCatalogueLineHasABuyer() throws {
         let e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 11)
         for (trade, lines) in SupplyMarketCatalogue.supplies {
@@ -89,8 +82,6 @@ final class PlayerSupplyTests: XCTestCase {
         let kept = SupplyNeeds.relevant([listing("a", trade: "farm"), listing("b", trade: "carrepair", line: "repair")], buyerTrade: "grocery", buyerFamily: "retail")
         XCTAssertEqual(kept.map { $0.id }, ["a"])
     }
-
-    // MARK: Contracts in the books
 
     func testAContractPricesTheLineAndEndingGoesBack() throws {
         var (e, id) = try engine()
@@ -145,8 +136,6 @@ final class PlayerSupplyTests: XCTestCase {
         XCTAssertTrue(e.playerSupplyContracts.isEmpty)
     }
 
-    // MARK: Kept in the save
-
     func testListingsAndOrdersSurviveTheSave() throws {
         var (e, id) = try engine(trade: "bakery")
         var l = listing("M1", trade: "bakery", companyID: id)
@@ -160,8 +149,6 @@ final class PlayerSupplyTests: XCTestCase {
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .bust } }
         XCTAssertTrue(e.playerSupplyListings.isEmpty, "a listing of a company that is gone is not kept")
     }
-
-    // MARK: One-off orders that travel
 
     func testAnOrderTravelsAndShowsInTransit() throws {
         var (e, id) = try engine()
@@ -177,7 +164,6 @@ final class PlayerSupplyTests: XCTestCase {
         XCTAssertEqual(rows[0].from, "AU")
         XCTAssertTrue(rows[0].crossesBorder)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        // A service line or an unneeded trade cannot be ordered as stock.
         XCTAssertEqual(e.orderFromSupplier(companyID: id, listing: listing("s", trade: "webdev", line: "software"), units: 5), .badOrder)
     }
 
@@ -188,8 +174,6 @@ final class PlayerSupplyTests: XCTestCase {
         XCTAssertEqual(m.companyID, id)
         XCTAssertEqual(m.tone, "bad")
     }
-
-    // MARK: Stock insurance on the insurance screen
 
     func testStockPolicyIsOnTheInsuranceScreenAndToggles() throws {
         var (e, id) = try engine()

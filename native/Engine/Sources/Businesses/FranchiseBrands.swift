@@ -3,13 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Franchise brands you can join as a franchisee: who they are, how they answer an application, and the talk about
-/// the terms. Original: engine/world/franchise_brands.js (`fbMake`, `fbLocalList`, `fbGlobalList`, `fbStatus`, `fbPower`,
-/// `fbNegotiate`, `fbApply`, `fbWeek`, `applyBrand`). The brands are made from the game seed and the trade and country, so
-/// the same game always shows the same brands (the original keeps them in `S.fb`; here they are worked out when asked).
-/// What is saved: the applications (`fbApps`), the weeks a brand will not talk (`fbLock`) and how many rounds you went (`fbIrr`).
 public enum FranchiseBrands {
-    /// Trades a brand franchises. Original: `FB_TYPES`.
     public static let tradeIDs: [String] = ["carclean", "carrepair", "cleaning", "tutor", "handy", "barber", "drivsk", "physio", "estate", "pets", "foodtruck",
                                            "cafe", "restaurant", "gym", "hotel", "fun", "kiosk", "boutique", "grocery", "hardware", "cardealer", "bakery", "courier"]
     public static func isFranchisable(_ tradeID: String) -> Bool { tradeIDs.contains(tradeID) }
@@ -17,7 +11,6 @@ public enum FranchiseBrands {
     static let globalNames = ["Everest", "Nova", "Atlas", "Orbit", "Zenith", "Vertex", "Aurora", "Meridian", "Pulse", "Horizon", "Quantum", "Apex", "Lumen", "Titan",
                               "Spark", "Cosmos", "Vanguard", "Elevate", "Unity", "Crest", "Fusion", "Stellar", "Axis", "Radiant", "Polaris"]
 
-    /// The word a brand name uses for each trade ("Nordic Plumbing"). Original: `FB_NOUNS`.
     static let nouns: [String: String] = ["cons": "Consulting", "tutor": "Tutoring", "carclean": "Car Care", "carrepair": "Auto Service", "photo": "Photo", "handy": "Handyman",
         "cleaning": "Cleaning", "webdev": "Digital", "mktg": "Marketing", "law": "Law", "acctfirm": "Accounting", "staffing": "Staffing", "barber": "Hair", "drivsk": "Driving School",
         "physio": "Physio", "estate": "Estate", "pets": "Pet Care", "foodtruck": "Street Food", "cafe": "Café", "restaurant": "Restaurant", "nightclub": "Club", "gym": "Gym",
@@ -36,42 +29,34 @@ public enum FranchiseBrands {
         TierSpec(name: "Global brand", units: (500, 2500), strength: (80, 95), fee: 4.2, royalty: (0.07, 0.1), flex: (70, 92), who: "manager"),
     ]
 
-    /// A brand that takes franchisees. Original: the objects made by `fbMake`.
     public struct Brand: Equatable, Identifiable, Sendable {
         public var id: String
         public var tradeID: String
         public var name: String
         public var origin: String
-        /// 1 local brand ... 4 global brand
         public var tier: Int
         public var tierName: String
         public var units: Int
-        /// Brand strength 0-100. Original: `str`.
         public var strength: Double
-        /// "open" takes new franchisees, "exp" only proven operators, "closed" none. Original: `open`.
         public var openness: String
         public var royalty: Double
         public var marketingFund: Double
-        /// 0 none, 1 covers about 40% of the fit-out, 2 about 70%. Original: `supp`.
         public var support: Int
         public var termYears: Int
         public var failPercent: Double
         public var standard: Double
         public var flex: Double
-        /// Reference-country entry fee before the country's price level. Original: `fee0`.
         public var baseFee: Double
         public var contact: String
         public var fitMultiplier: Double
 
         public var role: String { ["", "founder", "owner", "franchise manager", "CEO"][min(4, max(1, tier))] }
-        /// "Name, the founder," as in the original's `fbWho`.
         public var who: String { "\(contact), the \(role)," }
         public var tierDescription: String {
             tierName + (tier == 4 && !origin.isEmpty ? " (from \(origin))" : "")
         }
     }
 
-    /// What was agreed in the talk. Original: `fbTermsOf` result.
     public struct Terms: Equatable, Sendable {
         public var fee: Double
         public var royalty: Double
@@ -81,7 +66,6 @@ public enum FranchiseBrands {
         public var vehicles: Int
         public var building: Int
         public var brandID: String
-        /// A free space in one of your own commercial buildings, where the unit will be. Original: `terms.prem`.
         public var premises: BuildingRef?
 
         var json: JSONValue {
@@ -102,18 +86,15 @@ public enum FranchiseBrands {
         }
     }
 
-    /// A building of one of your commercial rental companies. Original: `{ co, pid }`.
     public struct BuildingRef: Equatable, Sendable {
         public var companyID: Int
         public var propertyID: Int
         public init(companyID: Int, propertyID: Int) { self.companyID = companyID; self.propertyID = propertyID }
     }
 
-    /// What you ask for. Fee and royalty are the share taken off (negative: you offer to pay more). Original: the `ask` object.
     public struct Ask: Equatable, Sendable {
         public var fee = 0.0, royalty = 0.0
         public var cover = 0, rent = 0, vehicles = 0, building = 0
-        /// Put the unit in one of your own buildings (the franchisor likes a ready place: +16 bargaining power).
         public var premises: BuildingRef?
         public init() {}
     }
@@ -125,8 +106,6 @@ public enum FranchiseBrands {
         public var counter: Ask?
         public var terms: Terms?
     }
-
-    // MARK: Making the brands
 
     struct BrandRandom {
         var h: HashedRandom
@@ -171,7 +150,6 @@ public enum FranchiseBrands {
                      support: supp, termYears: term, failPercent: fail, standard: std, flex: flex, baseFee: base, contact: contact, fitMultiplier: 1 + Double(t - 1) * 0.07)
     }
 
-    /// Brands of one country: local, regional and national chains named from that country. Original: `fbLocalList`.
     public static func localBrands(_ tradeID: String, country cc: String, _ w: World) -> [Brand] {
         guard isFranchisable(tradeID), let bd = w.catalog[tradeID], let C = w.countries[cc] else { return [] }
         var r = BrandRandom("fb:\(w.state.seed):\(tradeID):\(cc)")
@@ -192,7 +170,6 @@ public enum FranchiseBrands {
         return out
     }
 
-    /// Worldwide brands: the same in every country, with a home country of their own. Original: `fbGlobalList`.
     public static func globalBrands(_ tradeID: String, _ w: World) -> [Brand] {
         guard isFranchisable(tradeID), let bd = w.catalog[tradeID] else { return [] }
         var r = BrandRandom("fb:\(w.state.seed):\(tradeID):GL")
@@ -214,7 +191,6 @@ public enum FranchiseBrands {
         return list.first { $0.id == id }
     }
 
-    /// Every brand that is open to the player in a country, plus the ones they have already applied to.
     public static func available(country cc: String, _ w: World) -> [Brand] {
         var out: [Brand] = []
         for id in w.catalog.order where isFranchisable(id) {
@@ -231,9 +207,6 @@ public enum FranchiseBrands {
         return out
     }
 
-    // MARK: Brands run by other players
-
-    /// A franchise another player offers for a limited time, kept by id ("P:<offer>") with the day it ends, so the usual application, talk and unit path works on it.
     public static func importPlayerBrand(_ s: inout GameState, listing l: PlayerDeals.FranchiseListing) {
         let b = PlayerDeals.brand(from: l)
         s.rest["pfb", default: .object([:])][b.id] = .object([
@@ -250,18 +223,14 @@ public enum FranchiseBrands {
                      flex: j["flex"].double, baseFee: j["fee"].double, contact: j["contact"].string, fitMultiplier: 1)
     }
 
-    /// The player-run brands the game knows of (the offers that were imported), ended ones included until nothing refers to them.
     public static func playerBrands(_ s: GameState) -> [Brand] {
         (s.rest["pfb"]?.object.keys.sorted() ?? []).compactMap { playerBrand(s, id: $0) }
     }
 
-    /// The last day a player-run brand takes applications; nil for any other brand.
     static func playerBrandEnds(_ s: GameState, id: String) -> Int? {
         guard id.hasPrefix("P:"), let u = s.rest["pfb"]?[id]["until"], !u.isNull else { return nil }
         return u.int
     }
-
-    // MARK: Facts
 
     public static func fee(_ b: Brand, country: Country) -> Double {
         Currency(country: country, rates: ExchangeRates()).scaledPrice(b.baseFee)
@@ -270,7 +239,6 @@ public enum FranchiseBrands {
         Currency(country: w.countries.resolve(cc, orHome: w.state.homeCountryCode), rates: w.rates).scaledPrice(b.baseFee)
     }
 
-    /// What a typical unit earns: revenue a week and margin after fees. Original: `fbUnitStats`.
     public static func unitStats(_ b: Brand, _ w: World) -> (revenue: Double, margin: Double) {
         guard let bd = w.catalog[b.tradeID] else { return (0, 0) }
         let rev = bd.normalDemand * bd.ticket * 0.55 * (0.35 + b.strength / 100 * 0.6)
@@ -281,8 +249,6 @@ public enum FranchiseBrands {
         v >= 85 ? "A household name" : v >= 70 ? "Very well known" : v >= 55 ? "Well regarded" : v >= 40 ? "Known locally" : v >= 25 ? "Still building a name" : "Little known"
     }
 
-    /// Companies of this trade you have run for at least 26 weeks: it strengthens your hand in the talks, it is no entry gate (a franchisor asks for
-    /// financing and a signed agreement with the entry fee, not a reputation score). Original: `fbExp`.
     public static func experience(_ s: GameState, _ tradeID: String) -> Int {
         s.companies.filter { $0.type == tradeID && $0.status.isLive && s.week - ($0.openedWeek ?? s.week) >= 26 }.count
     }
@@ -293,7 +259,6 @@ public enum FranchiseBrands {
     }
 
     public struct Status: Equatable, Sendable { public var ok: Bool; public var why: String }
-    /// Can anyone apply to this brand now? Original: `fbStatus`.
     public static func status(_ b: Brand, _ s: GameState, _ w: World) -> Status {
         if let until = lockedUntil(s, b) { return Status(ok: false, why: until - s.week > 5000 ? "They will not do business with you again." : "They will not talk to you again for \(until - s.week) weeks.") }
         if b.openness == "closed" { return Status(ok: false, why: "This brand does not take new franchisees.") }
@@ -301,8 +266,6 @@ public enum FranchiseBrands {
         return Status(ok: true, why: "")
     }
 
-    /// What a franchisee really needs: the brand reviews the application, you sign the franchise agreement, and the entry
-    /// fee is paid (financing: your own cash or a loan). Shown as items with a status, like the franchisor's.
     public static func requirements(_ b: Brand, _ s: GameState, _ w: World, country cc: String) -> [Franchising.Requirement] {
         let st = application(s, b.id)["st"].string
         let reviewed = ["invited", "agreed"].contains(st)
@@ -325,8 +288,6 @@ public enum FranchiseBrands {
         public var state: StepState
     }
 
-    /// The road from first look to an open unit, in order: eligibility, entry fee and financing, the brand's approval (it may invite you to
-    /// talk terms and counter your ask), and opening the unit. Worked out from the application record and the companies, nothing is saved.
     public static func steps(_ b: Brand, _ s: GameState, _ w: World, country cc: String) -> [Step] {
         let a = application(s, b.id)
         let st = a["st"].string
@@ -364,7 +325,6 @@ public enum FranchiseBrands {
         return [eligibility, money, approval, opening]
     }
 
-    /// Your bargaining power. Original: `fbPower`.
     static func power(_ b: Brand, _ ask: Ask?, _ s: GameState, _ w: World, country cc: String) -> Double {
         let exp = Double(experience(s, b.tradeID))
         var p = 34 + exp * 14 + (s.credit - 50) * 0.2 + (s.cash > fee(b, w, country: cc) * 4 ? 8 : 0)
@@ -372,7 +332,6 @@ public enum FranchiseBrands {
         return clamp(p, 0, 100)
     }
 
-    /// Each brand boss has a taste: some want money up front, some a lasting royalty, some a unit that looks right. Original: `fbTaste`.
     static func taste(_ b: Brand) -> (fee: Double, roy: Double, cover: Double) {
         var h = 7
         for u in b.id.utf16 { h = (h * 31 + Int(u)) % 9973 }
@@ -385,7 +344,6 @@ public enum FranchiseBrands {
               marketing: b.marketingFund, cover: max(max(ask.cover, 0), b.support), rent: ask.rent, vehicles: ask.vehicles, building: ask.building, brandID: b.id, premises: ask.premises)
     }
 
-    /// The talk about the terms. Original: `fbNegotiate`. Each unfinished round counts against your patience.
     public static func negotiate(_ s: inout GameState, brand b: Brand, ask: Ask, data: GameData, country cc: String? = nil) -> Negotiation {
         let w = World(state: s, data: data)
         let code = cc ?? s.homeCountryCode
@@ -444,13 +402,10 @@ public enum FranchiseBrands {
         return Negotiation(kind: .push, message: "\(who) says: \"\(line)\"", counter: nil, terms: nil)
     }
 
-    // MARK: Applying
-
     public static func application(_ s: GameState, _ brandID: String) -> JSONValue { s.rest["fbApps"]?[brandID] ?? .null }
 
     public enum ApplyResult: Equatable, Sendable { case ok, closed(String), already }
 
-    /// Send an application; the brand answers after a week or three. Original: `fbApply`.
     public static func apply(_ s: inout GameState, brand b: Brand, country: String, city: String, data: GameData) -> ApplyResult {
         let w = World(state: s, data: data)
         let st = status(b, s, w)
@@ -463,7 +418,6 @@ public enum FranchiseBrands {
         return .ok
     }
 
-    /// The player signs the terms that were offered. Original: `ACT.negsign`.
     public static func sign(_ s: inout GameState, brand b: Brand, terms: Terms) {
         guard !application(s, b.id).isNull else { return }
         s.rest["fbApps", default: .object([:])][b.id]["st"] = "agreed"
@@ -477,9 +431,7 @@ public enum FranchiseBrands {
         return Terms(json: a["terms"])
     }
 
-    /// Weekly: applications are answered or expire. Original: `fbWeek`.
     static func weekly(_ s: inout GameState, data: GameData) {
-        // Ended offers of other players go once no application or unit refers to them.
         if let pfb = s.rest["pfb"]?.object, !pfb.isEmpty {
             let keep = pfb.filter { (id, j) in
                 j["until"].int >= s.week * 7 + s.day || !application(s, id).isNull || s.companies.contains { $0.status.isLive && $0.value("franchise")["brandId"].string == id }
@@ -513,9 +465,6 @@ public enum FranchiseBrands {
         }
     }
 
-    // MARK: Starting as a franchisee
-
-    /// What the franchisor pays towards the set-up: part of the fit-out, rent months, half the vehicles. Original: `fbSetupGrant`.
     static func setupGrant(_ s: GameState, companyIndex i: Int, terms t: Terms, data: GameData) -> Double {
         let co = s.companies[i]
         let w = World(state: s, data: data)
@@ -537,15 +486,12 @@ public enum FranchiseBrands {
         return w.currency(co).scaledPrice(g)
     }
 
-    /// The supplier standards brands of this trade and tier require (`Resources/franchise_standards.json`): input ids.
     public static func requiredSupplierInputs(tradeID: String, tier: Int) -> [String] {
         guard let url = Bundle.module.url(forResource: "franchise_standards", withExtension: "json", subdirectory: "Resources"),
               let raw = try? Data(contentsOf: url), let j = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return [] }
         return j["supplierStandards"].array.filter { $0["standard"].string == "approved" && $0["trades"].array.contains { $0.string == tradeID } && tier >= $0["minTier"].int }.map { $0["input"].string }
     }
 
-    /// Write the brand's required suppliers into the franchise record (`supStd`, only when the brand requires any) and put the store on them.
-    /// The approved supplier is picked the same way every time from the suppliers that serve the store, by the brand.
     static func applySupplierStandards(_ s: inout GameState, companyIndex i: Int, brand b: Brand, data: GameData) {
         for input in requiredSupplierInputs(tradeID: b.tradeID, tier: b.tier) where input == "goods" {
             let list = Suppliers.candidates(s, company: s.companies[i], scope: "goods", data: data).sorted { $0.id < $1.id }
@@ -561,8 +507,6 @@ public enum FranchiseBrands {
         }
     }
 
-    /// Put the brand's terms on a company that was just started: the franchise record, reputation and awareness of the brand,
-    /// the franchisor's set-up support. Original: `applyBrand`.
     public static func applyToCompany(_ s: inout GameState, companyIndex i: Int, brand b: Brand, terms t: Terms, data: GameData) {
         let id = s.companies[i].id
         s.companies[i].set("franchise", .object([
@@ -570,7 +514,6 @@ public enum FranchiseBrands {
             "brand": .number(b.strength), "std": .number(b.standard), "cover": .number(Double(t.cover)), "bld": .number(Double(t.building)),
             "term": .number(Double(b.termYears)), "w0": .number(Double(s.week)),
         ]))
-        // What the brand dictates about how the unit sells and how it may market locally: written once, at the grant.
         if let bd = data.catalog[s.companies[i].type] {
             let std = FranchiseStandards.knobStandards(brand: b, trade: bd)
             var f = s.companies[i].value("franchise")

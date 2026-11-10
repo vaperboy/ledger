@@ -1,7 +1,6 @@
 import Foundation
 import GameCore
 
-/// Who holds cash: the player's private account or one company.
 public enum CashHolder: Equatable, Sendable {
     case me
     case company(Int)
@@ -14,19 +13,12 @@ public enum CashHolder: Equatable, Sendable {
     }
 }
 
-/// The one place where cash balances change. Original: `engine/money/ledger.js`.
-///
-/// Every movement of money goes through `move` (or `set`). Each holder keeps a running total of everything
-/// booked (`cashFlow`), so a test can prove that cash always equals what was booked: nothing appears or
-/// disappears. The player's private account also keeps a statement (newest first): no money moves without a line.
 public enum Ledger {
     public static let statementLimit = 600
 
-    /// Test hook: called for every balance change (used by the balance tests to tally cash by cause). Nil in the app.
     nonisolated(unsafe) package static var observer: ((CashHolder, Double) -> Void)?
     nonisolated(unsafe) package static var cause: String?
 
-    /// The balance moves; no statement line (used by the weekly staging, which writes its own lines).
     package static func moveRaw(_ s: inout GameState, _ holder: CashHolder, _ amount: Double) {
         if let o = observer { o(holder, amount); cause = nil }
         switch holder {
@@ -37,12 +29,10 @@ public enum Ledger {
         s.cashFlow[holder.flowKey, default: 0] += amount
     }
 
-    /// Move money. `why` is the line on the player's statement; `companyID` is the company it concerns.
     package static func move(_ s: inout GameState, _ holder: CashHolder, _ amount: Double, why: String? = nil, companyID: Int = 0) {
         moveRaw(&s, holder, amount)
         guard holder == .me, amount != 0 else { return }
         ReportCounters.recordPersonal(&s, label: why, amount: amount)
-        // While a week is being worked out, the player's lines wait and later land whole on one day of the week.
         if s.transient.stagedPlayerLines != nil {
             s.transient.stagedPlayerLines?.append(StatementLine(week: s.week, day: s.day, amount: amount, label: why ?? "Other", companyID: companyID, balanceAfter: 0))
         } else {
@@ -56,7 +46,6 @@ public enum Ledger {
         if s.statement.count > statementLimit { s.statement.removeLast(s.statement.count - statementLimit) }
     }
 
-    /// Set a balance directly (used when a company is wound up). The difference is booked.
     package static func set(_ s: inout GameState, _ holder: CashHolder, to value: Double) {
         switch holder {
         case .me:
@@ -73,8 +62,6 @@ public enum Ledger {
         }
     }
 
-    /// Differences between cash and what was booked, per holder (empty = consistent). Original: `ledgerGaps`.
-    /// Money still held back for a company that is sold or gone is a gap too: nobody can ever be paid it.
     public static func gaps(_ s: GameState) -> [(holder: String, difference: Double)] {
         var out: [(String, Double)] = []
         for id in (s.rest["pend"]?["co"].array ?? []).map({ $0[0].int }).sorted() {

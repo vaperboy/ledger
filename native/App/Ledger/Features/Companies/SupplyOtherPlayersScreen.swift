@@ -5,13 +5,9 @@ import Finance
 import Businesses
 import Simulation
 
-/// The selling side: the player's own companies offering what the trade's catalogue lists to other players. A company needs real capacity (what it
-/// carried in a full week) to offer anything. Each listing shows its state, the orders that came in and the fill record buyers see; it can be
-/// edited, paused or stopped. A sale books revenue for the company through the engine hook (`SupplyMarketBooks`).
 struct SupplyOtherPlayersScreen: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
-    /// One company, or nil for all of the player's open companies.
     var companyID: Int?
     @State private var editor: EditorPick?
     @State private var detail: DetailPick?
@@ -121,7 +117,6 @@ struct SupplyOtherPlayersScreen: View {
     }
 }
 
-/// Create or change a listing from the trade's fixed catalogue: what, price tier, quality, capacity, lead time, minimum order, terms and how long it lasts.
 struct ListingEditorPopup: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
@@ -210,13 +205,11 @@ struct ListingEditorPopup: View {
     }
 }
 
-/// The orders on one listing: who ordered, how many units, whether it was on time, and what it brought in.
 struct ListingOrdersPopup: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
     var listingID: String
 
-    /// The orders are the supplier company's takings, so they show in its own currency.
     private var currency: Currency? {
         guard let e = store.engine, let cid = market.service.listing(listingID)?.companyID, let co = e.state.company(cid) else { return nil }
         return e.currency(for: co)

@@ -5,18 +5,12 @@ import Finance
 import Businesses
 import Events
 
-/// The career: a rank title (Street Vendor to Tycoon) and an open-ended goal ladder that always shows the next short, medium and long goal.
-/// It works in every save (it reads facts, never gates anything) and sits after the ten-step guide ladder (`PlayerGoals.ladder`).
-/// State: `rest["car"]` = { done: { id: week }, rk: rank index celebrated, cos: [cosmetic ids] }; written only when something is earned.
 public enum Career {
-    // MARK: Ranks
 
     public struct Rank: Equatable, Sendable {
         public var index: Int
         public var title: String
-        /// Net worth needed, before scaling to the player's currency.
         public var netWorth: Double
-        /// Career goals finished that this rank also asks for.
         public var goals: Int
     }
 
@@ -25,7 +19,6 @@ public enum Career {
         ("Executive", 5_000_000, 11), ("Magnate", 25_000_000, 14), ("Mogul", 100_000_000, 17), ("Tycoon", 1_000_000_000, 20)
     ].enumerated().map { Rank(index: $0.offset, title: $0.element.0, netWorth: $0.element.1, goals: $0.element.2) }
 
-    /// The highest rank for which both asks hold: the net worth and the goals finished.
     public static func rankIndex(netWorth nw: Double, goalsDone: Int, currency cur: Currency) -> Int {
         ranks.last { nw >= cur.scaledPrice($0.netWorth) && goalsDone >= $0.goals }?.index ?? 0
     }
@@ -33,9 +26,7 @@ public enum Career {
     public struct RankStatus: Equatable, Sendable {
         public var rank: Rank
         public var next: Rank?
-        /// 0 to 1 towards the next rank: the slower of net worth and goals decides.
         public var progress: Double
-        /// What is still missing, in words ("Net worth 100k", "2 more goals"); empty at the top.
         public var missing: String
     }
 
@@ -53,8 +44,6 @@ public enum Career {
         return RankStatus(rank: rank, next: n, progress: min(pw, pg), missing: miss.joined(separator: " and "))
     }
 
-    // MARK: Goals
-
     public enum Horizon: Int, Sendable, CaseIterable {
         case short, medium, long
         public var label: String { ["Short", "Medium", "Long"][rawValue] }
@@ -63,7 +52,6 @@ public enum Career {
     struct Facts {
         var s: GameState
         var nw: Double
-        /// Wealth built: net worth above what the player started with (the start already holds premises and equipment).
         var gain: Double { max(0, nw - (s.rest["car"]?["nw0"].double ?? nw)) }
         var cur: Currency
         var live: [Company]
@@ -73,15 +61,10 @@ public enum Career {
 
     struct Def {
         var id: String, title: String, body: String, horizon: Horizon
-        /// Reward line: a title, a perk or a logo badge (what the player really gets).
         var reward: String
-        /// Progress 0...1; 1 means done.
         var progress: (Facts) -> Double
-        /// Extra effect on completion (small, real bonuses only).
         var grant: (inout GameState) -> Void = { _ in }
-        /// Cosmetic unlocked by this goal (a company logo badge), "" for none.
         var cosmetic: String = ""
-        /// Money the goal asks for, in reference units; shown in the player's currency wherever the text says {amt}.
         var amount: Double = 0
         func text(_ t: String, _ cur: Currency) -> String { amount == 0 ? t : t.replacingOccurrences(of: "{amt}", with: cur.short(cur.scaledPrice(amount))) }
     }
@@ -157,9 +140,7 @@ public enum Career {
         public var horizon: Horizon
         public var progress: Double
         public var done: Bool
-        /// Finished, but the reward has not been claimed yet (`GoalClaims.claim`).
         public var unclaimed: Bool = false
-        /// Where the goal is worked on (a `GameStore.openLadderLink` key); empty when it has no single place.
         public var link: String { Career.links[id] ?? "" }
     }
 
@@ -179,7 +160,6 @@ public enum Career {
     public static func goalsDone(_ s: GameState) -> Int { s.rest["car"]?["done"].object.count ?? 0 }
     public static func cosmetics(_ s: GameState) -> [String] { (s.rest["car"]?["cos"].array ?? []).map { $0.string } }
 
-    /// All goals with progress.
     public static func goals(_ s: GameState, data: GameData, currency cur: Currency) -> [Goal] {
         let f = facts(s, data: data, currency: cur)
         return defs.map { d in
@@ -188,7 +168,6 @@ public enum Career {
         }
     }
 
-    /// The next goal to chase for each horizon (short, medium, long): the open one closest to done in that horizon.
     public static func nextGoals(_ s: GameState, data: GameData, currency cur: Currency) -> [Goal] {
         let all = goals(s, data: data, currency: cur)
         return Horizon.allCases.compactMap { h in all.filter { $0.horizon == h && !$0.done }.max { $0.progress < $1.progress } }
@@ -198,11 +177,10 @@ public enum Career {
         rankStatus(netWorth: facts(s, data: data, currency: cur).gain, goalsDone: goalsDone(s), currency: cur)
     }
 
-    /// Finishes goals whose progress reached 1 and celebrates them and rank-ups. Runs after each day.
     @discardableResult
     public static func sweep(_ s: inout GameState, data: GameData, currency cur: Currency) -> [String] {
         guard s.companies.contains(where: { $0.type != "hold" }) else { return [] }
-        if s.rest["car"]?["nw0"].isNull ?? true {   // the baseline: what the player owns on the first day
+        if s.rest["car"]?["nw0"].isNull ?? true {
             var c = s.rest["car"] ?? .object(["done": .object([:])])
             c["nw0"] = .number(Valuation.netWorth(s, trades: data.catalog).total); s.rest["car"] = c
         }
@@ -229,12 +207,9 @@ public enum Career {
 }
 
 public extension GameEngine {
-    /// The rank and its progress for Home and the profile.
     var careerStatus: Career.RankStatus { Career.status(state, data: data, currency: homeCurrency) }
-    /// The next short, medium and long goal.
     var careerNextGoals: [Career.Goal] { Career.nextGoals(state, data: data, currency: homeCurrency) }
     var careerGoals: [Career.Goal] { Career.goals(state, data: data, currency: homeCurrency) }
-    /// Logo badges earned (for company cosmetics).
     var careerCosmetics: [String] { Career.cosmetics(state) }
     mutating func sweepCareer() { update { s, d, ctx in Career.sweep(&s, data: d, currency: ctx.homeCurrency(s)) } }
 }

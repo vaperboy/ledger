@@ -1,44 +1,26 @@
 import Foundation
 import GameCore
 
-/// Startups funded by other players: the pure rules. The server (or its stand-in) applies exactly these; no screen or founder can name a price.
-/// Data first: the numbers below are the whole balance of the feature. Money moves in `CrowdStartups` (Events).
 public enum CrowdStartupRules {
-    // MARK: Data
 
-    /// Entry cost of a crowd-funded startup in reference-economy money (scaled to the player's currency). Far above a normal company's opening fee,
-    /// so a startup cannot be opened for free money.
     public static let entryCostReference: Double = 150_000
-    /// The entry cost is never less than this share of the whole plan, so a big plan cannot be raised for a small fee: what other players put in
-    /// is worth more to the founder than the fee, unless the fee grows with the plan.
     public static let entryCostPlanShare: Double = 0.4
-    /// The founder puts in at least this share of the plan from their own account.
     public static let founderMinShare: Double = 1.0 / 3.0
-    /// How the investors' part of the plan is split over the three stages, and what each stage is called (the milestone that releases it).
     public static let stageShares: [Double] = [0.40, 0.35, 0.25]
     public static let stageNames: [String] = ["Opening", "First sales", "First profit"]
     public static let milestoneNames: [String] = ["The startup opens", "It makes its first sales", "It makes its first profit"]
-    /// Post-money valuation as a multiple of the plan cost, per stage: later stages have more proof, so they cost more.
     public static let stageMultiples: [Double] = [1.25, 1.4, 1.6]
-    /// One investor may put in at most this share of the investors' part of the plan, over all stages.
     public static let perInvestorShare: Double = 0.20
-    /// The smallest ticket, as a share of the stage's raise.
     public static let minTicketShare: Double = 0.02
-    /// Accounts younger than this many game weeks can neither invest nor found.
     public static let minAccountWeeks = 4
-    /// Store gating: a startup that asks other players for money (it is listed in the startup store) can be opened only by an account that is at
-    /// least `minAccountWeeks` game weeks old and at player level `minFounderLevel`, so a brand-new or throwaway account cannot raise money from others.
     public static let minFounderLevel = 2
 
     public struct FoundGate: Equatable, Sendable {
         public var allowed: Bool
-        /// Why it is closed (empty when open), in plain words.
         public var reasons: [String]
-        /// "If you do this, this will happen": what the rule asks and what it protects.
         public var lines: [String]
     }
 
-    /// The rule in plain words, and whether this account passes it. Founding and the screens read this one place.
     public static func foundGate(accountWeeks: Int, level: Int) -> FoundGate {
         var why: [String] = []
         if accountWeeks < minAccountWeeks { why.append(Refusal.newAccount(weeksLeft: minAccountWeeks - accountWeeks).message) }
@@ -51,48 +33,33 @@ public enum CrowdStartupRules {
         return FoundGate(allowed: why.isEmpty, reasons: why, lines: lines)
     }
 
-    /// Shares cannot be resold for this many game weeks after the purchase.
     public static let lockWeeks = 12
-    /// A sale price must lie within this band around the real value of the shares (assets plus recent profit).
     public static let bandLow: Double = 0.8
     public static let bandHigh: Double = 1.25
-    /// Paid by the buyer on top of the price.
     public static let transferTax: Double = 0.02
-    /// Viral: this many different investors within this many days.
     public static let viralInvestors = 5
     public static let viralDays = 7
-    /// A stage that has not reached its milestone this many weeks after it opened gives the escrow back.
     public static let stageDeadlineWeeks = 30
-    /// Weeks of profit that count as "recent" in the real value.
     public static let recentProfitWeeks = 13
-    /// The plan sizes a founder may pick, as a multiple of their own money (1.5 = the founder puts in two thirds, 3 = exactly a third).
     public static let planFactors: [Double] = [1.5, 2, 3]
-
-    // MARK: Plan and price
 
     public struct Plan: Codable, Equatable, Sendable {
         public var cost: Double
         public var founderPutIn: Double
         public init(cost: Double, founderPutIn: Double) { self.cost = cost; self.founderPutIn = founderPutIn }
         public var valid: Bool { cost > 0 && founderPutIn >= cost * CrowdStartupRules.founderMinShare - 0.005 && founderPutIn <= cost }
-        /// What the investors together are asked for.
         public var investorTarget: Double { max(0, cost - founderPutIn) }
     }
 
     public static func entryCost(scaledBy index: Double) -> Double { entryCostReference * index }
 
-    /// What the whole startup is worth at a stage for pricing: the plan cost times that stage's multiple. The only price input.
     public static func valuation(_ plan: Plan, stage: Int) -> Double { plan.cost * stageMultiples[min(max(0, stage), 2)] }
     public static func stageTarget(_ plan: Plan, stage: Int) -> Double { plan.investorTarget * stageShares[min(max(0, stage), 2)] }
-    /// What 1% of the startup costs at a stage.
     public static func pricePerPercent(_ plan: Plan, stage: Int) -> Double { valuation(plan, stage: stage) / 100 }
     public static func percent(for amount: Double, plan: Plan, stage: Int) -> Double { amount / pricePerPercent(plan, stage: stage) }
     public static func perInvestorCap(_ plan: Plan) -> Double { plan.investorTarget * perInvestorShare }
     public static func minTicket(_ plan: Plan, stage: Int) -> Double { stageTarget(plan, stage: stage) * minTicketShare }
-    /// The most the investors can ever own in total (all stages full).
     public static func maxInvestorPercent(_ plan: Plan) -> Double { (0..<3).reduce(0.0) { $0 + percent(for: stageTarget(plan, stage: $1), plan: plan, stage: $1) } }
-
-    // MARK: The startup as the server keeps it
 
     public enum Status: String, Codable, Sendable { case raising, live, failed, closed }
 
@@ -122,16 +89,13 @@ public enum CrowdStartupRules {
         public var founderExits: Int
         public var founderFails: Int
         public var plan: Plan
-        /// Milestones reached so far (0...3). The stage open for investing equals this while it is below 3.
         public var milestones: Int
         public var stageOpenedDay: Int
         public var status: Status
         public var createdDay: Int
         public var investments: [Investment]
         public var assets: Double
-        /// Profit of the latest weeks, newest last.
         public var weeklyProfit: [Double]
-        /// The founder's company in the single-player books, when the founder is the player.
         public var companyID: Int?
         public init(id: String, name: String, trade: String, pitch: String = "", founderID: String, founderName: String, founderLinkKey: String, founderExits: Int = 0, founderFails: Int = 0,
                     plan: Plan, createdDay: Int, companyID: Int? = nil) {
@@ -141,22 +105,17 @@ public enum CrowdStartupRules {
             self.assets = plan.founderPutIn; self.weeklyProfit = []; self.companyID = companyID
         }
 
-        /// The stage investors can buy into now; nil once all three are funded or the startup is over.
         public var openStage: Int? { (status == .raising || status == .live) && milestones < 3 ? milestones : nil }
         public func raised(stage: Int) -> Double { investments.filter { $0.stage == stage && !$0.refunded }.reduce(0) { $0 + $1.amount } }
         public var raisedTotal: Double { investments.filter { !$0.refunded }.reduce(0) { $0 + $1.amount } }
         public func invested(by investorID: String) -> Double { investments.filter { $0.investorID == investorID && !$0.refunded }.reduce(0) { $0 + $1.amount } }
         public var soldPercent: Double { investments.filter { !$0.refunded }.reduce(0) { $0 + $1.percent } }
-        /// Money held back until a milestone.
         public var escrowHeld: Double { investments.filter { !$0.released && !$0.refunded }.reduce(0) { $0 + $1.amount } }
         public var releasedTotal: Double { investments.filter { $0.released }.reduce(0) { $0 + $1.amount } }
         public var viral: Bool { CrowdStartupRules.isViral(self, today: investments.map { $0.day }.max() ?? createdDay) }
         public func viral(today: Int) -> Bool { CrowdStartupRules.isViral(self, today: today) }
-        /// What the startup as a whole is worth by the real-value rule.
         public var realValue: Double { CrowdStartupRules.realValue(self) }
     }
-
-    // MARK: Investing
 
     public enum Refusal: Equatable, Sendable {
         case newAccount(weeksLeft: Int)
@@ -182,7 +141,6 @@ public enum CrowdStartupRules {
         }
     }
 
-    /// What buying in costs and gives, fixed by the rule.
     public struct Quote: Equatable, Sendable {
         public var stage: Int
         public var amount: Double
@@ -194,7 +152,6 @@ public enum CrowdStartupRules {
 
     public enum InvestResult: Equatable, Sendable { case ok(Quote), refused(Refusal) }
 
-    /// Can this investor put `amount` into the startup now? `linkKeys` are the keys of every account linked to the investor.
     public static func investCheck(_ st: Startup, investorID: String, linkKeys: Set<String>, accountWeeks: Int, amount: Double, today: Int) -> InvestResult {
         if accountWeeks < minAccountWeeks { return .refused(.newAccount(weeksLeft: minAccountWeeks - accountWeeks)) }
         if investorID == st.founderID || linkKeys.contains(st.founderLinkKey) { return .refused(.linkedToFounder) }
@@ -210,9 +167,6 @@ public enum CrowdStartupRules {
                          lockedUntilDay: today + lockWeeks * 7, releasedAtMilestone: milestoneNames[stage]))
     }
 
-    // MARK: Escrow
-
-    /// A milestone is reached: the money of the stage it closes goes to the startup. Returns what is released.
     public static func reachMilestone(_ st: inout Startup, today: Int) -> Double {
         guard st.status != .failed, st.status != .closed, st.milestones < 3 else { return 0 }
         let stage = st.milestones
@@ -228,7 +182,6 @@ public enum CrowdStartupRules {
         return out
     }
 
-    /// The startup fails or closes: money still in escrow goes back whole, released money is gone. Returns what is refunded.
     public static func fail(_ st: inout Startup) -> [(investorID: String, amount: Double)] {
         var back: [(String, Double)] = []
         for i in st.investments.indices where !st.investments[i].released && !st.investments[i].refunded {
@@ -240,7 +193,6 @@ public enum CrowdStartupRules {
         return back
     }
 
-    /// A stage whose milestone is not reached in time gives its escrow back and the startup stops raising.
     public static func expire(_ st: inout Startup, today: Int) -> [(investorID: String, amount: Double)] {
         guard st.openStage != nil, today - st.stageOpenedDay > stageDeadlineWeeks * 7 else { return [] }
         let back = fail(&st)
@@ -248,17 +200,11 @@ public enum CrowdStartupRules {
         return back
     }
 
-    // MARK: Viral
-
-    /// Many different investors in a short time. Visibility only; it never adds money. Linked or founder accounts do not count.
     public static func isViral(_ st: Startup, today: Int) -> Bool {
         let recent = st.investments.filter { today - $0.day < viralDays && $0.day <= today && !$0.refunded && $0.linkKey != st.founderLinkKey && $0.investorID != st.founderID }
         return Set(recent.map { $0.investorID }).count >= viralInvestors
     }
 
-    // MARK: Real value, resale
-
-    /// Assets plus recent profit (a loss does not lower it below assets).
     public static func realValue(_ st: Startup) -> Double {
         guard st.status == .live || st.status == .raising else { return 0 }
         return max(0, st.assets) + max(0, st.weeklyProfit.suffix(recentProfitWeeks).reduce(0, +))
@@ -275,7 +221,6 @@ public enum CrowdStartupRules {
         public var ownerID: String
         public var linkKey: String
         public var percent: Double
-        /// What was paid for these shares (the cost basis for the gains tax).
         public var paid: Double
         public var boughtDay: Int
         public init(startupID: String, ownerID: String, linkKey: String, percent: Double, paid: Double, boughtDay: Int) {
@@ -307,10 +252,8 @@ public enum CrowdStartupRules {
     public struct SaleQuote: Equatable, Sendable {
         public var percent: Double
         public var price: Double
-        /// Paid by the buyer on top.
         public var transferTax: Double
         public var gain: Double
-        /// Paid by the seller on a gain; nothing comes back on a loss.
         public var gainsTax: Double
         public var sellerReceives: Double { price - gainsTax }
         public var buyerPays: Double { price + transferTax }
@@ -318,7 +261,6 @@ public enum CrowdStartupRules {
 
     public enum SaleResult: Equatable, Sendable { case ok(SaleQuote), refused(SaleRefusal) }
 
-    /// Can `holding` sell `percent` of the startup for `price` to this buyer? `gainsRate` is the seller's capital gains rate.
     public static func saleCheck(_ st: Startup, holding: Holding, percent: Double, price: Double, buyerID: String, buyerLinkKeys: Set<String>, buyerAccountWeeks: Int,
                                  gainsRate: Double, today: Int, rules: WorldRules = WorldRules.defaults) -> SaleResult {
         guard st.status == .live || st.status == .raising else { return .refused(.notLive) }
@@ -333,8 +275,6 @@ public enum CrowdStartupRules {
         let gain = price - basis
         return .ok(SaleQuote(percent: percent, price: price, transferTax: price * transferTax, gain: gain, gainsTax: max(0, gain) * gainsRate))
     }
-
-    // MARK: Founder record in words
 
     public static func recordWords(exits: Int, fails: Int) -> String {
         switch (exits, fails) {

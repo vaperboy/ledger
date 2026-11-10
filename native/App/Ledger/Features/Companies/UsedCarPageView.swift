@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// One car of the used car yard as a page: what it cost (buy price, repairs, holding), the asking price with the live profit or loss slider
-/// (`usedCarQuote`: verdict word, weekly odds, expected weeks), and what can be done with it (send to repair, sell as it is, a wholesaler's offer).
 struct UsedCarPageView: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -39,8 +37,6 @@ struct UsedCarPageView: View {
         }
     }
 
-    // MARK: Header and figures
-
     private func header(_ car: UsedCarStockItem) -> some View {
         HStack(spacing: 12) {
             UsedCarPhoto(family: car.family, title: car.title, size: 64, square: true)
@@ -71,8 +67,6 @@ struct UsedCarPageView: View {
         ]
         return Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: items) }
     }
-
-    // MARK: Price
 
     private func priceBlock(_ car: UsedCarStockItem, _ q: UsedCarQuote?, _ cur: Currency, _ price: Double) -> some View {
         let basis: Double = max(car.costBasis, 1)
@@ -143,8 +137,6 @@ struct UsedCarPageView: View {
         draft = nil
     }
 
-    // MARK: Repair
-
     @ViewBuilder private func repairBlock(_ e: GameEngine, _ car: UsedCarStockItem, _ cur: Currency) -> some View {
         if car.status == "quoted" {
             quotedBlock(e, car, cur)
@@ -199,8 +191,6 @@ struct UsedCarPageView: View {
             store.settle(r, "It is for sale as it is.")
         }
     }
-
-    // MARK: Wholesaler
 
     @ViewBuilder private func offerBlock(_ e: GameEngine, _ car: UsedCarStockItem, _ cur: Currency) -> some View {
         if let m = wholesalerOffer(e) {

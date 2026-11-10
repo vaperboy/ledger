@@ -6,8 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The store manager's sheet: the five orders an owner gives (Direction, Budget, Headcount, Pay and bonus, Replace), then what the manager did
-/// and how the business is doing; or, when the post is empty, the search and the shortlist.
 struct ManagerSheet: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -16,7 +14,6 @@ struct ManagerSheet: View {
     @State private var page: ManagerPage = .orders
     @State private var tab: ManagerTab = .orders
 
-    /// The sheet's pages: the orders, the one contract talk and the staffing plan replace the orders inside the same popup (never a popup on a popup).
     enum ManagerPage { case orders, pay, headcount }
 
     enum ManagerTab: String, CaseIterable, Hashable { case orders = "Orders", results = "Results" }
@@ -58,8 +55,6 @@ struct ManagerSheet: View {
         }
     }
 
-    // MARK: Managing the manager
-
     @ViewBuilder private func manage(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
         let bd = e.tradeInfo(companyID: co.id)
         let started = co.value("mgrW0").isNull ? e.state.week : co.int("mgrW0")
@@ -88,8 +83,6 @@ struct ManagerSheet: View {
     }
 
     private func firstName(_ m: Person) -> String { m.name.split(separator: " ").first.map(String.init) ?? "The manager" }
-
-    // MARK: The five orders
 
     @ViewBuilder private func ordersList(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
         let orders: [ManagerModel.Order] = e.managerOrders(companyID: co.id)
@@ -130,7 +123,6 @@ struct ManagerSheet: View {
         }
     }
 
-    /// The direction names on the segments are short; the full meaning is the order's own line.
     private static func shortTitle(_ d: ManagerModel.Direction) -> String {
         switch d {
         case .grow: return "Grow"
@@ -163,7 +155,6 @@ struct ManagerSheet: View {
         }
     }
 
-    /// What the budget means for this manager: the plain meaning and, where there is one, the money limits.
     private static func budgetLine(_ b: Budget, name: String, cur: Currency, revenue: Double) -> String {
         switch b {
         case .tight:
@@ -175,7 +166,6 @@ struct ManagerSheet: View {
         }
     }
 
-    /// Replacing the manager: the consequence is stated in the confirmation; with co-owners it is a vote by shares.
     @ViewBuilder private func replaceControl(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
         let alone: Bool = e.boardIsAdvisory(companyID: co.id)
         if alone {
@@ -208,9 +198,6 @@ struct ManagerSheet: View {
         }
     }
 
-    // MARK: What they did, and the results
-
-    /// The manager's own report, read only: what they settled on their own that is still to be reported, else the last report they sent.
     @ViewBuilder private func digest(_ e: GameEngine, _ co: Company, _ m: Person) -> some View {
         let fresh: [String] = co.value("mgrLog").array.map { (j: JSONValue) -> String in j["t"].string }
         let report: Message? = e.state.inbox.last(where: { (x: Message) -> Bool in x.companyID == co.id && x.title.hasSuffix(": what I did") })
@@ -263,8 +250,6 @@ struct ManagerSheet: View {
             }
         }
     }
-
-    // MARK: Hiring a manager
 
     @ViewBuilder private func hire(_ e: GameEngine, _ co: Company, _ cur: Currency) -> some View {
         let title = e.tradeInfo(companyID: co.id).map { ManagerModel.title($0) } ?? "Manager"

@@ -3,21 +3,14 @@ import GameCore
 import Countries
 import Employees
 
-/// How many customers want to buy this week, and why.
 public struct DemandResult: Equatable {
     public var customers: Double
-    /// The factors, in the order they were applied. Each is a multiplier (except `base`, the starting number).
     public var parts: [(name: String, value: Double)]
 
     public func part(_ name: String) -> Double? { parts.first { $0.name == name }?.value }
     public static func == (a: DemandResult, b: DemandResult) -> Bool { a.customers == b.customers && a.parts.map { $0.name } == b.parts.map { $0.name } }
 }
 
-/// The weekly demand model. Original: `demandCore` (engine/company/model.js) and its 'demand' steps.
-///
-/// customers = normal demand x city x season x how well known you are x chain x buzz x reputation x price x
-///             business choices x economy x rivals x your other outlets x events, then adjusted by local market
-///             fit, what local people can afford, the trade's fit with the country and tourists.
 public enum DemandModel {
     public static func compute(_ co: Company, _ bd: Trade, _ w: World) -> DemandResult {
         var parts: [(name: String, value: Double)] = [("base", bd.normalDemand)]
@@ -39,7 +32,6 @@ public enum DemandModel {
         parts.append(("price", pe))
         apply("choices", Knobs.effect(co, bd, "d", w))
         apply("economy", 1 + (w.economy.demand - 1) * (w.balance.economySensitivity[bd.family] ?? 0.8))
-        // Rate-sensitive trades (housing, cars, luxury) lean a little on the policy rate. Mild by design (about +-3% at the extremes).
         let credit = creditFactor(co, w)
         if credit != 1 { apply("credit", credit) }
         apply("rivals", Competition.rivalFactor(co, w))
@@ -55,28 +47,23 @@ public enum DemandModel {
         if fy != 1 { apply("firstYear", fy) }
         if co.value("franchise")["fran"].bool { D *= 1 + co.value("franchise")["brand"].double * 0.002 }
 
-        // Nothing is on sale until the owner has chosen the first product (`SalesItems.firstChoicePending`).
         var r = DemandResult(customers: max(0, D) * SalesItems.demandGate(co), parts: parts)
         applySteps(&r, co, bd, w)
         return r
     }
 
-    /// Trades whose customers borrow to buy: how much of the policy rate's distance from a neutral 4% they feel (housing, cars, luxury).
     static let rateSensitivity: [String: Double] = ["estate": 0.8, "realdev": 1.0, "construction": 0.7, "cardealer": 0.9, "carrental": 0.3,
                                                      "boutique": 0.4, "furniture": 0.5]
 
-    /// A mild effect of credit conditions on consumer demand: dearer money, fewer big purchases. Clamped to 0.96...1.03.
     static func creditFactor(_ co: Company, _ w: World) -> Double {
         guard let k = rateSensitivity[co.type] else { return 1 }
         return clamp(1 - (w.economy.policyRate - 0.04) * k * 1.0, 0.96, 1.03)
     }
 
-    /// Temporary effects on a company (events, one-off bonuses). Original: `modProd(co, key)`.
     static func modifier(_ co: Company, _ key: String) -> Double {
         co.value("mods").array.filter { $0["k"].string == key }.reduce(1) { $0 * $1["m"].double } * Development.factor(co, key) * (key == "cogsup" ? VolumeTenders.qualityUplift(co) : 1)
     }
 
-    /// Season curves are written for the northern hemisphere; a company in the southern one (AU, BR) lives six months apart.
     static func season(_ bd: Trade, _ w: World, for co: Company? = nil) -> Double {
         let curve = w.catalog.tables.seasons[bd.seasonKey] ?? Array(repeating: 1, count: 12)
         let month = GameCalendar.month(week: w.week)
@@ -84,15 +71,11 @@ public enum DemandModel {
         return curve[south ? (month + 6) % 12 : month]
     }
 
-    /// An unknown business gets few customers. Original: `window.mktMult` (realistic_odds.js).
     static func awarenessFactor(_ co: Company) -> Double {
         0.08 + 1.5 * pow(clamp(co.awareness, 0, 100) / 100, 0.8)
     }
 
-    // MARK: Steps (original `addStep('demand', ...)` in later files, applied in this order)
-
     static func applySteps(_ r: inout DemandResult, _ co: Company, _ bd: Trade, _ w: World) {
-        // 20: local market size, concept fit and price drift
         if bd.normalDemand != 0 && !Pricing.noWorkFamilies.contains(bd.family) {
             let city = w.city(co)
             let k = w.balance.demandLevelByTrade[bd.id] ?? w.balance.defaultDemandLevel
@@ -105,61 +88,46 @@ public enum DemandModel {
             r.customers *= scale * conceptFit(co, w) * pe * inflationHold * projectScale
             if let i = r.parts.firstIndex(where: { $0.name == "price" }) { r.parts[i].value *= pe * inflationHold }
         }
-        // 50: what local people can afford
         if bd.normalDemand != 0 && !["fin", "energy", "hold", "club"].contains(bd.family) {
             let a = affordability(co, bd, w)
             if a != 1 { r.customers *= a; r.parts.append(("affordability", a)) }
         }
-        // 55: trades that sell to the better-off follow the share of local households that can afford them (CityMarket)
         if bd.normalDemand != 0 && !["fin", "energy", "hold", "club"].contains(bd.family) {
             let c = CityMarket.demandFactor(co, bd, w)
             if c != 1 { r.customers *= c; r.parts.append(("market class", c)) }
         }
-        // 60: commodities sell all they make (farms)
-        // 86: some trades fit some countries better
         let fit = tradeCountryFit(co, w)
         if fit != 1 && r.customers > 0 { r.customers *= fit }
-        // 90: ways to sell (platforms, memberships, peak seasons, contracts)
         applyWaysToSell(&r, co, bd, w)
-        // Taxi classes and nice cars for sales people (realistic_buying.js, step 'demand')
         let fleet = PersonalEquipment.demandFactor(co, bd, w)
         if fleet != 1 { r.customers *= fleet }
         let gifts = Giving.demandFactor(co, w.state) * Luxury.wineFactor(co, w.state)
         if gifts != 1 { r.customers *= gifts }
-        // 94: tourists
         let ts = touristShare(co, bd, w)
         let tf = ts > 0.01 ? 1 + ts * (touristSeason(co, w) - 1) : 1
         let wx = Weather.effect(for: co, trade: bd, week: w.week, seed: w.state.seed, tables: w.balance.weather).demand
         r.customers *= wx * tf
         if wx != 1 { r.parts.append(("weather", jsRound(wx * 100) / 100)) }
         if tf != 1 { r.parts.append(("tourists", jsRound(tf * 100) / 100)) }
-        // 96: a manager nobody checks on lets service slip
         let drift = managerDrift(co, bd, w)
         if drift != 0 && r.customers != 0 { r.customers *= 1 - drift * 0.5 }
-        // 85: a sales director brings more customers, most in business-to-business trades (ManagerTeam)
         let salesHead = co.value("tm")["sales"].double
         if salesHead > 0 && r.customers != 0 { r.customers *= 1 + (0.035 + 0.055 * bd.businessShare) * salesHead }
-        // 80: a manager chasing the month's targets pushes a little harder (ManagerTargets)
         let chase = ManagerTargets.demandFactor(co, week: w.week)
         if chase != 1 && r.customers != 0 { r.customers *= chase }
-        // 100: own premises: business clients trust you more
         let homeKind = bd.premisesKind == "home"
         if homeKind && (co.value("prem")["m2"].double > 0) && bd.businessShare >= 0.4 && r.customers != 0 { r.customers *= 1.06 }
-        // 130: your own startup's product, used by this company (startup_sectors.js)
         if r.customers != 0, !w.state.rest["founded"].isNullOrEmpty {
             let x = StartupProducts.effectNow(co, w.state, trade: bd)
             if x.d != 0 { r.customers *= 1 + x.d; r.parts.append(("own product", 1 + x.d)) }
         }
-        // 110: from home, clients come slowly
         if homeKind && !(co.value("prem")["m2"].double > 0) && r.customers != 0 {
             r.customers *= max(0.72, min(0.95, 0.72 + co.awareness * 0.005))
         }
-        // 140: customers who need what a machine in repair makes or does go elsewhere (EquipmentOutage)
         let kept = EquipmentOutage.compute(co, bd, w).kept
         if kept < 1 && r.customers != 0 { r.customers *= kept; r.parts.append(("machines in repair", kept)) }
     }
 
-    /// A manager nobody has met for months works a little worse. Original: `OA59.drift`.
     static func managerDrift(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         guard co.managerID != nil, w.state.people[co.managerID!] != nil, co.status == .open, bd.family != "club", co.type != "hold" else { return 0 }
         let lastMeeting = co.value("meetW").isNull ? -1e9 : co.num("meetW")
@@ -167,10 +135,9 @@ public enum DemandModel {
         let since = Double(w.week) - max(lastMeeting, started)
         let weeks = since - 8
         if weeks <= 0 { return 0 }
-        return min(0.12, weeks * 0.005 * (co.flag("boss56") ? 0.5 : 1))   // a boss above the manager halves the pace (ManagerTeam.teamWeek)
+        return min(0.12, weeks * 0.005 * (co.flag("boss56") ? 0.5 : 1))
     }
 
-    /// Ways to sell. Original: the 'ways to sell' demand step (trade_sales_mechanics.js).
     static func applyWaysToSell(_ r: inout DemandResult, _ co: Company, _ bd: Trade, _ w: World) {
         guard let ways = w.balance.salesWays[co.type], !ways.isEmpty, co.status == .open, r.customers >= 0 else { return }
         let s = co.value("sw33")
@@ -179,7 +146,6 @@ public enum DemandModel {
         var f = 1.0
         func way(_ k: String) -> Balance.SalesWay? { ways.first { $0.kind == k } }
         if let p = way("platform"), on["platform"].bool {
-            // a delivery add-on only brings customers while the delivery is supplied (`IntercompanySupply.deliveryFill`)
             let fill = (p.options["deliv"] ?? 0) > 0 ? IntercompanySupply.deliveryFill(w.state, buyer: co, way: p) : 1
             f *= 1 + (p.options["lift"] ?? 0.2) * fill
         }
@@ -196,7 +162,6 @@ public enum DemandModel {
         r.parts.append(("sales33", d0 > 0 ? r.customers / d0 : 1))
     }
 
-    /// A bigger customer-facing team brings in more customers. Original: `demRef`.
     static func referenceStaffing(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         let face = w.balance.customerFacingRoles
         let fr = bd.standardStaff.filter { face.contains($0.role) }
@@ -208,8 +173,6 @@ public enum DemandModel {
         return 0.5 * co.size + 0.5 * clamp(have / max(1, heads), 0.2, 2.5)
     }
 
-    /// The hidden "fit" of the concept: location, timing, idea. Nobody sees it, results show it.
-    /// Original: `fitOf` (stored in `co.fit` the first time it is needed).
     public static func conceptFit(_ co: Company, _ w: World) -> Double {
         if !co.value("fit").isNull { return co.num("fit") }
         var r = HashedRandom("\(w.state.seed):fit:\(co.id)")
@@ -218,7 +181,6 @@ public enum DemandModel {
         return jsRound(clamp(exp(g * w.balance.fitSpread), 0.5, 1.7) * 1000) / 1000
     }
 
-    /// Low incomes cut back hard on expensive things, a little on cheap ones. Original: `R20.afford`.
     static func affordability(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         let bp = w.country(co).buyingPower
         if abs(bp - 1) < 0.005 { return 1 }
@@ -229,13 +191,11 @@ public enum DemandModel {
         return pow(bp, ex)
     }
 
-    /// Original: `FIT57.dem`.
     static func tradeCountryFit(_ co: Company, _ w: World) -> Double {
         guard let t = w.balance.tradeCountryFit.demand[co.type] else { return 1 }
         return t[co.countryCode] ?? t["_"] ?? 1
     }
 
-    /// Share of customers who are visitors. Original: `WX56.share`.
     static func touristShare(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         let trade = w.balance.tourismShareByTrade[co.type] ?? 0.03
         let visitors = CityMarket.visitorShare(country: w.country(co), city: w.city(co))

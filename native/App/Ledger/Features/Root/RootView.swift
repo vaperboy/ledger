@@ -10,7 +10,6 @@ struct RootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var popups = PopupHost()
     @AppStorage(Terms.key) private var termsAccepted = false
-    /// Screenshots only: `-showcase-gameover` shows the end screen over the showcase game.
     private static let showcase: Bool = ProcessInfo.processInfo.arguments.contains("-showcase")
     private static let showsGameOver: Bool = ProcessInfo.processInfo.arguments.contains("-showcase-gameover")
 
@@ -57,9 +56,6 @@ struct GameShell: View {
     }
 }
 
-/// iPhone: the floating pill tab bar (Ventures, Group, Home, Custom, Phone), all always shown, over the pages. The system tab bar is hidden;
-/// the pages stay alive in a sliding `TabPager`. The tab bar is the only thing that changes tab: every link pushes on the tab it was tapped on.
-/// The Phone tab's bubble is the total waiting count.
 struct PhoneShell: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -82,7 +78,6 @@ struct PhoneShell: View {
             TabContent(tab: tab)
         }
         .environment(\.tabBarClearance, PillTabBar.height + 16)
-        // The VoiceOver escape gesture (a two-finger Z) returns to the tab that was open before this one.
         .accessibilityAction(.escape) { store.returnToPreviousTab() }
         .overlay(alignment: .bottom) {
             VStack(spacing: 0) {
@@ -101,7 +96,6 @@ struct PhoneShell: View {
         }
     }
 
-    /// One-time hint on the first tab change: the Custom tab is the player's own and is changed with a long press.
     private var customTip: some View {
         Button { tipVisible = false } label: {
             Text("Tip: press and hold the Custom tab to choose what it opens.").textStyle(.caption, tint: Theme.ink)
@@ -128,8 +122,6 @@ struct PhoneShell: View {
     }
 }
 
-/// iPad: a sidebar with the same five destinations (the Custom row has a "Change destination" menu) as the iPhone tab bar and a wide detail area.
-/// Only the chosen tab is in the detail column. Each tab's navigation stack lives in the store, so what a link pushed on one tab never appears on another.
 struct SidebarShell: View {
     @EnvironmentObject var store: GameStore
 

@@ -5,13 +5,12 @@ import Businesses
 final class TradeCatalogTests: XCTestCase {
     func testCatalogHasAllTradesOfTheOriginal() throws {
         let cat = try TradeCatalog.bundled()
-        XCTAssertGreaterThanOrEqual(cat.trades.count, 72)  // 69 + travel, insbroker, finbroker (brokers)
-        XCTAssertGreaterThanOrEqual(cat.order.count, 69)  // the menu lists 69; the holding company and football club are created elsewhere
+        XCTAssertGreaterThanOrEqual(cat.trades.count, 72)
+        XCTAssertGreaterThanOrEqual(cat.order.count, 69)
         XCTAssertNotNil(cat["cafe"]); XCTAssertNotNil(cat["hold"]); XCTAssertNotNil(cat["club"])
         XCTAssertEqual(Set(cat.all.map { $0.family }), ["svc", "venue", "retail", "project", "prod", "logi", "rent", "fin", "energy"])
     }
 
-    /// A trade without stored numbers is calibrated from its own data; with a sensible result.
     func testCalibrationFormulaWorksForNewTrades() throws {
         let cat = try TradeCatalog.bundled()
         var t = try XCTUnwrap(cat["cafe"])
@@ -19,7 +18,6 @@ final class TradeCatalogTests: XCTestCase {
         TradeCatalog.calibrate(&t, tables: cat.tables)
         XCTAssertGreaterThan(t.normalDemand, 0)
         assertClose(t.normalCapacity, t.normalDemand / 0.95, tol: 1e-12)
-        // For cafes the recalculation agrees with the stored original values.
         assertClose(t.normalDemand, cat["cafe"]!.normalDemand, tol: 1e-9)
     }
 
@@ -28,7 +26,7 @@ final class TradeCatalogTests: XCTestCase {
         let g = try Golden.load("trades_calibrated")
         for (id, t) in cat.trades {
             let e = g[id]
-            if e["Dc"].isNull || TradeTuning.tunedTradeIDs.contains(id) { continue }  // tuned on purpose
+            if e["Dc"].isNull || TradeTuning.tunedTradeIDs.contains(id) { continue }
             assertClose(t.normalDemand, e["Dc"].double, tol: 1e-9, "\(id) Dc")
             assertClose(t.normalCapacity, e["capD"].double, tol: 1e-9, "\(id) capD")
             if !e["F"].isNull { assertClose(t.weeklyFixedCosts, e["F"].double, tol: 1e-9, "\(id) F") }

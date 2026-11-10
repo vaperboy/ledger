@@ -4,18 +4,14 @@ import Countries
 import Finance
 import Simulation
 
-/// Which of the money tiles was tapped: Transfer moves money from you into a company, Deposit is the same from inside a company's account.
 enum BankMoveKind: String, Identifiable {
     case transfer, deposit
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
 }
 
-/// Every payment the Bank app can make, as engine calls with their result reported. Used by the alert banner, the Bills tab and Pay bill.
 @MainActor
 enum BankPay {
-    /// Pay a coming rent, supplier, invoice, tax or VAT bill now (`payObligationNow`): the engine settles it exactly as its date would and
-    /// says what happened; the toast is the engine's real result.
     static func early(_ store: GameStore, _ o: Obligation) {
         guard let outcome = store.act({ $0.payObligationNow(o) }) else { return }
         let cur: Currency? = store.engine.flatMap { e in e.state.company(o.companyID).map { e.currency(for: $0) } }
@@ -29,7 +25,6 @@ enum BankPay {
         }
     }
 
-    /// Pay this month's instalment now (`payLoanInstalmentNow`): it is taken once and the month-end collection skips the loan, so nothing is charged twice.
     static func instalment(_ store: GameStore, loanID: Int) {
         guard let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }) else { store.show("That loan is already paid off.", tone: "n"); return }
         let cur: Currency = l.companyID == 0 ? e.homeCurrency : (e.state.company(l.companyID).map { e.currency(for: $0) } ?? e.homeCurrency)
@@ -49,8 +44,6 @@ enum BankPay {
     }
 }
 
-/// Transfer and Deposit: both put money from your account into a company (the engine's `putMoneyInto`). A company pays money out only as
-/// salary or dividend, so there is no way back through this sheet.
 struct BankMoveSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -63,7 +56,6 @@ struct BankMoveSheet: View {
     @State private var chosen = 0
     @State private var pending: PendingAction?
 
-    /// One way of moving money: where it comes from and goes to, in whose currency, and how much can leave.
     private struct Leg: Identifiable {
         var id: Int
         var title: String
@@ -117,7 +109,6 @@ struct BankMoveSheet: View {
                     Text("Available " + leg.currency.tidyShort(max(0, leg.source))).popupText(.caption)
                 }
             }
-            // Over the limit is blocked here with the reason, so the engine never has to refuse it.
             PrimaryAction(title: amount > 0 ? "\(kind.title) \(leg.currency.tidyShort(amount))" : kind.title,
                           blockedReason: amount <= 0 ? "Enter an amount." : (amount > leg.source + 0.5 ? "More than this account can move now (\(leg.currency.tidyShort(max(0, leg.source))) available)." : nil),
                           identifier: "bank-move-go") { go(leg) }
@@ -127,8 +118,6 @@ struct BankMoveSheet: View {
     @ViewBuilder private func emptyState(_ e: GameEngine) -> some View {
         Text("There is nowhere to move money to yet. Start a company first.").popupText(.subtitle)
     }
-
-    // MARK: Ways of moving money
 
     private func makeLegs(_ e: GameEngine) -> [Leg] {
         let home = e.homeCurrency
@@ -162,10 +151,6 @@ struct BankMoveSheet: View {
         return legs
     }
 
-
-    // MARK: Doing it
-
-    /// Routine moves run at once. A move of more than half of what the source holds is material, so it asks first.
     private func go(_ leg: Leg) {
         let a = amount
         guard a > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
@@ -183,19 +168,5 @@ struct BankMoveSheet: View {
                                     message: "\(leg.title): more than half of what the account holds (\(leg.currency.tidyDisplay(leg.source))). Check that bills due soon are still covered.",
                                     button: "Move it", amount: nil, currency: leg.currency, run: run)
         } else { run() }
-    }
-}
-
-/// Pay bill: everything coming up on the account, with Pay now where the engine allows it.
-struct BankPaySheet: View {
-    @EnvironmentObject var store: GameStore
-    var account: BankAccountID
-
-    var body: some View {
-        Group {
-            if let e = store.engine, let d = e.bankAccount(account) {
-                BankBillsList(account: account, upcoming: d.upcoming, cash: d.balance)
-            }
-        }
     }
 }

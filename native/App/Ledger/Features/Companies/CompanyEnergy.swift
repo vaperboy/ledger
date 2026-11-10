@@ -4,7 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// A label and a figure on one line with a hairline above: the flat label-value row used across the app (text in `.textStyle`).
 struct FlatRow: View {
     var label: String
     var value: String
@@ -28,7 +27,6 @@ struct FlatRow: View {
     }
 }
 
-/// The renewable power plant and the oil and gas company: what they own, what they produce, and how to grow.
 struct CompanyEnergy: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -48,8 +46,6 @@ struct CompanyEnergy: View {
         }
         .confirmAction($pending)
     }
-
-    // MARK: Power
 
     private var plant: some View {
         let p = engine.powerPlant(companyID: company.id)
@@ -136,8 +132,6 @@ struct CompanyEnergy: View {
 
     private var buildWeeks: Int { EnergyModel.source(of: company).buildWeeks }
 
-    // MARK: Oil and gas
-
     private var oil: some View {
         let cur = engine.currency(for: company)
         let fields = engine.oilFields(companyID: company.id)
@@ -198,7 +192,6 @@ struct CompanyEnergy: View {
     }
 }
 
-/// The salmon farm: the fish in the pens, the price, and whether to keep stocking and harvesting.
 struct CompanySalmon: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

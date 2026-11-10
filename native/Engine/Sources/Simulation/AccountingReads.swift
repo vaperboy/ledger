@@ -5,16 +5,9 @@ import Employees
 import Finance
 import Businesses
 
-// Accounting read models and records. Accounting records and manages; the Bank holds the money and executes payments. Everything here reads
-// the existing engine (Payments/Ledger rows, receivables and invoices, payroll, staff contracts, suppliers, documents); nothing is invented.
-// Records are the owner's: there are no named users.
-
-// MARK: Transactions
-
 public enum TransactionFilterKind: Sendable { case all, income, expenses }
 
 public struct LedgerLink: Equatable, Sendable {
-    /// loan, supplier, invoice, payroll
     public var kind: String
     public var id: String
     public var title: String
@@ -25,7 +18,6 @@ public struct LedgerTransaction: Equatable, Sendable, Identifiable {
     public var week: Int
     public var day: Int
     public var dateText: String
-    /// Signed: income positive, expense negative. A merged row is the sum of `count` movements of the week.
     public var amount: Double
     public var count: Int
     public var categoryID: String
@@ -35,7 +27,6 @@ public struct LedgerTransaction: Equatable, Sendable, Identifiable {
     public var counterparty: String
     public var link: LedgerLink?
     public var note: String?
-    /// From the old capped list, before the full ledger began for this company.
     public var isLegacy: Bool
 }
 
@@ -51,7 +42,6 @@ public struct TransactionPage: Equatable, Sendable {
     public var income: Double
     public var expenses: Double
     public var categories: [TransactionCategoryTotal]
-    /// The week the full ledger began for this company (earlier rows are legacy).
     public var ledgerFromWeek: Int?
 }
 
@@ -61,8 +51,6 @@ public struct TransactionDetail: Equatable, Sendable {
     public var fields: [(String, String)]
     public static func == (a: Self, b: Self) -> Bool { a.transaction == b.transaction && a.account == b.account && a.fields.elementsEqual(b.fields, by: { $0 == $1 }) }
 }
-
-// MARK: Suppliers
 
 public struct SupplierRecord: Equatable, Sendable, Identifiable {
     public var id: String
@@ -79,15 +67,11 @@ public struct SupplierRecord: Equatable, Sendable, Identifiable {
     public var recentPurchases: [LedgerTransaction]
 }
 
-// MARK: Documents
-
-/// `insurance` and `applications` are records of their own: the policies the company holds, and the chain, franchise and brand applications with their status.
 public enum AccountingDocumentGroup: String, Sendable { case company, tax, contracts, insurance, applications }
 
 public struct AccountingDocument: Equatable, Sendable, Identifiable {
     public var id: String
     public var group: AccountingDocumentGroup
-    /// registration, legalForm, ownership, licence, filing, employment, supplier, customer, financing, chain
     public var kind: String
     public var title: String
     public var detail: String
@@ -97,7 +81,6 @@ public struct AccountingDocument: Equatable, Sendable, Identifiable {
 }
 
 public extension GameEngine {
-    // MARK: Transactions
 
     private static let categoryNames: [(id: String, name: String)] = [
         ("sales", "Sales"), ("purchases", "Supplier purchases"), ("payroll", "Payroll"), ("rent", "Rent"), ("marketing", "Marketing"), ("insurance", "Insurance"),
@@ -158,7 +141,6 @@ public extension GameEngine {
                                          categoryID: cat, category: Self.categoryNames.first { $0.id == cat }?.name ?? "Other", isIncome: r.amount > 0, label: r.label,
                                          counterparty: party, link: link, note: notes[id].isNull ? nil : notes[id].string, isLegacy: false))
         }
-        // The old capped list, only for the time before the full ledger began.
         for (k, t) in co.transactions.enumerated() where t["w"].int < from {
             let label = t["l"].string, amount = t["a"].double
             let cat = Self.ledgerCategory(code: "-", label: label)
@@ -170,8 +152,6 @@ public extension GameEngine {
         return out.sorted { $0.week != $1.week ? $0.week > $1.week : ($0.day != $1.day ? $0.day > $1.day : $0.id > $1.id) }
     }
 
-    /// The transaction ledger of one company: all / income / expenses, a category, a date range (game weeks), a search over label, category,
-    /// counterparty and note. Newest first.
     func companyTransactions(companyID: Int, kind: TransactionFilterKind = .all, category: String? = nil, fromWeek: Int? = nil, toWeek: Int? = nil,
                              search: String = "") -> TransactionPage? {
         guard let co = state.company(companyID) else { return nil }
@@ -199,7 +179,6 @@ public extension GameEngine {
         return TransactionDetail(transaction: t, account: co.name + " account", fields: f)
     }
 
-    /// Add or clear a note on a transaction (full bookkeeping access).
     @discardableResult
     mutating func setTransactionNote(companyID: Int, id: String, note: String) -> Bool {
         guard let co = state.company(companyID), ledgerTransactions(co).contains(where: { $0.id == id }) else { return false }
@@ -214,7 +193,6 @@ public extension GameEngine {
         return true
     }
 
-    /// Send a draft customer invoice now instead of at the next weekly run.
     @discardableResult
     mutating func sendDraftInvoice(companyID: Int, number: String) -> Bool {
         var ok = false
@@ -226,8 +204,6 @@ public extension GameEngine {
         }
         return ok
     }
-
-    // MARK: Suppliers
 
     func supplierRecords(companyID: Int, search: String = "") -> [SupplierRecord]? {
         guard let co = state.company(companyID) else { return nil }
@@ -245,8 +221,6 @@ public extension GameEngine {
                                   openInvoices: invoices.filter { $0.vendorID == v.id }.reduce(0) { $0 + $1.amount }, recentPurchases: Array(mine.prefix(8)))
         }
     }
-
-    // MARK: Documents
 
     func companyDocuments(companyID: Int, group: AccountingDocumentGroup? = nil) -> [AccountingDocument]? {
         guard let co = state.company(companyID), let country = data.countries[co.countryCode] else { return nil }
@@ -271,14 +245,11 @@ public extension GameEngine {
                 week: d["ok"].isNull ? nil : d["ok"].int)
         }
         _ = w
-        // Tax: filings and payments recorded in the ledger (real VAT and corporate tax settlements).
         for t in ledgerTransactions(co) where t.categoryID == "tax" && t.amount < 0 {
             add(.tax, "filing", "tax-" + t.id, t.label, t.counterparty, "Paid", week: t.week, amount: -t.amount)
         }
-        // Corporate tax is paid each month, so only what the account could not cover is still open.
         if (co.payables["tax"] ?? 0) > 1 { add(.tax, "filing", "taxopen", "Corporate tax owed", "Unpaid: the account could not cover it", "Open", amount: co.payables["tax"] ?? 0) }
         if co.vatBalance > 1 { add(.tax, "filing", "vatopen", "VAT balance", "To be settled with the next return", "Open", amount: co.vatBalance) }
-        // Contracts: employment, supplier, customer, financing, chain/franchise.
         for m in co.staff {
             let name = state.people[m.id]?.name ?? "Employee"
             let ft = m.raw["ft"].map { $0.isNull ? nil : $0.int } ?? nil
@@ -294,13 +265,11 @@ public extension GameEngine {
             add(.contracts, "financing", "loan\(l.id)", "\(l.name) \(l.number)", "\(l.lender), \(l.termMonths) months at \(String(format: "%.2f", l.yearlyRate * 100))%" + (l.personallyGuaranteed ? ", personally guaranteed" : ""),
                 "Balance outstanding", week: l.startWeek, amount: l.balance)
         }
-        // Receipts filed with this company: store orders, leases and insurance policies bought through the Phone apps.
         for r in Receipts.rows(co) {
             add(.contracts, "receipt", "rcpt-" + r.number, r.title, r.detail + " \u{00B7} " + r.number, "Paid", week: r.week, amount: r.amount)
         }
         if !co.value("chain").isNull { add(.contracts, "chain", "chain", "Chain membership", "Store of a chain", "Active") }
         if co.value("fr")["on"].bool { add(.contracts, "chain", "franchise", "Franchise", "Franchise agreements held by this company", "Active") }
-        // Insurance: the policies the company holds now, from the coverage read model (the same data as Manage > Insurance and advisers).
         if let cover = coverageOverview(companyID: companyID) {
             let cur = currency(for: co)
             for p in cover.policies where p.isOn {
@@ -309,7 +278,6 @@ public extension GameEngine {
                 add(.insurance, "insurance", "ins-" + p.id, p.name, who + cur.short(p.weeklyPremium) + " a week" + number, "In force", amount: p.weeklyPremium)
             }
         }
-        // Applications: the company's own chain and franchise paperwork (waiting, approved), and your applications to join a franchise brand.
         for id in ["trademark", "ops_manual", "chain", "fran"] {
             let d = co.value("docs")[id]
             guard !d.isNull, let def = Documents.definition(id, country: country, tables: data.catalog.tables) else { continue }

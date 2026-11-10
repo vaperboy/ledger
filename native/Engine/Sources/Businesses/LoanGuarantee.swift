@@ -3,10 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// The personal guarantee on a company loan, and the bank discussion that can release it.
-/// The bank wants a higher margin in return for releasing the guarantee. The answer comes from the shared `Negotiation` module: the bank's
-/// hidden reservation is a premium that grows with a weaker credit score and a company without a clean record; the player offers a premium
-/// (a yearly rate added to the loan's margin). A talk that walks away locks the subject for 26 weeks. The talk is kept on the loan (`neg`).
 public enum LoanGuarantee {
     public struct Terms: Equatable, Sendable, Identifiable {
         public var id: Int { loanID }
@@ -15,11 +11,8 @@ public enum LoanGuarantee {
         public var companyID: Int
         public var balance: Double
         public var guaranteed: Bool
-        /// nil when a talk is possible; else why not.
         public var unavailable: String?
-        /// The premium (yearly rate) already offered in the open talk, 0 if none.
         public var lastOffer: Double
-        /// The bank's standing counter, if it made one.
         public var counter: Double?
     }
 
@@ -49,7 +42,6 @@ public enum LoanGuarantee {
                      unavailable: unavailable(loan, company: s.company(loan.companyID), state: s), lastOffer: talk.lastOffer, counter: talk.counter > 0 ? talk.counter : nil)
     }
 
-    /// The premium the bank would settle for (hidden): a base plus a share for a weaker credit score and a thinner or losing record.
     static func reservation(company co: Company, state s: GameState) -> Double {
         let weak = max(0, 100 - s.credit) / 100
         let thin = co.monthlyHistory.count < 12 ? 0.004 : 0
@@ -57,7 +49,6 @@ public enum LoanGuarantee {
         return 0.004 + weak * 0.03 + thin + losing
     }
 
-    /// The player offers `extraMargin` (yearly rate added to the loan's margin) for the release of the guarantee.
     public static func offer(_ s: inout GameState, loanID: Int, extraMargin: Double) -> Answer {
         guard let li = s.loans.firstIndex(where: { $0.id == loanID }) else { return .notPossible("That loan no longer exists.") }
         var loan = s.loans[li]

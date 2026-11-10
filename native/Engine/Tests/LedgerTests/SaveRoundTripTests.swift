@@ -1,7 +1,6 @@
 import XCTest
 import GameCore
 
-/// A save from the original game must load and write back without losing or changing anything.
 final class SaveRoundTripTests: XCTestCase {
     private func loadRaw(_ name: String) throws -> Data {
         let url = try XCTUnwrap(Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Golden"))
@@ -12,7 +11,6 @@ final class SaveRoundTripTests: XCTestCase {
         for name in ["save_cafe_week3", "save_cafe_week15"] {
             let data = try loadRaw(name)
             var original = try JSONDecoder().decode(JSONValue.self, from: data)
-            // Old saves carry a player age; it is ignored on load and not written back.
             var originalObject = original.object
             var oldPlayer = original["player"].object
             XCTAssertNotNil(oldPlayer["age"], "the golden save still has the old age field")
@@ -22,7 +20,6 @@ final class SaveRoundTripTests: XCTestCase {
             let state = try JSONDecoder().decode(GameState.self, from: data)
             let written = try JSONEncoder().encode(state)
             var again = try JSONDecoder().decode(JSONValue.self, from: written)
-            // The original only writes `day` once the player has used Next Day; we always write it.
             if original["day"].isNull, again["day"].int == 0 { again["day"] = .null; var o = again.object; o.removeValue(forKey: "day"); again = .object(o) }
             XCTAssertEqual(again, original, "\(name) changed while loading and saving")
             XCTAssertEqual(state.version, 5)

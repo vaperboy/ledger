@@ -5,10 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Everything the group's live companies buy from suppliers, in one list grouped by what is supplied (not by vendor). A row is one kind of
-/// purchase across the companies that make it: who supplies it (the usual supplier and how many others), quality and reliability in words
-/// (reliability shows the weakest), and the week's cost across the group against the week before. A tap opens the companies behind the row,
-/// each with a button to compare its suppliers. It owns its scroll area unless `embedded` (the Suppliers tab of Group has its own scroll).
 struct GroupSupplierDirectory: View {
     @EnvironmentObject var store: GameStore
     var embedded: Bool = false
@@ -16,7 +12,6 @@ struct GroupSupplierDirectory: View {
 
     struct DirectoryPick: Identifiable, Equatable { var id: String }
 
-    /// One company's line of a purchase.
     fileprivate struct Use {
         var companyID: Int
         var companyName: String
@@ -24,7 +19,6 @@ struct GroupSupplierDirectory: View {
         var row: SupplyRow
     }
 
-    /// One kind of purchase across the group.
     fileprivate struct Entry: Identifiable {
         var id: String
         var group: String
@@ -35,7 +29,6 @@ struct GroupSupplierDirectory: View {
         var priced: Bool
     }
 
-    /// The purchases of one group heading.
     fileprivate struct DirectoryGroup: Identifiable {
         var id: String { name }
         var name: String
@@ -55,8 +48,6 @@ struct GroupSupplierDirectory: View {
             .centerSheet(item: $picked, category: .medium, tone: .info) { (p: DirectoryPick) in detail(p.id) }
         }
     }
-
-    // MARK: List
 
     @ViewBuilder private func list(_ groups: [DirectoryGroup], _ e: GameEngine) -> some View {
         if groups.isEmpty {
@@ -130,8 +121,6 @@ struct GroupSupplierDirectory: View {
         .accessibilityIdentifier("group-supply-\(en.id)")
     }
 
-    // MARK: Data
-
     fileprivate static func groups(_ e: GameEngine) -> [DirectoryGroup] {
         let home: Currency = e.homeCurrency
         var byKey: [String: Entry] = [:]
@@ -168,7 +157,6 @@ struct GroupSupplierDirectory: View {
         return out
     }
 
-    /// The supplier most companies use for this purchase, and how many others there are.
     private static func supplierSummary(_ en: Entry) -> String {
         let counts: [String: Int] = Dictionary(en.uses.map { ($0.row.current, 1) }, uniquingKeysWith: +)
         let ranked: [(key: String, value: Int)] = counts.sorted { (a: (key: String, value: Int), b: (key: String, value: Int)) -> Bool in
@@ -188,8 +176,6 @@ struct GroupSupplierDirectory: View {
         let rank: [String: Int] = ["Patchy": 0, "Not yet tested": 1, "Steady": 2, "Dependable": 3]
         return en.uses.map { $0.row.reliability }.min { (rank[$0] ?? 2) < (rank[$1] ?? 2) } ?? "Steady"
     }
-
-    // MARK: Popup
 
     @ViewBuilder private func detail(_ id: String) -> some View {
         if let e = store.engine, let en = Self.groups(e).flatMap({ $0.entries }).first(where: { $0.id == id }) {

@@ -1,7 +1,6 @@
 import SwiftUI
 
 extension PhoneApp {
-    /// What the app is for in two plain sentences, shown once the first time it opens; nil for apps that need no introduction.
     var helpText: String? {
         switch self {
         case .bank: return "Your bank holds your money and your loans. Check balances, pay bills, move money between accounts and borrow when a company needs to grow."
@@ -19,7 +18,6 @@ extension PhoneApp {
     }
 }
 
-/// Opens a one-time "What this app does" sheet the first time an app is shown, once nothing else is on screen. The flag is per app.
 private struct AppFirstOpenHelp: ViewModifier {
     @EnvironmentObject var store: GameStore
     var app: PhoneApp
@@ -35,9 +33,7 @@ private struct AppFirstOpenHelp: ViewModifier {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .task {
-                // Apps with a guided tour (`CoachTours`) point at their screen instead of raising this sheet.
                 guard app.helpText != nil, !CoachTours.coversApp(app), !FirstRunFlags.seen(FirstRunFlags.appHelp(app.rawValue)) else { return }
-                // After the app's opening splash, and only when no other popup is up; retried briefly while one is.
                 for _ in 0..<12 {
                     try? await Task.sleep(nanoseconds: 700_000_000)
                     if Task.isCancelled { return }
@@ -53,6 +49,5 @@ private struct AppFirstOpenHelp: ViewModifier {
 }
 
 extension View {
-    /// The first-open help sheet of a phone app (see `PhoneApp.helpText`).
     func appFirstOpenHelp(_ app: PhoneApp) -> some View { modifier(AppFirstOpenHelp(app: app)) }
 }

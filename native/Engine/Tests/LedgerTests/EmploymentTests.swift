@@ -6,8 +6,6 @@ import Finance
 @testable import Businesses
 @testable import Simulation
 
-/// Working percentages, the two-page hiring negotiation, promises, after-hiring changes, the work log and hidden values. Probes run in six
-/// countries (UK US DE PL MX JP).
 final class EmploymentTests: XCTestCase {
     static let countries = ["UK", "US", "DE", "PL", "MX", "JP"]
 
@@ -29,19 +27,15 @@ final class EmploymentTests: XCTestCase {
             p.set("sec", 0.1)
             s.people[p.id] = p; pid = p.id
         }
-        // pick a candidate without an hours limit unless the test is about it
         if noLimit, Hiring.maxHoursPerWeek(personID: pid) != nil { return candidate(&e, id, role: role, tier: tier, pers: pers, noLimit: true) }
         return pid
     }
 
-    /// A week of the real daily simulation (the company must have opened).
     private func week(_ e: inout GameEngine) {
         for _ in 0..<7 { _ = e.nextDay() }
     }
 
     private func member(_ e: GameEngine, _ id: Int, _ pid: Int) -> StaffMember? { e.state.company(id)?.staff.first { $0.id == pid } }
-
-    // MARK: 1. Working percentages
 
     func testWorkingPercentagesDriveHoursWagesCostAndMetricsInSixCountries() throws {
         for code in Self.countries {
@@ -77,14 +71,12 @@ final class EmploymentTests: XCTestCase {
         XCTAssertEqual(e.hire(personID: b, companyID: id, monthlyWage: offer, terms: Hiring.Terms(percent: 50)), .ok)
         let wa = member(e, id, a)!.monthlyWage, wb = member(e, id, b)!.monthlyWage
         XCTAssertEqual(wb / wa, 0.5, accuracy: 0.01, "gross wages follow the percentage")
-        // the same person changed afterwards: pay, cost and capacity follow
         let before = e.employerCost(companyID: id, personID: a)!.totalMonthly
         guard case .agreed = e.contractPropose(companyID: id, personID: a, proposal: .init(.hours, amount: 80, choice: "percent")) else { return XCTFail("percent change") }
         let m = member(e, id, a)!
         XCTAssertEqual(EmploymentContract.percent(m), 80, accuracy: 0.01)
         XCTAssertEqual(e.employerCost(companyID: id, personID: a)!.totalMonthly / before, 0.8, accuracy: 0.01)
         XCTAssertEqual(m.partTimeShare, 0.8, accuracy: 0.001)
-        // back to full time
         guard case .agreed = e.contractPropose(companyID: id, personID: a, proposal: .init(.hours, amount: 100, choice: "percent")) else { return XCTFail("full") }
         XCTAssertNil(member(e, id, a)!.weeklyHours)
         XCTAssertEqual(member(e, id, a)!.monthlyWage, wa, accuracy: 1)
@@ -96,7 +88,6 @@ final class EmploymentTests: XCTestCase {
         XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: e.marketWage(role: "cook", companyID: id) * 2, terms: Hiring.Terms(percent: 5)), .planRefused)
         XCTAssertNotNil(e.hireTermsProblem(post: .worker(role: "cook"), companyID: id, personID: pid, terms: Hiring.Terms(percent: 5)))
         XCTAssertNil(e.state.people[pid].flatMap { $0.employerID == id ? $0 : nil }, "nobody was hired")
-        // a person who studies can work at most 20 or 30 hours: an offer over it is refused with a reason, never cut silently
         var limited = 0
         for _ in 0..<60 { let p = candidate(&e, id, noLimit: false); if Hiring.maxHoursPerWeek(personID: p) != nil { limited = p; break } }
         let cap = try XCTUnwrap(Hiring.maxHoursPerWeek(personID: limited))
@@ -112,7 +103,6 @@ final class EmploymentTests: XCTestCase {
         var (e, id) = try shop()
         let pid = candidate(&e, id)
         XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: e.marketWage(role: "cook", companyID: id) * 2, terms: Hiring.Terms(hours: 20)), .ok)
-        // a record as the old code wrote it: hours 20, pt share, seasonal months
         e.update { s, _, _ in
             let ci = s.companyIndex(id)!, k = s.companies[ci].staff.firstIndex { $0.id == pid }!
             var st = s.companies[ci].staff
@@ -132,7 +122,6 @@ final class EmploymentTests: XCTestCase {
     func testSeasonalAndTemporaryContractsHaveRealDatesAndConsequences() throws {
         for code in ["UK", "DE", "MX"] {
             var (e, id) = try shop(code)
-            // temporary: a custom length (not one of the screens' choices)
             let t = candidate(&e, id)
             XCTAssertEqual(e.hire(personID: t, companyID: id, monthlyWage: e.marketWage(role: "cook", companyID: id) * 2, terms: Hiring.Terms(fixedTermWeeks: 10, percent: 80)), .ok, code)
             let c = try XCTUnwrap(e.employmentContract(companyID: id, personID: t))
@@ -142,12 +131,10 @@ final class EmploymentTests: XCTestCase {
             XCTAssertFalse(c.isPermanent)
             XCTAssertNotNil(c.renewalQuestionWeek)
             XCTAssertFalse(c.history.isEmpty, "the hire is the first entry")
-            // the renewal question arrives, and on the date the job ends (the labour data decides what is owed)
             e.update { s, d, _ in s.week += 9; FixedTerm.weekly(&s, data: d) }
             XCTAssertTrue(e.state.inbox.contains { $0.title.contains("fixed term") && $0.title.contains("ends in") }, code)
             e.update { s, d, _ in s.week += 2; FixedTerm.weekly(&s, data: d) }
             XCTAssertNil(member(e, id, t), "\(code): the temporary job ended on its date")
-            // seasonal for one season: ends with the season
             let sPerson = candidate(&e, id)
             XCTAssertEqual(e.hire(personID: sPerson, companyID: id, monthlyWage: e.marketWage(role: "cook", companyID: id) * 2, terms: Hiring.Terms(seasonMonths: [6, 7, 8], percent: 50, seasonCount: 1)), .ok, code)
             let sc = try XCTUnwrap(e.employmentContract(companyID: id, personID: sPerson))
@@ -170,8 +157,6 @@ final class EmploymentTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(e.employmentContract(companyID: id, personID: pid)).payBasisLabel, "Fixed monthly salary")
     }
 
-    // MARK: 2. Two-page negotiation
-
     func testAskIsNilUntilTheCandidateHasMadeOneAndShownEqualsApplied() throws {
         for code in Self.countries {
             var (e, id) = try shop(code)
@@ -187,7 +172,6 @@ final class EmploymentTests: XCTestCase {
             talk = try XCTUnwrap(e.hireSalaryTalk(post: post, companyID: id, personID: pid, terms: terms, offer: ask))
             XCTAssertEqual(talk.theirAsk, ask)
             XCTAssertTrue(talk.canOfferTheirAsk)
-            // what is shown is what is applied
             XCTAssertEqual(e.hireOffer(post: post, companyID: id, personID: pid, monthlyWage: ask, terms: terms), .hired, "\(code): the ask is accepted")
             let m = try XCTUnwrap(member(e, id, pid))
             let booked = try XCTUnwrap(e.employerCost(companyID: id, personID: pid))
@@ -231,11 +215,9 @@ final class EmploymentTests: XCTestCase {
             let mean = all.reduce(0, +) / Double(all.count)
             XCTAssertEqual(mean, 1.0, accuracy: 0.1, "\(code): asks centre on the market pay")
             XCTAssertGreaterThan(all.max()! - all.min()!, 0.15, "\(code): and spread by skill and experience")
-            // within the same skill band, the age group makes no difference: compare the skill-adjusted asks
             func adj(_ t: String) -> Double { byTier[t]!.reduce(0, +) / Double(byTier[t]!.count) }
             XCTAssertLessThan(abs(adj("young") - adj("senior")), 0.3)
         }
-        // the formula itself has no age in it
         XCTAssertEqual(Hiring.askSpread(skill: 55, experience: 6), 1.0, accuracy: 1e-9)
         XCTAssertGreaterThan(Hiring.askSpread(skill: 80, experience: 15), Hiring.askSpread(skill: 30, experience: 1))
     }
@@ -250,12 +232,10 @@ final class EmploymentTests: XCTestCase {
         let better = try XCTUnwrap(e.hearTheirAsk(post: post, companyID: id, personID: pid, terms: rich))
         XCTAssertLessThan(better, plain, "a better package lowers the ask")
         XCTAssertGreaterThan(better, plain * 0.9, "but only a little")
-        // a temporary job for someone who needs security costs more
         e.update { s, _, _ in var p = s.people[pid]!; p.set("sec", 0.9); s.people[pid] = p }
         let perm = try XCTUnwrap(e.hearTheirAsk(post: post, companyID: id, personID: pid, terms: Hiring.Terms()))
         let temp = try XCTUnwrap(e.hearTheirAsk(post: post, companyID: id, personID: pid, terms: Hiring.Terms(fixedTermWeeks: 26)))
         XCTAssertGreaterThan(temp, perm)
-        // a company that is late with its bills is a riskier employer
         let risky = e.state.people[pid]!
         _ = risky
         e.update { s, _, _ in s.companies[s.companyIndex(id)!].unpaidMonths = 2 }
@@ -274,7 +254,6 @@ final class EmploymentTests: XCTestCase {
         XCTAssertEqual(Set(opts.contractKinds.map(\.id)), ["permanent", "seasonal", "temporary"])
         XCTAssertTrue(opts.fields.contains("promises") && opts.fields.contains("vehicle"))
         XCTAssertEqual(Set(opts.promiseKinds.map(\.id)), Set(StaffPromises.Kind.allCases.map(\.rawValue)))
-        // manager
         var cands: [Person] = []
         e.update { s, d, _ in cands = (0..<3).map { _ in ManagerModel.generateCandidate(company: s.company(id), type: "gen", state: &s, data: d) } }
         let mgr = cands[0].id
@@ -290,9 +269,7 @@ final class EmploymentTests: XCTestCase {
         XCTAssertEqual(e.hireOffer(post: .manager, companyID: id, personID: mgr, monthlyWage: ask * 1.3), .hired)
         XCTAssertEqual(e.state.company(id)?.managerID, mgr)
         XCTAssertNil(e.state.people[mgr]?.value("tf").isNull == false ? 1 : nil, "the transient factor is gone")
-        // a bad draft for a post that has no hours
         XCTAssertNotNil(e.hireTermsProblem(post: .manager, companyID: id, personID: cands[1].id, terms: Hiring.Terms(percent: 50)))
-        // analyst: the head-office road
         var analyst = 0
         e.update { s, d, _ in analyst = MarketMap.dataAnalystCandidates(&s, count: 1, data: d)[0].id }
         let at = try XCTUnwrap(e.hireSalaryTalk(post: .analyst, companyID: nil, personID: analyst, terms: Hiring.Terms()))
@@ -300,7 +277,6 @@ final class EmploymentTests: XCTestCase {
         let aAsk = try XCTUnwrap(e.hearTheirAsk(post: .analyst, companyID: nil, personID: analyst))
         let ar = e.hireOffer(post: .analyst, companyID: nil, personID: analyst, monthlyWage: aAsk * 1.3)
         XCTAssertTrue(ar == .hired || ar == .blocked("The head office already has a data analyst."), "\(ar)")
-        // executive: one door too
         var exec = 0
         e.update { s, d, _ in exec = ManagerModel.searchExecutive(&s, level: .md, data: d)?.first?.id ?? 0 }
         if exec != 0 {
@@ -310,8 +286,6 @@ final class EmploymentTests: XCTestCase {
         }
     }
 
-    // MARK: 3. Promises
-
     func testPromiseLifecycleDueFulfilledBrokenRenegotiated() throws {
         var (e, id) = try shop()
         let pid = candidate(&e, id, pers: "steady")
@@ -319,22 +293,18 @@ final class EmploymentTests: XCTestCase {
         var rows = e.promises(companyID: id)
         XCTAssertEqual(rows.count, 2)
         XCTAssertTrue(rows.allSatisfy { $0.status == .pending && $0.employee == e.state.people[pid]!.name && $0.dueWeek == $0.madeWeek + 8 })
-        // a second one of the same kind is refused
         var second: StaffPromises.Promise?
         e.update { s, _, _ in second = StaffPromises.make(&s, companyID: id, personID: pid, draft: StaffPromises.Draft(.training, dueInWeeks: 5)) }
         XCTAssertNil(second)
-        // training is kept the moment a course is taken
         var course = ""
         e.update { s, d, _ in course = StaffProfile.courses(s.company(id)!, data: d).first?.id ?? "" }
         if !course.isEmpty {
             e.update { s, d, _ in _ = StaffProfile.takeCourse(&s, companyID: id, staffID: pid, courseID: course, data: d) }
             XCTAssertEqual(e.promises(companyID: id).first { $0.kind == .training }?.status, .fulfilled)
         }
-        // due date arrives: Due, with an Inbox note
         e.update { s, d, _ in s.week += 8; StaffPromises.weekly(&s, data: d) }
         XCTAssertEqual(e.promises(companyID: id).first { $0.kind == .salaryReview }?.status, .due)
         XCTAssertTrue(e.state.inbox.contains { $0.title.contains("is waiting for what you promised") })
-        // a renegotiation moves the date (or the person refuses), once
         let row = try XCTUnwrap(e.promises(companyID: id).first { $0.kind == .salaryReview })
         let r = e.renegotiatePromise(personID: pid, promiseID: row.id, newDueInWeeks: 6)
         switch r {
@@ -345,7 +315,6 @@ final class EmploymentTests: XCTestCase {
         case .refused: break
         case .notPossible(let why): XCTFail(why)
         }
-        // left unkept past the grace period it breaks: the old marks of a refused request follow, and the company's word suffers
         e.update { s, d, _ in s.week += 40; for _ in 0..<3 { StaffPromises.weekly(&s, data: d); s.week += 2 } }
         let broken = e.promises(companyID: id).first { $0.kind == .salaryReview && $0.status == .broken }
         XCTAssertNotNil(broken)
@@ -369,24 +338,19 @@ final class EmploymentTests: XCTestCase {
         XCTAssertFalse(StaffPromises.Draft(.percentageChange, dueInWeeks: 5, detail: "5").isPlausible)
         func status(_ k: StaffPromises.Kind) -> StaffPromises.Status? { e.promises(companyID: id).first { $0.kind == k }?.status }
         XCTAssertEqual(status(.salaryReview), .pending)
-        // percentage change through the contract door
         guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.hours, amount: 80, choice: "percent")) else { return XCTFail("percent") }
         XCTAssertEqual(status(.percentageChange), .fulfilled)
-        // a raise
         guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.payRise, amount: 0.08)) else { return XCTFail("raise") }
         XCTAssertEqual(status(.salaryReview), .fulfilled)
-        // a perk that covers them
         e.update { s, _, _ in _ = StaffPerks.set(&s, companyID: id, perk: perk.id, on: true) }
         XCTAssertEqual(status(.futureBenefits), .fulfilled)
         XCTAssertEqual(status(.betterConditions), .fulfilled)
-        // promotion and responsibility are fulfilled by a real promotion
         let posts = ManagerModel.promotionPosts(e.state, companyID: id, personID: pid, data: e.data).filter { $0.blocked.isEmpty && $0.kind == "role" }
         if let post = posts.first {
             guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask * 1.2, choice: post.id, terms: .init(authority: 1))) else { return }
             XCTAssertEqual(status(.promotion), .fulfilled)
             XCTAssertEqual(status(.responsibility), .fulfilled)
         }
-        // a promise instead of an immediate answer to their request
         XCTAssertTrue(e.state.inbox.isEmpty || true)
     }
 
@@ -404,8 +368,6 @@ final class EmploymentTests: XCTestCase {
         XCTAssertEqual(e.promises(companyID: id).count, 1)
         XCTAssertTrue(e.contractHistory(companyID: id, personID: pid).contains { $0.kind == "promise" })
     }
-
-    // MARK: 4. After-hiring changes
 
     func testPreviewShowsCostsHoursAndImpactAndHistoryIsKept() throws {
         for code in ["UK", "DE", "JP"] {
@@ -425,7 +387,6 @@ final class EmploymentTests: XCTestCase {
             XCTAssertFalse(pv.payrollImpact.isEmpty); XCTAssertFalse(pv.operationalImpact.isEmpty)
             XCTAssertTrue(pv.mayRefuse)
             XCTAssertEqual(pv.employerAfter?.totalMonthly ?? 0, pv.employerBefore!.totalMonthly / 2, accuracy: 1, "\(code)")
-            // agreed (or refused, by temperament); a refusal changes nothing
             let reply = e.contractPropose(companyID: id, personID: pid, proposal: .init(.hours, amount: 50, choice: "percent"))
             switch reply {
             case .agreed:
@@ -450,12 +411,9 @@ final class EmploymentTests: XCTestCase {
                 XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: e.marketWage(role: "cook", companyID: id) * 2), .ok)
                 let temp = Hiring.temperament(of: e.state.people[pid]!).id
                 tried[temp, default: 0] += 1
-                // a raise: never refused
                 guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.payRise, amount: 0.07)) else { return XCTFail("a raise is taken") }
-                // a big cut in hours; the draw is keyed on the person and the eight-week block, and ids repeat across seeds, so move to a different block
                 e.update { s, _, _ in s.week += k * 8 }
                 if case .unwilling = e.contractPropose(companyID: id, personID: pid, proposal: .init(.hours, amount: 40, choice: "percent")) { refused[temp, default: 0] += 1 }
-                // a small cut is not a significant change
                 var e2 = e
                 if case .unwilling = e2.contractPropose(companyID: id, personID: pid, proposal: .init(.hours, amount: 90, choice: "percent")) { XCTFail("a small cut is not refused") }
             }
@@ -479,8 +437,6 @@ final class EmploymentTests: XCTestCase {
         guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.term, choice: "fixed:30")) else { return XCTFail("30 weeks") }
         XCTAssertEqual(e.employmentContract(companyID: id, personID: pid)?.endWeek, e.state.week + 30)
     }
-
-    // MARK: 5. Hidden values and realistic behaviour
 
     func testNoProbabilitiesOrScoresInPlayerVisibleEngineText() throws {
         var (e, id) = try shop()
@@ -517,17 +473,14 @@ final class EmploymentTests: XCTestCase {
         XCTAssertTrue(fb.enoughToJudge)
         XCTAssertFalse(fb.observations.isEmpty)
         XCTAssertTrue(fb.observations.contains { $0.aspect == "Completed work" })
-        // the sentences come from the counts: an invented log gives the sentence the counts imply
         var made = m
         let rows = (0..<8).map { w -> JSONValue in .array([e.state.week - w, 150, 150, 8, 7, 0, 0, 0, 0, 3, 1, 0, 0].map { .number(Double($0)) }) }
         made.set("wlog", .array(rows))
         let f2 = WorkLog.feedback(made, week: e.state.week)
         XCTAssertTrue(f2.summary.contains("Completed most assigned work"), f2.summary)
         XCTAssertTrue(f2.summary.contains("guidance"), f2.summary)
-        // capped at 26 weeks
         for _ in 0..<30 { week(&e) }
         XCTAssertLessThanOrEqual(WorkLog.weeks(member(e, id, pid) ?? m).count, WorkLog.weeksKept)
-        // a trial week reports observations, not a skill figure
         let cand = candidate(&e, id)
         let seen = try XCTUnwrap(e.startTrialWeek(personID: cand, companyID: id))
         XCTAssertFalse(seen.isEmpty)
@@ -539,7 +492,6 @@ final class EmploymentTests: XCTestCase {
         let pid = candidate(&e, id, pers: "restless")
         XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: e.marketWage(role: "cook", companyID: id) * 2), .ok)
         let ci = e.state.companyIndex(id)!
-        // keep them unhappy: pay far under the market, a refused request
         e.update { s, _, _ in
             var st = s.companies[ci].staff; st[0].monthlyWage = 100; st[0].set("denied", s.week); s.companies[ci].staff = st
             var f = s.companies[ci].value("flags"); f["noquit"] = 1; s.companies[ci].set("flags", f)
@@ -553,7 +505,6 @@ final class EmploymentTests: XCTestCase {
         }
         XCTAssertTrue(voiced, "they say so before it comes to more")
         XCTAssertTrue(disengaged, "and then lose interest")
-        // while they are still on the payroll the mood card says so too
         var e3 = e
         e3.update { s, _, _ in
             let ci = s.companyIndex(id)!
@@ -563,11 +514,9 @@ final class EmploymentTests: XCTestCase {
             st[k].set("dis", s.week); s.companies[ci].staff = st
         }
         XCTAssertTrue(StaffProfile.mood(e3.state, companyID: id, staffID: pid, data: e3.data)?.bad.contains { $0.contains("lost interest") } ?? false)
-        // the style is temperament, not age
         var young = e.state.people[pid]!, old = young
         young.age = 19; old.age = 60
         XCTAssertEqual(StaffBehaviour.style(of: young), StaffBehaviour.style(of: old))
-        // abrupt leaving happens only for the discontented
         var m = StaffMember(raw: ["id": .number(Double(pid)), "dis": .number(8), "uw": .number(12)])
         var abrupt = 0
         for w in 0..<400 { if StaffBehaviour.resignationNotice(m, person: e.state.people[pid]!, week: w, standardNotice: 8).abrupt { abrupt += 1 } }
@@ -576,8 +525,6 @@ final class EmploymentTests: XCTestCase {
         m.raw.removeValue(forKey: "dis"); m.raw.removeValue(forKey: "uw")
         XCTAssertEqual(StaffBehaviour.resignationNotice(m, person: e.state.people[pid]!, week: 3, standardNotice: 8).abrupt, false, "a contented person works their notice")
     }
-
-    // MARK: Promises to group employees
 
     func testPromisesToTheAnalystAreKeptByRealGroupActions() throws {
         var (e, id) = try shop(seed: 31)
@@ -590,7 +537,6 @@ final class EmploymentTests: XCTestCase {
         XCTAssertTrue(opts.promiseKinds.allSatisfy { !$0.detail.isEmpty })
         let drafts: [StaffPromises.Draft] = [.init(.salaryReview, dueInWeeks: 20), .init(.promotion, dueInWeeks: 20), .init(.responsibility, dueInWeeks: 20), .init(.training, dueInWeeks: 20),
                                             .init(.betterConditions, dueInWeeks: 20), .init(.futureBenefits, dueInWeeks: 20, detail: "exp:\(exp.id)"), .init(.percentageChange, dueInWeeks: 20, detail: "80")]
-        // a perk is not something a group employee can be promised
         e.update { s, _, _ in XCTAssertNil(StaffPromises.make(&s, companyID: 0, personID: analyst, draft: .init(.futureBenefits, dueInWeeks: 5, detail: "perk:health"))) }
         guard e.hireOffer(post: .analyst, companyID: nil, personID: analyst, monthlyWage: ask * 1.4, terms: Hiring.Terms(promises: drafts)) == .hired else { return }
         func status(_ k: StaffPromises.Kind) -> StaffPromises.Status? { StaffPromises.promises(e.state, personID: analyst).first { $0.kind == k }?.status }
@@ -615,7 +561,6 @@ final class EmploymentTests: XCTestCase {
         XCTAssertEqual(status(.promotion), .fulfilled)
         XCTAssertEqual(status(.responsibility), .fulfilled)
         XCTAssertGreaterThan(GroupPeople.wage(e.state, personID: analyst) ?? 0, wageBefore)
-        // the weekly entitlement is paid
         let cashBefore = Payments.liquid(e.state)
         e.update { s, d, _ in StaffPromises.weekly(&s, data: d) }
         XCTAssertLessThan(Payments.liquid(e.state), cashBefore)
@@ -634,8 +579,6 @@ final class EmploymentTests: XCTestCase {
         XCTAssertEqual(e.publicImageWords.count, 3)
         XCTAssertNotEqual(StandingWords.pressImage("trust", 10), StandingWords.pressImage("trust", 90))
     }
-
-    // MARK: Saves
 
     func testNewKeysSurviveASaveRoundTrip() throws {
         var (e, id) = try shop()

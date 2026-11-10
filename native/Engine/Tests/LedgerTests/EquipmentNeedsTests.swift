@@ -4,7 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// A trade lists and asks for only the equipment its own business uses.
 final class EquipmentNeedsTests: XCTestCase {
     func testNoTradeAsksForAnotherTradesItems() throws {
         let cat = try TradeCatalog.bundled()

@@ -6,8 +6,6 @@ import Finance
 import Events
 import Simulation
 
-/// Back a startup from a pitch: pick the amount, read the engine's quote (share, valuation, board seat, cash left), then confirm. The quote
-/// rounds the amount to 10,000, caps it at the round and gives the verdict the investment will get.
 struct BackStartupSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -84,8 +82,6 @@ struct BackStartupSheet: View {
     }
 }
 
-/// Sell part or all of a stake in someone else's startup. The engine quotes the proceeds; the owner may ask for 0.5 to 1.4 times that and the
-/// buyer sells at the ask, counters, or declines with a reason.
 struct SellStakeSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss

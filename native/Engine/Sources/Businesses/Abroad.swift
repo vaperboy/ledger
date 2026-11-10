@@ -3,8 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Opening a subsidiary of a company in another country. Original: `expandAbroad`, `foreignCountries`, `deskFor`
-/// (engine/world/abroad.js) and the tab `CT.abroad`, actions `abrset`, `abrgo` (ui/company/deals.js).
 public enum Abroad {
     public enum Failure: Error, Equatable, Sendable { case notOpen, unknownCountry, brandTooWeak, banned(String), cannotStart(CompanySetup.StartError) }
 
@@ -16,10 +14,8 @@ public enum Abroad {
         public var hasDesk: Bool
     }
 
-    /// Does the head office have a compliance desk for this country? Original: `deskFor`.
     public static func hasDesk(_ s: GameState, country: String) -> Bool { s.hasHeadOffice("cd_" + country) }
 
-    /// Countries this company may expand to (the trade is allowed there), with the estimate the tab shows.
     public static func options(_ s: GameState, companyID: Int, data: GameData) -> [Option] {
         guard let co = s.company(companyID), co.status == .open, !co.value("franchise")["fran"].bool else { return [] }
         var out: [Option] = []
@@ -33,7 +29,6 @@ public enum Abroad {
         return out
     }
 
-    /// Countries where you run something, other than home. Original: `foreignCountries`.
     public static func foreignCountries(_ s: GameState) -> [String] {
         var out: [String] = []
         for c in s.companies where c.status.isLive {
@@ -43,7 +38,6 @@ public enum Abroad {
         return out
     }
 
-    /// Create the foreign subsidiary. It starts with part of the brand and still has to register and open. Original: `expandAbroad`.
     public static func expand(_ s: inout GameState, companyID: Int, country code: String, cityID: String? = nil, data: GameData, context: FinanceContext) -> Result<Int, Failure> {
         guard let co = s.company(companyID), co.status == .open else { return .failure(.notOpen) }
         guard let C = data.countries[code], code != co.countryCode else { return .failure(.unknownCountry) }
@@ -64,8 +58,6 @@ public enum Abroad {
         }
     }
 
-    /// Monthly, after the exchange rates move: each country where you operate may issue new rules. Without a head-office
-    /// country desk the late compliance is fined on one open company there. Original: `regulationMonth` (country part).
     public static func regulationMonth(_ s: inout GameState, data: GameData) {
         for k in foreignCountries(s) {
             guard let c = data.countries[k] else { continue }

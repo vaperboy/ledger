@@ -2,8 +2,6 @@ import Foundation
 import GameCore
 import Finance
 
-/// Monthly results of a company: this month so far and the last twelve months, each with income, expenses and the cost lines.
-/// Original: `V.month30`, `monthOf` (features/screens/tidier_screens_and_monthly_bills.js).
 public enum MonthView {
     public static let costNames: [String: String] = ["cogs": "Materials and goods", "wages": "Wages and payroll", "rent": "Rent and power", "mkt": "Marketing", "ins": "Insurance",
         "acc": "Accounting and payroll service", "dep": "Depreciation", "int": "Loan interest", "oth": "Leasing and other costs", "fine": "Fines", "loss": "Refunds and losses", "tax": "Company tax"]

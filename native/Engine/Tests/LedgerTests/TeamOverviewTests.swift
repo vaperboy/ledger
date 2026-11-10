@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The Team tab's read model: who runs each company and what needs the owner, in the scenarios the screen must handle.
 final class TeamOverviewTests: XCTestCase {
     private func open(_ e: inout GameEngine, _ id: Int, ownerHours: Double = 0) {
         e.update { s, _, _ in
@@ -101,7 +100,6 @@ final class TeamOverviewTests: XCTestCase {
         var e = try ChainsTests.engine("UK")
         let id = ChainsTests.start(&e, "cafe"), other = ChainsTests.start(&e, "cafe")
         open(&e, id); open(&e, other)
-        // The engine offers a holding a managing director once two companies sit under it.
         guard case .success(let hid) = e.createHolding(name: "H", companies: [id, other]) else { throw XCTSkip("holding could not be created") }
         let slot = try XCTUnwrap(e.teamSlots(companyID: hid).first { $0.key == "ceo" })
         let cand = try XCTUnwrap(e.searchTeam(companyID: hid, key: slot.key)?.first)

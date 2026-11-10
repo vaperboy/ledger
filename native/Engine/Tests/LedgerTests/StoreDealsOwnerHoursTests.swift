@@ -5,8 +5,6 @@ import Finance
 @testable import Businesses
 @testable import Simulation
 
-/// TechPro sales on the game calendar (small ones often, big ones rarely, Black Friday for nearly everything; the price shown is the price paid)
-/// and the owner's hours (no "Your time": they follow demand, capped at 80, burn-out from 65).
 final class StoreDealsOwnerHoursTests: XCTestCase {
     private func game(seed: Int = 7) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
@@ -88,8 +86,6 @@ final class StoreDealsOwnerHoursTests: XCTestCase {
         XCTAssertGreaterThan(needs.filter { $0.dealPercent >= 25 }.count, needs.count / 2, "Black Friday")
     }
 
-    // MARK: AirStay names and pictures
-
     func testListingsHaveOwnAddressesAndVariedPicturesThatStayWhenRented() throws {
         var e = try game()
         let id = try cafe(&e)
@@ -116,8 +112,6 @@ final class StoreDealsOwnerHoursTests: XCTestCase {
         }
         _ = id
     }
-
-    // MARK: Owner's hours
 
     func testHoursFollowDemandAndStayWithinTheCap() throws {
         var e = try game()

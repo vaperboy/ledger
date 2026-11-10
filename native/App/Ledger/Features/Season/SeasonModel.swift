@@ -2,8 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// The player's Season Pass, kept in UserDefaults (not in a game save: seasons follow the real calendar and belong to the player).
-/// The game store calls `observe` after each action and each day; the screen reads `pass`.
 @MainActor
 final class SeasonModel: ObservableObject {
     static let shared = SeasonModel()
@@ -23,14 +21,12 @@ final class SeasonModel: ObservableObject {
 
     var today: Int { GameStore.calendarDay() }
 
-    /// Reads the game for XP; saves only when something changed.
     func observe(_ state: GameState) {
         var p: SeasonPass = pass
         p.observe(SeasonPass.snapshot(state), today: today)
         if p != pass { pass = p; persist() }
     }
 
-    /// Moves to a new season when the real date has passed the end of this one (called when the screen opens).
     func refreshSeason() {
         var p: SeasonPass = pass
         if p.rollover(today: today) { pass = p; persist() }
@@ -50,7 +46,6 @@ final class SeasonModel: ObservableObject {
         return got
     }
 
-    /// Adds a cosmetic or comfort item that came from the store, a box or a finished collection.
     func grantOwned(_ id: String) {
         var p: SeasonPass = pass
         p.grantOwned(id)
@@ -65,10 +60,8 @@ final class SeasonModel: ObservableObject {
 
     private static let adDayKey = "ledger.seasonAdDay"
 
-    /// The watch-an-ad bonus is offered once per real day.
     var adBonusAvailable: Bool { UserDefaults.standard.integer(forKey: Self.adDayKey) != today }
 
-    /// Pays the ad bonus XP and uses up today's offer. Returns the XP granted.
     @discardableResult
     func grantAdBonus() -> Int {
         guard adBonusAvailable else { return 0 }

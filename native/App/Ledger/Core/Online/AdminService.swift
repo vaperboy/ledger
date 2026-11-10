@@ -1,8 +1,5 @@
 import Foundation
 
-// The administrator side of the online contract. The server decides who is an administrator (a table bound to the account id, filled by a
-// one-time code); the app only asks. Every change an administrator makes goes through one of these calls and leaves an audit row.
-
 enum RuleGroup: String, Codable, CaseIterable, Sendable {
     case printing, taxes, bands, electricity, funding
 
@@ -37,7 +34,6 @@ enum RuleGroup: String, Codable, CaseIterable, Sendable {
 
 enum RuleUnit: String, Codable, Sendable { case share, weeks, count, factor }
 
-/// One world rule with the hard limits the server will never let it leave.
 struct WorldRule: Codable, Identifiable, Hashable, Sendable {
     var key: String
     var group: RuleGroup
@@ -52,7 +48,6 @@ struct WorldRule: Codable, Identifiable, Hashable, Sendable {
 
     var isDefault: Bool { abs(value - defaultValue) < 1e-9 }
 
-    /// How much one tap of the stepper moves the value.
     var step: Double {
         switch unit {
         case .share: return maximum <= 0.12 ? 0.005 : 0.01
@@ -84,7 +79,6 @@ enum ConfirmationKind: String, Codable, Sendable {
         case .electionResult: return "Election result"
         }
     }
-    /// What confirming it does, as the end of a sentence.
     var onConfirm: String {
         switch self {
         case .policy: return "the new tax rates take effect in that country."
@@ -93,7 +87,6 @@ enum ConfirmationKind: String, Codable, Sendable {
         case .electionResult: return "the winner takes the presidency for a twelve-week term."
         }
     }
-    /// What rejecting it does, as the end of a sentence.
     var onReject: String {
         switch self {
         case .policy: return "the rates stay as they are and the president can propose again."
@@ -104,7 +97,6 @@ enum ConfirmationKind: String, Codable, Sendable {
     }
 }
 
-/// A change waiting for an administrator (the government engine's pending list).
 struct PendingConfirmation: Codable, Identifiable, Hashable, Sendable {
     var id: String
     var kind: ConfirmationKind
@@ -144,12 +136,9 @@ struct AdminSnapshot: Codable, Sendable {
 enum AdminCodeResult: Equatable, Sendable { case granted, alreadyAdmin, invalid, locked }
 
 protocol AdminService: Sendable {
-    /// Spends a one-time code and makes the signed-in account an administrator when the server accepts it.
     func redeemAdminCode(_ code: String) async throws -> AdminCodeResult
     func adminSnapshot() async throws -> AdminSnapshot
-    /// Moves one rule inside its hard limits. The reason goes into the audit log with the old and new value.
     func adminSetRule(key: String, value: Double, reason: String) async throws
     func adminDecide(id: String, approve: Bool, reason: String) async throws
-    /// Older audit rows, newest first, before the given row id.
     func adminAudit(before: Int?, limit: Int) async throws -> [AuditEntry]
 }

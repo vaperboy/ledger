@@ -5,13 +5,7 @@ import Finance
 import Businesses
 import Investments
 
-// Loans: the two-stage flow (assessment, then the final agreement), early repayment that charges nothing twice,
-// a schedule from the live loan, and loan records that Accounting can use as a source.
-// Lending maths is unchanged (`Banking.offer`, `Banking.take`); this file is the flow and the read models around them.
-
-/// Where the money of a loan lands.
 public enum LoanPayout: String, CaseIterable, Sendable {
-    /// The borrower's account (a company's account for a company loan).
     case current
 }
 
@@ -28,13 +22,11 @@ public struct LoanExample: Equatable, Sendable, Identifiable {
     public var totalInterest: Double
 }
 
-/// What the bank would lend this borrower and on what terms. The player then chooses an amount up to `maximum`.
 public struct LoanAssessment: Equatable, Sendable {
     public var kind: String
     public var companyID: Int?
     public var borrowerName: String
     public var approved: Bool
-    /// Why the bank would not lend (nil when it would).
     public var refusal: String?
     public var minimum: Double
     public var maximum: Double
@@ -43,16 +35,13 @@ public struct LoanAssessment: Equatable, Sendable {
     public var feeRate: Double
     public var termOptions: [Int]
     public var defaultTermMonths: Int
-    /// The instalment and interest if the maximum were taken, for each term.
     public var examplesAtMaximum: [LoanExample]
     public var conditions: [String]
     public var payoutAccounts: [LoanPayoutAccount]
     public var personalGuarantee: Bool
-    /// What the final agreement will ask for.
     public var requiredPapers: [String]
 }
 
-/// A loan as a record: the source Accounting uses for loan transactions and financing documents.
 public struct LoanRecord: Equatable, Sendable, Identifiable {
     public var id: Int
     public var number: String
@@ -70,7 +59,6 @@ public struct LoanRecord: Equatable, Sendable, Identifiable {
     public var startDateText: String
     public var instalment: Double
     public var nextInstalmentText: String
-    /// This month's instalment is settled (collected or paid early).
     public var thisMonthSettled: Bool
     public var arrangementFee: Double
     public var personallyGuaranteed: Bool
@@ -79,7 +67,6 @@ public struct LoanRecord: Equatable, Sendable, Identifiable {
 }
 
 public extension GameEngine {
-    // MARK: Assessment
 
     func loanAssessment(kind: String, companyID: Int?) -> LoanAssessment {
         let cur = companyID.flatMap { state.company($0) }.map { currency(for: $0) } ?? context.currency(state.homeCountryCode, state)
@@ -120,9 +107,6 @@ public extension GameEngine {
                               requiredPapers: kind == "cons" ? ["Full name", "Proof of income"] : ["Full name", "Company papers (registration or accounts)"])
     }
 
-    // MARK: Early repayment
-
-    /// Pay this month's instalment now. It is taken once: the month-end collection skips a loan whose month is settled.
     @discardableResult
     mutating func payLoanInstalmentNow(loanID: Int) -> Banking.EarlyInstalment {
         var r = Banking.EarlyInstalment.noLoan
@@ -130,18 +114,14 @@ public extension GameEngine {
         return r
     }
 
-    /// What closing the loan today costs: the balance plus the interest accrued since the last month end.
     func loanPayoffQuote(loanID: Int) -> Banking.Payoff? { Banking.payoff(loanID: loanID, state: state, context: context) }
 
-    /// Repay everything owed on the loan today (balance and accrued interest).
     @discardableResult
     mutating func payOffLoan(loanID: Int) -> Bool {
         guard let q = loanPayoffQuote(loanID: loanID) else { return false }
         return repayLoan(id: loanID, amount: q.balance)
     }
 
-    /// The remaining schedule of a running loan from its live balance, today's rate and the months left. The first row is the next instalment
-    /// that is still to be collected (the next month end, or the one after when this month is already settled).
     func loanSchedule(loanID: Int) -> [LoanScheduleRow] {
         guard let l = state.loans.first(where: { $0.id == loanID }), l.balance > 0 else { return [] }
         let inst = Banking.instalment(of: l, state: state, context: context)
@@ -162,8 +142,6 @@ public extension GameEngine {
         }
         return rows
     }
-
-    // MARK: Loan records
 
     func loanRecords(companyID: Int?) -> [LoanRecord] {
         state.loans.filter { $0.kind != "start" || companyID == nil }.filter { companyID == nil || $0.companyID == companyID }.compactMap { l in

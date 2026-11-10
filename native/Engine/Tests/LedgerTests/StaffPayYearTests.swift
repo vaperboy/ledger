@@ -6,8 +6,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// A year of play with the new pay machinery, several seeds: a sales trade with commission and mix plans, and a managed shop with bonus plans, perks
-/// and expense reimbursements. The books balance, wages stay a sensible share of takings, and the bonuses are real but small next to the wage bill.
 final class StaffPayYearTests: XCTestCase {
     private func open(_ trade: String, seed: Int) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -15,7 +13,7 @@ final class StaffPayYearTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 60_000_000) else { throw XCTSkip("no company") }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
-        e.update { s, _, _ in s.rest["ownHrsFixed"] = true }   // these tests are about pay, so the owner's hours stay as set
+        e.update { s, _, _ in s.rest["ownHrsFixed"] = true }
         return (e, id)
     }
 
@@ -33,7 +31,6 @@ final class StaffPayYearTests: XCTestCase {
 
     private func estateYear(seed: Int, plans: Bool) throws -> Year {
         var (e, id) = try open("estate", seed: seed)
-        // A hired manager replaces people who leave, as the standing policy did when this test was written.
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].managerID = 0 } }
         let a = hire(&e, id, role: "estate", terms: plans ? Hiring.Terms(payPlan: "mix", commissionRate: 0.05) : Hiring.Terms())
         _ = hire(&e, id, role: "estate", terms: plans ? Hiring.Terms(payPlan: "com") : Hiring.Terms())
@@ -50,7 +47,6 @@ final class StaffPayYearTests: XCTestCase {
             print("YEAR estate seed \(seed): plans: revenue \(Int(with.rev)) wages \(Int(with.wages)) | plain salaries: revenue \(Int(without.rev)) wages \(Int(without.wages))")
             XCTAssertEqual(with.gaps, 0, "seed \(seed)"); XCTAssertEqual(without.gaps, 0)
             XCTAssertGreaterThan(with.wages, 0)
-            // commission only has no base, so the plan year costs less in fixed pay than three salaries and cannot cost several times more
             XCTAssertLessThan(with.wages, without.wages * 1.5, "seed \(seed): the plans do not blow up the wage bill")
         }
     }
@@ -86,7 +82,6 @@ final class StaffPayYearTests: XCTestCase {
             othWith += with.oth; othWithout += without.oth
             print("YEAR cafe seed \(seed): plans: revenue \(Int(with.rev)) wages \(Int(with.wages)) other \(Int(with.oth)) bonus paid \(with.bonusSeen) | none: revenue \(Int(without.rev)) wages \(Int(without.wages)) other \(Int(without.oth))")
             XCTAssertEqual(with.gaps, 0, "seed \(seed)"); XCTAssertEqual(without.gaps, 0)
-            // lunch and bonuses are real money but small next to the plain wage bill
             XCTAssertLessThan(with.wages, without.wages * 1.5, "seed \(seed)")
             XCTAssertGreaterThanOrEqual(with.wages, without.wages * 0.8, "seed \(seed)")
         }

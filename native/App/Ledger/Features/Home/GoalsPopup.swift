@@ -3,15 +3,12 @@ import GameCore
 import Countries
 import Simulation
 
-/// The goals popup on Home (there is no Goals app): your rank, every goal being tracked (the ladder goal, today's goal and the next career
-/// goals) with how far along it is and its reward, and the ambition. A row closes the popup and goes to where that goal is done.
 struct GoalsPopup: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var daily: PlayerGoals.DailyGoal?
     var close: () -> Void
 
-    /// How far along, in plain words (the exact fraction is not worth a number).
     static func progressWords(_ fraction: Double) -> String {
         switch fraction {
         case ..<0.05: return "Not started"
@@ -67,7 +64,6 @@ struct GoalsPopup: View {
         .accessibilityIdentifier("goals-popup")
     }
 
-    /// Your rank, with how far it is to the next one.
     private var rank: some View {
         let st: Career.RankStatus = engine.careerStatus
         let line: String = st.next.map { "Next: \($0.title). \(st.missing)" } ?? "You are at the top of the ladder."
@@ -82,9 +78,6 @@ struct GoalsPopup: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: Claim
-
-    /// Finished goals whose reward waits: one tap on Claim applies it and pays the cash.
     private var claimSection: some View {
         let cur: Currency? = engine.homeCurrency
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -110,8 +103,6 @@ struct GoalsPopup: View {
             }
         }
     }
-
-    // MARK: Ambition
 
     private var ambition: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -146,7 +137,6 @@ struct GoalsPopup: View {
         }
     }
 
-    /// The daily goal is optional: off means none is shown.
     private var dailySwitch: some View {
         let off: Bool = engine.dailyGoalsOff
         return Button(off ? "Turn the daily goal on" : "Turn the daily goal off") {
@@ -189,7 +179,6 @@ struct GoalsPopup: View {
     }
 }
 
-/// A progress ring: a grey track, a champagne arc for how far, and a tick in the middle once the goal is done (never colour alone).
 struct GoalRing: View {
     var progress: Double
     var done: Bool

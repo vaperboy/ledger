@@ -84,7 +84,6 @@ final class FoodRecipesTests: XCTestCase {
         XCTAssertTrue(page.statusWord.hasPrefix("In stock"))
         let wine = try XCTUnwrap(ItemModels.record(e.state.company(id)!, itemID: "w3-wine"))
         XCTAssertEqual(wine.model, .stk, "wine is bought in")
-        // A hand-added item gets the trade's average recipe.
         _ = e.addSalesItem(companyID: id, name: "Pop-up supper", isService: false)
         e.update { s, d, _ in FoodRecipes.apply(&s, companyID: id, data: d) }
         XCTAssertNotNil(FoodRecipes.card(e.state, companyID: id, itemID: "n1", data: e.data))
@@ -120,7 +119,6 @@ final class FoodRecipesTests: XCTestCase {
         XCTAssertTrue(try JSONDecoder().decode(GameState.self, from: data) == e.state)
     }
 
-    /// Two years of a default-managed company per trade, once with the item records (records refreshed every week) and once without: the books are the same.
     func testTwoYearProbePerTrade() throws {
         for t in Self.all {
             var (a, ida) = try engine(t, weeks: 0)

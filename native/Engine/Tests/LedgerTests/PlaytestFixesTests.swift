@@ -5,7 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// One message per milestone, loan offers that match decisions, and broke only when out of money and companies.
 final class PlaytestFixesTests: XCTestCase {
     func testSeveralNetWorthRungsInOneWeekAreOneMessage() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 11)

@@ -3,7 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The My Vault tab: what the collection is worth as the one figure, then each piece as a row; a row opens Inspect (use, lend, sell).
 struct LuxuryVaultTab: View {
     @EnvironmentObject var store: GameStore
     var onInspect: (Int) -> Void
@@ -36,7 +35,6 @@ struct LuxuryVaultTab: View {
         }
     }
 
-    /// What the collection is worth, what it cost, and what it costs to keep.
     private func summary(_ e: GameEngine, _ pieces: [Luxury.Piece]) -> some View {
         let worth: Double = pieces.reduce(0) { $0 + $1.value }
         let paid: Double = pieces.reduce(0) { $0 + $1.paid }
@@ -79,7 +77,6 @@ struct LuxuryVaultTab: View {
     }
 }
 
-/// Inspect: how the piece was bought, its upkeep, and what can be done with it (use, lend, host).
 struct LuxuryInspectSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -118,7 +115,6 @@ struct LuxuryInspectSheet: View {
         }
     }
 
-    /// Selling is the quiet last line of Inspect, with the price it would fetch.
     private func sellButton(_ e: GameEngine, _ p: Luxury.Piece) -> some View {
         let get: Double? = e.luxurySellQuote(pieceID: p.id)
         return Button(get.map { "Sell for " + store.short($0) } ?? "Not for sale now") { askToSell(e, p) }
@@ -139,7 +135,6 @@ struct LuxuryInspectSheet: View {
         if p.weeklyIncome > 0 { parts.append(store.short(p.weeklyIncome * 52 / 12) + " a month") }
         return parts.joined(separator: " · ")
     }
-
 
     @ViewBuilder private func manage(_ e: GameEngine, _ p: Luxury.Piece) -> some View {
         let uses = Luxury.uses(for: p.item.category)

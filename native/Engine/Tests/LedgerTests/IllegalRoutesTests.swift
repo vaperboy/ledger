@@ -5,9 +5,7 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Illegal routes (warning, hidden heat, audits and their outcomes), dirty tricks, and how the government meets the books.
 final class IllegalRoutesTests: XCTestCase {
-    // MARK: Warning and confirmation
 
     func testARouteNeedsAWarningAndAFreshConfirmation() throws {
         var b = RouteBook()
@@ -45,9 +43,6 @@ final class IllegalRoutesTests: XCTestCase {
         XCTAssertEqual(b.step(companyID: 77, week: 3, base: 10_000, open: true).gain, 0, "a company with no route earns nothing extra")
     }
 
-    // MARK: No exploit: crime does not pay over time
-
-    /// Expected net per week of running a route on a duty cycle, with the audit outcomes charged as the bridge charges them.
     private func meanNet(_ route: IllegalRoute, on: Int, off: Int) throws -> Double {
         let base = 1_000.0
         var total = 0.0
@@ -119,8 +114,6 @@ final class IllegalRoutesTests: XCTestCase {
         XCTAssertEqual(b.risk(5)?.gains.reduce(0) { $0 + $1.amount }, 0)
     }
 
-    // MARK: Dirty tricks are capped
-
     func testDirtyTricksAreCapped() throws {
         var b = RouteBook()
         func use(_ k: DirtyTrick, week: Int, target: String, confirmed: Bool = true) throws -> TrickOutcome {
@@ -138,8 +131,6 @@ final class IllegalRoutesTests: XCTestCase {
         XCTAssertThrowsError(try use(.smear, week: 5, target: "v"), "four in twelve weeks")
         XCTAssertNoThrow(try use(.smear, week: 20, target: "v"), "the window moves on")
     }
-
-    // MARK: The books
 
     private func openCompany(_ e: inout GameEngine) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
@@ -263,8 +254,6 @@ final class IllegalRoutesTests: XCTestCase {
         }
     }
 
-    // MARK: Audit outcomes
-
     private func audited(level: Int, _ body: (GameState, GovernmentWorld, Double, Double, Int) -> Void) throws {
         var e = try engine()
         let id = try openCompany(&e)
@@ -379,7 +368,6 @@ final class IllegalRoutesTests: XCTestCase {
 }
 
 extension GameEngine {
-    /// `update` for a body that may throw: the error is rethrown once the state is written back.
     mutating func updateThrowing(_ body: (inout GameState, GameData, FinanceContext) throws -> Void) throws {
         var failure: Error?
         update { s, d, c in

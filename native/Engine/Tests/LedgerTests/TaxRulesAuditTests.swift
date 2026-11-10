@@ -7,8 +7,6 @@ import Businesses
 @testable import Investments
 @testable import Simulation
 
-/// Capital gains and savings interest rates, corporate tax arrears, loss carry-forward limits, monotonic income brackets,
-/// statutory sick pay and the scaled broker minimums.
 final class TaxRulesAuditTests: XCTestCase {
     private func book() throws -> CountryBook { try CountryBook.bundled() }
 
@@ -29,7 +27,7 @@ final class TaxRulesAuditTests: XCTestCase {
     func testCapitalGainsAndInterestHaveTheirOwnRates() throws {
         let b = try book()
         func c(_ code: String) -> Country { b.countries.first { $0.code == code }! }
-        XCTAssertEqual(c("CH").capitalGainsTax, 0)               // no tax on private gains
+        XCTAssertEqual(c("CH").capitalGainsTax, 0)
         XCTAssertEqual(c("SG").capitalGainsTax, 0)
         XCTAssertEqual(c("DE").capitalGainsTax, 0.26375, accuracy: 1e-12)
         XCTAssertEqual(c("DE").savingsInterestTax, 0.26375, accuracy: 1e-12)
@@ -40,14 +38,13 @@ final class TaxRulesAuditTests: XCTestCase {
         XCTAssertEqual(c("IE").capitalGainsTax, 0.33, accuracy: 1e-12)
         XCTAssertEqual(c("NO").savingsInterestTax, 0.22, accuracy: 1e-12)
         XCTAssertNotEqual(c("UK").capitalGainsTax, c("UK").dividendTax)
-        // The reader uses them, and only them, at the year end.
         for code in ["CH", "UK", "US", "DE", "KR"] {
             var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 5)
             e.update { s, data, ctx in
                 let k = data.countries.resolve(code, orHome: code)
                 s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
                 s.tax.gains = 2_000_000; s.tax.interest = 100_000
-                Ledger.move(&s, .me, 100_000_000, why: "Test funds")   // enough to pay the whole bill without a payment decision
+                Ledger.move(&s, .me, 100_000_000, why: "Test funds")
                 let before = s.cash
                 PersonalFinance.yearEnd(&s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
                 XCTAssertEqual(before - (s.cash), 2_000_000 * k.capitalGainsTax + 100_000 * k.savingsInterestTax, accuracy: 3, code)
@@ -66,7 +63,6 @@ final class TaxRulesAuditTests: XCTestCase {
                 s.companies[i].payables["tax"] = 1000
                 let cash0 = s.companies[i].cash
                 MonthEnd.closeYear(&s, data: data, context: ctx)
-                // Tax is paid monthly, so no country gives a lag after the year end: what is still owed is paid at once.
                 XCTAssertEqual(s.companies[i].taxDueWeek, s.week, code)
                 XCTAssertEqual(s.companies[i].payables["tax"] ?? 0, 0, accuracy: 0.5, code)
                 XCTAssertFalse(s.companies[i].taxDue, code)
@@ -88,7 +84,6 @@ final class TaxRulesAuditTests: XCTestCase {
         XCTAssertEqual(c("JP").lossYears, 10); XCTAssertEqual(c("MX").lossYears, 10); XCTAssertEqual(c("CA").lossYears, 20)
         XCTAssertEqual(no.lossYears, 0)
 
-        // End to end in the US: 100M of old losses, 20M profit: only 80% of the profit is covered, tax on the other 20%.
         var e = try GameEngine.newGame(countryCode: "US", playerName: "T", seed: 4)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { return XCTFail("cafe") }
@@ -106,7 +101,6 @@ final class TaxRulesAuditTests: XCTestCase {
             XCTAssertEqual(s.companies[i].lossCarryForward, 100_000_000 - 16_000_000, accuracy: 1)
         }
 
-        // Expiry: Japan's losses last 10 years. A lot from year 1 is gone when year 10 closes; a lot from year 5 is not.
         let jp = c("JP")
         var co = e.state.companies[e.state.companyIndex(id)!]
         co.lossCarryAtYearStart = 300; co.lossCarryForward = 300; co.yearProfitSoFar = 0
@@ -116,13 +110,11 @@ final class TaxRulesAuditTests: XCTestCase {
         XCTAssertEqual(early.lossCarryForward, 300, accuracy: 1e-9, "the year-1 loss can still be used in year 11")
         MonthEnd.rollLossLots(&co, country: jp, closingYear: 11)
         XCTAssertEqual(co.lossCarryForward, 200, accuracy: 1e-9, "the year-1 loss lapsed after ten years")
-        // No limit in Norway: nothing lapses
         var co2 = e.state.companies[e.state.companyIndex(id)!]
         co2.lossCarryAtYearStart = 300; co2.lossCarryForward = 300; co2.yearProfitSoFar = 0
         co2.set("lossLots", .array([.array([.number(1), .number(300)])]))
         MonthEnd.rollLossLots(&co2, country: no, closingYear: 40)
         XCTAssertEqual(co2.lossCarryForward, 300, accuracy: 1e-9)
-        // A loss this year is added as a new lot; profit uses the oldest lot first
         var co3 = e.state.companies[e.state.companyIndex(id)!]
         co3.lossCarryAtYearStart = 300; co3.yearProfitSoFar = -50; co3.lossCarryForward = 350
         co3.set("lossLots", .array([.array([.number(1), .number(300)])]))
@@ -131,11 +123,9 @@ final class TaxRulesAuditTests: XCTestCase {
         XCTAssertEqual(co3.value("lossLots").array.count, 2)
     }
 
-    // MARK: Sick pay
-
     func testStatutorySickPayByCountry() throws {
         func rules(_ code: String) -> LabourRules { LabourRules(code: code) }
-        let w = 10_000.0   // a weekly wage far above every flat cap, in the same units as the rate 1
+        let w = 10_000.0
         XCTAssertEqual(rules("DE").employerSickPay(weeklyWage: w), w, accuracy: 1e-9, "DE: six weeks at 100% by the employer")
         XCTAssertEqual(rules("US").employerSickPay(weeklyWage: w), 0, "US: no federal sick pay")
         XCTAssertEqual(rules("JP").employerSickPay(weeklyWage: w), 0, "JP: health insurance, not the employer")
@@ -180,8 +170,6 @@ final class TaxRulesAuditTests: XCTestCase {
             }
         }
     }
-
-    // MARK: Broker minimums
 
     func testBrokerMinimumsScaleWithThePriceLevel() throws {
         let b = try book()

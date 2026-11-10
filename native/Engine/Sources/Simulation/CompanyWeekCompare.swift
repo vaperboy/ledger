@@ -2,24 +2,17 @@ import Foundation
 import GameCore
 import Finance
 
-/// A company's main figures for one stretch of time.
 public struct CompanyWeekFigures: Equatable, Sendable {
     public var sales: Double
     public var wages: Double
-    /// Every cost, wages included.
     public var costs: Double
     public var profit: Double
 }
 
-/// What a company page needs to show the main figures moving: the week running now (it grows as each day plays), and the last closed
-/// week beside the one before it.
 public struct CompanyWeekCompare: Equatable, Sendable {
-    /// The week so far, from the live books.
     public var soFar: CompanyWeekFigures
-    /// The last closed week and its title ("Week 31"); nil before the first one closes.
     public var last: CompanyWeekFigures?
     public var lastTitle: String?
-    /// The week before that one.
     public var before: CompanyWeekFigures?
 }
 

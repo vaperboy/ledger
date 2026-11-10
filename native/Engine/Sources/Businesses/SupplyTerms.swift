@@ -3,38 +3,14 @@ import GameCore
 import Countries
 import Finance
 
-/// Payment terms between a buyer and its suppliers, and what lateness costs. One module for outside suppliers, your own companies
-/// supplying each other, and your business customers paying you. All behaviour comes from `Resources/supplier_terms.json`; a country
-/// can set its own late-payment rule under `commerce.latePayment` in its data (`policyPlus` margin over the policy rate, or a fixed
-/// yearly rate); a country without one uses the game's default monthly rate.
-///
-/// The ways a purchase can be paid (the buyer chooses, within what the supplier offers):
-///  - outside goods supplier: cash on delivery (a small cash discount), month end (how bills have always worked: the default), 30 or 60
-///    days (the supplier charges a little for the credit). What a supplier offers depends on how well you know them (`minRelationship`).
-///  - your own company supplying another (`IntercompanySupply`): settled weekly (the default, as before), or on 14 / 30 days. On days a real
-///    invoice exists: the buyer owes it (`payables["inv"]`), the supplier holds the receivable, and the cash moves between the two when due.
-///  - a business customer of yours (`KeyAccounts`) pays on the trade's own terms and may pay late.
-///
-/// An invoice is paid in full on its due week if the buyer's account (with its overdraft room) can cover it, oldest first. If not it is late:
-/// every week it carries interest (booked on both sides when both are your companies); the first week late an outside supplier cools towards
-/// you (the same relationship values as the discount), takes back a negotiated deal, and repeated lateness makes suppliers tighten (cash only)
-/// and then stop delivering stock (the same `supCut` levels and messages as missed monthly bills). Nothing is capped: a company that always
-/// pays on time never meets any of it.
-///
-/// Saved: invoices in `rest["sinv"]` (only while one exists), a company's agreed terms in `pterm` (only when set), its late record in `lt` and
-/// a cut-off from invoices in `supCutI`.
 public enum SupplyTerms {
     public struct Term: Equatable, Identifiable, Sendable {
         public var id: String
         public var name: String
-        /// Days until it is due; 0 = on delivery; negative = at month end (the usual monthly bill).
         public var days: Int
-        /// Added to the price of what is bought (cash discount negative, credit charge positive).
         public var priceEffect: Double
-        /// The relationship score from which a supplier offers it.
         public var minRelationship: Double
         public var isMonthEnd: Bool { days < 0 }
-        /// Whole weeks until due.
         public var weeks: Int { days <= 0 ? 0 : (days + 6) / 7 }
     }
 
@@ -87,18 +63,13 @@ public enum SupplyTerms {
         return t
     }()
 
-    /// The extra discounts a player can ask for, as shares.
     public static var asks: [Double] { tables.asks }
     public static var vendorTerms: [Term] { tables.vendor }
     public static var groupTerms: [Term] { tables.group }
     public static func vendorTerm(_ id: String) -> Term? { tables.vendor.first { $0.id == id } }
     public static func groupTerm(_ id: String) -> Term? { tables.group.first { $0.id == id } }
-    /// The terms a supplier offers someone it knows this well.
     public static func offered(relationship r: Double) -> [Term] { tables.vendor.filter { r >= $0.minRelationship } }
 
-    // MARK: Late interest
-
-    /// The yearly interest on an overdue commercial debt in this country: its own rule when its data has one, else the game's default.
     public static func lateAnnualRate(country: Country, policyRate: Double) -> Double {
         let rule = country.pack["commerce"]["latePayment"]
         if !rule["annual"].isNull { return max(0, rule["annual"].double) }
@@ -107,22 +78,17 @@ public enum SupplyTerms {
     }
     public static func lateMonthlyRate(country: Country, policyRate: Double) -> Double { lateAnnualRate(country: country, policyRate: policyRate) / 12 }
 
-    // MARK: Terms a company has agreed
-
-    /// The terms id agreed with the goods supplier (nil = month end, as always).
     public static func agreedGoodsTerm(_ co: Company) -> String? {
         let v = co.value("pterm")["goods"]
         return v.isNull ? nil : v.string
     }
 
-    /// The terms that apply now: agreed, and still offered by the supplier at today's relationship.
     public static func goodsTerm(_ s: GameState, _ co: Company, data: GameData) -> Term? {
         guard let id = agreedGoodsTerm(co), let t = vendorTerm(id), !t.isMonthEnd else { return nil }
         guard let v = Suppliers.goodsVendor(s, company: co, data: data), v.relationship >= t.minRelationship else { return nil }
         return t
     }
 
-    /// Agree terms with the goods supplier. nil or "monthly" go back to the usual monthly bill.
     @discardableResult
     public static func setGoodsTerm(_ s: inout GameState, companyID: Int, term id: String?, data: GameData) -> Bool {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return false }
@@ -138,35 +104,25 @@ public enum SupplyTerms {
         return true
     }
 
-    // MARK: Short-paying your own companies
-
-    /// How many weeks the longest overdue invoice from this own supplier to this buyer has been late (0 = none).
     public static func ownLateWeeks(_ s: GameState, buyer: Int, supplier: Int) -> Int {
         raw(s).filter { $0["b"].int == buyer && $0["p"].int == supplier }.map { $0["l"].int }.max() ?? 0
     }
-    /// An own supplier that has been short-paid this long is flagged and keeps back part of its capacity.
     public static func ownSupplierStrained(_ s: GameState, buyer: Int, supplier: Int) -> Bool {
         ownLateWeeks(s, buyer: buyer, supplier: supplier) >= tables.ownFlagAfter
     }
-    /// The share of what it could carry that a short-paid own supplier still delivers.
     public static var ownStrainFactor: Double { tables.ownCapacityFactor }
 
-    // MARK: Repair terms (the same terms as goods, with the repair supplier)
-
-    /// The terms id agreed with the repair supplier (nil = paid as the upkeep falls due, as always).
     public static func agreedRepairTerm(_ co: Company) -> String? {
         let v = co.value("pterm")["fix"]
         return v.isNull ? nil : v.string
     }
 
-    /// The repair terms that apply now: agreed, and still offered by the chosen repair supplier at today's relationship.
     public static func repairTerm(_ s: GameState, _ co: Company, data: GameData) -> Term? {
         guard let id = agreedRepairTerm(co), let t = vendorTerm(id), !t.isMonthEnd else { return nil }
         guard let v = Suppliers.repairVendor(s, company: co, data: data), v.relationship >= t.minRelationship else { return nil }
         return t
     }
 
-    /// Agree terms with the repair supplier. nil or "monthly" go back to paying as the bill comes.
     @discardableResult
     public static func setRepairTerm(_ s: inout GameState, companyID: Int, term id: String?, data: GameData) -> Bool {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return false }
@@ -182,8 +138,6 @@ public enum SupplyTerms {
         return true
     }
 
-    /// Pay a repair or upkeep bill (`amount` is after the supplier's discount) on the agreed terms: at once with the cash discount, or as an
-    /// invoice that falls due later. The cost is booked now in either case. Returns false if it had to be paid now and the cash was not there.
     @discardableResult
     static func payRepairs(_ s: inout GameState, companyIndex i: Int, amount: Double, label: String?, data: GameData) -> Bool {
         guard amount > 0 else { return true }
@@ -194,7 +148,7 @@ public enum SupplyTerms {
             return true
         }
         let price = amount * (1 + t.priceEffect)
-        Vat.input(&s, companyIndex: i, net: price, data: data)   // repairs are standard-rated: the VAT is settled with the supplier when the work is done
+        Vat.input(&s, companyIndex: i, net: price, data: data)
         if t.days == 0 {
             Payments.companyPays(&s, companyID: co.id, amount: price, category: "oth", label: label)
             return true
@@ -205,12 +159,9 @@ public enum SupplyTerms {
         return true
     }
 
-    // MARK: Invoices
-
     public struct Invoice: Equatable, Identifiable, Sendable {
         public var id: Int
         public var buyerID: Int
-        /// The supplying company of yours, or 0 for an outside supplier.
         public var providerID: Int
         public var vendorID: String
         public var providerName: String
@@ -219,7 +170,6 @@ public enum SupplyTerms {
         public var issuedWeek: Int
         public var dueWeek: Int
         public var lateWeeks: Int
-        /// The amount first invoiced; `amount` has grown by the late interest since.
         public var face: Double
         init(_ j: JSONValue) {
             id = j["id"].int; buyerID = j["b"].int; providerID = j["p"].int; vendorID = j["v"].string; providerName = j["n"].string; kind = j["k"].string
@@ -231,15 +181,11 @@ public enum SupplyTerms {
     static func raw(_ s: GameState) -> [JSONValue] { s.rest["sinv"]?.array ?? [] }
     static func save(_ s: inout GameState, _ list: [JSONValue]) { if list.isEmpty { s.rest.removeValue(forKey: "sinv") } else { s.rest["sinv"] = .array(list) } }
 
-    /// The open invoices (all, or one buyer's), oldest due first.
     public static func invoices(_ s: GameState, buyer: Int? = nil) -> [Invoice] {
         raw(s).map { Invoice($0) }.filter { buyer == nil || $0.buyerID == buyer }.sorted { $0.dueWeek != $1.dueWeek ? $0.dueWeek < $1.dueWeek : $0.id < $1.id }
     }
-    /// What a company owes on invoices (the same figure as its `payables["inv"]`).
     public static func owed(_ s: GameState, buyer: Int) -> Double { invoices(s, buyer: buyer).reduce(0) { $0 + $1.amount } }
 
-    /// A buyer owes `amount` to a supplier, due after `weeks` weeks. A company of yours as supplier books the revenue and holds the receivable.
-    /// The buyer's cost is booked by the caller (it is the same cost whenever it is paid).
     @discardableResult
     static func issue(_ s: inout GameState, buyer: Int, provider: Int, vendorID: String, name: String, kind: String, amount: Double, weeks: Int) -> Int? {
         let a = jsRound(amount)
@@ -260,7 +206,6 @@ public enum SupplyTerms {
         return id
     }
 
-    /// The buyer's purchase of goods from an outside supplier on terms: pay now (cash on delivery) or owe it.
     static func buyGoods(_ s: inout GameState, companyIndex i: Int, amount: Double, term t: Term, data: GameData) {
         guard amount > 0 else { return }
         let co = s.companies[i]
@@ -272,17 +217,13 @@ public enum SupplyTerms {
         issue(&s, buyer: co.id, provider: 0, vendorID: v?.id ?? "", name: v?.name ?? "Supplier", kind: "goods", amount: amount, weeks: t.weeks)
     }
 
-    // MARK: Lateness record
-
     static func lateWeeks(_ co: Company) -> [Int] { co.value("lt").array.map { $0.int } }
 
-    /// The cut-off level that invoices alone put on this company now.
     public static func invoiceCutLevel(_ co: Company, week: Int) -> Int {
         let c = co.value("supCutI")
         return c.isNull || c["u"].int <= week ? 0 : c["l"].int
     }
 
-    /// Show the stricter of the bill cut-off and the invoice cut-off; one key (`supCut`) is what stock buying reads.
     static func refreshCut(_ s: inout GameState, _ i: Int) {
         let co = s.companies[i]
         let inv = invoiceCutLevel(co, week: s.week)
@@ -291,7 +232,6 @@ public enum SupplyTerms {
         if level != co.int("supCut") { s.companies[i].set("supCut", level) }
     }
 
-    /// An outside supplier's invoice went late for the first time.
     static func lateEvent(_ s: inout GameState, _ inv: Invoice, buyerIndex bi: Int, data: GameData) {
         let t = tables
         let co = s.companies[bi]
@@ -318,9 +258,6 @@ public enum SupplyTerms {
         s.addDeskNotice("finance", company: co, data: data, title: "Late payment: \(inv.providerName)", body: "An invoice to \(inv.providerName) was not paid when due because the account of \(co.name) could not cover it. It now carries late interest." + detail, sev: 2)
     }
 
-    // MARK: Weekly
-
-    /// Once a week after the companies' own weeks: terms that the supplier no longer offers lapse, due invoices are paid or go late.
     static func weekly(_ s: inout GameState, data: GameData, context: FinanceContext) {
         lapseTerms(&s, data: data)
         var list = raw(s)
@@ -352,7 +289,6 @@ public enum SupplyTerms {
                     if j["l"].int == 0 { lateEvent(&s, Invoice(j), buyerIndex: bi, data: data) }
                     j["l"] = .number(Double(j["l"].int + 1))
                     if pid != 0, supplierLive, j["l"].int == tables.ownFlagAfter, let sp = s.company(pid) {
-                        // No cut-off between your own companies, but the group is told: the supplier has been waiting for its money.
                         s.addDeskNotice("finance", company: co, data: data, title: "\(co.name) is short-paying \(sp.name)",
                                      body: "\(co.name) has owed \(sp.name), another company of yours, for \(tables.ownFlagAfter) weeks. \(sp.name) now keeps back part of its capacity for the group until it is paid. Move cash between the companies or settle weekly.", sev: 2)
                     }
@@ -370,7 +306,6 @@ public enum SupplyTerms {
                 }
             }
             list = list.indices.filter { !gone.contains($0) }.map { list[$0] }
-            // closeOut/lateEvent may have added invoices (they do not); re-read to be safe about ones made meanwhile
             save(&s, list)
         }
         for i in s.companies.indices where s.companies[i].status.isLive && (!s.companies[i].value("supCutI").isNull) {
@@ -382,15 +317,12 @@ public enum SupplyTerms {
         }
     }
 
-    /// Pay one open invoice in full: the cash moves from the buyer to the supplier (if it is still a live company) and the invoice ends.
-    /// The one payment path, used on the due date (`weekly`) and when the owner pays early (`GameEngine.payObligationNow`).
     static func payNow(_ s: inout GameState, _ j: JSONValue, buyerIndex bi: Int) {
         let amount = j["a"].double, bid = j["b"].int, pid = j["p"].int
         let supplierLive = pid != 0 && (s.company(pid)?.status.isLive ?? false)
         AccountingLedger.note(category: "cogs", label: "Supplier invoice: \(j["n"].string)", ref: j["v"].string.isEmpty ? "" : "supplier:\(j["v"].string)")
         Ledger.moveRaw(&s, .company(bid), -amount)
         s.companies[bi].addTransaction(week: s.week, amount: -jsRound(amount), label: "Invoice: \(j["n"].string)")
-        // The paid invoice stays on record (Accounting > Invoices > Paid).
         var paidList = s.companies[bi].value("sinvPaid").array
         paidList.append(.object(["id": j["id"], "n": j["n"], "v": j["v"], "a": .number(amount), "f": j["f"].isNull ? .number(amount) : j["f"], "w0": j["w0"], "d": j["d"], "pw": .number(Double(s.week))]))
         if paidList.count > 200 { paidList.removeFirst(paidList.count - 200) }
@@ -403,7 +335,6 @@ public enum SupplyTerms {
         closeOut(&s, j, paid: true)
     }
 
-    /// Pay early the open invoices of one buyer to one supplier that fall due in the given week. Returns what was paid (0 if none).
     public static func payEarly(_ s: inout GameState, buyer: Int, providerName: String, dueWeek: Int) -> Double {
         guard let bi = s.companyIndex(buyer) else { return 0 }
         var list = raw(s), paid = 0.0
@@ -419,7 +350,6 @@ public enum SupplyTerms {
         return paid
     }
 
-    /// An invoice ends (paid, or its buyer is gone): the buyer's payable and the supplier's receivable go with it.
     static func closeOut(_ s: inout GameState, _ j: JSONValue, paid: Bool = false) {
         let a = j["a"].double
         if let bi = s.companyIndex(j["b"].int) {
@@ -433,7 +363,6 @@ public enum SupplyTerms {
         }
     }
 
-    /// Terms that the supplier no longer offers (the relationship fell) lapse; purchases go back to the monthly bill.
     static func lapseTerms(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status.isLive && !s.companies[i].value("pterm")["fix"].isNull {
             let co = s.companies[i]
@@ -457,9 +386,6 @@ public enum SupplyTerms {
         }
     }
 
-    // MARK: Missed monthly bills
-
-    /// Rent and supplier bills could not be paid this month: the goods and repair suppliers think less of you (the relationship values the discounts use).
     public static func billsMissed(_ s: inout GameState, companyIndex i: Int, data: GameData) {
         let co = s.companies[i]
         for v in [Suppliers.goodsVendor(s, company: co, data: data), Suppliers.repairVendor(s, company: co, data: data)].compactMap({ $0 }) {
@@ -467,9 +393,6 @@ public enum SupplyTerms {
         }
     }
 
-    // MARK: Business customers paying
-
-    /// Whether and how late a business customer pays one invoice: from how well they know you and the state of the economy. Same draw every replay.
     static func customerLateness(_ s: GameState, companyID: Int, accountID: Int, relationship r: Double) -> Int {
         let t = tables
         var h = HashedRandom("\(s.seed):cpay:\(s.week):\(companyID):\(accountID)")
@@ -479,8 +402,6 @@ public enum SupplyTerms {
         return t.customerLate.lowerBound + Int(h.next() * Double(t.customerLate.count))
     }
 
-    /// Invoices of business customers that were paid this week. Late ones earn the late interest the country allows and are remembered;
-    /// a customer that keeps paying late is reported.
     static func customersPaid(_ s: inout GameState, companyIndex i: Int, paid: [(account: Int, late: Int, amount: Double)], country: Country) {
         guard !paid.isEmpty else { return }
         let rate = lateAnnualRate(country: country, policyRate: s.economy.policyRate) / 52

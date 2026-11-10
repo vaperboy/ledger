@@ -3,16 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// The weekly model of a founded startup. A startup is a REAL company (trade "startup", started with `Startups.found`): its people are hired
-/// and paid through the ordinary hiring and payroll, its cash, rent, tax and shares are the company's, its marketing campaigns are the
-/// ordinary campaigns, and it is sold like any company. This file only supplies what makes it a startup: the product.
-///
-/// Product record (`rest["founded"][n]["sw16"]`, found by `cid` = the company id; the name is kept because other places read it):
-/// { cat, prod, model, selfH, prog (0...1), phase: build | beta | ready | live, cust, revW, int, use, deals, price }.
-///  - build / beta: developers on the payroll build it. Speed is the sum of each developer's output (their real skill), plus your own hours.
-///  - ready: finished; the owner decides the launch (price, marketing, support) - nothing is sold before `Startups.launch`.
-///  - live: new customers follow awareness (marketing), quality, price against the sector's reference price and the support capacity; customers
-///    churn with quality and overload; revenue is customers x price; hosting and payment costs follow revenue. Wages, rent and tax are the company's.
 public enum StartupModel {
     public static let tradeID = "startup"
 
@@ -22,7 +12,6 @@ public enum StartupModel {
         (s.rest["founded"]?.array ?? []).firstIndex { $0["cid"].int == companyID }
     }
 
-    /// People who build the product: developers (and designers at half output), by their real skill, 0.5 ... 1.5 each.
     public static func developerOutput(_ s: GameState, _ co: Company) -> Double {
         co.staff.filter { $0.noticeWeeks <= 0 }.reduce(0.0) { acc, m in
             let part = m.partTimeShare
@@ -34,7 +23,6 @@ public enum StartupModel {
     }
     public static func developers(_ co: Company) -> Int { co.staff.filter { $0.role == "dev" }.count }
 
-    /// Customers the team can look after: IT/support staff serve many, developers a few, your own hours some.
     public static func supportCapacity(_ s: GameState, _ co: Company, selfHours: Double) -> Double {
         let staff = co.staff.filter { $0.noticeWeeks <= 0 }
         let it = Double(staff.filter { $0.role == "ittech" || $0.role == "recept" }.count) * 150
@@ -42,7 +30,6 @@ public enum StartupModel {
         return 25 + it + dev + selfHours * 1.5
     }
 
-    /// 0...1 quality of the product: the founder's idea blended with the team's skill.
     public static func quality(_ s: GameState, _ co: Company, base q0: Double) -> Double {
         let devs = co.staff.filter { $0.role == "dev" }
         guard !devs.isEmpty else { return clamp(q0 * 0.8, 0.05, 0.95) }
@@ -50,7 +37,6 @@ public enum StartupModel {
         return clamp(q0 * 0.55 + avg * 0.45, 0.05, 0.95)
     }
 
-    /// The expected (no luck) funnel for a price and a marketing level: what the launch screen shows before anything is decided.
     public struct Funnel: Equatable, Sendable {
         public var newCustomersWeekly: Double
         public var capacity: Double
@@ -66,7 +52,6 @@ public enum StartupModel {
         return Funnel(newCustomersWeekly: n, capacity: cap, weeklyRevenueAt: one ? n * price : (customers + n) * price * 12 / 52)
     }
 
-    /// The company's week. Called by `CompanyWeek` (through `SpecialFamilies`) instead of the demand model.
     static func context(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) -> CompanyWeek.WeekContext {
         let empty = CompanyWeek.WeekContext(units: 0, rev: 0, cogs: 0, D: 0, cap: 0, util: 0, price: 1, paidDuringWeek: 0)
         let co = s.companies[i]
@@ -108,7 +93,6 @@ public enum StartupModel {
             rev = one ? nc * price : cust * price * 12 / 52 * (model == "both" ? 1.15 : 1)
             cogs = rev * bd.costOfSales
         } else if phase == "beta" || phase == "build" { cust = max(cust, phase == "beta" ? 2 + (prog * 8).rounded(.down) : 0) }
-        // Your other companies that use the product pay its internal price.
         for idv in w["use"].array {
             guard let ci = s.companyIndex(idv.int), s.companies[ci].status == .open, ["beta", "live"].contains(phase) else { continue }
             let fee = jsRound(cur.scaledPrice(d.arpu) * w["int"].double / 100 * 12 / 52)
@@ -130,8 +114,6 @@ public enum StartupModel {
         return CompanyWeek.WeekContext(units: nc, rev: rev, cogs: cogs, D: nc, cap: cap, util: util, price: price, paidDuringWeek: 0)
     }
 
-    /// What an investor would pay for the company today (before the round). Pre-revenue: what was put in, rising as the product nears launch;
-    /// with sales: a multiple of the yearly run rate, higher for a product customers like. Never below the company's net assets.
     public static func value(_ co: Company, state s: GameState, net: Double) -> Double {
         guard let k = recordIndex(s, companyID: co.id), let f = s.rest["founded"]?.array[k] else { return max(0, net) }
         let w = f["sw16"]

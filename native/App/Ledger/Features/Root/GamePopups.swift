@@ -4,11 +4,6 @@ import Countries
 import Events
 import Simulation
 
-/// What the player must read or decide is a popup on the main screen: the notice queue (a refusal or a serious problem), the outcome of
-/// an answered decision, a top-priority decision, the daily report, the week, month and year reports and the rewards. Plain information
-/// goes to its own page, never to a popup or banner. This view only REGISTERS the popups with the app's popup host (see `PopupHost`, `PopupPriority`):
-/// the host draws them, one at a time, in the order confirm, decision, alert (error, red alert, notice), report and daily, reward and
-/// feature unlock, panel.
 struct PopupLayer: View {
     @EnvironmentObject var store: GameStore
 
@@ -43,8 +38,6 @@ struct PopupLayer: View {
             .groupReviewPopup(store)
     }
 
-    /// The announcement of a newly opened feature: an announcement like a reward (not a panel the player opened), shown only when
-    /// nothing else is waiting; closing it counts as Skip.
     private var unlockRegistration: HostedPopupModifier<AnyView> {
         let ready: UnlockPrompt? = store.unlockReady
         let s: GameStore = store
@@ -58,7 +51,6 @@ struct PopupLayer: View {
     }
 }
 
-/// An error told in the same in-game popup as every question, not in an iOS alert.
 struct ErrorPopup: View {
     var text: String
     var onClose: () -> Void
@@ -73,7 +65,6 @@ struct ErrorPopup: View {
     }
 }
 
-/// One notice from `GameStore.tell` / `show`: what happened, and a single OK.
 struct NoticePopup: View {
     @EnvironmentObject var store: GameStore
     var notice: Toast
@@ -87,7 +78,6 @@ struct NoticePopup: View {
         if notice.style == "luxury" { luxury } else if notice.style == "recap" { recap } else { plain }
     }
 
-    /// The card shown on coming back: what changed while the player was away, one line each.
     private var recap: some View {
         GamePopup(title: notice.title, showsClose: false, category: .compact, tone: .info, icon: "clock", onClose: { store.dismissNotice() }) {
             PopupBody {
@@ -99,7 +89,6 @@ struct NoticePopup: View {
         }
     }
 
-    /// A high-value purchase: a gold-edged card whose edge draws round while it fades in (variant: reward).
     private var luxury: some View {
         GamePopup(title: "Acquired", showsClose: false, variant: .reward, category: .compact, tone: .prestige, icon: "crown", onClose: { store.dismissNotice() }) {
             PopupBody {
@@ -126,13 +115,10 @@ struct NoticePopup: View {
     }
 }
 
-/// The one small popup after a decision was answered or an action confirmed: what was chosen and what came of it, one OK. Fed by
-/// `GameStore.outcome(chosen:result:)`; queued, so only one shows at a time.
 struct OutcomePopup: View {
     @EnvironmentObject var store: GameStore
     var note: OutcomeNote
 
-    /// "Done: X" already says what was chosen, so the chosen line is left out then.
     private var showsChoice: Bool { note.result != "Done: " + note.chosen }
     private var lines: [String] { note.result.split(separator: "\n").map { String($0) } }
 
@@ -149,8 +135,6 @@ struct OutcomePopup: View {
     }
 }
 
-/// A decision from Home's Needs you, answered where the player is: the message, every option with what it does, and the same
-/// "Are you sure" rule as the Inbox. The outcome is one small popup after it.
 struct DecisionPopup: View {
     @EnvironmentObject var store: GameStore
     var messageID: Int
@@ -196,14 +180,11 @@ struct DecisionPopup: View {
         }
     }
 
-    /// The same rule as the Inbox, shared with Home's inline answers (`DecisionAnswering`).
     private func choose(_ e: GameEngine, _ m: Message, _ index: Int) {
         DecisionAnswering.choose(store, e, m, index, ask: { (a: PendingAction) in pending = a }, done: { store.decisionPopup = nil })
     }
 }
 
-/// Answers an open decision from anywhere (the popup, Home's card): a routine answer goes at once; an irreversible one, or a spend above
-/// the player's size, is asked first. The outcome is the one outcome popup (`store.outcome`).
 enum DecisionAnswering {
     @MainActor static func choose(_ store: GameStore, _ e: GameEngine, _ m: Message, _ index: Int,
                                   ask: @escaping (PendingAction) -> Void, done: @escaping () -> Void) {
@@ -242,8 +223,6 @@ enum DecisionAnswering {
     }
 }
 
-/// A company about to be force-sold: a red alert in the shared popup frame (variant: alert), drawn with the alert token. Tapping
-/// outside does nothing; the player has to read it and press Continue.
 struct RedAlertPopup: View {
     @EnvironmentObject var store: GameStore
     var message: Message

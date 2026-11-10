@@ -9,17 +9,14 @@ private func order(_ id: Int, _ trader: String, _ side: ExchangeSide, _ shares: 
     ExchangeOrder(id: id, instrument: "x", trader: trader, side: side, shares: shares, limit: limit, seq: seq ?? id)
 }
 
-/// The closing auction and the exchange's price, position, listing and blackout rules.
 final class ExchangeRulesTests: XCTestCase {
     func testTheAuctionTradesTheMostSharesAtOnePrice() {
         let r = ExchangeRules.clear([order(1, "a", .buy, 100, 11), order(2, "b", .buy, 100, 10), order(3, "c", .sell, 150, 9.5), order(4, "d", .sell, 100, 10.5)],
                                     reference: 10, low: 8, high: 12)
-        // At 10: buyers 200, sellers 150 -> 150 trade. At 10.5: buyers 100, sellers 250 -> 100. At 9.5: buyers 200, sellers 150 -> 150 (same, more surplus on the buy side).
         XCTAssertEqual(r.volume, 150)
         XCTAssertEqual(r.price, 10)
         XCTAssertEqual(r.fills.reduce(0) { $0 + $1.shares }, 150)
         XCTAssertTrue(r.fills.allSatisfy { $0.price == 10 })
-        // The highest bidder fills first.
         XCTAssertEqual(r.fills.first?.buyOrder, 1)
     }
 
@@ -36,7 +33,6 @@ final class ExchangeRulesTests: XCTestCase {
 
     func testOrdersOutsideTheDayBoundsDoNotSetThePrice() {
         let r = ExchangeRules.clear([order(1, "a", .buy, 100, 20), order(2, "b", .sell, 100, 5)], reference: 10, low: 9, high: 11)
-        // Both limits are beyond the bounds, so only the reference is a candidate, and both still trade there.
         XCTAssertEqual(r.price, 10)
         XCTAssertEqual(r.volume, 100)
     }
@@ -65,7 +61,6 @@ final class ExchangeRulesTests: XCTestCase {
     func testCloseBoundsFollowThePreviousCloseAndStayInTheBand() {
         let b = ExchangeRules.closeBounds(previous: 100, nav: 100)
         XCTAssertEqual(b.low, 90); XCTAssertEqual(b.high, 110)
-        // The value per share fell by half: the band now sits below the old close, so the day's price is pinned to the band's top.
         let f = ExchangeRules.closeBounds(previous: 100, nav: 50)
         XCTAssertEqual(f.low, 62.5); XCTAssertEqual(f.high, 62.5)
     }
@@ -78,13 +73,13 @@ final class ExchangeRulesTests: XCTestCase {
 
     func testTheInsiderWindow() {
         let listed = 1000
-        XCTAssertNotNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: -1, today: listed + 10))        // lock-up
+        XCTAssertNotNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: -1, today: listed + 10))
         XCTAssertNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: -1, today: listed + 40))
-        XCTAssertNotNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: -1, today: listed + 85))        // a week before the results
-        XCTAssertNotNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: -1, today: listed + 91))        // results day
+        XCTAssertNotNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: -1, today: listed + 85))
+        XCTAssertNotNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: -1, today: listed + 91))
         XCTAssertNotNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: -1, today: listed + 92))
         XCTAssertNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: -1, today: listed + 93))
-        XCTAssertNotNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: listed + 50, today: listed + 52))   // after a dividend
+        XCTAssertNotNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: listed + 50, today: listed + 52))
         XCTAssertNil(ExchangeRules.insiderBlock(listedDay: listed, disclosureDay: listed + 50, today: listed + 53))
         XCTAssertEqual(ExchangeRules.nextResultsDay(listedDay: listed, today: listed + 5), listed + 91)
     }
@@ -97,7 +92,6 @@ final class PublicExchangeTests: XCTestCase {
         return e
     }
 
-    /// Runs the exchange for the close of a Monday.
     func closeMonday(_ e: inout GameEngine, value: Double = 50_000_000) {
         e.update { s, _, ctx in
             s.day = 1
@@ -117,7 +111,6 @@ final class PublicExchangeTests: XCTestCase {
         XCTAssertLessThan(e.state.cash, cash0)
         XCTAssertTrue(ExchangeBook(e.state).orders.isEmpty)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        // It counts in net worth at the last close.
         let close = try XCTUnwrap(ExchangeBook(e.state).instruments[PublicExchange.worldIndex]).close
         XCTAssertEqual(e.netWorth.exchange, 100 * close, accuracy: 0.01)
         XCTAssertEqual(Valuation.netWorth(e.state, trades: e.data.catalog, forGoals: true).exchange, e.netWorth.exchange, accuracy: 0.01)
@@ -133,7 +126,6 @@ final class PublicExchangeTests: XCTestCase {
         }
         let pos = ExchangeBook(e.state).positions[PublicExchange.worldIndex]
         XCTAssertEqual(pos?.shares, 200)
-        // Whatever the daily wobble of the price, 200 shares cost what they are worth at the close, plus a small fee: no jump in net worth.
         XCTAssertLessThan(abs(e.netWorth.total - before), 0.01 * 200 * 100 + 200)
     }
 
@@ -158,14 +150,14 @@ final class PublicExchangeTests: XCTestCase {
         var e = try game()
         e.placeExchangeOrder(instrument: PublicExchange.worldIndex, side: .buy, shares: 100, limit: 120)
         e.update { s, _, ctx in
-            s.day = 6   // Saturday's close is not a trading day
+            s.day = 6
             PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil })
         }
         XCTAssertEqual(ExchangeBook(e.state).orders.count, 1)
         e.update { s, _, ctx in
             s.day = 1
             PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil })
-            PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil })   // the same day again changes nothing
+            PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil })
         }
         XCTAssertTrue(ExchangeBook(e.state).orders.isEmpty)
         XCTAssertEqual(ExchangeBook(e.state).positions[PublicExchange.worldIndex]?.shares, 100)
@@ -203,8 +195,6 @@ final class PublicExchangeTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    // MARK: A holding of your own on the exchange
-
     func listed(_ e: inout GameEngine, listedDay: Int = -1020) throws -> Int {
         let id = e.state.companies[0].id
         e.update { s, _, _ in
@@ -221,7 +211,6 @@ final class PublicExchangeTests: XCTestCase {
         XCTAssertEqual(e.placeExchangeOrder(instrument: key, side: .sell, shares: 500_000, limit: 50), .refused(.tooMany(canSell: 490_000)))
         XCTAssertEqual(e.placeExchangeOrder(instrument: key, side: .buy, shares: 10, limit: 50), .refused(.ownShares))
         guard case .placed = e.placeExchangeOrder(instrument: key, side: .sell, shares: 490_000, limit: 45) else { return XCTFail() }
-        // 490 000 are already promised: nothing more can be offered.
         XCTAssertEqual(e.placeExchangeOrder(instrument: key, side: .sell, shares: 1, limit: 45), .refused(.tooMany(canSell: 0)))
     }
 
@@ -241,10 +230,8 @@ final class PublicExchangeTests: XCTestCase {
         let inst = try XCTUnwrap(ExchangeBook(e.state).instruments[key])
         XCTAssertEqual(inst.volume, sold)
         XCTAssertTrue((ExchangeRules.band(nav: inst.nav).low...ExchangeRules.band(nav: inst.nav).high).contains(inst.close))
-        // What is left of the order is still on the book for tomorrow.
         XCTAssertEqual(ExchangeBook(e.state).orders.reduce(0) { $0 + $1.shares }, 10_000 - sold)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        // The shares left are not double counted: the stake is valued once, in the company.
         XCTAssertEqual(e.netWorth.exchange, 0)
     }
 
@@ -253,7 +240,6 @@ final class PublicExchangeTests: XCTestCase {
         let id = try listed(&e, listedDay: PublicExchange.today(e.state))
         let key = "co:\(id)"
         guard case .refused(.insider) = e.placeExchangeOrder(instrument: key, side: .sell, shares: 100, limit: 50) else { return XCTFail("lock-up") }
-        // An order that was placed before a blackout waits, and does not trade in it.
         e.update { s, _, _ in var b = ExchangeBook(s); b.instruments[key]?.listedDay = -1020; b.write(to: &s) }
         guard case .placed = e.placeExchangeOrder(instrument: key, side: .sell, shares: 100, limit: 40) else { return XCTFail() }
         e.update { s, _, _ in var b = ExchangeBook(s); b.instruments[key]?.dividendDay = PublicExchange.today(s); b.write(to: &s) }
@@ -269,14 +255,14 @@ final class PublicExchangeTests: XCTestCase {
         let inst = try XCTUnwrap(ExchangeBook(e.state).instruments["co:\(id)"])
         XCTAssertEqual(inst.nav, 55, accuracy: 0.0001)
         XCTAssertLessThanOrEqual(inst.close, ExchangeRules.band(nav: inst.nav).high)
-        XCTAssertLessThanOrEqual(inst.close, 55)   // the close moves at most a tenth from 50
+        XCTAssertLessThanOrEqual(inst.close, 55)
     }
 
     func testOrdersLeftOutsideTheBandByAValueReportAreCancelled() throws {
         var e = try game()
         let id = try listed(&e)
         guard case .placed = e.placeExchangeOrder(instrument: "co:\(id)", side: .sell, shares: 100, limit: 62) else { return XCTFail() }
-        closeMonday(&e, value: 20_000_000)   // value per share falls to 45 at most, so the band tops out at 56.25
+        closeMonday(&e, value: 20_000_000)
         XCTAssertTrue(ExchangeBook(e.state).orders.isEmpty)
     }
 

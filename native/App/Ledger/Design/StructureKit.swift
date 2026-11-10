@@ -3,14 +3,9 @@ import GameCore
 import Businesses
 import Simulation
 
-// Pieces of the Group Structure screen and the entity breadcrumb: the node card, the split bar, the health pill and the crumbs.
-// They read a `StructureNode` and ready-made strings, so none of them needs the engine.
-
-/// The words and marks the Structure screen puts on a node.
 enum StructureWords {
     static func percent(_ p: Double) -> String { "\(Int(saturating: p.rounded()))%" }
 
-    /// "You 100%", or "Holding 82% \u{00B7} Controlled (over 50%)" for a company a holding owns.
     static func ownership(_ n: StructureNode) -> String {
         if let hp = n.holdingPercent {
             let base: String = "Holding " + percent(hp)
@@ -53,7 +48,6 @@ enum StructureWords {
     }
 }
 
-/// One person in a chain of command, with what they may decide.
 struct StructureRung: Identifiable {
     var id: String
     var name: String
@@ -63,7 +57,6 @@ struct StructureRung: Identifiable {
     var face: String?
 }
 
-/// A person's portrait (or initials), the same avatar the Team and Boardroom screens use.
 struct StructureAvatar: View {
     var name: String
     var role: String?
@@ -75,7 +68,6 @@ struct StructureAvatar: View {
     }
 }
 
-/// Health as a coloured word in a pill: green thriving and healthy, amber tight, red struggling, grey setting up.
 struct StructureHealthPill: View {
     var health: StructureNode.Health
 
@@ -84,7 +76,6 @@ struct StructureHealthPill: View {
     }
 }
 
-/// The share of the group in each tier of ownership as one bar: control in the accent, influence in amber, passive in slate blue.
 struct StructureSplitBar: View {
     var control: Double
     var influence: Double
@@ -113,8 +104,6 @@ struct StructureSplitBar: View {
     }
 }
 
-/// One node of the structure: its name and role, who owns it and who runs it, how it is doing, what it is worth, and the one thing to do next.
-/// A tap on the top of the card opens or closes it (its chain of command shows inside); the action pill is its own button.
 struct StructureCard: View {
     @Environment(\.outsidePalette) private var P
     var node: StructureNode
@@ -145,8 +134,6 @@ struct StructureCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.card))
     }
-
-    // MARK: Head
 
     private var head: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -187,7 +174,6 @@ struct StructureCard: View {
             .accessibilityHidden(true)
     }
 
-    /// Who runs it, with what they may decide; "You run it" when nobody does.
     @ViewBuilder private var runner: some View {
         if let name = node.runnerName {
             HStack(spacing: Theme.Space.s) {
@@ -203,8 +189,6 @@ struct StructureCard: View {
             }
         }
     }
-
-    // MARK: Chain of command
 
     private var chain: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -224,8 +208,6 @@ struct StructureCard: View {
             }
         }
     }
-
-    // MARK: Action
 
     private var actionTint: Color {
         switch node.primaryAction {
@@ -254,16 +236,12 @@ struct StructureCard: View {
     }
 }
 
-// MARK: - Breadcrumb
-
-/// One step of a breadcrumb; a step with an action is a tappable parent.
 struct StructureCrumb: Identifiable {
     var id: String
     var title: String
     var action: (() -> Void)? = nil
 }
 
-/// "Group > Chain > Branch": the parents are buttons, the last step is where you are.
 struct StructureCrumbs: View {
     @Environment(\.outsidePalette) private var P
     var crumbs: [StructureCrumb]

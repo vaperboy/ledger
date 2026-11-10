@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Venues with capacity tickets and passes: real items with their own costs, the profit and loss slider, the house edge, the club's ticket level, old
-/// saves, and a two-year probe of a competent owner per trade.
 final class VenueItemsTests: XCTestCase {
     static let all = ["nightclub", "casino", "fun", "skires", "indoorski", "gym", "club"]
 
@@ -51,7 +49,6 @@ final class VenueItemsTests: XCTestCase {
             r.e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
             r.invested += top
         }
-        // The hook the lead adds beside `ItemModels.weeklyTick` in `ItemHooks.weekly`, run here by hand.
         if withItems { r.e.update { s, d, _ in for i in s.companies.indices { VenueItems.weekly(&s, i, data: d) } } }
     }
 
@@ -129,7 +126,6 @@ final class VenueItemsTests: XCTestCase {
         var r = try Self.start("gym")
         guard r.id != 0 else { throw XCTSkip("could not start gym") }
         for _ in 0..<3 { Self.week(&r, withItems: false) }
-        // Once the lead wires `VenueItems.weekly` into `ItemHooks.weekly` the engine sets the items up itself, so this checks the reads only: they change nothing.
         let co = r.e.state.company(r.id)!
         let stateBefore = r.e.state
         XCTAssertEqual(VenueItems.cogsFactor(r.e.state, companyID: r.id, data: r.e.data), 1)
@@ -153,7 +149,6 @@ final class VenueItemsTests: XCTestCase {
         XCTAssertEqual(SalesItems.items(r.e.state.company(r.id)!, r.e.data.catalog["skires"]!).first { $0.id == "w9:day" }!.priceMultiplier, 1.2, accuracy: 1e-9)
     }
 
-    /// Two years of a competent owner per trade, with and without the withItems: no trade becomes unprofitable by design. Prints profit per year.
     func testTwoYearProbePerTrade() throws {
         for t in Self.all {
             var base = try Self.start(t), withItems = try Self.start(t)

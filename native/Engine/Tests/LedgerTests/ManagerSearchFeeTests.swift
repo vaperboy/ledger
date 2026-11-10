@@ -4,7 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The executive-search fee: pinned at 15,000 (reference level, scaled by the country's price level) for every kind of search.
 final class ManagerSearchFeeTests: XCTestCase {
     private func game(_ country: String = "UK") throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: 7)
@@ -43,7 +42,6 @@ final class ManagerSearchFeeTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    /// A second copy of the fee must not reappear in the manager files or in the App's labels.
     func testNoSecondCopyOfTheFeeLiteral() throws {
         let native = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         var hits: [String] = []
@@ -58,7 +56,6 @@ final class ManagerSearchFeeTests: XCTestCase {
                 }
             }
         }
-        // Franchise termination's lawyer (CompanyFranchise.swift) is a different rule that happens to share the number.
         hits.removeAll { $0.hasPrefix("CompanyFranchise.swift") }
         XCTAssertTrue(hits.isEmpty, "Use ManagerModel.searchFee(currency:) instead: \(hits)")
     }

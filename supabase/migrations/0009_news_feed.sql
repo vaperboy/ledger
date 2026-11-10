@@ -1,8 +1,3 @@
--- News about real players: public events only. Mirrors PlayerNewsRules. Who may see an event follows the player's current privacy level:
--- Public players' events are open to everyone, Friends-level players' events only to their friends, Private players publish none.
--- Events the server can prove (a supplier milestone, a viral startup, a club joined) are written by triggers on the tables that prove
--- them; clients may only record the three kinds nothing on the server can check, and are rate limited.
-
 create type public.player_event_kind as enum ('branchMilestone', 'wentViral', 'supplierMilestone', 'acquisition', 'newAssociation', 'seasonMilestone');
 
 create table public.player_events (
@@ -12,11 +7,9 @@ create table public.player_events (
   trade text check (char_length(trade) <= 40),
   city text check (char_length(city) <= 60),
   company text check (char_length(company) <= 40),
-  -- Branches opened, units delivered or the season reached, as the kind needs.
   count int check (count between 1 and 100000000),
   other_name text check (char_length(other_name) <= 40),
   club text check (char_length(club) <= 80),
-  -- Stops the same fact being published twice (a milestone, a startup going viral).
   dedupe_key text,
   created_at timestamptz not null default now()
 );
@@ -27,10 +20,8 @@ create index player_events_player on public.player_events (player_id, created_at
 alter table public.player_events enable row level security;
 revoke all on public.player_events from anon, authenticated;
 grant select on public.player_events to authenticated;
--- Directly you read only your own events; everyone else's come through news_feed(), which applies privacy and blocks.
 create policy player_events_own on public.player_events for select to authenticated using (player_id = auth.uid());
 
--- Private players publish nothing; the check is made again when events are read, in case the privacy level changed since.
 create function private.publishes(uid uuid) returns boolean language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.profiles where id = uid and deleted_at is null and privacy <> 'private');
 $$;
@@ -43,10 +34,6 @@ begin
     on conflict do nothing;
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Events the server proves
--- ---------------------------------------------------------------------------------------------------------------------
--- A supplier's delivered units cross 100, 500, 1,000, 5,000 and each further 10,000 (checked by the weekly run's update).
 create function private.event_supply_milestone() returns trigger language plpgsql security definer set search_path = '' as $$
 declare m bigint;
 begin
@@ -59,7 +46,6 @@ begin
 end $$;
 create trigger supply_listing_milestone after update of lifetime_units on public.supply_listings for each row execute function private.event_supply_milestone();
 
--- A startup goes viral: five different unlinked investors within seven days (the CrowdStartupRules rule).
 create function private.event_startup_viral() returns trigger language plpgsql security definer set search_path = '' as $$
 declare s public.startups;
 begin
@@ -80,15 +66,11 @@ begin
 end $$;
 create trigger association_member_joined after insert on public.association_members for each row execute function private.event_club_joined();
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Events a client reports (nothing on the server can prove them): bounded and rate limited
--- ---------------------------------------------------------------------------------------------------------------------
 create function public.record_player_event(p_kind public.player_event_kind, p_trade text default null, p_city text default null, p_company text default null,
   p_count int default null, p_other text default null) returns void language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin
   if p_kind not in ('branchMilestone', 'acquisition', 'seasonMilestone') then raise exception 'not_reportable' using errcode = 'P0001'; end if;
-  -- A sentence needs the fields its template uses; an event without them would give no sentence, so it is not stored.
   if p_kind = 'branchMilestone' and (p_count is null or p_count < 2 or p_count > 1000 or (p_company is null and p_trade is null)) then raise exception 'invalid_event' using errcode = 'P0001'; end if;
   if p_kind = 'acquisition' and (p_other is null or (p_company is null and p_trade is null)) then raise exception 'invalid_event' using errcode = 'P0001'; end if;
   if p_kind = 'seasonMilestone' and (p_count is null or p_count < 1 or p_count > 1000) then raise exception 'invalid_event' using errcode = 'P0001'; end if;
@@ -96,10 +78,6 @@ begin
   perform private.post_event(uid, p_kind, p_trade, p_city, p_company, p_count, p_other, null, p_kind || ':' || coalesce(p_company, p_trade, '') || ':' || coalesce(p_other, '') || ':' || coalesce(p_count::text, ''));
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- The feed
--- ---------------------------------------------------------------------------------------------------------------------
--- Events the viewer may see, newest first. filter: everyone, friends, myTrade, myCountry. namesVisible is true for the owner and their friends.
 create function public.news_feed(p_filter text default 'everyone', p_limit int default 50) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); my_country text; my_trades text[];
 begin
@@ -124,7 +102,6 @@ begin
      limit greatest(1, least(coalesce(p_limit, 50), 100))) r), '[]'::jsonb);
 end $$;
 
--- Scheduled by the platform: news older than thirty days goes.
 create function private.run_news_cleanup() returns int language plpgsql security definer set search_path = '' as $$
 declare n int;
 begin

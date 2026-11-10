@@ -3,17 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// MADE industrial and digital, plus SUB: salmon farm, furniture workshop, factory, start-up, game studio and software and web agency sell real items.
-/// - furniture and factory: products with a bill of materials, labour minutes, scrap, batch and lead time, made to order (a quote and a lead time) or made for stock
-///   (batches arrive after the lead time), minimum order and B2B payment terms for the factory;
-/// - salmon: product lines from the harvest (whole fish, fillets, smoked, roe ...) with the yield of fish and the farm's real cycle (cohorts, weeks to harvest,
-///   mortality, harvest weight, feed);
-/// - game studio: titles with a development cost and a sales curve (half-life), live-service and engine subscriptions, fixed-price ports and publisher deals;
-/// - web agency: site builds and design systems as fixed bids with hours and overrun risk, maintenance, hosting and SEO as subscriptions (MRR, churn);
-/// - start-up: plans with subscribers, monthly recurring revenue, churn and cost to serve (the real product's subscribers come from `StartupModel`).
-/// Data: `Resources/industrial_items.json`. Money: the books keep the trade's cost-of-sales share; item costs are scaled on install so the weighted cost of the
-/// menu equals it (not for the salmon farm, whose books carry the cohort cost), and revenue weights add up to 1, so a company that never touches a price
-/// plays as before. Nothing here moves cash. Records: `itemsv2` and `items27` only (no new save key).
 public enum IndustrialItems {
     public struct Input: Equatable, Sendable { public var name: String; public var share: Double }
 
@@ -22,7 +11,6 @@ public enum IndustrialItems {
         public var model: ItemModels.Model
         public var share: Double
         public var rel: Double
-        /// Inputs (bill of materials, feed, platform fee) and other direct cost as shares of the price, before scaling to the books.
         public var mat: Double
         public var dir: Double
         public var scrap: Double
@@ -85,16 +73,12 @@ public enum IndustrialItems {
     public static var tradeIDs: [String] { specs.keys.sorted() }
     public static var fteHours: Double { 36 }
 
-    /// The spec of an item by name (the menu, then the add-item catalogue).
     public static func spec(trade: String, itemName: String) -> Spec? {
         guard let t = specs[trade] else { return nil }
         let n = itemName.lowercased()
         return (t.items + t.extra).first { $0.name.lowercased() == n }
     }
 
-    // MARK: Menu weights and cost calibration
-
-    /// Unit shares and price ratios of a menu: shares add up to 1, share x ratio adds up to 1 (same convention as `SalesItems.defaults`).
     public static func mix(_ items: [Spec]) -> (q: [Double], ratio: [Double]) {
         let total = items.reduce(0.0) { $0 + $1.share }
         guard total > 0 else { return ([], []) }
@@ -103,11 +87,8 @@ public enum IndustrialItems {
         return (q, items.map { norm > 0 ? $0.rel / norm : 1 })
     }
 
-    /// Cost of one unit as a share of its price before calibration, scrap grossed up.
     static func rawCostShare(_ s: Spec) -> Double { (s.mat + s.dir) / (1 - s.scrap) }
 
-    /// Factor on the item costs that makes the weighted cost of the whole menu equal the trade's cost-of-sales share. 1 when the books carry no cost of
-    /// sales (the salmon farm: its cost is the cohorts').
     public static func calibration(_ t: TradeSpec, cogs: Double) -> Double {
         guard cogs > 0 else { return 1 }
         let m = mix(t.items)
@@ -118,9 +99,6 @@ public enum IndustrialItems {
 
     public static func costShare(_ s: Spec, calibration k: Double) -> Double { k * rawCostShare(s) }
 
-    // MARK: Time, wage, capacity, rate
-
-    /// Average pay of one working hour of the company's own staff (last week's payroll over their hours), 0 without staff.
     public static func wagePerHour(_ co: Company) -> Double {
         let n = Double(co.staff.count)
         return n > 0 ? co.lastWages / (n * fteHours) : 0
@@ -134,7 +112,6 @@ public enum IndustrialItems {
 
     static func capacityPerWeek(_ co: Company, _ bd: Trade, _ w: World) -> Double { CapacityModel.compute(co, bd, w).capacity }
 
-    /// Most units of this item a week if the whole company made only that.
     static func maxPerWeek(_ s: Spec, _ t: TradeSpec, capacity: Double) -> Double {
         guard s.minutes > 0, capacity > 0, !s.isDigital else { return 0 }
         return capacity * averageMinutes(t) / Double(s.minutes)
@@ -147,13 +124,11 @@ public enum IndustrialItems {
 
     static let kilosToTonnes = 0.001
 
-    /// Tonnes of fish the farm harvests in an average week: the cohorts in the water over the weeks of a cycle.
     public static func harvestTonnesPerWeek(_ co: Company, _ bd: Trade) -> Double {
         let grow = max(1, bd.trait("grow") ?? 78)
         return co.value("fm")["coh"].array.reduce(0.0) { $0 + $1["n"].double * 5.1 * 0.88 * kilosToTonnes } / grow
     }
 
-    /// Units of the item sold in a normal week. The salmon farm sells what the cohorts give; every other trade uses the demand model's item row.
     static func rate(_ co: Company, _ bd: Trade, spec sp: Spec, q: Double, qTotal: Double, row: SalesItem) -> Double {
         guard bd.id == "salmon", sp.isGoods, qTotal > 0 else { return row.weeklyUnits }
         return harvestTonnesPerWeek(co, bd) * q / qTotal * sp.yieldRatio
@@ -162,14 +137,11 @@ public enum IndustrialItems {
     static let stockCoverWeeks = 3.0
     static let reorderCoverWeeks = 1.0
 
-    // MARK: Install
-
     static func isUntouched(_ co: Company, _ bd: Trade) -> Bool {
         let raw = co.value("items27")
         return raw.isNull || SalesItems.items(co, bd) == SalesItems.defaults(co, bd)
     }
 
-    /// Records of made-for-stock goods keep a cycle of batches; everything else is made to order, a service, a project or a subscription.
     static func holdsFinishedStock(_ sp: Spec) -> Bool { sp.model == .made && !sp.isDigital && !sp.madeToOrder }
 
     static func makeRecord(_ sp: Spec, item: SalesItems.Item, k: Double, mt: Double, capacity: Double, t: TradeSpec, perWeek: Double, week: Int) -> ItemModels.Record {
@@ -184,8 +156,6 @@ public enum IndustrialItems {
         return r
     }
 
-    /// Put a company of an opted-in trade on real items: an untouched list becomes the trade's real menu, every item without a record gets one.
-    /// Idempotent. Returns how many records were made.
     @discardableResult
     public static func install(_ s: inout GameState, companyID: Int, data: GameData, trades: Set<String> = ItemTradeGroups.industrial) -> Int {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive, trades.contains(s.companies[i].type),
@@ -221,10 +191,6 @@ public enum IndustrialItems {
         return made
     }
 
-    // MARK: Weekly
-
-    /// Weekly for a company of an opted-in trade: records for new items, then the batches of made-for-stock goods (arrivals, sales, a new batch when cover is
-    /// short). Called next to `ItemModels.weeklyTick`. Writes no money.
     public static func weekly(_ s: inout GameState, _ i: Int, data: GameData, trades: Set<String> = ItemTradeGroups.industrial) {
         guard s.companies.indices.contains(i), trades.contains(s.companies[i].type) else { return }
         let id = s.companies[i].id
@@ -258,7 +224,6 @@ public enum IndustrialItems {
                 let level = Int(saturating: (perWeek * (lead + reorderCoverWeeks)).rounded(.up))
                 let target = Int(saturating: (perWeek * (lead + stockCoverWeeks)).rounded(.up))
                 if rec.stock + rec.onOrder <= level, target > rec.stock + rec.onOrder {
-                    // Production runs are whole batches.
                     let need = target - rec.stock - rec.onOrder
                     let n = Int(saturating: (Double(need) / Double(sp.batch)).rounded(.up)) * sp.batch
                     let due = week + Int(saturating: lead.rounded(.up))
@@ -269,13 +234,10 @@ public enum IndustrialItems {
         }
     }
 
-    // MARK: Start-up product (the real subscribers)
-
     public struct StartupLive: Equatable, Sendable {
         public var phase: String
         public var customers: Double
         public var quality: Double
-        /// Share of subscribers lost in a week (the model's own formula without overload).
         public var weeklyChurn: Double
     }
 
@@ -286,8 +248,6 @@ public enum IndustrialItems {
         let q = f["q"].isNull ? 0.45 : f["q"].double
         return StartupLive(phase: w["phase"].string, customers: w["cust"].double, quality: q, weeklyChurn: 0.005 + (1 - q) * 0.02)
     }
-
-    // MARK: Facts for the item page
 
     public enum Kind: String, Sendable { case stock, order, project, service, subscription, title, fish }
 
@@ -315,7 +275,6 @@ public enum IndustrialItems {
         public var stock: Int
         public var onOrder: Int
         public var weeksOfCover: Double?
-        // Subscription
         public var subscribers: Double
         public var periodWeeks: Int
         public var churnPerPeriod: Double
@@ -323,7 +282,6 @@ public enum IndustrialItems {
         public var mrr: Double
         public var lifetimeValue: Double
         public var isContract: Bool
-        // Project
         public var hours: Double
         public var bid: Double
         public var bidLabour: Double
@@ -332,13 +290,11 @@ public enum IndustrialItems {
         public var marginIfOverrun: Double
         public var retention: Double
         public var milestones: Int
-        // Title
         public var devHours: Double
         public var devCost: Double
         public var halfLifeWeeks: Double
         public var remainingProfit: Double
         public var paybackWeeks: Double?
-        // Fish
         public var cycleWeeks: Double
         public var tonnesInWater: Double
         public var fishInWater: Double
@@ -372,7 +328,6 @@ public enum IndustrialItems {
         let capacity = capacityPerWeek(co, bd, World(state: s, data: data))
         let maxWeek = maxPerWeek(sp, t, capacity: capacity)
         let k = kind(sp, trade: co.type)
-        // Cost breakdown: inputs, other direct cost and scrap add up to the unit cost.
         let scrapCost = cost * sp.scrap
         let net = cost - scrapCost
         let base = sp.mat + sp.dir
@@ -385,7 +340,6 @@ public enum IndustrialItems {
         }
         let labourMinutes = sp.minutes
         let labourCost = Double(labourMinutes) / 60 * wage
-        // Subscribers: a plan's customers are the weekly units over the plan period; the start-up's real product gives its own subscriber count.
         var subs = 0.0
         if sp.model == .sub {
             subs = perWeek * Double(sp.period)
@@ -398,16 +352,13 @@ public enum IndustrialItems {
         let mrr = subs * row.price * perMonth
         let contribution = row.price - cost
         let ltv = sp.churn > 0 ? contribution / sp.churn : 0
-        // Project: a fixed bid for the scope in hours, labour at the company's pay, overrun eats the margin.
         let bid = sp.hours * row.price
         let bidLabour = sp.hours * wage
         let marginAtBid = bid - bidLabour - sp.hours * cost
         let marginOver = bid - bidLabour * (1 + sp.overrun) - sp.hours * cost
-        // Title: development cost, then a sales curve that halves every `halfLife` weeks.
         let devCost = sp.devHours * wage
         let profitWeek = perWeek * contribution
         let remaining = sp.halfLife > 0 ? profitWeek * sp.halfLife / log(2) : 0
-        // Fish: the real cohorts.
         let cohorts = SalmonModel.cohorts(co)
         let grow = bd.trait("grow") ?? 78
         let fishN = cohorts.reduce(0.0) { $0 + $1.fish }

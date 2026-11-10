@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// A holding company and the exchange: the listing check and what going public means, or, once listed, the results and blackout
-/// calendar, the dividend rules and a way to sell shares.
 struct MarketListingPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -46,14 +44,11 @@ struct MarketListingPage: View {
         }
     }
 
-    // MARK: Before listing
-
     private func privateHero(_ e: GameEngine, _ co: Company, _ cur: Currency) -> some View {
         MarketHero(label: "Worth today", value: cur.tidyShort(e.holdingValue(companyID: holdingID)),
                    context: "Not listed. " + ExchangeListingWords.short(e.exchangeListingCheck(holdingID: holdingID), cur).capitalizedFirst, identifier: "listing-hero")
     }
 
-    /// The three things the listing needs, each ticked or not.
     private func check(_ e: GameEngine, _ co: Company, _ cur: Currency) -> some View {
         let age: Int = e.state.week - co.foundedWeek
         let value: Double = e.holdingValue(companyID: holdingID)
@@ -112,8 +107,6 @@ struct MarketListingPage: View {
         }
     }
 
-    // MARK: After listing
-
     private func listedHero(_ e: GameEngine, _ i: ExchangeInstrument, _ co: Company, _ cur: Currency) -> some View {
         let t: CapTable.Table = CapTable.table(co)
         let context: String = MarketFormat.percent(i.change, decimals: 2) + " on the day \u{00B7} you hold \(Int(t.youPct.rounded()))% (\(t.you.formatted()) of \(t.total.formatted()) shares)"
@@ -121,7 +114,6 @@ struct MarketListingPage: View {
                           series: i.history, seriesTint: i.change >= 0 ? P.gain : P.loss, identifier: "listing-hero")
     }
 
-    /// The coming quarter on one line: lock-up, blackouts before and after results, results day and a dividend blackout.
     private func calendar(_ e: GameEngine, _ i: ExchangeInstrument, _ cur: Currency) -> some View {
         let today: Int = PublicExchange.today(e.state)
         let results: Int = ExchangeRules.nextResultsDay(listedDay: i.listedDay, today: today)
@@ -155,8 +147,6 @@ struct MarketListingPage: View {
             Text(words.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
         }
     }
-
-    // MARK: Dividend
 
     private func parsedDividend(_ cur: Currency) -> Double {
         let cleaned: String = dividendText.replacingOccurrences(of: ",", with: ".").filter { (c: Character) -> Bool in c.isNumber || c == "." }
@@ -219,8 +209,6 @@ struct MarketListingPage: View {
         }
     }
 
-    // MARK: Sell and rules
-
     private func sell(_ i: ExchangeInstrument) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             MarketLabel(title: "Your shares")
@@ -253,7 +241,6 @@ extension String {
     fileprivate var capitalizedFirst: String { prefix(1).uppercased() + String(dropFirst()) }
 }
 
-/// The coming quarter as one bar: days you cannot sell are shaded, results day is marked, today is the left edge.
 struct ExchangeQuarterStrip: View {
     var today: Int
     var results: Int
@@ -263,7 +250,6 @@ struct ExchangeQuarterStrip: View {
 
     private let span: Double = Double(ExchangeRules.quarterDays)
 
-    /// A stretch of days (game day numbers) as a fraction of the bar, cut to the bar.
     private func band(_ from: Int, _ to: Int) -> (start: CGFloat, end: CGFloat)? {
         let a: Double = max(0, Double(from - today)) / span
         let b: Double = min(1, Double(to - today + 1) / span)

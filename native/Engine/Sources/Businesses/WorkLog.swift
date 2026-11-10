@@ -3,15 +3,7 @@ import GameCore
 import Countries
 import Employees
 
-/// A real work log for every employee. Each week the weekly staff simulation (`StaffRoutine`, `StaffWeek`, `StaffProfile.trackWeek`)
-/// records what happened to this person's work: hours worked against hours contracted, assigned and completed tasks, mistakes, late arrivals, days lost
-/// to sickness, initiative taken, times they needed guidance, and whether they told you what you needed to know or went quiet. The log keeps the last
-/// 26 weeks as one compact row per week (`wlog` on the staff record). Performance feedback is composed from those rows only, never from a rating:
-/// "Completed most assigned work, but needed regular guidance." is said because the log has many tasks done and many calls for guidance.
-/// How the events arise: from the same factors that already drive the simulated business (skill, learning curve, tiredness, personality, pay and
-/// treatment); the draws use a hash of the person and the week, not the game's random stream, so a week replays the same and nothing else moves.
 public enum WorkLog {
-    /// One week of work. Stored as an array of numbers in this order.
     public struct Week: Equatable, Sendable {
         public var week = 0
         public var hoursContracted = 0.0
@@ -42,9 +34,7 @@ public enum WorkLog {
 
     static let key = "wlog"
     public static let weeksKept = 26
-    /// Feedback looks at this many recent weeks.
     public static let window = 13
-    /// Fewest weeks of work the log needs before it says anything about someone.
     public static let minimumWeeks = 4
 
     public static func weeks(_ m: StaffMember) -> [Week] { m.value(key).array.map { Week(json: $0) } }
@@ -54,7 +44,6 @@ public enum WorkLog {
         m.set(key, .array(kept.map { $0.json }))
     }
 
-    /// The row of this week on the record (made when missing), changed by `f`.
     static func edit(_ m: inout StaffMember, week: Int, _ f: (inout Week) -> Void) {
         var all = weeks(m)
         if let i = all.firstIndex(where: { $0.week == week }) { f(&all[i]) }
@@ -62,15 +51,10 @@ public enum WorkLog {
         store(all, &m)
     }
 
-    /// A late arrival or a complaint noted by the quarterly tracker.
     static func note(_ m: inout StaffMember, week: Int, late: Int = 0, complaints: Int = 0) {
         edit(&m, week: week) { $0.late += late; $0.complaints += complaints }
     }
 
-    // MARK: The week's events
-
-    /// Everything that can go on in one person's week, as numbers: the simulation behind the log. `skill` is the person's real skill including what they have
-    /// learned; it moves the odds of events, it is never printed.
     struct Inputs {
         var id: Int, week: Int
         var contracted: Double, worked: Double
@@ -94,7 +78,6 @@ public enum WorkLog {
         var r = HashedRandom("wl:\(i.id):\(i.week)")
         w.hoursWorked = i.worked
         let assigned = max(1, Int(saturating: (i.contracted / 5).rounded()))
-        // Overtime when the business is limited by people means more work gets handed over.
         let handed = i.limitedByPeople && i.worked > i.contracted ? assigned + Int(saturating: ((i.worked - i.contracted) / 5).rounded()) : assigned
         w.tasksAssigned = handed
         let pace = i.ramp * i.tiredFactor * (0.78 + 0.45 * i.skill / 100) * (i.flag == "lazy" ? 0.82 : 1) * (i.disengaged ? 0.88 : 1)
@@ -117,21 +100,16 @@ public enum WorkLog {
         return w
     }
 
-    /// Record this week for a team member, from what the simulation says happened. Called once a week from `StaffRoutine`.
     static func record(_ m: inout StaffMember, person n: Person, week: Int, contracted: Double, worked: Double, skill: Double, limitedByPeople: Bool, tiredFactor: Double,
                        ramp: Double, sick: Bool) {
         var wk = simulate(Inputs(id: m.id, week: week, contracted: contracted, worked: worked, skill: skill, experience: n.num("exp"), ramp: ramp, tiredFactor: tiredFactor,
                                  personality: n.str("pers"), flag: m.str("flag"), sick: sick, offSeason: m.isOffSeason, disengaged: StaffBehaviour.isDisengaged(m),
                                  limitedByPeople: limitedByPeople))
-        // keep what the tracker noted earlier in the week
         if let old = weeks(m).first(where: { $0.week == week }) { wk.late += old.late; wk.complaints += old.complaints }
         edit(&m, week: week) { $0 = wk }
     }
 
-    // MARK: Feedback
-
     public struct Observation: Equatable, Sendable, Identifiable {
-        /// "Work quality", "Reliability", "Speed", "Mistakes", "Initiative", "Communication", "Independence", "Completed work".
         public var aspect: String
         public var text: String
         public var id: String { aspect }
@@ -139,9 +117,7 @@ public enum WorkLog {
 
     public struct Feedback: Equatable, Sendable {
         public var weeksObserved: Int
-        /// One sentence per aspect that the log has something to say about; empty when there is too little to go on.
         public var observations: [Observation]
-        /// The sentences joined: what to say about them in a line.
         public var summary: String
         public var enoughToJudge: Bool
     }
@@ -150,7 +126,6 @@ public enum WorkLog {
         switch n { case 1: return "once"; case 2: return "twice"; case 3: return "three times"; case 4: return "four times"; default: return "several times" }
     }
 
-    /// Feedback from the last `window` weeks of the log. Sentences say what happened, from the counts; no number is shown.
     public static func feedback(_ m: StaffMember, week: Int) -> Feedback {
         let recent = weeks(m).filter { week - $0.week < window && $0.hoursContracted > 0 }
         let worked = recent.filter { !$0.sickWeek }
@@ -174,23 +149,18 @@ public enum WorkLog {
         var obs: [Observation] = []
         func add(_ a: String, _ t: String) { obs.append(Observation(aspect: a, text: t)) }
         let tail = trial ? " in the trial week" : ""
-        // completed work and speed
         if ratio >= 0.95 { add("Completed work", "Completed all the work assigned\(tail).") }
         else if ratio >= 0.85 { add("Completed work", "Completed most assigned work\(tail)" + (guideRate >= 0.3 ? ", but needed regular guidance." : ".")) }
         else if ratio >= 0.7 { add("Completed work", "Got through only part of the assigned work\(tail); some of it was left for others.") }
         else { add("Completed work", "Left much of the assigned work undone\(tail).") }
-        // speed: output over the hours they were there, and over time they finished more than the hours would suggest
         let throughput = hoursC > 0 ? Double(done) / (hoursC / 5) : 1
         if throughput >= 1.0 && ratio >= 0.9 { add("Speed", "Works quickly; tasks are done well within the hours.") }
         else if ratio < 0.8 { add("Speed", "Works slowly; the work piles up.") }
-        // mistakes
         if errRate <= 0.03 { add("Mistakes", "Made hardly any mistakes\(tail).") }
         else if errRate <= 0.1 { add("Mistakes", "Made a few mistakes that had to be corrected\(tail).") }
         else { add("Mistakes", "Made frequent mistakes\(tail): work often had to be redone.") }
-        // independence
         if guideRate >= 0.3 { add("Independence", "Often needed guidance before moving on.") }
         else if guideRate <= 0.08 && done >= 6 { add("Independence", "Works independently and rarely needs checking.") }
-        // reliability
         if !trial {
             var rel: [String] = []
             if late >= 1 { rel.append("was late \(times(late))") }
@@ -199,20 +169,15 @@ public enum WorkLog {
             if rel.isEmpty && hoursW >= hoursC * 0.95 { add("Reliability", "Reliable: turned up on time and put in the hours.") }
             else if !rel.isEmpty { add("Reliability", "Mostly there, but " + rel.joined(separator: " and ") + ".") }
         } else if late >= 1 { add("Reliability", "Arrived late in the trial week.") }
-        // initiative
         if init0 >= max(2, n / 4) { add("Initiative", "Takes initiative: proposed improvements and covered extra work without being asked.") }
         else if init0 == 0 && n >= 8 { add("Initiative", "Does what is asked and no more.") }
-        // communication
         if silent >= max(2, n / 5) { add("Communication", "Often said nothing about problems until they had grown.") }
         else if informed >= max(2, n / 6) && silent <= 1 { add("Communication", "Keeps you informed and raises problems early.") }
         return Feedback(weeksObserved: n, observations: obs, summary: obs.map { $0.text }.joined(separator: " "), enoughToJudge: true)
     }
 
-    /// A paid trial week for a candidate: one week of simulated work as the log would record it, with observations in the same words. The candidate's real
-    /// skill moves the events; only the events are reported.
     public static func trialObservations(person n: Person, role: String, week: Int, rampStart: Double = 0.75) -> [Observation] {
         let hours = StaffModel.fullWeekHours
-        // five days of work give five looks at the same person, so the picture is a little firmer than one draw
         var days: [Week] = []
         for d in 0..<5 {
             var w = simulate(Inputs(id: n.id &* 31 &+ d, week: week &+ d, contracted: hours / 5 * 5, worked: hours, skill: n.skill, experience: n.num("exp"), ramp: rampStart, tiredFactor: 1,

@@ -5,9 +5,6 @@ import Businesses
 import Finance
 import Simulation
 
-/// "Expand abroad" for ONE company, a section of its Expansion tab: every country it can open a subsidiary in, with the engine's start-up
-/// cost for this company and the weeks the registration takes (`abroadOptions`). A row opens the existing "Where to?" screen at that country,
-/// where the subsidiary is registered. Only an open company that is not a franchise unit and not a holding can expand.
 struct EntityAbroadSection: View {
     @EnvironmentObject var store: GameStore
     let companyID: Int

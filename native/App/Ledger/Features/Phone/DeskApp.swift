@@ -4,21 +4,17 @@ import Businesses
 import Simulation
 
 extension Glyph {
-    /// A closed notebook with a ribbon: the Desk app.
     static let deskNotebook = "M6 4 H17 V20 H6 Z M9 4 V20 M12 8 H15 M12 11 H15"
 }
 
 extension GameStore {
-    /// Today's question is waiting on the Desk (the quiet dot on its tile). Not counted in the Phone tab's number.
     var deskWaitingNow: Bool { engine?.deskWaiting(realDay: GameStore.calendarDay()) ?? false }
 }
 
-/// The local calendar day number the Desk works in (the same count as `GameStore.calendarDay()`, usable outside the main actor).
 enum RealDay {
     static var today: Int { Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0 }
 }
 
-/// The notebook's covers (cosmetic rewards for finished chapters), by the name the engine gives them.
 enum NotebookCover {
     static func color(_ name: String) -> Color {
         switch name {
@@ -34,9 +30,6 @@ enum NotebookCover {
     static func title(_ name: String) -> String { name.prefix(1).uppercased() + name.dropFirst() }
 }
 
-/// The Desk: one small business question a real day, with two or three ways to answer. The answer plays out over the next game days and the
-/// outcome arrives in the Inbox the next morning. Stories pile up in a notebook, chapter by chapter; a finished chapter earns a knowledge
-/// card and a notebook cover. Skipping a day costs nothing: there is no backlog and no streak.
 struct DeskApp: View {
     @EnvironmentObject var store: GameStore
     @AppStorage("desk.cover") private var coverName: String = ""
@@ -66,8 +59,6 @@ struct DeskApp: View {
         }
     }
 
-    // MARK: Today
-
     @ViewBuilder private func todayCard(_ e: GameEngine) -> some View {
         if let t = e.deskToday(realDay: day) {
             CardSection("Today") {
@@ -95,7 +86,6 @@ struct DeskApp: View {
     private func pick(_ index: Int) {
         choosing = false
         guard let c: DeskStories.Choice = store.act({ $0.deskChoose(option: index, realDay: day) }) ?? nil else { return }
-        // The one outcome popup of this decision: what was chosen and what happens now. The result itself arrives with the morning Inbox.
         Haptics.success()
         store.tell(c.chosen, c.told, tone: "good")
     }
@@ -110,8 +100,6 @@ struct DeskApp: View {
             }
         }
     }
-
-    // MARK: Notebook
 
     private func notebook(_ e: GameEngine) -> some View {
         let pages: [DeskStories.ChapterPage] = e.deskPages()
@@ -211,7 +199,6 @@ struct DeskApp: View {
     }
 }
 
-/// The choice itself: the situation, then each way to answer with a line about what it is likely to mean.
 struct DeskChoicePopup: View {
     var today: DeskStories.Today
     var onPick: (Int) -> Void
@@ -232,8 +219,6 @@ struct DeskChoicePopup: View {
     }
 }
 
-/// The weekly plan in words and arrows: how many weeks are planned, the comfort perk, and how the last plans went against a usual week.
-/// Used on the Desk page and in Stats.
 struct WeeklyPlanCard: View {
     @EnvironmentObject var store: GameStore
     var showsHistory = true

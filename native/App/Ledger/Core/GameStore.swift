@@ -8,23 +8,16 @@ import Events
 import SaveSystem
 import Simulation
 
-/// The five tabs, left to right: Ventures (Projects), Group, Home (the middle tab, where the game opens), the player's Custom tab (any
-/// destination, see `CustomTabTarget`) and Phone (the apps; Inbox, Market and Store are apps inside it). The raw values are the route and
-/// deep-link names and never change: `.company` is displayed as "Home", `.projects` as "Ventures". All five are always shown.
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
     case projects, group, company, custom, phone
     var id: String { rawValue }
-    /// The fixed title; the Custom tab's real title is the chosen destination's (`GameStore.title(for:)`).
     var title: String { switch self { case .company: return "Home"; case .custom: return "Custom"; case .group: return "Group"; case .projects: return "Ventures"; case .phone: return "Phone" } }
-    /// SF Symbol for the iPad sidebar; the floating tab bar uses `glyph`.
     var symbol: String {
         switch self { case .company: return "house"; case .custom: return "star"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .phone: return "iphone" }
     }
-    /// The tab's icon (SVG path data); the Custom tab's real icon is the destination's (`GameStore.glyph(for:)`).
     var glyph: String {
         switch self { case .company: return Glyph.home; case .custom: return Glyph.bank; case .group: return Glyph.group; case .projects: return Glyph.projects; case .phone: return Glyph.phone }
     }
-    /// The accent of the tab's pill in the bar.
     var accent: Color {
         switch self { case .company: return Theme.gold; case .custom: return Color(hex: 0xA58BD0); case .group: return Color(hex: 0x7F9BC4); case .projects: return Color(hex: 0xE0BC5E); case .phone: return Color(hex: 0x86B890) }
     }
@@ -32,78 +25,60 @@ enum AppTab: String, Hashable, CaseIterable, Identifiable {
     static func from(raw: String) -> AppTab { AppTab(rawValue: raw) ?? .launch }
 }
 
-/// A tab a link landed on and the tab it came from (shown by `ReturnLine`). Links never change tab, so there is none (`returnInfo` is nil).
 struct ReturnInfo: Equatable {
     var from: AppTab
     var dest: AppTab
     var destDepth: Int
 }
 
-/// What a link asks the app it opened to show, once the app is on screen. The one slot for it: taken (and so cleared) by the app that
-/// reads it, dropped when the player moves on by hand.
 enum AppRequest: Equatable {
     case message(Int)
     case bank(BankRequest)
     case report(ReportRef)
-    /// The Market app on one company (0 = the Overview).
     case market(companyID: Int)
-    /// The Market app on one of its five parts.
     case marketTab(MarketUI.Tab)
-    /// The Reviews app on one company.
     case reviews(companyID: Int)
-    /// AirStay on one company (0 = all), at the places it could take or the one it works in.
     case airStay(companyID: Int)
-    /// TechPro Store shopping for one company, on one item's page ("" = the store front).
     case techPro(companyID: Int, equipmentID: String)
-    /// Atlas Insurance for one company.
     case atlas(companyID: Int)
-    /// The merged Ventures screen (the Projects tab) on its Portfolio segment.
     case ventures
 }
 
-/// One notice, told in the in-game popup: a refusal, a warning or a problem the player must see.
 struct Toast: Identifiable, Equatable {
     let id = UUID()
     var title: String = ""
     var text: String
     var tone: String
-    /// "luxury": the gold reveal card of a high-value purchase.
     var style = ""
     var subtitle = ""
     var rows: [String] = []
 }
 
-/// One outcome popup: what the player chose and what came of it.
 struct OutcomeNote: Identifiable, Equatable {
     let id = UUID()
     var chosen: String
     var result: String
 }
 
-/// What a confirmed action reported while it ran (see `GameStore.runConfirmed`).
 struct OutcomeCapture {
     var lines: [String] = []
     var refused = false
     var told = false
 }
 
-/// What one day changed, from before/after snapshots of the engine state (no engine code): feeds the animation layer.
 struct DayChanges: Equatable {
     var netWorth: Double = 0
     var cash: Double = 0
     var revenue: Double = 0
-    /// Change of all loan balances (negative = repaid).
     var debt: Double = 0
 }
 
-/// A small payment notice that slides in at the top of the app shell and leaves by itself.
 struct PaymentNotice: Equatable, Identifiable {
     let id = UUID()
     var amount: Double
     var from: String
 }
 
-/// One line of Home's important-events timeline (kept in memory for the session, newest first).
 struct HomeEvent: Equatable, Identifiable {
     let id = UUID()
     var glyph: String
@@ -111,26 +86,19 @@ struct HomeEvent: Equatable, Identifiable {
     var day: String
 }
 
-/// An amount chip that travels once (dividend received, transfer made). With `origin` (a point in screen space) it flies from there
-/// to the top of the screen in 0.5 s; `outgoing` marks money that leaves (a minus sign, the loss tint).
 struct TransferChip: Equatable, Identifiable {
     let id = UUID()
     var label: String
     var amount: Double
     var origin: CGPoint? = nil
     var outgoing: Bool = false
-    /// The amount as the payer's currency writes it; nil shows `amount` in the home currency.
     var text: String? = nil
 }
 
-/// Owns the running game and the save files. Views read `engine` and call the methods here; no game rules live in views.
 @MainActor
 final class GameStore: ObservableObject {
     @Published private(set) var engine: GameEngine? { didSet { memoBox.removeAll(keepingCapacity: true) } }
-    /// Engine reads that walk the whole game (net worth, company health, badges), kept until the engine changes: every published
-    /// change re-renders all live tabs, and without this each render repeated the walks.
     private var memoBox: [String: Any] = [:]
-    /// The value of `compute` for the current engine, computed once per engine change (nil without a game).
     func memo<T>(_ key: String, _ compute: (GameEngine) -> T) -> T? {
         guard let e = engine else { return nil }
         if let v = memoBox[key] as? T { return v }
@@ -138,68 +106,45 @@ final class GameStore: ObservableObject {
         memoBox[key] = v
         return v
     }
-    /// Cached whole-game reads for screens that render often (Home, Group, Stats).
     var netWorthNow: NetWorth? { memo("nw") { $0.netWorth } }
     var netWorthBreakdownNow: NetWorthBreakdown? { memo("nwb") { $0.netWorthBreakdown() } }
-    /// The recorded history, decoded from the save's JSON once per engine change.
     var dayHistoryNow: DayHistory? { memo("hist") { $0.dayHistory } }
     func netWorthSeriesNow(days: Int) -> [Double] { memo("nws\(days)") { $0.netWorthSeries(days: days) } ?? [] }
-    /// The engine's ranked suggestions (at most 8), as Home's Needs you and the morning briefing read them.
     var suggestionsNow: [Suggestion] { memo("sugg8") { $0.suggestions(limit: 8) } ?? [] }
-    /// Staff issues and vacancies of the whole group (walks every company's staff).
     var teamOverviewNow: TeamOverview? { memo("team") { $0.teamOverview() } }
-    /// Notices waiting to be read, oldest first. The first one is on screen as a popup; reading it shows the next.
     @Published private(set) var notices: [Toast] = []
-    /// Red alerts (a company about to be force-sold): a see-through red popup, shown before anything else, closed only by its button.
     @Published private(set) var redAlerts: [Message] = []
     func dismissRedAlert() { if !redAlerts.isEmpty { redAlerts.removeFirst() } }
     var toast: Toast? { notices.first }
-    /// Outcome popups waiting to be read, oldest first; the first is on screen (see `OutcomePopup`).
     @Published private(set) var outcomes: [OutcomeNote] = []
-    /// Set while a confirmed action runs: what it reported, so its outcome popup can say it (see `runConfirmed`).
     var outcomeCapture: OutcomeCapture?
-    /// The open decision (an Inbox message id) being answered in a popup on the main screen, or nil.
     @Published var decisionPopup: Int?
     @Published var errorText: String?
 
-    // MARK: Day state (Next day, the report sheet, rewards)
-
-    /// True while a day is running: the Next day button shows progress and ignores taps.
     @Published private(set) var isAdvancing = false
-    /// The week, month or year report the player must read before the next day runs (nil = none waiting).
     @Published private(set) var reportSheet: ReportDigest?
-    /// Rewards earned and not yet shown, oldest first. The Home screen shows the first, one at a time.
     @Published private(set) var celebrationQueue: [Celebration] = []
-    /// Rises by one when a closed week report is continued while a decision expires within 2 weeks. Home watches it (scroll to Needs you, pulse the pill once).
     @Published var homeCliffhanger: Int = 0
-    /// True while the goals popup is open on Home (the rank tile, the goal card and the Goals shortcut raise it).
     @Published var showGoals = false
     func openGoals() { showGoals = true }
-    /// Consecutive calendar days played; Home shows it from 3 up, else 0 is returned.
     var playStreakShown: Int {
         guard let e = engine else { return 0 }
         let n: Int = PlayStreak.current(e.state, today: GameStore.calendarDay())
         return n >= PlayStreak.showFrom ? n : 0
     }
-    /// Local calendar day number (days since the era start), the unit of the play streak.
     static func calendarDay() -> Int { Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0 }
-    /// The app went to the background: plan the reminders for the state the player left.
     func scheduleReminders() {
         guard let e = engine else { return }
         Reminders.schedule(SessionHooks.reminders(e.state))
     }
     private static let leftAtKey = "ledger.leftAt"
-    /// Seconds away after which coming back shows the recap card.
     private static let recapAfterAway: Double = 15 * 60
-    /// The app went to the background: remember the game day and when, for the recap on return.
     func noteLeaving() {
         guard var e = engine else { return }
         e.markSeen()
         engine = e
         UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: GameStore.leftAtKey)
     }
-    /// The app came back after a while: one notice card with what changed since the player left (engine `sinceYouLeft`). It waits its turn:
-    /// nothing is added while a report, another notice or an outcome is on screen.
     func showReturnRecap() {
         let left: Double = UserDefaults.standard.double(forKey: GameStore.leftAtKey)
         guard left > 0, Date().timeIntervalSince1970 - left >= GameStore.recapAfterAway else { return }
@@ -213,71 +158,46 @@ final class GameStore: ObservableObject {
         e.markSeen()
         engine = e
     }
-    /// Newly opened features waiting for their announcement popup, oldest first (UnlockKit.swift). One shows at a time, after the day's popups.
     @Published var unlockQueue: [UnlockPrompt] = []
-    /// What the last ordinary day did to net worth and cash (real figures); cleared when a report sheet takes its place.
     @Published private(set) var dayChip: DayChip?
-    /// What the last day changed (net worth, cash, revenue, debt), for the animation layer.
     @Published private(set) var lastDayChanges = DayChanges()
-    /// The one payment notice of the day (a big customer payment), logged to Home's events.
     @Published private(set) var paymentNotice: PaymentNotice?
-    /// What each Phone app has shown the player so far (badges count what is newer).
     @Published var seenMarks: UpdateMarks = UpdateMarks.load("seen") { didSet { memoBox["badges"] = nil } }
-    /// Item marks seen in the last moment, written to `seenMarks` together (ItemMarks.swift): one publish for a screenful of markers.
     var pendingSeen: [String] = []
     var seenFlushScheduled = false
-    /// Per Phone app (by raw value): the marks when the app was opened, and the item ids that were new then (ItemMarks.swift).
     var visitBaselines: [String: UpdateMarks] = [:]
     @Published var visitFresh: [String: Set<String>] = [:]
-    /// A worker's profile shown as a popup.
     @Published var workerPopup: WorkerPopupRef?
-    /// The last important events (big payments, loan repayments, good news, milestones), newest first, at most 12.
     @Published private(set) var homeEvents: [HomeEvent] = []
     private func logEvents(_ items: [HomeEvent]) {
         guard !items.isEmpty else { return }
         homeEvents = Array((items + homeEvents).prefix(12))
     }
-    /// A chip that flies from a company to the personal account (a view calls `flyChip` after a dividend is paid out).
     @Published private(set) var transferChip: TransferChip?
     func flyChip(_ label: String, amount: Double, from origin: CGPoint? = nil, outgoing: Bool = false, text: String? = nil) {
         transferChip = TransferChip(label: label, amount: amount, origin: origin, outgoing: outgoing, text: text)
     }
     func clearChip() { transferChip = nil }
-    /// The short popup after an ordinary day (real sales and today's messages); nil when there is nothing to say or it has been read.
     @Published private(set) var dailySheet: DailyDigest?
 
-    // MARK: Navigation state (the one owner; the methods are under "Navigation" below)
-
-    /// The selected tab. Only the tab bar changes it (`selectTab`); no link does.
     @Published var tab: AppTab = AppTab.launch
-    /// The tab that was open before the current one (nil until the first change); `returnToPreviousTab` goes back to it.
     @Published private(set) var previousTab: AppTab?
-    /// Goes back to the tab that was open before this one, keeping the place it had.
     func returnToPreviousTab() {
         guard let p = previousTab, p != tab else { return }
         selectTab(p, resetRoot: false)
     }
     private struct LastPush { var route: NavRoute; var tab: AppTab; var at: Date }
     private var lastPush: LastPush?
-    /// Every tab's navigation stack (the Custom tab's root is its chosen destination). The tab roots bind to these; nothing else holds a stack.
     @Published private(set) var stacks: [AppTab: [NavRoute]] = [:]
-    /// The Custom tab's destination, kept in UserDefaults ("customTab"); Inbox until the player picks another.
     @Published var customTarget: CustomTabTarget = CustomTabTarget.stored()
-    /// The "Change the Custom tab" popup.
     @Published var customPickerOpen = false
-    /// Set for the Market app: it opens on its Overview, where the latest market events are.
     var marketNewsPending = false
-    /// Bumped each time a tab is re-selected: the tab root resets its own sub-tab and scrolls to the top.
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
-    /// The one pending request for the app a link opened (an Inbox message, a Bank account, a report).
     @Published private(set) var appRequest: AppRequest?
-    /// Set when the save on disk exists but could not be opened; the start screen explains it instead of a passing alert.
     @Published private(set) var loadProblem: String?
 
     let saves: SaveStore?
-    /// Launched with `-showcase` (screenshots, UI tests): a prepared game, and nothing is written to disk.
     private let isShowcase = ProcessInfo.processInfo.arguments.contains("-showcase")
-    /// `-showcase-trades boutique,cardealer`: extra trades for screenshot runs of the showcase game.
     private static var showcaseTrades: [String] {
         let a: [String] = ProcessInfo.processInfo.arguments
         guard let i = a.firstIndex(of: "-showcase-trades"), i + 1 < a.count else { return [] }
@@ -304,7 +224,6 @@ final class GameStore: ObservableObject {
         act({ $0.settleAuctionCash(amount, claimID: claimID, label: label) })
     }
 
-    /// The cash prize of an opened free box lands on the personal account (once per opening).
     func claimBoxMoney(_ amount: Int, claimID: String) {
         guard let paid = act({ $0.claimBoxMoney(amount, claimID: claimID) }) ?? nil, paid > 0 else { return }
         if let cur = engine?.homeCurrency { tell("Prize paid", "+" + cur.display(paid) + " from your box.", tone: "good") }
@@ -313,14 +232,10 @@ final class GameStore: ObservableObject {
     var hasGame: Bool { engine != nil }
     var hasSavedGame: Bool { saves?.hasSave() ?? false }
 
-    // MARK: Formatting (home currency)
-
     func money(_ v: Double) -> String { (engine?.homeCurrency.display(v) ?? String(Int(v))).tidyMoney }
     func short(_ v: Double) -> String { (engine?.homeCurrency.short(v) ?? String(Int(v))).tidyMoney }
     func money(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).display(v) ?? String(Int(v))).tidyMoney }
     func short(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).short(v) ?? String(Int(v))).tidyMoney }
-
-    // MARK: Saving and loading
 
     func loadCurrent() {
         guard let saves else { return }
@@ -331,12 +246,10 @@ final class GameStore: ObservableObject {
         }
     }
 
-    /// The summary written with the current save (player, country, week, companies, when it was saved), or nil when there is none or it is unreadable.
     func currentSaveSummary() -> SaveSummary? {
         saves?.slots().first { $0.slot == "current" }?.summary
     }
 
-    /// A save error in words a player can act on.
     static func describe(_ error: Error) -> String {
         switch error {
         case SaveError.notAGameSave: return "The file is not a Ledger save."
@@ -363,11 +276,8 @@ final class GameStore: ObservableObject {
         } catch { errorText = "Saving failed: \(error)" }
     }
 
-    // MARK: Save slots (Settings > Saves > Save slots; `current` is the game being played)
-
     func slotList() -> [(slot: String, summary: SaveSummary?)] { saves?.slots() ?? [] }
 
-    /// Copies the game being played into a named slot. Returns false when there is no game, the name is unusable or taken.
     @discardableResult
     func saveToSlot(_ raw: String) -> Bool {
         guard !isShowcase, let saves, let engine, let name = SaveStore.cleanSlotName(raw), name != "current", !saves.hasSave(slot: name) else { return false }
@@ -375,7 +285,6 @@ final class GameStore: ObservableObject {
         catch { errorText = "Saving failed: \(error)"; return false }
     }
 
-    /// Makes a slot the game being played. The game it replaces is kept as a backup file first.
     func loadSlot(_ slot: String) {
         guard !isShowcase, let saves else { return }
         save(backup: true)
@@ -388,20 +297,17 @@ final class GameStore: ObservableObject {
     @discardableResult
     func renameSlot(_ slot: String, to raw: String) -> Bool { (try? saves?.renameSlot(slot, to: raw)) ?? false }
 
-    /// `story: .fresh` is the new-player start: `tradeID` and `companyName` are the player's two choices after the country.
     func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, difficulty: Difficulty = .classic) {
         RememberedDetails.clearAll()
         do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, difficulty: difficulty); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
     }
 
-    /// Whether the run that ended can be started again with the same country, trade and names (the new-player start needs a company to copy).
     var canRetrySameSetup: Bool {
         guard let s = engine?.state else { return false }
         let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
         return story != .fresh || s.companies.contains(where: { (c: Company) -> Bool in c.type != "hold" })
     }
 
-    /// Starts a new game with the same country, trade, company name and player name as the current run, going straight in.
     func retryWithSameSetup() {
         guard let s = engine?.state else { return }
         let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
@@ -412,14 +318,12 @@ final class GameStore: ObservableObject {
         }
     }
 
-    /// Makes the game stored in a cloud backup the game being played.
     func restoreBackup(text: String) {
         guard let saves else { return }
         do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save() }
         catch { errorText = "That backup could not be restored. " + Self.describe(error) }
     }
 
-    /// Set once the new-player ladder reaches its last goal: the classic loan start and the family café become selectable under Settings > New game.
     static let classicStartKey = "ledger.classicStartUnlocked"
     var classicStartUnlocked: Bool { UserDefaults.standard.bool(forKey: Self.classicStartKey) }
 
@@ -430,11 +334,6 @@ final class GameStore: ObservableObject {
 
     func quitToMenu() { save(); resetNavigation(); engine = nil }
 
-    // MARK: Time
-
-    /// Runs one day. Taps while a day is running, or while a report sheet is waiting to be read, are ignored: a day is never
-    /// advanced twice by one press, and a week/month/year report is always read before the next day runs. The pause before the
-    /// engine runs is only long enough for the button to show its progress state (the engine itself runs at once).
     func nextDay() {
         guard !isAdvancing, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, engine != nil else { return }
         isAdvancing = true
@@ -445,13 +344,11 @@ final class GameStore: ObservableObject {
         }
     }
 
-    /// The open Inbox item that blocks Play, if any.
     var blockingMessageID: Int? {
         let id: Int = memo("blocking") { $0.blockingMessage?.id ?? Int.min } ?? Int.min
         return id == Int.min ? nil : id
     }
 
-    /// Group books profit at the end of the last day played (week, day, value); used as the start of the next day's "Profit today".
     private var profitMark: (week: Int, day: Int, value: Double)?
 
     private func advanceOneDay() {
@@ -460,13 +357,11 @@ final class GameStore: ObservableObject {
         let nwBefore: Double? = e.dayHistory.netWorth.last
         let cashBefore: Double? = e.dayHistory.cash.last
         let debtBefore: Double = e.state.loans.reduce(0) { $0 + $1.balance }
-        // Profit today starts where the last day ended, so what the owner did in between (opening a new store in a chain, setting up) counts.
         let profitBefore: Double = { if let m = profitMark, m.week == e.state.week, m.day == e.state.day { return m.value }; return e.groupBooksProfit }()
         let tightBefore: Bool = e.cashIsTight
         let out = e.nextDay()
         let today: Int = GameStore.calendarDay()
         e.update { s, _, _ in PlayStreak.record(&s, today: today) }
-        // Goals, milestones and trophies all queue for the celebration popup (one shown at a time).
         let celebrations: [Celebration] = e.takeCelebrations()
         if !celebrations.isEmpty { Haptics.goalDone(); SoundCues.play(.goal) }
         if !tightBefore && e.cashIsTight && !out.gameOver { Haptics.cashWarning(); SoundCues.play(.warning) }
@@ -495,7 +390,6 @@ final class GameStore: ObservableObject {
         }
         let debtAfter: Double = e.state.loans.reduce(0) { $0 + $1.balance }
         lastDayChanges = DayChanges(netWorth: daily.netWorthChange ?? 0, cash: daily.cashChange ?? 0, revenue: daily.revenue, debt: debtAfter - debtBefore)
-        // A major payment (the day's takings above 1.5 percent of net worth) is logged for Home only.
         var todaysPayment: PaymentNotice?
         if !out.gameOver, let p = bigPayment(e) {
             let notice = PaymentNotice(amount: p.amount, from: p.from)
@@ -508,7 +402,6 @@ final class GameStore: ObservableObject {
         for line in daily.wentWell.prefix(2) { logged.append(HomeEvent(glyph: Glyph.check, text: line.tidyMoney, day: daily.dateLabel)) }
         for c in celebrations.prefix(2) { logged.append(HomeEvent(glyph: Glyph.achievements, text: c.title, day: daily.dateLabel)) }
         logEvents(logged)
-        // Every ordinary day has a report, quiet or busy; only Continue closes it.
         dailySheet = (digest == nil && !out.gameOver) ? daily : nil
         if digest == nil, let nwAfter = e.dayHistory.netWorth.last, let nwBefore {
             let cashAfter: Double = e.dayHistory.cash.last ?? 0
@@ -518,7 +411,6 @@ final class GameStore: ObservableObject {
         }
     }
 
-    /// The player answers the start-of-game ambition prompt: a path, or nil for "decide later". Either way it is not asked again.
     func chooseAmbition(_ path: String?) {
         act { e -> Bool in
             if let path { e.chooseAmbition(path: path) }
@@ -528,7 +420,6 @@ final class GameStore: ObservableObject {
         if let path, let name = engine?.ambitionPaths.first(where: { $0.id == path })?.name { show("Your ambition: \(name). Change it freely until week 4.", tone: "good") }
     }
 
-    /// Picks up what was earned or closed while the app was away (a saved game with an unread report or an unshown celebration).
     func refreshPending() {
         guard var e = engine, !isAdvancing else { return }
         if reportSheet == nil { reportSheet = e.pendingReportDigest() }
@@ -541,7 +432,6 @@ final class GameStore: ObservableObject {
         queueUnlocks()
     }
 
-    /// The player has read the report sheet: the report (and the shorter ones that closed with it) are marked seen.
     func dismissReportSheet() {
         guard let d = reportSheet else { return }
         act { e -> Bool in
@@ -549,39 +439,24 @@ final class GameStore: ObservableObject {
             return true
         }
         reportSheet = nil
-        if d.kind == .week { Reminders.askOnce() }   // The system prompt, once, after the first week report
-        if let e = engine, SessionHooks.cliffhanger(e.state) { homeCliffhanger += 1 }   // Home scrolls to Needs you and the expiry pill pulses once
+        if d.kind == .week { Reminders.askOnce() }
+        if let e = engine, SessionHooks.cliffhanger(e.state) { homeCliffhanger += 1 }
     }
 
     func dismissDailySheet() { dailySheet = nil }
 
-    /// The popup on screen has been seen: the next one (if any) shows.
     func dismissCelebration() {
         if !celebrationQueue.isEmpty { celebrationQueue.removeFirst() }
     }
 
-    // MARK: Home shortcuts
-
-    /// The four boxes on Home (the saved choice, else the default four).
     var homeShortcuts: [HomeShortcut] { HomeShortcut.resolve(engine?.homeShortcutIDs) }
 
-    func setHomeShortcuts(_ shortcuts: [HomeShortcut]) {
-        act { e -> Bool in
-            e.setHomeShortcutIDs(shortcuts.map { $0.rawValue })
-            return true
-        }
-    }
-
-    /// A buzz when something needs the player; the words are in the daily popup and the Inbox.
     private func report(_ fresh: [Message]) {
         if fresh.contains(where: { $0.isOwnerAddressed && ($0.status == "open" || $0.severity >= 3) }) { Haptics.warning() }
         let alerts: [Message] = fresh.filter { (m: Message) -> Bool in m.isAlert && !redAlerts.contains(where: { (a: Message) -> Bool in a.id == m.id }) }
         if !alerts.isEmpty { Haptics.failure(); redAlerts.append(contentsOf: alerts) }
     }
 
-    // MARK: Acting
-
-    /// Run an action on the engine, publish the result and save.
     @discardableResult
     func act<T>(_ body: (inout GameEngine) -> T) -> T? {
         guard var e = engine else { return nil }
@@ -592,8 +467,6 @@ final class GameStore: ObservableObject {
         return r
     }
 
-    /// Today's daily mission. The engine stores a new mission only when the date has changed; only then is the engine published and
-    /// saved (Home asks after every day, and a full save plus an app-wide re-render each time was wasted work).
     func dailyGoal() -> PlayerGoals.DailyGoal? {
         guard var e = engine else { return nil }
         let before: JSONValue? = e.state.rest["dy59"]
@@ -605,10 +478,8 @@ final class GameStore: ObservableObject {
         return goal
     }
 
-    /// Goal rewards waiting to be claimed (ladder, career and today's goal).
     var claimableGoals: [GoalClaims.Claimable] { engine?.claimableGoals(now: Date()) ?? [] }
 
-    /// Claims one finished goal: its effect applies and its cash lands on the personal account.
     func claimGoal(_ kind: GoalClaims.Kind, id: String) {
         guard case .claimed(let title, let reward, let cash)? = act({ $0.claimGoal(kind: kind, id: id) }) else { return }
         Haptics.success()
@@ -629,8 +500,6 @@ final class GameStore: ObservableObject {
         engine = e
     }
 
-    /// Tells the player what a setting-style engine action did: `done` when it changed something, `same` when it was already so (or the
-    /// thing has gone), and the engine's reason when it refused. Returns true when the setting now holds.
     @discardableResult
     func settle(_ result: SettingResult?, _ done: String, same: String = "Already set.", tone: String = "n") -> Bool {
         switch result {
@@ -641,12 +510,8 @@ final class GameStore: ObservableObject {
         }
     }
 
-    /// For a setting the engine applies without a result of its own (a limit, a duty, a slider): a short "Saved" with what it is now.
     func saved(_ what: String) { show("Saved: \(what)", tone: "n") }
 
-    /// A result line from an action. A refusal or a problem the player must read (tone "warn" or "bad") is a popup. Plain information
-    /// ("Saved", "Hired") never interrupts: the screen shows the change, and while a confirmed action runs the line becomes its
-    /// outcome popup (see `runConfirmed`).
     func show(_ text: String, tone: String = "n") {
         switch tone {
         case "bad", "warn":
@@ -656,7 +521,6 @@ final class GameStore: ObservableObject {
         }
     }
 
-    /// Important information, always told in the popup (an answer with an immediate effect, a result the player waits for).
     func tell(_ title: String, _ text: String, tone: String = "n") {
         outcomeCapture?.refused = true
         let t = Toast(title: title, text: text.tidyText, tone: tone)
@@ -664,7 +528,6 @@ final class GameStore: ObservableObject {
         notices.append(t)
     }
 
-    /// A luxury purchase is confirmed on a gold-edged reveal card (see `GoldReveal`).
     func tellLuxury(name: String, price: String) {
         var t = Toast(title: name, text: "", tone: "good")
         t.style = "luxury"
@@ -673,15 +536,12 @@ final class GameStore: ObservableObject {
         notices.append(t)
     }
 
-    /// An answer to an open decision: the outcome popup says what was chosen and what it does; a failed answer is an error popup.
     func announceAnswer(label: String, effects: [String], ok: Bool, messageTitle: String = "", companyID: Int = 0) {
         guard ok else { Haptics.warning(); tell("Not applied", "That answer could not be applied: the message is no longer open.", tone: "warn"); return }
         Haptics.success()
         outcome(chosen: label, result: effects.joined(separator: "\n"))
     }
 
-    /// The one outcome popup after a decision was answered: what was chosen and what came of it, in plain words. Queued, one at a
-    /// time; an empty result reads "Done: <chosen>".
     func outcome(chosen: String, result: String) {
         let c: String = chosen.tidyText
         let r: String = result.tidyText
@@ -689,8 +549,6 @@ final class GameStore: ObservableObject {
         outcomes.append(OutcomeNote(chosen: c, result: r.isEmpty ? "Done: " + c : r))
     }
 
-    /// Runs a confirmed action and tells its outcome: the result lines it reported, or "Done: <button>". A refusal (its own popup)
-    /// or an action that told its own outcome adds none.
     func runConfirmed(_ action: PendingAction) {
         let outer: OutcomeCapture? = outcomeCapture
         outcomeCapture = OutcomeCapture()
@@ -702,22 +560,16 @@ final class GameStore: ObservableObject {
         outcome(chosen: action.button, result: c.lines.joined(separator: "\n"))
     }
 
-    /// The outcome popup on screen has been read: the next one (if any) shows.
     func dismissOutcome() { if !outcomes.isEmpty { outcomes.removeFirst() } }
 
-    /// The popup on screen has been read: the next notice (if any) shows.
     func dismissNotice() { if !notices.isEmpty { notices.removeFirst() } }
 
-    /// A top-priority row: a decision opens in a popup right here, anything else goes to its screen.
     func go(popup action: Suggestion.Action) {
         if case .openMessage(let id) = action, engine?.state.inbox.contains(where: { $0.id == id && $0.status == "open" }) == true {
             Haptics.tap(); decisionPopup = id
         } else { go(action) }
     }
 
-    // MARK: Navigation
-
-    /// Links never change tab, so no tab root is reached from another tab: there is no origin to go back to.
     var returnInfo: ReturnInfo? { nil }
     var returnTab: AppTab? { nil }
     func returnToOrigin() {}
@@ -725,12 +577,9 @@ final class GameStore: ObservableObject {
     func path(for tab: AppTab) -> [NavRoute] { stacks[tab] ?? [] }
     var phonePath: [NavRoute] { path(for: .phone) }
     var customPath: [NavRoute] { path(for: .custom) }
-    /// How many screens are pushed on a tab (0 = its root).
     func depth(_ tab: AppTab) -> Int { path(for: tab).count }
     func rootToken(_ tab: AppTab) -> Int { rootTokens[tab] ?? 0 }
 
-    /// The tab roots set their stack through here (a push, a pop by Back or by swipe). A record that is already on the stack is not
-    /// stacked twice: a link to it goes back to it. The Market route becomes the Market app on the same stack.
     func setPath(_ new: [NavRoute], for tab: AppTab) {
         let old = path(for: tab)
         var next = new
@@ -745,8 +594,6 @@ final class GameStore: ObservableObject {
         stacks[tab] = next
     }
 
-    /// `old` with `route` pushed, unless the same record is already on it: then the stack is cut back to that record, which takes the
-    /// new route (so a link to another section of it shows that section). A finished "new company" form is not kept behind the company it made.
     static func collapse(_ old: [NavRoute], pushing route: NavRoute) -> [NavRoute] {
         var base = old
         if route.companyID != nil, base.last == .newCompany { base.removeLast() }
@@ -754,18 +601,14 @@ final class GameStore: ObservableObject {
         return base + [route]
     }
 
-    /// Pushes `route` on the stack of the tab the player is on (or of `target`), so Back returns to the screen the link was on.
     func push(_ route: NavRoute, on target: AppTab? = nil) {
         let t = target ?? tab
-        // A double tap must not push the same screen twice: the same route on the same tab within 0.4 s is ignored.
         let now: Date = Date()
         if let last = lastPush, last.route == route, last.tab == t, now.timeIntervalSince(last.at) < 0.4 { return }
         lastPush = LastPush(route: route, tab: t, at: now)
         setPath(path(for: t) + [route], for: t)
     }
 
-    /// Swaps the screen on top of the open tab's stack for `route` (the company switcher), so Back still returns to what was under it.
-    /// A record already lower on the stack is gone back to instead of shown twice; on an empty stack the route is pushed.
     func replaceTop(with route: NavRoute) {
         let t = tab
         var base = path(for: t)
@@ -776,21 +619,14 @@ final class GameStore: ObservableObject {
         stacks[t] = base + [route]
     }
 
-    /// The one way to open a company (or one of its screens) from anywhere: pushed onto the stack of the tab the player is on, so Back
-    /// returns to the screen they came from. A link to a company screen that is already on the stack goes back to it.
     func openCompany(_ id: Int, section: CompanySection? = nil, part: String? = nil) {
-        // The Market is a Phone app: a link to a company's market opens it with that company chosen.
         if section == .market { openMarket(companyID: id); return }
-        // Chain and franchise live on the company's Group entity page.
         if section == .chain { openGroupEntity(companyID: id); return }
         let route = NavRoute.make(id, section, part)
         let target = tab
-        // One turn later: a screen that opens a company and then closes itself (a finished form) must pop before the push lands.
         Task { @MainActor [weak self] in self?.push(route, on: target) }
     }
 
-    /// Pushes a company's Group entity page (its own entry, else the chain or holding it belongs to) on the open tab, on the section with
-    /// that key ("expansion" is chain and franchise; see `GroupSection.key`). A company with no entry opens its company screen.
     func openGroupEntity(companyID: Int, section: String = "expansion") {
         guard let e = engine else { return }
         let list: [GroupEntity] = GroupEntities.cached(self) ?? GroupEntities.build(e)
@@ -800,21 +636,16 @@ final class GameStore: ObservableObject {
         push(.entity(g.id, s))
     }
 
-    /// Pushes `route` on the open tab. `dest` is ignored: a link never changes tab.
     @available(*, deprecated, message: "Links never change tab: use push(_:)")
     func open(_ route: NavRoute, on dest: AppTab) { push(route) }
 
     func setPhonePath(_ new: [NavRoute]) { setPath(new, for: .phone) }
     func setCustomPath(_ new: [NavRoute]) { setPath(new, for: .custom) }
 
-    /// The Ventures part of the Projects tab, pushed as the Ventures app on the open tab (on the Projects root it switches the segment).
     @available(*, deprecated, message: "Links never change tab: use openApp(_:) or push(_:)")
-    func jump(to destination: AppTab) { if destination == .projects { openApp(.ventures) } }
 
     private func clearStack(_ tab: AppTab) { stacks[tab] = [] }
 
-    /// A tab chosen on the tab bar or the sidebar: the only way the selected tab changes. A tap (`resetRoot` true) shows that tab's ROOT;
-    /// `resetRoot` false keeps the place it had. Choosing the tab that is already open returns it to its root.
     func selectTab(_ t: AppTab, resetRoot: Bool = true) {
         if t == tab {
             popToRoot(t)
@@ -826,7 +657,6 @@ final class GameStore: ObservableObject {
         appRequest = nil
     }
 
-    /// Pops a tab to its root: no pushed screens, and the root shows its first page scrolled to the top.
     func popToRoot(_ t: AppTab) {
         clearStack(t)
         rootTokens[t] = rootToken(t) + 1
@@ -834,49 +664,28 @@ final class GameStore: ObservableObject {
     }
 
     func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
-        if var e = engine, e.noteVisit(app: app.rawValue) { engine = e }   // a daily goal may be waiting on this app
-        // Ventures is a part of the Projects tab: on that tab's root it switches to Portfolio.
+        if var e = engine, e.noteVisit(app: app.rawValue) { engine = e }
         if app == .ventures, tab == .projects, depth(.projects) == 0 { appRequest = .ventures; return }
         appRequest = app == .ventures ? nil : request
         push(.app(app))
     }
 
-    /// Opens one account of the Bank app (and optionally one of its tabs) from anywhere: a company's "Open in Bank", a loan or tax prompt.
     func openBank(_ account: BankAccountID, tab: BankTab = .account, applyLoan: Double? = nil) {
         openApp(.bank, request: .bank(BankRequest(account: account, tab: tab, applyLoan: applyLoan)))
     }
 
-    /// The loan amount a link asked the Bank's loan application to start with; the Loans tab takes it when it appears.
     @Published var pendingLoanApply: Double?
 
-    /// Opens the Market app (the Phone), on one company's market when `companyID` is given, else on its Overview.
     func openMarket(companyID: Int? = nil) {
         openApp(.market, request: .market(companyID: companyID ?? 0))
     }
 
-    /// Opens the Market app on one of its parts (Invest for a goal about investing).
     func openMarket(tab: MarketUI.Tab) {
         openApp(.market, request: .marketTab(tab))
     }
 
-    /// Opens the Reviews app on one company.
-    func openReviews(companyID: Int) {
-        openApp(.reviews, request: .reviews(companyID: companyID))
-    }
-
-    /// Opens AirStay (places to rent) for one company.
-    func openAirStay(companyID: Int = 0) { openApp(.airStay, request: .airStay(companyID: companyID)) }
-
-    /// Opens TechPro Store for one company, on one item's page when `equipmentID` is given.
-    func openTechPro(companyID: Int, equipmentID: String = "") { openApp(.techPro, request: .techPro(companyID: companyID, equipmentID: equipmentID)) }
-
-    /// Opens Atlas Insurance for one company.
-    func openAtlas(companyID: Int) { openApp(.atlas, request: .atlas(companyID: companyID)) }
-
-    /// Opens one message in the Inbox app.
     func openMessage(_ id: Int) { openApp(.inbox, request: .message(id)) }
 
-    /// The apps take their request when they appear and when it changes. A request whose target is gone (a message that was removed) is dropped.
     func takeVenturesRequest() -> Bool {
         guard case .ventures? = appRequest else { return false }
         appRequest = nil
@@ -928,7 +737,6 @@ final class GameStore: ObservableObject {
         return r
     }
 
-    /// Drops every stack and pending request, so nothing from one game (or one visit) opens in the next.
     private func resetNavigation() {
         tab = .company
         stacks = [:]; rootTokens = [:]; appRequest = nil
@@ -940,7 +748,6 @@ final class GameStore: ObservableObject {
         switch action {
         case .openMessage(let id): openMessage(id)
         case .openCompany(let id, let key): openCompany(id, section: key.flatMap { CompanySection(key: $0) })
-        // An overdrawn account opens the loan application with the shortfall (to the next 100) already chosen.
         case .openLoans:
             let short: Double = max(0, -(engine?.state.cash ?? 0))
             openBank(.personal, tab: .loans, applyLoan: short > 0 ? (short / 100).rounded(.up) * 100 : nil)
@@ -951,48 +758,30 @@ final class GameStore: ObservableObject {
     }
 
     var unreadCount: Int { memo("unread") { $0.state.inbox.filter { !$0.isRead || $0.status == "open" }.count } ?? 0 }
-    /// Decisions waiting for an answer: the number behind the Inbox app bubble and the Decisions tab badge.
     var openDecisionCount: Int { memo("openDecisions") { $0.ownerDecisions.count } ?? 0 }
 
-    // MARK: Phone alerts and bubbles
-
-    /// Everything on the Phone that asks for the player, most urgent first (see `PhoneAlert`).
     var phoneAlerts: [PhoneAlert] { engine.map { PhoneAlerts.all(engine: $0, formatter: self) } ?? [] }
-    // The red bubbles (`appBadge`, `phoneBadges`, `waitingCount`) are in UpdateBadges.swift.
 }
 
 extension Int {
-    /// "1 week", "3 weeks".
     var weeksText: String { "\(self) \(self == 1 ? "week" : "weeks")" }
-    /// "1 person", "12 people": the one way to count employees on screen.
     var peopleText: String { "\(self) \(self == 1 ? "person" : "people")" }
-    /// "1 decision", "3 decisions": a count with a regular plural ("s", or `plural` for the others, like "companies").
     func countText(_ singular: String, plural: String? = nil) -> String { "\(self) \(self == 1 ? singular : (plural ?? singular + "s"))" }
 }
 
 extension Currency {
-    /// `short` as the player should read it ("£220k", "£2,751"), the same as `GameStore.short`. Views that hold a currency use this,
-    /// so the same amount never shows as "£2 751" on one screen and "£2,751" on the next.
     func tidyShort(_ v: Double) -> String { short(v).tidyMoney }
-    /// `display` as the player should read it: the one app-side formatter for full amounts ("£8,026", "1,234\u{00A0}kr").
     func tidyDisplay(_ v: Double) -> String { display(v).tidyMoney }
 }
 
 extension String {
-    /// Money text as the player should read it: "£220 k" becomes "£220k", thousands use a comma ("£8,026", never "£8 026"), and a
-    /// symbol that follows the number (kr, zł, three-letter codes) keeps a non-breaking space ("1,234\u{00A0}kr"). Safe to run on
-    /// engine-written news, notes and insights, so every amount on screen looks the same.
     var tidyMoney: String { TidyMoney.tidy(self) }
 }
 
-/// The rules behind `tidyMoney`. Every amount and engine sentence on screen passes through it on every render, so the regexes are
-/// compiled once, text no rule can touch returns at once, and results are remembered (the same strings come back render after render).
 enum TidyMoney {
     private static let rules: [(regex: NSRegularExpression, template: String)] = {
         var list: [(String, String)] = [
-            // A non-breaking space between digits is a thousands separator.
             ("(?<=\\d)[\u{00A0}\u{202F}\u{2009}](?=\\d)", ","),
-            // Engine sentences turn that separator into a plain space ("£7 745"): a currency symbol, then 1-3 digits, a space, 3 digits.
             ("(?<=[£$€¥]\\d{1,3}) (?=\\d{3}(?!\\d))", ","),
             ("(?<=[£$€¥]\\d{1,3},\\d{3}) (?=\\d{3}(?!\\d))", ","),
         ]
@@ -1025,7 +814,6 @@ enum TidyMoney {
         return t
     }
 
-    /// Every rule needs a space (or a non-breaking one) right after a digit, or after a digit and "k", "M" or "bn".
     static func mayChange(_ s: String) -> Bool {
         var p1: Unicode.Scalar = " ", p2: Unicode.Scalar = " ", p3: Unicode.Scalar = " "
         for c in s.unicodeScalars {

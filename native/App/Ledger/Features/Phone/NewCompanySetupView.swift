@@ -5,17 +5,14 @@ import Businesses
 import Finance
 import Simulation
 
-/// Everything the player has chosen so far for a new company; steps 2 and 3 both price it through the engine.
 struct NewCompanyDraft: Equatable {
     var tradeID: String
     var cityID: String
     var name: String
     var pick: NewCompanyPlan.Pick?
     var choices = SetupChoices()
-    /// The accountant the company is given; nil takes the standard one.
     var accountantID: Int? = nil
 
-    /// The size the picker prices the trade at, so the figures here match the table to the penny.
     func size(_ e: GameEngine) -> Double? {
         guard let t = e.data.catalog[tradeID] else { return nil }
         let country = e.homeCountry
@@ -34,8 +31,6 @@ struct NewCompanyDraft: Equatable {
     }
 }
 
-/// New company, step 2 of 3 in detail (behind "Customise"): name, city, premises and each item, then the estimated
-/// monthly cost after opening. Nothing is paid here; the bar goes to the review.
 struct NewCompanyDetailedSetupView: View {
     private enum Way: String, Hashable { case rent = "Rent", buy = "Buy", home = "Home" }
     @EnvironmentObject var store: GameStore
@@ -96,16 +91,12 @@ struct NewCompanyDetailedSetupView: View {
         }
     }
 
-    // MARK: Premises state
-
     private func currentPick(_ base: NewCompanyPlan?) -> NewCompanyPlan.Pick? {
         guard let base, base.premisesKind == .place else { return nil }
         let buying: Bool = way == .buy && (base.options.first { $0.index == (placeIndex ?? base.standardIndex) }?.canBuy ?? false)
         if placeIndex == nil && !buying { return nil }
         return NewCompanyPlan.Pick(listingIndex: placeIndex ?? base.standardIndex, buy: buying)
     }
-
-    // MARK: Fields
 
     @ViewBuilder private func fields(_ t: Trade, _ country: Country, _ costs: StartUpCostBreakdown?) -> some View {
         let cities: [Country.City] = country.cities
@@ -137,7 +128,6 @@ struct NewCompanyDetailedSetupView: View {
         }
     }
 
-    /// The tax note comes from the country's own data (corporate rate), not from fixed text.
     private func taxNote(_ country: Country, _ costs: StartUpCostBreakdown?) -> String {
         let pct = Int(saturating: (country.corporateTax * 100).rounded())
         let capital: String = (costs?.shareCapital ?? 0) > 0 ? " Share capital of \(store.money(costs?.shareCapital ?? 0)) is locked in the company." : ""
@@ -157,8 +147,6 @@ struct NewCompanyDetailedSetupView: View {
         .padding(.horizontal, 12).padding(.vertical, 8)
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.tableLine).frame(height: 1) }
     }
-
-    // MARK: Premises
 
     @ViewBuilder private func premisesBlock(_ plan: NewCompanyPlan) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -206,8 +194,6 @@ struct NewCompanyDetailedSetupView: View {
             Text("Nothing picked: the standard middle place is rented.").textStyle(.caption, tint: Theme.inkFaint)
         }
     }
-
-    // MARK: Cost cards
 
     private func costCard(_ costs: StartUpCostBreakdown, _ plan: NewCompanyPlan) -> some View {
         let personal: Double = plan.available
@@ -260,7 +246,6 @@ struct NewCompanyDetailedSetupView: View {
         }
     }
 
-    /// Goes to the review: nothing is paid on this step.
     private func registerBar(_ plan: NewCompanyPlan?) -> some View {
         let reason: String? = plan == nil ? "This company can no longer be priced."
             : ((plan?.registrationShortfall ?? 0) > 0 ? "Needs \(store.money(plan?.registrationShortfall ?? 0)) more cash." : nil)
@@ -268,8 +253,6 @@ struct NewCompanyDetailedSetupView: View {
     }
 }
 
-/// New company, step 3 of 3: one total, what is left and the running cost, then the details and risks before any money moves.
-/// The engine does the registering; a refusal is shown as it is.
 struct NewCompanyReviewView: View {
     @EnvironmentObject var store: GameStore
     var draft: NewCompanyDraft

@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Manager voice: role wording, no repeats, authority limits, scorecard, poaching and the move up.
 final class ManagerVoiceTests: XCTestCase {
     private func managedCafe(seed: Int, extraCafe: Bool = false) throws -> (GameEngine, Int, Int?) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -25,7 +24,6 @@ final class ManagerVoiceTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(Set(v).count, 3, "\(f) \(sit)")
             }
         }
-        // Roles really sound different: no two families share a wording for the same situation.
         for sit in [ManagerVoice.Situation.hire, .equip, .cash, .cut, .ad] {
             var seen = Set<String>()
             for f in ManagerVoice.Family.allCases { for l in ManagerVoice.variants(sit, family: f) { XCTAssertTrue(seen.insert(l).inserted, l) } }
@@ -59,7 +57,6 @@ final class ManagerVoiceTests: XCTestCase {
     }
 
     func testAuthorityLimitsAreRespected() throws {
-        // A cautious manager never uses more than the limit; a bold one exactly the limit.
         var uses = Set<Double>()
         for id in 1...60 { var p = Person(raw: [:]); p.set("id", id); p.set("stats", .object([:])); uses.insert(ManagerVoice.budgetUse(p)) }
         XCTAssertTrue(uses.allSatisfy { $0 <= 1 && $0 > 0 })
@@ -96,7 +93,7 @@ final class ManagerVoiceTests: XCTestCase {
         var got: Message?
         e.update { s, d, _ in
             let ci = s.companyIndex(id)!
-            s.companies[ci].managerMonthlyWage = 1000   // far under the going rate
+            s.companies[ci].managerMonthlyWage = 1000
             s.companies[ci].set("mgrW0", -100)
             for k in 0..<6000 where got == nil {
                 s.week = 60 + k

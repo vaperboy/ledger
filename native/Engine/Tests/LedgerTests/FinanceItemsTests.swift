@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Financial, energy and group trades: product lines as items, their economics from the existing books, the sliders, old saves, a two-year probe per trade.
 final class FinanceItemsTests: XCTestCase {
     static let all = ["insco", "bank", "fund", "power", "oilgas", "hold"]
 
@@ -31,7 +30,6 @@ final class FinanceItemsTests: XCTestCase {
         }
         var r = Run(e: e, id: id, invested: invested)
         for _ in 0..<110 where r.e.state.company(id)?.status != .open { week(&r, withItems: false) }
-        // An oil company starts with no field: it buys two stakes in producing fields (the same in every run).
         let rid = r.id
         r.e.update { s, data, _ in
             guard let i = s.companyIndex(rid), s.companies[i].type == "oilgas", s.companies[i].status == .open else { return }
@@ -53,7 +51,6 @@ final class FinanceItemsTests: XCTestCase {
             r.e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
             r.invested += top
         }
-        // The hook the lead adds beside `ItemModels.weeklyTick` in `ItemHooks.weekly`, run here by hand.
         if withItems { r.e.update { s, d, _ in for i in s.companies.indices { FinanceItems.weekly(&s, i, data: d) } } }
     }
 
@@ -82,7 +79,6 @@ final class FinanceItemsTests: XCTestCase {
                 XCTAssertNotNil(rec, "\(t) \(e.name)")
                 XCTAssertGreaterThan(e.marketPrice, 0, "\(t) \(e.name) has a price")
                 XCTAssertFalse(e.parts.isEmpty && e.overheadPerUnit == 0 && e.volume > 0, "\(t) \(e.name) has a cost")
-                // Live slider: above the break-even price a profit, below a loss, exactly at it break-even.
                 let list = SalesItems.rows(r.e.state, companyID: r.id, data: r.e.data).first { $0.id == e.itemID }!
                 if let rec, e.costPerUnit > 0, e.marketPrice > 0 {
                     XCTAssertEqual(rec.cost / list.marketPrice, e.costPerUnit / e.marketPrice, accuracy: 1e-9, "\(t) \(e.name) record cost keeps its share of the price")
@@ -186,7 +182,6 @@ final class FinanceItemsTests: XCTestCase {
     func testOldSavesAndOtherTradesAreUntouched() throws {
         var r = try Self.start("insco")
         for _ in 0..<3 { Self.week(&r, withItems: false) }
-        // the weekly hook (ItemHooks) works on an opted-in company by itself now, so even without the by-hand call it has its records
         let co = r.e.state.company(r.id)!
         XCTAssertFalse(co.value("w11").isNull)
         var other = try Self.start("bakery")
@@ -206,7 +201,6 @@ final class FinanceItemsTests: XCTestCase {
         XCTAssertEqual(e.price / e.marketPrice, 1.2, accuracy: 1e-9, "the slider moves the price the economics are shown at")
     }
 
-    /// Two years of a competent owner per trade, with and without the withItems: items split the money, they do not change it.
     func testTwoYearProbePerTrade() throws {
         for t in Self.all {
             var base = try Self.start(t), withItems = try Self.start(t)

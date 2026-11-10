@@ -4,10 +4,7 @@ import Countries
 import Businesses
 import Simulation
 
-/// Which picture a place gets: the premises photos in the asset catalogue (`AppPhotos`), by kind of place and floor area.
 enum StayPhotos {
-    /// Three pictures for each kind of place. The engine fixes the picture slot of a listing (`PlaceMarket.Offer.photoSlot`, varied by its
-    /// index in the feed), so a place keeps its picture when it is rented.
     static func name(category: PlaceMarket.Category, slot: Int) -> String {
         let n: Int = ((slot % 3) + 3) % 3 + 1
         switch category {
@@ -18,10 +15,6 @@ enum StayPhotos {
     }
 }
 
-/// AirStay (Phone, red): places to rent for your companies. It merges what used to be "Premises" and "Where you work": listings sorted into
-/// offices, shops and retail and storage, each with its monthly cost and kind of building, an information page with a Rent button, then
-/// "Choose company" (which company rents it and pays; where the receipt is filed), the in-game confirmation, and "Rent confirmed".
-/// The Rented tab holds the active rents, which can be moved to another company. The rules are the engine's (`PlaceMarket`, `CompanySetup`).
 struct AirStayApp: View {
     private let P = OutsidePalette.airStay
     @EnvironmentObject var store: GameStore
@@ -36,7 +29,6 @@ struct AirStayApp: View {
     @State private var tab: StayTab = .explore
     @State private var category: PlaceMarket.Category = .offices
     @State private var query = ""
-    /// 0 = every company's places; else only the places this company could take.
     @State private var focusCompany = 0
     @State private var offer: PlaceMarket.Offer?
     @State private var buy = false
@@ -96,7 +88,6 @@ struct AirStayApp: View {
         }
     }
 
-    /// A link from a company ("Premises", "Where you work") opens the app on that company.
     private func take() {
         guard let id = store.takeAirStayRequest() else { return }
         focusCompany = id
@@ -118,8 +109,6 @@ struct AirStayApp: View {
             .accessibilityIdentifier("stay-tabs")
     }
 
-    // MARK: Explore
-
     private func visibleOffers(_ e: GameEngine) -> [PlaceMarket.Offer] {
         let all: [PlaceMarket.Offer] = e.placeOffers()
         if focusCompany == 0 { return all }
@@ -137,7 +126,6 @@ struct AirStayApp: View {
 
     private func exploreView(_ e: GameEngine) -> some View {
         let all: [PlaceMarket.Offer] = visibleOffers(e)
-        // Places are offered for the kinds of premises your companies use, so a kind none of them uses has no listings: only those with places show.
         let present: [PlaceMarket.Category] = PlaceMarket.Category.allCases.filter { (c: PlaceMarket.Category) -> Bool in all.contains { (o: PlaceMarket.Offer) -> Bool in o.category == c } }
         let cat: PlaceMarket.Category = present.contains(category) ? category : (present.first ?? category)
         let shown: [PlaceMarket.Offer] = all.filter { (o: PlaceMarket.Offer) -> Bool in o.category == cat && matches(o) }
@@ -151,7 +139,6 @@ struct AirStayApp: View {
         .accessibilityIdentifier("stay-explore")
     }
 
-    /// How many places match, where they are and what they start at: the one line that matters before the photos.
     @ViewBuilder private func resultsLine(_ e: GameEngine, _ shown: [PlaceMarket.Offer]) -> some View {
         if !shown.isEmpty {
             let rents: [Double] = shown.compactMap { (o: PlaceMarket.Offer) -> Double? in e.premisesTerms(companyID: o.originCompanyID, listing: o.listing)?.monthlyRent }
@@ -181,7 +168,6 @@ struct AirStayApp: View {
         }
     }
 
-    /// The kinds of place as icon tabs with an underline under the chosen one, like a travel app's categories.
     private func chips(_ present: [PlaceMarket.Category], _ chosen: PlaceMarket.Category) -> some View {
         HStack(spacing: 0) {
             ForEach(present, id: \.self) { (c: PlaceMarket.Category) in
@@ -237,7 +223,6 @@ struct AirStayApp: View {
         return "\(o.cityName) \u{00B7} \(o.buildingType) \u{00B7} \(Int(o.listing.squareMetres)) m²\(places) \u{00B7} \(placeWord)"
     }
 
-    /// "6 office places": how many people the rental holds (nil when the trade's premises have no limit).
     private func placesText(_ o: PlaceMarket.Offer) -> String? {
         guard let e = store.engine, let n: Int = e.officeCapacity(forListing: o.listing, companyID: o.originCompanyID) else { return nil }
         return n == 1 ? "1 office place" : "\(n) office places"
@@ -247,7 +232,6 @@ struct AirStayApp: View {
         StayPhotos.name(category: o.category, slot: o.photoSlot)
     }
 
-    /// The sheet picture for the kinds of place the places sheet has (hall, warehouse, hotel, clinic ...); empty keeps the catalogue photo.
     private func art(_ o: PlaceMarket.Offer) -> String {
         ArtLibrary.itemKey(group: "premises", familyKey: o.placeKind, seed: o.id + "#" + String(o.photoSlot)) ?? ""
     }
@@ -266,8 +250,6 @@ struct AirStayApp: View {
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("stay-listing-\(o.id)")
     }
-
-    // MARK: Information page
 
     private func infoView(_ e: GameEngine, _ o: PlaceMarket.Offer) -> some View {
         let t: CompanySetup.PremisesTerms? = e.premisesTerms(companyID: o.originCompanyID, listing: o.listing)
@@ -295,7 +277,6 @@ struct AirStayApp: View {
         }
     }
 
-    /// Size, desks and passing trade side by side under the title.
     private func keyFacts(_ o: PlaceMarket.Offer) -> some View {
         let loc: Double = o.listing.location
         let locText: String = loc > 1.03 ? "Busy" : (loc < 0.97 ? "Quiet" : "Normal")
@@ -327,7 +308,6 @@ struct AirStayApp: View {
         }
     }
 
-    /// Room of this size free in a commercial building of yours in the same city (a franchise unit can start there, rent staying in the group).
     @ViewBuilder private func ownSpaceLine(_ e: GameEngine, _ o: PlaceMarket.Offer) -> some View {
         let free: [PremisesExtras.FreeSpace] = e.freeSpaceInYourBuildings(cityID: o.cityID, squareMetres: o.listing.squareMetres)
         if let f = free.first {
@@ -342,8 +322,6 @@ struct AirStayApp: View {
                         text: "\(money(t.purchasePrice, id)), with \(money(t.downPayment + t.fitOut, id)) now (down payment and fit-out) and a 15-year mortgage on the rest.",
                         actionTitle: "Buy instead", identifier: "stay-buy") { goCompany(e, o, buying: true) }
     }
-
-    // MARK: Choose company
 
     private func goCompany(_ e: GameEngine, _ o: PlaceMarket.Offer, buying: Bool) {
         let cands: [PlaceMarket.Candidate] = e.placeCandidates(for: o)
@@ -435,8 +413,6 @@ struct AirStayApp: View {
         }
     }
 
-    // MARK: Rent confirmed
-
     private func confirmedView(_ e: GameEngine) -> some View {
         let co: Company? = e.state.company(payerID)
         let place: PlaceMarket.Rented? = e.rentedPlaces().first { (r: PlaceMarket.Rented) -> Bool in r.companyID == payerID }
@@ -457,8 +433,6 @@ struct AirStayApp: View {
                            onPrimary: { tab = .rented; step = .explore }, onSecondary: { tab = .explore; step = .explore },
                            extra: { ShopPhoto(name: photoName, glyph: Glyph.building, height: 150, item: photoItem) })
     }
-
-    // MARK: Rented (active rents)
 
     private func rentedView(_ e: GameEngine) -> some View {
         let list: [PlaceMarket.Rented] = e.rentedPlaces()
@@ -510,7 +484,6 @@ struct AirStayApp: View {
         return "\(r.companyName) \u{00B7} \(Int(r.squareMetres)) m² \u{00B7} \(r.cityName)"
     }
 
-    /// The row's actions in "…": find a place, move the lease, work from home.
     @ViewBuilder private func rentedActions(_ e: GameEngine, _ r: PlaceMarket.Rented, _ id: Int) -> some View {
         let canMove: Bool = !r.atHome && !r.owned && !e.placeTargets(from: id).isEmpty
         if r.atHome || canMove || (!r.atHome && r.isHomeTrade) {
@@ -529,7 +502,6 @@ struct AirStayApp: View {
         }
     }
 
-    /// A home trade gives up its place: an owned place is sold and its mortgage paid off, a rented one returns the deposit (the old "Where you work" action).
     private func askHome(_ e: GameEngine, _ id: Int) {
         guard let co = e.state.company(id), let q = e.moveHomeQuote(companyID: id) else { return }
         let cur: Currency = e.currency(for: co)
@@ -551,8 +523,6 @@ struct AirStayApp: View {
             }
         }
     }
-
-    // MARK: Move a lease to another company
 
     private func startReassign(_ e: GameEngine, _ id: Int) {
         let targets: [PlaceMarket.Candidate] = e.placeTargets(from: id)

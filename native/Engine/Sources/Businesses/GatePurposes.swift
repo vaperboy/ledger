@@ -1,7 +1,5 @@
 import Foundation
 
-/// One plain sentence per gate and unlock id saying what the feature is for, shown under the unlock text. Keyed by `Gate.rawValue`
-/// or the `Unlocks` id; the gate table itself (`Gates.table`) is untouched.
 public enum GatePurposes {
     public static let table: [String: String] = [
         "hiring": "Hire people to serve more customers than you can alone.",
@@ -34,6 +32,5 @@ public enum GatePurposes {
         "dividends": "Pay profit out of a company to yourself instead of leaving it in the business.",
     ]
 
-    /// The sentence for a gate or unlock id; nil for an id with no entry.
     public static func purpose(_ id: String) -> String? { table[id] }
 }

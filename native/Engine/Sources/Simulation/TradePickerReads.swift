@@ -4,65 +4,44 @@ import Countries
 import Finance
 import Businesses
 
-// The new-company screens: the trade picker table (Trade, Start-up, Demand, Staff; no margin) and the set-up form's costs.
-// Everything is reshaped from the existing new-company code: `TradeAffordability` (the exact start-up cost), `CompanySetup.estimate`,
-// `NewCompanyPlan` (the premises the player picks), `CityMarket` (demand) and `CompanyCosts` (the monthly fixed costs). Nothing here changes the game.
-
 public typealias DemandLevel = CityMarket.DemandLevel
 
-/// One row of the trade picker.
 public struct TradePickerRow: Identifiable, Equatable, Sendable {
     public var id: String { tradeID }
     public var tradeID: String
     public var name: String
-    /// The group the picker's filter chips use (the trade's category).
     public var sector: String
-    /// The exact start-up cost in this city at the recommended size; nil when the trade cannot be started here (`blocked` says why).
     public var startUpCost: Double?
-    /// The least that must be paid to start (papers, place, registration); `startUpCost` is the recommended investment.
     public var minimumCost: Double? = nil
-    /// How many customers the trade can expect in this city against an average place: High, Medium or Low.
     public var demand: DemandLevel
-    /// People a typical company of this trade employs besides the owner, at the smallest size and at the size this city carries.
     public var staffMin: Int
     public var staffMax: Int
     public var blocked: String?
-    /// The player's account covers the start-up cost.
     public var isFunded: Bool
 }
 
-/// What the start-up cost is made of.
 public struct StartUpCostBreakdown: Equatable, Sendable {
     public var tradeID: String
     public var cityID: String
-    /// "Registration and licences", "Fit-out and equipment", "Deposit and first month", and (only when the trade has them) "Property purchase" and
-    /// "Waiting for a licence". They add up to `total`.
     public var lines: [FinanceLine]
     public var total: Double
-    /// Locked into the limited company on top of `total`, paid from the player's own account.
     public var shareCapital: Double
     public var premisesKind: NewCompanyPlan.PremisesKind
-    /// The place the figures use when the player picked one (nil: the standard place, or no fixed place).
     public var premisesName: String?
     public var buying: Bool
 }
 
-/// What the company costs to keep each month once it is open (an estimate; what rent and wages really are depends on the place and the people).
 public struct MonthlyFixedCostEstimate: Equatable, Sendable {
-    /// Rent (or the mortgage payment when buying), running costs, accounting and wages. Lines with nothing to pay are left out.
     public var lines: [FinanceLine]
     public var total: Double
-    /// People on the payroll in the wages line (the owner is not counted).
     public var staffCount: Int
 }
 
 public extension GameEngine {
-    /// The trade picker for a city (the player's home city and country unless given).
     func tradePickerRows(cityID: String? = nil, countryCode: String? = nil) -> [TradePickerRow] {
         readMemo.value(stateStamp, "tradePickerRows|\(cityID ?? "-")|\(countryCode ?? "-")") { tradePickerRowsFresh(cityID: cityID, countryCode: countryCode) }
     }
 
-    /// The same list worked out again from scratch (about 70 trades priced); `tradePickerRows` keeps it until the game state changes.
     func tradePickerRowsFresh(cityID: String? = nil, countryCode: String? = nil) -> [TradePickerRow] {
         let code = countryCode ?? state.homeCountryCode
         let country = data.countries.resolve(code, orHome: state.homeCountryCode)
@@ -77,8 +56,6 @@ public extension GameEngine {
         }
     }
 
-    /// The start-up cost split the way the set-up form shows it. With no `premises` it is the standard place the picker's figure prices, so
-    /// the two agree to the penny; with a pick it is that rented or bought place (`newCompanyPlan`).
     func startUpCostBreakdown(tradeID: String, cityID: String, premises: NewCompanyPlan.Pick? = nil, countryCode: String? = nil) -> StartUpCostBreakdown? {
         guard let bd = data.catalog[tradeID],
               let plan = newCompanyPlan(tradeID: tradeID, cityID: cityID, size: startSize(bd, cityID: cityID, countryCode: countryCode), pick: premises, countryCode: countryCode)
@@ -99,8 +76,6 @@ public extension GameEngine {
                                     premisesKind: plan.premisesKind, premisesName: option?.name, buying: buying)
     }
 
-    /// What keeping the company costs a month after opening: the place (rent, or the mortgage when buying), the trade's fixed running costs, the
-    /// accountant, and the standard team's wages (the same one month of wages the start-up cost holds).
     func monthlyFixedCostEstimate(tradeID: String, cityID: String, premises: NewCompanyPlan.Pick? = nil, countryCode: String? = nil) -> MonthlyFixedCostEstimate? {
         guard let bd = data.catalog[tradeID] else { return nil }
         let size = startSize(bd, cityID: cityID, countryCode: countryCode)
@@ -111,7 +86,6 @@ public extension GameEngine {
         let option = plan.pick.flatMap { p in plan.options.first { $0.index == p.listingIndex } }
         var lines: [FinanceLine] = []
         if let o = option, plan.pick?.buy ?? false {
-            // The mortgage `CompanySetup.setPremises` opens: what is not paid down, over 15 years, at the policy rate plus the bank's margin.
             let margin = max(0.012, Banking.creditMargin(tmp.credit) * 0.45) + 0.004
             lines.append(FinanceLine(id: "mortgage", label: "Mortgage payment",
                                      amount: Loans.annuity(principal: o.purchasePrice - o.downPayment, yearlyRate: tmp.economy.policyRate + margin, months: 180)))
@@ -126,10 +100,6 @@ public extension GameEngine {
         return MonthlyFixedCostEstimate(lines: lines, total: lines.reduce(0) { $0 + $1.amount }, staffCount: Int(saturating: staff.rounded()))
     }
 
-    // MARK: Helpers
-
-    /// The size the picker prices a trade at: the one the city carries (`CompanySetup.recommendedSize`) or, when the money does not carry it, the largest the money does (`TradeAffordability.size`).
-    /// The size a new company of this trade starts at for the money the player has now.
     func affordableStartSize(tradeID: String, cityID: String) -> Double? {
         tradeAffordability(cityID: cityID).first { $0.tradeID == tradeID }?.size
     }
@@ -140,7 +110,6 @@ public extension GameEngine {
         return CompanySetup.recommendedSize(bd, city: country.city(cityID) ?? country.cities[0])
     }
 
-    /// People on the payroll of a standard company of this size, not counting the owner where the owner fills the first post.
     private static func employees(_ bd: Trade, size: Double) -> Int {
         CompanySetup.standardStaff(bd, size: size).enumerated().reduce(0) { $0 + ($1.offset == 0 && bd.ownerFTE >= 1 ? max(0, $1.element.count - 1) : $1.element.count) }
     }

@@ -3,22 +3,16 @@ import GameCore
 import Countries
 import Finance
 
-/// The "Company car" perk with a real vehicle behind it. Each recipient (the manager and the team leads) drives a leased car that sits in the
-/// company's vehicle list like any other (`veh`, marked `perk`): the lease is paid weekly with the other leases (`CompanyWeek`), the car
-/// burns fuel and turns its odometer in `CompanyCosts.equipmentWeek`, breaks down, and shows in the Fleet screen with the name of its driver.
-/// So the perk costs what the vehicle machinery says, not a flat number a head. When a lead leaves, the car goes back; a new lead gets one.
 public enum CompanyCarPerk {
     public static let equipmentID = "perkcar"
-    /// The model every perk car is leased as (a small car; electric cars are bought as company vehicles, not as a perk).
     public static let model = "car_s"
-    /// Data record kept in the vehicle: "m" for the manager, else the team lead's staff id.
     static func key(forStaff id: Int) -> String { "s\(id)" }
 
     public struct Recipient: Equatable, Sendable, Identifiable {
-        public var id: String           // vehicle key
+        public var id: String
         public var name: String
-        public var role: String         // "Manager" or the staff role id
-        public var carName: String?     // nil while the car has not arrived yet
+        public var role: String
+        public var carName: String?
         public var monthlyLease: Double
     }
 
@@ -26,7 +20,6 @@ public enum CompanyCarPerk {
         EquipmentSpec(id: equipmentID, name: "Company cars (perk)", cost: 0, lifeYears: 5, standardCount: 0, flags: "v", vehicleModels: [model])
     }
 
-    /// The manager and the team leads, who each get a car while the perk is on.
     static func wanted(_ s: GameState, _ co: Company) -> [(key: String, name: String, role: String)] {
         var out: [(String, String, String)] = []
         if let m = co.managerID { out.append(("m", s.people[m]?.name ?? "Manager", "Manager")) }
@@ -43,7 +36,6 @@ public enum CompanyCarPerk {
         }
     }
 
-    /// Lease plus fuel a month of the cars that are there; recipients still waiting for a car are priced from the model when `data` is given.
     public static func monthlyCost(_ co: Company, currency cur: Currency, country: Country? = nil, data: GameData? = nil, week: Int = 0, inflation: Double = 1,
                                    missing: Int = 0, fuelIndex: Double = 1) -> Double {
         var total = 0.0
@@ -58,7 +50,6 @@ public enum CompanyCarPerk {
         return total
     }
 
-    /// What the perk costs a month for this company now, priced through the vehicle table.
     public static func monthlyCost(_ s: GameState, _ co: Company, data: GameData) -> Double {
         let w = World(state: s, data: data)
         let have = Set(co.value("veh").array.compactMap { $0["perk"].isNull ? nil : $0["perk"].string })
@@ -71,7 +62,6 @@ public enum CompanyCarPerk {
         return km * VehicleRunning.fuelPerKm(model: model, tables: tables, country: country, currency: cur, fuelIndex: fuelIndex) * 52 / 12
     }
 
-    /// Take every perk car back (the perk was switched off and no price data is at hand).
     public static func release(_ s: inout GameState, companyIndex i: Int) {
         var veh = s.companies[i].value("veh").array
         let n = veh.count
@@ -79,7 +69,6 @@ public enum CompanyCarPerk {
         if veh.count != n { s.companies[i].set("veh", .array(veh)) }
     }
 
-    /// Give every recipient a leased car and take back the cars of people who no longer qualify (or all of them when the perk is off).
     public static func sync(_ s: inout GameState, companyIndex i: Int, data: GameData) {
         let co = s.companies[i]
         let on = StaffPerks.isOn(co, "car")

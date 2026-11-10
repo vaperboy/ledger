@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Energy, the salmon farm, the holding company and the football club: they run, keep the books balanced, and earn realistic money.
 final class SpecialTradesTests: XCTestCase {
     static func engine(_ country: String = "NO", seed: Int = 7) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed)
@@ -68,7 +67,6 @@ final class SpecialTradesTests: XCTestCase {
         guard case .success(let hid) = r else { return XCTFail("holding not created: \(r)") }
         XCTAssertEqual(e.state.company(cafe)?.holdingID, hid)
         Self.play(&e, days: 7)
-        // The cafe is counted inside the holding, not twice and not lost.
         let after = e.netWorth
         XCTAssertGreaterThan(after.companies, 0)
         XCTAssertLessThan(abs(after.total - before), before.magnitude * 0.2 + 3_000_000)
@@ -83,7 +81,6 @@ final class SpecialTradesTests: XCTestCase {
         var e = try Self.engine("NO")
         let clubs = e.clubsForSale(countryCode: "NO")
         XCTAssertEqual(clubs.count, 16)
-        // Make an offer high enough to be accepted for a listed club, or found one.
         var bought = 0
         for c in clubs where !c.isFixed {
             let offer = e.offerForClub(clubID: c.id, multiple: 3)
@@ -97,7 +94,6 @@ final class SpecialTradesTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
         let sum = try XCTUnwrap(e.clubSummary(companyID: bought))
         XCTAssertGreaterThan(sum.table.count, 10)
-        // Legacy value rule: football value plus cash, minus what it owes, plus 80% of what was paid for players.
         let co = try XCTUnwrap(e.state.company(bought))
         let owed = e.state.loans.filter { $0.companyID == bought }.reduce(0) { $0 + $1.balance }
         let expected = (co.value("fm")["val"].double + co.cash).rounded() - owed + co.value("fm")["book"].double * 0.8
@@ -105,7 +101,6 @@ final class SpecialTradesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(e.state.company(bought)?.value("fm")["hist"].array.count ?? 0, 1, "a season should have finished")
     }
 
-    /// Prints profit and return for the new trades (3 seeds x 3 years). LEDGER_BALANCE=1
     func testPrintBalanceOfSpecialTrades() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_BALANCE"] != nil else { return }
         for (trade, country) in [("power", "NO"), ("power", "UK"), ("oilgas", "NO"), ("oilgas", "UK"), ("salmon", "NO"), ("club", "NO"), ("club", "UK")] {

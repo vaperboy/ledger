@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Two-stage loan flow, early repayment that charges nothing twice, payoff with accrued interest, schedule, loan records.
 final class LoanFlowTests: XCTestCase {
     private func world(seed: Int = 21, loanAmount: Double = 3_000_000) throws -> (GameEngine, Int, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -34,7 +33,6 @@ final class LoanFlowTests: XCTestCase {
         XCTAssertEqual(paid, rec.instalment, accuracy: 1, "what is shown is what is taken")
         XCTAssertEqual(e.payLoanInstalmentNow(loanID: loanID), .alreadySettled)
         XCTAssertTrue(e.loanRecords(companyID: id).first?.thisMonthSettled ?? false)
-        // The bills list no longer shows this month's instalment.
         let upcoming = e.financeOverview(companyID: id).upcoming.filter { $0.id == "loan\(loanID)" }
         XCTAssertTrue(upcoming.allSatisfy { $0.daysAway > 25 }, "the next month's is shown, not this month's")
         for _ in 0..<75 { _ = e.nextDay(); _ = control.nextDay() }
@@ -48,7 +46,6 @@ final class LoanFlowTests: XCTestCase {
 
     func testPayoffChargesInterestAccruedToTheDay() throws {
         var (e, id, loanID) = try world()
-        // Move well into a month (not just after a month end collection).
         while true {
             let l = try XCTUnwrap(e.state.loans.first { $0.id == loanID })
             let d = GameCalendar.date(week: e.state.week, dayOffset: e.state.day)
@@ -103,11 +100,9 @@ final class LoanFlowTests: XCTestCase {
         XCTAssertFalse(a.examplesAtMaximum.isEmpty)
         XCTAssertTrue(a.conditions.count >= 3)
         let docs = LoanDocuments(fullName: e.state.player.name, incomeProof: .payslips)
-        // Above the maximum: refused, nothing moves.
         let cash0 = e.state.cash
         if case .approved = e.applyForLoan(kind: "cons", amount: a.maximum + 100_000, termMonths: 36, companyID: nil, documents: docs, agreed: true) { XCTFail("above the maximum") }
         XCTAssertEqual(e.state.cash, cash0)
-        // Below the maximum, paid into the account.
         let amount = (a.maximum / 2 / 1000).rounded() * 1000
         guard case .approved(let loanID, let fee, let net) = e.applyForLoan(kind: "cons", amount: amount, termMonths: 36, companyID: nil, documents: docs, agreed: true) else { return XCTFail("approved") }
         XCTAssertEqual(net, amount - fee, accuracy: 1)

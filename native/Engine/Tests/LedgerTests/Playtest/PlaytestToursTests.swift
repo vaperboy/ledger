@@ -7,8 +7,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Feature tours: scripted, deterministic walks through what the app offers. Each asserts that the action returns a sensible result and that the
-/// state changes the way the UI would show it. A failed assertion is both an XCTFail and a finding (tour:<tour>:<what>). LEDGER_PLAYTEST=1 only.
 final class PlaytestToursTests: XCTestCase {
     var tour = ""
     var cur: Currency!
@@ -23,7 +21,6 @@ final class PlaytestToursTests: XCTestCase {
         }
     }
 
-    /// A game with a funded, open company of `trade` (UK, seed 5 by default).
     func fixture(_ trade: String = "cafe", country: String = "UK", seed: Int = 5, quick: Bool = true) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: country, playerName: "Tour", seed: seed)
         cur = e.homeCurrency
@@ -54,8 +51,6 @@ final class PlaytestToursTests: XCTestCase {
         for _ in 0..<(n * 7) { for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }; e.nextDay(); if e.state.isGameOver { return } }
     }
 
-    // MARK: 1 Setup, opening, first trading
-
     func testSetupAndOpen() throws {
         tour = "SetupAndOpen"
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tour", seed: 5); cur = e.homeCurrency
@@ -79,8 +74,6 @@ final class PlaytestToursTests: XCTestCase {
         ex(co.lastWeekRevenue > 0, "an open cafe earns revenue within 8 weeks")
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent after opening", sev: 1)
     }
-
-    // MARK: 2 Hiring, firing, raises, promotion talks
 
     func testHireFireTalk() throws {
         tour = "HireFireTalk"
@@ -106,7 +99,6 @@ final class PlaytestToursTests: XCTestCase {
         }
         ex(out == .hired, "offering their ask hires them (got \(out))", sev: 1)
         ex(e.state.company(id)!.staff.count == before + 1, "staff count +1 after hiring")
-        // the hired person
         if let st = e.state.company(id)!.staff.first(where: { $0.id == p.id }) {
             ex(st.monthlyWage > 0, "hired wage positive")
             weeks(&e, 6)
@@ -124,12 +116,9 @@ final class PlaytestToursTests: XCTestCase {
         let lp = e.layoffPreview(companyID: id, count: 1)
         let laid = e.layOffStaff(companyID: id, count: 1)
         ex(laid.count <= 1 && (laid.isEmpty || !lp.names.isEmpty), "layoff preview and layoff agree")
-        // course
         _ = e.sendOnCourse(companyID: id, staffID: e.state.company(id)?.staff.first?.id, courseID: "x")
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent after hiring tour", sev: 1)
     }
-
-    // MARK: 3 Manager hired and kept
 
     func testManagerHire() throws {
         tour = "ManagerHire"
@@ -153,8 +142,6 @@ final class PlaytestToursTests: XCTestCase {
         let fired = e.dismissManager(companyID: id)
         ex(e.state.company(id)?.managerID == nil, "dismissManager clears the post (cost \(fired))")
     }
-
-    // MARK: 4 Loans
 
     func testLoans() throws {
         tour = "Loans"
@@ -192,8 +179,6 @@ final class PlaytestToursTests: XCTestCase {
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent after loan tour", sev: 1)
     }
 
-    // MARK: 5 Equipment buy and sell, suppliers
-
     func testEquipmentAndSuppliers() throws {
         tour = "EquipmentAndSuppliers"
         var (e, id) = try fixture("bakery")
@@ -217,7 +202,6 @@ final class PlaytestToursTests: XCTestCase {
                 }
             }
         }
-        // supplier switch
         let vendors = e.supplierCandidates(companyID: id, scope: "goods")
         ex(!vendors.isEmpty, "goods supplier candidates exist", sev: 2)
         if vendors.count > 1, let cur0 = e.currentGoodsSupplier(companyID: id), let other = vendors.first(where: { $0.id != cur0.id }) {
@@ -227,8 +211,6 @@ final class PlaytestToursTests: XCTestCase {
         e.chooseGoodsClass(companyID: id, goodsClass: 2)
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent after equipment tour", sev: 1)
     }
-
-    // MARK: 6 Pricing, item sliders, marketing
 
     func testPricingItemsMarketing() throws {
         tour = "PricingItemsMarketing"
@@ -263,8 +245,6 @@ final class PlaytestToursTests: XCTestCase {
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }
 
-    // MARK: 7 Premises, insurance, accounting advisers
-
     func testPremisesInsuranceAdvisers() throws {
         tour = "PremisesInsuranceAdvisers"
         var (e, id) = try fixture()
@@ -284,8 +264,6 @@ final class PlaytestToursTests: XCTestCase {
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }
 
-    // MARK: 8 Marketplace, used cars, car dealer
-
     func testMarketplaceAndDealers() throws {
         tour = "MarketplaceAndDealers"
         var (e, id) = try fixture("cafe")
@@ -298,7 +276,6 @@ final class PlaytestToursTests: XCTestCase {
             let b = e.buyListing(listingID: l.id, companyID: id, price: l.askingPrice)
             ex(b == .applied || b.isRefused, "buyListing returns applied/refused (\(b))")
         }
-        // car dealer cycle
         guard let dealerTrade = e.data.catalog.all.first(where: { $0.id.lowercased().contains("cardeal") || $0.id == "carsales" })?.id else { ex(true, "no car dealer trade"); return }
         var (d, did) = try fixture(dealerTrade)
         weeks(&d, 4)
@@ -312,8 +289,6 @@ final class PlaytestToursTests: XCTestCase {
         }
         ex(Ledger.gaps(d.state).isEmpty, "ledger consistent", sev: 1)
     }
-
-    // MARK: 9 Board seats
 
     func testBoardSeats() throws {
         tour = "BoardSeats"
@@ -331,8 +306,6 @@ final class PlaytestToursTests: XCTestCase {
         }
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }
-
-    // MARK: 10 Chain, franchise, regional manager
 
     func testChainAndRegional() throws {
         tour = "ChainAndRegional"
@@ -374,8 +347,6 @@ final class PlaytestToursTests: XCTestCase {
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }
 
-    // MARK: 11 Ventures, startups, funding, shares
-
     func testVenturesAndShares() throws {
         tour = "VenturesAndShares"
         var (e, id) = try fixture()
@@ -390,8 +361,6 @@ final class PlaytestToursTests: XCTestCase {
         weeks(&e, 10)
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }
-
-    // MARK: 12 Luxury, rewards, goals
 
     func testLuxuryAndRewards() throws {
         tour = "LuxuryAndRewards"
@@ -410,13 +379,10 @@ final class PlaytestToursTests: XCTestCase {
                 ex(got >= 0, "sellLuxury returns an amount")
             }
         }
-        // goals and rewards
         let dg = e.dailyGoal()
         _ = dg
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent after luxury tour", sev: 1)
     }
-
-    // MARK: 13 Reports and digests
 
     func testReportsAndDigests() throws {
         tour = "ReportsAndDigests"
@@ -439,8 +405,6 @@ final class PlaytestToursTests: XCTestCase {
         if let p = e.pendingReportPrompt() { e.dismissReportPrompt(p); ex(e.pendingReportPrompt()?.id != p.id, "dismissing a report prompt removes it") }
     }
 
-    // MARK: 14 Investments
-
     func testInvestments() throws {
         tour = "Investments"
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tour", seed: 5); cur = e.homeCurrency
@@ -458,8 +422,6 @@ final class PlaytestToursTests: XCTestCase {
         ex(e.quotes(.fund).first { $0.symbol == sym }?.quantity ?? 0 < 0.0001, "sold out of the fund")
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }
-
-    // MARK: 15 Holding, rename, close/reopen, wind-up, football
 
     func testHoldingCloseFootball() throws {
         tour = "HoldingCloseFootball"
@@ -487,7 +449,6 @@ final class PlaytestToursTests: XCTestCase {
         let ro = e.reopenCompany(companyID: id3)
         _ = ro
         ex(e.state.company(id3)?.status == .open || e.state.company(id3)?.status == .closed, "closed company reopens or stays closed")
-        // football
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(80_000_000), why: "Test capital") }
         if let code = e.leagueCountries().first?.code {
             let fr = e.foundClub(countryCode: code, allowRetired: true)
@@ -496,8 +457,6 @@ final class PlaytestToursTests: XCTestCase {
         } else { ex(false, "football leagues exist", sev: 3) }
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }
-
-    // MARK: 16 Every country starts and plays a month
 
     func testEveryCountryStarts() throws {
         tour = "EveryCountryStarts"

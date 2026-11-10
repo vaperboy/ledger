@@ -1,15 +1,12 @@
 import Foundation
 
-/// A pack of gold sold for real money. Bigger packs give more gold per unit of money; the smallest sets the baseline.
 public struct GoldPack: Equatable, Sendable, Identifiable {
     public var id: String
     public var name: String
-    /// Price in cents of the store currency (US dollars in the reference price list).
     public var priceCents: Int
     public var gold: Int
 }
 
-/// A bundle bought with gold: several boxes at a lower price than buying them one by one.
 public struct BoxBundle: Equatable, Sendable, Identifiable {
     public var kind: BoxKind
     public var count: Int
@@ -19,7 +16,6 @@ public struct BoxBundle: Equatable, Sendable, Identifiable {
     public var savingPercent: Int { singlesPrice == 0 ? 0 : Int((Double(singlesPrice - price) / Double(singlesPrice) * 100).rounded()) }
 }
 
-/// The season bundle: gold, boxes and the Plus pass for the season, sold for real money.
 public struct SeasonBundle: Equatable, Sendable {
     public var name: String
     public var priceCents: Int
@@ -50,21 +46,17 @@ public enum GoldStore {
         BoxBundle(kind: .grand, count: 3, price: 1_080)
     ]
 
-    /// The one-time bonus on the first pack ever bought: half as much gold again.
     public static func firstPurchaseBonus(_ pack: GoldPack) -> Int { pack.gold / 2 }
 
     public static func totalGold(_ pack: GoldPack, firstPurchase: Bool) -> Int { pack.gold + (firstPurchase ? firstPurchaseBonus(pack) : 0) }
 
-    /// Gold per unit of money (per whole dollar), without the first-purchase bonus.
     public static func goldPerUnit(_ pack: GoldPack) -> Double { Double(pack.gold) / (Double(pack.priceCents) / 100) }
 
-    /// How much more gold per unit this pack gives than the smallest one, in whole percent (0 for the smallest).
     public static func extraPercent(_ pack: GoldPack) -> Int {
         guard let base = packs.first else { return 0 }
         return max(0, Int(((goldPerUnit(pack) / goldPerUnit(base) - 1) * 100).rounded()))
     }
 
-    /// "$4.99" for the reference price list.
     public static func priceText(cents: Int) -> String {
         String(format: "$%d.%02d", cents / 100, cents % 100)
     }
@@ -72,14 +64,10 @@ public enum GoldStore {
     public static func price(_ box: BoxKind) -> Int { box.price }
 }
 
-/// Who may see the store and buy boxes. The store is for adults: the terms confirm 18 or older, and without that confirmation it stays hidden.
 public enum StoreAccess {
-    /// Countries (the game's country codes) where paid boxes are not offered. Empty by default: add a code here to hide paid boxes there
-    /// (the store itself, gold and the auctions stay available; free boxes still open).
     public static let paidBoxRestrictedCountries: Set<String> = []
 
     public enum Access: Equatable, Sendable {
-        /// The adult confirmation is missing: the store is not shown at all.
         case hidden
         case open(paidBoxes: Bool)
     }

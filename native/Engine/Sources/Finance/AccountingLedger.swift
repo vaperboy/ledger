@@ -1,26 +1,18 @@
 import Foundation
 import GameCore
 
-/// The company transaction ledger: every movement of a company's cash, recorded where cash really moves (`Ledger.moveRaw`), so Bank and
-/// Accounting read the same rows. It extends the old capped `tx` list; it is not a second money system (it never moves money).
-/// A company keeps `led`: weeks (`"w<week>"`) of rows `[amount, count, category, label, ref, lastDay]`. Rows of the same direction, category, label and
-/// reference in the same week are merged (many sales in a week make one "Sales" row with a count), so a long game stays small; the last
-/// `keepWeeks` weeks are kept. `ledFrom` is the week the ledger began for the company: older movements are only in the legacy `tx` list.
-/// A caller that knows what a movement is calls `note` just before moving the money; any other movement is recorded as "Other movement".
 public enum AccountingLedger {
     public static let keepWeeks = 104
 
     public struct Annotation: Sendable {
         public var category: String
         public var label: String
-        /// "kind:id" of the record the movement belongs to ("loan:12", "supplier:v3", "invoice:INV-0004", "payroll:7"), or "".
         public var ref: String
         public init(category: String, label: String, ref: String = "") { self.category = category; self.label = label; self.ref = ref }
     }
 
     nonisolated(unsafe) static var pending: Annotation?
 
-    /// Say what the next movement of company cash is. Used by the payment engine and the places that move cash directly.
     public static func note(category: String?, label: String?, ref: String = "") {
         pending = Annotation(category: category ?? "-", label: label ?? "", ref: ref)
     }
@@ -59,7 +51,6 @@ public enum AccountingLedger {
         s.companies[i].raw["led"] = .object(weeks)
     }
 
-    /// One recorded row.
     public struct Row: Equatable, Sendable {
         public var week: Int
         public var index: Int

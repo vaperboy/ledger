@@ -5,15 +5,10 @@ import Employees
 import Businesses
 import Simulation
 
-/// Hire workers: the hero is who is waiting (and what search is running); the people who answered come first, in the same `ApplicantRow`
-/// as the Applicants page; then the role and how to look (a job ad or an agency), with the one action pinned at the bottom.
-/// Applicants arrive over time as inbox messages. "Talk terms" pushes `HireOnePage`. Fees, applicants and what happens are the engine's
-/// (`jobAdFee`, `postJobAd`, `agencyFee`, `engageAgency`, `applicants`).
 struct HireWorkersView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
     var companyID: Int
-    /// The role to start on, when a link asks for one.
     var startRole: String? = nil
     @State private var roleID = ""
     @State private var custom = ""
@@ -33,8 +28,6 @@ struct HireWorkersView: View {
             EmptyState(title: "This company is not available.").appScreen(title: "Hire", tab: store.tab)
         }
     }
-
-    // MARK: Role
 
     private func chosenRole(_ roles: [RoleOption]) -> (id: String, name: String)? {
         let typed: String = custom.trimmingCharacters(in: .whitespaces)
@@ -71,7 +64,6 @@ struct HireWorkersView: View {
         .appScreen(title: "Hire workers", subtitle: co.name, tab: store.tab)
     }
 
-    /// The hiring state as the hero: how many people are waiting to talk terms, what is running, and the free places or why hiring is blocked.
     private func hero(_ e: GameEngine, _ co: Company, _ waiting: Int, role: String?) -> some View {
         let running: [RunLine] = runLines(e, co)
         let context: String = running.isEmpty ? "No search running. Pick a role and how to look; answers arrive here and in your inbox." : running.map { $0.text }.joined(separator: " ")
@@ -101,7 +93,6 @@ struct HireWorkersView: View {
         }
     }
 
-    /// The roles as chips; the chosen one's effect shows under them. Any other role can be typed.
     private func roleSection(_ roles: [RoleOption]) -> some View {
         let active: String = roleID.isEmpty ? (startRole ?? "") : roleID
         let typing: Bool = !custom.trimmingCharacters(in: .whitespaces).isEmpty
@@ -122,8 +113,6 @@ struct HireWorkersView: View {
         }
     }
 
-    // MARK: How to look
-
     private func searchSection(_ e: GameEngine, _ cur: Currency) -> some View {
         let share: Int = Int(saturating: (Agency.salaryShare * 100).rounded())
         let words: String = method == .ad
@@ -137,7 +126,6 @@ struct HireWorkersView: View {
         }
     }
 
-    /// The one action of the page, pinned under the scroll: post the ad or engage the agency, with the reason when it cannot be done yet.
     private func actionBar(_ e: GameEngine, _ co: Company, _ cur: Currency, _ chosen: (id: String, name: String)?) -> some View {
         let role: String = chosen?.id ?? ""
         let fee: Double = role.isEmpty ? 0 : (method == .ad ? e.jobAdFee(companyID: companyID, role: role) : e.agencyFee(companyID: companyID, role: role))
@@ -155,7 +143,6 @@ struct HireWorkersView: View {
         .overlay(alignment: .top) { Hairline() }
     }
 
-    /// The ad's company details are shown in the confirmation instead of a separate tick box.
     private func askAd(_ chosen: (id: String, name: String), _ fee: Double, _ cur: Currency, _ form: (companyName: String, orgNumber: String)?) {
         let cid = companyID, role = chosen.id, name = chosen.name.lowercased()
         let who: String = form.map { (f: (companyName: String, orgNumber: String)) -> String in
@@ -190,8 +177,6 @@ struct HireWorkersView: View {
         }
     }
 
-    // MARK: Running searches
-
     private func runLines(_ e: GameEngine, _ co: Company) -> [RunLine] {
         let today: Int = e.state.week * 7 + e.state.day
         var out: [RunLine] = []
@@ -206,13 +191,10 @@ struct HireWorkersView: View {
         return out
     }
 
-    // MARK: Applicants
-
     private func roleName(_ id: String, _ roles: [RoleOption]) -> String {
         roles.first(where: { (o: RoleOption) -> Bool in o.id == id })?.name ?? (id.prefix(1).uppercased() + id.dropFirst())
     }
 
-    /// This company's applicants in the shared `ApplicantRow`; the Applicants page has the filters and every company.
     private func applicantsSection(_ e: GameEngine, _ co: Company, _ cur: Currency, _ roles: [RoleOption], _ list: [Applicant]) -> some View {
         TeamBlock(title: "Applicants", trailing: {
             Button("All applicants") { Haptics.tap(); store.openApplicants(companyID: companyID, role: nil) }
@@ -233,7 +215,6 @@ struct HireWorkersView: View {
     }
 }
 
-/// The page a tapped applicant opens: the one-page terms and salary talk, for this company's worker post.
 struct HireOnePageHost: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int

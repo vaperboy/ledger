@@ -3,13 +3,10 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The four tabs of the Group tab.
 enum GroupHomeTab: String, CaseIterable, Hashable {
     case overview = "Overview", structure = "Structure", people = "People", suppliers = "Suppliers"
 }
 
-/// The Group tab under its title: the tab strip and the chosen tab. Overview is the dashboard (with the way to add to the group),
-/// Structure what owns and manages what (each card opens its page), People everyone who works for the group, Suppliers the group's supplier directory.
 struct GroupHome: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -41,7 +38,6 @@ struct GroupHome: View {
     }
 }
 
-/// Board decisions waiting for you on one entity (none on a company inside a holding: its board is the holding's page).
 @MainActor
 enum GroupWaiting {
     static func count(_ e: GameEngine, _ g: GroupEntity) -> Int {
@@ -50,9 +46,6 @@ enum GroupWaiting {
     }
 }
 
-// MARK: - Overview
-
-/// The group's value with its 30-day change and trend, the way to add to the group, what waits for you, the key figures and who runs what.
 struct GroupOverviewTab: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -76,9 +69,6 @@ struct GroupOverviewTab: View {
         }
     }
 
-    // MARK: Hero
-
-    /// The group's value is the one big number; its 30-day change, the cash inside the companies and the trend line sit under it.
     private var hero: some View {
         let value: Double = (store.netWorthNow ?? engine.netWorth).companies
         let hist: DayHistory = store.dayHistoryNow ?? engine.dayHistory
@@ -108,9 +98,6 @@ struct GroupOverviewTab: View {
         }
     }
 
-    // MARK: Needs you
-
-    /// Board decisions that wait for you, one tappable tile per entity; nothing when the boards are quiet.
     @ViewBuilder private func needsYou(_ list: [GroupEntity]) -> some View {
         let waiting: [Waiting] = list.compactMap { (g: GroupEntity) -> Waiting? in
             let n: Int = GroupWaiting.count(engine, g)
@@ -152,9 +139,6 @@ struct GroupOverviewTab: View {
         var id: String { entity.id }
     }
 
-    // MARK: Key figures
-
-    /// Cash in the companies, this month's profit of the whole group, and the headcount.
     private func keyFigures(_ list: [GroupEntity], _ ov: TeamOverview) -> some View {
         let profit: Double = list.filter { (g: GroupEntity) -> Bool in !g.indent }.reduce(0) { (a: Double, g: GroupEntity) -> Double in a + g.profit }
         let staff: Int = ov.companies.reduce(0) { (a: Int, l: TeamOverview.CompanyLine) -> Int in a + l.staff }
@@ -166,9 +150,6 @@ struct GroupOverviewTab: View {
         ])
     }
 
-    // MARK: Who runs what
-
-    /// One row that opens Structure: how many companies have a manager, how many you run yourself, requests passed up to you.
     private func whoRunsWhat(_ ov: TeamOverview) -> some View {
         let lines: [TeamOverview.CompanyLine] = ov.companies.filter { (l: TeamOverview.CompanyLine) -> Bool in !l.isHolding }
         let managed: Int = lines.filter { (l: TeamOverview.CompanyLine) -> Bool in l.managerTitle != nil }.count
@@ -180,17 +161,12 @@ struct GroupOverviewTab: View {
     }
 }
 
-// MARK: - People
-
-/// The People tab: everyone who works for the group in one place: the totals, the group's own management, then per company, holding and chain who runs
-/// each company (with its headcount and wages), its executives and its board seats. A person opens their profile.
 struct GroupPeopleTab: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var onPick: (GroupEntity, GroupSection) -> Void
     @Environment(\.outsidePalette) private var P
     @State private var sheet: StaffSheet?
-    // Shortlists live here, not in the sheets, so a paid search survives closing a sheet.
     @State private var candidates: [String: [Int]] = [:]
 
     enum StaffSheet: Identifiable, Hashable {
@@ -249,7 +225,6 @@ struct GroupPeopleTab: View {
 
     private var rule: some View { Hairline().padding(.leading, 40 + Theme.Space.m) }
 
-    /// A titled list: the entity's name with its headcount and wages at the right, then its rows.
     private func block<Rows: View>(_ title: String, trailing: String, @ViewBuilder rows: () -> Rows) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack(alignment: .firstTextBaseline) {
@@ -261,9 +236,6 @@ struct GroupPeopleTab: View {
         }
     }
 
-    // MARK: One entity
-
-    /// A chain covers its stores and its chain-level people; a company or holding covers itself (a holding's companies have their own block).
     @ViewBuilder private func entityBlock(_ g: GroupEntity, _ ov: TeamOverview) -> some View {
         let ids: [Int] = g.isChain ? g.members : [g.companyID]
         let lines: [TeamOverview.CompanyLine] = ov.companies.filter { (l: TeamOverview.CompanyLine) -> Bool in ids.contains(l.id) }
@@ -293,7 +265,6 @@ struct GroupPeopleTab: View {
         }
     }
 
-    /// A company's own executive opens its post; a chain-level one opens the chain's Management.
     private func open(_ m: TeamOverview.Member, _ g: GroupEntity) {
         if let c = m.companyID, m.id.hasPrefix("slot-\(c)-") {
             sheet = .slot(c, String(m.id.dropFirst("slot-\(c)-".count)))
@@ -310,7 +281,6 @@ struct GroupPeopleTab: View {
                   lineLimit: 1, identifier: "group-staff-\(m.id)", action: action)
     }
 
-    /// "Asks you first" / "Within your limits" / "Full control" for a manager.
     private func authority(_ l: TeamOverview.CompanyLine) -> String? {
         switch l.authority {
         case 0: return "Asks you first"
@@ -320,7 +290,6 @@ struct GroupPeopleTab: View {
         }
     }
 
-    /// One company: who runs it and how far they may decide, its headcount and wages. Opens the manager's profile; a company you run yourself has no manager to open.
     private func companyRow(_ l: TeamOverview.CompanyLine, passedUp: Int) -> some View {
         let managerID: Int? = engine.state.company(l.id)?.managerID
         let who: String = l.managerTitle.map { (t: String) -> String in l.managedBy + ", " + t.lowercased() } ?? "You run it"
@@ -333,7 +302,6 @@ struct GroupPeopleTab: View {
                          identifier: "group-who-\(l.id)", action: managerID == nil ? nil : { sheet = .manager(id) })
     }
 
-    /// A board seat: the person, the seat and its fee. Opens the entity's Boardroom.
     private func seatRow(_ s: ManagerModel.Seat, _ g: GroupEntity) -> some View {
         let p = engine.state.people[s.id]
         let name: String = p?.name ?? s.title

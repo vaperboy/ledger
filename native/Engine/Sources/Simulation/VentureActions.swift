@@ -5,15 +5,8 @@ import Finance
 import Businesses
 import Events
 
-/// What the player can do about ownership and ventures, and what screens read: selling part of your shares and the buyer talk, raising money from
-/// investors, private share sales, listing a holding and issuing its shares, the owners of a company (mood, dividend policy, buy-back), startups you
-/// found and startups you invest in, private equity funds, the big meeting and stakes in other groups, the crisis centre. The models are `Funding`,
-/// `CompanySale`, `Shareholders`, `Startups`, `PrivateEquity`, `BigMeeting`, `GroupDeals` (all in Events). Decisions that come to the inbox
-/// (a group's bid, an owners' demand, a pro-rata round, bridge money) are answered with `answer(messageID:option:)` as always.
 public extension GameEngine {
-    // MARK: Selling part of your shares (quiet sale or broker) and the buyer talk
 
-    /// Put a percentage of YOUR shares on the market (10, 25, 34, 49). Limited companies only.
     @discardableResult
     mutating func listSharesForSale(companyID: Int, percent: Int, broker: Bool) -> Bool {
         var ok = false
@@ -27,8 +20,6 @@ public extension GameEngine {
         update { s, _, _ in r = CompanySale.talkCounter(&s, companyID: companyID, offerID: offerID, price: price) }
         return r
     }
-
-    // MARK: Raising money from investors (new shares into the company) and private share sales
 
     func canRaiseFunding(companyID: Int) -> Bool { Funding.canRaise(state, companyID: companyID) }
     func investorInterest(companyID: Int) -> (word: String, tone: String) { Funding.interestWord(Funding.companyInterest(state, companyID: companyID, data: data)) }
@@ -44,31 +35,25 @@ public extension GameEngine {
     }
     @discardableResult
     mutating func acceptFundingOffer(companyID: Int, index: Int) -> Bool { var ok = false; update { s, _, _ in ok = Funding.acceptOffer(&s, companyID: companyID, index: index) }; return ok }
-    /// `unchanged` means the offer had already gone or was already countered.
     @discardableResult
     mutating func counterFundingOffer(companyID: Int, index: Int) -> SettingResult {
         applySetting(probe: { .object($0.rest) }) { s, d, _ in Funding.counterOffer(&s, companyID: companyID, index: index, data: d) }
     }
-    /// `unchanged` means the offer had already gone.
     @discardableResult
     mutating func declineFundingOffer(companyID: Int, index: Int) -> SettingResult {
         applySetting(probe: { .object($0.rest) }) { s, _, _ in Funding.declineOffer(&s, companyID: companyID, index: index) }
     }
-    /// Turn down a buyer's offer for a company you listed. `unchanged` means it had already gone.
     @discardableResult
     mutating func declineSaleOffer(companyID: Int, offerID: Int) -> SettingResult {
         applySetting(probe: { s in .object(["offers": .number(Double(CompanySale.listing(s, companyID: companyID)?.offers.count ?? -1))]) }) { s, _, _ in CompanySale.decline(&s, companyID: companyID, offerID: offerID) }
     }
     func shareOffers(companyID: Int) -> [Funding.ShareOffer] { Funding.shareOffers(state, companyID: companyID, data: data) }
-    /// mode "primary" (new shares, the money goes into the company) or "secondary" (you sell some of yours).
     @discardableResult
     mutating func sellPrivateShares(companyID: Int, percent: Double, mode: String) -> Funding.ShareResult {
         var r = Funding.ShareResult.notLimited
         update { s, d, c in r = Funding.sellShares(&s, companyID: companyID, pct: percent, mode: mode, data: d, context: c) }
         return r
     }
-
-    // MARK: Holding companies: list on the exchange, issue shares
 
     func holdingValue(companyID: Int) -> Double { Funding.holdingValue(state, holdingID: companyID, data: data) }
     var listingMinimumValue: Double { Funding.listingMinimum(state, context) }
@@ -90,12 +75,9 @@ public extension GameEngine {
         return r
     }
 
-    // MARK: The owners of a company
-
     func owners(companyID: Int) -> [Shareholders.Holder] { Shareholders.holders(state, companyID: companyID) }
     func ownersPower(companyID: Int) -> (kind: Shareholders.Power, text: String)? { state.company(companyID).map { Shareholders.power($0) } }
     func dividendPolicy(companyID: Int) -> String { state.company(companyID).map { Shareholders.policy($0) } ?? "none" }
-    /// What the last quarterly dividend decision did (shown under the dividend policy): the week, what was paid (0 if skipped) and the profit it was based on.
     func lastDividendDecision(companyID: Int) -> (week: Int, paid: Double, profit: Double)? {
         guard let d = state.company(companyID)?.value("dq27"), !d.isNull else { return nil }
         return (d["w"].int, d["paid"].double, d["pr"].double)
@@ -111,8 +93,6 @@ public extension GameEngine {
     func buyBackPrice(companyID: Int, holder: String) -> Double? { Shareholders.buyBackPrice(state, companyID: companyID, holder: holder, data: data) }
     @discardableResult
     mutating func buyBackStake(companyID: Int, holder: String) -> Bool { var ok = false; update { s, d, _ in ok = Shareholders.buyBack(&s, companyID: companyID, holder: holder, data: d) }; return ok }
-
-    // MARK: Startups you found
 
     var foundedStartups: [Startups.Founded] { Startups.founded(state) }
     func startupPlan(sector: String, who: String, seedMultiple: Double) -> Startups.Plan? { Startups.plan(state, sector: sector, who: who, seedMultiple: seedMultiple, context: context) }
@@ -131,7 +111,6 @@ public extension GameEngine {
     mutating func pitchStartupRound(startupID: Int) -> Startups.RoundResult { var r = Startups.RoundResult.notLive; update { s, d, _ in r = Startups.pitchRound(&s, startupID: startupID, data: d) }; return r }
     @discardableResult
     mutating func acceptStartupRound(startupID: Int, index: Int) -> Bool { var ok = false; update { s, _, _ in ok = Startups.acceptRound(&s, startupID: startupID, index: index) }; return ok }
-    /// `unchanged` means the offer had already gone.
     @discardableResult
     mutating func declineStartupRound(startupID: Int, index: Int) -> SettingResult {
         applySetting(probe: { .object($0.rest) }) { s, _, _ in Startups.declineRound(&s, startupID: startupID, index: index) }
@@ -151,16 +130,12 @@ public extension GameEngine {
         }, probe: { .object(["n": .number(Double($0.company(startupID)?.staff.count ?? 0))]) }) { s, d, _ in Startups.setBuilders(&s, startupID: startupID, delta: delta, data: d) }
     }
 
-    // MARK: Launch and the cap table
-
-    /// Put the whole company (a startup included) on the market. The exit is the ordinary company sale: buyers' offers, the talk, the proceeds.
     @discardableResult
     mutating func listCompanyForSale(companyID: Int, broker: Bool, percent: Int = 100) -> Bool {
         var ok = false
         update { s, _, _ in ok = CompanySale.startListing(&s, companyID: companyID, broker: broker, pct: percent) }
         return ok
     }
-    /// Accept a buyer's offer. Returns the price paid, nil if it could not be done.
     @discardableResult
     mutating func acceptBuyerOffer(companyID: Int, offerID: Int) -> Double? {
         var r: Double?
@@ -168,7 +143,6 @@ public extension GameEngine {
         return r
     }
 
-    /// The launch decision: the price, and (optionally) a weekly budget on one of the company's ordinary marketing channels.
     @discardableResult
     mutating func launchStartup(startupID: Int, price: Double, marketingChannel: String? = nil, marketingWeekly: Double = 0) -> Startups.LaunchResult {
         var r = Startups.LaunchResult.notReady
@@ -182,9 +156,7 @@ public extension GameEngine {
         Startups.launchPreview(state, startupID: startupID, price: price, data: data, context: context)
     }
 
-    /// The cap table of a company of yours: share counts, price per share, who holds what.
     func capTable(companyID: Int) -> CapTable.Table? { state.company(companyID).map { CapTable.table($0) } }
-    /// What a funding offer does, before it is accepted: valuation, price per share, shares issued, ownership before and after, dilution, who gets the money.
     func fundingOfferTerms(companyID: Int, offerIndex: Int) -> CapTable.DealTerms? {
         guard let co = state.company(companyID), let o = Funding.offers(state, companyID: companyID).first(where: { $0.id == offerIndex }) else { return nil }
         var conditions: [String] = [o.says]
@@ -192,7 +164,6 @@ public extension GameEngine {
         conditions.append("Another round cannot be pitched for four weeks.")
         return CapTable.issueTerms(co, preMoney: o.preMoney, amount: o.amount, buyer: o.name, conditions: conditions)
     }
-    /// The same for a private share sale at a percentage (mode "primary": new shares, the company is paid; "secondary": part of your stake, you are paid).
     func shareSaleTerms(companyID: Int, percent: Double, mode: String) -> CapTable.DealTerms? {
         guard let co = state.company(companyID) else { return nil }
         let v = max(1, Valuation.companyValue(co, state: state, trades: data.catalog))
@@ -216,8 +187,6 @@ public extension GameEngine {
     @discardableResult
     mutating func pitchProductToRival(startupID: Int, rivalID: Int) -> Bool? { var r: Bool?; update { s, d, _ in r = Startups.pitchToRival(&s, startupID: startupID, rivalID: rivalID, data: d) }; return r }
 
-    // MARK: Startups of other people you invest in
-
     var startupStakes: [Startups.Stake] { Startups.stakes(state) }
     @discardableResult
     mutating func investInStartup(pitchID: Int, amount: Double) -> Startups.InvestResult { var r = Startups.InvestResult.gone; update { s, _, c in r = Startups.invest(&s, pitchID: pitchID, amount: amount, context: c) }; return r }
@@ -226,13 +195,9 @@ public extension GameEngine {
     @discardableResult
     mutating func sellStartupStake(stakeID: Int, fraction: Double) -> Double { var v = 0.0; update { s, _, _ in v = Startups.sellStake(&s, stakeID: stakeID, fraction: fraction) }; return v }
 
-    /// Read-only lists for screens.
     var startupPitchesOnOffer: [Startups.Pitch] { Startups.pitchesOnOffer(state) }
     var privateEquityOffersOnTable: [PrivateEquity.Offer] { PrivateEquity.offersOnTable(state) }
 
-    // MARK: Private equity
-
-    /// This year's funds (a new set each calendar year).
     mutating func privateEquityOffers() -> [PrivateEquity.Offer] { var out: [PrivateEquity.Offer] = []; update { s, _, c in out = PrivateEquity.offers(&s, context: c) }; return out }
     var privateEquityFunds: [PrivateEquity.Fund] { PrivateEquity.funds(state) }
     func secondaryPrice(fundID: Int) -> Double { PrivateEquity.secondaryPrice(state, fundID: fundID) }
@@ -245,8 +210,6 @@ public extension GameEngine {
     }
     @discardableResult
     mutating func sellFundStake(fundID: Int) -> Double? { var r: Double?; update { s, _, _ in r = PrivateEquity.sellStake(&s, fundID: fundID) }; return r }
-
-    // MARK: The big meeting, stakes in groups
 
     var bigMeetingOffer: BigMeeting.Offer? { BigMeeting.offer(state) }
     var bigMeetingStakes: [BigMeeting.Stake] { BigMeeting.stakes(state) }
@@ -262,8 +225,5 @@ public extension GameEngine {
     }
     var groupStakes: [GroupDeals.Stake] { GroupDeals.stakes(state) }
 
-    // MARK: The crisis centre
-
-    /// Open decisions that are bad news or need an answer, soonest deadline first. Answer one with `answer(messageID:option:)`.
     var crisisCentre: [Message] { Ventures.crises(state) }
 }

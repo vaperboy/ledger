@@ -6,8 +6,6 @@ import Finance
 import Events
 import Simulation
 
-/// Backing others: the stakes you hold in other founders' startups (help the team, sell part) and the pitches open to you now. A pitch opens
-/// `BackStartupSheet`, which quotes the stake and asks before any money leaves.
 struct VenturesBackingSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

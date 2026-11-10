@@ -4,7 +4,6 @@ import Countries
 import Finance
 import Simulation
 
-/// One line of the personal tax table: what was charged, the rule behind it in plain words, and the amount.
 struct TaxLine: Identifiable {
     var id: String
     var title: String
@@ -13,7 +12,6 @@ struct TaxLine: Identifiable {
 }
 
 enum TaxExplainer {
-    /// The parts of a personal tax bill, each with one plain sentence. Parts that are zero and have no base are left out.
     static func lines(_ b: PersonalFinance.TaxBreakdown, country c: Country, money: (Double) -> String) -> [TaxLine] {
         var out: [TaxLine] = []
         if b.incomeTax > 0 || b.withheld > 0 || b.incomeDue != 0 {
@@ -41,8 +39,6 @@ enum TaxExplainer {
     }
 }
 
-/// The itemised personal tax: a heading, one row per part with its rule underneath, and the total. Used for the year-end assessment and
-/// for the running estimate.
 struct TaxTable: View {
     @EnvironmentObject var store: GameStore
     var title: String
@@ -79,7 +75,6 @@ struct TaxTable: View {
     }
 }
 
-/// The year reveal's tax block: the assessment just made, shown only while it is recent.
 struct YearTaxBlock: View {
     @EnvironmentObject var store: GameStore
 
@@ -90,7 +85,6 @@ struct YearTaxBlock: View {
     }
 }
 
-/// "Tax this year (estimate)" on the personal account: the running bill against your cash, as a bar, and the date it falls due.
 struct TaxEstimateCard: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore

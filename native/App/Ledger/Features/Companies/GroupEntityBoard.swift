@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Who sits on a board, as thin rows: you first (with a "Works here" chip where you run the company yourself), then the co-owners, the
-/// CEO, the department heads and the managers who attend. The table is fixed by the game: nobody is hired onto it or paid for sitting.
 struct BoardTable: View {
     var engine: GameEngine
     var key: String
@@ -26,8 +24,6 @@ struct BoardTable: View {
         }
     }
 
-    // MARK: Rows
-
     private func initials(_ name: String) -> String {
         let parts = name.split(separator: " ").prefix(2).compactMap { $0.first }
         return String(parts).uppercased()
@@ -39,7 +35,6 @@ struct BoardTable: View {
             .background(Circle().fill(Theme.surface))
     }
 
-    /// The person's portrait from the shared avatar (staff and managers alike); initials for a co-owner who is not a person record.
     @ViewBuilder private func personLead(_ id: Int?, _ name: String) -> some View {
         if let id, let p = engine.state.people[id] {
             ThumbnailView(kind: .person, key: p.role, size: 32, initials: name, face: p.faceKey)
@@ -64,12 +59,10 @@ struct BoardTable: View {
         .overlay(alignment: .top) { if !first { Hairline() } }
     }
 
-    /// True when you run one of the board's companies yourself (no manager, hours above zero).
     private var ownerWorksHere: Bool {
         ManagerModel.boardCompanies(engine.state, key: key).contains { (c: Company) -> Bool in c.status.isLive && c.type != "hold" && c.managerID == nil && c.ownerHours > 0 }
     }
 
-    /// You, with your share of the owners: what the co-owners hold leaves the rest to you.
     private func ownerRow() -> some View {
         let name: String = engine.state.player.name
         let others: Double = engine.boardVoters(key: key).filter { (v: ManagerModel.Voter) -> Bool in v.type == "owner" }.reduce(0) { (a: Double, v: ManagerModel.Voter) -> Double in a + v.percent }

@@ -9,7 +9,6 @@ private extension GameEngine {
     mutating func w4week() { for _ in 0..<7 { _ = nextDay() } }
 }
 
-/// Salmon, furniture, factory, start-up, game studio, software and web agency (MADE industrial/digital and SUB).
 final class IndustrialItemsTests: XCTestCase {
     let trades = ["salmon", "furniture", "factory", "startup", "gamestudio", "webdev"]
 
@@ -71,7 +70,7 @@ final class IndustrialItemsTests: XCTestCase {
 
     func testInstallGivesTheRealMenuAndKeepsTheBooksNeutral() throws {
         for t in trades {
-            var (e, id) = try start(t, weeks: 0)   // the weekly hook installs the items by itself: install on a fresh company
+            var (e, id) = try start(t, weeks: 0)
             let before = e.salesItems(companyID: id)
             var made = 0
             e.update { s, d, _ in made = IndustrialItems.install(&s, companyID: id, data: d) }
@@ -270,8 +269,6 @@ final class IndustrialItemsTests: XCTestCase {
             XCTAssertTrue(back == co.value("itemsv2"), t)
         }
     }
-
-    // MARK: Two-year survival probe (LEDGER_INDUSTRIAL_PROBE=1; slow)
 
     struct Result { var y1: Double; var y2: Double; var status: String }
 

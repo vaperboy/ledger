@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Customers, competition and reputation: the features run, and the books still balance.
 final class CustomersCompetitionTests: XCTestCase {
     func engineWithCafe(weeks: Int) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 777)

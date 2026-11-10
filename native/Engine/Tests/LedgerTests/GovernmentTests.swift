@@ -2,13 +2,11 @@ import XCTest
 import GameCore
 @testable import Simulation
 
-/// Treasury, printing, inflation with a lag, donations, rates, price support, the audit log, and the presidency.
 final class GovernmentTests: XCTestCase {
     private func gov() -> Government { Government(country: "NO", admins: ["admin"], startingSupply: 1_000_000) }
     private func cit(_ a: String, age: Int = 20, link: String? = nil) -> GovCitizen { GovCitizen(account: a, linkKey: link, country: "NO", name: a, ageWeeks: age) }
     private let anyone: (String) -> Bool = { _ in true }
 
-    /// Runs one election to the end and returns the government with `pres` in office from week 14.
     private func withPresident(promises: [CampaignPromise] = [], approve: Bool = true) throws -> Government {
         var g = gov()
         g.advance(week: 0, canStand: anyone)
@@ -21,8 +19,6 @@ final class GovernmentTests: XCTestCase {
         try g.confirm(admin: "admin", pendingID: r.id, week: 14)
         return g
     }
-
-    // MARK: Treasury and printing
 
     func testTreasuryNeverGoesNegativeAndOnlyNamedPayoutsLeave() throws {
         var t = GovTreasury()
@@ -98,8 +94,6 @@ final class GovernmentTests: XCTestCase {
         XCTAssertEqual(g.supportPayout(account: "a", tradeID: "cafe", weekRevenue: 1_000, week: 1), 0, "nor any support")
     }
 
-    // MARK: Rates and support need a president and an administrator
-
     func testPolicyChangeNeedsPresidentLimitsAndConfirmation() throws {
         var g = try withPresident()
         XCTAssertThrowsError(try g.proposePolicy(by: "nobody", transferTax: 0.03, gainsTax: 0.20, week: 15)) { XCTAssertEqual($0 as? GovError, .notPresident) }
@@ -136,7 +130,6 @@ final class GovernmentTests: XCTestCase {
         let before = g.treasury.balance
         XCTAssertEqual(g.supportPayout(account: "u", tradeID: "cafe", weekRevenue: 10_000, week: 15), 500)
         XCTAssertEqual(g.treasury.balance, before - 500)
-        // One account may draw only a quarter of the weekly budget, however many companies it has.
         XCTAssertEqual(g.supportPayout(account: "u", tradeID: "cafe", weekRevenue: 1_000_000, week: 15), 500)
         XCTAssertEqual(g.supportPayout(account: "u", tradeID: "cafe", weekRevenue: 1_000_000, week: 15), 0)
         XCTAssertEqual(g.supportPayout(account: "pres", tradeID: "cafe", weekRevenue: 10_000, week: 16), 0, "the president gets none")
@@ -145,8 +138,6 @@ final class GovernmentTests: XCTestCase {
         XCTAssertEqual(g.supportPayout(account: "u", tradeID: "cafe", weekRevenue: 10_000, week: 19 + 1), 0, "ended after its weeks")
         XCTAssertEqual(g.treasury.gap, 0)
     }
-
-    // MARK: The presidency
 
     func testCycleFromNominationToTermAndRollOver() throws {
         var g = gov()
@@ -263,8 +254,6 @@ final class GovernmentTests: XCTestCase {
         XCTAssertNil(g.office)
         XCTAssertEqual(g.election?.status, .closed)
     }
-
-    // MARK: Promises and the realism check
 
     func testRealismCheck() {
         let p = GovPolicy()

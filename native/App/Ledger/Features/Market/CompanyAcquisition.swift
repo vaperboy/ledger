@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Buying a rival, step two: after the owner agrees a price, what the business should become. For each choice the cash needed, what you
-/// take on and what changes in control, before anything is paid. Figures come from `acquisitionPlan`, which repeats the checks of the purchase.
 struct AcquisitionSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss

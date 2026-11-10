@@ -4,17 +4,10 @@ import Countries
 import Employees
 import Finance
 
-/// Boards: one per chain, or per company that has co-owners. The board is fixed: co-owners with a real stake take a director's seat, the CEO,
-/// the department heads and the regional managers attend and advise, and the owners vote by shares. Nobody is hired onto it and nobody is paid
-/// for sitting on it. What it decides is the decision list (`boardDecisions`); urgent trouble becomes an emergency meeting.
-/// A board is saved on its company or chain as `brd` {seats[], last, mts[], memo, locp[], fu[]}.
 extension ManagerModel {
-    // MARK: Seats
 
     static let maxBoard = 7
 
-    /// The company whose board a branch sits on: its `branch.of` parent (and that company's parent, a few hops up) while the parent is live, set up,
-    /// in the same country and under the same holding. A chain store, or a branch that left those terms, keeps its own board.
     public static func boardParent(_ s: GameState, _ co: Company) -> Company? {
         func parent(_ c: Company) -> Company? {
             let b = c.value("branch")
@@ -26,7 +19,6 @@ extension ManagerModel {
         while hops < 4, let p = parent(cur) { cur = p; hops += 1 }
         return cur.id == co.id ? nil : cur
     }
-    /// Live companies that share `root`'s board as branches.
     static func boardBranches(_ s: GameState, root: Company) -> [Company] {
         s.companies.filter { $0.status.isLive && $0.id != root.id && boardParent(s, $0)?.id == root.id }
     }
@@ -46,7 +38,6 @@ extension ManagerModel {
         if isChainKey(key) { if var ch = Chains.chain(s, id: keyID(key)) { ch["brd"] = b; Chains.save(&s, ch) } }
         else if let i = s.companyIndex(keyID(key)) { s.companies[i].set("brd", b) }
     }
-    /// Every board that can meet: each chain with stores, and each other company that is set up. Original: `V.boards12`.
     public static func boardKeys(_ s: GameState) -> [String] {
         Chains.list(s).filter { !Chains.stores(s, $0).isEmpty }.map { "ch:\($0["id"].int)" }
             + s.companies.filter { $0.status.isLive && $0.status != .setup && $0.type != "hold" && $0.value("chain").isNull && boardParent(s, $0) == nil }.map { "co:\($0.id)" }
@@ -65,10 +56,8 @@ extension ManagerModel {
     static func holders(_ s: GameState, key: String) -> [(h: JSONValue, co: Company)] {
         boardCompanies(s, key: key).flatMap { c in c.value("holders").array.filter { $0["pct"].double > 0 && $0["hid"].int == 0 }.map { ($0, c) } }
     }
-    /// A board exists once a chain is registered, or somebody else owns part of a company. Original: `active`.
     public static func boardActive(_ s: GameState, key: String) -> Bool { isChainKey(key) ? Chains.chain(s, id: keyID(key)) != nil : !holders(s, key: key).isEmpty }
     static func seatRoleID(_ x: JSONValue) -> String? { x["r"].isNull ? nil : x["r"].string }
-    /// Seats in use; entries without a role (left by older saves) hold no seat.
     static func heldSeatCount(_ L: [JSONValue]) -> Int { L.filter { seatRoleID($0) != nil }.count }
 
     public struct Seat: Identifiable, Equatable, Sendable {
@@ -77,10 +66,8 @@ extension ManagerModel {
         public var title: String
         public var isAdviser: Bool
         public var isOwner: Bool
-        /// "adv" (an outside owner's director), "own" or "exec" (somebody already employed in the group).
         public var kind: String = "adv"
     }
-    /// Seats that still have a person in them.
     public static func seats(_ s: GameState, key: String) -> [Seat] {
         board(s, key: key)["seats"].array.compactMap { x in
             guard let n = s.people[x["id"].int], let r = seatRoleID(x) else { return nil }
@@ -105,7 +92,6 @@ extension ManagerModel {
         writeBoard(&s, key: key, b)
         return true
     }
-    /// Take a person off every board. Original: `ACT.bd12rm`.
     static func removeSeat(_ s: inout GameState, personID: Int) {
         for key in boardKeys(s) {
             var b = board(s, key: key)
@@ -114,18 +100,15 @@ extension ManagerModel {
         }
     }
 
-    // MARK: Who sits at the table and who votes
-
     public struct Voter: Identifiable, Equatable, Sendable {
         public var id: String
         public var personID: Int?
         public var name: String
         public var title: String
-        public var type: String        // lh, chair, director, cfo, ..., ceo, regional, owner
+        public var type: String
         public var votes: Bool
         public var percent: Double
     }
-    /// Owners and seated directors vote; the CEO, regional and store managers attend and advise but never vote unless explicitly seated. Original: `votersX`.
     public static func voters(_ s: GameState, key: String) -> [Voter] {
         var L: [Voter] = []
         if let lh = Headquarters.rightHand(s), let n = s.people[lh.personID] { L.append(Voter(id: "p\(n.id)", personID: n.id, name: n.name, title: "Your right hand", type: "lh", votes: false, percent: 0)) }
@@ -139,8 +122,6 @@ extension ManagerModel {
         for (i, x) in holders(s, key: key).enumerated() { L.append(Voter(id: "h\(i)", personID: nil, name: x.h["name"].string, title: "Co-owner · \(Int(saturating: jsRound(x.h["pct"].double)))%", type: "owner", votes: true, percent: x.h["pct"].double)) }
         return L
     }
-
-    // MARK: Votes on big moves
 
     public struct VoteLine: Identifiable, Equatable, Sendable {
         public var id: String
@@ -160,24 +141,19 @@ extension ManagerModel {
         public var decidingOwner: String?
         public var pushedThroughAlone: Bool
         public var active: Bool
-        /// Outside owners hold directorships, so the directors (you included) decide on the CEO, not the owner alone.
         public var directorsDecide: Bool = false
         public var directorsYes: Int = 0
         public var directorsTotal: Int = 0
         public var directors: [VoteLine] = []
     }
-    /// How the directors vote on a CEO matter when outside shareholders hold board seats. Original: `voteOn` run over the board.
     public struct DirectorsDecision: Equatable, Sendable {
         public var decide: Bool
         public var yes: Int
         public var total: Int
         public var lines: [VoteLine]
-        /// More than half of the directors, you included.
         public var passes: Bool { yes * 2 > total }
         public var percentYes: Int { total == 0 ? 0 : Int(saturating: jsRound(Double(yes) * 100 / Double(total))) }
     }
-    /// The board decides on dismissing the CEO (or on `appointing` a person as CEO) when outside shareholders sit as directors and you hold the
-    /// vote: you and each seated director get one vote. When outsiders hold control, or none of them has a seat, the shares decide as before.
     public static func ceoDirectors(_ s: GameState, companyID: Int, appointing personID: Int? = nil) -> DirectorsDecision {
         let none = DirectorsDecision(decide: false, yes: 0, total: 0, lines: [])
         guard let co = s.company(companyID) else { return none }
@@ -204,7 +180,6 @@ extension ManagerModel {
         }
         return DirectorsDecision(decide: true, yes: lines.filter { $0.yes }.count, total: lines.count, lines: lines)
     }
-    /// A co-owner's view of replacing the CEO, by what they want from the company, and what they say about it.
     static func ceoOpinion(_ co: Company, holder h: JSONValue) -> (yes: Bool, why: String) {
         let hist = co.monthlyHistory
         let p3 = hist.suffix(3).reduce(0) { $0 + $1.profit }
@@ -227,13 +202,10 @@ extension ManagerModel {
         let base = kind == "sell" || kind == "close" ? p3 < 0 : p3 > 0
         return HashedRandom.first("ov13:\(h["name"].string):\(kind):\(s.week)") < 0.85 ? base : !base
     }
-    /// What the board and the owners say to a sale (`sell`), a closing (`close`), a dividend (`dividend`), a new location (`open`), replacing the CEO
-    /// (`ceo`) or a big loan (`loan`). More than half of the shares wins.
     public static func boardVote(_ s: GameState, kind: String, companyID: Int, amount: Double = 0, advisory: Bool = false) -> BoardVote {
         let none = BoardVote(advice: [], board: [], owners: [], percentYes: 100, passes: true, decidingOwner: nil, pushedThroughAlone: false, active: false)
         guard let co = s.company(companyID) else { return none }
         let key = boardKey(s, co)
-        // A sole owner has no binding board; `advisory` still asks the managers, and the owner decides alone.
         guard boardActive(s, key: key) || advisory else { return none }
         let active = boardActive(s, key: key)
         let hist = co.monthlyHistory
@@ -254,7 +226,6 @@ extension ManagerModel {
             if HashedRandom.first("vo13:\(v.id):\(kind):\(s.week)") < 0.12 * (1 - q) { yes.toggle(); why = yes ? "The risk is worth taking." : "Too early to decide." }
             return VoteLine(id: v.id, name: v.name, title: v.title, yes: yes, reason: why, percent: v.percent, isYou: false)
         }
-        // The CEO does not vote on their own removal. In advisory mode the department heads speak too.
         let ceoID = co.managerID
         var table = voters(s, key: key).filter { $0.type != "owner" && !(kind == "ceo" && $0.personID != nil && $0.personID == ceoID) }
         if !active {
@@ -266,7 +237,6 @@ extension ManagerModel {
         let advice = all.filter { l in !active || table.first { $0.id == l.id }?.votes != true }
         let board = all.filter { l in active && table.first { $0.id == l.id }?.votes == true }
         var owners = [VoteLine(id: "you", name: "\(s.player.name) (you)", title: "Owner", yes: true, reason: "", percent: co.ownership, isYou: true)]
-        // A holding of yours with a seat (or control) votes with you.
         for l in co.value("holders").array where l["hid"].int != 0 && l["pct"].double > 0 && (l["seat"].bool || l["pct"].double > HoldingStakes.controlAbove) {
             owners.append(VoteLine(id: l["name"].string, name: l["name"].string, title: "Your holding", yes: true, reason: "", percent: l["pct"].double, isYou: true))
         }
@@ -283,18 +253,12 @@ extension ManagerModel {
                          pushedThroughAlone: lonely, active: active, directorsDecide: dd.decide, directorsYes: dd.yes, directorsTotal: dd.total, directors: dd.lines)
     }
 
-    // MARK: Replacing the CEO
-
     public enum CEOChange: Equatable, Sendable {
         case dismissed
         case voteFailed(percentYes: Int)
         case blocked(weeks: Int)
         case refused(String)
     }
-    /// Propose replacing the manager (CEO) of a company. A sole owner, or an owner with more than half of the shares, decides alone, unless outside
-    /// shareholders sit as directors: then the directors vote (`ceoDirectors`). With
-    /// co-owners it is a vote by shares: they weigh the results against what they want from the company. A failed vote shakes the CEO's
-    /// trust in you and the co-owners who backed them, and the proposal cannot be made again for eight weeks.
     public static func proposeCEOChange(_ s: inout GameState, companyID: Int, data: GameData) -> CEOChange {
         guard let ci = s.companyIndex(companyID), s.companies[ci].managerID != nil, s.companies[ci].status.isLive else { return .refused("There is nobody to replace.") }
         let co = s.companies[ci]
@@ -320,7 +284,6 @@ extension ManagerModel {
         }
         return .dismissed
     }
-    /// You go ahead against everyone else: the co-owners lose some morale.
     public static func recordPushedThrough(_ s: inout GameState, companyID: Int) {
         guard let i = s.companyIndex(companyID) else { return }
         var H = s.companies[i].value("holders").array

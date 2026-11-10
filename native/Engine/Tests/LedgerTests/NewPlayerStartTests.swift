@@ -5,7 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// The new-player start. Starting cash, no overdraft in the first weeks, deferred payments, the ambition held back.
 final class NewPlayerStartTests: XCTestCase {
     private func fresh(_ country: String = "NO", trade: String = "cafe", seed: Int = 1) throws -> GameEngine {
         try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed, story: .fresh, tradeID: trade, companyName: "Test Café")
@@ -19,7 +18,7 @@ final class NewPlayerStartTests: XCTestCase {
             XCTAssertEqual(co.name, "Test Café")
             XCTAssertTrue(e.state.loans.isEmpty)
             XCTAssertEqual(e.state.week, 0)
-            XCTAssertEqual(e.state.cash, 0, accuracy: 0.5, code)   // all the money went into the company
+            XCTAssertEqual(e.state.cash, 0, accuracy: 0.5, code)
             XCTAssertGreaterThan(co.cash, 0, code)
             XCTAssertTrue(e.openingChecklist(companyID: co.id).allSatisfy { $0.isDone }, code)
             XCTAssertEqual(e.lifeStory, .fresh)
@@ -60,7 +59,7 @@ final class NewPlayerStartTests: XCTestCase {
             s.companies[i].payables["other"] = 5000
             s.companies[i].payables["rent"] = 0
             var cfg = Payday.config(s.companies[i], today: Payday.dayNumber(week: s.week, day: s.day))
-            cfg.billsMonth = -5   // last month's bills are due
+            cfg.billsMonth = -5
             s.companies[i].set("pr29", cfg.json)
             Payday.onDay(&s, data: data, context: ctx)
             XCTAssertEqual(s.companies[i].payables["other"] ?? 0, 5000, accuracy: 0.5, "nothing paid, nothing lost")

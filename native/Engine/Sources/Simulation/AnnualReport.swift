@@ -4,24 +4,16 @@ import Countries
 import Finance
 import Businesses
 
-/// The annual report and the shareholder letter: written once at year end from the year's report (`Reports`), so every figure is the books'
-/// own, and kept in the save (`rest["yrp"]`, the last twelve years). It opens with the same gate as the quarterly review (`Gates.reviewOpen`).
-/// The letter is templated: each sentence is chosen by what actually happened, and a number only enters it through `Figure`, which holds the
-/// value it came from, so the letter can never state a figure that is not in the report.
 public struct AnnualReport: Codable, Equatable, Sendable, Identifiable {
     public var id: Int { year }
     public var year: Int
-    /// The game week the year closed in.
     public var week: Int
-    /// The book did not cover twelve months (the game started part way through the year).
     public var partYear = false
     public var author = ""
-    /// Sales and profit after tax, and the year before (nil when there is no earlier year).
     public var sales = 0.0
     public var profit = 0.0
     public var salesBefore: Double? = nil
     public var profitBefore: Double? = nil
-    /// Company tax and VAT paid in cash, and the player's own income tax.
     public var taxPaid = 0.0
     public var netWorthStart = 0.0
     public var netWorthEnd = 0.0
@@ -34,13 +26,11 @@ public struct AnnualReport: Codable, Equatable, Sendable, Identifiable {
     public var yearGrade: ReviewGrade? = nil
     public var letter: [String] = []
     public var closing = ""
-    /// Every number the letter mentions, with where it came from.
     public var figures: [Figure] = []
 
     public var netWorthChange: Double { netWorthEnd - netWorthStart }
 
     public struct Highlight: Codable, Equatable, Sendable { public var name: String; public var profit: Double }
-    /// The company whose profit moved most against the year before.
     public struct Mover: Codable, Equatable, Sendable { public var name: String; public var change: Double }
     public struct Row: Codable, Equatable, Sendable, Identifiable {
         public var id: Int
@@ -49,7 +39,6 @@ public struct AnnualReport: Codable, Equatable, Sendable, Identifiable {
         public var profit: Double
     }
     public struct QuarterLine: Codable, Equatable, Sendable { public var label: String; public var grade: ReviewGrade? }
-    /// A number in the letter: `key` names the book figure it equals, `text` is how the letter wrote it.
     public struct Figure: Codable, Equatable, Sendable { public var key: String; public var value: Double; public var text: String }
 }
 
@@ -59,7 +48,6 @@ public enum AnnualReports {
 
     static func stored(_ s: GameState) -> [AnnualReport] { (s.rest[key] ?? .null).array.compactMap { Reports.read($0, as: AnnualReport.self) } }
 
-    /// Writes the year's report when the year closes (after the quarterly review, so the December grade counts).
     static func close(_ s: inout GameState, context: FinanceContext) {
         guard GameCalendar.isYearEnd(week: s.week), Gates.reviewOpen(s) else { return }
         guard let yr = Reports.stored(s, .year).last, yr.id == s.week, yr.hasActivity else { return }
@@ -74,7 +62,6 @@ public enum AnnualReports {
                      body: "The group's year in one page, with a letter in your name. Open Stats, then Annual reports.", tone: "good", sev: 1)
     }
 
-    /// The report of a closed year from its year report. Pure: the same inputs give the same words.
     static func make(_ yr: PeriodReport, year: Int, author: String, hist: [QuarterRecord], cur: Currency) -> AnnualReport {
         var r = AnnualReport(year: year, week: yr.id)
         r.author = author
@@ -108,8 +95,6 @@ public enum AnnualReports {
         return r
     }
 
-    // MARK: The letter
-
     private static func fig(_ r: inout AnnualReport, _ key: String, _ value: Double, _ cur: Currency) -> String {
         let text = cur.short(value)
         r.figures.append(AnnualReport.Figure(key: key, value: value, text: text))
@@ -121,7 +106,6 @@ public enum AnnualReports {
     static func writeLetter(_ r: inout AnnualReport, cur: Currency) {
         let yearName = r.partYear ? "The part of \(r.year) in this book" : "\(r.year)"
         var paras: [String] = []
-        // The result.
         let sales = fig(&r, "sales", r.sales, cur)
         var p1: String
         if abs(r.profit) < 0.5 {
@@ -140,7 +124,6 @@ public enum AnnualReports {
             if r.sales > sb { p1 += " Sales grew." } else if r.sales < sb { p1 += " Sales fell." }
         }
         paras.append(p1)
-        // The companies.
         var p2: [String] = []
         if r.companies.count >= 2, let b = r.best {
             p2.append(b.profit > 0 ? "\(b.name) was the strongest company, earning \(fig(&r, "best", b.profit, cur))."
@@ -152,14 +135,12 @@ public enum AnnualReports {
             p2.append("The biggest change was at \(m.name), where profit went \(m.change > 0 ? "up" : "down") by \(fig(&r, "mover", abs(m.change), cur)) on the year before.")
         }
         if !p2.isEmpty { paras.append(p2.joined(separator: " ")) }
-        // Money.
         var p3: [String] = []
         if abs(r.netWorthChange) >= 0.5 {
             p3.append("My net worth \(r.netWorthChange > 0 ? "rose" : "fell") by \(fig(&r, "networth", abs(r.netWorthChange), cur)), to \(fig(&r, "networthEnd", r.netWorthEnd, cur)).")
         }
         if r.taxPaid >= 0.5 { p3.append("Tax paid over the year came to \(fig(&r, "tax", r.taxPaid, cur)).") }
         if !p3.isEmpty { paras.append(p3.joined(separator: " ")) }
-        // Discipline.
         let graded = r.quarters.filter { $0.grade != nil }.count
         if graded > 0, let yg = r.yearGrade {
             let n = countWords[min(graded, 4)]
@@ -171,7 +152,6 @@ public enum AnnualReports {
         } else {
             paras.append("I set no quarterly targets this year, and I mean to hold the group to some next year.")
         }
-        // Outlook.
         if r.profit < -0.5 { paras.append("The first job next year is to bring costs back in line and get the group out of the red.") }
         else if let pb = r.profitBefore, r.profit < pb - 0.5 { paras.append("Next year I want to understand what slipped before I grow any further.") }
         else { paras.append("Next year I want to keep cash healthy and grow where the books support it.") }
@@ -181,6 +161,5 @@ public enum AnnualReports {
 }
 
 public extension GameEngine {
-    /// Annual reports, newest first (the archive).
     var annualReports: [AnnualReport] { AnnualReports.stored(state).reversed() }
 }

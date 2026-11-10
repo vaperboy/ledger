@@ -5,10 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// ChainHierarchy: the higher rank hires one level down (CEO -> chain manager -> regional manager -> store manager), within the authority and budget the
-/// owner gave, and asks the owner when it has neither. The owner can always hire into the post themselves.
 final class HierarchyHiringTests: XCTestCase {
-    /// A chain of `count` open stores in the player's city, none with a manager, each with cash for a manager's pay.
     private func chain(_ count: Int) throws -> (e: GameEngine, chain: Int, stores: [Int]) {
         var e = try ChainsTests.engine("NO")
         let first = ChainsTests.start(&e, "cafe")
@@ -39,7 +36,6 @@ final class HierarchyHiringTests: XCTestCase {
         return cand.id
     }
 
-    /// Run the weekly step a number of times, three weeks apart (a search that found nobody is retried after two).
     private func run(_ e: inout GameEngine, times: Int = 8) {
         for _ in 0..<times { e.update { s, d, _ in s.week += 3; HierarchyHiring.weekly(&s, data: d) } }
     }
@@ -51,7 +47,6 @@ final class HierarchyHiringTests: XCTestCase {
         let regional = try hireExec(&e, .region, chain: cid, city: city, authority: 2)
         let boss = try XCTUnwrap(HierarchyHiring.appointer(e.state, post: .storeManager(companyID: stores[0]), data: e.data))
         XCTAssertEqual(boss.kind, "region"); XCTAssertEqual(boss.personID, regional)
-        // the vacancy names who hires it
         let v = try XCTUnwrap(e.teamOverview().vacancies.first { $0.id == "mgr-\(stores[0])" })
         XCTAssertEqual(v.post, "mgr"); XCTAssertEqual(v.hirerName, boss.name); XCTAssertEqual(v.hirerAuthority, 2)
         run(&e)
@@ -61,7 +56,6 @@ final class HierarchyHiringTests: XCTestCase {
             XCTAssertEqual(e.state.people[mid]?.employerID, sid)
             XCTAssertNotEqual(mid, regional)
         }
-        // the owner is told by the regional manager who did it
         XCTAssertTrue(e.state.inbox.contains { $0.kind == "info" && $0.from == boss.name && $0.title.contains("appointed as") })
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
@@ -94,7 +88,6 @@ final class HierarchyHiringTests: XCTestCase {
         let target = ask.companyID
         XCTAssertTrue(e.answer(messageID: ask.id, option: 0))
         XCTAssertNotNil(e.state.company(target)?.managerID, "the owner approved the person named")
-        // a second request is declined: that store is left alone for a while
         let other = try XCTUnwrap(e.openDecisions.first { $0.actionID == HierarchyHiring.action })
         let otherStore = other.companyID
         XCTAssertTrue(e.answer(messageID: other.id, option: 1))
@@ -124,7 +117,6 @@ final class HierarchyHiringTests: XCTestCase {
         let v = try XCTUnwrap(e.teamOverview().vacancies.first { $0.id == "mgr-\(stores[0])" })
         XCTAssertNil(v.hirerName)
         XCTAssertEqual(e.vacancyHirerLine(v), "")
-        // the owner can search and hire into it
         let route = try XCTUnwrap(e.vacancyRoute(v))
         XCTAssertEqual(route.post, .manager); XCTAssertEqual(route.companyID, stores[0])
         let list = try XCTUnwrap(e.searchVacancy(v))

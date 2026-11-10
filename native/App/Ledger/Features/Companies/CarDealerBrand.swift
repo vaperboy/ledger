@@ -4,7 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// A met or missed requirement of a brand: the title, what is needed and what the dealership has.
 struct CarStandardRow: View {
     var standard: CarBrandContract.Standard
     var rule = true
@@ -15,13 +14,10 @@ struct CarStandardRow: View {
     }
 }
 
-/// Brand contracts of a vehicle dealership: the brands on offer with their terms while there is no contract, and the running contract
-/// (terms, results, renewal, leaving early) while there is one.
 struct CarBrandScreen: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
 
-    /// A tall popup with its own pages (`PopupStack`): a brand opens its terms; closing from the terms steps back to the list.
     var body: some View {
         PopupStack(root: { brandRoot }, destination: { (brandID: String) in CarBrandTermsView(companyID: companyID, brandID: brandID) })
     }
@@ -42,7 +38,6 @@ struct CarBrandScreen: View {
     }
 }
 
-/// The brands that sell in this country, as cards. A tap opens the terms.
 struct CarBrandList: View {
     var companyID: Int
     var terms: [CarBrandContract.Terms]
@@ -84,7 +79,6 @@ struct CarBrandList: View {
     }
 }
 
-/// The terms of one brand and the button to sign.
 struct CarBrandTermsView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -143,7 +137,6 @@ struct CarBrandTermsView: View {
     }
 }
 
-/// The running contract: terms, this year's results, the brand's last review, a renewal offer and the way out.
 struct CarContractView: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int

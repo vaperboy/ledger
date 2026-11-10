@@ -2,8 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// The one table that turns a `NavRoute` into a screen. Every tab's NavigationStack registers it (`companyRouteDestinations()`), so any
-/// link can push any of these screens on the tab the player is on: a company, a Group entity page, a Phone app, Applicants, Suppliers.
 struct CompanyRouteDestination: View {
     var route: NavRoute
 
@@ -15,7 +13,6 @@ struct CompanyRouteDestination: View {
             case .companyPart(let id, let sec, let part): CompanyPage(companyID: id, section: sec, part: part).companySwitcher(route)
             case .newCompany: NewCompanyRoute()
             case .applicants(let id, let role): ApplicantsView(companyID: id == 0 ? nil : id, role: role.isEmpty ? nil : role)
-            // The store turns this route into the Market app (`GameStore.setPath`); this is the same app.
             case .market: MarketApp()
             case .app(let app): PhoneAppScreen(app: app)
             case .entity(let id, let section): GroupEntityScreen(entityID: id, section: section)
@@ -26,24 +23,19 @@ struct CompanyRouteDestination: View {
             }
         }
         .zoomDestination(route)
-        // A fresh view per route: a link that changes the part of a screen already on the stack must not keep that screen's old state.
         .id(route)
     }
 }
 
-// MARK: Zoom transition
-
 private struct ZoomNamespaceKey: EnvironmentKey { static let defaultValue: Namespace.ID? = nil }
 
 extension EnvironmentValues {
-    /// The namespace of the navigation stack a screen sits on; nil outside a stack, where a zoom source does nothing.
     var zoomNamespace: Namespace.ID? {
         get { self[ZoomNamespaceKey.self] }
         set { self[ZoomNamespaceKey.self] = newValue }
     }
 }
 
-/// Registers the route table and the stack's zoom namespace; one per tab root.
 private struct RouteDestinations: ViewModifier {
     @Namespace private var zoomNS
 
@@ -56,12 +48,10 @@ private struct RouteDestinations: ViewModifier {
     }
 }
 
-/// Kill switch for the zoom transitions: `defaults write ledger.zoomOff -bool YES` (or the same key set in UserDefaults) falls back to the plain push.
 enum ZoomSwitch {
     static var on: Bool { UserDefaults.standard.bool(forKey: "ledger.zoomOn") }
 }
 
-/// Marks a row or tile as the origin the pushed screen of `route` grows out of (iOS 18; earlier systems and Reduce Motion use the plain push).
 private struct ZoomSource: ViewModifier {
     @Environment(\.zoomNamespace) private var ns
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -76,7 +66,6 @@ private struct ZoomSource: ViewModifier {
     }
 }
 
-/// The pushed screen zooms out of its source when it is a company or a Phone app.
 private struct ZoomDestination: ViewModifier {
     @Environment(\.zoomNamespace) private var ns
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -99,25 +88,20 @@ private struct ZoomDestination: ViewModifier {
 }
 
 extension View {
-    /// Marks this view as where `route` opens from (a company row, a Phone app tile): the screen grows out of it.
     func zoomSource(_ route: NavRoute) -> some View { modifier(ZoomSource(route: route)) }
     fileprivate func zoomDestination(_ route: NavRoute) -> some View { modifier(ZoomDestination(route: route)) }
 }
 
 extension View {
-    /// Registers the shared destinations on the navigation stack this view roots. Every tab root calls it exactly once.
     func companyRouteDestinations() -> some View {
         modifier(RouteDestinations())
     }
 
-    /// The company switcher above a company screen's header.
     func companySwitcher(_ route: NavRoute) -> some View {
         safeAreaInset(edge: .top, spacing: 0) { CompanySwitcherBar(route: route) }
     }
 }
 
-/// A link to one page of a company: a section of the company screen opens it on that section; a page of its own (Marketing, Customers,
-/// Setup, Plant ...) is pushed; a page this company does not have opens its Overview.
 struct CompanyPage: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -139,10 +123,6 @@ struct CompanyPage: View {
     }
 }
 
-// MARK: Company switcher
-
-/// The companies a switcher offers for one company: its Group entity page, the chain or holding it belongs to (its members, the company
-/// included), and every other company of the group in the Group picker's order.
 @MainActor
 struct GroupPeers {
     var entity: GroupEntity?
@@ -164,7 +144,6 @@ struct GroupPeers {
         return GroupPeers(entity: GroupEntities.find(list, companyID: companyID), family: family, familyIDs: familyIDs, otherIDs: others)
     }
 
-    /// "Bean & Co · store 2 of 5", "Holdco · 2 of 3", "Your group · 7 companies".
     func context(companyID: Int) -> String {
         if let family, let i = familyIDs.firstIndex(of: companyID) {
             return "\(family.name) \u{00B7} \(family.isChain ? "store " : "")\(i + 1) of \(familyIDs.count)"
@@ -174,8 +153,6 @@ struct GroupPeers {
     }
 }
 
-/// One line above a company screen's header: where the company sits in the group, and a menu that swaps this screen for the same page of
-/// another company or branch in place (Back still returns to the screen under it), or pushes the company's Group entity page.
 struct CompanySwitcherBar: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -223,7 +200,6 @@ struct CompanySwitcherBar: View {
     }
 }
 
-/// The switcher's face: the group glyph, the context line and an up-down chevron, one 44 pt row.
 struct SwitcherLabel: View {
     @Environment(\.outsidePalette) private var P
     var text: String

@@ -4,20 +4,13 @@ import Countries
 import Employees
 import Finance
 
-/// The glue between the company engine and the property and finance families: which trades they cover, how they open,
-/// what they need to start. Models: `RentalModel`, `FinanceModel`.
 public enum RentalFinance {
-    /// Residential, commercial and parking/storage property (`rent`) and insurance company, bank and fund (`fin`).
     public static func handles(_ bd: Trade) -> Bool { bd.family == "rent" || bd.family == "fin" }
 
-    /// The week's customers, revenue and costs of a rental or finance company (the part that is its own model).
     static func week(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) -> CompanyWeek.WeekContext {
         bd.family == "rent" ? RentalModel.weekly(&s, i, bd, data: data) : FinanceModel.weekly(&s, i, bd, data: data)
     }
 
-    // MARK: Opening
-
-    /// What a rental or finance company needs before it opens, besides paperwork. Original: `FAM.rent.checklist`, `FAM.fin.checklist`.
     static func checklist(_ co: Company, _ bd: Trade, _ w: World) -> [OpeningChecklist.Item] {
         if bd.family == "rent" {
             let ok = !co.properties.isEmpty
@@ -32,7 +25,6 @@ public enum RentalFinance {
                 OpeningChecklist.Item(id: "ver", title: "At least one verified salesperson", isDone: verified, detail: "Each salesperson is verified per product")]
     }
 
-    /// Before staff are hired: a rental company buys its first property (the largest it can afford, as the original's `autoSetup`).
     static func buyFirstProperty(_ s: inout GameState, companyID: Int, data: GameData, log: inout [String]) {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], bd.family == "rent", s.companies[i].properties.isEmpty else { return }
         let w = World(state: s, data: data)
@@ -45,28 +37,22 @@ public enum RentalFinance {
         if r != .ok { log.append("property: \(r)") }
     }
 
-    /// After staff are hired: an insurer switches on its first products and verifies its salespeople.
     static func finishSetup(_ s: inout GameState, companyID: Int, data: GameData) {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], bd.hasTrait("ins") else { return }
         FinanceModel.startInsurer(&s, companyID: companyID, data: data)
     }
 
-    /// What the first property costs (down payment and fees on the smallest listing) and the regulator's capital. Original: `setupEstimate` additions.
     static func addEstimate(_ r: inout CompanySetup.Estimate, _ bd: Trade, size: Double, city: Country.City, currency cur: Currency, _ s: GameState, _ w: World) {
         if bd.family == "rent", let tPrice = bd.trait("price") {
             let units = max(2, jsRound((bd.trait("units") ?? 10) * 0.35))
             let price = units * tPrice * pow(city.rent == 0 ? 1 : city.rent, 0.8) * w.economy.housing
             let ltv = s.economy.policyRate > 0.09 ? 0.2 : 0.55
-            // Listings vary up to about 30% around the typical price.
             r.property = (price * (1 - ltv) + price * 0.06) * 1.3
         }
         let capital: Double? = bd.id == "bank" ? cur.scaledPrice(180_000_000) : bd.id == "insco" ? cur.scaledPrice(45_000_000) : nil
         if let c = capital { r.buffer = max(r.buffer, c * size) }
     }
 
-    // MARK: Old saves
-
-    /// Insurance products had Norwegian ids in the HTML game (`skade`, `bil` ...): rename them in an imported save.
     static let legacyProducts = ["skade": "property", "bil": "motor", "hjem": "home", "reise": "travel", "naring": "business"]
 
     public static func migrateLegacy(_ root: inout [String: JSONValue]) {

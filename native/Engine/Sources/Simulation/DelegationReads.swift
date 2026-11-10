@@ -4,7 +4,6 @@ import Countries
 import Businesses
 
 public extension GameEngine {
-    /// What the player's managers may spend without asking, in the home currency, and that currency's rate (0 limit: nobody to delegate to).
     func delegatedSpendLimit() -> (limit: Double, rate: Double) {
         let limit = Delegation.spendLimit(state, data: data)
         guard limit > 0 else { return (0, 0) }
@@ -12,7 +11,6 @@ public extension GameEngine {
     }
 }
 
-/// One company's line on the Team > Delegation page: who takes what, from who is hired (never from a setting).
 public struct DelegationLine: Identifiable, Equatable, Sendable {
     public var id: Int
     public var name: String
@@ -36,9 +34,7 @@ public extension GameEngine {
 }
 
 public extension GameEngine {
-    /// The severity (1 routine to 4 critical) of a message: its own, else by its kind and its size against the owner's net worth (see `Delegation.severity`).
     func severityLevel(of m: Message) -> Int { Delegation.severity(of: m, netWorth: dayHistory.netWorth.last ?? 0) }
 
-    /// Open messages only the owner can answer (the desks' are written as handled, never open).
     var ownerDecisions: [Message] { state.inbox.filter { $0.status == "open" && $0.isOwnerAddressed } }
 }

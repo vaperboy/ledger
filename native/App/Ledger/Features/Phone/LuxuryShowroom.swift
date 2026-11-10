@@ -3,8 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Showroom tab, like a private sales house's catalogue: the categories as words with a gold rule under the chosen one, the flagship
-/// full width, then the pieces one under the other, picture first. No boxes; the dark page and the serif names carry it.
 struct LuxuryShowroom: View {
     @EnvironmentObject var store: GameStore
     var onOpen: (String) -> Void
@@ -44,7 +42,6 @@ struct LuxuryShowroom: View {
 
     private func owned(_ e: GameEngine, _ id: String) -> Bool { e.luxuryPieces.contains { $0.item.id == id } }
 
-    /// The categories as small caps words in one sideways line; the chosen one in ink with a gold rule.
     private var categories: some View {
         let ids: [String] = ["all"] + Luxury.categories.map { $0.id }
         return ScrollView(.horizontal, showsIndicators: false) {
@@ -83,7 +80,6 @@ struct LuxuryShowroom: View {
     }
 }
 
-/// The two money lines under a name: price in gold and monthly upkeep.
 struct LuxuryPriceLine: View {
     @EnvironmentObject var store: GameStore
     var item: Luxury.Item
@@ -97,7 +93,6 @@ struct LuxuryPriceLine: View {
     }
 }
 
-/// A word on a picture (Owned, In your vault): small caps on a flat scrim, or on the accent when `filled`.
 struct LuxuryChip: View {
     var text: String
     var filled = false
@@ -110,7 +105,6 @@ struct LuxuryChip: View {
     }
 }
 
-/// The flagship: a tall picture, then the category, the name large in serif and the price.
 struct LuxuryHero: View {
     var item: Luxury.Item
     var owned: Bool
@@ -137,7 +131,6 @@ struct LuxuryHero: View {
     }
 }
 
-/// A piece of the catalogue: picture, category, name, one line about it and the price.
 struct LuxuryCard: View {
     var item: Luxury.Item
     var owned: Bool

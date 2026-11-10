@@ -3,8 +3,6 @@ import GameCore
 import Countries
 import Employees
 
-/// Static knowledge the money code needs: the countries, the trade catalogue and lending hooks.
-/// Built once when the game starts and passed to every Finance function.
 public struct FinanceContext: Sendable {
     public var countries: CountryBook
     public var trades: any TradeCatalogProviding
@@ -23,13 +21,11 @@ public struct FinanceContext: Sendable {
     public func currency(_ code: String, _ s: GameState) -> Currency { Currency(country: country(code, fallback: s.homeCountryCode), rates: rates(s)) }
     public func homeCurrency(_ s: GameState) -> Currency { Currency(country: homeCountry(s), rates: rates(s)) }
 
-    /// What the company spends in a typical week; sets its overdraft room. Original: `coWeekCost`.
     public func weeklyCost(_ co: Company, _ s: GameState) -> Double {
         let fixed = trades.facts(for: co.type)?.fixedWeekly ?? 0
         return CompanyFigures.weeklyCostEstimate(co, fixedCost: fixed, country: country(of: co, s))
     }
 
-    /// How far below zero the company's account may go. Original: `coOverdraft`.
     public func overdraftRoom(_ co: Company, _ s: GameState) -> Double {
         CompanyFigures.overdraftRoom(weeklyCost: weeklyCost(co, s))
     }

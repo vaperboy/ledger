@@ -3,7 +3,6 @@ import GameCore
 @testable import Businesses
 @testable import Simulation
 
-/// What the app reads between opening a saved game and the first Home render.
 final class LaunchReadsTests: XCTestCase {
     func testPlayersOldSaveFirstRenderReads() throws {
         let (data, events, marketing) = try GameEngine.loadResources()

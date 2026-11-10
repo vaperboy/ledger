@@ -6,7 +6,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Commission and mix pay as data on roles and trades, and the pay plan in the hire offer.
 final class PayPlansTests: XCTestCase {
     private func shop(_ trade: String, seed: Int = 5) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -14,7 +13,6 @@ final class PayPlansTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("no company") }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
-        // an office holds a limited number of people now (hiring rebuild): these tests hire several, so the place is a big one
         e.update { s, _, _ in if let i = s.companyIndex(id), s.companies[i].value("prem")["kind"].string == "office" || s.companies[i].value("prem")["kind"].isNull { var p = s.companies[i].value("prem"); if p.isNull { p = .object([:]) }; p["m2"] = .number(900); s.companies[i].set("prem", p) } }
         return (e, id)
     }
@@ -86,7 +84,6 @@ final class PayPlansTests: XCTestCase {
         XCTAssertEqual(ma.commissionMode, "mix"); XCTAssertEqual(ma.commissionRate, 0.05, accuracy: 1e-12); XCTAssertEqual(ma.monthlyWage, wage, "the offer is the base salary")
         XCTAssertEqual(mb.commissionMode, "com"); XCTAssertEqual(mb.commissionRate, 0.06, accuracy: 1e-12, "the plan's usual rate"); XCTAssertEqual(mb.monthlyWage, 0)
         XCTAssertNil(mc.commissionMode, "a plain offer keeps a plain salary")
-        // a job without a plan ignores one
         var (e2, id2) = try shop("cafe")
         let w = candidate(&e2, id2, role: "waiter")
         XCTAssertEqual(e2.hire(personID: w, companyID: id2, monthlyWage: e2.state.people[w]!.askingMonthlyWage * 1.5, terms: Hiring.Terms(payPlan: "com")), .ok)

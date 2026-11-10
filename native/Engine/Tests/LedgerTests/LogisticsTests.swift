@@ -6,9 +6,7 @@ import Finance
 import Events
 import Simulation
 
-/// Transport cost and landed cost, shipments with border holds and spoilage, stock insurance and losses, and demand driven by player counts.
 final class LogisticsTests: XCTestCase {
-    // MARK: Transport cost model
 
     func testDistancesAreSensible() {
         XCTAssertEqual(TransportCost.distanceKm(from: "UK", to: "UK"), TransportCost.minimumKm)
@@ -19,7 +17,7 @@ final class LogisticsTests: XCTestCase {
     }
 
     func testBordersAndModes() {
-        XCTAssertFalse(TransportCost.crossesBorder(from: "DE", to: "FR"))   // inside the EU
+        XCTAssertFalse(TransportCost.crossesBorder(from: "DE", to: "FR"))
         XCTAssertTrue(TransportCost.crossesBorder(from: "DE", to: "UK"))
         XCTAssertFalse(TransportCost.crossesBorder(from: "UK", to: "UK"))
         XCTAssertEqual(TransportCost.mode(from: "DE", to: "FR", cargo: .standard), .road)
@@ -55,8 +53,6 @@ final class LogisticsTests: XCTestCase {
         XCTAssertLessThan(far.unitPrice, local.unitPrice)
         XCTAssertEqual(TransportCost.rank([far, local, near], units: 1000, to: "UK").first?.offer.id, "near")
     }
-
-    // MARK: Demand from player counts
 
     func testPlayerDemandIsBounded() {
         XCTAssertEqual(PlayerDemand.factor(playerCount: PlayerDemand.referenceCount), 1, accuracy: 1e-9)
@@ -98,8 +94,6 @@ final class LogisticsTests: XCTestCase {
         _ = e.state
     }
 
-    // MARK: Helpers
-
     func engine(weeks: Int) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 777)
         var id = 0
@@ -115,8 +109,6 @@ final class LogisticsTests: XCTestCase {
     }
 
     func loss(_ e: GameEngine, _ id: Int) -> Double { e.state.company(id)?.books.total["loss"] ?? 0 }
-
-    // MARK: Shipments
 
     func testNearDomesticOrderArrivesAtOnce() throws {
         var (e, id) = try engine(weeks: 4)
@@ -140,7 +132,6 @@ final class LogisticsTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    /// Many cross-border orders: some are held, all arrive in the end, and stock = ordered goods - losses (nothing appears or vanishes).
     func runShipments(cargo: TransportCost.Cargo) throws -> (held: Int, lost: Double) {
         var (e, id) = try engine(weeks: 4)
         let invBefore = try XCTUnwrap(e.state.company(id)).inventory
@@ -182,8 +173,6 @@ final class LogisticsTests: XCTestCase {
         XCTAssertGreaterThan(r.lost, 0)
     }
 
-    // MARK: Stock insurance
-
     func testUninsuredLossIsBookedDirectly() throws {
         var (e, id) = try engine(weeks: 4)
         e.update { s, _, _ in s.companies[s.companyIndex(id)!].inventory = 1_000_000 }
@@ -220,7 +209,6 @@ final class LogisticsTests: XCTestCase {
         XCTAssertEqual(co.inventory, 800_000)
         XCTAssertEqual(co.cash, cash + 200_000 - excess, accuracy: 0.51)
         XCTAssertEqual(loss(e, id) - lossBefore, excess, accuracy: 0.01)
-        // A loss smaller than the excess pays nothing.
         e.update { s, data, _ in
             let st = StockInsurance.settle(&s, companyID: id, amount: 10, fromInventory: true, data: data)
             XCTAssertEqual(st.paid, 0)
@@ -243,7 +231,6 @@ final class LogisticsTests: XCTestCase {
         XCTAssertEqual(co0.cash - co1.cash, premium, accuracy: 0.01)
         XCTAssertEqual((co1.books.total["ins"] ?? 0) - ins0, premium, accuracy: 0.01)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        // Uninsured pays no premium.
         e.update { s, _, _ in Advisers.togglePolicy(&s, companyID: id, product: StockInsurance.product) }
         XCTAssertEqual(StockInsurance.weeklyPremium(try XCTUnwrap(e.state.company(id))), 0)
     }

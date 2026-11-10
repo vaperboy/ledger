@@ -27,7 +27,6 @@ final class MarketplaceTests: XCTestCase {
         XCTAssertTrue((25...70).contains(la.count), "live listings: \(la.count)")
         XCTAssertEqual(la.count, Set(la.map { $0.id }).count)
         XCTAssertTrue(la.allSatisfy { $0.askingPrice > 0 && !$0.title.isEmpty && !$0.blurb.isEmpty && !$0.sellerName.isEmpty })
-        // The same engine reads the same pool twice; a week later part of it has expired and new listings are in.
         XCTAssertEqual(a.marketplaceListings(forCompany: ia), la)
         var c = a
         for _ in 0..<7 { _ = c.nextDay() }
@@ -37,7 +36,6 @@ final class MarketplaceTests: XCTestCase {
         XCTAssertGreaterThan(idc.subtracting(ids).count, 3)
         XCTAssertGreaterThan(ids.subtracting(idc).count, 3)
         XCTAssertGreaterThan(idc.intersection(ids).count, 3)
-        // Cars and vans are on offer to a dealer.
         XCTAssertTrue(la.filter { $0.family.hasPrefix("car") || $0.family.hasPrefix("van") }.count > 8)
     }
 
@@ -63,7 +61,6 @@ final class MarketplaceTests: XCTestCase {
         XCTAssertGreaterThan(ratios.min()!, 0.87); XCTAssertLessThan(ratios.max()!, 1.13)
     }
 
-    /// A listing the seller will talk about.
     private func talkable(_ e: GameEngine, _ id: Int, minWear: Double = 0, vehicle: Bool = true) -> Marketplace.Entry {
         Marketplace.pool(e.state, companyID: id, data: e.data).first { !$0.h.noTalk && $0.h.kind != 1 && $0.h.wear >= minWear && ($0.h.vehicle == vehicle) && $0.h.equipmentID.isEmpty == vehicle }!
     }
@@ -87,7 +84,6 @@ final class MarketplaceTests: XCTestCase {
         XCTAssertGreaterThan(dropped, 0)
         XCTAssertEqual(n.mood, .refusing); XCTAssertEqual(n.patienceLeft, 0)
         XCTAssertLessThan(n.price, x.l.askingPrice)
-        // Frozen: the listing is still there at the frozen price until the player pushes again.
         XCTAssertTrue(e.marketplaceListings(forCompany: id).contains { $0.id == x.l.id })
         let again = e.beginNegotiation(listingID: x.l.id, companyID: id)
         XCTAssertEqual(again?.price, n.price)
@@ -139,7 +135,6 @@ final class MarketplaceTests: XCTestCase {
         XCTAssertTrue(e.state.inbox.contains { $0.companyID == id && $0.title.hasPrefix("About the") })
         XCTAssertTrue(e.buyListing(listingID: x.l.id, companyID: id, price: x.l.askingPrice).isRefused)
         balanced(e, "after buying equipment")
-        // Not enough cash.
         e.update { s, _, _ in if let i = s.companyIndex(id) { Ledger.moveRaw(&s, .company(id), -s.companies[i].cash + 1) } }
         let y = try XCTUnwrap(Marketplace.pool(e.state, companyID: id, data: e.data).first { !$0.h.vehicle })
         XCTAssertTrue(e.buyListing(listingID: y.l.id, companyID: id, price: y.l.askingPrice).isRefused)
@@ -224,8 +219,6 @@ final class MarketplaceTests: XCTestCase {
         XCTAssertEqual(a.0, b.0); XCTAssertEqual(a.1, b.1); XCTAssertEqual(a.2, b.2)
     }
 
-    /// Money probe: a competent dealer (knows what cars are worth, haggles twice, keeps the yard stocked, a sensible marketing plan) for three years.
-    /// Set LEDGER_PROBE=1; LEDGER_MARKUP (percent), LEDGER_STOCK (cars) and LEDGER_BUYS (cars a week at most) change the policy.
     func testCompetentDealerProbe() throws {
         let env = ProcessInfo.processInfo.environment
         guard env["LEDGER_PROBE"] != nil else { throw XCTSkip("probe: set LEDGER_PROBE=1") }

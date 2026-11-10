@@ -5,10 +5,6 @@ import Finance
 import Businesses
 import Investments
 
-// The Bank app's loan flow: a quote with fee, disbursal and schedule, and an application with a documents form the bank checks.
-// The loan itself is the existing `Banking.take`; this file adds the arrangement fee, the paperwork check and the figures a screen shows.
-
-/// What the applicant hands in. The bank checks it against the game's own records.
 public struct LoanDocuments: Equatable, Sendable {
     public enum IncomeProof: String, CaseIterable, Sendable { case none, payslips, taxReturn, bankStatements }
     public enum CompanyPapers: String, CaseIterable, Sendable { case none, registration, accounts }
@@ -20,7 +16,6 @@ public struct LoanDocuments: Equatable, Sendable {
     }
 }
 
-/// One instalment of the schedule at the quoted rate. (The bank re-works the payment every month at that month's rate; this is the schedule at today's.)
 public struct LoanScheduleRow: Identifiable, Equatable, Sendable {
     public var id: Int { number }
     public var number: Int
@@ -37,7 +32,6 @@ public struct LoanClause: Identifiable, Equatable, Sendable {
     public var body: String
 }
 
-/// Everything the three-step apply flow shows. `refusal` is set when the bank would turn the amount down whatever the paperwork says.
 public struct LoanApplicationQuote: Equatable, Sendable {
     public var kind: String
     public var amount: Double
@@ -50,13 +44,11 @@ public struct LoanApplicationQuote: Equatable, Sendable {
     public var yearlyRate: Double
     public var feeRate: Double
     public var fee: Double
-    /// What lands in the account: amount minus the fee. The loan owed is the full amount.
     public var disbursal: Double
     public var monthlyPayment: Double
     public var totalRepaid: Double
     public var totalInterest: Double
     public var firstPaymentText: String
-    /// Instalments fall on the last day of each month.
     public var paymentDayText: String
     public var schedule: [LoanScheduleRow]
     public var refusal: String?
@@ -70,19 +62,16 @@ public enum LoanApplicationOutcome: Equatable, Sendable {
 }
 
 public extension Banking {
-    /// The arrangement fee: a quarter of the bank's credit margin for the borrower's band (0.45% for A up to 3% for E), nothing when your own bank lends.
     static func arrangementFeeRate(credit: Double, ownBank: Bool) -> Double { ownBank ? 0 : creditMargin(credit) * 0.25 }
 }
 
 public extension GameEngine {
-    /// The terms a slider may cover: the shortest and longest the screens have always offered.
     static var loanTermRange: ClosedRange<Int> { (loanTermChoices.min() ?? 12)...(loanTermChoices.max() ?? 120) }
 
     private func accountCurrency(_ companyID: Int?) -> Currency {
         companyID.flatMap { state.company($0) }.map { currency(for: $0) } ?? context.currency(state.homeCountryCode, state)
     }
 
-    /// The last day of the month in which game week `week` (or the next month-end week after it) falls.
     static func monthEndDate(fromWeek week: Int) -> (week: Int, day: Int) {
         var w = week
         while !GameCalendar.isMonthEnd(week: w) { w += 1 }
@@ -124,7 +113,6 @@ public extension GameEngine {
                                     schedule: rows, refusal: refusal, needsIncomeProof: kind == "cons", needsCompanyPapers: kind == "biz")
     }
 
-    /// The agreement the applicant reads, with the quote's own figures in it.
     func loanAgreement(kind: String, amount: Double, termMonths: Int, companyID: Int?) -> [LoanClause] {
         let q = loanApplicationQuote(kind: kind, amount: amount, termMonths: termMonths, companyID: companyID)
         let cur = accountCurrency(companyID)
@@ -139,7 +127,6 @@ public extension GameEngine {
         ]
     }
 
-    /// Apply: the bank checks the documents, then the amount, and pays the loan out less the fee. Nothing moves when it refuses.
     @discardableResult
     mutating func applyForLoan(kind: String, amount: Double, termMonths: Int, companyID: Int?, documents: LoanDocuments, agreed: Bool, payInto: LoanPayout = .current) -> LoanApplicationOutcome {
         guard kind == "cons" || kind == "biz" else { return .refused("The bank does not offer that loan here.") }

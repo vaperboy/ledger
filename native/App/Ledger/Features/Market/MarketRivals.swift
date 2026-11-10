@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Rivals: every rival business in your markets and the rival groups around you, searchable, with a For sale and a Watching filter.
-/// A rival opens its profile (history, owner, the offer); a group opens its own profile.
 struct MarketRivalsPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -104,10 +102,6 @@ struct MarketRivalsPage: View {
     }
 }
 
-// MARK: A rival's profile
-
-/// One rival: what it is worth and whether it sells, what your analyst sees, how it fares against you, its owner and their history with
-/// you, the group behind it and its reviews. The page's one action is the offer; meeting the owner and opening beside them are in the menu.
 struct RivalProfilePage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -147,8 +141,6 @@ struct RivalProfilePage: View {
         }
     }
 
-    // MARK: Hero
-
     private func hero(_ e: GameEngine, _ d: RivalDetail, _ cur: Currency) -> some View {
         let value: Double = e.rivalValue(companyID: companyID, rivalID: rivalID)
         let context: String = d.rival.forSale ? "Open to offers \u{00B7} owner \(d.rival.owner)"
@@ -156,8 +148,6 @@ struct RivalProfilePage: View {
         return MarketHero(label: "Worth about", value: cur.tidyShort(value), context: context, contextTint: d.rival.forSale ? P.accent : nil,
                           identifier: "rival-hero")
     }
-
-    // MARK: Facts
 
     private func facts(_ d: RivalDetail) -> some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -175,8 +165,6 @@ struct RivalProfilePage: View {
         }
     }
 
-    // MARK: Against you
-
     private func against(_ e: GameEngine, _ co: Company, _ d: RivalDetail) -> some View {
         let row: RivalRow? = e.rivalRows(co).first { (r: RivalRow) -> Bool in r.id == rivalID }
         let share: String = row?.share.map { (s: MarketMap.Estimate) -> String in MarketMap.text(s) } ?? (row?.feel ?? "")
@@ -190,8 +178,6 @@ struct RivalProfilePage: View {
             .padding(.top, Theme.Space.s)
         }
     }
-
-    // MARK: Their price cut
 
     @ViewBuilder private func priceCut(_ e: GameEngine, _ d: RivalDetail) -> some View {
         if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID) {
@@ -210,8 +196,6 @@ struct RivalProfilePage: View {
             }
         }
     }
-
-    // MARK: Owner and history
 
     private func owner(_ d: RivalDetail) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -244,8 +228,6 @@ struct RivalProfilePage: View {
         }
     }
 
-    // MARK: Group and reviews
-
     @ViewBuilder private func groupRow(_ d: RivalDetail) -> some View {
         if let g = d.group {
             MarketLabel(title: "Group behind it")
@@ -265,8 +247,6 @@ struct RivalProfilePage: View {
             }
         }
     }
-
-    // MARK: Menu
 
     private func menu(_ e: GameEngine, _ d: RivalDetail, _ cur: Currency) -> some View {
         let watching: Bool = MarketData.isWatched(e, rivalID: rivalID)
@@ -291,8 +271,6 @@ struct RivalProfilePage: View {
             .accessibilityIdentifier("rival-more")
         }
     }
-
-    // MARK: Actions
 
     private func meet(_ d: RivalDetail) {
         let cid: Int = companyID
@@ -332,10 +310,6 @@ struct RivalProfilePage: View {
     }
 }
 
-// MARK: The offer
-
-/// Making an offer for a rival: the price as a multiple of what it is worth, the owner's answer (no, a counter price, or yes), then what
-/// the business should become (`AcquisitionSheet`) before anything is paid.
 struct RivalOfferSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -347,7 +321,6 @@ struct RivalOfferSheet: View {
     @State private var multiple = 1.2
     @State private var reply: String?
     @State private var counter: Double?
-    /// The price the owner agreed to: asks what the business should become before paying.
     @State private var agreed: Double?
 
     private struct PriceID: Identifiable { var price: Double; var id: Double { price } }

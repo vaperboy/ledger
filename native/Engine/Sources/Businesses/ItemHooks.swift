@@ -1,9 +1,6 @@
 import Foundation
 import GameCore
 
-/// The two places the item models (`RetailItems` ... `FinanceItems`) act on a company each week, so none of them edits the shared weekly code:
-/// `weekly` (installs and refreshes real item records, writes no money) and `cogsFactor` (what the owner's item prices do to the
-/// week's purchases, exactly 1 at default prices). Each item model adds one line to each function.
 public enum ItemHooks {
     public static func weekly(_ s: inout GameState, _ i: Int, data: GameData) {
         RetailItems.weekly(&s, i, data: data)

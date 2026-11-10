@@ -3,13 +3,11 @@ import GameCore
 import Finance
 import Businesses
 
-/// A company about to be sold by its creditors says so first: a red alert, once every four weeks, while there is still
-/// time to put money in, cut costs or talk to the bank. The sale itself is `Failure.bankrupt`.
 public extension Failure {
     static func warn(_ s: inout GameState, context: FinanceContext) {
         for i in s.companies.indices {
             let c = s.companies[i]
-            guard c.status == .open || c.status == .closed, !s.isBranch(c) else { continue }   // a chain is warned as a whole (warnChains)
+            guard c.status == .open || c.status == .closed, !s.isBranch(c) else { continue }
             var left: Int? = nil
             var why = ""
             if c.weeksNegative > 8 && c.cash < -context.overdraftRoom(c, s) {
@@ -23,7 +21,7 @@ public extension Failure {
             }
             guard let weeks = left else { continue }
             let last = c.int("warnW")
-            if last != 0 && s.week + 1 - last < 4 { continue }   // stored as week + 1 so that week 0 counts
+            if last != 0 && s.week + 1 - last < 4 { continue }
             s.companies[i].set("warnW", s.week + 1)
             let when = weeks <= 1 ? "this week or next" : "in about \(weeks) weeks"
             let id = s.addMessage(from: "Creditors", title: "\(c.name) is about to be sold",
@@ -34,7 +32,6 @@ public extension Failure {
         warnChains(&s, context: context)
     }
 
-    /// The same alert for a chain whose combined account has been overdrawn past its limit for weeks.
     static func warnChains(_ s: inout GameState, context: FinanceContext) {
         for ch in Chains.all(s) {
             let L = Chains.stores(s, ch)

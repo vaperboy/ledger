@@ -10,7 +10,6 @@ private extension GameEngine {
 }
 
 final class ItemModelsTests: XCTestCase {
-    /// A trade no item trade group opts in (open at once, sells goods), so these tests cover the foundation whichever groups are on. Pick another if a group adopts it.
     static let trade = "cardealer"
     func engine(_ trade: String = ItemModelsTests.trade, weeks: Int = 8) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
@@ -82,7 +81,6 @@ final class ItemModelsTests: XCTestCase {
         let recs = ItemModels.records(co)
         XCTAssertEqual(recs.count, rowsBefore.count)
         XCTAssertTrue(recs.allSatisfy { $0.model == .stk && $0.cost > 0 && $0.stock == 0 })
-        // The record cost equals the cost the books already assume, so the live figure is the same before and after migrating.
         let data = try JSONEncoder().encode(e.state)
         let back = try JSONDecoder().decode(GameState.self, from: data)
         XCTAssertTrue(back == e.state)

@@ -1,7 +1,6 @@
 import XCTest
 @testable import Ledger
 
-/// The shapes the 0014 functions return, and the words for their error codes.
 final class SupabaseBoardsTests: XCTestCase {
     private func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
         try SupabaseWire.makeDecoder().decode(type, from: Data(json.utf8))

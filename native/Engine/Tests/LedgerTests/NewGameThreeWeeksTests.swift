@@ -5,8 +5,6 @@ import Finance
 @testable import Businesses
 @testable import Simulation
 
-/// A new game with one convenience store, no staff and no manager, played day by day for four weeks, reading what the screens read after
-/// every day. The first run of every weekly process, the first held-money release and the first reports must not trap.
 final class NewGameThreeWeeksTests: XCTestCase {
     private func play(country: String, cityName: String?) throws {
         let (data, _, _) = try GameEngine.loadResources()

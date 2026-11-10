@@ -6,7 +6,6 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// A holding that borrows to buy, divisions, selling moved shares, board talks and a holding made from part of a company.
 final class HoldingExtrasTests: XCTestCase {
     private func start() throws -> (GameEngine, hid: Int) {
         var e = try ChainsTests.engine("UK")
@@ -21,13 +20,10 @@ final class HoldingExtrasTests: XCTestCase {
     private func cash(_ e: GameEngine, _ id: Int) -> Double { e.state.company(id)?.cash ?? 0 }
     private func pct(_ e: GameEngine, _ hid: Int, _ cid: Int) -> Double { HoldingStakes.sharePercent(of: e.state.company(cid)!, holdingID: hid) }
     private func value(_ e: GameEngine, _ cid: Int) -> Double { Valuation.companyValue(e.state.company(cid)!, state: e.state, trades: e.data.catalog) }
-    /// Bring the holding's cash to `target` by putting money in (never takes it out).
     private func setCash(_ e: inout GameEngine, _ hid: Int, to target: Double) {
         let add = target - cash(e, hid)
         if add > 0 { e.update { s, _, _ in _ = Payments.injectCash(&s, companyID: hid, amount: add) } }
     }
-
-    // MARK: Borrowing to buy
 
     func testBuyWithLoanBorrowsTheShortfall() throws {
         var (e, hid) = try start()
@@ -87,8 +83,6 @@ final class HoldingExtrasTests: XCTestCase {
         XCTAssertEqual(pct(e, hid, cid), 0, accuracy: 1e-9)
     }
 
-    // MARK: Division
-
     func testDivisionKeepsEverythingAndNetWorth() throws {
         var (e, hid) = try start()
         let cid = company(&e)
@@ -127,7 +121,6 @@ final class HoldingExtrasTests: XCTestCase {
         XCTAssertEqual(HoldingStakes.divisionHostID(try XCTUnwrap(e.state.company(a))), b)
         XCTAssertEqual(e.netWorth.total, nw0, accuracy: max(1, abs(nw0) * 1e-9))
         XCTAssertFalse(e.releaseFromHolding(companyID: b), "the host keeps its division under the holding")
-        // the host cannot itself become a division of its own division
         XCTAssertFalse(e.holdingDivisionTerms(holdingID: hid, companyID: b, hostID: a).allowed)
     }
 
@@ -140,8 +133,6 @@ final class HoldingExtrasTests: XCTestCase {
         XCTAssertFalse(t.reason.isEmpty)
         XCTAssertFalse(e.holdingMakeDivision(holdingID: hid, companyID: cid).isSuccess)
     }
-
-    // MARK: Selling moved shares
 
     func testSellingSharesMovedUnderTheHolding() throws {
         var (e, hid) = try start()
@@ -160,7 +151,6 @@ final class HoldingExtrasTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(e.state.company(cid)).ownership, 90, accuracy: 0.01)
         let t = CapTable.table(try XCTUnwrap(e.state.company(cid)))
         XCTAssertEqual(t.you + t.holders.reduce(0) { $0 + $1.shares }, t.total, "shares still add up")
-        // moved shares cannot be bought back as a purchase: they come back with release
         XCTAssertFalse(e.holdingSellStakeQuote(holdingID: hid, companyID: cid, percent: 5, to: .owner).isSuccess)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
@@ -173,7 +163,7 @@ final class HoldingExtrasTests: XCTestCase {
             CapTable.issue(&s, i, newShares: CapTable.sharesForPercent(30, total: CapTable.table(s.companies[i]).total), to: "Angel", paid: 1)
         }
         setCash(&e, hid, to: 2_000_000_000)
-        XCTAssertTrue(e.moveToHolding(companyID: cid, holdingID: hid))   // your 70% under the holding
+        XCTAssertTrue(e.moveToHolding(companyID: cid, holdingID: hid))
         _ = try e.holdingBuyStake(holdingID: hid, companyID: cid, percent: 10, from: .others).get()
         XCTAssertEqual(pct(e, hid, cid), 80, accuracy: 0.01)
         let q = try e.holdingSellStakeQuote(holdingID: hid, companyID: cid, percent: 15).get()
@@ -186,19 +176,16 @@ final class HoldingExtrasTests: XCTestCase {
         XCTAssertEqual(pct(e, hid, cid), 65, accuracy: 0.01)
         XCTAssertFalse(try XCTUnwrap(e.state.company(cid)).value("holders").array.contains { $0["hid"].int == hid }, "the bought line is gone")
         XCTAssertEqual(try XCTUnwrap(e.state.company(cid)).holdingID, hid, "what is left of your shares is still under the holding")
-        // more than the holding owns is refused
         XCTAssertFalse(e.holdingSellStakeQuote(holdingID: hid, companyID: cid, percent: 90).isSuccess)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
-
-    // MARK: Owner talks at a holding's board
 
     func testOwnerTalksAtABoardTheHoldingSitsOn() throws {
         var (e, hid) = try start()
         let a = company(&e), b = company(&e)
         setCash(&e, hid, to: 2_000_000_000)
-        _ = try e.holdingBuyStake(holdingID: hid, companyID: a, percent: 60).get()   // control: a seat of right
-        _ = try e.holdingBuyStake(holdingID: hid, companyID: b, percent: 10, from: .owner).get()   // passive: none
+        _ = try e.holdingBuyStake(holdingID: hid, companyID: a, percent: 60).get()
+        _ = try e.holdingBuyStake(holdingID: hid, companyID: b, percent: 10, from: .owner).get()
         XCTAssertTrue(e.holdingSeatedCompanies(holdingID: hid).contains { $0.id == a })
         XCTAssertFalse(e.holdingSeatedCompanies(holdingID: hid).contains { $0.id == b })
         let people = try e.holdingOwnerCounterparts(holdingID: hid, companyID: a).get()
@@ -216,8 +203,6 @@ final class HoldingExtrasTests: XCTestCase {
             }
         }
     }
-
-    // MARK: A holding made from part of a company
 
     func testCreateHoldingWithPartialStakes() throws {
         var e = try ChainsTests.engine("UK")

@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 @testable import Simulation
 
-/// Bank > Bills "Pay now": a bill paid early is charged once, and its due date charges nothing more for it.
 final class EarlyPaymentTests: XCTestCase {
     private func game() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
@@ -33,7 +32,6 @@ final class EarlyPaymentTests: XCTestCase {
         XCTAssertLessThan(co.payables["other"] ?? 0, 1)
         XCTAssertGreaterThan(co.transactions.count, tx0)
         XCTAssertNil(obligation(e, id, "bills"), "nothing left to pay on the date")
-        // The date arrives: the month-end bill run finds nothing owed.
         var again = (paid: 1.0, short: 1.0)
         let day = Payday.dayNumber(week: e.state.week, day: e.state.day)
         let cashBefore = e.state.company(id)!.cash
@@ -41,7 +39,6 @@ final class EarlyPaymentTests: XCTestCase {
         XCTAssertEqual(again.paid, 0)
         XCTAssertEqual(again.short, 0)
         XCTAssertEqual(e.state.company(id)!.cash, cashBefore, accuracy: 0.01)
-        // Paying again is refused, not charged.
         XCTAssertEqual(e.payObligationNow(o), .refused("Nothing is owed on rent or supplier bills."))
     }
 
@@ -56,7 +53,6 @@ final class EarlyPaymentTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)!.cash, cash0 - 120_000, accuracy: 0.01)
         XCTAssertTrue(SupplyTerms.invoices(e.state, buyer: id).isEmpty)
         XCTAssertLessThan(e.state.company(id)!.payables["inv"] ?? 0, 1)
-        // Weeks pass beyond the due week: the weekly run has nothing to collect.
         let cash1 = e.state.company(id)!.cash
         e.update { s, d, ctx in s.week += 4; SupplyTerms.weekly(&s, data: d, context: ctx) }
         XCTAssertEqual(e.state.company(id)!.cash, cash1, accuracy: 0.01, "not charged a second time")
@@ -98,7 +94,6 @@ final class EarlyPaymentTests: XCTestCase {
         XCTAssertEqual(co.vatBalance, 0)
         XCTAssertEqual(e.state.stats.taxPaid, paid0 + 90_000, accuracy: 0.01)
         XCTAssertNil(obligation(e, id, "vat"))
-        // Too little money: nothing moves.
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             s.companies[i].vatBalance = 90_000

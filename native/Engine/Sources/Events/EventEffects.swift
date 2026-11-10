@@ -5,26 +5,22 @@ import Finance
 import Businesses
 
 extension EventEngine {
-    /// Add a temporary effect on a company (demand, capacity, price ... multiplied for some weeks). Original: `addMod`.
     static func addModifier(_ s: inout GameState, _ i: Int, key: String, multiplier m: Double, weeks: Double) {
         var mods = s.companies[i].value("mods").array
         mods.append(.object(["k": .string(key), "m": .number(m), "w": .number(jsRound(weeks))]))
         s.companies[i].set("mods", .array(mods))
     }
 
-    /// Apply the effects of an answer to a company. Original: `applyFx`.
     static func apply(_ s: inout GameState, companyIndex i: Int, _ fx: JSONValue, ctx: Context, event e: GameEvent, data: GameData, context fc: FinanceContext) {
         if fx.isNull { return }
         let id = s.companies[i].id
         let country = fc.country(of: s.companies[i], s)
         let currency = Currency(country: country, rates: fc.rates(s))
-        // The event's own code (SpecialEvents) as the effect of an option: `special` = the chance it runs (1 = always, 0.5 = half the time).
         if fx["special"].double > 0, s.random.chance(fx["special"].double) { _ = SpecialEvents.handle(&s, companyIndex: i, e, ctx: ctx, data: data, context: fc) }
         if !fx["gamble"].isNull {
             let g = fx["gamble"]
             apply(&s, companyIndex: i, s.random.chance(g["p"].double) ? g["ok"] : g["bad"], ctx: ctx, event: e, data: data, context: fc)
         }
-        // Amounts arrive already in the company's money: `EventEngine.resolve` scaled the reference-level numbers.
         if fx["cash"].double != 0 {
             let fc2 = fx["cash"].double
             if fc2 < 0 { Payments.companyPays(&s, companyID: id, amount: -fc2, category: "oth", label: "Event cost") }
@@ -146,8 +142,6 @@ extension EventEngine {
         Aftermath.afterEffects(&s, i, event: e, fx: fx, data: data)
     }
 
-    // MARK: Pieces
-
     static func repairWorstEquipment(_ s: inout GameState, _ i: Int, level: Double) {
         var worst: (kind: String, key: String, index: Int)? = nil
         var worstCondition = 2.0
@@ -177,7 +171,6 @@ extension EventEngine {
         let raise = fx["raise"].double
         var staff = s.companies[i].staff
         var targets = Array(staff.indices)
-        // A rival goes for the best worker (original: g_poach, "your best worker").
         if !fx["stay"].isNull && !staff.isEmpty {
             targets = [staff.indices.max { (s.people[staff[$0].id]?.skill ?? 0) + staff[$0].skillGain < (s.people[staff[$1].id]?.skill ?? 0) + staff[$1].skillGain }!]
         }
@@ -194,7 +187,6 @@ extension EventEngine {
         }
     }
 
-    /// Collect (or lose) the worst outstanding invoice. Original: the 'collect' effect.
     static func collectInvoice(_ s: inout GameState, _ i: Int, chance p: Double, data: GameData) {
         var list = s.companies[i].receivables
         guard let k = list.firstIndex(where: { $0.willDefault }) ?? list.indices.max(by: { list[$0].amount < list[$1].amount }) else { return }
@@ -204,7 +196,6 @@ extension EventEngine {
         else { writeOffInvoice(&s, i, amount: r.amount, data: data) }
     }
 
-    /// An unpaid invoice (amount includes VAT): the net part is a loss, the VAT part is reclaimed. Original: `recvLoss`.
     static func writeOffInvoice(_ s: inout GameState, _ i: Int, amount gross: Double, data: GameData) {
         let w = World(state: s, data: data)
         let co = s.companies[i]

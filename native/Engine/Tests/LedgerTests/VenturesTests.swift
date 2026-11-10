@@ -6,7 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Startups, funding, private equity, listing, the big meeting and the owners of a company run, and the books still balance.
 final class VenturesTests: XCTestCase {
     func engine() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 91)
@@ -59,7 +58,7 @@ final class VenturesTests: XCTestCase {
         e.setDividendPolicy(companyID: id, policy: "low")
         for _ in 0..<(60 * 7) { e.nextDay() }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        _ = e.shutDownStartup(startupID: sid)   // nil when it already failed or exited
+        _ = e.shutDownStartup(startupID: sid)
         XCTAssertFalse(e.foundedStartups[0].live)
         XCTAssertNotNil(Trophies.entries(e.state).first { $0.id == "su1" }?.reachedWeek)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)

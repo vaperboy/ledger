@@ -2,8 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// The company page's main figures moving: the week so far (it grows as each day plays, and only the difference rolls), with how the last
-/// closed week moved against the one before it. A holding shows what it earned by source instead, since it sells nothing.
 struct CompanyLiveFigures: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -18,8 +16,6 @@ struct CompanyLiveFigures: View {
             }
         }
     }
-
-    // MARK: Trading company
 
     @ViewBuilder private var weekFigures: some View {
         let id: Int = company.id
@@ -39,7 +35,6 @@ struct CompanyLiveFigures: View {
         }
     }
 
-    /// One figure: the week so far at the right, and under the name the last closed week with its change on the week before.
     private func row(_ label: String, _ now: Double, gain: Double, last: Double?, before: Double?, cost: Bool, title: String?) -> some View {
         let money: (Double) -> String = { (v: Double) -> String in store.short(v, in: company) }
         return HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
@@ -58,8 +53,6 @@ struct CompanyLiveFigures: View {
         .padding(.vertical, Theme.Space.s)
         .accessibilityElement(children: .combine)
     }
-
-    // MARK: Holding
 
     @ViewBuilder private var holdingIncome: some View {
         let id: Int = company.id

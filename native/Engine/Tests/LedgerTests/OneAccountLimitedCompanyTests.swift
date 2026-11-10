@@ -5,8 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// One account, every company a limited company: no savings balance and no legal form in a save, salaries on the 15th with nobody to run or
-/// approve them, owner pay taxed at source and capped by the company's own equity, and bankruptcy that pays lenders before the owner.
 final class OneAccountLimitedCompanyTests: XCTestCase {
     private func start(seed: Int = 17) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -24,8 +22,6 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
         return l.id
     }
 
-    // MARK: One account, one legal form
-
     func testSaveHasNoSavingsBalanceAndNoLegalForm() throws {
         let (e, id) = try start()
         let json = try JSONDecoder().decode(JSONValue.self, from: try JSONEncoder().encode(e.state))
@@ -34,8 +30,6 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
         XCTAssertNil(e.state.company(id)?.raw["form"], "a company has no legal form field")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
-
-    // MARK: Pay day
 
     func testPayDayIsThe15thOrTheFridayBefore() {
         for year in 2026...2031 {
@@ -68,7 +62,6 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
         }
         let t = try XCTUnwrap(payDays.first, "payroll ran by itself")
         XCTAssertEqual(t, Payday.payDate(year: Payday.civil(t).year, month: Payday.civil(t).month - 1), "on the pay day")
-        // The owner's pay was taxed at source on that payroll.
         XCTAssertEqual(e.state.tax.salary, salary, accuracy: 0.01)
         XCTAssertEqual(e.state.tax.withheld, Taxes.personalIncomeTax(salary * 12, kind: .wage, in: country) / 12, accuracy: 0.01)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
@@ -90,8 +83,6 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
             XCTAssertNil(Payday.config(s.companies[i], today: t).lateSince)
         }
     }
-
-    // MARK: Owner pay
 
     func testOwnerPayAboveWhatTheCompanyCanCarryIsRefused() throws {
         var (e, id) = try start()
@@ -126,8 +117,6 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
         }
     }
 
-    // MARK: Company tax
-
     func testEveryCompanyPaysCorporateTaxOnItsProfit() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 11)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
@@ -150,8 +139,6 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    // MARK: Bankruptcy
-
     func testLendersAreRepaidBeforeTheOwnerGetsAnythingBack() throws {
         var (e, id) = try start()
         var cashBefore = 0.0
@@ -159,7 +146,7 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
             let i = s.companyIndex(id)!
             s.companies[i].payables = [:]
             let value = CompanyFigures.assets(s.companies[i])
-            _ = addLoan(&s, company: id, balance: value * 10 + 1_000_000)   // far more than the company owns
+            _ = addLoan(&s, company: id, balance: value * 10 + 1_000_000)
             cashBefore = s.cash
             Failure.bankrupt(&s, companyIndex: i, reason: "cash", data: data, context: ctx)
         }

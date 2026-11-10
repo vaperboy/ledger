@@ -3,9 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The one signing popup (chain, franchise, trademark and licence applications): who it goes to, what it says, the fee and the wait, a box to
-/// confirm the terms and a signature drawn with a finger. Clear and Send are pinned under the body, so they never scroll away; Send is on
-/// only when the box is ticked and a signature is drawn. A tap outside does not close it.
 struct SignPopup: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -14,9 +11,7 @@ struct SignPopup: View {
     var fee: String
     var wait: String
     var button: String
-    /// A line under the signature box (what happens after sending); empty for none.
     var caption: String = ""
-    /// True: the popup closes, then `onSend` runs. False: `onSend` closes it itself.
     var closesFirst: Bool = true
     var onSend: () -> Void
     var onClose: () -> Void

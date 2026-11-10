@@ -3,8 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-/// The first page of the Bank app: whose account to open. Lists the accounts the bank already has (the player personally, each company);
-/// choosing one opens it. Back from there leads to the full list, where every account can be opened.
 struct BankPickerScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore

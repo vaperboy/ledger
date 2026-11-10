@@ -4,33 +4,18 @@ import Countries
 import Finance
 import Businesses
 
-/// Raising money for a company you own and selling shares of it: investors who buy new shares (the money goes into the company),
-/// private share sales at fixed percentages, and a holding company's own listing on the exchange and share issues.
-/// Originals: features/player/selling_startups_and_crisis.js (`fundPart`, `makeOffers`, `ACT.pitch`, `fundacc`, `fundctr`),
-/// engine/world/deals.js (`shareOffers`, `sellShares`) and features/world/rivals_holdings_software.js (`raisePlan`, `hlist`, `hraise`).
-/// Selling part of YOUR shares through the market (quiet sale or broker) is `CompanySale` with a percentage.
-///
-/// State: `rest["founder"]` = { exits, fails, raised } (your record as a founder), `rest["fundOffers"][companyID]` = the offers on the table,
-/// `rest["fundTried"][companyID]` = the week you last pitched. A company's outside owners are `holders` = [{ name, pct, in, ... }]
-/// (pct = percent of the whole company), and `flags.boardSeat` counts board seats given away; a holding has `listed` = 1 once on the exchange.
-///
-/// Not faithful: investors you hosted (perks) do not come sooner.
 public enum Funding {
-    // MARK: Founder record
 
     public struct Record: Equatable { public var exits = 0, fails = 0, raised = 0.0 }
     public static func record(_ s: GameState) -> Record {
         let f = s.rest["founder"] ?? .null
         return Record(exits: f["exits"].int, fails: f["fails"].int, raised: f["raised"].double)
     }
-    /// Count an exit ("exits"), a failure ("fails") or money raised ("raised", by `amount`).
     static func bump(_ s: inout GameState, _ key: String, _ amount: Double = 1) {
         var f = s.rest["founder"] ?? .object(["exits": 0, "fails": 0, "raised": 0])
         f[key] = .number(f[key].double + amount)
         s.rest["founder"] = f
     }
-
-    // MARK: Names and small helpers
 
     static func personName(_ s: inout GameState, countryCode: String, data: GameData) -> String {
         let c = data.countries.resolve(countryCode, orHome: s.homeCountryCode)
@@ -55,23 +40,17 @@ public enum Funding {
         f["boardSeat"] = .number(f["boardSeat"].double + Double(n))
         s.companies[i].set("flags", f)
     }
-    /// The percent of a company that outsiders own.
     public static func outsidePercent(_ co: Company) -> Double { 100 - co.ownership - HoldingStakes.heldByHoldings(co) }
 
-    // MARK: How investors see you
-
-    /// Capital hunger of a trade, 1...5. Original: `capK`.
     public static func capitalNeed(_ co: Company, data: GameData) -> Int {
         ["energy": 5, "fin": 4, "club": 4, "rent": 3, "prod": 3, "logi": 3, "project": 2, "venue": 2, "retail": 2, "svc": 1][data.catalog[co.type]?.family ?? ""] ?? 2
     }
-    /// 0...1: how keen investors are. Your record as a founder, how much capital the business eats, and how it is doing. Original: `interest`.
     public static func interest(_ s: GameState, capitalNeed ck: Int, traction tr: Double) -> Double {
         let f = record(s)
         let track = min(0.36, Double(f.exits) * 0.12) - min(0.3, Double(f.fails) * 0.06)
         let pen = Double(ck - 1) * 0.13 * (f.exits > 0 ? 0.4 : 1)
         return clamp(0.3 + track + tr * 0.45 - pen + (s.economy.demand - 1), 0.02, 0.97)
     }
-    /// ("Strong" | "Some interest" | "Weak" | "Almost none", tone "pos" | "amb" | "neg")
     public static func interestWord(_ x: Double) -> (word: String, tone: String) {
         x >= 0.7 ? ("Strong", "pos") : x >= 0.45 ? ("Some interest", "amb") : x >= 0.25 ? ("Weak", "amb") : ("Almost none", "neg")
     }
@@ -80,11 +59,9 @@ public enum Funding {
         return interest(s, capitalNeed: capitalNeed(co, data: data), traction: CompanySale.traction(co, s))
     }
 
-    // MARK: Raise funding: investors buy new shares, the money goes into the company
-
     public struct FundOffer: Identifiable, Equatable {
         public var id: Int
-        public var kind: String        // angel, fund, ff (friends and family)
+        public var kind: String
         public var name: String
         public var amount: Double
         public var preMoney: Double
@@ -99,16 +76,14 @@ public enum Funding {
             FundOffer(id: n, kind: o["k"].string, name: o["name"].string, amount: o["amt"].double, preMoney: o["pre"].double, pct: o["pct"].double, says: o["says"].string, countered: o["ctr"].bool)
         }
     }
-    /// Weeks until you may pitch again (0 = now).
     public static func weeksUntilPitch(_ s: GameState, companyID: Int) -> Int {
         guard let t = s.rest["fundTried"]?[String(companyID)], !t.isNull else { return 0 }
         return max(0, 4 - (s.week - t.int))
     }
     public static func canRaise(_ s: GameState, companyID: Int) -> Bool {
         guard let co = s.company(companyID) else { return false }
-        return co.status.isLive && co.type != "hold" && !s.isBranch(co)   // a chain raises money as one company
+        return co.status.isLive && co.type != "hold" && !s.isBranch(co)
     }
-    /// The amount the original suggests asking for.
     public static func suggestedAmount(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> Double {
         guard let co = s.company(companyID) else { return 0 }
         let v = CompanySale.estimatedValue(s, companyID: companyID, data: data)
@@ -122,7 +97,6 @@ public enum Funding {
     }
     static func rawOffers(_ s: GameState, _ id: Int) -> [JSONValue] { s.rest["fundOffers"]?[String(id)].array ?? [] }
 
-    /// Shared by a company and a startup you founded. Original: `makeOffers`.
     static func makeOffers(_ s: inout GameState, countryCode: String, data: GameData, interest it: Double, amount amt: Double, preMoney pre0: Double) -> [JSONValue] {
         let k = it > 0.72 ? 3 : it > 0.48 ? 2 : it > 0.26 ? 1 : (s.random.chance(it * 2) ? 1 : 0)
         let kinds = ["angel", "fund", "ff"]
@@ -131,7 +105,6 @@ public enum Funding {
             let kd = kinds[n]
             let asked = ((kd == "ff" ? amt * 0.5 : amt * s.random.range(0.8, 1.15)) / 1000).rounded() * 1000
             let pre = min(pre0, pre0 * s.random.range(0.7, 1.25) * (0.7 + it * 0.6) * (kd == "ff" ? 1.1 : 1))
-            // No single round hands over control: an investor takes at most 30% (a fund 40%) of the company after the round, whatever was asked for.
             let share = kd == "fund" ? 0.4 : 0.3
             let a = min(asked, (pre * share / (1 - share) / 1000).rounded(.down) * 1000)
             if a <= 0 { continue }
@@ -146,7 +119,6 @@ public enum Funding {
 
     public enum PitchResult: Equatable { case offers(Int), none, tooSoon(weeksLeft: Int), notLimited }
 
-    /// Pitch to investors for `amount`. Original: `ACT.pitch`.
     @discardableResult
     public static func pitch(_ s: inout GameState, companyID: Int, amount: Double, data: GameData, context fc: FinanceContext) -> PitchResult {
         guard canRaise(s, companyID: companyID), let i = s.companyIndex(companyID) else { return .notLimited }
@@ -180,7 +152,6 @@ public enum Funding {
         return true
     }
 
-    /// Ask for a higher valuation, once. They accept or walk away. Original: `ACT.fundctr`.
     public static func counterOffer(_ s: inout GameState, companyID: Int, index: Int, data: GameData) {
         var list = rawOffers(s, companyID)
         guard list.indices.contains(index), !list[index]["ctr"].bool, let co = s.company(companyID) else { return }
@@ -204,8 +175,6 @@ public enum Funding {
         writeOffers(&s, companyID, list)
     }
 
-    // MARK: Private shares at a fixed percentage (the original's "Shares: company / you")
-
     public struct ShareOffer: Equatable { public var pct: Int; public var primary: Double; public var secondary: Double }
     public static let sharePercents = [5, 10, 20, 30, 49]
     public static func shareOffers(_ s: GameState, companyID: Int, data: GameData) -> [ShareOffer] {
@@ -215,15 +184,12 @@ public enum Funding {
     }
     public enum ShareResult: Equatable { case ok(Double), notLimited, tooMuch, blocked }
 
-    /// mode "primary": new shares, the money goes into the company. mode "secondary": you sell part of your own shares and the cash is yours.
-    /// Original: `sellShares`.
     @discardableResult
     public static func sellShares(_ s: inout GameState, companyID: Int, pct: Double, mode: String, data: GameData, context fc: FinanceContext) -> ShareResult {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return .notLimited }
         let co = s.companies[i]
         if s.isBranch(co) { return .blocked }
         let t = CapTable.table(co)
-        // primary: pct is the buyer's share of the company AFTER the issue. secondary: pct is the share of YOUR holding you sell.
         let newPct = mode == "primary" ? t.youPct * (100 - pct) / 100 : t.youPct * (1 - pct / 100)
         if newPct < 1 { return .tooMuch }
         if mode == "primary" && Shareholders.isBlocked(s, companyID: companyID) { return .blocked }
@@ -247,11 +213,8 @@ public enum Funding {
         return .ok(amt)
     }
 
-    // MARK: Holding companies: list on the exchange, issue shares
-
     public static let listingMinimumValue = 30_000_000.0
     public static let listingFee = 1_500_000.0
-    /// What a holding is worth: its companies by your share, its cash and its treasury funds. Original: `holdValue`.
     public static func holdingValue(_ s: GameState, holdingID: Int, data: GameData) -> Double {
         guard let h = s.company(holdingID) else { return 0 }
         let kids = HoldingStakes.stakeCompanies(of: holdingID, in: s).reduce(0) { $0 + max(0, Valuation.companyValue($1, state: s, trades: data.catalog)) * HoldingStakes.sharePercent(of: $1, holdingID: holdingID) / 100 }
@@ -262,7 +225,6 @@ public enum Funding {
 
     public enum ListResult: Equatable { case ok, alreadyListed, tooSmall(needed: Double), notEnoughMoney(Double), notAHolding }
 
-    /// Go public: a bank takes the holding to the exchange for a fee. Original: `ACT.hlist`.
     @discardableResult
     public static func listHolding(_ s: inout GameState, holdingID: Int, data: GameData, context fc: FinanceContext) -> ListResult {
         guard let i = s.companyIndex(holdingID), s.companies[i].type == "hold", s.companies[i].status.isLive else { return .notAHolding }
@@ -278,15 +240,12 @@ public enum Funding {
 
     public struct RaisePlan: Equatable {
         public var value: Double
-        /// The share needed for the goal, the share you will likely give (49 at most), the money that brings, and the bank fee on the exchange.
         public var needed: Double, given: Double, amount: Double, fee: Double
-        /// The office finance manager who negotiates a private raise (nil: you do) and how experienced he is (0.2...0.98).
         public var manager: String? = nil, managerSkill: Double? = nil
     }
-    /// What raising `goal` for a holding would cost in shares. mode "public" (on the exchange) or "private". Original: `raisePlan`.
     public static func raisePlan(_ s: GameState, holdingID: Int, goal: Double, mode: String, data: GameData, context fc: FinanceContext) -> RaisePlan {
         let v0 = max(fc.homeCurrency(s).scaledPrice(100000), holdingValue(s, holdingID: holdingID, data: data))
-        let mg = FinanceManager.negotiator(s, holdingID: holdingID)   // the finance manager who runs this holding, if any
+        let mg = FinanceManager.negotiator(s, holdingID: holdingID)
         let f = mode == "public" ? 0.97 : mg.map { 0.78 + 0.3 * $0.skill } ?? 0.9
         let over = mode == "public" ? 0 : mg.map { (1 - $0.skill) * 0.7 } ?? 0.1
         let q = 100 * goal / (v0 * f + goal)
@@ -296,7 +255,6 @@ public enum Funding {
                          manager: mg?.name, managerSkill: mg?.skill)
     }
 
-    /// Issue new shares in a holding; the money goes into the holding and your share shrinks. Original: `ACT.hraise`.
     @discardableResult
     public static func raiseForHolding(_ s: inout GameState, holdingID: Int, goal: Double, mode: String, data: GameData, context fc: FinanceContext) -> Double? {
         guard goal > 0, let i = s.companyIndex(holdingID), s.companies[i].type == "hold", s.companies[i].status.isLive else { return nil }
@@ -308,7 +266,7 @@ public enum Funding {
         CapTable.issue(&s, i, newShares: issued, to: buyer, paid: r.amount)
         bump(&s, "raised", r.amount)
         s.note("\(s.companies[i].name) raised \(fc.currency(s.companies[i].countryCode, s).display(r.amount)) from \(buyer).", tone: "good", companyID: holdingID)
-        if let who = r.manager, m == "private" {   // the finance manager reports back
+        if let who = r.manager, m == "private" {
             s.addMessage(kind: "info", from: who, title: "Money raised for \(s.companies[i].name)",
                          body: "I raised \(fc.currency(s.companies[i].countryCode, s).display(r.amount)) from \(buyer) for \(String(format: "%g", (r.given * 10).rounded() / 10))% of the holding." + (r.given > r.needed * 1.15 ? " I had to give a bit more than I hoped." : ""),
                          companyID: holdingID, tone: "good")

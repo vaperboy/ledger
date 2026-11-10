@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The Accounting read models and records, net worth breakdown and Company overview figures.
 final class AccountingReadsTests: XCTestCase {
     private func firm(trade: String = "cafe", days: Int = 90, seed: Int = 31) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -68,7 +67,6 @@ final class AccountingReadsTests: XCTestCase {
 
     func testInsuranceAndApplicationsAreRealRecords() throws {
         var (e, id) = try firm(days: 10)
-        // No policy is held at first: no insurance rows, and nothing is made up.
         XCTAssertTrue(try XCTUnwrap(e.companyDocuments(companyID: id, group: .insurance)).isEmpty || (e.coverageOverview(companyID: id)?.activeCount ?? 0) > 0)
         let policy = try XCTUnwrap(e.coverageOverview(companyID: id)?.policies.first(where: { !$0.isOn }))
         _ = e.toggleInsurancePolicy(companyID: id, product: policy.id)
@@ -76,7 +74,6 @@ final class AccountingReadsTests: XCTestCase {
         let ins = try XCTUnwrap(e.companyDocuments(companyID: id, group: .insurance))
         XCTAssertEqual(ins.contains { $0.id == "ins-" + policy.id }, held.isOn, "a policy appears exactly when the company holds it")
         XCTAssertEqual(ins.count, e.coverageOverview(companyID: id)?.activeCount ?? -1)
-        // A franchise application is a record with its status; chain and franchise papers are applications, not licences.
         XCTAssertTrue(try XCTUnwrap(e.companyDocuments(companyID: id, group: .applications)).isEmpty)
         e.update { s, _, _ in
             s.rest["fbApps"] = .object(["x:GL:0": .object(["st": "pending", "w0": .number(Double(s.week)), "due": .number(Double(s.week + 2)), "country": "UK", "city": ""])])
@@ -95,7 +92,6 @@ final class AccountingReadsTests: XCTestCase {
         XCTAssertEqual(nw.liquid, e.state.cash, accuracy: 0.5)
         XCTAssertEqual(nw.stakes.filter { $0.companyID == id }.count, 1, "attributable equity once")
         XCTAssertGreaterThan(nw.guaranteedCompanyDebt + 1, 0)
-        // A company inside a holding is not counted twice.
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].holdingID = 999 } }
         XCTAssertEqual(e.netWorthBreakdown().stakes.first { $0.companyID == id }?.attributableEquity, 0)
         let st = try XCTUnwrap(e.companyOverviewStats(companyID: id))

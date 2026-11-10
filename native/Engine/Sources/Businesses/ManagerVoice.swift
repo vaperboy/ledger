@@ -4,9 +4,6 @@ import Countries
 import Employees
 import Finance
 
-/// How managers talk. Every manager has a role family (a restaurant manager talks covers and service, a store manager footfall and rota,
-/// a finance manager cash and covenants) and a personality (bold or cautious, detail or people) that colours what they recommend.
-/// Wording is picked deterministically and never repeats within the last two uses of the same situation at the same company.
 public enum ManagerVoice {
     public enum Family: String, CaseIterable, Sendable { case general, ops, kitchen, store, sales, fin, site, fleet, clinic }
 
@@ -23,7 +20,6 @@ public enum ManagerVoice {
         default: return .general
         }
     }
-    /// Family from a free job title (regional, chain and executive posts).
     public static func family(title: String) -> Family {
         let t = title.lowercased()
         if t.contains("financ") || t.contains("cfo") || t.contains("treasur") { return .fin }
@@ -39,8 +35,6 @@ public enum ManagerVoice {
 
     public enum Situation: String, CaseIterable, Sendable { case hire, equip, cash, cut, ad, raise, poach, resign, digest }
 
-    // MARK: Personality
-
     public struct Traits: Equatable, Sendable {
         public var bold: Bool
         public var detail: Bool
@@ -53,10 +47,7 @@ public enum ManagerVoice {
         let detail = (HashedRandom.first("tr2:\(n.id)") * 0.7 + (st["fin"].isNull ? 0.5 : st["fin"].double / 100) * 0.3) > 0.5
         return Traits(bold: bold, detail: detail)
     }
-    /// How much of the owner's buying limit this manager will use alone. Never above the limit.
     public static func budgetUse(_ n: Person) -> Double { traits(n).bold ? 1 : 0.75 }
-
-    // MARK: Wording
 
     struct Vocab { var kpi: String; var close: String }
     static let vocab: [Family: Vocab] = [
@@ -70,7 +61,6 @@ public enum ManagerVoice {
         .fleet: Vocab(kpi: "vehicle utilisation", close: "Standing vehicles earn nothing."),
         .clinic: Vocab(kpi: "appointment book", close: "Patients first; this helps.")]
 
-    /// Placeholders: {role} {util} {cash} {cost}.
     static let lines: [Situation: [Family: [String]]] = [
         .hire: [
             .general: ["We run at {util}% and turn work away. A {role} costs {cost} a year and pays back inside a season. Approve?",
@@ -213,7 +203,6 @@ public enum ManagerVoice {
                       "The book has gaps. A campaign of {cost} would fill them.",
                       "Awareness is low for the clinic. Recommend {cost} in ads."]]]
 
-    /// Same shape in every role; the role vocabulary fills {kpi}. Placeholders {up} {pct} {why}.
     static let shared: [Situation: [String]] = [
         .raise: ["A year in, and {kpi} is up on my watch. I would like +{up}/month ({pct}). I think it is fair.",
                  "I have run this for a year and kept {kpi} where it should be. Asking for +{up}/month ({pct}).",
@@ -228,9 +217,6 @@ public enum ManagerVoice {
                   "I have decided to leave. {why}",
                   "It is time for me to move on. {why}"]]
 
-    // MARK: Picking
-
-    /// Pick a variant without repeating either of the last two used for this situation at this company.
     public static func pick(_ s: inout GameState, companyIndex ci: Int, situation: String, seed: Int, variants v: [String]) -> String {
         guard !v.isEmpty else { return "" }
         var fl = s.companies[ci].value("flags")
@@ -251,7 +237,6 @@ public enum ManagerVoice {
         return r
     }
 
-    /// Every wording of a situation for a family (tests and previews).
     public static func variants(_ sit: Situation, family f: Family) -> [String] {
         if let l = lines[sit]?[f] { return l }
         return shared[sit] ?? []
@@ -261,7 +246,6 @@ public enum ManagerVoice {
         family(type: n.str("mtype").isEmpty ? (bd?.managerType ?? "gen") : n.str("mtype"))
     }
 
-    /// The manager's line for a situation, with figures filled in.
     public static func say(_ s: inout GameState, companyIndex ci: Int, manager n: Person, bd: Trade?, situation sit: Situation, vars: [String: String] = [:]) -> String {
         let fam = familyOf(n, bd)
         var all = vars
@@ -270,7 +254,6 @@ public enum ManagerVoice {
         return fill(text, all)
     }
 
-    /// A short character-driven recommendation (cautious managers hedge, bold ones push).
     public static func stance(_ n: Person) -> String {
         let t = traits(n)
         switch (t.bold, t.detail) {
@@ -281,15 +264,12 @@ public enum ManagerVoice {
         }
     }
 
-    // MARK: Weekly digest ("what my manager did")
-
     public static func record(_ s: inout GameState, companyIndex ci: Int, _ text: String) {
         var log = s.companies[ci].value("mgrLog").array
         log.append(.object(["w": .number(Double(s.week)), "t": .string(text)]))
         s.companies[ci].set("mgrLog", .array(Array(log.suffix(12))))
     }
 
-    /// A manager on a free budget reports every week, on a normal one every second week; on a tight one they do nothing alone, so there is nothing to report.
     static func digestWeek(_ s: inout GameState, companyIndex ci: Int, manager n: Person, bd: Trade, utilisation util: Double) {
         let co = s.companies[ci]
         let budget = ManagerModel.budget(of: co)
@@ -309,8 +289,6 @@ public enum ManagerVoice {
         s.addMessage(kind: "info", from: n.name, title: "\(co.name): what I did", body: body, companyID: co.id, tone: "n", status: "done")
         s.companies[ci].set("mgrLog", .array([]))
     }
-
-    // MARK: Scorecard (words, not numbers)
 
     public struct Scorecard: Sendable {
         public var rows: [(label: String, word: String)]

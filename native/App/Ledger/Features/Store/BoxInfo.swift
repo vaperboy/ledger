@@ -1,13 +1,11 @@
 import SwiftUI
 import Simulation
 
-/// The player's choice to have no loot boxes. Kept on this device; it hides paid boxes and everything that buys or opens one.
 enum LootBoxChoice {
     static let key = "ledger.store.lootBoxesOff"
     static var isOff: Bool { UserDefaults.standard.bool(forKey: key) }
 }
 
-/// The small round "i" on the box screens. The odds, the rules and the loot-box choice all live behind it.
 struct LootInfoButton: View {
     var action: () -> Void
 
@@ -33,8 +31,6 @@ struct LootBoxInfoSheet: View {
     }
 }
 
-/// Everything a player should know about boxes, in one place: the choice to turn them off, the exact odds, the guarantee and the rules.
-/// Opened from the "i" on the box screen and on the result screen; it is the only place these appear.
 struct LootBoxInfoContent: View {
     var kind: BoxKind
     @AppStorage(LootBoxChoice.key) private var lootOff = false

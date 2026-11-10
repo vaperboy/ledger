@@ -1,8 +1,3 @@
--- Public exchange: a player's holding company can go public, and other players trade its shares in an order book. Mirrors the engine's
--- Funding listing rules (a minimum value and a listing fee, scaled to the currency). The owner reports the company's value, but every
--- price must stay inside a band around it, the owner keeps control (at least 51% of the shares), linked accounts cannot trade with each
--- other, and the trade tax and gains tax go to the country treasuries.
-
 create type public.exchange_side as enum ('buy', 'sell');
 create type public.exchange_order_status as enum ('open', 'filled', 'cancelled');
 
@@ -13,7 +8,6 @@ create table public.exchange_listings (
   name text not null check (char_length(name) between 1 and 40),
   currency text not null check (currency ~ '^[A-Z]{3}$'),
   total_shares bigint not null default 1000000 check (total_shares > 0),
-  -- The company's value as its owner last reported it; the price band hangs on it.
   value numeric(18, 2) not null check (value > 0),
   value_reported_at timestamptz not null default now(),
   listed_at timestamptz not null default now(),
@@ -25,7 +19,6 @@ create table public.exchange_holdings (
   listing_id uuid not null references public.exchange_listings (id) on delete cascade,
   owner_id uuid not null references public.profiles (id) on delete cascade,
   shares bigint not null check (shares >= 0),
-  -- What the shares cost in all (the basis for the gains tax).
   cost numeric(18, 2) not null default 0 check (cost >= 0),
   primary key (listing_id, owner_id)
 );
@@ -63,8 +56,6 @@ alter table public.exchange_trades enable row level security;
 revoke all on public.exchange_listings, public.exchange_holdings, public.exchange_orders, public.exchange_trades from anon, authenticated;
 grant select on public.exchange_listings, public.exchange_holdings, public.exchange_orders, public.exchange_trades to authenticated;
 
--- A listing and its trade tape are public (that is what an exchange is); holdings and orders are private to their owner, the book is
--- shown only as price levels by exchange_market().
 create policy exchange_listings_read on public.exchange_listings for select to authenticated using (delisted_at is null or owner_id = auth.uid());
 create policy exchange_trades_read on public.exchange_trades for select to authenticated using (true);
 create policy exchange_holdings_own on public.exchange_holdings for select to authenticated using (owner_id = auth.uid());
@@ -78,16 +69,12 @@ create or replace function private.exchange_open(uid uuid) returns boolean langu
       or exists (select 1 from public.exchange_orders where trader_id = uid and status = 'open');
 $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Rules
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.exchange_nav(l public.exchange_listings) returns numeric language sql immutable as $$ select l.value / l.total_shares; $$;
 
 create function private.exchange_last_price(lid uuid) returns numeric language sql stable security definer set search_path = '' as $$
   select price from public.exchange_trades where listing_id = lid order by id desc limit 1;
 $$;
 
--- The owner lists the holding. Needs 30,000,000 of value and pays 1,500,000 (reference economy, scaled to the currency); the owner starts with all shares.
 create function public.list_on_exchange(p_company_key text, p_name text, p_value numeric, p_currency text) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); l public.exchange_listings; sc numeric := private.currency_scale(p_currency); fee numeric; cc text;
 begin
@@ -103,7 +90,6 @@ begin
   return jsonb_build_object('id', l.id, 'totalShares', l.total_shares, 'navPerShare', private.exchange_nav(l));
 end $$;
 
--- The owner keeps the value current. A single report may move it by at most a quarter, and no more than once an hour.
 create function public.report_exchange_value(p_listing uuid, p_value numeric) returns numeric language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); l public.exchange_listings;
 begin
@@ -116,7 +102,6 @@ begin
   return private.exchange_nav(l) * p_value / l.value;
 end $$;
 
--- Listings with their price levels (best bid and ask, last trade) for the market screen. Blocked owners' listings are left out.
 create function public.exchange_market() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin
@@ -140,14 +125,12 @@ begin
         'price', o.price, 'createdAt', o.created_at) order by o.created_at desc) from public.exchange_orders o where o.trader_id = uid and o.status = 'open'), '[]'::jsonb));
 end $$;
 
--- Shares a trader could still put up for sale: holdings less what open sell orders already promise; the owner keeps 51%.
 create function private.exchange_sellable(l public.exchange_listings, uid uuid) returns bigint language sql stable security definer set search_path = '' as $$
   select greatest(0, coalesce((select shares from public.exchange_holdings where listing_id = l.id and owner_id = uid), 0)
        - coalesce((select sum(remaining) from public.exchange_orders where listing_id = l.id and trader_id = uid and side = 'sell' and status = 'open'), 0)
        - case when uid = l.owner_id then ceil(l.total_shares * 0.51)::bigint else 0 end);
 $$;
 
--- Places a limit order and matches it at once against the book (the resting order's price is the trade price). Returns the filled shares.
 create function public.place_exchange_order(p_listing uuid, p_side public.exchange_side, p_shares bigint, p_price numeric, p_currency text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); l public.exchange_listings; nav numeric; o public.exchange_orders; mine public.exchange_orders; fill bigint; filled bigint := 0;
@@ -203,7 +186,6 @@ begin
   if not found then raise exception 'not_found' using errcode = 'P0001'; end if;
 end $$;
 
--- The owner takes the company off the exchange once nobody else holds shares (they must be bought or sold first).
 create function public.delist_from_exchange(p_listing uuid) returns void language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin

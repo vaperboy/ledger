@@ -4,15 +4,6 @@ import Countries
 import Employees
 import Finance
 
-/// Real actions for the people who work for the group rather than in one company's staff list: executives (managing director, CEO, chain and regional
-/// managers), department heads, head-office staff and the data analyst. They have no `StaffMember`, so promises to them are tied to these actions, which are
-/// real: each changes pay, authority or costs money. The promise text names the action, so nothing is taken on trust:
-///  - a pay review: `raise` (their pay rises, the payroll that reads their wage pays it);
-///  - a promotion: `promote` (a bigger budget and a raise of at least 5 percent);
-///  - additional responsibility: `setLevel` (the budget: tight asks you first, normal within limits, free full control);
-///  - training: `train` (a course, paid by you);
-///  - better conditions / a future benefit: `setExpense` (a reimbursement entitlement, paid every week);
-///  - a change of working percentage: `setPercent` (pay follows the percentage).
 public enum GroupPeople {
     struct Loc {
         var read: (GameState) -> JSONValue
@@ -49,11 +40,9 @@ public enum GroupPeople {
         return nil
     }
 
-    /// Is this person a group employee (an executive, department head, head-office member or the analyst)?
     public static func isGroupPerson(_ s: GameState, _ id: Int) -> Bool { locate(s, id) != nil }
 
     public static func wage(_ s: GameState, personID: Int) -> Double? { locate(s, personID).map { $0.read(s)["wage"].double } }
-    /// The person's budget preset (`Budget.rawValue`): 0 tight, 1 normal, 2 free.
     public static func level(_ s: GameState, personID: Int) -> Int { locate(s, personID).map { Budget.of($0.read(s)).rawValue } ?? 0 }
     public static func percent(_ s: GameState, personID: Int) -> Double { s.people[personID].map { $0.value("gp").isNull ? 100 : $0.num("gp") } ?? 100 }
     public static func expenseItems(_ s: GameState, personID: Int) -> [String] {
@@ -62,7 +51,6 @@ public enum GroupPeople {
 
     static func currency(_ s: GameState, _ data: GameData) -> Currency { ManagerModel.playerCurrency(s, data) }
 
-    /// A pay review: their pay rises by `percent` (0.05 = 5 percent).
     @discardableResult
     public static func raise(_ s: inout GameState, personID: Int, percent: Double, data: GameData) -> Bool {
         guard percent > 0, let loc = locate(s, personID) else { return false }
@@ -72,7 +60,6 @@ public enum GroupPeople {
         return true
     }
 
-    /// A promotion: one budget step up (to free at most) and a raise of at least 5 percent.
     @discardableResult
     public static func promote(_ s: inout GameState, personID: Int, data: GameData) -> Bool {
         guard let loc = locate(s, personID), var n = s.people[personID] else { return false }
@@ -84,7 +71,6 @@ public enum GroupPeople {
         return true
     }
 
-    /// Budget: 0 tight (asks you first), 1 normal (within limits), 2 free (full control).
     @discardableResult
     public static func setLevel(_ s: inout GameState, personID: Int, level: Int) -> Bool {
         guard let loc = locate(s, personID) else { return false }
@@ -93,7 +79,6 @@ public enum GroupPeople {
         return true
     }
 
-    /// A course, paid by you.
     @discardableResult
     public static func train(_ s: inout GameState, personID: Int, data: GameData) -> Bool {
         guard locate(s, personID) != nil, var n = s.people[personID] else { return false }
@@ -107,7 +92,6 @@ public enum GroupPeople {
         return true
     }
 
-    /// A reimbursement entitlement (phone, uniform, training, travel ...), paid every week while it is on.
     @discardableResult
     public static func setExpense(_ s: inout GameState, personID: Int, item: String, on: Bool) -> Bool {
         guard locate(s, personID) != nil, StaffExpenses.item(item) != nil, var n = s.people[personID] else { return false }
@@ -119,7 +103,6 @@ public enum GroupPeople {
         return true
     }
 
-    /// Working percentage 10-100: pay follows the percentage.
     @discardableResult
     public static func setPercent(_ s: inout GameState, personID: Int, percent: Double) -> Bool {
         guard Hiring.workingPercentRange.contains(percent), let loc = locate(s, personID), var n = s.people[personID] else { return false }
@@ -132,7 +115,6 @@ public enum GroupPeople {
     }
     static func percentage(_ n: Person) -> Double { n.value("gp").isNull ? 100 : n.num("gp") }
 
-    /// Weekly: the reimbursements agreed with group employees are paid.
     static func weekly(_ s: inout GameState, data: GameData) {
         let cur = currency(s, data)
         for n in s.people.values.sorted(by: { $0.id < $1.id }) where !n.value("gx").isNull && n.employerID != 0 && n.employerID != Hiring.goneElsewhere {

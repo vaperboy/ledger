@@ -48,8 +48,6 @@ actor GoldVault {
         }
     }
 
-    // MARK: State
-
     func state() -> StoreState {
         StoreState(wallet: wallet, boxes: boxes, pity: pity, firstPurchaseDone: firstPurchaseDone, cabinet: cabinet, boxesOpened: opened)
     }
@@ -58,8 +56,6 @@ actor GoldVault {
         let s = Saved(wallet: wallet, boxes: boxes, pity: pity, firstPurchaseDone: firstPurchaseDone, cabinet: cabinet, opened: opened, book: book, lastTick: lastTick, cashAuctions: true)
         if let data = try? JSONEncoder().encode(s) { defaults.set(data, forKey: key) }
     }
-
-    // MARK: Store
 
     func buyPack(_ id: String) throws -> StoreState {
         guard let pack = GoldStore.packs.first(where: { $0.id == id }) else { throw StoreError.unknownItem }
@@ -135,8 +131,6 @@ actor GoldVault {
         save()
         return state()
     }
-
-    // MARK: Auctions
 
     private func now() -> Double { Date().timeIntervalSince1970 }
 

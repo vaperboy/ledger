@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Overview: where you stand in your markets (combined share and rank), what you have invested and how it moved, then the week's
-/// biggest movers, the openings worth a look, the threats, and the latest in your markets. Each card opens the page it is about.
 struct MarketOverviewPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -26,10 +24,6 @@ struct MarketOverviewPage: View {
         }
     }
 
-    // MARK: Hero
-
-    /// Your combined share where it is measured, with your best place among the businesses of one of your markets; otherwise the number
-    /// of markets and the one step that measures them.
     private func hero(_ e: GameEngine) -> some View {
         let lines: [MarketUI.CompanyLine] = store.memo("mk.lines") { MarketData.companyLines($0) } ?? []
         let share: Double? = store.memo("mk.share") { MarketData.combinedShare($0) } ?? nil
@@ -53,9 +47,6 @@ struct MarketOverviewPage: View {
         }
     }
 
-    // MARK: Invested
-
-    /// Everything invested by you and your holdings, with the week's move and the result so far; a tap opens Invest.
     private func invested(_ e: GameEngine) -> some View {
         let cur: Currency = e.homeCurrency
         let p: MarketUI.Portfolio = store.memo("mk.portfolio") { MarketData.portfolio($0) } ?? MarketUI.Portfolio.empty
@@ -97,8 +88,6 @@ struct MarketOverviewPage: View {
         .accessibilityIdentifier("market-overview-invested")
     }
 
-    // MARK: Movers
-
     @ViewBuilder private func movers(_ e: GameEngine) -> some View {
         let list: [MarketUI.Mover] = store.memo("mk.movers") { MarketData.movers($0) } ?? []
         if !list.isEmpty {
@@ -135,8 +124,6 @@ struct MarketOverviewPage: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: Opportunities and threats
-
     @ViewBuilder private func signals(_ title: String, _ list: [MarketUI.Signal]) -> some View {
         if !list.isEmpty {
             MarketLabel(title: title)
@@ -157,8 +144,6 @@ struct MarketOverviewPage: View {
         case .nothing: break
         }
     }
-
-    // MARK: Latest
 
     @ViewBuilder private func latest(_ e: GameEngine) -> some View {
         let events: [MarketEvent] = MarketEventRows.relevant(e, companyID: nil, limit: 4)

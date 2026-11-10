@@ -6,11 +6,9 @@ import Employees
 @testable import SaveSystem
 @testable import Simulation
 
-/// Which board a company sits on (branches share the parent's), who is seated (never a manager by default) and who decides on the CEO.
 final class BoardStructureTests: XCTestCase {
     private func startCafe(_ e: inout GameEngine) throws -> Int {
         guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 6_000_000) else { throw XCTSkip("start") }
-        // Papers take days to clear, so the company is opened directly: only an open company sits on a board.
         e.update { s, d, _ in
             _ = CompanySetup.quickSetup(&s, companyID: id, data: d)
             if let i = s.companyIndex(id) { s.companies[i].status = .open }
@@ -54,7 +52,6 @@ final class BoardStructureTests: XCTestCase {
         XCTAssertFalse(e.boardVoters(key: key).contains { $0.type == "ceo" && $0.votes }, "the manager attends but does not vote")
     }
 
-    /// You hold 70% and an outside owner sits as director: you and that director are two votes, so you cannot dismiss the CEO alone.
     func testDirectorsDecideTheCEOWhenAnOutsideOwnerHasASeat() throws {
         var (e, a, b) = try twoCafes(seed: 64)
         let cands = try XCTUnwrap(e.searchManagers(companyID: a))
@@ -70,7 +67,6 @@ final class BoardStructureTests: XCTestCase {
                                                                          "w0": 0])]),
                                                "last": -99, "mts": .array([])]))
         }
-        // the outside owner likes the profits and backs the CEO; a rare change of heart is hashed by name and week, so look for an ordinary week
         var v = e.ceoVote(companyID: a)
         for w in 20..<60 { e.update { s, _, _ in s.week = w }; v = e.ceoVote(companyID: a); if !v.passes { break } }
         XCTAssertTrue(v.directorsDecide)
@@ -78,7 +74,6 @@ final class BoardStructureTests: XCTestCase {
         XCTAssertFalse(v.passes)
         guard case .voteFailed = e.proposeCEOChange(companyID: a) else { return XCTFail("the board should block it") }
         XCTAssertNotNil(e.state.company(a)?.managerID)
-        // without the outside director the owner with 70% decides alone again
         e.update { s, _, _ in
             guard let i = s.companyIndex(a) else { return }
             s.companies[i].set("ceoBlk", .null)

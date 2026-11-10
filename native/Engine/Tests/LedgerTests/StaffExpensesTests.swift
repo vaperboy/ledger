@@ -6,8 +6,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Expense reimbursement: chosen per person in the contract talk, booked as an expense (not wages), neutral tax unless the country data says otherwise,
-/// and a training allowance that speeds up the existing skill growth.
 final class StaffExpensesTests: XCTestCase {
     private func shop(seed: Int = 5, trade: String = "cafe") throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)

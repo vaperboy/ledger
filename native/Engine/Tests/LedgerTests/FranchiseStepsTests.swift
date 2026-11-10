@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The franchisee's road into a brand, step by step: eligibility, entry fee, approval and terms, opening.
 final class FranchiseStepsTests: XCTestCase {
     private func openBrand(_ e: GameEngine) throws -> FranchiseBrands.Brand {
         let w = World(state: e.state, data: e.data)
@@ -42,7 +41,6 @@ final class FranchiseStepsTests: XCTestCase {
         XCTAssertTrue(fee.detail.contains("short"))
     }
 
-    /// The leave-early price reads the yearly royalty from the year book, whose weeks run from 1 January and not from week % 52.
     func testBuyoutDoesNotBlowUpEarlyInGameWeekModuloFiftyTwo() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 3)
         e.update { s, _, _ in Ledger.move(&s, .me, 50_000_000, why: "Test funds") }

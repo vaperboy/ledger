@@ -3,17 +3,9 @@ import GameCore
 import Countries
 import Finance
 
-/// The weekly plan: once a week, after the report, one small choice of focus for the week ahead (push sales, cut costs, train the team).
-/// Each choice moves the company through the usual temporary modifiers by `effect`; planning for a few weeks earns a comfort perk that
-/// makes plans land a little better. A week without a plan costs nothing and takes nothing away. The result of last week's plan is told in
-/// the Inbox the week after, and kept here for Stats.
-/// State `rest["wfoc"]`: `cur` { w, co, pick, bRev, bG } the open or chosen plan; `n` planned weeks; `revs` { "<companyID>": [{ r, g }] } the
-/// last weeks' takings and gross profit; `hist` the last twelve results { w, co, pick, rev, bRev, g, bG }.
 public enum WeeklyFocus {
     public static let action = "wfoc"
-    /// How far one plan moves demand or costs for the week (3%).
     public static let effect = 0.03
-    /// Every `perkEvery` planned weeks the routine gets better by `perkStep` of `effect`, up to `perkTiers` times.
     public static let perkEvery = 4, perkTiers = 3
     public static let perkStep = 0.25
     static let historyKept = 12, baseWeeks = 4
@@ -31,23 +23,17 @@ public enum WeeklyFocus {
         public var id: Int { week }
         public var week: Int, companyID: Int, pick: String
         public var revenue: Double, usualRevenue: Double, gross: Double, usualGross: Double
-        /// Change against a usual week (0.04 = 4% up); nil when there was no usual week to compare with.
         public var revenueChange: Double? { usualRevenue > 0 ? revenue / usualRevenue - 1 : nil }
         public var grossChange: Double? { usualGross > 0 ? gross / usualGross - 1 : nil }
     }
 
     public struct Summary: Equatable, Sendable {
         public var planned: Int
-        /// Perk tier 0...3: how many times the routine has improved.
         public var tier: Int
-        /// Planned weeks still needed for the next tier, nil at the top.
         public var toNext: Int?
-        /// A plan is waiting for an answer (the Inbox message id), else nil.
         public var openMessageID: Int?
         public var perkText: String
     }
-
-    // MARK: Reading
 
     static func tier(_ planned: Int) -> Int { min(perkTiers, planned / perkEvery) }
     static func strength(_ planned: Int) -> Double { effect * (1 + perkStep * Double(tier(planned))) }
@@ -61,7 +47,6 @@ public enum WeeklyFocus {
         return Summary(planned: n, tier: t, toNext: t >= perkTiers ? nil : (t + 1) * perkEvery - n, openMessageID: msg?.id, perkText: text)
     }
 
-    /// The last results, newest first.
     public static func results(_ s: GameState) -> [Result] {
         (s.rest["wfoc"]?["hist"].array ?? []).reversed().map {
             Result(week: $0["w"].int, companyID: $0["co"].int, pick: $0["pick"].string, revenue: $0["rev"].double, usualRevenue: $0["bRev"].double,
@@ -71,15 +56,12 @@ public enum WeeklyFocus {
 
     public static func option(_ id: String) -> Option? { all.first { $0.id == id } }
 
-    // MARK: The weekly turn
-
-    /// Runs at the end of the week: record the week's takings, tell the last plan's result, then offer the next plan.
     public static func weekly(_ s: inout GameState, data: GameData) {
-        guard Unlocks.isOpen(s, "focus") else { return }   // nothing is written before the page opens
+        guard Unlocks.isOpen(s, "focus") else { return }
         recordWeek(&s)
         if let cur = s.rest["wfoc"]?["cur"], !cur.isNull {
             if cur["w"].int == s.week - 1, !cur["pick"].string.isEmpty { report(&s, cur: cur) }
-            else if cur["w"].int < s.week { s.rest["wfoc"]?["cur"] = .null }   // a missed week: nothing is lost
+            else if cur["w"].int < s.week { s.rest["wfoc"]?["cur"] = .null }
         }
         offer(&s, data: data)
     }
@@ -98,7 +80,6 @@ public enum WeeklyFocus {
         s.rest["wfoc"] = f
     }
 
-    /// The average of the last few weeks (the most recent `n` set aside); nil with fewer than two weeks on record.
     static func usual(_ s: GameState, companyID: Int, excludingLast n: Int) -> (rev: Double, gross: Double)? {
         let l = s.rest["wfoc"]?["revs"]["\(companyID)"].array ?? []
         let base = Array(l.dropLast(n).suffix(baseWeeks))
@@ -126,11 +107,9 @@ public enum WeeklyFocus {
         s.rest["wfoc"] = f
     }
 
-    // MARK: Answering
-
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData) {
         let ids = m.value("data")["ids"].array.map { $0.string }
-        guard ids.indices.contains(idx), let ci = s.companyIndex(m.companyID), s.companies[ci].status == .open else { return }   // the last option is "leave it"
+        guard ids.indices.contains(idx), let ci = s.companyIndex(m.companyID), s.companies[ci].status == .open else { return }
         let pick = ids[idx]
         var f = s.rest["wfoc"] ?? .object([:])
         let n = f["n"].int
@@ -158,8 +137,6 @@ public enum WeeklyFocus {
                          body: "\(n + 1) planned weeks. Plans now land a little better, and missing a week never takes that away.", tone: "good")
         }
     }
-
-    // MARK: Telling the result
 
     static func report(_ s: inout GameState, cur: JSONValue) {
         let cid = cur["co"].int, pick = cur["pick"].string

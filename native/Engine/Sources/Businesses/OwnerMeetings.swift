@@ -4,10 +4,6 @@ import Countries
 import Employees
 import Finance
 
-/// The owner's one talk with each company's CEO: a quarterly review with two choices. Direction (grow, lean, quality, cash) tilts what the
-/// manager proposes and the targets they are given; Budget (`Budget`: tight, normal, free) says how much they decide alone. The other people
-/// at the table (finance, sales, HR, operations, marketing and board seats) only speak in the boardroom round. Each choice can be changed once
-/// a quarter. Saved as `rest["ownerMtg"]` {"company:person:direction|budget": week}; the strategic direction is the company's `dir`.
 public enum OwnerMeetings {
     public static let cooldownWeeks = 13
     public static let directives: [(key: String, label: String)] = [("growth", "Grow"), ("lean", "Keep costs lean"), ("quality", "Quality first"), ("cash", "Keep cash")]
@@ -18,7 +14,6 @@ public enum OwnerMeetings {
         public var id: Int
         public var name: String
         public var title: String
-        /// ceo, fin, sales, hr, ops or mkt.
         public var position: String
         public var companyID: Int
     }
@@ -26,15 +21,12 @@ public enum OwnerMeetings {
         public var id: String
         public var label: String
         public var hint: String
-        /// Weeks until this talk can be held again (0 = now).
         public var waitWeeks: Int
     }
     public struct Choice: Identifiable, Equatable, Sendable {
         public var id: String
         public var label: String
-        /// What it will do, shown before you pick.
         public var preview: String
-        /// "direction" or "budget": one pick from each group.
         public var group: String = ""
     }
     public struct Scene: Equatable, Sendable {
@@ -51,8 +43,6 @@ public enum OwnerMeetings {
         public var resigned: Bool
     }
 
-    // MARK: Who and what
-
     public static func counterparts(_ s: GameState, companyID: Int) -> [Counterpart] {
         guard let co = s.company(companyID), co.status.isLive, co.type != "hold" else { return [] }
         var out: [Counterpart] = []
@@ -63,7 +53,6 @@ public enum OwnerMeetings {
         for r in ManagerModel.teamRoles {
             if let n = ManagerModel.person(s, t["heads"][r.key]), seen.insert(n.id).inserted { out.append(Counterpart(id: n.id, name: n.name, title: r.title, position: r.key, companyID: companyID)) }
         }
-        // Everyone in a board seat sits at the same table, so they speak in a board round.
         for seat in ManagerModel.seats(s, key: ManagerModel.boardKey(s, co)) {
             if let n = s.people[seat.id], seen.insert(n.id).inserted {
                 out.append(Counterpart(id: n.id, name: n.name, title: seat.title, position: seatPosition(seat.role), companyID: companyID))
@@ -72,7 +61,6 @@ public enum OwnerMeetings {
         return out
     }
 
-    /// The report a board seat gives: money seats speak for finance, the rest for operations.
     static func seatPosition(_ role: String) -> String {
         switch role {
         case "cfo", "analyst", "chair", "director": return "fin"
@@ -80,7 +68,6 @@ public enum OwnerMeetings {
         }
     }
 
-    /// Only the CEO holds the review.
     public static let topicTable: [String: [(String, String, String)]] = [
         "ceo": [(reviewTopic, "Quarterly review", "The quarter so far, your direction and their budget")],
     ]
@@ -95,13 +82,12 @@ public enum OwnerMeetings {
         guard let w = s.rest["ownerMtg"]?[memoKey(co, p, group)], !w.isNull else { return 0 }
         return max(0, w.int + cooldownWeeks - s.week)
     }
-    /// The review is open while either of its choices can still be made.
     public static func waitWeeks(_ s: GameState, companyID: Int, personID: Int, topic: String) -> Int {
         topic == reviewTopic ? (groups.map { groupWait(s, companyID, personID, $0) }.min() ?? 0) : 0
     }
     static func stamp(_ s: inout GameState, _ co: Int, _ p: Int, _ group: String) {
         var m = s.rest["ownerMtg"] ?? .object([:])
-        for (k, v) in m.object where v.int + cooldownWeeks <= s.week { m[k] = .null }   // forget what has run out
+        for (k, v) in m.object where v.int + cooldownWeeks <= s.week { m[k] = .null }
         m[memoKey(co, p, group)] = .number(Double(s.week))
         s.rest["ownerMtg"] = .object(m.object.filter { !$0.value.isNull })
     }
@@ -109,7 +95,6 @@ public enum OwnerMeetings {
     public static func directive(_ co: Company) -> String? { let d = co.str("dir"); return d.isEmpty ? nil : d }
     public static func directiveLabel(_ key: String) -> String { directives.first { $0.key == key }?.label ?? key }
 
-    /// How much a strategic direction favours (+) or disfavours (-) a kind of proposal when the manager ranks them.
     public static func bias(directive d: String, kind: String) -> Double {
         let favoured: [String: Set<String>] = ["growth": ["hire", "mkt_more", "price_down", "eq"], "lean": ["cut", "save", "mkt_less", "price_up"],
                                                "quality": ["quality", "eq", "hire"], "cash": ["save", "cut", "price_up"]]
@@ -117,12 +102,9 @@ public enum OwnerMeetings {
         return favoured[d]?.contains(kind) == true ? 0.8 : against[d]?.contains(kind) == true ? -0.5 : 0
     }
 
-    /// The budget of this CEO counterpart: the company manager's, or the managing director's of the team.
     static func budget(_ s: GameState, _ co: Company, personID: Int) -> Budget {
         co.managerID == personID ? ManagerModel.budget(of: co) : Budget.of(ManagerModel.team(co)["ceo"])
     }
-
-    // MARK: Facts the review reads
 
     struct Facts {
         var cur: Currency
@@ -151,15 +133,12 @@ public enum OwnerMeetings {
     static func money(_ f: Facts, _ v: Double) -> String { v < 0 ? "-" + f.cur.short(-v) : f.cur.short(v) }
     static func moodWord(_ m: Double) -> String { m >= 70 ? "high" : m >= 50 ? "fine" : m >= 35 ? "low" : "bad" }
 
-    /// The direction a manager would suggest from the numbers: money first, then a full house, else a steady course.
     static func suggestion(_ f: Facts) -> String {
         if f.cash + f.avgProfit * 3 < 0 { return "cash" }
         if f.p3 < 0 { return "lean" }
         if f.util > 0.85 { return "growth" }
         return f.mood < 45 ? "quality" : "growth"
     }
-
-    // MARK: The review
 
     static func ch(_ id: String, _ label: String, _ preview: String, _ group: String) -> Choice { Choice(id: id, label: label, preview: preview, group: group) }
 
@@ -196,7 +175,6 @@ public enum OwnerMeetings {
         return Scene(companyID: companyID, personID: personID, topic: topic, speaker: ManagerModel.firstName(c.name), lines: L, choices: C)
     }
 
-    /// Carry out one choice of the review. Nil when the talk is not possible; an outcome with the reason when that choice was made this quarter.
     public static func choose(_ s: inout GameState, companyID: Int, personID: Int, topic: String, choice: String, data: GameData, marketing: MarketingTables) -> Outcome? {
         guard let sc = scene(s, companyID: companyID, personID: personID, topic: topic, data: data), let picked = sc.choices.first(where: { $0.id == choice }),
               let ci = s.companyIndex(companyID) else { return nil }
@@ -208,7 +186,6 @@ public enum OwnerMeetings {
         if picked.group == "direction" {
             s.companies[ci].set("dir", key)
             bump(2)
-            // The targets of the month follow the direction at once.
             if ManagerTargets.eligible(s.companies[ci], data: data), ManagerTargets.current(s.companies[ci], week: s.week) != nil {
                 ManagerTargets.setTargets(&s, ci, month: ManagerTargets.mi(s), data: data)
             }
@@ -221,21 +198,17 @@ public enum OwnerMeetings {
         return Outcome(text: "Budget \(b.title.lowercased()): \(sc.speaker) \(b.text).", tone: b == .tight ? "n" : "good", resigned: false)
     }
 
-    // MARK: The boardroom round
-
     public struct RoundLine: Identifiable, Equatable, Sendable {
         public var id: Int
         public var name: String
         public var title: String
         public var text: String
     }
-    /// With nobody else owning a share the board only advises; votes bind only with co-owners.
     public static func isAdvisory(_ s: GameState, companyID: Int) -> Bool {
         guard let co = s.company(companyID) else { return true }
         return !ManagerModel.boardActive(s, key: ManagerModel.boardKey(s, co))
     }
 
-    /// The one thing that matters from a position.
     static func headline(_ c: Counterpart, _ co: Company, _ f: Facts) -> String? {
         switch c.position {
         case "ceo": return "Last month we took in \(f.cur.short(f.rev)) and \(f.profit >= 0 ? "made \(f.cur.short(f.profit))" : "lost \(f.cur.short(-f.profit))")."
@@ -250,7 +223,6 @@ public enum OwnerMeetings {
         }
     }
 
-    /// Everybody at the table says the one thing that matters from their seat, so a board call gives a quick report from each position.
     public static func boardRound(_ s: GameState, companyID: Int, data: GameData) -> [RoundLine] {
         guard let co = s.company(companyID) else { return [] }
         let f = facts(s, co, data: data)

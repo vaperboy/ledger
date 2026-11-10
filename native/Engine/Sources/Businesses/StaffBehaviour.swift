@@ -3,18 +3,10 @@ import GameCore
 import Countries
 import Employees
 
-/// How employees behave when things go wrong: they say so, they disengage, they sometimes go quiet, they give notice and
-/// sometimes leave with little warning, and they take a refusal differently. All of it is grounded in what happened to them (pay behind the market,
-/// a refused request, a broken promise, long tired weeks) and in their temperament; none of it depends on age. The quit and mood mechanics themselves
-/// (`StaffWeek.quitOdds`, `StaffProfile.mood`) are unchanged: this layer adds the visible behaviour around them.
-/// Keys on the staff record (all written only when set): `uw` weeks of running discontent (counts up while the reasons stand, down while they do not),
-/// `dis` the week disengagement began, `voiced` the week they last told you, `silentW` the week they went quiet.
 public enum StaffBehaviour {
     public static func isDisengaged(_ m: StaffMember) -> Bool { !m.value("dis").isNull }
-    /// Gone quiet: still working but no longer raising anything with you.
     public static func isSilent(_ m: StaffMember) -> Bool { !m.value("silentW").isNull }
 
-    /// What is wrong, as it stands this week (the reasons are what they would say).
     static func reasons(_ m: StaffMember, gap: Double, week: Int) -> [String] {
         var out: [String] = []
         if gap > 0.1 { out.append("pay") }
@@ -36,7 +28,6 @@ public enum StaffBehaviour {
 
     public enum Style: String, Sendable { case professional, blunt, hinting, flat }
 
-    /// How this person puts a problem: calm and professional, blunt, dropping hints about leaving, or flat. A matter of temperament, not of age.
     public static func style(of n: Person) -> Style {
         switch n.str("pers") {
         case "arrogant": return .blunt
@@ -47,23 +38,18 @@ public enum StaffBehaviour {
     }
 
     public enum Update: Equatable, Sendable {
-        /// They tell you what is wrong (an Inbox note).
         case voiced(reason: String, style: Style)
-        /// They have lost interest in the work.
         case disengaged
-        /// They have gone quiet: no more requests.
         case wentQuiet
         case recovered
     }
 
-    /// Weekly: update one person's discontent and say what changed. Deterministic per person and week.
     static func update(_ m: inout StaffMember, person n: Person, gap: Double, week: Int) -> Update? {
         let why = reasons(m, gap: gap, week: week)
         var uw = m.int("uw")
         if why.isEmpty { uw = max(0, uw - 1) } else { uw = min(40, uw + (why.contains("refused") || why.contains("promise") ? 2 : 1)) }
         if uw > 0 { m.set("uw", uw) } else { m.raw.removeValue(forKey: "uw") }
         let r = HashedRandom.first("beh:\(m.id):\(week)")
-        // recovery
         if isDisengaged(m), uw <= 2 {
             m.raw.removeValue(forKey: "dis"); m.raw.removeValue(forKey: "silentW")
             return .recovered
@@ -72,11 +58,9 @@ public enum StaffBehaviour {
             m.set("dis", week)
             return .disengaged
         }
-        // they say so before it comes to that: after a few weeks of it, once a quarter, if they are the kind to speak up
         if !isDisengaged(m), !isSilent(m), uw >= 4, let top = why.first, week - m.int("voiced") >= 13 || m.value("voiced").isNull {
             if r < 0.6 || uw >= 6 { m.set("voiced", week); return .voiced(reason: top, style: style(of: n)) }
         }
-        // some go quiet when it drags on: the blunt and the hinting stop raising things
         if isDisengaged(m), !isSilent(m), uw >= 16, ["arrogant", "restless", "lazy"].contains(n.str("pers")), r < 0.08 {
             m.set("silentW", week)
             return .wentQuiet
@@ -101,10 +85,6 @@ public enum StaffBehaviour {
         }
     }
 
-    // MARK: Leaving
-
-    /// How a resignation goes: most people work their notice (the contract's, plus any extra agreed). Someone who is disengaged, or whose complaints went
-    /// unanswered, sometimes leaves with almost no warning; the restless and the blunt more often.
     static func resignationNotice(_ m: StaffMember, person n: Person, week: Int, standardNotice: Int) -> (weeks: Int, abrupt: Bool) {
         guard isDisengaged(m) || m.int("uw") >= 8 else { return (standardNotice, false) }
         let base = ["restless": 0.28, "arrogant": 0.22, "lazy": 0.12].first { n.str("pers") == $0.key }?.value ?? 0.08
@@ -113,9 +93,6 @@ public enum StaffBehaviour {
         return (standardNotice, false)
     }
 
-    // MARK: A refusal
-
-    /// They take a refusal (the player declined a fair request): everyone is disappointed; the blunt and the restless show it, and some stop cooperating for a while.
     static func afterRefusal(_ s: inout GameState, companyIndex ci: Int, staffID: Int) -> String? {
         guard let k = s.companies[ci].staff.firstIndex(where: { $0.id == staffID }), let n = s.people[staffID] else { return nil }
         var st = s.companies[ci].staff

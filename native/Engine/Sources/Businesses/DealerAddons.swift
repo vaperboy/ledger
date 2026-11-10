@@ -3,17 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Sale add-ons of the two car sales companies (trades `usedcar` and `cardealer`): dealer warranty, car loans through the bank, and insurance at
-/// the sale. One reusable module: the dealer's sale code asks `offers(forSale:car:company:state:data:)` what a sale could bring (for previews) and calls
-/// `apply(_:companyID:sale:data:)` when a car is sold; `weekly(_:companyIndex:data:)` runs the setup reviews, warranty claims and expiries.
-///
-/// Money only moves through `Payments` (cash in or out, booked in the company's accounts), so `Ledger.gaps` stays empty:
-///  - Warranty: the customer's extension price is revenue. Every warranty (included or sold) sets aside a reserve for the claims it is expected to
-///    bring: an expense in the accounts and a real liability (`payables["warr"]`, see `reserve(_:)`). Claims are paid in cash from the reserve (any
-///    excess is an expense when it falls); what is left when a warranty ends is released back to the accounts.
-///  - Loans: the customer's loan is the bank's. The bank pays the dealer a commission on the financed amount (revenue). A declined application can lose the sale.
-///  - Insurance: the customer pays the insurer and holds a real policy record; the insurer pays the dealer a one-time commission on the first-year premium.
-/// Data: `dealer_addons.json`. Stored on the company under `dap`, written only once something is set or sold.
 public enum DealerAddon: String, CaseIterable, Sendable, Identifiable {
     case warranty = "wty"
     case loan
@@ -28,18 +17,14 @@ public enum DealerAddon: String, CaseIterable, Sendable, Identifiable {
     }
 }
 
-/// The car being sold, as far as the add-ons care: how old and how worn it is.
 public struct DealerCar: Sendable, Equatable {
     public var title: String
     public var ageYears: Double
-    /// 0 as new ... 1 worn out.
     public var wear: Double
     public init(title: String, ageYears: Double, wear: Double) { self.title = title; self.ageYears = max(0, ageYears); self.wear = clamp(wear, 0, 1) }
-    /// A new car from the showroom.
     public static func new(title: String) -> DealerCar { DealerCar(title: title, ageYears: 0, wear: 0.02) }
 }
 
-/// One sale as the dealer's sale code reports it. `key` makes the customer's choices repeatable (use the car's or the sale's id).
 public struct DealerSale: Sendable, Equatable {
     public var key: String
     public var price: Double
@@ -50,28 +35,20 @@ public struct DealerSale: Sendable, Equatable {
 public struct DealerAddonOffer: Sendable, Equatable, Identifiable {
     public var id: String { addon.rawValue }
     public var addon: DealerAddon
-    /// Set up (approved) and switched on: `apply` will use it.
     public var active: Bool
     public var setUp: Bool
-    /// Chance that a customer takes it (for the loan: that the customer finances through you and is approved).
     public var takeRate: Double
-    /// What the customer pays or owes for it (warranty price, financed amount, first-year premium).
     public var customerPrice: Double
     public var expectedIncome: Double
-    /// Expected claims reserve (warranty only).
     public var expectedCost: Double
     public var expectedNet: Double { expectedIncome - expectedCost }
-    /// Chance the sale is lost because the bank declines (loans only).
     public var lostSaleChance: Double
-    /// Relative lift of the sale chance the add-on gives (use as 1 + demandBoost).
     public var demandBoost: Double
-    /// Customer's yearly saving against buying separately (insurance).
     public var customerSaving: Double
     public var detail: String
 }
 
 public struct DealerAddonResult: Sendable, Equatable {
-    /// False when the bank declined the customer and the customer walked away: the dealer's sale code must not complete the sale.
     public var saleCompleted = true
     public var financedAmount = 0.0
     public var financeDeclined = false
@@ -81,7 +58,6 @@ public struct DealerAddonResult: Sendable, Equatable {
     public var warrantyReserve = 0.0
     public var policyNumber: String?
     public var insuranceCommission = 0.0
-    /// Cash that reached the company through the add-ons (commissions and warranty prices).
     public var income: Double { financeCommission + warrantyPrice + insuranceCommission }
     public var lines: [String] = []
     public init() {}
@@ -91,7 +67,6 @@ public struct DealerAddonSettings: Equatable, Sendable {
     public var warrantyOn = false, loanOn = false, insuranceOn = false
     public var includedMonths = 0
     public var extraMonths = 12
-    /// Extended warranty price per year as a share of the car price.
     public var extraRate = 0.07
     public var loanCommission = 0.02
     public var insuranceCommission = 0.15
@@ -141,7 +116,6 @@ public struct DealerWarrantyRecord: Sendable, Equatable, Identifiable {
     public var untilWeek: Int
     public var months: Int
     public var extraPrice: Double
-    /// Reserve still held for this warranty.
     public var reserveLeft: Double
 }
 
@@ -178,8 +152,6 @@ public enum DealerAddons {
     static func logistic(_ x: Double) -> Double { 1 / (1 + exp(-x)) }
     public static func supports(_ co: Company) -> Bool { tradeIDs.contains(co.type) }
 
-    // MARK: Settings
-
     public static func settings(_ co: Company) -> DealerAddonSettings {
         let d = co.value("dap"), on = d["on"], c = d["cfg"]
         var r = DealerAddonSettings()
@@ -202,7 +174,6 @@ public enum DealerAddons {
         s.companies[i].set("dap", d)
     }
 
-    /// Switch an add-on on or off. Only an approved add-on can be switched on.
     @discardableResult
     public static func setEnabled(_ s: inout GameState, companyID: Int, addon: DealerAddon, on: Bool) -> String? {
         guard let i = s.companyIndex(companyID), supports(s.companies[i]) else { return "This company does not sell cars." }
@@ -218,7 +189,6 @@ public enum DealerAddons {
         if let r = extraRate { put(&s, i, ["cfg", "xr"], .number(max(0, r))) }
     }
 
-    /// The dealer's own share. Within the partner's schedule (loans 1 to 3 percent of the financed amount, insurance 10 to 20 percent of the first-year premium).
     public static func setCommission(_ s: inout GameState, companyID: Int, addon: DealerAddon, rate: Double) {
         guard let i = s.companyIndex(companyID), supports(s.companies[i]) else { return }
         switch addon {
@@ -227,8 +197,6 @@ public enum DealerAddons {
         case .insurance: put(&s, i, ["cfg", "ic"], .number(clamp(rate, n(.insurance, "commissionMin"), n(.insurance, "commissionMax"))))
         }
     }
-
-    // MARK: Setup
 
     static func requirements(_ a: DealerAddon, cur: Currency) -> [DealerSetupRequirement] {
         book[a.rawValue]["requirements"].array.map {
@@ -268,7 +236,6 @@ public enum DealerAddons {
                                  reviewWeeks: reqs.map { $0.reviewWeeks }.max() ?? 0, canStart: can)
     }
 
-    /// Pay the one-time fees of every requirement and start the review. The review takes as long as the slowest requirement; fees are not refunded if it fails.
     public static func startSetup(_ s: inout GameState, companyID: Int, addon: DealerAddon, data: GameData) -> DealerSetupResult {
         guard let st = setupStatus(s, companyID: companyID, addon: addon, data: data), let i = s.companyIndex(companyID) else { return .refused("This company does not sell cars.") }
         switch st.phase {
@@ -283,13 +250,10 @@ public enum DealerAddons {
         return .started(cost: st.totalCost, reviewWeeks: st.reviewWeeks)
     }
 
-    // MARK: Models
-
     static func claimRate(_ car: DealerCar) -> Double {
         n(.warranty, "claimsBase") + n(.warranty, "claimsPerYear") * car.ageYears + n(.warranty, "claimsPerWear") * car.wear
     }
     static func meanSpread() -> Double { (n(.warranty, "claimLow") + n(.warranty, "claimHigh")) / 2 }
-    /// The claims a warranty of `months` months is expected to bring.
     static func expectedClaims(price: Double, car: DealerCar, months: Int) -> Double {
         claimRate(car) * Double(months) / 12 * n(.warranty, "claimShare") * meanSpread() * price
     }
@@ -326,20 +290,11 @@ public enum DealerAddons {
     }
 
     static func benchmark(_ co: Company, state s: GameState, data: GameData) -> Double {
-        // The benchmark sits where the file puts it against a typical car; car money in this game is the trade's own ticket (a used car about 180 000
-        // accounting units), so it scales with the ticket, not with the file's realistic prices (a 16 000 benchmark made every loan look unaffordable).
-        // One ratio for every trade: the benchmark is 1.8 times the trade's ticket, so a car sold at the ticket price is approved about 90 percent
-        // of the time and a dearer one less.
-        // The ticket as sold today (price level, city, inflation), not the catalog's: the cars on the lot are priced by it.
         let w = World(state: s, data: data)
         guard let bd = data.catalog[co.type], bd.ticket > 0 else { return w.currency(co).scaledPrice(book["benchmarkPrice"].double) }
         return book["benchmarkPrice"].double / 10000 * Pricing.ticket(co, bd, w, withItems: false)
     }
 
-    // MARK: Offers
-
-    /// What the add-ons would bring on a sale at `price`: take rates and expected income per sale, for the sale screen and the settings preview.
-    /// Empty for a company that is not a car dealer.
     public static func offers(forSale price: Double, car: DealerCar, company co: Company, state s: GameState, data: GameData) -> [DealerAddonOffer] {
         guard supports(co) else { return [] }
         let cfg = settings(co), bench = benchmark(co, state: s, data: data)
@@ -361,7 +316,6 @@ public enum DealerAddons {
         ]
     }
 
-    /// A typical car and price for the settings preview: the sale of an average car of the trade, scaled to the company's currency.
     public static func typicalSale(company co: Company, state s: GameState, data: GameData) -> (price: Double, car: DealerCar) {
         let t = book["typicalCar"][co.type]
         let cur = World(state: s, data: data).currency(co)
@@ -370,9 +324,6 @@ public enum DealerAddons {
         return (price, DealerCar(title: "Typical car", ageYears: t["age"].double, wear: t["wear"].double))
     }
 
-    // MARK: Reads
-
-    /// The reserve held for warranty claims: a real liability of the company.
     public static func reserve(_ co: Company) -> Double { co.payables[reserveKey] ?? 0 }
     public static func totals(_ co: Company) -> DealerAddonTotals {
         let t = co.value("dap")["st"]
@@ -389,9 +340,6 @@ public enum DealerAddons {
         co.value("dap")["pol"].array.map { DealerPolicyRecord(id: $0["id"].int, number: $0["no"].string, car: $0["car"].string, week: $0["wk"].int, untilWeek: $0["until"].int, premium: $0["prem"].double, commission: $0["com"].double, yearlySaving: $0["sav"].double) }
     }
 
-    // MARK: Applying a sale
-
-    /// Call when a car has been sold. Books what the add-ons bring through `Payments`. If `saleCompleted` is false the bank declined and the customer walked away.
     @discardableResult
     public static func apply(_ s: inout GameState, companyID: Int, sale: DealerSale, data: GameData) -> DealerAddonResult {
         var res = DealerAddonResult()
@@ -411,7 +359,6 @@ public enum DealerAddons {
             }
         }
         let name = sale.car.title
-        // 1. The bank
         if on(.loan) {
             let l = loanQuote(price: sale.price, car: sale.car, cfg: cfg, bench: bench)
             if rFin < l.need && rPrefer < l.prefer {
@@ -435,7 +382,6 @@ public enum DealerAddons {
                 }
             }
         }
-        // 2. Warranty
         if on(.warranty) {
             let w = warrantyQuote(price: sale.price, car: sale.car, cfg: cfg)
             let extra = rWty < w.take
@@ -461,7 +407,6 @@ public enum DealerAddons {
                 res.lines.append("\(months) months warranty" + (extra ? ", extension sold for \(cur.display(w.extraPrice))" : " included") + "; reserve \(cur.display(reserve))")
             }
         }
-        // 3. Insurance
         if on(.insurance) {
             let q = insuranceQuote(price: sale.price, car: sale.car, cfg: cfg)
             if rIns < q.take {
@@ -493,9 +438,6 @@ public enum DealerAddons {
         put(&s, i, ["st", key], .number(s.companies[i].value("dap")["st"][key].double + by))
     }
 
-    // MARK: Weekly
-
-    /// Setup reviews, warranty claims and expiries. Call once a week for each car dealer.
     public static func weekly(_ s: inout GameState, companyIndex i: Int, data: GameData) {
         guard s.companies.indices.contains(i), supports(s.companies[i]), s.companies[i].status.isLive, !s.companies[i].value("dap").isNull else { return }
         reviews(&s, i, data: data)

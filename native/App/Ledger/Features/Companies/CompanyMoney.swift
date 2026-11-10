@@ -7,24 +7,17 @@ import Businesses
 import Events
 import Simulation
 
-/// The parts of a company's Finances tab: Summary and Settings. Ownership, dividends and selling are in the Group tab. Every payment, loan and money move is in the Bank
-/// app, on this company's account ("Open in Bank").
 enum CompanyMoneyPart: String, CaseIterable, Hashable {
     case summary = "Summary", settings = "Settings"
-    /// The tab row.
     static let tabs: [CompanyMoneyPart] = [.summary, .settings]
-    /// The page title.
     var title: String { self == .settings ? "Company settings" : rawValue }
 }
 
-/// One company's Finances tab: a read-only, scannable view of the money, with the company's settings kept here, ownership and selling in
-/// the Group tab and every payment handled in the Bank app.
 struct CompanyMoney: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     @Binding var part: CompanyMoneyPart
-    /// The last opened page, kept while the page slides away.
     @State private var heldPart: CompanyMoneyPart = .summary
 
     var body: some View {
@@ -36,7 +29,6 @@ struct CompanyMoney: View {
     }
 }
 
-/// The full-screen page a row of the Finances table opens: the company's own settings.
 struct MoneyPageDestination: View {
     @EnvironmentObject var store: GameStore
     var part: CompanyMoneyPart
@@ -58,10 +50,6 @@ struct MoneyPageDestination: View {
     }
 }
 
-// MARK: Summary
-
-/// Read-only: where the money goes and the margins under it, what is owed, the supplier records, then ownership. Cash is on the Overview, what is
-/// coming up and every transaction are in the Bank, and the reports are in the Reports app.
 struct CompanyMoneySummary: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -72,7 +60,6 @@ struct CompanyMoneySummary: View {
         let cur = engine.currency(for: company)
         let o = engine.financeOverview(companyID: company.id)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            // Anything overdue leads the page; the spending picture and what is owed follow.
             CompanyPaymentStress(engine: engine, company: company)
             CompanyStatsFigures(engine: engine, company: company, block: .spending)
             owedCard(cur, o)
@@ -82,8 +69,6 @@ struct CompanyMoneySummary: View {
             CompanyLabourCard(engine: engine, company: company)
         }
     }
-
-    // MARK: Cards
 
     private func owedCard(_ cur: Currency, _ o: FinanceOverview) -> some View {
         let h = engine.companyHealth(company)
@@ -103,7 +88,6 @@ struct CompanyMoneySummary: View {
         }
     }
 
-    /// Compact loans row: the monthly instalments (the balance is the Debt figure above; loans are handled in the Bank app on the Phone).
     private func loansRow(_ cur: Currency) -> some View {
         let loans = engine.state.loans.filter { $0.companyID == company.id && $0.balance > 0 }
         let monthly = loans.reduce(0) { $0 + $1.monthlyPayment }
@@ -112,9 +96,6 @@ struct CompanyMoneySummary: View {
         return FlatRow(label: "Loans", value: value, sub: sub, rule: true)
     }
 
-    // MARK: Table of settings
-
-    /// One row per area of the company's money; each opens a full page (the decisions there are big: closing, winding up).
     private func settingsTable(_ cur: Currency) -> some View {
         let closed: Bool = company.status == .closed
         return SharpTable {
@@ -123,7 +104,6 @@ struct CompanyMoneySummary: View {
     }
 }
 
-/// What unpaid loans, bills and VAT have set in motion: restricted credit, a called loan, suppliers who want cash, overdue VAT.
 struct CompanyPaymentStress: View {
     var engine: GameEngine
     var company: Company

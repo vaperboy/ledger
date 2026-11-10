@@ -2,7 +2,6 @@ import XCTest
 import GameCore
 @testable import Simulation
 
-/// Boxes: published odds add up, paid boxes return less gold than they cost, the guarantee works, and the store rules hold.
 final class GoldBoxesTests: XCTestCase {
     func testOddsAddUpAndEveryBoxIsFair() {
         for kind in BoxKind.allCases {
@@ -16,13 +15,11 @@ final class GoldBoxesTests: XCTestCase {
         for kind in BoxKind.allCases where kind.isPaid {
             XCTAssertLessThan(BoxOdds.expectedGold(kind), Double(kind.price))
             XCTAssertLessThan(BoxOdds.largestGold(kind), kind.price)
-            // Stronger than the promise: gold is a small consolation, under a tenth of the price on average.
             XCTAssertLessThan(BoxOdds.expectedGold(kind), Double(kind.price) / 10)
         }
     }
 
     func testFairnessCheckCatchesAGenerousBox() {
-        // The check itself: expected gold above the price must fail. Cabinet box at a price of 1 gold would be unfair.
         XCTAssertGreaterThan(BoxOdds.expectedGold(.cabinet), 1)
         XCTAssertFalse(BoxOdds.expectedGold(.cabinet) < 1)
     }

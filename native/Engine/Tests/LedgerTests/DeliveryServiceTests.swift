@@ -5,14 +5,11 @@ import Finance
 import Businesses
 import Simulation
 
-/// Delivery as a service: a restaurant, cafe, kiosk or grocery that offers its delivery add-on needs couriers (an outside courier, or one of
-/// your own courier companies). The add-on only brings customers for the orders that actually get delivered, and the delivery is paid for.
 final class DeliveryServiceTests: XCTestCase {
     private func deliveryOn(_ e: inout GameEngine, _ id: Int, on: Bool = true) {
         e.update { s, d, _ in XCTAssertEqual(SalesWays.setOn(&s, companyID: id, kind: "platform", on: on, data: d), .changed) }
     }
 
-    /// Play until every given company has opened (documents and permits take weeks).
     private func openUp(_ e: inout GameEngine, _ ids: [Int]) {
         e.update { s, d, _ in
             for id in ids { guard let co = s.company(id), let bd = d.catalog[co.type] else { continue }
@@ -28,7 +25,6 @@ final class DeliveryServiceTests: XCTestCase {
         let deliv = try XCTUnwrap(IntercompanySupply.deliveryKind)
         XCTAssertEqual(deliv.suppliers, ["courier"])
         for (id, bd) in e.data.catalog.trades where id != "courier" {
-            // a trade whose equipment list has a delivery vehicle ships its goods; a trade with a delivery add-on sends orders to customers
             let ships = bd.equipment.contains { $0.name.lowercased().contains("delivery") }
             let apps = IntercompanySupply.deliveryWay(id, e.data.balance) != nil
             if ships { XCTAssertTrue(parcel.buyers[id] != nil || deliv.buyers[id] != nil, "\(id) ships but buys no delivery") }
@@ -45,11 +41,9 @@ final class DeliveryServiceTests: XCTestCase {
         let way = try XCTUnwrap(IntercompanySupply.deliveryWay("cafe", e.data.balance))
         let rel = try XCTUnwrap(way.options["rel"])
         XCTAssertLessThan(rel, 1)
-        // no add-on: no delivery cost, nothing stored
         openUp(&e, [r, courier])
         XCTAssertNil(e.state.company(r)?.raw["dlvRev"])
         deliveryOn(&e, r)
-        // outside courier: reliability is the data's
         XCTAssertEqual(IntercompanySupply.deliveryFill(e.state, buyer: e.state.company(r)!, way: way), rel, accuracy: 1e-12)
         ChainsTests.play(&e, days: 14)
         let rev = try XCTUnwrap(e.state.company(r)).num("dlvRev")
@@ -58,7 +52,6 @@ final class DeliveryServiceTests: XCTestCase {
         let dl = try XCTUnwrap(inputs.first { $0.id == "deliv" }, "the Suppliers section lists delivery")
         XCTAssertEqual(dl.current?.kind, .outside)
         XCTAssertGreaterThan(dl.yearlySpend ?? 0, 0)
-        // an own courier company supplies it
         XCTAssertEqual(e.switchSupplier(companyID: r, input: "deliv", to: .ownCompany(courier, mode: "mkt")), .ok)
         let cash0 = e.state.company(courier)!.cash
         ChainsTests.play(&e, days: 28)
@@ -69,7 +62,6 @@ final class DeliveryServiceTests: XCTestCase {
         XCTAssertLessThanOrEqual(fill, 1)
         XCTAssertNotEqual(e.state.company(courier)!.cash, cash0)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        // switching the add-on off ends the demand and the cost
         deliveryOn(&e, r, on: false)
         ChainsTests.play(&e, days: 14)
         XCTAssertNil(e.state.company(r)?.raw["dlvRev"])
@@ -102,7 +94,6 @@ final class DeliveryServiceTests: XCTestCase {
         openUp(&e, [r, courier])
         deliveryOn(&e, r)
         let way = try XCTUnwrap(IntercompanySupply.deliveryWay("cafe", e.data.balance))
-        // a courier that delivers nothing last week brings only the outside share; a perfect one brings the whole lift
         XCTAssertEqual(e.switchSupplier(companyID: r, input: "deliv", to: .ownCompany(courier, mode: "mkt")), .ok)
         func setShare(_ f: Double) {
             e.update { s, _, _ in
@@ -115,7 +106,6 @@ final class DeliveryServiceTests: XCTestCase {
         XCTAssertEqual(IntercompanySupply.deliveryFill(e.state, buyer: e.state.company(r)!, way: way), way.options["rel"]!, accuracy: 1e-12)
         setShare(1)
         XCTAssertEqual(IntercompanySupply.deliveryFill(e.state, buyer: e.state.company(r)!, way: way), 1, accuracy: 1e-12)
-        // the courier closes: the link ends and the outside courier takes over
         e.update { s, _, _ in s.companies[s.companyIndex(courier)!].status = .closed }
         XCTAssertEqual(IntercompanySupply.deliveryFill(e.state, buyer: e.state.company(r)!, way: way), way.options["rel"]!, accuracy: 1e-12)
     }

@@ -2,8 +2,6 @@ import SwiftUI
 import Countries
 import Businesses
 
-/// A price typed in the trade's own unit ("an hour", "each", "a night") next to a slider. The number is held inside `range` (the slider's range),
-/// `hint` gives a live profit line for what is typed, and `onSet` receives the price in accounting units when the person taps Set or presses return.
 struct TypedPriceField: View {
     var price: Double
     var range: ClosedRange<Double>

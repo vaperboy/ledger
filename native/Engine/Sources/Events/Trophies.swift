@@ -4,18 +4,12 @@ import Countries
 import Finance
 import Businesses
 
-/// Achievements: the trophy wall of firsts and milestones. Original: features/player/moments_and_trophies.js (round 28a and 56).
-/// Each trophy is a test on the game state; the first week it holds, it is kept with the date and an inbox message tells you.
-/// Records live in `state.rest["ach28"]` as `{ id: { w: week, t: text, old: 1 if reached before the wall existed } }`.
-///
-/// More trophies (acquisitions, chains, franchises, reviews, R&D, luxury, gifts, tenure) are in `TrophiesMore.swift`.
 public enum Trophies {
     public struct Trophy: Identifiable {
         public let id: String
         public let name: String
         public let group: String
         let test: (Facts) -> String?
-        /// The ladder this trophy is a rung of ("" for a single trophy).
         var ladder: String = ""
     }
     public struct Entry: Identifiable, Equatable {
@@ -29,7 +23,6 @@ public enum Trophies {
     public static let groups: [(id: String, name: String)] = [
         ("first", "Firsts"), ("money", "Money"), ("people", "People"), ("trades", "Companies and trades"), ("world", "The world"), ("legacy", "Legacy"), ("market", "Markets")]
 
-    /// The numbers a trophy test can ask for, worked out once per check.
     struct Facts {
         let s: GameState
         let data: GameData
@@ -45,10 +38,8 @@ public enum Trophies {
         var families: Int { Set(ever.compactMap { data.catalog[$0.type]?.family }).count }
         var countries: Int { Set(live.map { $0.countryCode }).count }
         var years: Double { s.companies.isEmpty ? 0 : Double(s.week - (s.companies.map { $0.foundedWeek }.min() ?? s.week)) / 52 }
-        /// Results over time, not setup: a company with a profitable month on record, and one with three profitable months in a row.
         func profitable(_ c: Company) -> Bool { c.monthlyHistory.contains { $0.profit > 0 } }
         func quarterProfit(_ c: Company) -> Bool { let h = c.monthlyHistory.suffix(3); return h.count == 3 && h.allSatisfy { $0.profit > 0 } }
-        /// Weeks since the company opened its doors.
         func age(_ c: Company) -> Int { s.week - (c.openedWeek ?? c.foundedWeek) }
         var portfolio: Double { netWorth.stocks + netWorth.crypto + netWorth.funds }
         func money(_ v: Double) -> Double { cur.scaledPrice(v) }
@@ -62,8 +53,6 @@ public enum Trophies {
     public static let all: [Trophy] = {
         var L: [Trophy] = []
         func one(_ id: String, _ name: String, _ group: String, _ t: @escaping (Facts) -> String?) { L.append(Trophy(id: id, name: name, group: group, test: t)) }
-        // Ids "cust", "emp", "mgr" and "branch" were setup trophies (first sale, first hire, first manager, second shop); they now ask for a result.
-        // Anyone who already holds one keeps it.
         one("cust", "A steady trade", "first") { f in f.live.first { $0.status == .open && f.age($0) >= 4 && $0.lastWeekUnits >= 10 }.map { "\($0.name) sells to ten or more customers a week, a month after opening." } }
         one("emp", "A team that pays", "first") { f in f.live.first { !$0.staff.isEmpty && f.profitable($0) }.map { "\($0.name) pays its people and still makes money." } }
         one("profit", "First profitable month", "first") { f in f.live.first { $0.monthlyHistory.contains { $0.profit > 0 } }.map { "\($0.name) made money for a whole month." } }
@@ -125,12 +114,10 @@ public enum Trophies {
         return L
     }()
 
-    /// Net worth trophies, lowest rung first.
     static let netWorthChain: [[String]] = [["million", "nw5m", "tenm", "nw50m", "hm", "nw500m", "bn", "nw5b", "nw10b", "nw50b"]]
 
     static func record(_ s: GameState) -> JSONValue { s.rest["ach28"] ?? .object([:]) }
 
-    /// Every trophy with whether and when you got it.
     public static func entries(_ s: GameState) -> [Entry] {
         let rec = record(s)
         return all.map { t in
@@ -139,14 +126,12 @@ public enum Trophies {
         }
     }
 
-    /// Check all trophies. What an older game already reached goes up quietly; new ones tell you in the inbox. Original: `checkAch`.
     @discardableResult
     public static func check(_ s: inout GameState, data: GameData, context fc: FinanceContext) -> [String] {
         var rec = record(s)
-        // A game that starts with a company already running (fresh start, heir) records what its opening position meets quietly, like an older game.
         let first = s.rest["ach28i"] == nil && (s.week > 8 || s.rest["start"] != nil)
         if s.rest["ach28i"] == nil { s.rest["ach28i"] = .number(1) }
-        if !s.loans.isEmpty && s.rest["ach28d"] == nil { s.rest["ach28d"] = .number(1) }   // "had a loan", for the debt-free trophy
+        if !s.loans.isEmpty && s.rest["ach28d"] == nil { s.rest["ach28d"] = .number(1) }
         let f = Facts(s: s, data: data, cur: fc.homeCurrency(s), netWorth: Valuation.netWorth(s, trades: data.catalog, forGoals: true),
                       live: s.companies.filter { $0.status == .open || $0.status == .closed }, ever: s.companies.filter { $0.type != "hold" })
         var got: [String] = []
@@ -158,7 +143,6 @@ public enum Trophies {
         if got.isEmpty { return [] }
         s.rest["ach28"] = rec
         if !first {
-            // Trophies on one ladder reached in the same week (a company sale takes net worth past several rungs at once) are one piece of news: the highest rung tells it.
             var told = got
             for chain in netWorthChain.map({ c in c.filter { got.contains($0) } }) where chain.count > 1 { told.removeAll { chain.dropLast().contains($0) } }
             for t in all where !t.ladder.isEmpty && t.ladder != "nw" {

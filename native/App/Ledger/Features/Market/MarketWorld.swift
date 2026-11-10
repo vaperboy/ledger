@@ -5,8 +5,6 @@ import Businesses
 import Events
 import Simulation
 
-/// World: where you are and where you could go. Rankings (the rich list, the biggest companies, the awards), the records and your
-/// reputation, then every country with its demand, costs, tax and competition. A country opens its page, where a company starts.
 struct MarketWorldPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -75,16 +73,11 @@ struct MarketWorldPage: View {
     }
 }
 
-/// Words for an index where 1 is the reference economy.
 enum MarketWords {
     static func level(_ v: Double) -> String { v >= 1.15 ? "Strong" : (v >= 0.85 ? "Average" : "Weak") }
     static func cost(_ v: Double) -> String { v >= 1.15 ? "High" : (v >= 0.85 ? "Average" : "Low") }
 }
 
-// MARK: One country
-
-/// One country: your companies there, what the market is like (demand, wages, rents, tax), the rival groups active there and its
-/// cities. The one action opens a company here: a new one at home, a branch of one of yours abroad.
 struct CountryPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -166,7 +159,6 @@ struct CountryPage: View {
         }
     }
 
-    /// The country's cities, biggest first: people, demand and rent, and the rivals there in a trade you run.
     @ViewBuilder private func cities(_ e: GameEngine, _ c: Country, _ here: [Company]) -> some View {
         let trade: String? = here.first { (co: Company) -> Bool in co.status == .open && co.type != "hold" }?.type
             ?? MarketData.companies(e).first?.type
@@ -184,7 +176,6 @@ struct CountryPage: View {
         }
     }
 
-    /// At home a new company starts; abroad one of your companies opens there (several: a menu to choose which).
     @ViewBuilder private func openAction(_ e: GameEngine, _ c: Country) -> some View {
         if c.code == e.state.homeCountryCode {
             PrimaryAction(title: "Open a company here", identifier: "country-open-company") { store.push(.newCompany) }
@@ -209,9 +200,6 @@ struct CountryPage: View {
     }
 }
 
-// MARK: Rankings
-
-/// Where you stand: the rich list of your country, the biggest companies, and the yearly business awards.
 struct MarketRankingsPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

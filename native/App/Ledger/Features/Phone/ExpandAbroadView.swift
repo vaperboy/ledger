@@ -5,16 +5,12 @@ import Businesses
 import Finance
 import Simulation
 
-/// Expand abroad lives in Group > a company > Expansion (`EntityAbroadSection`); the old company picker was removed.
-
-/// The countries a company can go to, compared in one sharp table; the chosen row opens its details and the Register button below.
 struct AbroadOptionsView: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
     @State private var chosen: String?
     @State private var pending: PendingAction?
 
-    /// `country`: the row to open straight away (from a company's Expansion tab).
     init(companyID: Int, country: String? = nil) {
         self.companyID = companyID
         _chosen = State(initialValue: country)

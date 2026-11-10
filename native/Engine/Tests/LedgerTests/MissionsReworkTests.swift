@@ -7,9 +7,7 @@ import Finance
 @testable import SaveSystem
 @testable import Simulation
 
-/// Awards reflect results, not setup: opening a company, hiring and signing papers earn nothing; results over time do.
 final class MissionsReworkTests: XCTestCase {
-    /// `ladder: false` plays the older-save mode (no linear ladder): the ladder celebrates every goal by design, the checklist keeps setup steps silent.
     private func setupGame(seed: Int = 4242, ladder: Bool = true) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         var id = 0
@@ -37,7 +35,6 @@ final class MissionsReworkTests: XCTestCase {
     func testSetupStepsEarnAtMostOneAwardInTheFirstFourteenDays() throws {
         var (e, _) = try setupGame(ladder: false)
         days(&e, 14)
-        // The 80M test funding makes net-worth and cash milestones fire (career goals, art "goal.career"); those are results, not setup awards.
         let setupAwards = e.pendingAwards().filter { !$0.title.contains("Net worth") && !$0.title.contains("million") && $0.artKey != "goal.career" }
         XCTAssertLessThanOrEqual(setupAwards.count, 1, "\(setupAwards.map { $0.title })")
         let trophies = Trophies.entries(e.state).filter { $0.reachedWeek != nil }.map { $0.id }
@@ -67,7 +64,6 @@ final class MissionsReworkTests: XCTestCase {
         trophyCheck(&e)
         for t in ["q3", "emp", "mgr", "cust"] { XCTAssertTrue(got(e, t), t) }
         XCTAssertTrue(PlayerGoals.stepDone("mgr", e.state))
-        // Debt-free needs a loan that was held and then repaid.
         e.update { s, _, _ in var l = Loan(raw: [:]); l.id = s.makeID(); l.balance = 1; s.loans.append(l) }
         trophyCheck(&e)
         XCTAssertFalse(got(e, "debt0"))

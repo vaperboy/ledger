@@ -6,8 +6,6 @@ import Businesses
 @testable import Events
 import Simulation
 
-/// Ownership, expansion and saves: a purchase, a holding or a foreign subsidiary changes the same books, net worth counts each company once,
-/// and the rest keys added later (fm, fmPool, tg58, ct/sw33, amb27 pkAll, ach28, org56) survive a save.
 final class OwnershipExpansionTests: XCTestCase {
     func testMovingIntoAndOutOfAHoldingNeverCountsACompanyTwice() throws {
         var e = try ChainsTests.engine("UK")
@@ -17,7 +15,6 @@ final class OwnershipExpansionTests: XCTestCase {
         let value = Valuation.companyValue(try XCTUnwrap(e.state.company(cafe)), state: e.state, trades: e.data.catalog)
         let before = e.netWorth.total
         XCTAssertTrue(e.moveToHolding(companyID: cafe, holdingID: hid))
-        // at once, without waiting for the weekly revaluation
         XCTAssertEqual(try XCTUnwrap(e.state.company(hid)).value("fm")["assets"].double, value * own, accuracy: 1)
         XCTAssertEqual(e.netWorth.total, before, accuracy: max(5, abs(before) * 0.001))
         XCTAssertTrue(e.releaseFromHolding(companyID: cafe))
@@ -29,7 +26,7 @@ final class OwnershipExpansionTests: XCTestCase {
     func testBuyingARivalMovesMoneyThroughTheLedger() throws {
         var e = try ChainsTests.engine("UK")
         let cafe = ChainsTests.start(&e, "cafe")
-        ChainsTests.play(&e, days: 56)   // long enough to open and for the local market (and its rivals) to exist
+        ChainsTests.play(&e, days: 56)
         let co = try XCTUnwrap(e.state.company(cafe))
         let rival = try XCTUnwrap(Rivals.rivals(e.state, for: co).first)
         let price = e.rivalValue(companyID: cafe, rivalID: rival.id)
@@ -90,13 +87,12 @@ final class OwnershipExpansionTests: XCTestCase {
         XCTAssertEqual(back.rest["amb27"]?["pkAll"].bool, true)
         XCTAssertEqual(back.company(cafe)?.value("sw33")["ct"].array.count, 1)
         XCTAssertEqual(back.company(cafe)?.value("tg58")["bo"].int, 1)
-        // an old save loads and reads null-safe: the new keys are optional (a new game seeds some of them, so no assertion on absence)
         for name in ["save_cafe_week3", "save_cafe_week15"] {
             let old = try Golden.state(name)
             for k in ["fm", "fmPool", "amb27", "ach28", "org56"] { _ = old.rest[k]?["bal"].double; _ = old.rest[k]?["path"].string }
             XCTAssertNil(FinanceManager.account(old), "no fund manager in an old save")
             XCTAssertEqual(Ambitions.perk(old, e.data, "global"), -1)
-            _ = old.companies[0].value("tg58")["bo"].int   // present in these saves already; reads null-safe either way
+            _ = old.companies[0].value("tg58")["bo"].int
             XCTAssertEqual(VolumeContracts.committedUnits(old.companies[0]), 0)
             XCTAssertEqual(try JSONDecoder().decode(GameState.self, from: try JSONEncoder().encode(old)), old)
         }

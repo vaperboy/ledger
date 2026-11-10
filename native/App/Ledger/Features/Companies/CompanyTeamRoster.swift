@@ -6,13 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The management posts above the manager (managing director, department heads, regional manager).
-/// In Company > Team these posts are rows of the one management list in `CompanyManagement`, so this standalone list only shows
-/// where that list does not (a holding, which has no store manager). Each row opens `TeamSlotSheet` for hire, budget and release.
-/// Chain and group posts are the same kind of rows seen from the chain and from Group (see ExecutivePosts).
-// MARK: Person cards (new look)
-
-/// The initials of a name on a round accent wash: the face of every person card. A vacant post shows the plus icon instead.
 struct TeamInitials: View {
     var name: String?
     var size: CGFloat = 42
@@ -29,7 +22,6 @@ struct TeamInitials: View {
         if name == nil {
             IconCircle(glyph: Glyph.hire, size: size, tint: Theme.inkSoft)
         } else {
-            // Centred in the circle at a fixed size (the slot never changes with Dynamic Type, so rows do not reflow); long initials shrink to fit.
             ZStack {
                 Circle().fill(Theme.accentWash)
                 Text(letters)
@@ -43,7 +35,6 @@ struct TeamInitials: View {
     }
 }
 
-/// A small outlined badge: the role or the scope (store, company, chain, region, group) of a person.
 struct TeamBadge: View {
     @Environment(\.outsidePalette) private var P
     var text: String
@@ -57,8 +48,6 @@ struct TeamBadge: View {
     }
 }
 
-/// One person of this company as a clean row: portrait, name, role and scope in one line, a note, the monthly wage and a chevron.
-/// Used for the management posts and for the staff, so a person looks the same everywhere. A vacant post says "Vacant".
 struct PersonCard: View {
     @Environment(\.outsidePalette) private var P
     var name: String?
@@ -68,12 +57,9 @@ struct PersonCard: View {
     var noteTint: Color = Theme.inkFaint
     var wage: String? = nil
     var chevron = true
-    /// The engine role id, for the picture; the displayed role is used when it is not given.
     var roleKey: String? = nil
-    /// The portrait key the engine gave the employee (`Person.faceKey`); the initials show when nil or the sheet is missing.
     var face: String? = nil
 
-    /// The card of a management row, so the management lists keep their data and take the new look.
     init(row: ManagementRow, chevron: Bool = true) {
         self.name = row.name; self.role = row.role; self.scope = row.scope
         self.note = row.line; self.noteTint = row.lineTint; self.wage = row.wage; self.chevron = chevron
@@ -86,7 +72,6 @@ struct PersonCard: View {
         self.face = face
     }
 
-    /// The picture of the role while the post is filled; the initials circle until art exists; the plus icon for a vacant post.
     @ViewBuilder private var portrait: some View {
         if name == nil {
             TeamInitials(name: nil)
@@ -122,7 +107,6 @@ struct PersonCard: View {
     }
 }
 
-/// A titled group: a small accent label with a note at the right, then the content with a gap, no rule.
 struct TeamGroup<Content: View, Trailing: View>: View {
     var title: String
     @ViewBuilder var trailing: () -> Trailing
@@ -146,7 +130,6 @@ extension TeamGroup where Trailing == EmptyView {
     }
 }
 
-/// A titled group whose content sits in one card (targets, perks, contracts): the new-look `LedgerSection`.
 struct TeamCardGroup<Content: View, Trailing: View>: View {
     var title: String
     @ViewBuilder var trailing: () -> Trailing
@@ -164,8 +147,6 @@ extension TeamCardGroup where Trailing == EmptyView {
     }
 }
 
-/// A small outlined action in the tint of what it does (accent, loss for letting go): the system's compact secondary button,
-/// drawn 32 pt high inside a 44 pt hit area. Never filled.
 struct TeamAction: View {
     var title: String
     var tint: Color = Theme.accent
@@ -215,7 +196,6 @@ struct CompanyTeamRoster: View {
     }
 }
 
-/// One management post of a company: who holds it, their budget, pay and release; or, when vacant, the search and the shortlist.
 struct TeamSlotSheet: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -227,10 +207,8 @@ struct TeamSlotSheet: View {
         switch slot.key { case "ceo": return company.type == "hold" ? "group" : "company"; case "reg": return "region"; default: return "company" }
     }
 
-    /// The budget preset a post holds (its `level` is `Budget.rawValue`).
     static func budget(of slot: ManagerModel.TeamSlot) -> Budget { Budget(rawValue: min(2, max(0, slot.level))) ?? .tight }
 
-    /// The row used in the management list (here and in CompanyManagement).
     static func row(_ slot: ManagerModel.TeamSlot, company: Company, engine: GameEngine, cur: Currency) -> ManagementRow {
         let person = slot.personID.flatMap { engine.state.people[$0] }
         let line: String

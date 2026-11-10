@@ -5,7 +5,6 @@ import Employees
 import Finance
 import Simulation
 
-/// Data consistency: overdraft rate follows the policy rate, one leave field, minimum wage on the median wage's scale, UMA present.
 final class WageLeaveOverdraftDataTests: XCTestCase {
     func testOverdraftRateFollowsPolicyRate() throws {
         let book = try CountryBook.bundled()

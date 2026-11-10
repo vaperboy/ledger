@@ -1,28 +1,5 @@
--- Account rules, the administrator role and the world rules.
---
---  1. 18+ confirmation: a profile can only be created with a confirmation. Only a boolean is stored, never an age or a birth date.
---  2. Linking Apple or Google is for profile memory only (progress follows the account; it is not how friends are found) and pays a
---     one-time gold reward per person, granted here and never by a client write. A guest holds no server rows (every shared feature needs
---     a profile), so merging a guest into an account moves nothing on the server; the app decides what its progress sends.
---  3. Administrator: the `admins` table is bound to the account id. A one-time code is redeemed by `redeem_admin_code`, which compares a
---     hash held in `admin_codes`. No code lives in the repository or in the app.
---  4. World rules (`world_rules`) with hard limits only a migration can move, changed through admin RPCs that write one audit row each,
---     and the confirmations queue that the government engine's "president proposes, administrator confirms" rule needs.
---
--- OWNER STEP (SQL editor of the Supabase dashboard, once per code; the code never goes into the repository or the app). Use a long random
--- code (24 or more characters); it is spent by the first account that redeems it and expires after seven days:
---
---   insert into public.admin_codes (code_hash) values (encode(extensions.digest(upper(trim('YOUR-LONG-RANDOM-CODE')), 'sha256'), 'hex'));
---
--- The table has no client access at all; only the dashboard and the redeem function read it.
-
 create extension if not exists pgcrypto with schema extensions;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- 1. Adult confirmation
--- ---------------------------------------------------------------------------------------------------------------------
--- Not in the client column grants of 0001: only the functions below set it. Profiles made before this migration start unconfirmed and
--- cannot use shared features until the owner of the profile confirms.
 alter table public.profiles add column adult_confirmed boolean not null default false;
 
 create or replace function private.require_player() returns uuid language plpgsql stable security definer set search_path = '' as $$
@@ -32,7 +9,6 @@ begin
   return uid;
 end $$;
 
--- Replaces ensure_profile(). Creates the caller's profile, or confirms an older one. Without the confirmation nothing is created.
 drop function public.ensure_profile();
 create function public.ensure_profile(p_adult_confirmed boolean default false) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user(); anon boolean; p public.profiles; had boolean;
@@ -51,11 +27,6 @@ begin
   return private.profile_json(uid, uid);
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- 2. Link reward
--- ---------------------------------------------------------------------------------------------------------------------
--- One row per Apple or Google identity. The key is a hash of the provider's own user id and it survives deleting the account, so
--- deleting and re-creating an account with the same Apple or Google id cannot pay the reward twice. user_id is unique while it exists.
 create table public.link_reward_claims (
   identity_hash text primary key,
   user_id uuid unique references auth.users (id) on delete set null,
@@ -68,7 +39,6 @@ revoke all on public.link_reward_claims from anon, authenticated;
 
 create function private.link_reward_gold() returns int language sql immutable as $$ select 100; $$;
 
--- Pays the reward once. Needs a real profile (so the 18+ confirmation is done) and a linked Apple or Google identity.
 create function public.claim_link_reward() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); idn record; h text; g int := private.link_reward_gold();
 begin
@@ -86,7 +56,6 @@ begin
   return jsonb_build_object('granted', true, 'gold', g, 'reason', 'granted');
 end $$;
 
--- What the app needs to know about the signed-in account, in one call.
 create function public.account_status() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user(); anon boolean; p public.profiles; had boolean;
 begin
@@ -102,15 +71,11 @@ begin
     'linkRewardClaimed', exists (select 1 from public.link_reward_claims where user_id = uid));
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- 3. Administrators
--- ---------------------------------------------------------------------------------------------------------------------
 create table public.admins (
   user_id uuid primary key references auth.users (id) on delete cascade,
   granted_at timestamptz not null default now()
 );
 
--- One row per code. The hash is the only thing kept; a code works once and for seven days.
 create table public.admin_codes (
   id uuid primary key default gen_random_uuid(),
   code_hash text not null unique check (code_hash ~ '^[0-9a-f]{64}$'),
@@ -120,7 +85,6 @@ create table public.admin_codes (
   redeemed_at timestamptz
 );
 
--- Every redeem attempt, so guessing is slowed down: five tries an hour per account and thirty an hour in all.
 create table public.admin_code_attempts (
   id bigint generated always as identity primary key,
   user_id uuid references auth.users (id) on delete cascade,
@@ -128,7 +92,6 @@ create table public.admin_code_attempts (
 );
 create index admin_code_attempts_recent on public.admin_code_attempts (attempted_at);
 
--- The audit log of everything an administrator does. Append only: no update, no delete, not even by a function.
 create table public.admin_audit (
   id bigint generated always as identity primary key,
   at timestamptz not null default now(),
@@ -165,8 +128,6 @@ create function private.audit(actor uuid, act text, target text, before_v jsonb,
   insert into public.admin_audit (actor_id, action, target, before_value, after_value, reason) values (actor, act, coalesce(target, ''), before_v, after_v, coalesce(why, ''));
 $$;
 
--- A wrong code is an answer, not an error, so the attempt row is kept. Returns {ok, reason} with reason in
--- granted, already_admin, invalid, locked.
 create function public.redeem_admin_code(p_code text) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); code text := upper(trim(coalesce(p_code, ''))); h text; c public.admin_codes;
 begin
@@ -186,17 +147,11 @@ begin
   return jsonb_build_object('ok', true, 'reason', 'granted');
 end $$;
 
--- An administrator does not stand for president (the engine keeps the two roles apart as well).
 create or replace function private.may_stand(uid uuid, cc text) returns boolean language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.profiles where id = uid and deleted_at is null and not is_simulated and country_code = cc and created_at < now() - private.weeks(8))
      and not private.is_barred(uid, 'stand') and not private.is_admin(uid);
 $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- 4. World rules
--- ---------------------------------------------------------------------------------------------------------------------
--- `value` moves only inside [min_value, max_value] and only through admin_set_rule. The hard limits are fixed here: no administrator
--- can raise printing past 10% of the supply in one go, take a band to nothing, or lift a tax beyond its ceiling.
 create table public.world_rules (
   key text primary key,
   grp text not null check (grp in ('printing', 'taxes', 'bands', 'electricity', 'funding')),
@@ -245,7 +200,6 @@ begin
   return v;
 end $$;
 
--- Rules that must hold together after any change.
 create function private.rules_consistent() returns boolean language sql stable security definer set search_path = '' as $$
   select private.rule_num('print.single_limit') <= private.rule_num('print.window_limit')
      and private.rule_num('tax.gains_min') < private.rule_num('tax.gains_max')
@@ -255,15 +209,12 @@ create function private.rules_consistent() returns boolean language sql stable s
      and private.rule_num('power.band_low') < 1 and private.rule_num('power.band_high') > 1;
 $$;
 
--- What a player's game may read: every rule as one object.
 create function public.world_rules_snapshot() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user();
 begin
   return coalesce((select jsonb_object_agg(key, value) from public.world_rules), '{}'::jsonb);
 end $$;
 
--- Bands and tax limits now read the rules. The earlier functions are re-issued from their own definitions with the constants swapped,
--- so nothing else in them changes. Each replacement must find its text or the migration stops.
 create function private.rewire(fn regprocedure, pairs text[]) returns void language plpgsql as $$
 declare d text := pg_get_functiondef(fn); n text; i int;
 begin
@@ -293,10 +244,6 @@ select private.rewire('private.jv_invite_check(public.ventures, uuid, uuid, nume
 
 drop function private.rewire(regprocedure, text[]);
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Confirmations queue (the engine's `GovPending`): a president's change and an election result wait here for an administrator.
--- The price-support and promises kinds are queued by the government features that propose them; deciding one records the decision.
--- ---------------------------------------------------------------------------------------------------------------------
 create type public.confirmation_kind as enum ('policy', 'price_support', 'promises', 'election_result');
 create type public.confirmation_status as enum ('open', 'confirmed', 'rejected');
 
@@ -319,7 +266,6 @@ create index gov_confirmations_open on public.gov_confirmations (created_at) whe
 alter table public.gov_confirmations enable row level security;
 revoke all on public.gov_confirmations from anon, authenticated;
 
--- The president's change now waits for an administrator (it used to apply at once). Same checks as 0010, with the limits from the rules.
 create or replace function public.set_country_policy(p_country text, p_transfer_tax numeric, p_gains_tax numeric) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); cur public.country_policy; t0 numeric := private.transfer_tax_rate(p_country); g0 numeric := private.gains_tax_rate(p_country);
         cid uuid;
@@ -337,7 +283,6 @@ begin
   return jsonb_build_object('status', 'pending', 'id', cid, 'transferTax', p_transfer_tax, 'gainsTax', p_gains_tax);
 end $$;
 
--- A president's own recent proposals, so the app can say "waiting for an administrator".
 create function public.my_pending_changes() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin
@@ -345,8 +290,6 @@ begin
     from (select * from public.gov_confirmations where proposer_id = uid and kind <> 'election_result' order by created_at desc limit 10) x), '[]'::jsonb);
 end $$;
 
--- 0011's cycle runner with one change: a winner is queued for confirmation instead of taking the office at once. The office and the
--- winner column are set when an administrator confirms.
 create or replace function private.run_election_cycle() returns int language plpgsql security definer set search_path = '' as $$
 declare e public.elections; cc record; n int := 0; win uuid;
 begin
@@ -383,9 +326,6 @@ begin
   return n;
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Admin functions (each one checks the caller against the admins table itself; there is no client flag)
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.audit_json(p_before bigint, p_limit int) returns jsonb language sql stable security definer set search_path = '' as $$
   select coalesce(jsonb_agg(jsonb_build_object('id', id, 'at', at, 'actor', coalesce(private.display_name(actor_id), 'system'), 'action', action,
          'target', target, 'before', before_value #>> '{}', 'after', after_value #>> '{}', 'reason', reason) order by id desc), '[]'::jsonb)
@@ -398,7 +338,6 @@ create function private.confirmations_json(p_status public.confirmation_status) 
     from (select * from public.gov_confirmations where status = p_status order by created_at desc limit 50) c;
 $$;
 
--- Everything the Admin screen shows.
 create function public.admin_overview() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_admin();
 begin
@@ -415,7 +354,6 @@ begin
   return private.audit_json(p_before, p_limit);
 end $$;
 
--- Changes one rule inside its hard limits, with a reason, and writes the audit row in the same transaction.
 create function public.admin_set_rule(p_key text, p_value numeric, p_reason text) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_admin(); r public.world_rules; why text := trim(coalesce(p_reason, ''));
 begin
@@ -430,8 +368,6 @@ begin
   return jsonb_build_object('key', p_key, 'value', p_value);
 end $$;
 
--- Confirms or rejects one waiting change. The administrator cannot decide a change they proposed themselves. A confirmed policy change
--- is checked again against the office and the limits as they stand now; an election result installs the winner for a twelve-week term.
 create function public.admin_decide(p_id uuid, p_approve boolean, p_reason text default '') returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_admin(); c public.gov_confirmations; t numeric; g numeric; t0 numeric; g0 numeric; cur public.country_policy; w uuid;
         why text := trim(coalesce(p_reason, '')); verdict text := case when p_approve then 'confirmed' else 'rejected' end;
@@ -465,9 +401,6 @@ begin
   return jsonb_build_object('id', c.id, 'status', verdict);
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Execute rights
--- ---------------------------------------------------------------------------------------------------------------------
 revoke execute on all functions in schema public from public, anon;
 grant execute on function public.ensure_profile(boolean), public.claim_link_reward(), public.account_status(), public.redeem_admin_code(text),
   public.world_rules_snapshot(), public.my_pending_changes(), public.admin_overview(), public.admin_audit_page(bigint, int),

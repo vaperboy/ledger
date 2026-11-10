@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// A company's Chain section: its place in the chain (with the way to the chain page), how to grow into a chain, being a
-/// franchisee (or, outside a chain, franchising it out). Supply between your own companies is in Operations > Suppliers.
 struct CompanyChain: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -27,15 +25,12 @@ struct CompanyChain: View {
             if franchisee {
                 FranchiseeCard(engine: engine, company: company)
             } else if chain == nil && (engine.canFranchise(companyID: company.id) || engine.isFranchisor(companyID: company.id)) {
-                // A chain franchises from its chain page; a company outside a chain sees what franchising needs here.
                 FranchisorCard(engine: engine, company: company)
             }
-            // Supply between your own companies lives in Operations > Suppliers (one record, one action).
             NavigationLink(value: CompanyRoute.companyAt(company.id, .operations)) {
                 CardRow(glyph: Glyph.market, title: "Suppliers and supply from your own companies", subtitle: "Who provides each input, prices, terms and risks. Switch provider in Operations.")
             }.buttonStyle(PressableStyle())
         }
-        // The chain section's blocks sit on the page with no surface of their own.
         .environment(\.insideCard, true)
     }
 
@@ -45,13 +40,11 @@ struct CompanyChain: View {
         return "Grow this company into a chain, or franchise the concept out to other owners."
     }
 
-    /// Whether the Chain section has anything to show for this company.
     static func isRelevant(_ co: Company, _ e: GameEngine) -> Bool {
         co.type != "hold" && co.type != "club" && (co.status == .open || co.status == .closed)
     }
 }
 
-/// The checklist before a chain: what the first store has to prove, then registration, then naming the chain.
 struct GrowIntoChain: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -120,8 +113,6 @@ struct GrowIntoChain: View {
     }
 }
 
-/// This store's place in its chain: the chain at a glance with a way to the chain page, how this store compares, its own rules and
-/// what it owes sister stores. Chain-wide work (rules, all stores, chain posts, new stores) lives on the chain page.
 struct StoreInChainCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -147,7 +138,6 @@ struct StoreInChainCard: View {
         }
     }
 
-    /// "Branch 2 of 5 of Khan Shop, run by Maria Lopez, owned by you": where this store sits, who runs it and who owns it.
     @ViewBuilder private var placeLine: some View {
         if let pos = engine.branchParent(companyID: company.id) {
             let gm: GroupManagement? = store.memo("groupMgmt") { (e: GameEngine) -> GroupManagement in e.groupManagement() }
@@ -179,7 +169,6 @@ struct StoreInChainCard: View {
     }
 }
 
-/// One store's own rules on top of the chain's.
 struct StoreRules: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

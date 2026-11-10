@@ -5,10 +5,7 @@ import Finance
 import Businesses
 import Investments
 
-/// The world outside the player's companies, once a week: the economy, competitors, markets.
-/// Original: `econWeek` (economy_markets.js), `rivalsWeekCore` (competitors), `disruptWeek` (abroad.js).
 public enum WorldWeek {
-    /// Boom, steady, slowdown, recession; inflation, interest rates, fuel and material prices. Original: `econWeek`.
     public static func economy(_ s: inout GameState, data: GameData) {
         var E = s.economy
         E.weeksLeftInPhase -= 1
@@ -26,7 +23,6 @@ public enum WorldWeek {
         let tgt = targets[E.phase] ?? 1
         E.demand += (tgt - E.demand) * 0.04 + s.random.gauss() * 0.002
         func meanRevert(_ x: Double, _ m: Double, _ k: Double, _ v: Double, _ r: inout DeterministicRandom) -> Double { x + (m - x) * k + r.gauss() * v }
-        // The electricity price follows the global supply and demand (Businesses/EnergyMarket.swift).
         E.power = EnergyMarket.step(index: E.power, target: EnergyMarket.prepare(&s, data: data), noise: s.random.gauss(), band: s.worldRules.powerBand)
         CommodityMarket.step(&s, economy: &E)
         E.freight = clamp(meanRevert(E.freight, E.demand, 0.04, 0.03, &s.random), 0.5, 2.2)
@@ -47,7 +43,6 @@ public enum WorldWeek {
         }
     }
 
-    /// Local competitor markets: prices drift, rivals enter and leave. Original: `rivalsWeekCore`.
     public static func competitors(_ s: inout GameState, data: GameData) {
         var groups: [String: [Int]] = [:]
         for (i, c) in s.companies.enumerated() where c.status == .open && c.type != "club" {
@@ -62,7 +57,6 @@ public enum WorldWeek {
             if m.isNull {
                 let city = data.countries.city(co0.cityID, preferring: co0.countryCode)?.city
                 let scale = (bd.family == "fin" || bd.family == "energy") ? 0.3 : 1.0
-                // Rivals follow the customers: luxury and premium trades find few rivals where few households can pay (CityMarket).
                 let density = city.map { CityMarket.rivalDensity(trade: bd.id, country: data.countries.resolve(co0.countryCode, orHome: s.homeCountryCode), city: $0, tables: data.balance.cityMarket) } ?? 1
                 m = .object(["key": .string(key), "n": .number(max(1, jsRound(1 + (city?.population ?? 100) / 120 * density + s.random.range(0, 2) * scale))),
                              "pi": 1.0, "str": .number(s.random.range(0.3, 0.8) + CityMarket.rivalStrengthBoost(trade: bd.id, city: city, tables: data.balance.cityMarket)),
@@ -106,7 +100,6 @@ public enum WorldWeek {
         MarketPrices.weekly(&s, data: data)
     }
 
-    /// A cheap rival with a loophole enters and drags prices; regulators eventually close it. Original: `disruptWeek`.
     static func disruption(_ s: inout GameState, _ m: inout JSONValue, _ idxs: [Int], _ bd: Trade, _ data: GameData) {
         let c0 = s.companies[idxs[0]]
         if !m["dis"].isNull {

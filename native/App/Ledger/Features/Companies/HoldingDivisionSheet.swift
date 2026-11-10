@@ -5,13 +5,11 @@ import Finance
 import Businesses
 import Simulation
 
-/// Turn a wholly owned company into a division of the holding or of another company the holding owns outright: choose the host, read the terms, confirm.
 struct HoldingDivisionSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.popupClose) private var popupClose
     var holdingID: Int
     var companyID: Int
-    /// The host company's id; nil is the holding itself.
     @State private var hostID: Int?
     @State private var pending: PendingAction?
 
@@ -27,7 +25,6 @@ struct HoldingDivisionSheet: View {
         .centerSheetTitle("Fold it into the holding as a division")
     }
 
-    /// Companies the holding owns outright that could host the division.
     private func hosts(_ e: GameEngine) -> [Company] {
         let all: [(company: Company, percent: Double, tier: HoldingStakes.Tier)] = e.holdingStakes(holdingID: holdingID)
         return all.filter { (s: (company: Company, percent: Double, tier: HoldingStakes.Tier)) -> Bool in

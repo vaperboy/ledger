@@ -4,19 +4,12 @@ import Countries
 import Finance
 import Businesses
 
-/// Stock insurance and the losses it covers: fire, water damage and theft of inventory.
-/// An uninsured loss is booked straight to the company (stock down, loss up, no cash moves). An insured loss pays out
-/// the loss minus the excess; the premium is booked weekly as insurance cost. The books stay balanced: stock down by the loss,
-/// loss booked, payout received as cash and booked against the loss.
 public enum StockInsurance {
-    /// The policy key in a company's `ins` record.
     public static let product = "stock"
-    /// Yearly premium as a share of the stock held.
     static let yearlyRate = 0.012
 
     public static func isInsured(_ co: Company) -> Bool { co.value("ins")[product].bool }
 
-    /// Whether the random stock-loss events roll at all (a switch in `rest["lg"]`, off until the game turns it on).
     public static func eventsOn(_ s: GameState) -> Bool { s.rest["lg"]?["events"].bool ?? false }
     public static func setEventsOn(_ s: inout GameState, _ on: Bool) {
         var lg = s.rest["lg"] ?? .object([:])
@@ -24,16 +17,13 @@ public enum StockInsurance {
         s.rest["lg"] = lg
     }
 
-    /// What the company bears itself on every claim.
     public static func excess(_ cur: Currency) -> Double { cur.scaledPrice(10000) }
 
-    /// The weekly premium on the stock now held (0 when not insured).
     public static func weeklyPremium(_ co: Company) -> Double {
         guard isInsured(co), co.inventory > 0 else { return 0 }
         return jsRound(co.inventory * yearlyRate / 52 * Advisers.premiumFactor(co))
     }
 
-    /// What the premium would be on the stock held now, whether or not the policy is on (the price shown before it is switched on).
     public static func estimatedWeeklyPremium(_ co: Company) -> Double {
         guard co.inventory > 0 else { return 0 }
         return jsRound(co.inventory * yearlyRate / 52 * Advisers.premiumFactor(co))
@@ -42,12 +32,9 @@ public enum StockInsurance {
     public struct Settlement: Equatable, Sendable {
         public var loss: Double
         public var paid: Double
-        /// What the company bears: the loss minus the payout.
         public var net: Double { loss - paid }
     }
 
-    /// Book a loss of stock worth `amount`. `fromInventory` is true when the goods are on the shelves (stock goes down) and false
-    /// when they were never added to stock yet (goods lost on the road).
     @discardableResult
     public static func settle(_ s: inout GameState, companyID: Int, amount: Double, fromInventory: Bool, data: GameData) -> Settlement {
         guard let i = s.companyIndex(companyID) else { return Settlement(loss: 0, paid: 0) }
@@ -68,9 +55,6 @@ public enum StockInsurance {
         return Settlement(loss: loss, paid: paid)
     }
 
-    // MARK: Weekly
-
-    /// The premiums, then this week's chance of a fire, water damage or theft at each open company that holds stock.
     public static func weekly(_ s: inout GameState, data: GameData) {
         let rolls = eventsOn(s)
         for i in s.companies.indices where s.companies[i].status == .open {

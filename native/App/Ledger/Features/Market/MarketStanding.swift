@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Standing: what you are worth, said in words part by part (the figure the rankings use), and the leaderboards for net worth and for
-/// trading results.
 struct MarketStandingPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -28,8 +26,6 @@ struct MarketStandingPage: View {
         }
     }
 }
-
-// MARK: Net worth in words
 
 struct MarketWealthPart: View {
     @EnvironmentObject var store: GameStore
@@ -76,7 +72,6 @@ struct MarketWealthPart: View {
                           seriesTint: (series.last ?? 0) >= (series.first ?? 0) ? P.gain : P.loss, identifier: "wealth-hero")
     }
 
-    /// One stacked bar: each part of what you own, by size.
     private func composition(_ assets: [WealthLine], _ total: Double, _ cur: Currency) -> some View {
         GeometryReader { geo in
             HStack(spacing: 2) {
@@ -113,8 +108,6 @@ struct MarketWealthPart: View {
         .accessibilityIdentifier("wealth-line-\(l.id)")
     }
 }
-
-// MARK: Leaderboards
 
 struct MarketBoardsPart: View {
     @EnvironmentObject var store: GameStore
@@ -194,7 +187,6 @@ struct MarketBoardsPart: View {
         .accessibilityIdentifier(x.isYou ? "board-you" : "board-row-\(x.rank)")
     }
 
-    /// Your own row, kept on screen under the list.
     private func yourRow(_ y: LeaderboardEntry, _ v: LeaderboardView, _ cur: Currency) -> some View {
         let text: String = kind == .netWorth ? cur.tidyShort(y.value) : MarketFormat.money(y.value, cur)
         return HStack(spacing: Theme.Space.m) {
@@ -211,7 +203,6 @@ struct MarketBoardsPart: View {
         .accessibilityIdentifier("board-your-row")
     }
 
-    /// Sends your figures, reads the other players, and fills the board with rivals when it is thin.
     private func load(_ me: LeaderboardSubmission, _ e: GameEngine) async {
         await Self.service.publish(me)
         let real: [LeaderboardSubmission] = await Self.service.submissions().filter { (s: LeaderboardSubmission) -> Bool in s.playerID != me.playerID }

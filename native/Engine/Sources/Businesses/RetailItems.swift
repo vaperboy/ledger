@@ -3,17 +3,9 @@ import GameCore
 import Countries
 import Finance
 
-/// STK resale and parts: kiosk, boutique, grocery, hardware, webshop, pets, carrepair sell real things. The catalogue is
-/// `Resources/retail_items.json`: per trade the items it really sells, with the margin each has in real life. At install a company gets
-/// its items (`items27`, names as in the add-item popup) and one record per item (`itemsv2`, `ItemModels`): unit cost, extra cost, lead time,
-/// capacity, supplier. The buy cost of every item is its real-life margin, scaled once per company (`w2.k`) so that the revenue-weighted cost of
-/// the default list equals the trade's cost of sales: the books stay where they were, the mix and the price slider now decide the margin.
-/// Stock per item is the company's real inventory (the ledger) shared out by what each item sells; nothing is invented.
-/// Keys: `w2` = { k, nm } on a company (only written for an opted-in trade). Old saves and other trades are untouched.
 public enum RetailItems {
     public static let trades: Set<String> = ["kiosk", "boutique", "grocery", "hardware", "webshop", "pets", "carrepair"]
     static let marker = "w2"
-    /// Weekly cost of holding stock, as a share of its cost (the middle storage policy of `CompanyWeek`).
     static let holdingShare = 0.0008
 
     public struct Def: Equatable, Sendable {
@@ -23,9 +15,7 @@ public enum RetailItems {
         public var model: ItemModels.Model
         public var share: Double
         public var price: Double
-        /// Buy cost as a share of the price in real life, before the company scale.
         public var costShare: Double
-        /// Extra cost share of the price, never scaled (commission pass-through, fulfilment, consumables).
         public var fix: Double
         public var fixIsCost: Bool
         public var leadDays: Int
@@ -40,8 +30,6 @@ public enum RetailItems {
         public var needsDevelopment: Bool
         public var note: String
     }
-
-    // MARK: Catalogue
 
     struct Table {
         var defs: [String: [Def]] = [:]
@@ -86,7 +74,6 @@ public enum RetailItems {
         return catalogue(trade).first { $0.name.lowercased() == n }
     }
 
-    /// True when the knob option a licensed item needs is switched on ("cat:tob").
     static func needsMet(_ co: Company, _ bd: Trade, _ d: Def) -> Bool {
         guard !d.needs.isEmpty else { return true }
         let p = d.needs.split(separator: ":").map(String.init)
@@ -96,8 +83,6 @@ public enum RetailItems {
 
     static func startList(_ co: Company, _ bd: Trade) -> [Def] { catalogue(bd.id).filter { $0.onSaleAtStart || ($0.needs.isEmpty == false && needsMet(co, bd, $0)) } }
 
-    /// The company scale: the cost shares are multiplied by `k` so that the revenue-weighted cost of this list equals the trade's cost of sales,
-    /// and `nm` turns relative prices into price ratios (the same normalisation as `SalesItems.defaults`).
     static func scale(_ list: [Def], _ bd: Trade) -> (k: Double, nm: Double) {
         let total = list.reduce(0.0) { $0 + $1.share }
         guard total > 0 else { return (1, 1) }
@@ -114,8 +99,6 @@ public enum RetailItems {
         return (k.isFinite && k > 0 ? k : 1, nm)
     }
 
-    // MARK: Install
-
     static func buildRecord(_ d: Def, id: String, market: Double, k: Double, vendor: String?) -> ItemModels.Record {
         var r = ItemModels.Record(id: id, model: d.model)
         let bought = market * k * d.costShare, extra = market * d.fix
@@ -129,8 +112,6 @@ public enum RetailItems {
         return r
     }
 
-    /// Give one company its real items and records. Idempotent; does nothing for a trade outside `trades` or a company that has the marker.
-    /// A company whose item list the player has already changed keeps it: only the items that match a catalogue name get a real record.
     @discardableResult
     public static func install(_ s: inout GameState, companyID: Int, data: GameData, trades: Set<String> = ItemTradeGroups.retail) -> Int {
         guard let i = s.companyIndex(companyID), trades.contains(s.companies[i].type), let bd = data.catalog[s.companies[i].type],
@@ -151,7 +132,6 @@ public enum RetailItems {
         return adopt(&s, i, data: data)
     }
 
-    /// Items without a record get one: a catalogue item a real record at its real margin, any other item the generic one of `ItemModels`.
     @discardableResult
     static func adopt(_ s: inout GameState, _ i: Int, data: GameData) -> Int {
         guard let bd = data.catalog[s.companies[i].type] else { return 0 }
@@ -163,7 +143,6 @@ public enum RetailItems {
         var n = 0
         for it in SalesItems.items(s.companies[i], bd) where ItemModels.record(s.companies[i], itemID: it.id) == nil {
             if let d = def(bd.id, name: it.name) {
-                // an item added from the popup is created with a ratio of 1: it takes the ratio of its real price
                 if !it.id.hasPrefix("w2_"), it.ratio == 1 { SalesItems.mutate(&s, companyID: id, data: data) { list in
                     if let x = list.firstIndex(where: { $0.id == it.id }) { list[x].ratio = d.price / nm }
                 } }
@@ -175,16 +154,12 @@ public enum RetailItems {
         return n
     }
 
-    // MARK: Add from the catalogue
-
-    /// Catalogue items this company does not sell yet.
     public static func addable(_ s: GameState, companyID: Int, data: GameData) -> [Def] {
         guard let co = s.company(companyID), let bd = data.catalog[co.type], trades.contains(co.type) else { return [] }
         let have = SalesItems.onSaleNames(co, bd)
         return catalogue(co.type).filter { !have.contains($0.name.lowercased()) }
     }
 
-    /// nil when added, else why not. A licensed item needs its business choice switched on first.
     public static func addRefusal(_ s: GameState, companyID: Int, defID: String, data: GameData) -> String? {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return "That company no longer exists." }
         guard co.status == .open else { return "Only an open company adds items." }
@@ -213,9 +188,6 @@ public enum RetailItems {
         return nil
     }
 
-    // MARK: Season
-
-    /// How much the season moves what customers think an item is worth now: 1 = the average month.
     static func seasonFactor(_ d: Def, week: Int, data: GameData) -> Double {
         guard !d.season.isEmpty, let c = data.catalog.tables.seasons[d.season], c.count == 12 else { return 1 }
         let mean = c.reduce(0, +) / 12
@@ -223,10 +195,6 @@ public enum RetailItems {
         return pow(c[GameCalendar.month(week: week)] / mean, d.seasonSensitivity)
     }
 
-    // MARK: Weekly
-
-    /// Weekly: a company of an opted-in trade is installed on first sight; then every item's cost follows its market price, its season sets what
-    /// customers think it is worth, and stock is the real inventory shared out by what sells. Writes no money.
     public static func weekly(_ s: inout GameState, _ i: Int, data: GameData, trades: Set<String> = ItemTradeGroups.retail) {
         guard s.companies.indices.contains(i), s.companies[i].status == .open, trades.contains(s.companies[i].type), let bd = data.catalog[s.companies[i].type] else { return }
         if s.companies[i].value(marker).isNull { install(&s, companyID: s.companies[i].id, data: data, trades: trades) }
@@ -242,7 +210,6 @@ public enum RetailItems {
             guard let it = items.first(where: { $0.id == r.id }), let d = def(bd.id, name: it.name), let row = rows.first(where: { $0.id == r.id }) else { continue }
             recs.append((r, d, row))
         }
-        // stock: the real inventory shared out by what each stocked item sells (weeks of cover is the same for all)
         var flow = 0.0
         for (r, _, row) in recs where r.model == .stk { flow += row.weeklyUnits * ItemModels.unitCost(r) }
         let cover = flow > 0 ? co.inventory / flow : 0
@@ -284,11 +251,6 @@ public enum RetailItems {
         CarRepairJobs.weekly(&s, i, data: data)
     }
 
-    // MARK: Margin by item
-
-    /// The factor on the week's cost of sales that the real items give: what the items sold cost (their own buy and extra costs) against what the
-    /// trade's cost-of-sales share of the same takings would be. Exactly 1 at the default prices and mix; below 1 when the player prices above the
-    /// market, above 1 when below. 1 for a company without records. The hook in `CompanyWeek` multiplies the week's cost of sales by it.
     public static func cogsFactor(_ s: GameState, companyID: Int, data: GameData) -> Double {
         guard let co = s.company(companyID), !co.value(marker).isNull, let bd = data.catalog[co.type] else { return 1 }
         let rows = SalesItems.rows(s, companyID: companyID, data: data)
@@ -303,9 +265,7 @@ public enum RetailItems {
     }
 }
 
-/// Helpers that read your other companies and the garage's fleet for the item notes.
 enum RetailItemsOwn {
-    /// A closure telling whether one of the owner's own companies supplies a kind of goods to this company.
     static func words(_ s: GameState, _ co: Company, _ bd: Trade) -> (String) -> String? {
         let linked = Set(IntercompanySupply.links(s).filter { $0.buyerID == co.id }.map { $0.kindID })
         return { kind in
@@ -314,7 +274,6 @@ enum RetailItemsOwn {
         }
     }
 
-    /// Units a week a rentable item can supply: kennels by the night, or the hire fleet by the day.
     static func fleet(_ co: Company, _ bd: Trade, _ d: RetailItems.Def) -> Double {
         if bd.id == "pets", let e = bd.allEquipment.first(where: { $0.id == "kennel" }) { return CapacityModel.equipmentCount(co, e) * 7 }
         return (6 * max(1, co.size)).rounded() * 7

@@ -3,9 +3,6 @@ import GameCore
 import Events
 import Simulation
 
-/// The progress strip on Home, two tiles side by side. Career: the worn badge in a ring that fills towards the next rank, the share
-/// done and the next rank's name (opens the goals popup). Today: the daily goal with its streak badge (no reward), a tick when it is done,
-/// else a tap opens where it is done.
 struct HomeProgressStrip: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
@@ -40,8 +37,6 @@ struct HomeProgressStrip: View {
             .contentShape(Rectangle())
     }
 
-    // MARK: Career
-
     private func careerTile(_ st: Career.RankStatus) -> some View {
         let accent: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
         let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: engine.careerCosmetics, pro: ent.isPro)
@@ -69,8 +64,6 @@ struct HomeProgressStrip: View {
         .accessibilityLabel("Rank \(st.rank.title)" + (st.next.map { (n: Career.Rank) -> String in ", \(Int(saturating: (st.progress * 100).rounded())) percent to " + n.title } ?? ""))
         .accessibilityIdentifier("home-rank-ring")
     }
-
-    // MARK: Today's mission
 
     @ViewBuilder private var missionTile: some View {
         let streak: Int = daily?.streak ?? PlayStreak.current(engine.state, today: GameStore.calendarDay())
@@ -112,7 +105,6 @@ struct HomeProgressStrip: View {
         Motion.animate(Motion.reveal(reduceMotion)) { shownProgress = t }
     }
 
-    /// A rank-up: the ring swells once (the celebration popup itself comes from the engine's queue).
     private func rankChanged(from old: Int, to new: Int) {
         guard new > old, !reduceMotion else { return }
         Motion.animate(Motion.moveAnimation) { burst = true }
@@ -122,7 +114,6 @@ struct HomeProgressStrip: View {
     }
 }
 
-/// The career goal closest to done, as one tappable line under net worth: its title, the share done and a thin bar.
 struct HomeMilestoneLine: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

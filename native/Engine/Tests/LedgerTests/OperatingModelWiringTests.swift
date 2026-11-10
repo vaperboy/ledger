@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Wiring checks for how the company families run: leased vehicles are serviced by the lessor.
 final class OperatingModelWiringTests: XCTestCase {
     private func upkeepPaid(mode: String) throws -> Double {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 11)

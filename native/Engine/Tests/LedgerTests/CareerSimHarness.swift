@@ -6,7 +6,6 @@ import Businesses
 import Simulation
 import Investments
 
-/// Throwaway balancing harness (not committed). LEDGER_CAREER=1; LEDGER_COUNTRIES=CH,UK,MX,JP; LEDGER_CAREERS=baker,...; LEDGER_SEEDS=1,2,3; LEDGER_YEARS=10
 func Dk(_ x: Double) -> String { x.isFinite ? String(Int(x / 1000)) : "NaN" }
 
 final class CareerSimHarness: XCTestCase {
@@ -31,7 +30,7 @@ final class CareerSimHarness: XCTestCase {
         r.idx = cur.scaledPrice(1_000_000) / 1_000_000; r.rate = cur.rate
         let city = e.state.player.cityID
         var invested: [Int: Double] = [:]
-        var target = ""   // trade the career wants
+        var target = ""
         switch career {
         case "baker": target = "bakery"
         case "landlord": target = "resrent"
@@ -42,13 +41,12 @@ final class CareerSimHarness: XCTestCase {
         }
         var mainID = 0
         func est(_ t: String) -> Double {
-            var rich = e.state; rich.cash += 1e12   // the estimate refuses when the share capital is not in the account
+            var rich = e.state; rich.cash += 1e12
             return CompanySetup.estimate(tradeID: t, cityID: city, size: 1, state: rich, data: e.data)?.total ?? .infinity
         }
         func liquid() -> Double { Payments.liquid(e.state) }
         var reserve: Double { max(cur.scaledPrice(20_000), 0.02 * e.netWorth.total) }
 
-        /// Start a company: funded from cash, topped up with a business loan if short (only when the bank would grant it). Returns id or 0.
         func open(_ trade: String, allowLoan: Bool, fundX: Double = 1.2) -> Int {
             let need = est(trade) * fundX
             guard need.isFinite else { return 0 }
@@ -86,13 +84,11 @@ final class CareerSimHarness: XCTestCase {
             return id
         }
 
-        // ---- Scenario: "honest" = start loan only; "funded" = the same gift of capital for every career (isolates the trade economics)
         let funded = ProcessInfo.processInfo.environment["LEDGER_SCENARIO"] == "funded"
         if funded {
             let capital = max(est("hardware"), est("resrent"), est("bakery")) * 1.35
             e.update { s, _, _ in Ledger.move(&s, .me, capital, why: "Test capital") }
         }
-        // ---- Opening move: the target if cash/bank allow, else the cheapest sensible starter (tutor)
         var stone = 0
         mainID = target.isEmpty ? 0 : open(target, allowLoan: true)
         if mainID == 0 && !target.isEmpty || target.isEmpty {
@@ -105,14 +101,12 @@ final class CareerSimHarness: XCTestCase {
         if mainID == 0 && !(funded && target.isEmpty) { r.note = "could not open" }
 
         var idxValue: Double { e.quotes(.fund).first { $0.symbol == "idx" }?.value ?? 0 }
-        /// Make `amount` liquid by selling part of the index fund.
         func raise(_ amount: Double) {
             let short = amount - liquid()
             guard short > 0 else { return }
             let v = idxValue
             if v > 0 { e.sellInvestment(.fund, symbol: "idx", fraction: min(1, short * 1.003 / v)) }
         }
-        /// Keep a cash cushion plus the tax bill coming: sell the index fund first, then shares.
         func cover() {
             let pend = e.netWorth.pendingTax
             let target = reserve * 2 + pend * 1.25
@@ -147,7 +141,6 @@ final class CareerSimHarness: XCTestCase {
             }
             guard day % 7 == 6 else { continue }
             cover()
-            // weekly: keep companies alive from personal cash
             for co in e.state.companies where co.status.isLive && co.holdingID == 0 {
                 if co.cash < -cur.scaledPrice(10_000) {
                     r.distressDays += 7
@@ -159,14 +152,12 @@ final class CareerSimHarness: XCTestCase {
             guard day - lastMonthlyAction >= 28 else { continue }
             lastMonthlyAction = day
             let businessCareer = !["investor", "trader"].contains(career)
-            // 1. sweep surplus out of operating companies (landlords keep rent for the next purchase)
             for co in e.state.companies where co.status == .open && co.type != "hold" && (career != "landlord" || co.type == "tutor") {
                 let md = e.maximumDividend(companyID: co.id)
                 let buffer = co.type == "tutor" ? cur.scaledPrice(30_000) : (invested[co.id] ?? 0) * 0.5
                 let free = co.cash - buffer
                 if md > 0 && free > 0 { _ = e.payDividend(companyID: co.id, amount: min(md, free)) }
             }
-            // 2. expansion / upgrade
             if businessCareer && !target.isEmpty && career != "landlord" {
                 let live = e.state.companies.filter { $0.status == .open && $0.type == target }.count
                 let need = est(target) * 1.25
@@ -195,7 +186,6 @@ final class CareerSimHarness: XCTestCase {
                     }
                 }
             }
-            // 3. investors/traders: momentum or index; everybody else parks spare money in the index fund
             if career == "trader" {
                 let qs = e.quotes(.stock).filter { !$0.isDelisted && $0.history.count >= 14 }
                 let ranked = qs.sorted { ($0.price / $0.history[$0.history.count - 14]) > ($1.price / $1.history[$1.history.count - 14]) }
@@ -215,7 +205,6 @@ final class CareerSimHarness: XCTestCase {
             if co.status == .bust { r.bustCount += 1 }
         }
         if r.bustCount > 0 { r.bankrupt = true }
-        // first profitable month of the first company
         if let first = e.state.companies.first(where: { $0.type != "hold" }) {
             let h = first.monthlyHistory
             r.firstProfitMonth = h.firstIndex { $0.profit > 0 }.map { $0 + 1 }
@@ -224,7 +213,6 @@ final class CareerSimHarness: XCTestCase {
         return r
     }
 
-    /// Every startable trade in several countries, standard set-up + modest ad plan, funded 1.3x the estimate, topped up when short. Prints SWP rows.
     static func sweepOne(trade: String, country: String, seed: Int, years: Int) -> String? {
         guard var e = try? GameEngine.newGame(countryCode: country, playerName: "T", seed: seed) else { return nil }
         var id = 0, invested = 0.0
@@ -351,13 +339,11 @@ final class CareerSimHarness: XCTestCase {
                 FileHandle.standardError.write("DONE \(j) in \(Int(Date().timeIntervalSince(t0)))s\n".data(using: .utf8)!)
             } else { FileHandle.standardError.write("FAIL \(j)\n".data(using: .utf8)!) }
         }
-        // Emit TSV rows
         func ttm(_ r: Result, _ thr: Double, ref: Bool) -> String {
             let div = ref ? r.idx : 1
             for s in r.samples where s.nwUnits / r.rate / div >= thr || (ref && s.nwUnits / div >= thr) {
                 if ref ? (s.nwUnits / r.rate / r.idx / (1 / r.rate) >= thr) : true { }
             }
-            // local currency = units / rate; reference-scaled = units / idx (units are the reference currency)
             for s in r.samples {
                 let v = ref ? s.nwUnits / r.idx : s.nwUnits / r.rate
                 if v >= thr { return String(format: "%.2f", Double(s.day + 1) / 364) }
@@ -375,7 +361,6 @@ final class CareerSimHarness: XCTestCase {
             f.append(r.firstProfitMonth.map { String($0) } ?? "-"); f.append(r.firstYearProfitable ? "1" : "0")
             f.append(String(r.distressDays)); f.append(String(r.bustCount)); f.append(r.note)
             print(f.joined(separator: "\t"))
-            // company rows: trade, year k profit, revenue, invested
             for c in r.companies {
                 var g = ["COMP", r.career, r.country, "\(r.seed)", c.trade, c.status, String(format: "%.0f", c.invested / r.rate), "\(c.months.count)"]
                 for y in 0..<4 {

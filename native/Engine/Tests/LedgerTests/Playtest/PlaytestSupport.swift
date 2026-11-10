@@ -7,8 +7,6 @@ import Businesses
 import Simulation
 import SaveSystem
 
-/// Headless play-test bot support: switches, the findings collector and small helpers.
-/// Everything under Playtest/ is inert unless LEDGER_PLAYTEST=1 (see Playtest/README.md).
 enum PT {
     static let env = ProcessInfo.processInfo.environment
     static var enabled: Bool { env["LEDGER_PLAYTEST"] == "1" }
@@ -17,7 +15,6 @@ enum PT {
         try? FileManager.default.createDirectory(atPath: d, withIntermediateDirectories: true)
         return d
     }
-    /// Shard "i/n": this process runs jobs where index % n == i (see run_shards.sh).
     static var shard: (Int, Int) {
         let p = (env["LEDGER_PT_SHARD"] ?? "0/1").split(separator: "/").compactMap { Int($0) }
         return p.count == 2 && p[1] > 0 ? (p[0], p[1]) : (0, 1)
@@ -28,7 +25,6 @@ enum PT {
     static var tag: String { env["LEDGER_PT_TAG"] ?? "run" }
 }
 
-/// One finding, aggregated by key across all runs of a process; written to findings-<tag>.tsv by `flush`.
 final class Findings: @unchecked Sendable {
     static let shared = Findings()
     struct F { var sev: Int; var key: String; var title: String; var count: Int; var repro: String; var file: String; var detail: String }
@@ -64,7 +60,6 @@ final class Findings: @unchecked Sendable {
     }
 }
 
-/// Crash bookkeeping: a trapped Swift runtime error kills the whole process, so every job is logged before it starts.
 enum Progress {
     static func start(_ job: String) { line("START \(job)") }
     static func done(_ job: String) { line("DONE \(job)") }
@@ -88,7 +83,6 @@ func fnv(_ data: Data) -> UInt64 {
 }
 
 extension GameEngine {
-    /// Hash of the whole state (keys sorted): equal hashes mean identical states.
     var playtestHash: String {
         let enc = JSONEncoder(); enc.outputFormatting = [.sortedKeys]
         guard let d = try? enc.encode(state) else { return "unencodable" }
@@ -96,7 +90,6 @@ extension GameEngine {
     }
 }
 
-/// True when a JSON tree holds a NaN or infinite number; returns the path of the first one.
 func badNumber(_ v: JSONValue, _ path: String = "") -> String? {
     switch v {
     case .number(let d): return d.isFinite ? nil : path
@@ -106,7 +99,6 @@ func badNumber(_ v: JSONValue, _ path: String = "") -> String? {
     }
 }
 
-/// Title with numbers and company names removed, so the same kind of message groups together.
 func normTitle(_ s: String, names: [String]) -> String {
     var t = s
     for n in names where n.count > 2 { t = t.replacingOccurrences(of: n, with: "{co}") }

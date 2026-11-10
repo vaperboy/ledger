@@ -5,11 +5,7 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Only a hired manager hires, through the staffing plan: a vacancy waits a few weeks, costs a recruiting fee, and a manager never overfills; the owner's
-/// target is filled without asking again; a demand-limited company can be proposed bigger premises; staff grow, are promoted, and a named successor
-/// takes over. Rules: Businesses/StaffingPlan.swift, ManagerHiring.swift, PremisesProposals.swift, GrowthPaths.swift.
 final class ManagerHiringTests: XCTestCase {
-    /// A running company with its standard team and a real hired manager.
     private func managed(_ seed: Int, trade: String = "grocery", manager: Bool = true, cash: Double = 300_000_000) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         var id = 0
@@ -31,7 +27,6 @@ final class ManagerHiringTests: XCTestCase {
         return (e, id)
     }
 
-    /// Remove one team member of the first role without paperwork (a leaver who is already gone).
     private func removeOne(_ e: inout GameEngine, _ id: Int) -> String {
         var role = ""
         e.update { s, _, _ in
@@ -43,7 +38,6 @@ final class ManagerHiringTests: XCTestCase {
         return role
     }
 
-    /// Run the staffing plan for a number of weeks.
     private func weeks(_ e: inout GameEngine, _ n: Int) {
         e.update { s, d, _ in for _ in 0..<n { s.week += 1; StaffingPlan.weekly(&s, data: d) } }
     }
@@ -63,8 +57,6 @@ final class ManagerHiringTests: XCTestCase {
         }
     }
 
-    // MARK: Who hires
-
     func testNoHireWithoutAManager() throws {
         var (e, id) = try managed(1, manager: false)
         let role = removeOne(&e, id)
@@ -72,7 +64,6 @@ final class ManagerHiringTests: XCTestCase {
         XCTAssertFalse(e.managerMayHire(companyID: id, role: role, target: target(e, id, role)).allowed)
         weeks(&e, 8)
         XCTAssertEqual(e.state.company(id)!.staff.count, before, "nobody is hired automatically without a manager")
-        // the same company with a manager fills the gap
         var (m, mid) = try managed(1)
         let r = removeOne(&m, mid)
         XCTAssertEqual(m.managerMayHire(companyID: mid, role: r, target: target(m, mid, r)), .replace)
@@ -86,15 +77,13 @@ final class ManagerHiringTests: XCTestCase {
     func testNoOverfillOfAnOfficeAndNoHireWhenTheTeamIsComplete() throws {
         guard let office = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 2).data.catalog.all.first(where: { $0.premisesKind == "office" && $0.family == "svc" && !$0.standardStaff.isEmpty }) else { throw XCTSkip("no office trade") }
         var (e, id) = try managed(2, trade: office.id)
-        // a complete team: no hire
         let role = e.state.company(id)!.staff[0].role
         XCTAssertFalse(e.managerMayHire(companyID: id, role: role, target: target(e, id, role)).allowed)
-        // a vacancy, but every office place is taken (two other people in the room's count): no hire, with the reason
         _ = removeOne(&e, id)
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
             var prem = s.companies[i].value("prem"); prem["kind"] = "office"
-            prem["m2"] = .number(Double(max(Workplaces.smallestOffice, PremisesExtras.heads(s.companies[i])) * 9))   // places == heads
+            prem["m2"] = .number(Double(max(Workplaces.smallestOffice, PremisesExtras.heads(s.companies[i])) * 9))
             s.companies[i].set("prem", prem)
         }
         let r = e.state.company(id)!.staff.isEmpty ? role : e.state.company(id)!.staff[0].role
@@ -114,11 +103,9 @@ final class ManagerHiringTests: XCTestCase {
         let role = first.role, want = target(e, id, role)
         let have = e.state.company(id)!.staff.filter { $0.role == role }.count
         guard have == want else { throw XCTSkip("team incomplete") }
-        // nobody leaving: the team is complete, whatever the load
         setLoad(&e, id, util: 0.4)
         XCTAssertFalse(e.managerMayHire(companyID: id, role: role, target: want).allowed)
         XCTAssertEqual(e.staffingPlan(companyID: id).first { $0.role == role }?.vacancies, 0)
-        // a leaver on notice: the post is a vacancy at once, and the plan says someone is leaving
         e.update { s, _, _ in if let i = s.companyIndex(id), let k = s.companies[i].staff.firstIndex(where: { $0.id == first.id }) { var st = s.companies[i].staff; st[k].noticeWeeks = 8; s.companies[i].staff = st } }
         guard case .early = e.managerMayHire(companyID: id, role: role, target: want) else { return XCTFail("expected an early hire") }
         let row = try XCTUnwrap(e.staffingPlan(companyID: id).first { $0.role == role })
@@ -129,13 +116,10 @@ final class ManagerHiringTests: XCTestCase {
         XCTAssertTrue(e.state.company(id)!.staff.contains { $0.id == first.id }, "the leaver is still on the payroll")
         XCTAssertEqual(e.staffingPlan(companyID: id).first { $0.role == role }?.vacancies, 0)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        // a fixed term that ends within weeks counts as a leaver too
         var (f, fid) = try managed(3)
         f.update { s, _, _ in if let i = s.companyIndex(fid) { var st = s.companies[i].staff; st[0].set("ft", s.week + 3); s.companies[i].staff = st } }
         XCTAssertEqual(f.staffingPlan(companyID: fid).first { $0.role == f.state.company(fid)!.staff[0].role }?.leaving, 1)
     }
-
-    // MARK: The staffing plan
 
     func testAVacancyWaitsCostsAFeeAndShowsHowLongItHasBeenOpen() throws {
         var (e, id) = try managed(6)
@@ -174,9 +158,6 @@ final class ManagerHiringTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    // MARK: Bigger premises
-
-    /// A company whose place is too small: the space limits what it can serve.
     private func cramped(_ seed: Int, trade: String = "cafe") throws -> (GameEngine, Int) {
         var (e, id) = try managed(seed, trade: trade)
         e.update { s, _, _ in
@@ -188,7 +169,7 @@ final class ManagerHiringTests: XCTestCase {
             s.companies[i].awareness = 90
         }
         guard e.state.company(id)!.value("prem")["m2"].double > 0 else { throw XCTSkip("trade has no premises area") }
-        for _ in 0..<(7 * 14) where premisesMessage(e, id) == nil { e.nextDay() }   // stops while the manager's proposal is open
+        for _ in 0..<(7 * 14) where premisesMessage(e, id) == nil { e.nextDay() }
         return (e, id)
     }
 
@@ -203,7 +184,6 @@ final class ManagerHiringTests: XCTestCase {
         XCTAssertGreaterThan(plan.projectedWeeklyProfitUplift, 0)
         XCTAssertGreaterThan(plan.extraCapacityPercent, 0)
         XCTAssertLessThanOrEqual(plan.extraUnitsPerWeek, plan.unmetUnitsPerWeek + 1e-9, "the uplift never exceeds the demand turned away")
-        // the manager asks (the streak is long enough after a few more weeks)
         let fl = e.state.company(id)!.value("flags")
         print("PREM debug streak \(fl["premStreak"].double) ask \(fl["premAsk"].double) no \(fl["premNo"].double) unmet \(String(describing: PremisesProposals.unmetDemand(e.state, companyID: id, data: e.data))) lastW \(e.state.company(id)!.value("lastW"))")
         let m = try XCTUnwrap(premisesMessage(e, id), "the manager proposes the move")
@@ -239,8 +219,6 @@ final class ManagerHiringTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)!.value("prem")["m2"].double, e.state.company(id)!.value("prem")["m2"].double)
     }
 
-    // MARK: Growth paths
-
     func testGrowthPathReadinessPromotionAndSuccession() throws {
         var (e, id) = try managed(5)
         let staff = e.state.company(id)!.staff
@@ -251,7 +229,6 @@ final class ManagerHiringTests: XCTestCase {
         XCTAssertFalse(p0.missing.isEmpty)
         XCTAssertGreaterThan(p0.yearsToReady, 0)
         guard case .notReady = e.promote(companyID: id, employeeID: who) else { return XCTFail("a new hire is not ready") }
-        // years pass, they learn and train
         e.update { s, _, _ in
             guard let i = s.companyIndex(id), let k = s.companies[i].staff.firstIndex(where: { $0.id == who }) else { return }
             var st = s.companies[i].staff
@@ -270,7 +247,6 @@ final class ManagerHiringTests: XCTestCase {
         XCTAssertTrue(m != nil || asst, "still in the company")
         if let m = m { XCTAssertGreaterThan(m.monthlyWage, wage0, "a promotion costs a raise") }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        // succession: name someone, the manager leaves, the successor is installed with a message
         let succ = co.staff.first { $0.id != who }?.id ?? who
         let mgr = try XCTUnwrap(co.managerID)
         XCTAssertFalse(e.setSuccessor(companyID: id, employeeID: 999_999, successorID: succ), "only the manager can have a successor")
@@ -284,8 +260,6 @@ final class ManagerHiringTests: XCTestCase {
         XCTAssertTrue(e.state.inbox.contains { $0.companyID == id && $0.title.contains("takes over") }, "with a transition message")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
-
-    // MARK: Determinism and saves
 
     func testDeterministicAndSaveReloadSafe() throws {
         func run() throws -> GameEngine {
@@ -308,7 +282,6 @@ final class ManagerHiringTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(c.state).isEmpty)
     }
 
-    /// Appointing a manager into a company with 0 or 1 staff warns when its profit would not carry the pay (Nov 3 balance report).
     func testManagerWarningForSmallCompany() throws {
         var (e, id) = try managed(31, trade: "barber", manager: false)
         func setSmall(_ profit: Double) {

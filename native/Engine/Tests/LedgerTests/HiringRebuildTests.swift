@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The hiring rebuild (engine side): workplaces, per-worker promises with patience, job ads, the agency, the role catalog with effects, duties,
-/// the one-page terms read and the worker profile.
 final class HiringRebuildTests: XCTestCase {
     private func company(_ seed: Int, trade: String) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -15,7 +13,6 @@ final class HiringRebuildTests: XCTestCase {
         return (e, id)
     }
 
-    /// A person on the market for a role, added to the state.
     private func candidate(_ e: inout GameEngine, _ id: Int, role: String) -> Person {
         var p = Person(raw: [:])
         e.update { s, d, _ in p = Hiring.generateCandidate(role: role, company: s.company(id), faces: false, state: &s, data: d) }
@@ -35,13 +32,10 @@ final class HiringRebuildTests: XCTestCase {
         return t.id
     }
 
-    // MARK: 1 Workplaces
-
     func testOfficeCapacityIsDerivedFromSizeAndRefusesWhenFull() throws {
         let (e0, _) = try company(1, trade: "cafe")
         let trade = try nextTradeWithOffice(e0)
         var (e, id) = try company(1, trade: trade)
-        // small office: two places at least; the owner counts as one while he works there
         XCTAssertEqual(Workplaces.places(kind: "office", squareMetres: 10), 2)
         XCTAssertEqual(Workplaces.places(kind: "office", squareMetres: 54), 6)
         XCTAssertNil(Workplaces.places(kind: "shop", squareMetres: 500))
@@ -65,24 +59,18 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertNotNil(e.hireBlock(companyID: id))
         XCTAssertTrue(e.hireBlock(companyID: id)!.contains("No free desk"))
         XCTAssertTrue(e.hireBlock(companyID: id)!.contains("Move to bigger premises"))
-        // people who work at customers' sites or remotely need no desk
         XCTAssertNil(e.hireBlock(companyID: id, role: "cleaner"))
         XCTAssertNil(e.hireBlock(companyID: id, role: "dev"))
         XCTAssertNotNil(e.hireBlock(companyID: id, role: "recept"))
-        // the manager's own rule reads the same block: a full office stops a desk role, not a remote one
         let desk = ManagerHiring.verdict(e.state, companyID: id, role: "recept", target: 9, data: e.data)
         if case .no(let why) = desk { XCTAssertFalse(why.isEmpty) }
         if case .no(let why) = ManagerHiring.verdict(e.state, companyID: id, role: "dev", target: 9, data: e.data) { XCTAssertFalse(why.contains("No free desk")) }
-        // a listing reads its places for the screen
         let listing = CompanySetup.Listing(index: 0, name: "x", squareMetres: 45, rentFactor: 1, location: 1, landlord: "y")
         XCTAssertEqual(e.officeCapacity(forListing: listing, companyID: id), 5)
-        // a shop has no limit
         let (shop, sid) = try company(2, trade: "cafe")
         XCTAssertNil(shop.workplaces(companyID: sid)!.capacity)
         XCTAssertNil(shop.workplaces(companyID: sid)!.free)
     }
-
-    // MARK: 2 Promises per worker, reminders, patience
 
     private func promiseSetup(manager: Bool) throws -> (GameEngine, Int, Int, Int) {
         var (e, id) = try company(3, trade: "cafe")
@@ -125,7 +113,6 @@ final class HiringRebuildTests: XCTestCase {
             XCTAssertEqual(fresh.first?.status, "open")
             XCTAssertEqual(fresh.first?.value("data")["prid"].int, prid)
             XCTAssertEqual(fresh.first?.value("data")["pid"].int, pid)
-            // a second run does not nag again for the same date
             e.update { s, d, _ in PromiseReminders.weekly(&s, data: d) }
             XCTAssertEqual(e.state.inbox.filter { $0.actionID == PromiseReminders.action }.count, 1)
             let taken = e.routeFreshDecisions(fresh)
@@ -144,7 +131,6 @@ final class HiringRebuildTests: XCTestCase {
     }
 
     func testKeepItNowFulfilsAndAskToWaitMovesTheDateUntilPatienceRunsOut() throws {
-        // keep
         var (e, id, pid, prid) = try promiseSetup(manager: false)
         e.update { s, d, _ in PromiseReminders.weekly(&s, data: d) }
         let wageBefore = e.state.company(id)!.staff.first { $0.id == pid }!.monthlyWage
@@ -154,7 +140,6 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertEqual(e.promises(of: pid, companyID: id).first { $0.id == prid }?.status, "Fulfilled")
         XCTAssertGreaterThan(e.state.company(id)!.staff.first { $0.id == pid }!.monthlyWage, wageBefore)
 
-        // wait twice
         (e, id, pid, prid) = try promiseSetup(manager: false)
         e.update { s, d, _ in PromiseReminders.weekly(&s, data: d) }
         msg = e.state.inbox.first { $0.actionID == PromiseReminders.action }!
@@ -165,24 +150,19 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertEqual(p.patienceLeft, 1)
         XCTAssertEqual(p.status, "Pending")
         XCTAssertEqual(e.state.company(id)!.staff.first { $0.id == pid }!.int("denied"), 0)
-        // the next reminder comes within two weeks of the new date
         for _ in 0..<(7 * 3) { e.nextDay() }
         let again = e.state.inbox.filter { $0.actionID == PromiseReminders.action && $0.status == "open" }
         XCTAssertEqual(again.count, 1)
         XCTAssertTrue(e.answer(messageID: again[0].id, option: 1))
         p = e.promises(of: pid, companyID: id).first { $0.isOpen }!
         XCTAssertEqual(p.patienceLeft, 0)
-        // patience is gone: the worker carries the mood mark (or has already handed in notice)
         let m = e.state.company(id)?.staff.first { $0.id == pid }
         XCTAssertTrue(m == nil || m!.int("denied") > 0 || m!.noticeWeeks > 0)
-        // asking again is not accepted
         if m != nil {
             let r = e.askToWait(employeeID: pid, promiseID: p.id)
             XCTAssertEqual(r, .letSlide)
         }
     }
-
-    // MARK: 3 Job ads
 
     func testJobAdCostsMoneyAndApplicantsComeOverTime() throws {
         var (e, id) = try company(4, trade: "cafe")
@@ -204,7 +184,6 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
         XCTAssertEqual(e.applicants(companyID: id).count, 0, "nobody at once")
         XCTAssertEqual(e.state.inbox.count, msgs)
-        // the same ad cannot be posted twice
         if case .posted = e.postJobAd(companyID: id, role: "barista") { XCTFail("double post") }
         var seenDay1 = 0
         for day in 1...(7 * 5) {
@@ -247,8 +226,6 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertGreaterThan(big, small * 2)
     }
 
-    // MARK: 4 Agency
-
     func testAgencyCostsMoreGivesSuggestionsNowAndTakesAShareOfPayForTwoYears() throws {
         var (e, id) = try company(6, trade: "cafe")
         let adFee = e.jobAdFee(companyID: id, role: "barista")
@@ -263,7 +240,6 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertEqual(e.applicants(companyID: id).count, Agency.immediate)
         for _ in 0..<(7 * 4) { e.nextDay() }
         XCTAssertEqual(e.applicants(companyID: id).count, Agency.immediate + Agency.laterWeeks, "better fits keep coming")
-        // hire an agency person; the fee is booked at every month end for 24 months
         var hired = 0
         for a in e.applicants(companyID: id) where hired == 0 {
             if e.hire(personID: a.personID, companyID: id, monthlyWage: e.state.people[a.personID]!.askingMonthlyWage * 1.8) == .ok { hired = a.personID }
@@ -281,8 +257,6 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    // MARK: 5 Role effects and duty
-
     func testSecurityGuardLowersTheftLossesAndDutyIsSet() throws {
         let probe = try company(7, trade: "cafe").0
         guard let shrinkTrade = probe.data.catalog.all.first(where: { $0.trait("shrink") != nil && ["retail", "venue"].contains($0.family) && $0.premisesKind != "office" }) else { throw XCTSkip("no shrink trade") }
@@ -296,7 +270,6 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertEqual(RoleEffects.shrinkFactor(e.state.company(id)!), RoleEffects.guardLossFactor)
         XCTAssertEqual(RoleEffects.theftGrowthFactor(e.state.company(id)!), 0.5)
         XCTAssertTrue(e.recommendedRoles(companyID: id).first { $0.id == "guard" }?.filled ?? false)
-        // the same week, with and without the guard: the one with the guard keeps more of the sales
         var without = e
         without.update { s, _, _ in if let i = s.companyIndex(id), let k = s.companies[i].staff.firstIndex(where: { $0.id == pid }) { var st = s.companies[i].staff; st[k].set("duty", .null); s.companies[i].staff = st } }
         var with = e
@@ -304,7 +277,6 @@ final class HiringRebuildTests: XCTestCase {
         let a = with.state.company(id)!.cash, b = without.state.company(id)!.cash
         print("ROLE guard cash with \(a) without \(b)")
         XCTAssertGreaterThan(a, b)
-        // clearing the duty
         XCTAssertTrue(e.setDuty(companyID: id, employeeID: pid, duty: nil))
         XCTAssertNil(e.workerProfile(companyID: id, employeeID: pid)?.duty)
     }
@@ -328,8 +300,6 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertEqual(RoleEffects.developmentWeeks(8, dev), 6)
     }
 
-    // MARK: 6 Terms on one page
-
     func testTermsSummaryGivesTheWholePage() throws {
         var (e, id) = try company(9, trade: "cafe")
         let p = candidate(&e, id, role: "barista")
@@ -346,12 +316,9 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertEqual(t.startWeek, e.state.week)
         XCTAssertEqual(t.counterOptions.map(\.id), ["ask", "market", "middle"])
         XCTAssertTrue(t.counterOptions.allSatisfy { $0.annualEmployerCost > 0 })
-        // reading changes nothing
         XCTAssertEqual(e.termsSummary(companyID: id, candidateID: p.id, terms: terms), t)
         XCTAssertNil(e.termsSummary(companyID: id, candidateID: -5))
     }
-
-    // MARK: 7 Worker profile
 
     func testWorkerProfileFields() throws {
         var (e, id) = try company(11, trade: "cafe")
@@ -374,8 +341,6 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertNil(e.workerProfile(companyID: id, employeeID: -1))
     }
 
-    // MARK: Determinism and save / reload
-
     func testDeterministicAndSaveReloadSafe() throws {
         func play() throws -> GameEngine {
             var (e, id) = try company(12, trade: "cafe")
@@ -388,7 +353,6 @@ final class HiringRebuildTests: XCTestCase {
         }
         let a = try play(), b = try play()
         XCTAssertEqual(a.state, b.state, "same seed and actions give the same game")
-        // save, reload, play on identically
         let data = try JSONEncoder().encode(a.state)
         let loaded = try JSONDecoder().decode(GameState.self, from: data)
         XCTAssertEqual(loaded, a.state)
@@ -399,4 +363,3 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(x.state).isEmpty)
     }
 }
-

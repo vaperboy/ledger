@@ -4,17 +4,6 @@ import Countries
 import Employees
 import Finance
 
-/// Monthly targets and the yearly budget of every trading company that has a sales history.
-///
-/// Each company gets three targets a month: sales, profit and a third (rating, how busy it is, or how well known it is). They follow the
-/// owner's direction (`OwnerMeetings`: grow stretches sales, lean and cash stretch profit, quality stretches the rating) and, for a managed
-/// company with a boss above the manager, that boss's own stretch. Hitting targets lifts a manager's mood and the scorecard
-/// (`Headquarters.review` reads the log); missing most of them lowers it, and after three bad months a boss asks whether to replace the
-/// manager. The budget for the year is drafted from last year, tightened by the boss or approved by the owner. Pay on results is one thing only:
-/// the manager's profit share, agreed in the contract talk.
-///
-/// Saved on the company as `tg58` {m (this month's targets), y (the budget), log, bad, years}. Month numbers are `GameCalendar.monthIndex`
-/// (year * 12 + month).
 public enum ManagerTargets {
     static let noFamily: Set<String> = ["fin", "energy", "rent", "club"]
 
@@ -26,15 +15,12 @@ public enum ManagerTargets {
         public var isOwner: Bool { kind == "you" }
     }
 
-    /// One line of the target card: where a target stands now.
     public struct Standing: Equatable, Sendable {
-        public var key: String        // rev, profit, rating, util, aware
+        public var key: String
         public var target: Double
         public var now: Double
         public var onTrack: Bool
     }
-
-    // MARK: Which companies, and the saved record
 
     public static func eligible(_ co: Company, data: GameData) -> Bool {
         guard co.status == .open, co.type != "hold", let bd = data.catalog[co.type] else { return false }
@@ -47,14 +33,12 @@ public enum ManagerTargets {
     }
     static func put(_ s: inout GameState, _ ci: Int, _ t: JSONValue) { s.companies[ci].set("tg58", t) }
     static func mi(_ s: GameState) -> Int { GameCalendar.monthIndex(week: s.week) }
-    static func month0(_ m: Int) -> Int { (((m - 1) % 12) + 12) % 12 }   // never negative, so a month counter of 0 cannot index out of range
+    static func month0(_ m: Int) -> Int { (((m - 1) % 12) + 12) % 12 }
     static func yearOf(_ m: Int) -> Int { (m - 1) / 12 }
     static func monthName(_ m: Int) -> String { GameCalendar.monthNames[month0(m)] }
 
-    /// This month's targets, if set for this month.
     public static func current(_ co: Company, week: Int) -> JSONValue? {
         let m = record(co)["m"]
-        // Return the optional explicitly: `JSONValue` is ExpressibleByNilLiteral, so a bare `cond ? m : nil` yields `.null`, never nil.
         guard !m.isNull, m["mi"].int == GameCalendar.monthIndex(week: week) else { return Optional<JSONValue>.none }
         return m
     }
@@ -68,8 +52,6 @@ public enum ManagerTargets {
     static func third(_ co: Company) -> String { hasRating(co) ? "rating" : utilNow(co) > 0.05 ? "util" : "aware" }
     static func now3(_ co: Company, _ k: String) -> Double { k == "rating" ? Reviews.rating(co) : k == "util" ? utilNow(co) : co.awareness }
 
-    // MARK: Who sets them
-
     public static func setter(_ s: GameState, _ co: Company, data: GameData) -> Setter {
         if co.managerID != nil, let up = ManagerModel.decisionChain(s, co, data: data).first(where: { $0.kind != "mgr" }), let n = s.people[up.personID] {
             let sales = n.value("stats")["sales"].double
@@ -79,7 +61,6 @@ public enum ManagerTargets {
         return Setter(kind: "you", name: "You", title: "Owner", quality: 1)
     }
 
-    /// What the owner's direction adds to the stretch of each target: sales, profit, and a step on the third target.
     static func tilt(_ co: Company) -> (rev: Double, profit: Double, third: Double) {
         switch OwnerMeetings.directive(co) ?? "" {
         case "growth": return (0.06, -0.01, 0)
@@ -90,16 +71,13 @@ public enum ManagerTargets {
         }
     }
 
-    // MARK: The budget
-
     struct LastYear { var rev: Double; var profit: Double; var h: [MonthRecord] }
     static func lastYear(_ co: Company) -> LastYear? {
-        let h = Array(co.monthlyHistory.suffix(12).filter { $0.revenue > 0 })   // months with sales: not the setup months
+        let h = Array(co.monthlyHistory.suffix(12).filter { $0.revenue > 0 })
         if h.count < 2 { return nil }
         let f = 12 / Double(h.count)
         return LastYear(rev: h.reduce(0) { $0 + $1.revenue } * f, profit: h.reduce(0) { $0 + $1.profit } * f, h: h)
     }
-    /// Each calendar month's share of a year, from last year's months when there are twelve, else even.
     static func shares(_ co: Company) -> [Double] {
         let even = [Double](repeating: 1.0 / 12, count: 12)
         guard let ly = lastYear(co), ly.h.count >= 12 else { return even }
@@ -110,7 +88,6 @@ public enum ManagerTargets {
         return sh.map { $0 * 0.7 + 0.3 / 12 }
     }
     struct Recent { var rev: Double; var profit: Double; var ann: Double; var margin: Double }
-    /// The last three months and the year they point to, the latest month counting most.
     static func recent(_ co: Company) -> Recent {
         let h = Array(co.monthlyHistory.filter { $0.revenue > 0 }.suffix(3)), sh = shares(co)
         let weights: [[Double]] = [[1], [0.4, 0.6], [0.2, 0.3, 0.5]]
@@ -135,7 +112,6 @@ public enum ManagerTargets {
         return (cur.roundedStep(rev, about: 1000), cur.roundedStep(rev * min(0.35, margin + 0.01), about: 1000), sh)
     }
 
-    /// The budget a company works to this year: {yr, m0, rev, profit, by, ok (approved), sh, d0}.
     @discardableResult
     static func makeBudget(_ s: inout GameState, _ ci: Int, year yr: Int, data: GameData) -> JSONValue? {
         let co = s.companies[ci], monthEnd = GameCalendar.isMonthEnd(week: s.week)
@@ -143,7 +119,6 @@ public enum ManagerTargets {
         guard let d = draft(s, co, from: m0, data: data) else { return nil }
         let se = setter(s, co, data: data), cur = World(state: s, data: data).currency(co), managed = co.managerID != nil
         var rev = d.rev, profit = d.profit, by = managed ? se.kind : "acc", ok = 1
-        // A boss above the manager tightens the draft; you approve it yourself.
         if managed && !se.isOwner { let x = 0.02 + 0.05 * se.quality; rev = cur.roundedStep(d.rev * (1 + x), about: 1000); profit = cur.roundedStep(d.profit + abs(d.profit) * x * 1.5, about: 1000) }
         if managed && se.isOwner { if monthEnd && GameCalendar.isYearEnd(week: s.week) { ok = 0 } else { by = "draft" } }
         let y: JSONValue = .object(["yr": .number(Double(yr)), "m0": .number(Double(m0)), "rev": .number(rev), "profit": .number(profit), "sh": .array(d.sh.map { .number($0) }),
@@ -152,7 +127,6 @@ public enum ManagerTargets {
         return y
     }
 
-    /// What the year has brought so far against the budget: (sales, profit).
     public static func yearToDate(_ co: Company, week: Int) -> (rev: Double, profit: Double)? {
         let y = record(co)["y"]
         if y.isNull { return nil }
@@ -163,9 +137,6 @@ public enum ManagerTargets {
                 h.reduce(0) { $0 + $1.profit } + (inCurrent ? Books.profit(bm) : 0))
     }
 
-    // MARK: This month's targets
-
-    /// What the targets would be for month `m` (nothing saved).
     static func compute(_ s: GameState, _ co: Company, month m: Int, data: GameData) -> JSONValue? {
         guard let _ = lastYear(co) else { return nil }
         let t = record(co), y = t["y"], se = setter(s, co, data: data), cur = World(state: s, data: data).currency(co)
@@ -178,7 +149,6 @@ public enum ManagerTargets {
             bRev = y["rev"].double * f; bProfit = y["profit"].double * f
         }
         let rev = (bRev + run * 1.02) / 2, profit = (bProfit + runP + abs(runP) * 0.03) / 2
-        // The boss's own stretch: a skilled one aims close to what is possible, a weaker one guesses. The owner's direction comes on top.
         var x = 0.0
         if !se.isOwner { x = 0.01 + 0.03 * se.quality + (HashedRandom.first("\(s.seed):tg58:\(co.id):\(m)") - 0.5) * 0.16 * (1 - se.quality) }
         let tl = tilt(co)
@@ -199,7 +169,6 @@ public enum ManagerTargets {
         return true
     }
 
-    /// Weeks into the month, of the weeks it has.
     static func monthPart(week: Int) -> (done: Int, of: Int) {
         let m = GameCalendar.monthIndex(week: week)
         var a = week, b = week
@@ -208,7 +177,6 @@ public enum ManagerTargets {
         return (week - a, b - a + 1)
     }
 
-    /// Where each target stands now.
     public static func standing(_ co: Company, week: Int) -> [Standing] {
         guard let m = current(co, week: week) else { return [] }
         let bm = co.books.month, mp = monthPart(week: week), part = max(0.25, Double(mp.done) / Double(mp.of)), k3 = m["k3"].string
@@ -220,9 +188,6 @@ public enum ManagerTargets {
         }
     }
 
-    // MARK: Month end
-
-    /// The month against the targets: mood and the log. Returns the log entry.
     static func judge(_ s: inout GameState, _ ci: Int, data: GameData) -> JSONValue? {
         let co = s.companies[ci]
         guard let m = current(co, week: s.week), let h = co.monthlyHistory.last, h.monthIndex == m["mi"].int else { return nil }
@@ -242,8 +207,6 @@ public enum ManagerTargets {
         return r
     }
 
-    /// After missed targets the boss has a word with the manager (the owner's own word is a small knock to mood). Three bad months in a row with
-    /// a boss above: they ask whether to keep the manager. Returns a line for the summary.
     static func talk(_ s: inout GameState, _ ci: Int, _ r: JSONValue, data: GameData) -> String {
         let co = s.companies[ci]
         guard let mid = co.managerID, let mg = s.people[mid] else { return "" }
@@ -259,7 +222,6 @@ public enum ManagerTargets {
         return se.isOwner ? "" : "\(se.name) had a talk with \(mg.name)"
     }
 
-    /// The year against the budget.
     static func yearEnd(_ s: inout GameState, _ ci: Int) -> (name: String, rev: Double, profit: Double, budget: (Double, Double), okR: Bool, okP: Bool, yr: Int)? {
         let co = s.companies[ci], y = record(co)["y"]
         guard !y.isNull, y["yr"].int == GameCalendar.year(week: s.week), let a = yearToDate(co, week: s.week) else { return nil }
@@ -273,8 +235,6 @@ public enum ManagerTargets {
         return (co.name, a.rev, a.profit, (y["rev"].double, y["profit"].double), okR, okP, y["yr"].int)
     }
 
-    /// The step after each week: at the month end the results, talks, next year's budget and next month's targets; otherwise a company that
-    /// has just got a history gets its first targets straight away. Call it after `MonthEnd.closeMonth`.
     public static func weekly(_ s: inout GameState, data: GameData) {
         let live = s.companies.indices.filter { eligible(s.companies[$0], data: data) }
         if live.isEmpty { return }
@@ -300,11 +260,10 @@ public enum ManagerTargets {
             for ci in live {
                 let y = yearEnd(&s, ci)
                 if let y { years.append(y) }
-                WorkerBonus.yearEnd(&s, ci, budgetMet: y.map { $0.okR && $0.okP } ?? false)   // the staff's year-end bonus plans, on the same budget
+                WorkerBonus.yearEnd(&s, ci, budgetMet: y.map { $0.okR && $0.okP } ?? false)
             }
         }
         for ci in live { WorkerBonus.monthEnd(&s, ci, hits: hitsByCompany[s.companies[ci].id]) }
-        // Next month: a budget for the coming year where there is none, then the targets.
         let nm = mi(s) + 1, yr = yearOf(nm)
         for ci in live {
             let t = record(s.companies[ci])
@@ -323,7 +282,6 @@ public enum ManagerTargets {
         }
         if let first = years.first {
             let body = years.map { "\($0.name): sales \(cur.display($0.rev)) of \(cur.display($0.budget.0)), profit \(cur.display($0.profit)) of \(cur.display($0.budget.1))" }.joined(separator: " · ") + "."
-            // Shown as handled by the first company's finance desk; with nobody there it is the owner's own notice.
             var desk: Desk?
             for ci in live where desk == nil { desk = Delegation.desk("finance", in: s.companies[ci], state: s, data: data) }
             s.addMessage(kind: "info", from: "Your accountant", title: "The year \(first.yr) against the budgets", body: body, tone: years.allSatisfy { $0.okR && $0.okP } ? "good" : "n", status: "done", sev: 1, aud: desk == nil ? "owner" : "finance", handledBy: desk?.label)
@@ -336,14 +294,9 @@ public enum ManagerTargets {
         }
     }
 
-    // MARK: Answers
-
-    /// "Find a successor", asked when a manager gives notice (`ManagerModel.resign`) or after three bad months.
     public static let successorAction = "mgrsucc"
-    /// "tg58talk" is the answer to a question older saves may still hold; it needs no action now.
     public static func handlesAnswer(_ action: String) -> Bool { action == "tg58talk" || action == "tg58bad" || action == "tg58bud" || action == successorAction }
 
-    /// The player's answer to a successor question or to the budgets.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData) {
         let d = m.value("data")
         switch m.actionID {
@@ -361,14 +314,10 @@ public enum ManagerTargets {
         }
     }
 
-    // MARK: Chasing the targets
-
-    /// A few per cent more customers while the manager chases the month's targets, more with a profit share to gain.
     public static func demandFactor(_ co: Company, week: Int) -> Double {
         guard co.managerID != nil, current(co, week: week) != nil else { return 1 }
         return 1 + (co.managerProfitBonus > 0 ? 0.012 + co.managerProfitBonus * 0.12 : 0.005)
     }
-    /// More care for quality while the rating is a target the company has not reached.
     public static func qualityCare(_ co: Company, week: Int) -> Double {
         guard co.managerID != nil, let m = current(co, week: week), m["k3"].string == "rating", m["T"]["rating"].double > m["from3"].double else { return 0 }
         return co.managerProfitBonus > 0 ? 3 : 2

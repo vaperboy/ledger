@@ -6,7 +6,6 @@ import Finance
 @testable import Events
 import Simulation
 
-/// Deals between players: franchising to players for a chosen time, selling a company to players, and buying another player's company.
 final class PlayerDealsTests: XCTestCase {
     private func franchisor() throws -> (GameEngine, Int) {
         var e = try ChainsTests.engine("UK", seed: 4242)
@@ -34,8 +33,6 @@ final class PlayerDealsTests: XCTestCase {
         x.askPrice = (PlayerDeals.value(l) * 1.2 / 1000).rounded(.up) * 1000
         return x
     }
-
-    // MARK: Franchising to players
 
     func testOpeningTheFranchiseToPlayersForAChosenTime() throws {
         var (e, id) = try franchisor()
@@ -95,8 +92,6 @@ final class PlayerDealsTests: XCTestCase {
         XCTAssertNil(e.importPlayerFranchise(late), "an ended offer cannot be taken up")
     }
 
-    // MARK: Selling a company to players
-
     func testShowingACompanyToPlayersForAChosenTime() throws {
         var (e, id) = try franchisor()
         XCTAssertNil(e.playerSaleUntil(companyID: id))
@@ -107,7 +102,6 @@ final class PlayerDealsTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(ask, 0)
         let l = e.companyListing(companyID: id, ownerID: "me", ownerName: "Me", profileCode: "P1", linkKey: "me", askPrice: max(1000, ask))
         XCTAssertEqual(l?.companyName, "Corner Cafe")
-        // An offer arrives, once per player, and lands beside the others.
         XCTAssertTrue(e.addPlayerSaleOffer(companyID: id, buyer: CompanySale.PlayerBuyer(name: "Bea", profileCode: "PB"), price: 123_456))
         XCTAssertFalse(e.addPlayerSaleOffer(companyID: id, buyer: CompanySale.PlayerBuyer(name: "Bea", profileCode: "PB"), price: 200_000))
         XCTAssertTrue(e.state.inbox.contains { $0.companyID == id && $0.title.hasPrefix("Offer for") })
@@ -125,8 +119,6 @@ final class PlayerDealsTests: XCTestCase {
         XCTAssertFalse(e.addPlayerSaleOffer(companyID: id, buyer: CompanySale.PlayerBuyer(name: "", profileCode: "PB"), price: 100_000))
     }
 
-    // MARK: The seller's answer
-
     func testTheSellerAcceptsCountersOrRefuses() throws {
         let e = try ChainsTests.engine("UK", seed: 1)
         let l = asked(forSale(e))
@@ -143,8 +135,6 @@ final class PlayerDealsTests: XCTestCase {
         XCTAssertEqual(PlayerDeals.reply(to: c, on: l, round: 1), .accept, "the counter itself is always accepted")
         XCTAssertEqual(PlayerDeals.reply(to: v * 0.9, on: l, round: 3), .refuse, "no bargaining after three offers")
     }
-
-    // MARK: Buying
 
     func testBuyingACompanyOpensItAndPaysTheSeller() throws {
         var e = try ChainsTests.engine("UK", seed: 7)

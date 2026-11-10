@@ -3,32 +3,13 @@ import GameCore
 import Countries
 import Finance
 
-/// Stakes a holding company holds in other companies, bought or sold in whole or in part.
-///
-/// Tiers (share of the company the holding owns, own and rival companies alike):
-///  - under 20%: passive investment. Dividends only, no board seat, nothing consolidated.
-///  - 20% to 50%: significant influence. The holding may take a board seat; its share of profit is shown as an associate, not consolidated.
-///  - over 50%: control. Consolidated (revenue, cash and debt in the group view), the holding votes at the board with a seat of right and the
-///    owner can run the company and replace its manager.
-///  - 90% or more: squeeze-out right (the rest may be bought at fair value and the company merged into the holding) and the tax group.
-///  - 100%: wholly owned.
-/// Price = valuation x percent, x 1.25 (control premium) when the shares bought take the holding over 50%, x 0.85 (minority discount) when it
-/// stays under 20%; shares bought from the owner personally always change hands at fair value. Selling to the market fetches 0.80 / 0.90 / 1.00
-/// of fair value for a passive / influence / control stake, so buying and selling back never earns money.
-///
-/// State: a stake in one of your companies is a `holders[]` entry on its cap table (real shares) with `hid` = the holding's id and `seat` = whether
-/// the holding sits on the board. Shares the owner put under the holding with `HoldingModel.move` stay `Company.ownership` + `holdingID`; the
-/// holding's share is both together (`sharePercent`). A stake in a rival is a record in the holding's `fm.rs` = [{ k: market key, id, name, pct,
-/// paid, val }]; its value follows the rival and it pays a yearly yield on that value.
 public enum HoldingStakes {
     public static let passiveBelow = 20.0
     public static let controlAbove = 50.0
     public static let squeezeOutFrom = 90.0
     public static let controlPremium = 1.25
     public static let minorityDiscount = 0.85
-    /// Yearly dividend a rival stake pays, as a share of its value.
     public static let rivalYield = 0.04
-    /// Smallest step that can be bought or sold, in percent.
     public static let minimumPercent = 0.5
 
     public enum Tier: String, Equatable, Sendable {
@@ -72,7 +53,6 @@ public enum HoldingStakes {
         case notEnoughCash(needed: Double)
         case refused(String)
 
-        /// One plain sentence for the screen.
         public var reason: String {
             switch self {
             case .notAHolding: return "That is not an open holding company."
@@ -86,17 +66,12 @@ public enum HoldingStakes {
     public enum Source: String, Equatable, Sendable { case auto, owner, others }
     public enum Buyer: String, Equatable, Sendable { case market, owner }
 
-    // MARK: Reading stakes
-
-    /// The holding's own cap table entry in a company, if it has one.
     static func line(_ c: Company, _ hid: Int) -> JSONValue? {
         c.value("holders").array.first { $0["hid"].int == hid && $0["sh"].int > 0 }
     }
-    /// Share of a company (in percent) that sits in a holding: shares bought as a stake plus the owner's shares put under it.
     public static func sharePercent(of c: Company, holdingID hid: Int) -> Double {
         (c.holdingID == hid ? c.ownership : 0) + (line(c, hid)?["pct"].double ?? 0)
     }
-    /// Shares of a company held by any holding through a stake (not counting the owner's own shares moved under one).
     public static func heldByHoldings(_ c: Company) -> Double {
         c.value("holders").array.filter { $0["hid"].int != 0 }.reduce(0) { $0 + $1["pct"].double }
     }
@@ -104,11 +79,9 @@ public enum HoldingStakes {
         guard let l = line(c, hid) else { return false }
         return l["seat"].bool || l["pct"].double > controlAbove
     }
-    /// What the owner's side votes with in a company: own shares plus every stake of a holding that sits on the board (a controlling one always does).
     public static func votingPercent(_ c: Company) -> Double {
         c.ownership + c.value("holders").array.filter { $0["hid"].int != 0 && ($0["seat"].bool || $0["pct"].double > controlAbove) }.reduce(0) { $0 + $1["pct"].double }
     }
-    /// The holding that owns at least 90% of a company through a stake, for the tax group.
     static func controllingHolding(of c: Company, in s: GameState) -> Company? {
         guard let l = c.value("holders").array.first(where: { $0["hid"].int != 0 && $0["pct"].double >= squeezeOutFrom }) else { return nil }
         return s.company(l["hid"].int)
@@ -119,12 +92,9 @@ public enum HoldingStakes {
         return tier(forPercent: sharePercent(of: c, holdingID: holdingID))
     }
 
-    /// Live companies the holding owns shares of, whatever the size of the stake.
     public static func stakeCompanies(of holdingID: Int, in s: GameState) -> [Company] {
         s.companies.filter { $0.status.isLive && $0.type != "hold" && sharePercent(of: $0, holdingID: holdingID) > 0 }
     }
-
-    // MARK: Rival stakes
 
     public struct RivalStake: Identifiable, Equatable, Sendable {
         public var id: Int
@@ -142,24 +112,20 @@ public enum HoldingStakes {
             RivalStake(id: $0["id"].int, key: $0["k"].string, name: $0["name"].string, percent: $0["pct"].double, paid: $0["paid"].double, value: $0["val"].double)
         }
     }
-    /// What the holding's rival stakes are worth, from the values kept at the last revaluation.
     public static func rivalStakesValue(_ h: Company) -> Double { rivalStakes(h).reduce(0) { $0 + $1.share } }
 
-    /// The market key and rival record for a rival id (ids are unique across markets).
     static func findRival(_ s: GameState, id: Int) -> (key: String, rival: Rivals.Rival)? {
         for key in (s.rest["mk"]?.object ?? [:]).keys.sorted() {
             if let r = Rivals.rivals(s, key: key).first(where: { $0.id == id }) { return (key, r) }
         }
         return nil
     }
-    /// What a rival business is worth, worked from one of your own companies in the same market. Nil when there is none or the rival is gone.
     static func rivalValue(_ s: GameState, key: String, id: Int, data: GameData) -> Double? {
         guard let ref = s.companies.first(where: { $0.status.isLive && Rivals.key($0) == key }), let bd = data.catalog[ref.type],
               let r = Rivals.rivals(s, key: key).first(where: { $0.id == id }) else { return nil }
         return Rivals.value(bd, r, World(state: s, data: data), ref)
     }
 
-    /// Bring the stored value of each rival stake up to date; a rival that has closed takes the stake with it. Returns the total worth of the stakes.
     @discardableResult
     static func revalueRivals(_ s: inout GameState, holdingID: Int, data: GameData) -> Double {
         guard let i = s.companyIndex(holdingID) else { return 0 }
@@ -173,7 +139,7 @@ public enum HoldingStakes {
             if let v = rivalValue(s, key: key, id: id, data: data) {
                 rec["val"] = .number(v); out.append(rec)
             } else if !s.companies.contains(where: { $0.status.isLive && Rivals.key($0) == key }) {
-                out.append(rec)   // no company of yours in that market any more: keep the last value
+                out.append(rec)
             } else {
                 lost.append(rec["name"].string)
             }
@@ -185,7 +151,6 @@ public enum HoldingStakes {
         return rivalStakesValue(s.companies[i])
     }
 
-    /// Rival stakes pay their yield into the holding's cash once a month (four weeks at a time).
     static func weekly(_ s: inout GameState) {
         guard s.week % 4 == 0 else { return }
         for h in s.companies where h.type == "hold" && h.status == .open {
@@ -195,33 +160,24 @@ public enum HoldingStakes {
         }
     }
 
-    // MARK: Prices
-
-    /// Factor on the fair price for shares bought from outside owners that leave the holding with `after` percent.
     public static func buyFactor(afterPercent after: Double) -> Double {
         after > controlAbove ? controlPremium : after >= passiveBelow ? 1 : minorityDiscount
     }
-    /// Factor on the fair price when the holding sells to the market, by the size of the stake before the sale.
     public static func sellFactor(beforePercent before: Double) -> Double {
         before > controlAbove ? 1 : before >= passiveBelow ? 0.9 : 0.8
     }
-
-    // MARK: Offers and quotes
 
     public struct Offer: Identifiable, Equatable, Sendable {
         public var id: String
         public var companyID: Int?
         public var rivalID: Int?
-        /// One of your companies in the same market, the base for a rival's value (nil for your own companies).
         public var referenceCompanyID: Int?
         public var name: String
         public var trade: String
         public var isOwn: Bool
-        /// What the whole business is worth.
         public var value: Double
         public var heldPercent: Double
         public var availablePercent: Double
-        /// Asking price for one percent, at the discount a small stake gets and at the premium a controlling one costs.
         public var pricePerPercentMinority: Double
         public var pricePerPercentControl: Double
         public var note: String
@@ -236,7 +192,6 @@ public enum HoldingStakes {
         public var priceFactor: Double
         public var heldAfter: Double
         public var tierAfter: Tier
-        /// For a sale: how much of `percent` comes from shares the holding bought and how much from shares you moved under it.
         public var boughtPercent: Double = 0
         public var movedPercent: Double = 0
     }
@@ -246,7 +201,6 @@ public enum HoldingStakes {
         public var amount: Double
         public var heldAfter: Double
         public var tierAfter: Tier
-        /// For a sale: the split of `percent` between bought and moved shares (see `Quote`).
         public var boughtPercent: Double = 0
         public var movedPercent: Double = 0
     }
@@ -261,7 +215,6 @@ public enum HoldingStakes {
     static func percentOf(shares n: Int, total: Int) -> Double { Double(n) / Double(max(1, total)) * 100 }
     static func sharesFor(percent: Double, total: Int) -> Int { Int(saturating: (Double(total) * percent / 100).rounded()) }
 
-    /// Percent the owner could sell personally, and percent outside owners could sell, in a company.
     static func available(_ c: Company) -> (owner: Double, others: Double) {
         let t = CapTable.table(c)
         let owner = c.holdingID == 0 ? percentOf(shares: max(0, t.you - 1), total: t.total) : 0
@@ -269,7 +222,6 @@ public enum HoldingStakes {
         return (owner, others)
     }
 
-    /// Candidates: your own companies that have shares to buy and rivals that could sell a stake, with their asking prices.
     public static func offers(_ s: GameState, holdingID: Int, data: GameData) -> [Offer] {
         guard openHolding(s, holdingID) != nil else { return [] }
         var out: [Offer] = []
@@ -301,7 +253,6 @@ public enum HoldingStakes {
         return out.sorted { $0.name < $1.name }
     }
 
-    /// What buying `percent` of one of your companies would cost and leave. Refuses with the reason.
     public static func quote(_ s: GameState, holdingID: Int, companyID: Int, percent: Double, from source: Source = .auto, data: GameData) -> Result<Quote, Failure> {
         guard let h = openHolding(s, holdingID) else { return .failure(.notAHolding) }
         guard let c = s.company(companyID), eligibleCompany(c, holdingID: h.id, in: s) else { return .failure(.notFound) }
@@ -325,7 +276,6 @@ public enum HoldingStakes {
         return .success(Quote(percent: pOwner + pOthers, value: v, price: price, fromOwnerPercent: pOwner, fromOthersPercent: pOthers, priceFactor: factor, heldAfter: after, tierAfter: tier(forPercent: after)))
     }
 
-    /// The same for a rival; `referenceCompanyID` is one of your companies in its market.
     public static func rivalQuote(_ s: GameState, holdingID: Int, rivalID: Int, percent: Double, data: GameData) -> Result<Quote, Failure> {
         guard let h = openHolding(s, holdingID) else { return .failure(.notAHolding) }
         guard let found = findRival(s, id: rivalID), let v = rivalValue(s, key: found.key, id: rivalID, data: data), v > 0 else { return .failure(.notFound) }
@@ -341,9 +291,6 @@ public enum HoldingStakes {
         return .success(Quote(percent: percent, value: v, price: jsRound(v * percent / 100 * factor), fromOwnerPercent: 0, fromOthersPercent: percent, priceFactor: factor, heldAfter: after, tierAfter: tier(forPercent: after)))
     }
 
-    // MARK: Buying
-
-    /// Move shares to the holding's line on the cap table: `nOwner` from the owner's own shares, `nOthers` pro rata from the outside owners.
     static func moveShares(_ s: inout GameState, _ ci: Int, to h: Company, fromOwner nOwner: Int, fromOthers nOthers: Int, paid: Double) {
         CapTable.normalise(&s, ci)
         let t = CapTable.read(s.companies[ci])
@@ -356,7 +303,6 @@ public enum HoldingStakes {
                 let take = min(list[k]["sh"].int, Int(saturating: (Double(list[k]["sh"].int) * Double(nOthers) / Double(poolShares)).rounded()))
                 list[k]["sh"] = .number(Double(list[k]["sh"].int - take)); taken += take
             }
-            // rounding leaves a few shares over or short: settle them on the largest outside owner
             var gap = nOthers - taken
             for k in pool.sorted(by: { list[$0]["sh"].int > list[$1]["sh"].int }) where gap != 0 {
                 let adj = gap > 0 ? -min(gap, list[k]["sh"].int) : min(-gap, taken)
@@ -373,7 +319,6 @@ public enum HoldingStakes {
         CapTable.sync(&s.companies[ci], total: t.total, me: t.you - nOwner, holders: list)
     }
 
-    /// The holding buys `percent` of one of your companies: the owner's own shares first (fair value, paid to you), then outside owners'.
     public static func buy(_ s: inout GameState, holdingID: Int, companyID: Int, percent: Double, from source: Source = .auto, data: GameData) -> Result<Deal, Failure> {
         switch quote(s, holdingID: holdingID, companyID: companyID, percent: percent, from: source, data: data) {
         case .failure(let f): return .failure(f)
@@ -398,7 +343,6 @@ public enum HoldingStakes {
         }
     }
 
-    /// The holding buys `percent` of a rival business.
     public static func buyRival(_ s: inout GameState, holdingID: Int, rivalID: Int, percent: Double, data: GameData) -> Result<Deal, Failure> {
         switch rivalQuote(s, holdingID: holdingID, rivalID: rivalID, percent: percent, data: data) {
         case .failure(let f): return .failure(f)
@@ -423,41 +367,29 @@ public enum HoldingStakes {
         }
     }
 
-    // MARK: Borrowing to buy
-
-    /// Margin the lender adds for a holding on top of the business-loan margin (a holding has no trade of its own to lend against).
     public static let holdingLoanMargin = 0.005
-    /// Debt the holding may carry after the purchase, as a share of what it then owns (cash, funds and stakes).
     public static let maxDebtShare = 0.5
 
-    /// What a loan for the part of a purchase the holding cannot pay from its own cash would cost. `amount` is 0 when no loan is needed;
-    /// `reason` is empty when the loan can be had.
     public struct BorrowTerms: Equatable, Sendable {
         public var price: Double
         public var holdingCash: Double
-        /// What the holding is short of the price.
         public var shortfall: Double
-        /// The loan, sized to the shortfall.
         public var amount: Double
-        /// The most the lender will lend the holding now.
         public var maximum: Double
         public var yearlyRate: Double
         public var margin: Double
         public var termMonths: Int
         public var monthlyPayment: Double
         public var totalInterest: Double
-        /// The player's own bank (company id) when it funds the loan, else 0 for an outside bank.
         public var lenderCompanyID: Int
         public var lender: String
         public var creditBand: String
-        /// The holding's debt before and after the loan, in the group figures.
         public var debtBefore: Double
         public var debtAfter: Double
         public var reason: String
         public var allowed: Bool { reason.isEmpty }
     }
 
-    /// A purchase made with a holding loan: the deal and the loan that paid for the shortfall (`loanID` 0 and `borrowed` 0 when cash was enough).
     public struct LoanDeal: Equatable, Sendable {
         public var deal: Deal
         public var loanID: Int
@@ -466,15 +398,12 @@ public enum HoldingStakes {
         public var yearlyRate: Double
     }
 
-    /// The loan for buying something that costs `price`: rate = policy rate + credit margin + business margin + holding margin, capped so that
-    /// debt stays within `maxDebtShare` of what the holding owns once the shares are bought.
     static func loanTerms(_ s: GameState, holdingID: Int, price: Double, termMonths: Int, context: FinanceContext) -> BorrowTerms {
         guard let h = openHolding(s, holdingID) else {
             return BorrowTerms(price: price, holdingCash: 0, shortfall: 0, amount: 0, maximum: 0, yearlyRate: 0, margin: 0, termMonths: termMonths, monthlyPayment: 0, totalInterest: 0,
                                lenderCompanyID: 0, lender: "", creditBand: "", debtBefore: 0, debtAfter: 0, reason: Failure.notAHolding.reason)
         }
         let cash = max(0, h.cash)
-        // Round up from the exact gap: rounding to nearest can leave the account a fraction short of the price.
         let amount = max(0, (price - h.cash).rounded(.up))
         let shortfall = amount
         let months = max(6, min(120, termMonths))
@@ -486,7 +415,6 @@ public enum HoldingStakes {
         let margin = Banking.creditMargin(s.credit) + 0.01 + holdingLoanMargin + context.lending.marginAdjustment("biz", h, s)
         let rate = s.economy.policyRate + Banking.countryRateShift(companyID: h.id, state: s, context: context) + margin
         let monthly = amount > 0 ? Loans.annuity(principal: amount, yearlyRate: rate, months: Double(months)) : 0
-        // The player's own bank funds it when it has the room (a quarter of its capital) and the cash; else an outside bank does.
         var lenderID = 0, lender = "Bank"
         if amount > 0, let b = s.companies.first(where: { b in
             guard b.type == "bank" && b.status == .open else { return false }
@@ -503,7 +431,6 @@ public enum HoldingStakes {
                            debtBefore: debt, debtAfter: debt + amount, reason: reason)
     }
 
-    /// The loan the holding would need to buy `percent` of one of your companies, with its rate and instalment. Nothing is changed.
     public static func borrowTerms(_ s: GameState, holdingID: Int, companyID: Int, percent: Double, from source: Source = .auto, termMonths: Int = 60,
                                    data: GameData, context: FinanceContext) -> Result<BorrowTerms, Failure> {
         switch quote(s, holdingID: holdingID, companyID: companyID, percent: percent, from: source, data: data) {
@@ -512,8 +439,6 @@ public enum HoldingStakes {
         }
     }
 
-    /// Pay out the loan into the holding's account as a business loan of the holding: it shows in the holding's debt and is collected with the
-    /// monthly instalments like any other loan.
     static func drawLoan(_ s: inout GameState, holdingID: Int, terms t: BorrowTerms) -> Int {
         var loan = Loan(raw: [:])
         loan.id = s.makeID()
@@ -539,7 +464,6 @@ public enum HoldingStakes {
         return loan.id
     }
 
-    /// Buy shares, borrowing the shortfall when the holding's cash is not enough. All or nothing: a refusal leaves the state as it was.
     public static func buyWithLoan(_ s: inout GameState, holdingID: Int, companyID: Int, percent: Double, from source: Source = .auto, termMonths: Int = 60,
                                    data: GameData, context: FinanceContext) -> Result<LoanDeal, Failure> {
         let terms: BorrowTerms
@@ -559,10 +483,6 @@ public enum HoldingStakes {
         }
     }
 
-    // MARK: Selling
-
-    /// How a sale of `percent` splits into shares the holding bought (a line on the cap table, sold first) and shares you moved under it
-    /// (your own shares, `Company.holdingID`; you keep one share). Counts of shares, capped at what the holding has.
     static func sellSplit(_ c: Company, holdingID: Int, percent: Double) -> (bought: Int, moved: Int, total: Int) {
         let t = CapTable.table(c)
         let haveBought = line(c, holdingID)?["sh"].int ?? 0
@@ -573,8 +493,6 @@ public enum HoldingStakes {
         return (bought, moved, t.total)
     }
 
-    /// What selling `percent` of a stake would bring, and to whom: the market (discounted by the size of the stake) or you (fair value, your money).
-    /// Shares the holding bought go first, then shares you moved under it; `boughtPercent` and `movedPercent` give the split.
     public static func sellQuote(_ s: GameState, holdingID: Int, companyID: Int, percent: Double, to buyer: Buyer = .market, data: GameData) -> Result<Quote, Failure> {
         guard openHolding(s, holdingID) != nil else { return .failure(.notAHolding) }
         guard let c = s.company(companyID), sharePercent(of: c, holdingID: holdingID) > 0 else { return .failure(.refused("The holding owns no shares of that company.")) }
@@ -656,10 +574,6 @@ public enum HoldingStakes {
         return .success(Deal(percent: percent, amount: amount, heldAfter: left, tierAfter: tier(forPercent: left)))
     }
 
-    // MARK: Moving your own shares under the holding
-
-    /// Put `percent` of one of your companies (of the whole company, taken from your own shares) under the holding at no price, as a contribution.
-    /// 100 moves everything, as `HoldingModel.move` does; less leaves you the rest personally.
     public static func moveShare(_ s: inout GameState, companyID: Int, into holdingID: Int, percent: Double, data: GameData) -> Result<Double, Failure> {
         guard let h = openHolding(s, holdingID) else { return .failure(.notAHolding) }
         guard let ci = s.companyIndex(companyID), eligibleCompany(s.companies[ci], holdingID: holdingID, in: s) else { return .failure(.notFound) }
@@ -678,7 +592,6 @@ public enum HoldingStakes {
         return .success(sharePercent(of: s.companies[ci], holdingID: holdingID))
     }
 
-    /// Take the holding's bought shares of one company back to you at no price (the opposite of `moveShare`).
     public static func releaseStake(_ s: inout GameState, companyID: Int, from holdingID: Int, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID), line(s.companies[ci], holdingID) != nil else { return false }
         CapTable.normalise(&s, ci)
@@ -691,21 +604,15 @@ public enum HoldingStakes {
         return true
     }
 
-    // MARK: Merging into the holding
-
     public struct MergeTerms: Equatable, Sendable {
         public var allowed: Bool
-        /// Why not (empty when allowed).
         public var reason: String
         public var heldPercent: Double
-        /// What the rest of the shares cost at fair value, and the part of that which is paid to you personally.
         public var cost: Double
         public var paidToYou: Double
         public var summary: String
     }
 
-    /// Merging buys every other share at fair value and makes the holding the only owner (`holdingID` set, 100%). Allowed with a squeeze-out
-    /// right (90% or more), or with control (over 50%) when nobody but you owns the rest.
     public static func mergeTerms(_ s: GameState, holdingID: Int, companyID: Int, data: GameData) -> MergeTerms {
         func no(_ why: String, held: Double = 0) -> MergeTerms { MergeTerms(allowed: false, reason: why, heldPercent: held, cost: 0, paidToYou: 0, summary: why) }
         guard openHolding(s, holdingID) != nil else { return no(Failure.notAHolding.reason) }
@@ -749,35 +656,26 @@ public enum HoldingStakes {
         return .success(t.cost)
     }
 
-    // MARK: Division
-
-    /// A wholly owned company can stop being a legal entity and become a division of the holding, or of another company under the same holding.
-    /// Saved on the company: `div` = id of the company or holding it is a division of.
     public static func isDivision(_ c: Company) -> Bool { !c.value("div").isNull }
     public static func divisionHostID(_ c: Company) -> Int? { isDivision(c) ? c.value("div").int : nil }
-    /// The live divisions of a holding or company.
     public static func divisions(of hostID: Int, in s: GameState) -> [Company] {
         s.companies.filter { $0.status.isLive && divisionHostID($0) == hostID }
     }
 
     public struct DivisionTerms: Equatable, Sendable {
         public var allowed: Bool
-        /// Why not (empty when allowed).
         public var reason: String
         public var companyID: Int
         public var companyName: String
         public var hostID: Int
         public var hostName: String
         public var hostIsHolding: Bool
-        /// What the company is worth, its cash and its people: all of it stays, so net worth does not change.
         public var value: Double
         public var cash: Double
         public var staff: Int
         public var summary: String
     }
 
-    /// The terms for turning `companyID` into a division of `hostID` (the holding itself when nil). The company must be wholly owned by the
-    /// holding with no other owner (merge it first at under 100%). The host must be the holding, or a company the holding wholly owns in the same country.
     public static func divisionTerms(_ s: GameState, holdingID: Int, companyID: Int, hostID: Int? = nil, data: GameData) -> DivisionTerms {
         let hid = hostID ?? holdingID
         func no(_ why: String, _ c: Company? = nil, _ host: Company? = nil) -> DivisionTerms {
@@ -804,8 +702,6 @@ public enum HoldingStakes {
                              summary: "\(c.name) keeps its trade, staff, items and cash and becomes a division of \(host.name). It is no longer a separate company, so it shares one tax result with the group. Its value stays in the group.")
     }
 
-    /// Make the company a division. Nothing is paid or moved: trade, staff, items, stock and cash stay where they are, the company's value stays in
-    /// the holding's, and the company drops out of stake deals and the holding's share dealings.
     public static func makeDivision(_ s: inout GameState, holdingID: Int, companyID: Int, hostID: Int? = nil, data: GameData) -> Result<DivisionTerms, Failure> {
         let t = divisionTerms(s, holdingID: holdingID, companyID: companyID, hostID: hostID, data: data)
         guard t.allowed, let ci = s.companyIndex(companyID) else { return .failure(.refused(t.reason)) }
@@ -815,14 +711,10 @@ public enum HoldingStakes {
         return .success(t)
     }
 
-    // MARK: Board
-
     public struct SeatStatus: Equatable, Sendable {
         public var hasSeat: Bool
         public var canTake: Bool
-        /// Why the seat cannot be taken (or is not needed).
         public var reason: String
-        /// What the holding votes with at this board, in percent of the shares.
         public var votePercent: Double
     }
 
@@ -857,9 +749,6 @@ public enum HoldingStakes {
         return .success(())
     }
 
-    // MARK: Ends of a holding's life
-
-    /// When a holding closes, fails or is sold its bought shares go back to you.
     public static func releaseLines(_ s: inout GameState, holdingID: Int) {
         for ci in s.companies.indices where s.companies[ci].value("holders").array.contains(where: { $0["hid"].int == holdingID }) {
             CapTable.normalise(&s, ci)
@@ -871,7 +760,6 @@ public enum HoldingStakes {
         }
     }
 
-    /// A company that is sold pays its price to every holding in proportion to the shares it holds as a stake (your own share is paid by the sale).
     public static func settleSale(_ s: inout GameState, company c: Company, price: Double) {
         for l in c.value("holders").array where l["hid"].int != 0 {
             let amt = jsRound(price * l["pct"].double / 100)

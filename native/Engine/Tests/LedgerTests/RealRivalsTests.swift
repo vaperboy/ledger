@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Players' companies stand as rivals first, computer rivals fill an empty market, and nothing marks which is which.
 final class RealRivalsTests: XCTestCase {
     private func game() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242)

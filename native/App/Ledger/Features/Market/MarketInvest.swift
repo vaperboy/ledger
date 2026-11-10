@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Invest: one portfolio for every owner (you and each holding's treasury): funds, crypto, shares still held, private stakes and the
-/// fund manager. The hero is the total value and the result so far; the owner filter narrows it; Buy opens the buy flow.
 struct MarketInvestPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -70,7 +68,6 @@ struct MarketInvestPage: View {
     }
 }
 
-/// One position: owner and what it is, its value, the result in gain or loss, and a thin allocation bar.
 struct PositionRow: View {
     var position: MarketUI.Position
     var cur: Currency
@@ -91,10 +88,6 @@ struct PositionRow: View {
     }
 }
 
-// MARK: One position
-
-/// A position on its own: its value and the result since bought, the price line where there is one, the figures, and Sell. Buy more is a
-/// quiet link under it.
 struct PositionPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -144,7 +137,6 @@ struct PositionPage: View {
         return FigureRow(items: items, columns: 3, combineCells: true).padding(.top, Theme.Space.l)
     }
 
-    /// One status line where the position carries a cost or a risk that its figures do not show.
     @ViewBuilder private func notes(_ p: MarketUI.Position) -> some View {
         switch p.assetClass {
         case .crypto: Text("Very volatile").textStyle(.caption, tint: P.warn)

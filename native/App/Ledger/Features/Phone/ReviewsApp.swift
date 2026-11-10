@@ -4,18 +4,14 @@ import Businesses
 import Simulation
 
 extension Glyph {
-    /// A five-point star, in the same 24 x 24 outline style as the other house icons.
     static let reviewStar = "M12 3 L14.6 8.6 L20.7 9.3 L16.2 13.4 L17.5 19.4 L12 16.4 L6.5 19.4 L7.8 13.4 L3.3 9.3 L9.4 8.6 Z"
 }
 
-/// A rating as five star glyphs and "4.2 / 5". The wording comes from `StandingWords`, so every screen writes a rating the same way.
 struct StarRatingView: View {
     @Environment(\.outsidePalette) private var P
-    /// Scales the star glyphs with Dynamic Type.
     @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
     var rating: Double
     var size: CGFloat = 15
-    /// Hide the number (a rating that is not shown yet).
     var showsNumber = true
 
     var body: some View {
@@ -30,14 +26,9 @@ struct StarRatingView: View {
     }
 }
 
-/// The Reviews app (Phone): what customers write about each of your businesses, and how your rivals are rated. Your reviews are the
-/// stored reviews of the company (`reviewSummary`). The rivals' ratings and review counts come from the review board (`reviewBoard`), and
-/// the lines shown under a rival (`rivalDetail`) are a small sample the engine writes for it around its rating, the same every time:
-/// rivals are not simulated customer by customer.
 struct ReviewsApp: View {
     @EnvironmentObject var store: GameStore
     enum Side: String, CaseIterable, Hashable { case yours = "Yours", rivals = "Rivals" }
-    /// The business shown; 0 = the first one that has reviews.
     @State private var companyID = 0
     @State private var side: Side = .yours
     @State private var openRival: Int?
@@ -55,7 +46,6 @@ struct ReviewsApp: View {
         .onChange(of: store.appRequest) { _, _ in take() }
     }
 
-    /// The businesses that have reviews: open ones other than finance, energy, holdings and clubs (the review board's own rule).
     static func companies(_ e: GameEngine) -> [Company] {
         e.state.companies.filter { (co: Company) -> Bool in
             guard co.status == .open, let family = e.tradeInfo(companyID: co.id)?.family else { return false }
@@ -63,7 +53,6 @@ struct ReviewsApp: View {
         }
     }
 
-    /// The marker id of one review line: the business, the week it was written and who wrote it.
     static func lineKey(_ e: GameEngine, _ co: Company, _ l: ReviewLine) -> String {
         "v\(co.id).\(e.state.week - l.weeksAgo).\(l.stars).\(l.who)"
     }
@@ -129,8 +118,6 @@ struct ReviewsApp: View {
         openRival = nil
     }
 
-    // MARK: Your reviews
-
     @ViewBuilder private func yours(_ e: GameEngine, _ co: Company) -> some View {
         let all: Int = max(1, co.value("rv41").array.count)
         let r: ReviewSummary = e.reviewSummary(co, limit: all)
@@ -152,7 +139,6 @@ struct ReviewsApp: View {
         }
     }
 
-    /// The rating as the screen's one big figure, its stars and word, and how many reviews it rests on.
     private func yourHero(_ r: ReviewSummary) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             if r.enough {
@@ -170,7 +156,6 @@ struct ReviewsApp: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// How many reviews gave each number of stars, five to one, as progress lines.
     private func starsGiven(_ r: ReviewSummary) -> some View {
         let top: Double = Double(max(1, r.histogram.max() ?? 1))
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -198,8 +183,6 @@ struct ReviewsApp: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-
-    // MARK: Your rivals
 
     @ViewBuilder private func rivals(_ e: GameEngine, _ co: Company) -> some View {
         let group: ReviewGroup? = e.reviewBoard().first { (g: ReviewGroup) -> Bool in g.rows.contains { $0.companyID == co.id } }
@@ -253,7 +236,6 @@ struct ReviewsApp: View {
     }
 }
 
-/// The business picker of Market and Reviews: a small caption over the business name and a chevron, straight on the page.
 struct BusinessPickerLabel: View {
     @Environment(\.outsidePalette) private var P
     var caption: String

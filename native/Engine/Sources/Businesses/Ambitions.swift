@@ -3,15 +3,10 @@ import GameCore
 import Countries
 import Finance
 
-/// Ambitions: pick what kind of empire to build; each path has milestones in tiers, a perk, and a legacy score.
-/// Original: features/player/ambitions.js (`PATHS`, `check`, `R27.perk`, `ACT.amb27pick`).
-/// Market share and rank milestones read `MarketMap` and `CompanyRanking`; the price-war and rival-purchase counters are incremented by
-/// `countEvent` (f3a reads your share of bank deposits).
 public enum Ambitions {
     public struct Milestone: Equatable, Sendable { public var id: String; public var text: String; public var now: Double; public var target: Double; public var done: Int? }
     public struct Path: Equatable, Sendable, Identifiable { public var id: String; public var name: String; public var detail: String }
 
-    /// Weeks (from the start of the game) in which the ambition may be changed at no delay.
     public static let freeChangeWeeks = 4
     public static let roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
     public static let paths: [Path] = [
@@ -34,7 +29,6 @@ public enum Ambitions {
         state(s)["hist"].array.map { ($0["w"].int, $0["t"].string, path($0["path"].string)?.name ?? "", $0["pts"].double) }
     }
 
-    /// Legacy points from anything that earns them (giving, milestones). Original: `legacy(pts, t)`.
     public static func addLegacy(_ s: inout GameState, points: Double, text: String, path: String) {
         var a = state(s)
         a["score"] = .number(a["score"].double + points)
@@ -44,12 +38,9 @@ public enum Ambitions {
         a["hist"] = .array(h); s.rest["amb27"] = a
     }
 
-    /// Count a win that other systems report: "buy" (a rival bought), "pw" (a price war won), "bankfin", "ipo".
     public static func countEvent(_ s: inout GameState, _ key: String) {
         var a = state(s); var c = a["cnt"]; c[key] = .number(c[key].double + 1); a["cnt"] = c; s.rest["amb27"] = a
     }
-
-    // MARK: Facts
 
     final class Facts {
         let s: GameState, data: GameData, live: [Company], w: World
@@ -80,7 +71,6 @@ public enum Ambitions {
         var portfolio: Double { let n = Valuation.netWorth(s, trades: data.catalog); return n.investments }
         var stakes: Double { Double((s.rest["startups"]?.array ?? []).filter { $0["st"].string != "exit" && $0["pct"].double > 0 }.count) }
         var franchAbroad: Bool { live.contains { $0.countryCode != s.homeCountryCode && (!$0.value("franchise").isNull || !$0.value("foreignOf").isNull || !$0.value("branch").isNull) } || s.companies.contains { !$0.value("fr")["masters"].array.isEmpty } }
-        /// Share of the biggest market and number of markets led (more share than every rival there). Original: `shareTop`.
         lazy var marketShare: (best: Double, no1: Double) = {
             var best = 0.0, no1 = 0.0
             for m in MarketMap.markets(self.s, data: self.data) {
@@ -90,19 +80,16 @@ public enum Ambitions {
             }
             return (best, no1)
         }()
-        /// Your share (0...1) of the first bank market. Original: `depShare`.
         lazy var depShare: Double = {
             guard let m = MarketMap.markets(self.s, data: self.data).first(where: { $0.type == "bank" }) else { return 0 }
             return MarketMap.truth(self.s, m, data: self.data).share
         }()
-        /// Your place by sales: "cc" in your country, "ind" among your industries, "world". 999 without a ranking. Original: `rank`.
         func rank(_ scope: String) -> Double {
             let sc: CompanyRanking.Scope = scope == "ind" ? .industries : scope == "world" ? .world : .country
             return CompanyRanking.yourRank(self.s, data: self.data, scope: sc, metric: .revenue).map { Double($0.rank) } ?? 999
         }
     }
 
-    /// Markets where you out-sell every rival there (a market with no rival does not count). Original: `no1N` in the trophy wall.
     public static func marketsLed(_ s: GameState, _ data: GameData) -> [MarketMap.Market] {
         MarketMap.markets(s, data: data).filter { m in
             let t = MarketMap.truth(s, m, data: data)
@@ -110,14 +97,12 @@ public enum Ambitions {
         }
     }
 
-    /// Share of group sales that come from companies abroad (0...1). For the trophy wall.
     public static func abroadShare(_ s: GameState, _ data: GameData) -> Double { Facts(s, data).abroadShare }
 
     static func mshort(_ v: Double, _ s: GameState, _ data: GameData) -> String {
         Currency(country: data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values)).display(v)
     }
 
-    /// The milestones of a tier. Past tier III a path keeps going: targets triple each level. Original: `tierList`.
     public static func milestones(_ s: GameState, _ data: GameData, path k: String, tier t: Int) -> [Milestone] {
         let F = Facts(s, data)
         let cur = Currency(country: data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values))
@@ -168,23 +153,19 @@ public enum Ambitions {
         }
     }
 
-    /// The perk level of a path you follow, after you have settled in; -1 when it does not apply. Original: `R27.perk`.
     public static func perk(_ s: GameState, _ data: GameData, _ k: String) -> Int {
         let a = state(s)
         guard a["path"].string == k, s.week >= a["settle"].int else { return -1 }
         let t = tier(s, k)
         guard t > 0 else { return 0 }
-        // `check` keeps this answer in `pkAll`, so the many callers (every company's weekly quality) do not rebuild the milestones.
         let doneAll = a["pkAll"].isNull ? milestones(s, data, path: k, tier: t).allSatisfy { $0.done != nil } : a["pkAll"].bool
         return min(2, t - 1 + (doneAll ? 1 : 0))
     }
-    /// Perk effects other systems read. Original: the `window.*` steps at the end of the perks section.
     public static func loanMarginCut(_ s: GameState, _ data: GameData) -> Double {
         let f = perk(s, data, "financier"), d = perk(s, data, "dynasty")
         return f >= 0 ? [0.003, 0.005, 0.008][f] : d >= 0 ? [0.002, 0.0035, 0.005][d] : 0
     }
     public static func abroadFeeFactor(_ s: GameState, _ data: GameData) -> Double { let p = perk(s, data, "global"); return p >= 0 ? 1 - [0.2, 0.35, 0.5][p] : 1 }
-    /// A fee for starting abroad after the global group perk, rounded to 5000 as the original does.
     public static func abroadFee(_ v: Double, _ s: GameState, _ data: GameData) -> Double {
         let f = abroadFeeFactor(s, data)
         return f < 1 ? roundTo(v * f, step: 5000) : v
@@ -193,17 +174,12 @@ public enum Ambitions {
     public static func supplyCostCut(_ s: GameState, _ data: GameData) -> Double { let p = perk(s, data, "titan"); return p >= 0 ? [0.05, 0.08, 0.12][p] : 0 }
     public static func buyPriceFactor(_ s: GameState, _ data: GameData) -> Double { let p = perk(s, data, "dominator"); return p >= 0 ? [1.05, 1.08, 1.12][p] : 1 }
 
-    // MARK: Choosing and checking
-
-    /// Choose (or switch to) a path. Switching starts the new perk after half a year. Original: `ACT.amb27pick`.
     @discardableResult
-    /// Whether the ambition can be changed at no delay: the first four game weeks, or in a ladder game (where it appears only after the first
-    /// profitable month) four weeks after it was chosen.
     public static func changeIsFree(_ s: GameState) -> Bool {
         guard Gates.ladderOn(s) else { return s.week < freeChangeWeeks }
         let a = state(s)
         if a["path"].isNull { return true }
-        return s.week < (a["first"].isNull ? a["since"].int : a["first"].int) + freeChangeWeeks   // re-picking does not extend the window
+        return s.week < (a["first"].isNull ? a["since"].int : a["first"].int) + freeChangeWeeks
     }
 
     public static func choose(_ s: inout GameState, path k: String, data: GameData) -> Bool {
@@ -211,9 +187,8 @@ public enum Ambitions {
         var a = state(s)
         let switching = a["path"].isNull == false
         let had = a["hist"].array.contains { !$0["path"].string.isEmpty && $0["path"].string != "give" } || a["was"].bool
-        if a["first"].isNull { a["first"] = .number(Double(s.week)) }   // the free window runs from the first choice
+        if a["first"].isNull { a["first"] = .number(Double(s.week)) }
         a["path"] = .string(k); a["since"] = .number(Double(s.week))
-        // Free change window: during the first four weeks the ambition can be re-picked at no delay; later a switch settles after half a year.
         let freeWindow = changeIsFree(s)
         a["settle"] = .number(had && !freeWindow ? Double(s.week + 26) : 0)
         _ = switching
@@ -224,7 +199,6 @@ public enum Ambitions {
         return true
     }
 
-    /// Reach milestones and complete tiers. Original: `check()`.
     public static func check(_ s: inout GameState, data: GameData) {
         var a = state(s)
         guard a["path"].isNull == false else { return }

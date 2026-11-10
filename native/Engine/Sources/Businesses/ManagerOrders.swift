@@ -2,29 +2,22 @@ import Foundation
 import GameCore
 import Countries
 
-/// The few orders an owner gives a manager, and what the manager makes of them. The direction is the company's `dir` (shared with the owner's meetings);
-/// the others are the manager's budget, the staffing plan, pay and bonus, and the post itself.
 public extension ManagerModel {
-    /// Where the owner wants the business to go. It sets how far a manager moves prices from the market price and how much of revenue they put into marketing.
     enum Direction: String, CaseIterable, Sendable {
         case grow = "growth", lean, quality, cash
 
         public var title: String { OwnerMeetings.directiveLabel(rawValue) }
 
-        /// Price steps from the market price: grow lowers, quality and cash raise, lean holds.
         public var priceSteps: Int {
             switch self { case .grow: return -1; case .lean: return 0; case .quality, .cash: return 1 }
         }
 
-        /// Share of a month's revenue the manager may spend on marketing.
         public var marketingShare: Double {
             switch self { case .grow: return 0.12; case .lean: return 0.04; case .quality: return 0.06; case .cash: return 0.03 }
         }
 
-        /// The marketing share of a company the owner has given no direction.
         public static let steadyMarketingShare = 0.05
 
-        /// Why a manager moved a price, for their report ("... one step to draw more customers").
         var priceReason: String {
             switch self {
             case .grow: return "to draw more customers, as you asked"
@@ -34,7 +27,6 @@ public extension ManagerModel {
             }
         }
 
-        /// What the order means in practice.
         public var text: String { Direction.describe(steps: priceSteps, share: marketingShare) }
 
         static func describe(steps: Int, share: Double) -> String {
@@ -43,28 +35,22 @@ public extension ManagerModel {
         }
     }
 
-    /// The direction the owner gave a company, nil when none.
     static func direction(of co: Company) -> Direction? { OwnerMeetings.directive(co).flatMap { Direction(rawValue: $0) } }
 
-    /// Give the company's manager a direction (nil clears it).
     static func setDirection(_ s: inout GameState, companyID: Int, direction: Direction?) {
         guard let ci = s.companyIndex(companyID) else { return }
         s.companies[ci].set("dir", direction?.rawValue ?? "")
     }
 
-    /// One of the owner's orders with what is set now.
     struct Order: Equatable, Identifiable, Sendable {
         public enum Key: String, CaseIterable, Sendable { case direction, budget, headcount, pay, replace }
         public var key: Key
         public var title: String
-        /// What is set now, in a few words.
         public var value: String
-        /// What it means for the manager's work.
         public var detail: String
         public var id: String { key.rawValue }
     }
 
-    /// The five orders for a company that has a manager (none otherwise): Direction, Budget, Headcount, Pay and bonus, Replace.
     static func orders(_ s: GameState, companyID: Int, data: GameData) -> [Order] {
         guard let co = s.company(companyID), let mid = co.managerID, let n = s.people[mid] else { return [] }
         let cur = World(state: s, data: data).currency(co)

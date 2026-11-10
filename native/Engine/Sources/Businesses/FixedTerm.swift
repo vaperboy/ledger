@@ -4,10 +4,6 @@ import Countries
 import Employees
 import Finance
 
-/// Fixed-term contracts. A person is permanent unless they carry `ft`, the week the term ends (written only for a fixed term, with `ftl` the length it
-/// was agreed for). The term is a topic of the contract discussion and a term of the hire offer. A few weeks before the end date the owner is asked in
-/// the Inbox whether to renew; on the date the job ends. What that costs is the country's labour data for the reason `expiry`: the notice and the
-/// severance it lists for it, and nothing where it lists none (the neutral default; no country lists any yet). Figures: `Resources/contract_terms.json`.
 public enum FixedTerm {
     public static let action = "ftx"
 
@@ -24,30 +20,22 @@ public enum FixedTerm {
     }()
 
     public static var termChoices: [Int] { tables.weeks }
-    /// Above this "security" a person wants a permanent job (data: `securityLimit`).
     public static var securityThreshold: Double { tables.securityLimit }
 
-    /// The week the term ends, nil for a permanent contract.
     public static func endWeek(_ m: StaffMember) -> Int? { m.value("ft").isNull ? nil : m.int("ft") }
     public static func isFixed(_ m: StaffMember) -> Bool { endWeek(m) != nil }
-    /// Someone who needs security does not take a fixed-term job instead of a permanent one.
     public static func wantsPermanent(_ n: Person) -> Bool { n.num("sec") > tables.securityLimit }
 
-    /// Weeks before the end date at which the owner is asked: the data's review time, or the country's notice for not renewing when that is longer.
     public static func reviewWindowWeeks(_ lab: LabourRules) -> Int { reviewWindow(lab) }
     static func reviewWindow(_ lab: LabourRules) -> Int { max(tables.review, Int(saturating: lab.fixedTermNoticeWeeks.rounded(.up))) }
 
-    /// When the run of fixed terms the person is on began (`fts`; for a term from before that key existed, the start of the current term).
     static func runStart(_ m: StaffMember) -> Int? {
         guard let end = endWeek(m) else { return nil }
         if !m.value("fts").isNull { return m.int("fts") }
         return end - max(0, m.int("ftl"))
     }
-    /// How many times the running term has been renewed (`ftr`, written only after the first renewal).
     static func renewals(_ m: StaffMember) -> Int { m.int("ftr") }
 
-    /// Why a fixed term of `weeks` (a first term, or a renewal of the running one) is not allowed under the country's limits, or nil when it is.
-    /// Both limits are optional data (`fixedTermMaxWeeks`, `fixedTermMaxRenewals`); at 0 nothing is limited and nothing converts.
     public static func renewalBlock(_ lab: LabourRules, _ m: StaffMember, weeks: Int, now: Int) -> String? {
         let running = endWeek(m)
         let start = runStart(m) ?? now
@@ -61,21 +49,15 @@ public enum FixedTerm {
         return nil
     }
 
-    /// The longest renewal (one of the data's lengths, no longer than `wanted`) the limits allow; nil when none is allowed, so the owner must
-    /// choose between a permanent contract and letting the person go.
     static func allowedRenewal(_ lab: LabourRules, _ m: StaffMember, wanted: Int, now: Int) -> Int? {
         tables.weeks.filter { $0 <= wanted && renewalBlock(lab, m, weeks: $0, now: now) == nil }.max()
     }
 
-    /// Put someone on a fixed term of `weeks` from now (`weeks` nil: make the contract permanent). On a term already running, `weeks` is added to
-    /// its end date (a renewal). False for an unknown person, a term that is not one of the data's lengths, or (when `labour` is given) a term its limits refuse.
     @discardableResult
     public static func set(_ s: inout GameState, companyID: Int, staffID: Int, weeks: Int?, labour: LabourRules? = nil, anyLength: Bool = false) -> Bool {
         guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == staffID }) else { return false }
         var st = s.companies[ci].staff
         if let weeks {
-            // The screens offer the data's lengths; the engine also accepts any length in `Hiring.workingFixedTermWeeks` for a temporary contract
-            // (`anyLength`: a hire, a renewal of a length that was agreed before, a season).
             guard tables.weeks.contains(weeks) || (anyLength && Hiring.workingFixedTermWeeks.contains(weeks)) else { return false }
             if let labour, renewalBlock(labour, st[k], weeks: weeks, now: s.week) != nil { return false }
             let running = isFixed(st[k])
@@ -92,11 +74,6 @@ public enum FixedTerm {
         return true
     }
 
-    // MARK: Weekly
-
-    /// Ask about renewal when the end date is near; end the job on the date. Where the country's limits allow no further renewal the question is
-    /// permanent contract or let go, and an unanswered question turns the contract permanent on the date (a term that is not allowed to continue as a
-    /// term does not simply lapse for the employer). `labour` is read from the company's country unless a caller supplies it.
     public static func weekly(_ s: inout GameState, data: GameData, labour: ((GameState, GameData, Company) -> LabourRules)? = nil) {
         for ci in s.companies.indices where s.companies[ci].status.isLive {
             for m in s.companies[ci].staff where isFixed(m) {
@@ -138,13 +115,12 @@ public enum FixedTerm {
         }
     }
 
-    /// The owner's answer to the renewal question.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int) {
         let d = m.value("data"), sid = d["sid"].int
         guard let ci = s.companyIndex(m.companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == sid }), endWeek(s.companies[ci].staff[k]) == d["end"].int else { return }
         if idx == 0 {
             if d["perm"].int != 1, !s.companies[ci].staff[k].value("seas").isNull {
-                _ = StaffTalks.renewSeason(&s, companyID: m.companyID, staffID: sid)   // a season: the contract runs to the end of the next one
+                _ = StaffTalks.renewSeason(&s, companyID: m.companyID, staffID: sid)
             } else {
                 _ = set(&s, companyID: m.companyID, staffID: sid, weeks: d["perm"].int == 1 ? nil : d["weeks"].int, anyLength: true)
             }

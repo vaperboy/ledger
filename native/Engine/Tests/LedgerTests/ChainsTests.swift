@@ -5,9 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Chains, franchises (both sides) and supply between your own companies: they run, and the books balance.
 extension GameEngine {
-    /// Start a franchised unit in the standard place (test set-up; the app picks the place).
     mutating func startFranchisedCompany(brandID: String, cityID: String, name: String?, fundWith amount: Double) -> Result<Int, CompanySetup.StartError> {
         startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: cityID, name: name, pick: nil, fundWith: amount).map { $0.companyID }
     }
@@ -36,7 +34,6 @@ final class ChainsTests: XCTestCase {
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") || Franchising.handlesAnswer(m.actionID) { e.answer(messageID: m.id, option: 0) }
         }
     }
-    /// Make a company look like it has run well for two years.
     static func season(_ e: inout GameEngine, _ id: Int) {
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
@@ -70,8 +67,6 @@ final class ChainsTests: XCTestCase {
         XCTAssertNotNil(e.state.company(id))
     }
 
-    /// A franchised unit can be started with a place of the player's choice: the plan prices the pick (plus the entry fee), and the unit
-    /// ends up in exactly that place, bought or rented, still a franchisee of the brand.
     func testFranchisedUnitStartsInTheChosenPremises() throws {
         func prepared() throws -> (GameEngine, FranchiseBrands.Brand) {
             var e = try Self.engine()
@@ -104,7 +99,6 @@ final class ChainsTests: XCTestCase {
             XCTAssertEqual(co.value("prem")["m2"].double, other.squareMetres, accuracy: 0.5)
             XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
         }
-        // No pick: the old call and the new one with no pick agree on the standard place.
         var (a, _) = try prepared(), (b, _) = try prepared()
         guard case .success(let ida) = a.startFranchisedCompany(brandID: brand.id, cityID: city, name: "U", fundWith: 3_000_000_000),
               case .success(let outb) = b.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: city, name: "U", pick: nil, fundWith: 3_000_000_000) else { return XCTFail("start") }
@@ -116,7 +110,7 @@ final class ChainsTests: XCTestCase {
         let first = Self.start(&e, "cafe")
         XCTAssertFalse(e.chainRequirements(companyID: first).allSatisfy { $0.ok })
         Self.season(&e, first)
-        e.update { s, _, _ in if let i = s.companyIndex(first) { s.companies[i].set("mgr", 0) } }   // no manager needed for this check
+        e.update { s, _, _ in if let i = s.companyIndex(first) { s.companies[i].set("mgr", 0) } }
         let id = try XCTUnwrap(e.makeChain(companyID: first, name: "Test Cafe"))
         e.setChainRule(chainID: id, rule: .price(1))
         guard case .success(let second) = e.openLocation(chainID: id, cityID: e.state.player.cityID) else { return XCTFail("store not opened") }
@@ -133,14 +127,13 @@ final class ChainsTests: XCTestCase {
         var e = try Self.engine()
         let id = Self.start(&e, "cafe")
         Self.season(&e, id)
-        // a franchise system, as if the requirements were met
         e.update { s, _, _ in
             if let i = s.companyIndex(id) {
                 s.companies[i].set("fr", .object(["on": 1, "fee": 150_000, "roy": 0.06, "supp": 0, "share": 0.45, "brand": 30, "mkt": 0.02, "units": .array([]), "app": .array([]), "w0": .number(Double(s.week))]))
             }
         }
         var signed = false
-        for _ in 0..<(150 * 7) where !signed {   // a signing is a random event: the test must not depend on one lucky seed
+        for _ in 0..<(150 * 7) where !signed {
             e.nextDay()
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
             if let a = e.franchiseApplicants(companyID: id).first {

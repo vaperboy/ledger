@@ -4,9 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Marketing as a popup: one compact row per channel with its switch; a running channel also shows its weekly budget as a step control
-/// over the engine's own budget levels (no slider, so a scroll or swipe never sets a budget) and what that budget is expected to do.
-/// A big rise asks first; a change shows in the channel's row.
 struct MarketingSheet: View {
     @EnvironmentObject var store: GameStore
     let companyID: Int
@@ -37,7 +34,6 @@ struct MarketingSheet: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    /// The total weekly budget as the one figure, and how many channels run.
     private func header(active: Int, total: Double, cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             Text(cur.tidyDisplay(total) + " a week").popupText(.figure)
@@ -96,7 +92,6 @@ struct MarketingSheet: View {
         .padding(.vertical, Theme.Space.xxs)
     }
 
-    /// A round minus or plus with a 44 pt target.
     private func stepButton(_ symbol: String, enabled: Bool, id: String, _ run: @escaping () -> Void) -> some View {
         Button { Haptics.choose(); run() } label: {
             Image(systemName: symbol).font(.body.weight(.semibold)).frame(width: 44, height: 44).contentShape(Circle())
@@ -107,8 +102,6 @@ struct MarketingSheet: View {
         .accessibilityIdentifier(id)
     }
 
-    /// What this budget is expected to do once the name has settled: more customers and the weekly profit after the budget, or that the
-    /// place has no room for them. Follows the slider while it is dragged.
     private func effectLine(_ e: GameEngine, _ ch: MarketingChannel, budget: Double, cur: Currency) -> (text: String, tint: Color)? {
         guard let co = e.state.company(companyID),
               let est = Marketing.estimate(co, channel: ch.id, weeklyBudget: budget, state: e.state, data: e.data, tables: e.marketing) else { return nil }
@@ -119,7 +112,6 @@ struct MarketingSheet: View {
         return (customers + " \u{00B7} " + net + payback, est.netPerWeek >= 0 ? Theme.gain : Theme.loss)
     }
 
-    /// A rise to more than twice the current weekly total, or above a quarter of a normal week's revenue, asks first (it is paid every week).
     private func change(_ ch: MarketingChannel, from old: Double, to new: Double, total: Double, cur: Currency) {
         let newTotal: Double = total - old + new
         let weekRevenue: Double = store.engine?.state.company(companyID).map { (co: Company) -> Double in
@@ -134,7 +126,6 @@ struct MarketingSheet: View {
         }
     }
 
-    /// Applies the budget (0 stops it). A refusal (lock, chain) is a popup; a change shows in the channel's row.
     private func commit(_ ch: MarketingChannel, _ budget: Double, cur: Currency) {
         let id: Int = companyID
         let channel: String = ch.id

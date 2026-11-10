@@ -1,10 +1,5 @@
 import SwiftUI
 
-/// The one container for every page with its own tab / segment row. Native paging (`TabView` page style): the content follows the finger
-/// sideways, slides to the next or previous tab, and a tap on the row slides in the proper direction. No cross-fade. Each page keeps its
-/// own vertical scroll, so the pager sits OUTSIDE the per-page ScrollView: the tab row stays fixed above, the pager fills the rest.
-/// Keep horizontal scrollers (chip rows) in the fixed header, never inside a page.
-/// `.swipePaging(false)` (pages with sliders): no swipe; a tap on the row still slides the page in. All pages are then built at once.
 struct SegmentPager<T: Hashable, Content: View>: View {
     var items: [T]
     @Binding var selection: T
@@ -17,13 +12,6 @@ struct SegmentPager<T: Hashable, Content: View>: View {
         self.items = items
         self._selection = selection
         self.content = content
-    }
-
-    /// Turns the sideways swipe between pages off (default on), so a drag on a slider never turns the page.
-    func swipePaging(_ on: Bool) -> SegmentPager {
-        var c: SegmentPager = self
-        c.swipes = on
-        return c
     }
 
     var body: some View {
@@ -45,7 +33,6 @@ struct SegmentPager<T: Hashable, Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// The pages side by side, offset by the selection: the same sideways slide on a tap, no swipe gesture.
     private var tapOnly: some View {
         let anim: Animation? = reduceMotion ? nil : Motion.quickAnimation
         let cur: Int = items.firstIndex(of: selection) ?? 0

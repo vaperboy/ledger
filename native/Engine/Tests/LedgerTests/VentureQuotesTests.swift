@@ -6,7 +6,6 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// Quotes match what the venture actions do; asking prices on stake sales; a holding's stakes in startups.
 final class VentureQuotesTests: XCTestCase {
     private func rich() throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 92)
@@ -45,14 +44,11 @@ final class VentureQuotesTests: XCTestCase {
         let q = e.startupStakeSellQuote(stakeID: ids[0], fraction: 0.5)
         XCTAssertTrue(q.ok)
         XCTAssertEqual(q.factor, 0.72, accuracy: 1e-9)
-        // default: exactly the quote
         let before = Payments.liquid(e.state)
         XCTAssertEqual(e.sellStartupStake(stakeID: ids[0], fraction: 0.5, askingMultiplier: nil), .sold(q.proceeds))
         XCTAssertEqual(Payments.liquid(e.state) - before, q.proceeds, accuracy: 0.01)
-        // a lower ask always sells, at the ask
         let q1 = e.startupStakeSellQuote(stakeID: ids[1], fraction: 0.5)
         XCTAssertEqual(e.sellStartupStake(stakeID: ids[1], fraction: 0.5, askingMultiplier: 0.8).proceeds, jsRound(q1.proceeds * 0.8), accuracy: 0.01)
-        // an absurd ask is declined and nothing is sold; talks are closed for the week
         let pct = e.startupStakes[1].ownership
         let hi = e.sellStartupStake(stakeID: ids[1], fraction: 0.5, askingMultiplier: 9)
         if case .sold = hi { XCTFail("above the buyer's valuation") }
@@ -123,10 +119,8 @@ final class VentureQuotesTests: XCTestCase {
         XCTAssertTrue(e.startupStakes.isEmpty, "a holding's stake is not one of the player's own")
         let stake = try XCTUnwrap(e.holdingStartupStakes(holdingID: hid).first)
         XCTAssertEqual(stake.tier, HoldingStakes.tier(forPercent: stake.percent))
-        // net worth moves by the money turned into shares, not by double counting
         let nw1 = Valuation.netWorth(e.state, trades: e.data.catalog).total
         XCTAssertEqual(nw1 - nw0, 0, accuracy: q.amount * 0.01 + 1)
-        // seed-stage startups cannot be taken over
         if case .success = e.holdingStartupBuyMoreQuote(holdingID: hid, stakeID: stake.id, percent: 60) { XCTFail("no control before a priced round") }
         guard case .success(let more) = e.holdingStartupBuyMoreQuote(holdingID: hid, stakeID: stake.id, percent: 5) else { return XCTFail("more") }
         XCTAssertEqual(more.heldAfter, stake.percent + 5, accuracy: 1e-9)

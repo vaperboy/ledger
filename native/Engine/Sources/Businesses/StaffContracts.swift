@@ -3,19 +3,13 @@ import GameCore
 import Countries
 import Employees
 
-// Employment types: part time, seasonal, fixed salary, hours, pay model (an extension of the pay talks in StaffTalks.swift).
-// Originals: `setStaffHours`, `workWish`, `wishWhy`, `offerFullTime`, `offerPartTime`, `weekHours`, `setPay`, `seasonsTurn`,
-// `ACT.stseas/stpart/stfix/sthrs/stfull/setpay/setrate/carallow`, `HIRE_HOURS`/`HIRE_SEAS` (engine/people/people.js, features/people/*).
 extension StaffTalks {
-    /// The seasons a seasonal worker can sign up for, as months 1-12. Original: `R54.SEASONS`.
     public static let seasons: [(id: String, name: String, months: [Int])] = [
         ("winter", "Winter", [1, 2]), ("spring", "Spring", [3, 4, 5]), ("summer", "Summer", [6, 7, 8]), ("autumn", "Autumn", [9, 10]), ("xmas", "Christmas", [11, 12])]
     static let monthNames = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
     public enum OfferResult: Equatable, Sendable { case ok, already, student, refused, unknown }
-    public enum PayModelResult: Equatable, Sendable { case ok, resigned, unknown }
 
-    /// The months (1-12) as seasons in words. Original: `R54.seasText`.
     public static func seasonText(_ ms: [Int]) -> String {
         let full = seasons.filter { $0.months.allSatisfy(ms.contains) }
         let covered = Set(full.flatMap { $0.months })
@@ -23,20 +17,15 @@ extension StaffTalks {
         return out.isEmpty ? "no months yet" : out
     }
 
-    /// Months (1-12) in which the trade is busy: the ones a seasonal worker is for. Original: `R54.busyMonths`.
     public static func busyMonths(_ co: Company, data: GameData) -> [Int] {
-        ManagerModel.seasonalBusyMonths(co, data: data)   // the trade's year with its own peak, as the original
+        ManagerModel.seasonalBusyMonths(co, data: data)
     }
 
     static func month1(_ week: Int) -> Int { GameCalendar.month(week: week) + 1 }
     static func payFollowsHours(_ m: StaffMember) -> Bool { m.payBasis != "fix" && !(m.commissionMode != nil && m.commissionMode != "fix") }
 
-    /// Pay and hours for a person hired part time or for a season. The hours are the contract's working percentage (`Hiring.Terms.effectiveHours`) and are
-    /// never cut down silently: a limit on the person's hours (one in four studies and can work 20 or 30 at most) is checked before the hire
-    /// (`Hiring.termsProblem`), and the limit is kept on the record (`maxH`) so later changes respect it.
     static func applyPartTime(_ m: inout StaffMember, terms: Hiring.Terms, week: Int) {
         if let cap = Hiring.maxHoursPerWeek(personID: m.id) { m.set("maxH", cap) }
-        // A part-timer is paid by the hour unless a fixed monthly salary was agreed; either way the pay offered for a full week is scaled to the hours.
         let fixed = terms.basis == "fix"
         m.payBasis = fixed ? "fix" : "hour"
         let h = terms.effectiveHours > 0 ? terms.effectiveHours : (terms.seasonMonths != nil ? 30 : StaffModel.fullWeekHours)
@@ -45,14 +34,11 @@ extension StaffTalks {
             m.set("seas", .array(ms.map { .number(Double($0)) }))
             m.set("off", !ms.contains(month1(week)))
         }
-        if terms.ownCar { m.set("ownCar", 1) }   // Hiring.hire drops it for a job that does not use a car
+        if terms.ownCar { m.set("ownCar", 1) }
     }
 
-    /// The least a contract can have a week: 10 percent of a full week.
     static var minimumHours: Double { Hiring.workingPercentRange.lowerBound / 100 * StaffModel.fullWeekHours }
 
-    /// Hours a week for a part-timer or seasonal worker; pay follows hours. Original: `setStaffHours`. Hours are kept to a sixty-fourth of an hour (so 20 percent
-    /// is exactly 7.5 hours and 65 percent exactly 24.375) and are not clipped to a hidden cap: callers check `Hiring.maxHoursPerWeek` first and say so.
     @discardableResult
     static func setHours(_ m: inout StaffMember, _ h0: Double, scalePay: Bool = true) -> Double {
         let h = max(minimumHours, min(60, (h0 * 64).rounded() / 64))
@@ -62,7 +48,6 @@ extension StaffTalks {
         return h
     }
 
-    /// What work someone wants, stable per person: "season", "part" or "full". Original: `workWish`.
     static func workWish(_ m: inout StaffMember, week: Int) -> String {
         let yr = Int(saturating: floor(Double(week - m.hiredWeek) / 52))
         if m.str("wish").isEmpty {
@@ -79,7 +64,6 @@ extension StaffTalks {
         return m.str("wish")
     }
 
-    /// Why they say no, in words. Original: `wishWhy`.
     public static func wishWhy(_ m: StaffMember, name: String, want: String) -> String {
         let f = name.split(separator: " ").first.map(String.init) ?? "They", r = HashedRandom.first("why:\(m.id)")
         if m.num("maxH", 999) < StaffModel.fullWeekHours { return "\(f) studies and can work at most \(Int(m.num("maxH"))) h a week." }
@@ -97,7 +81,6 @@ extension StaffTalks {
         return true
     }
 
-    /// Set the weekly hours of a part-timer or seasonal worker. Original: `ACT.sthrs`.
     @discardableResult
     public static func setStaffHours(_ s: inout GameState, companyID: Int, staffID: Int, hours: Double) -> OfferResult {
         guard let ci = s.companyIndex(companyID), let m = s.companies[ci].staff.first(where: { $0.id == staffID }) else { return .unknown }
@@ -107,7 +90,6 @@ extension StaffTalks {
         return .ok
     }
 
-    /// Ask a part-timer or seasonal worker to go full time; yes only if that is the work they want. Original: `offerFullTime`.
     public static func offerFullTime(_ s: inout GameState, companyID: Int, staffID: Int, data: GameData) -> OfferResult {
         guard let ci = s.companyIndex(companyID), let m0 = s.companies[ci].staff.first(where: { $0.id == staffID }) else { return .unknown }
         guard (m0.weeklyHours ?? 0) != 0 else { return .already }
@@ -123,7 +105,6 @@ extension StaffTalks {
         return result
     }
 
-    /// Ask a seasonal worker to stay on all year, part time; yes unless they only want the season. Original: `offerPartTime`.
     public static func offerPartTime(_ s: inout GameState, companyID: Int, staffID: Int, hours: Double = 20) -> OfferResult {
         guard let ci = s.companyIndex(companyID), let m0 = s.companies[ci].staff.first(where: { $0.id == staffID }) else { return .unknown }
         guard !m0.value("seas").isNull else { return .already }
@@ -138,7 +119,6 @@ extension StaffTalks {
         return result
     }
 
-    /// Choose the months a seasonal worker works; the person is off and unpaid outside them. Original: `ACT.stseas`.
     @discardableResult
     public static func setSeasons(_ s: inout GameState, companyID: Int, staffID: Int, months: [Int]) -> Bool {
         guard let ci = s.companyIndex(companyID), !months.isEmpty else { return false }
@@ -151,7 +131,6 @@ extension StaffTalks {
         }
     }
 
-    /// Toggle one season on or off in a seasonal worker's months (the chips of the staff screen).
     @discardableResult
     public static func toggleSeason(_ s: inout GameState, companyID: Int, staffID: Int, season id: String) -> Bool {
         guard let ci = s.companyIndex(companyID), let m = s.companies[ci].staff.first(where: { $0.id == staffID }),
@@ -162,7 +141,6 @@ extension StaffTalks {
         return setSeasons(&s, companyID: companyID, staffID: staffID, months: ms)
     }
 
-    /// Give a full-timer a fixed salary. Original: `ACT.stfix`.
     @discardableResult
     public static func offerFixedSalary(_ s: inout GameState, companyID: Int, staffID: Int, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID), s.companies[ci].staff.contains(where: { $0.id == staffID }) else { return false }
@@ -171,7 +149,6 @@ extension StaffTalks {
         return edit(&s, ci, staffID) { $0.happyUntilWeek = max($0.happyUntilWeek, w + 26) }
     }
 
-    /// Commission share of a seller on a pay plan. Original: `ACT.setrate`.
     @discardableResult
     public static func setCommissionRate(_ s: inout GameState, companyID: Int, staffID: Int, rate: Double) -> Bool {
         guard let ci = s.companyIndex(companyID) else { return false }
@@ -183,7 +160,6 @@ extension StaffTalks {
         }
     }
 
-    /// Seasonal workers come back for their season and finish it. Original: `seasonsTurn` (features/people/seasons_and_hours.js).
     static func seasonsTurn(_ s: inout GameState, companyIndex i: Int) {
         let m1 = month1(s.week)
         var back: [Int] = [], gone: [Int] = []

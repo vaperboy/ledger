@@ -5,23 +5,16 @@ import Finance
 import Businesses
 import Investments
 
-/// Read-only figures for the money and projects screens: what a loan would cost over a chosen term, what a fixed deposit pays,
-/// how long a running loan still has to go, and what each way of buying a rival needs in cash. Nothing here changes the game; every
-/// figure repeats the rule of the action it describes (`Banking.take`, `Brokerage.openDeposit`, `Rivals.acquire`, `RivalAbsorb`), and the
-/// tests in `MoneyProjectsReadModelTests` check each against the real action.
 public struct LoanQuote: Equatable, Sendable {
     public var amount: Double
     public var termMonths: Int
-    /// What the bank would lend at most.
     public var maximum: Double
     public var yearlyRate: Double
     public var monthlyPayment: Double
     public var totalInterest: Double
     public var totalRepaid: Double
     public var creditBand: String
-    /// Funded by your own bank.
     public var fromOwnBank: Bool
-    /// Below the bank's smallest loan.
     public var tooSmall: Bool
     public var withinLimit: Bool { amount <= maximum }
 }
@@ -33,49 +26,36 @@ public struct DepositQuote: Equatable, Sendable {
 }
 
 public struct LoanPayoff: Equatable, Sendable {
-    /// Instalments still to pay at the current monthly payment (nil when the payment does not cover the interest).
     public var monthsLeft: Int?
-    /// Interest still to pay at today's rate if the loan runs to the end.
     public var interestLeft: Double
     public var yearlyRate: Double
 }
 
-/// What buying a rival at an agreed price needs, for each thing it can become.
 public struct AcquisitionPlan: Equatable, Sendable {
     public enum Kind: String, Equatable, Sendable { case own, branch, merge, shut, franchiseOldOwner, franchiseNewOwner, ownBank }
     public struct Choice: Identifiable, Equatable, Sendable {
         public var id: String { kind.rawValue }
         public var kind: Kind
-        /// Cash you must have for the purchase to go through (for the franchise office with a new franchisee: the most it can need).
         public var cashNeeded: Double
-        /// Money that the purchase moves on top of the price: set-up money for a new company, the merge or closing costs.
         public var extraCost: Double
-        /// A loan from your own bank that pays part of it.
         public var loan: Double
         public var loanMonthly: Double
         public var loanRate: Double
         public var affordable: Bool
     }
     public var price: Double
-    /// The new company's own start-up money (own company, branch).
     public var startupMoney: Double
-    /// The reserve a bank wants you to keep after buying a business as its own company.
     public var reserve: Double
-    /// What you have: the account's balance.
     public var liquid: Double
     public var cash: Double
-    /// The rival is in money trouble: unpaid bills may surface after the purchase.
     public var hiddenBillRisk: Bool
     public var choices: [Choice]
 }
 
 public extension GameEngine {
-    /// The loan terms a screen offers.
     static let loanTermChoices = [12, 24, 36, 60, 84, 120]
-    /// The fixed-deposit locks a screen offers.
     static let depositTermChoices = [13, 26, 52]
 
-    /// What a loan of `amount` over `termMonths` would cost: the rate the bank offers today, the instalment, the interest over the whole term.
     func loanQuote(kind: String, amount: Double, termMonths: Int, companyID: Int?) -> LoanQuote {
         let off = loanOffer(kind: kind, amount: amount, companyID: companyID)
         let co = companyID.flatMap { state.company($0) }
@@ -89,13 +69,11 @@ public extension GameEngine {
                          tooSmall: amount < cur.scaledPrice(5000))
     }
 
-    /// What a fixed deposit locked for `weeks` pays at maturity.
     func depositQuote(amount: Double, weeks: Int) -> DepositQuote {
         let rate = max(0.01, state.economy.policyRate - 0.002 + Double(weeks) / 52 * 0.004)
         return DepositQuote(weeks: weeks, yearlyRate: rate, interest: max(0, amount) * rate * Double(weeks) / 52)
     }
 
-    /// How long a running loan still has to go at its current instalment, and the interest still to pay.
     func loanPayoff(loanID: Int) -> LoanPayoff? {
         guard let l = state.loans.first(where: { $0.id == loanID }) else { return nil }
         let rate = Banking.rate(of: l, state: state, countryShift: Banking.countryRateShift(companyID: l.companyID, state: state, context: context))
@@ -112,8 +90,6 @@ public extension GameEngine {
         return LoanPayoff(monthsLeft: months, interestLeft: max(0, p * n - b), yearlyRate: rate)
     }
 
-    /// What buying `rivalID` at `price` needs, for each thing it can become. The checks are those of `Rivals.acquire`,
-    /// `RivalAbsorb.absorb` and `RivalAbsorb.buyWithOwnBank`.
     func acquisitionPlan(companyID: Int, rivalID: Int, price: Double) -> AcquisitionPlan? {
         guard let co = state.company(companyID), let r = Rivals.rivals(state, for: co).first(where: { $0.id == rivalID }) else { return nil }
         let cur = currency(for: co)

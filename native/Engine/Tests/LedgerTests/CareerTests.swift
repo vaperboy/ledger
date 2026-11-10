@@ -5,7 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Rank titles, the career goal ladder, and (with LEDGER_PLAYTEST=1) the pacing probe of the first year.
 final class CareerTests: XCTestCase {
     private func cafe(_ code: String = "UK", trade: String = "cafe", seed: Int = 7) throws -> GameEngine {
         try GameEngine.newGame(countryCode: code, playerName: "T", seed: seed, story: .fresh, tradeID: trade, companyName: "Test")
@@ -14,13 +13,10 @@ final class CareerTests: XCTestCase {
     func testRankNeedsBothNetWorthAndGoals() throws {
         let cur = try UKCurrency()
         XCTAssertEqual(Career.rankIndex(netWorth: 0, goalsDone: 0, currency: cur), 0)
-        // Rich but no goals: stays a Street Vendor.
         XCTAssertEqual(Career.rankIndex(netWorth: cur.scaledPrice(2e9), goalsDone: 0, currency: cur), 0)
-        // Goals but poor: also stays low.
         XCTAssertEqual(Career.rankIndex(netWorth: 0, goalsDone: 20, currency: cur), 0)
         XCTAssertEqual(Career.ranks[Career.rankIndex(netWorth: cur.scaledPrice(30_000), goalsDone: 2, currency: cur)].title, "Shopkeeper")
         XCTAssertEqual(Career.ranks[Career.rankIndex(netWorth: cur.scaledPrice(2e9), goalsDone: 20, currency: cur)].title, "Tycoon")
-        // Ranks only go up with both asks.
         var last = 0
         for k in 0...20 {
             let i = Career.rankIndex(netWorth: cur.scaledPrice(Double(k) * 1e8), goalsDone: k, currency: cur)
@@ -33,7 +29,7 @@ final class CareerTests: XCTestCase {
         let a = Career.rankStatus(netWorth: cur.scaledPrice(60_000), goalsDone: 3, currency: cur)
         XCTAssertEqual(a.rank.title, "Shopkeeper")
         XCTAssertEqual(a.next?.title, "Trader")
-        XCTAssertEqual(a.progress, 0.47, accuracy: 0.02)   // wealth gives 0.47, goals 0.5: the slower decides
+        XCTAssertEqual(a.progress, 0.47, accuracy: 0.02)
         XCTAssertTrue(a.missing.contains("Wealth"))
         let top = Career.rankStatus(netWorth: cur.scaledPrice(5e9), goalsDone: 30, currency: cur)
         XCTAssertNil(top.next); XCTAssertEqual(top.progress, 1)
@@ -50,14 +46,14 @@ final class CareerTests: XCTestCase {
     func testSweepFinishesGoalOnceRewardsAndCelebrates() throws {
         var e = try cafe()
         e.update { s, _, _ in
-            Career.bump(&s)   // no-op shape check
+            Career.bump(&s)
             s.rest["miles"] = .object(["s": 3])
         }
         e.sweepCareer()
         XCTAssertTrue(Career.isDone(e.state, "k1"))
         XCTAssertTrue(e.pendingCelebrations.contains { $0.title == "Three profitable weeks in a row" })
         let n = e.pendingCelebrations.count
-        e.sweepCareer()   // never twice
+        e.sweepCareer()
         XCTAssertEqual(e.pendingCelebrations.count, n)
         XCTAssertEqual(Career.goalsDone(e.state), 1)
     }
@@ -70,8 +66,6 @@ final class CareerTests: XCTestCase {
         e.claimGoal(kind: .career, id: "k3")
         XCTAssertTrue(e.careerCosmetics.contains("logo.star"))
     }
-
-    // MARK: Pacing probe (prints the timeline; LEDGER_PLAYTEST=1)
 
     private func nw(_ e: GameEngine) -> Double { Valuation.netWorth(e.state, trades: e.data.catalog).total }
 
@@ -99,7 +93,6 @@ final class CareerTests: XCTestCase {
     }
 
     func testPacingTimeline() throws {
-        // (UKCurrency lives below)
         guard ProcessInfo.processInfo.environment["LEDGER_PLAYTEST"] == "1" else { throw XCTSkip("set LEDGER_PLAYTEST=1") }
         var out: [String] = []
         for (code, trade) in [("UK", "cafe"), ("US", "barber"), ("DE", "bakery"), ("UK", "foodtruck")] {

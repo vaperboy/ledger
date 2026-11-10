@@ -4,14 +4,11 @@ import Countries
 import Businesses
 import Simulation
 
-/// Where "Add to group" leads. Every destination is an existing flow.
 enum GroupAddDestination: String, Identifiable, Hashable {
     case newCompany, holding, franchise, club
     var id: String { rawValue }
 }
 
-/// The centred popup of Group > Overview: the ways to grow the group, each with a few words. A tap closes the popup and
-/// opens the flow (the Group tab pushes it).
 struct GroupAddMenu: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -47,7 +44,6 @@ struct GroupAddMenu: View {
     }
 }
 
-/// What a holding company is for, in plain words, with the engine's real tax rules (dividend rate of the home country, the 90 percent tax group).
 enum HoldingRules {
     static func text(_ engine: GameEngine?) -> String {
         var rate: String = "a dividend tax"
@@ -62,7 +58,6 @@ enum HoldingRules {
     }
 }
 
-/// The small (i) that explains the holding company in a popover.
 struct HoldingInfoButton: View {
     @EnvironmentObject var store: GameStore
 

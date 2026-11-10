@@ -5,10 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Everything about chain and franchise for ONE company, as plain content (a VStack: the host page owns the scroll area):
-/// a status line, then the stage the company is at. Not a chain: the requirements checklist and registration. A store of a chain:
-/// its place, new stores, companies that can join, supply overview, and franchising when it is the chain's flagship. Outside a chain:
-/// franchising it out. A franchisee: its agreement. Supply between own companies stays in Operations > Suppliers (one row).
 struct EntityExpansionView: View {
     @EnvironmentObject var store: GameStore
     let companyID: Int
@@ -73,7 +69,6 @@ struct EntityExpansionView: View {
             let units: Int = e.franchiseSystem(companyID: co.id)["units"].array.count
             title = "Franchisor with \(units) \(units == 1 ? "franchisee" : "franchisees")"
         }
-        // The stage the company is at is the lead line of the tab; the steps for the next stage follow under it.
         return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             Text("Stage").textStyle(.label, tint: Theme.inkFaint)
             Text(title.tidyText).textStyle(.figure)

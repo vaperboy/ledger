@@ -1,7 +1,6 @@
 import Foundation
 import GameCore
 
-/// All business types of the game, in menu order, with their reference tables.
 public final class TradeCatalog: TradeCatalogProviding, @unchecked Sendable {
     public let trades: [String: Trade]
     public let order: [String]
@@ -13,9 +12,6 @@ public final class TradeCatalog: TradeCatalogProviding, @unchecked Sendable {
         for (k, v) in tradesJSON["trades"].object { map[k] = Trade(json: v) }
         for k in map.keys where !(map[k]!.hasStoredCalibration) { TradeCatalog.calibrate(&map[k]!, tables: tables) }
         let menu: [String] = tradesJSON["order"].array.map { $0.string }
-        // The TechPro Store sells every item of every trade to any company. Each trade's list gets the items of the other
-        // trades, inert for the business itself (no capacity, quality or opening requirement: flags and standard count stripped). Done once, after
-        // calibration, in the catalogue itself, so every place that looks an item up by id (selling, servicing, wear, My items) finds it.
         var seen = Set<String>(), foreign: [EquipmentSpec] = []
         for id in menu { for var e in (map[id]?.equipment ?? []) where !seen.contains(e.id) {
             seen.insert(e.id)
@@ -42,11 +38,6 @@ public final class TradeCatalog: TradeCatalogProviding, @unchecked Sendable {
     public func facts(for tradeID: String) -> TradeFacts? { trades[tradeID] }
     public var all: [Trade] { order.compactMap { trades[$0] } }
 
-    // MARK: Calibration (original: `calib(bd)` in engine/company/company.js)
-
-    /// Work out, from a trade's own data, how many customers it normally gets and can serve. A trade is "designed"
-    /// at the reference country's cost level: its fixed costs (wages, rent, equipment wear, overhead, accountant)
-    /// must be covered by a normal number of customers, and countries then scale prices, wages and rents.
     public static func calibrate(_ t: inout Trade, tables: TradeTables) {
         if ["rent", "fin", "energy", "club"].contains(t.family) {
             t.normalDemand = 0
@@ -78,7 +69,6 @@ public final class TradeCatalog: TradeCatalogProviding, @unchecked Sendable {
         let den = t.ticket * max(0.12, 1 - vc - 0.028 - t.margin - 0.07)
         t.normalDemand = t.explicitDemand != 0 ? t.explicitDemand : F / den
         if t.family == "project" { t.normalDemand = F / den }
-        // The original's round-8 balance pass serves customers at 95% of capacity (earlier drafts used 85%).
         t.normalCapacity = t.normalDemand / 0.95
     }
 }

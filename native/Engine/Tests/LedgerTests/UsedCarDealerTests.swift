@@ -6,8 +6,6 @@ import Businesses
 @testable import Simulation
 @testable import Businesses
 
-/// The used car dealer rework: stock only from the Marketplace, per-car price and repair, repairs by an own mechanic company, lot spaces,
-/// reservations, stuck cars and forced sales, buyers, the live quote, and the real profit of a sale.
 final class UsedCarDealerTests: XCTestCase {
     private func game(seed: Int = 7, trade: String = "usedcar", cash: Double = 400_000_000, open: Bool = true) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -16,7 +14,6 @@ final class UsedCarDealerTests: XCTestCase {
         _ = e.quickSetup(companyID: id)
         if open {
             _ = e.openCompany(companyID: id)
-            // The permits take weeks; these tests are about the yard, so the company trades from day one.
             e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         }
         return (e, id)
@@ -66,7 +63,6 @@ final class UsedCarDealerTests: XCTestCase {
         XCTAssertGreaterThan(lot.spaces, 5)
         let prem = e.state.company(id)!.value("prem")
         XCTAssertEqual(lot.spaces, Int((prem["m2"].double * 0.85 / 22).rounded(.down)), "yard: 85 percent of the area, 22 m2 a car")
-        // Shrink the lot to three spaces: the fourth purchase is refused and nothing is charged.
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             var p = s.companies[i].value("prem"); p["m2"] = .number(3 * 22 / 0.85 + 1); s.companies[i].set("prem", p)
@@ -79,7 +75,6 @@ final class UsedCarDealerTests: XCTestCase {
         XCTAssertTrue(r.isRefused)
         XCTAssertEqual(e.state.company(id)!.cash, cash)
         XCTAssertEqual(e.usedCarLot(companyID: id)?.free, 0)
-        // No premises area: no spaces at all.
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             var p = s.companies[i].value("prem"); p["m2"] = .number(0); s.companies[i].set("prem", p)
@@ -109,7 +104,6 @@ final class UsedCarDealerTests: XCTestCase {
         XCTAssertTrue(high.isProfit); XCTAssertEqual(high.verdict, "Profit")
         XCTAssertEqual(low.profit, low.price - low.buyPrice - low.repairs - low.holdingSoFar - low.holdingAhead, accuracy: 0.01)
         XCTAssertEqual(low.buyPrice, a.purchasePrice, accuracy: 0.01)
-        // The dearer, the slower: the weekly chance falls, the wait grows, the holding ahead grows with it.
         XCTAssertGreaterThan(low.weeklyOdds, mid.weeklyOdds)
         XCTAssertGreaterThan(mid.weeklyOdds, high.weeklyOdds)
         XCTAssertGreaterThan(high.expectedWeeks, low.expectedWeeks)
@@ -126,7 +120,6 @@ final class UsedCarDealerTests: XCTestCase {
         XCTAssertEqual(c.repairSupplierID, 0)
         XCTAssertGreaterThan(c.repairQuote, 0)
         XCTAssertGreaterThanOrEqual(c.repairWeeksLeft, 1)
-        // Money only leaves when the job is done, and then it becomes part of the car.
         days(&e, 7 * (c.repairWeeksLeft + 1))
         let d = try XCTUnwrap(e.usedCarStock(companyID: id).first { $0.id == c.id })
         if d.status == "ready" {
@@ -143,7 +136,6 @@ final class UsedCarDealerTests: XCTestCase {
         e.update { s, _, _ in if let i = s.companyIndex(rid) { s.companies[i].status = .open } }
         let lemon = try XCTUnwrap(cars(e, id, lemons: true).first { $0.h.kind == 2 })
         buy(&e, id, lemon)
-        // Priced out of reach, so no customer reserves it and it is not sold in the same step the job is billed.
         mutateCar(&e, id, stock(e, id)[0]["id"].int) { $0["ask"] = .number($0["fair"].double * 10) }
         days(&e, 15)
         let c = try XCTUnwrap(e.usedCarStock(companyID: id).first)
@@ -151,7 +143,6 @@ final class UsedCarDealerTests: XCTestCase {
         XCTAssertEqual(c.repairSupplierID, rid, "the job order goes to your own mechanic company")
         let need = try XCTUnwrap(e.state.company(id)!.value("stk").array.first)["rq"].double
         XCTAssertEqual(c.repairQuote, need * UsedCarDealer.ownRepairFactor, accuracy: 0.01, "group price under the market price")
-        // Stop on the day the job is done: a ready car can be sold by the dealer's own weekday within the next days.
         var waited = 0
         while e.usedCarStock(companyID: id).first(where: { $0.id == c.id })?.status == "repair" && waited < 7 * (c.repairWeeksLeft + 4) { days(&e, 1); waited += 1 }
         let after = e.state.company(rid)!
@@ -170,7 +161,6 @@ final class UsedCarDealerTests: XCTestCase {
         let x = try XCTUnwrap(cars(e, id).first)
         buy(&e, id, x)
         let carID = stock(e, id)[0]["id"].int
-        // A car at the garage for three more weeks, priced to sell: customers reserve it.
         let due = e.state.week + 3
         mutateCar(&e, id, carID) { c in
             c["done"] = .bool(true); c["rq"] = .number(1_000); c["wk"] = .number(Double(due - 3))
@@ -202,7 +192,6 @@ final class UsedCarDealerTests: XCTestCase {
         var (e, id) = try game()
         buy(&e, id, try XCTUnwrap(cars(e, id).first))
         let carID = stock(e, id)[0]["id"].int
-        // An old car with a price far over what it is worth never moves; it loses value faster than a fresh one and eventually draws an offer.
         let wk0 = e.state.week
         mutateCar(&e, id, carID) { c in c["done"] = .bool(true); c["fx"] = .bool(true); c["wk"] = .number(Double(wk0 - 12)); c["ask"] = .number(c["fair"].double * 3) }
         let fair0 = stock(e, id)[0]["fair"].double
@@ -350,7 +339,6 @@ final class UsedCarDealerTests: XCTestCase {
         let rev = (co.books.month["rev"] ?? 0) - rev0, cogs = (co.books.month["cogs"] ?? 0) - cogs0
         if co.books.month["rev"] != nil && rev > 0 {
             XCTAssertEqual(rev, bought * 1.5, accuracy: 2)
-            // Cost of sales is the car's cost plus the (small) holding; the profit of the sale is positive and close to 50 percent of the cost.
             XCTAssertEqual(cogs, bought, accuracy: bought * 0.03)
             XCTAssertGreaterThan(rev - cogs, bought * 0.4)
         }
@@ -391,7 +379,6 @@ final class UsedCarDealerTests: XCTestCase {
     func testOldSavesWithoutNewKeysStillWork() throws {
         var (e, id) = try game()
         buy(&e, id, try XCTUnwrap(cars(e, id).first))
-        // An old car record: only the pre-rework keys.
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             var list = s.companies[i].value("stk").array

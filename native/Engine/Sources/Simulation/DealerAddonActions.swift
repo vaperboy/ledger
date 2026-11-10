@@ -4,7 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// The reads and actions behind the dealer add-on settings screen (warranty, car loans, insurance at the sale). The rules are in `DealerAddons`.
 public extension GameEngine {
     func dealerAddonSettings(companyID: Int) -> DealerAddonSettings? {
         state.company(companyID).flatMap { DealerAddons.supports($0) ? DealerAddons.settings($0) : nil }
@@ -14,7 +13,6 @@ public extension GameEngine {
         DealerAddons.setupStatus(state, companyID: companyID, addon: addon, data: data)
     }
 
-    /// The preview: what each add-on brings per sale on a car at `priceFactor` times the typical price of the trade.
     func dealerAddonPreview(companyID: Int, priceFactor: Double = 1) -> [DealerAddonOffer] {
         guard let co = state.company(companyID), DealerAddons.supports(co) else { return [] }
         let t = DealerAddons.typicalSale(company: co, state: state, data: data)

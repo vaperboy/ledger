@@ -4,7 +4,6 @@ import Finance
 import Simulation
 @testable import Businesses
 
-/// Supplying other players: record words, guards, the random pool, the fallback when a supplier stops, and the books of a sale.
 final class SupplyMarketTests: XCTestCase {
     private func listing(_ id: String, owner: String = "o", tier: Int = 1,
                          record: DeliveryRecord = DeliveryRecord(weeksTrading: 20, ordersTotal: 60, ordersOnTime: 58, unitsPromised: 1000, unitsDelivered: 990, cleanWeeks: 12, lifetimeUnits: 990),
@@ -19,7 +18,6 @@ final class SupplyMarketTests: XCTestCase {
         XCTAssertEqual(SupplyRecordRules.word(DeliveryRecord(weeksTrading: 20, ordersTotal: 60, ordersOnTime: 58, unitsPromised: 1000, unitsDelivered: 990)), .reliable)
         XCTAssertEqual(SupplyRecordRules.word(DeliveryRecord(weeksTrading: 20, ordersTotal: 60, ordersOnTime: 50, unitsPromised: 1000, unitsDelivered: 900, complaints: 2)), .mostlyReliable)
         XCTAssertEqual(SupplyRecordRules.word(DeliveryRecord(weeksTrading: 20, ordersTotal: 60, ordersOnTime: 35, unitsPromised: 1000, unitsDelivered: 700, complaints: 9, disputes: 3)), .struggling)
-        // price changes after signing cost a clean sheet
         let steady = DeliveryRecord(weeksTrading: 20, ordersTotal: 20, ordersOnTime: 20, unitsPromised: 400, unitsDelivered: 400)
         var changed = steady
         changed.priceChanges = 4
@@ -90,14 +88,12 @@ final class SupplyMarketTests: XCTestCase {
         XCTAssertFalse(ids.contains("pricey"), "not fairly priced")
         XCTAssertFalse(ids.contains("weak"), "struggling")
         XCTAssertFalse(ids.contains("linked"), "linked account")
-        // over many draws every pool member is reached, and the newcomer is not starved
         var hits: [String: Int] = [:]
         for n in 0..<2000 { if let d = SupplyChoice.draw(pool, seed: "b:\(n)") { hits[d.id, default: 0] += 1 } }
         XCTAssertEqual(Set(hits.keys), ids)
         let expected = 2000.0 / Double(pool.count)
         XCTAssertGreaterThan(Double(hits["new"] ?? 0), expected * 0.7)
         XCTAssertLessThan(Double(hits.values.max() ?? 0), expected * 1.8)
-        // same seed, same draw; a second draw can leave out the first
         XCTAssertEqual(SupplyChoice.draw(pool, seed: "x")?.id, SupplyChoice.draw(pool, seed: "x")?.id)
         let first = SupplyChoice.draw(pool, seed: "x")!
         XCTAssertNotEqual(SupplyChoice.draw(pool, seed: "x", excluding: [first.id])?.id, first.id)
@@ -154,7 +150,6 @@ final class SupplyMarketTests: XCTestCase {
         for _ in 0..<(8 * 7) { e.nextDay() }
         let co = try XCTUnwrap(e.state.company(id))
         let bd = try XCTUnwrap(e.data.catalog[co.type])
-        // a company that has not run a full week has no capacity to offer
         var fresh = co
         fresh.set("lastW", .object([:]))
         XCTAssertEqual(SupplyMarketBooks.capacity(fresh, bd: bd).maxUnits, 0)
@@ -172,7 +167,6 @@ final class SupplyMarketTests: XCTestCase {
         e.update { s, _, _ in revenue = SupplyMarketBooks.bookSaleToPlayer(&s, supplierCompanyID: id, units: 40, unitPrice: unit, unitCost: unit * 0.6) }
         XCTAssertEqual(revenue, 3000, accuracy: 0.01)
         XCTAssertEqual(try XCTUnwrap(e.state.company(id)).cash - cash0, 3000 - 1800, accuracy: 1.01)
-        // the buyer side: a saving against the market price and an extra cost
         e.update { s, _, _ in
             SupplyMarketBooks.bookPurchaseDifference(&s, buyerCompanyID: id, saving: 500)
             SupplyMarketBooks.bookPurchaseDifference(&s, buyerCompanyID: id, saving: -200)

@@ -1,8 +1,6 @@
 import XCTest
 @testable import Ledger
 
-/// The order of the popup host: confirm and decisions first, then alerts, notices, reports and the daily report, rewards, panels.
-/// Only the first is visible; a stack (confirm, panel) shows the newest first, a queue the oldest first.
 final class PopupQueueTests: XCTestCase {
 
     private func queue(_ rows: [(String, PopupPriority)]) -> PopupQueue {

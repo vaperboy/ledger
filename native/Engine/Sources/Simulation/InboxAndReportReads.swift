@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Events
 
-/// One movement in a company's bank account, as the company keeps it (`co.tx`: the latest 40, newest first).
 public struct CompanyMovement: Identifiable, Equatable, Sendable {
     public enum Kind: String, CaseIterable, Sendable {
         case payroll, bills, tax, owner, other
@@ -90,15 +89,10 @@ public enum InboxLayout {
     }
 }
 
-/// Read-only helpers for the Inbox and Reports screens. Nothing here changes the game: every value is read from the state with
-/// the same rules the engine applies (expiry of messages, the yacht dinner, contracts and capacity).
 public extension GameEngine {
-    // MARK: Company movements
 
-    /// How many movements each company keeps (the original's `co.tx`).
     static let movementsKept = 40
 
-    /// The kind of a movement, from the label the engine writes (Payday, MonthEnd, Payments).
     static func movementKind(_ label: String) -> CompanyMovement.Kind {
         if label.hasPrefix("Payroll") || label.hasPrefix("Back pay") { return .payroll }
         if label == "Rent" || label.hasPrefix("Monthly bills") || label.hasPrefix("Suppliers and costs") { return .bills }
@@ -107,7 +101,6 @@ public extension GameEngine {
         return .other
     }
 
-    /// The movements the companies keep, newest first: one company or all of them, optionally only within some weeks.
     func companyMovements(companyID: Int? = nil, weeks: ClosedRange<Int>? = nil) -> [CompanyMovement] {
         var out: [CompanyMovement] = []
         for co in state.companies where companyID == nil ? co.isOpenOrClosed : co.id == companyID {
@@ -119,13 +112,9 @@ public extension GameEngine {
                                            label: label, kind: Self.movementKind(label)))
             }
         }
-        // Stable: within a week, each company's own order (newest first) is kept.
         return out.enumerated().sorted { a, b in a.element.week != b.element.week ? a.element.week > b.element.week : a.offset < b.offset }.map { $0.element }
     }
 
-    // MARK: Inbox
-
-    /// What happens to an open message if it is left until it expires (the rules of `EventEngine.expire`). Nil when it does not expire.
     func expiryOutcome(_ m: Message) -> String? {
         guard m.status == "open", m.expiresWeek != nil else { return nil }
         if m.actionID == PersonalFinance.dueAction { return "If you leave it, the tax office takes the balance from your account and the overdraft rules apply." }
@@ -144,7 +133,6 @@ public extension GameEngine {
         return nil
     }
 
-    /// For an answered message: what was chosen, or that it lapsed. Nil while it is open or when it never needed an answer.
     func answeredOutcome(_ m: Message) -> String? {
         guard m.status != "open", !m.value("pick").isNull, !m.options.isEmpty else { return nil }
         let pick = m.int("pick", -1)
@@ -154,7 +142,6 @@ public extension GameEngine {
         return (auto ? "Taken when time ran out: " : "You chose: ") + label
     }
 
-    /// Facts an offer's options do not spell out, read from the company it concerns. Empty when there is nothing to add.
     func messageFacts(_ m: Message) -> [String] {
         guard m.status == "open", let co = state.company(m.companyID) else { return [] }
         var out: [String] = []
@@ -181,10 +168,6 @@ public extension GameEngine {
         return out
     }
 
-    // MARK: Luxury
-
-    /// What a dinner on your yacht costs now, and the weeks until another is possible (0 = now). Nil without a yacht.
-    /// The same figures as `Luxury.hostDinner`: the most valuable yacht, once every four weeks.
     func yachtDinnerQuote() -> (cost: Double, waitWeeks: Int)? {
         guard let y = luxuryPieces.filter({ $0.item.category == "yachts" }).max(by: { $0.value < $1.value }) else { return nil }
         let cost = max(homeCurrency.scaledPrice(15000), jsRound(y.value * 0.002))

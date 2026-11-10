@@ -3,14 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// The equipment market: brands and models in three classes, the used market, leasing, subscriptions and licences, and buying
-/// one item at a time. Originals: `eqCat`, `vehCat`, `makerName` (engine/suppliers), and the buying steps of
-/// features/company/realistic_buying.js. The names and numbers of the brands are data: Resources/equipment_brands.json.
-///
-/// It extends the existing purchase path: `CompanySetup.addEquipment` / `addVehicle` record what was bought,
-/// `EquipmentUnits` keeps one record per unit, `Capacity` already reads `perf` and `cond` from the equipment record.
 public enum EquipmentMarket {
-    // MARK: Data
 
     static let book: JSONValue = {
         guard let url = Bundle.module.url(forResource: "equipment_brands", withExtension: "json", subdirectory: "Resources"),
@@ -20,7 +13,6 @@ public enum EquipmentMarket {
 
     public static var classNames: [String] { book["classNames"].array.map { $0.string } }
 
-    /// One brand and model on offer, in one class. Original: an entry of `eqCat`.
     public struct Offer: Identifiable, Equatable, Sendable {
         public var id: Int { index }
         public var index: Int
@@ -30,19 +22,15 @@ public enum EquipmentMarket {
         public var model: String
         public var className: String
         public var cls: Int
-        /// Price factor against the standard price
         public var priceFactor: Double
         public var rating: Double
         public var reviews: Int
-        /// Output: multiplies the capacity of the equipment (1 = standard)
         public var performance: Double
-        /// Breakdown tendency (1 = standard, lower is better)
         public var reliability: Double
         public var comment: String
         public var name: String { brand + " " + model }
     }
 
-    /// One vehicle make on offer for a vehicle model. Original: an entry of `vehCat`.
     public struct VehicleOffer: Identifiable, Equatable, Sendable {
         public var id: String { modelID + ":" + String(index) }
         public var modelID: String
@@ -57,12 +45,10 @@ public enum EquipmentMarket {
         public var name: String { brand + " " + model }
     }
 
-    /// A second-hand item for sale this month. `trueCondition` is what it really is; `visibleCondition` what the seller shows.
     public struct UsedOffer: Identifiable, Equatable, Sendable {
         public var id: String { key + ":" + String(slot) }
         public var key: String
         public var slot: Int
-        /// Index of the brand in the catalogue (equipment), or of the make (vehicle)
         public var brandIndex: Int
         public var modelID: String
         public var name: String
@@ -86,7 +72,6 @@ public enum EquipmentMarket {
     public enum Payment: String, Sendable { case cash, finance, lease }
     public enum Result: Equatable, Sendable { case ok, notEnoughCash, notPossible }
 
-    /// What one bought unit carries into the books (name, class, reliability).
     public struct Brand: Equatable, Sendable {
         public var name: String
         public var cls: Int
@@ -94,8 +79,6 @@ public enum EquipmentMarket {
         public var performance: Double
         public var rating: Double
     }
-
-    // MARK: Words
 
     static func wear(_ c: Double) -> String {
         for row in book["wear"].array where c >= row[0].double { return row[1].string }
@@ -107,13 +90,10 @@ public enum EquipmentMarket {
         rt >= 4.5 ? "Built to last" : rt >= 4.1 ? "Reliable, good value" : rt >= 3.7 ? "Solid choice" : rt >= 3.3 ? "Does the job" : rt >= 2.9 ? "Mixed reviews" : "Breaks often"
     }
 
-    // MARK: Maker names
-
     static func matches(_ pattern: String, _ text: String) -> Bool {
         text.range(of: pattern, options: .regularExpression) != nil
     }
 
-    /// Product category of an equipment name, for the maker names. Original: `eqMakerCat`.
     static func makerCategory(_ name: String) -> String {
         let n = name.lowercased()
         for r in book["makerRules"].array where matches(r[0].string, n) { return r[1].string }
@@ -124,7 +104,6 @@ public enum EquipmentMarket {
         return "general"
     }
 
-    /// One maker name: about 55% from the buyer's own country, the rest from countries known for the product. Original: `makerName`.
     static func makerName(_ cat: String, _ cc: String, _ r: inout HashedRandom, _ used: inout Set<String>, _ countries: CountryBook) -> String {
         let M = book["makers"][cat].isNull ? book["makers"]["general"] : book["makers"][cat]
         func pick<T>(_ a: [T]) -> T { a[min(a.count - 1, Int(r.next() * Double(a.count)))] }
@@ -152,11 +131,8 @@ public enum EquipmentMarket {
         return nm
     }
 
-    // MARK: Suppliers
-
     struct Vendor { var id: String; var name: String; var quality: Double; var owner = "" }
 
-    /// The pool of supplier companies of a country, shared by all kinds of business. Original: `vpoolAll`.
     static func vendorPool(seed: Int, countryCode cc: String, countries: CountryBook, nouns: JSONValue) -> [(vendor: Vendor, families: [String])] {
         var r = HashedRandom("\(seed):\(cc):vpa")
         let C = countries.resolve(cc, orHome: cc)
@@ -184,22 +160,17 @@ public enum EquipmentMarket {
         return out
     }
 
-    /// `n` suppliers for this kind of equipment in a country. Original: `vendorsFor`.
     static func vendors(for key: String, count n: Int, family: String, seed: Int, countryCode cc: String, countries: CountryBook, nouns: JSONValue) -> [Vendor] {
         let all = vendorPool(seed: seed, countryCode: cc, countries: countries, nouns: nouns).filter { $0.families.contains(family) }.map { $0.vendor }
         var r = HashedRandom("\(seed):vf:\(cc):\(key)")
         return all.enumerated().map { (r.next(), $0.offset) }.sorted { $0.0 < $1.0 }.prefix(n).map { all[$0.1] }
     }
 
-    /// Number of brands the buyer sees: more in a crowded market. Original: `brandN`.
     public static func brandCount(_ co: Company, state s: GameState) -> Int {
         let n = s.rest["mk"]?[co.type + "|" + co.cityID]["n"].double ?? 0
         return 3 + (n >= 6 ? 1 : 0) + (n >= 12 ? 1 : 0)
     }
 
-    // MARK: Catalogues
-
-    /// Brands and models for one piece of equipment: each brand in three classes. Original: `eqCat`.
     public static func offers(for e: EquipmentSpec, tradeID: String, family: String, brands nb: Int, countryCode cc: String, seed: Int, countries: CountryBook, tables: TradeTables) -> [Offer] {
         var r = HashedRandom("\(seed):\(cc):\(tradeID):\(e.id):\(nb)")
         let vs = vendors(for: tradeID + ":" + e.id, count: nb, family: family, seed: seed, countryCode: cc, countries: countries, nouns: tables.raw["FAM_NOUN"])
@@ -226,7 +197,6 @@ public enum EquipmentMarket {
         return list
     }
 
-    /// Makes for a vehicle model: two of them. Original: `vehCat`.
     public static func vehicleOffers(model m: String, modelName: String, countryCode cc: String, seed: Int, countries: CountryBook) -> [VehicleOffer] {
         var r = HashedRandom("\(seed):veh:\(cc):\(m)")
         var used = Set<String>()
@@ -243,8 +213,6 @@ public enum EquipmentMarket {
         }
         return list
     }
-
-    // MARK: Context for a company
 
     struct Ctx {
         var bd: Trade
@@ -273,10 +241,6 @@ public enum EquipmentMarket {
         }
     }
 
-    // MARK: Prices
-
-    /// Price of one item in a brand (factor 1 is the standard price). Original: `eqPrice`.
-    /// `dealWeek` (the TechPro Store) prices the item at that week's sale (`StoreDeals`); nil is the list price.
     public static func price(_ e: EquipmentSpec, company co: Company, _ w: World, factor f: Double = 1, vendor: String? = nil, dealWeek: Int? = nil) -> Double {
         let sale: Double = dealWeek.map { dealFor(equipmentID: e.id, vendor: vendor, week: $0, seed: w.state.seed).factor } ?? 1
         let raw = (e.cost * w.inflationIndex * f * sale * w.country(co).costIndex * (1 - Suppliers.discount(w.state, scope: "eq", vendorID: vendor))).rounded()
@@ -289,7 +253,6 @@ public enum EquipmentMarket {
         return roundTo(v.price * w.inflationIndex * f * sale, step: 1000)
     }
 
-    /// The store's sale on one item of one brand in one week.
     public static func dealFor(equipmentID: String, vendor: String?, week: Int, seed: Int) -> StoreDeals.Deal {
         StoreDeals.deal(week: week, seed: seed, key: equipmentID + "|" + (vendor ?? "-"))
     }
@@ -301,8 +264,6 @@ public enum EquipmentMarket {
     public static func leaseMonthly(price: Double) -> Double { price * 0.0235 }
     public static func vehicleLeaseMonthly(price: Double) -> Double { jsRound(price * 0.0215) }
 
-    // MARK: What kind of thing is it
-
     public enum SoftwareMode: String, Sendable { case subscription, once, upfront }
 
     public static func kind(_ e: EquipmentSpec, tradeID: String, tables: TradeTables) -> String {
@@ -313,7 +274,6 @@ public enum EquipmentMarket {
         ["veh": "Vehicle", "soft": "Software", "svc": "Service", "it": "IT equipment", "pos": "Payment terminal", "tool": "Tools", "furn": "Furniture and fit-out", "mach": "Machine"][k] ?? "Machine"
     }
 
-    /// How software is sold: a subscription, a one-time licence, or a licence with yearly updates. Original: `softMode`.
     public static func softwareMode(_ e: EquipmentSpec, tradeID: String, company co: Company, _ w: World) -> SoftwareMode {
         if let o = book["subscriptionOverride"][tradeID + ":" + e.id].isNull ? nil : book["subscriptionOverride"][tradeID + ":" + e.id].bool { return o ? .subscription : .upfront }
         if matches(book["subscriptionPattern"].string, e.name.lowercased()) { return .subscription }
@@ -336,8 +296,6 @@ public enum EquipmentMarket {
         return e.flags.contains("u") || (e.cost < 5_000_000 && e.flags.contains("c") && e.cost > 3000) || ["tool", "it", "furn"].contains(k)
     }
 
-    // MARK: Subscriptions
-
     public struct Plan: Equatable, Sendable { public var index: Int; public var name: String; public var maxUsers: Int; public var monthlyFee: Double; public var performance: Double; public var recommended: Bool }
 
     public static func users(_ co: Company) -> Int { co.staff.count + 1 }
@@ -347,7 +305,6 @@ public enum EquipmentMarket {
         let unit = price(e, company: co, w, factor: f)
         return book["plans"].array.enumerated().map { (i, p) in
             let fee = max(w.currency(co).scaledPrice(90), (unit / max(1, e.lifeYears) / 12 * p["fee"].double / 10).rounded() * 10)
-            // No sales on subscriptions; only the biggest plan carries a standing volume discount.
             let volume = i == 2 ? 0.92 : 1.0
             return Plan(index: i, name: p["name"].string, maxUsers: p["users"].int, monthlyFee: w.currency(co).tidy(fee * volume), performance: p["perf"].double, recommended: i == rec)
         }
@@ -383,8 +340,6 @@ public enum EquipmentMarket {
         return true
     }
 
-    // MARK: The used market
-
     static func monthIdx(_ s: GameState) -> Int { GameCalendar.monthIndex(week: s.week) }
 
     static func taken(_ co: Company, key: String) -> [Int] { co.value("uTaken")[key].array.map { $0.int } }
@@ -396,8 +351,6 @@ public enum EquipmentMarket {
         return (tc, vis, dressed)
     }
 
-    /// Second-hand listings of a piece of equipment this month: each one different, and the seller does not always tell the truth.
-    /// Original: `usedEqList`.
     public static func usedEquipment(_ s: GameState, companyID: Int, equipmentID: String, data: GameData) -> [UsedOffer] {
         guard let co = s.company(companyID), let c = ctx(s, co, data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }), e.vehicleModels == nil else { return [] }
         let key = "\(s.seed):ul:\(co.id):\(e.id):\(monthIdx(s))"
@@ -422,7 +375,6 @@ public enum EquipmentMarket {
         return out.filter { !gone.contains($0.slot) }
     }
 
-    /// Second-hand vehicles this month. Original: `usedVehList`.
     public static func usedVehicles(_ s: GameState, companyID: Int, equipmentID: String, data: GameData) -> [UsedOffer] {
         guard let co = s.company(companyID), let c = ctx(s, co, data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }), let models = e.vehicleModels else { return [] }
         let key = "\(s.seed):uv:\(co.id):\(e.id):\(monthIdx(s))"
@@ -460,7 +412,6 @@ public enum EquipmentMarket {
 
     static func markTaken(_ s: inout GameState, _ i: Int, _ o: UsedOffer) {
         var t = s.companies[i].value("uTaken")
-        // listings of earlier months are forgotten
         let month = String(monthIdx(s))
         t = .object(t.object.filter { $0.key.split(separator: ":").last.map(String.init) == month })
         var list = t[o.key].array
@@ -468,8 +419,6 @@ public enum EquipmentMarket {
         t[o.key] = .array(list)
         s.companies[i].set("uTaken", t)
     }
-
-    // MARK: Buying
 
     @discardableResult
     static func openLoan(_ s: inout GameState, companyID: Int, name: String, amount: Double, months: Int, extraMargin: Double) -> Int {
@@ -490,8 +439,6 @@ public enum EquipmentMarket {
         return loan.id
     }
 
-    /// Buy new equipment of a chosen brand: for cash, on a loan (20% down, four years) or on a lease (3 years, service included).
-    /// Software and services are one licence; a licence already owned is replaced by the new version. Original: `buyEq` + the steps.
     @discardableResult
     public static func buyNew(_ s: inout GameState, companyID: Int, equipmentID: String, offer: Offer, quantity: Int, payment: Payment, prepaid: Bool = false, dealWeek: Int? = nil, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }), e.vehicleModels == nil else { return .notPossible }
@@ -504,7 +451,6 @@ public enum EquipmentMarket {
         let total = unit * Double(q)
         if prepaid || c.co.cash >= total * (payment == .finance ? 0.2 : payment == .lease ? 0 : 1) { Suppliers.recordPurchase(&s, vendorID: offer.vendorID, amount: total, priceIndex: c.w.country(c.co).costIndex, big: true) }
         var pay = payment
-        // A prepaid order was checked and charged at checkout: the way to pay is kept as it was.
         if !prepaid, one || (pay == .lease && !canLease(e, tradeID: c.bd.id, unitPrice: unit, company: c.co, c.w, tables: c.tables)) { pay = .cash }
         if !prepaid, pay == .finance && !canFinance(e, tradeID: c.bd.id, total: total, company: c.co, c.w, tables: c.tables) { pay = .cash }
         let brand = Brand(name: offer.name, cls: offer.cls, reliability: offer.reliability, performance: offer.performance, rating: offer.rating)
@@ -517,7 +463,6 @@ public enum EquipmentMarket {
             s.companies[i].set("eqL", eqL)
             return .ok
         }
-        // A newer version of a licence already owned
         if one, case let eq = s.companies[i].value("eq"), !eq[e.id].isNull, eq[e.id]["sub"].isNull {
             if !prepaid && c.co.cash < total { return .notEnoughCash }
             if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: total, category: nil, label: "New version: \(offer.name)") }
@@ -549,7 +494,6 @@ public enum EquipmentMarket {
         return .ok
     }
 
-    /// Buy a used item from this month's listings. Original: `buyUsedEq`.
     @discardableResult
     public static func buyUsed(_ s: inout GameState, companyID: Int, equipmentID: String, listing L: UsedOffer, payment: Payment, prepaid: Bool = false, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }) else { return .notPossible }
@@ -589,7 +533,6 @@ public enum EquipmentMarket {
         return .ok
     }
 
-    /// Buy a new vehicle of a chosen make. Cash, loan (20% down, five years) or lease (3 years). Original: `buyVehCore`.
     @discardableResult
     public static func buyNewVehicle(_ s: inout GameState, companyID: Int, equipmentID: String, offer: VehicleOffer, payment: Payment, prepaid: Bool = false, dealWeek: Int? = nil, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }),
@@ -601,9 +544,6 @@ public enum EquipmentMarket {
         return CompanySetup.addVehicle(&s, companyIndex: i, e, model: offer.modelID, modelName: vm.name, price: base, mode: mode, brand: Brand(name: offer.name, cls: 1, reliability: offer.reliability, performance: 1, rating: offer.rating), prepaid: prepaid, data: data) ? .ok : .notEnoughCash
     }
 
-    // MARK: Selling
-
-    /// Sell one unit. Used equipment sells for well under what was paid, less if it looks worn. Original: `sellUnit`.
     @discardableResult
     public static func sellUnit(_ s: inout GameState, companyID: Int, equipmentID: String, unitID: Int) -> Double {
         guard let i = s.companyIndex(companyID) else { return 0 }
@@ -625,12 +565,11 @@ public enum EquipmentMarket {
         else { units[equipmentID] = .array(list) }
         s.companies[i].set("eq", eq); s.companies[i].set("units", units)
         if r["n"].double - 1 > 0 { EquipmentUnits.syncCondition(&s, companyIndex: i, equipmentID: equipmentID) }
-        if bvU > val { Payments.book(&s, companyID: companyID, category: "loss", amount: bvU - val) }   // sold below book value: the loss is an expense
+        if bvU > val { Payments.book(&s, companyID: companyID, category: "loss", amount: bvU - val) }
         if val > 0 { Payments.companyReceives(&s, companyID: companyID, amount: val, category: nil, label: "Sold used \(equipmentID)") }
         return val
     }
 
-    /// What the owner has seen of the wear: how it looked when bought, minus what has worn since.
     public static func seen(_ u: JSONValue) -> Double {
         let tc = u["tc"].isNull ? u["cond"].double : u["tc"].double
         let vis = u["vis"].isNull ? tc : u["vis"].double
@@ -638,7 +577,6 @@ public enum EquipmentMarket {
         return clamp(vis - (c0 - tc), 0.05, 1)
     }
 
-    /// Sell all of a kind of equipment for 70% of book value. Original: `sellEq`.
     @discardableResult
     public static func sellAll(_ s: inout GameState, companyID: Int, equipmentID: String) -> Double {
         guard let i = s.companyIndex(companyID) else { return 0 }
@@ -654,7 +592,6 @@ public enum EquipmentMarket {
         return v
     }
 
-    /// Sell a vehicle for 78% of book value (nothing for a leased one); a loan on it is settled. Original: `sellVeh`.
     @discardableResult
     public static func sellVehicle(_ s: inout GameState, companyID: Int, vehicleID: Int) -> Double {
         guard let i = s.companyIndex(companyID) else { return 0 }
@@ -672,7 +609,6 @@ public enum EquipmentMarket {
         return val
     }
 
-    /// End a lease on equipment (the units go back). The monthly cost stops.
     @discardableResult
     public static func endLease(_ s: inout GameState, companyID: Int, equipmentID: String) -> Bool {
         guard let i = s.companyIndex(companyID), !s.companies[i].value("lease")[equipmentID].isNull || !s.companies[i].value("eqL")[equipmentID].isNull else { return false }
@@ -682,15 +618,11 @@ public enum EquipmentMarket {
         return true
     }
 
-    /// The company ends for good (wound up or bankrupt): every lease ends with it and the lessor takes the things back (no instalment, no asset).
     public static func endAllLeases(_ s: inout GameState, companyIndex i: Int) {
         s.companies[i].set("lease", .object([:])); s.companies[i].set("eqL", .object([:]))
         s.companies[i].set("veh", .array(s.companies[i].value("veh").array.filter { $0["mode"].string != "lease" }))
     }
 
-    // MARK: Reading for the screens
-
-    /// One line of the "needed" list: what is required, what the company has and the lowest price.
     public struct Need: Identifiable, Equatable, Sendable {
         public var id: String { equipmentID }
         public var equipmentID: String
@@ -708,11 +640,9 @@ public enum EquipmentMarket {
         public var canLease: Bool
         public var lifeYears: Double
         public var warrantyYears: Double
-        /// The lowest price with no sale, and the sale on the cheapest offer (percent 0 = no sale; subscriptions never have one).
         public var listPrice: Double = 0
         public var dealPercent: Int = 0
         public var dealLabel: String = ""
-        /// False for an item the store sells to every company but this trade does not use; it is never needed and is listed only while the company owns some.
         public var ofTrade: Bool = true
     }
 
@@ -759,7 +689,6 @@ public enum EquipmentMarket {
         }
     }
 
-    /// Equipment health as far as the owner can tell, 0 to 1 (nil if the company owns nothing that wears).
     public static func health(_ co: Company) -> Double? {
         var vals: [Double] = []
         for (_, list) in co.value("units").object.sorted(by: { $0.key < $1.key }) { for u in list.array { vals.append(seen(u)) } }

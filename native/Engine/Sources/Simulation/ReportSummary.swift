@@ -2,8 +2,6 @@ import Foundation
 import GameCore
 import Countries
 
-/// The plain-language summary of a report: three to five sentences, every number taken from the report itself.
-/// Nothing is invented: if a comparison or a company is not in the numbers, the sentence is left out.
 public enum ReportSummary {
     public static func sentences(_ r: PeriodReport, currency cur: Currency) -> [String] {
         func amount(_ v: Double) -> String { cur.short(abs(v)).replacingOccurrences(of: "\u{00A0}", with: " ") }
@@ -15,7 +13,6 @@ public enum ReportSummary {
         let who = r.scopeName ?? "The group"
         var out: [String] = []
 
-        // 1. Profit, against the period before, with the company that moved it most
         if g.pnl.isEmpty {
             out.append(r.scopeName == nil ? "No company earned or spent anything this \(noun)." : "\(who) earned and spent nothing this \(noun).")
         } else {
@@ -43,7 +40,6 @@ public enum ReportSummary {
             out.append(s + ".")
         }
 
-        // 2. What the costs took
         let rev = g.pnl.revenue
         let costs = g.pnl.costLines.filter { $0.amount > 0 }.sorted { $0.amount != $1.amount ? $0.amount > $1.amount : $0.id < $1.id }
         if rev > 0, let top = costs.first {
@@ -58,12 +54,10 @@ public enum ReportSummary {
             out.append("Costs were \(amount(g.pnl.costs)) with no revenue yet.")
         }
 
-        // 3. Best and weakest company
         if r.scopeName == nil, let b = r.best, let w = r.worst, b.id != w.id {
             out.append("\(b.name) did best (\(signed(b.pnl.netProfit, amount))) and \(w.name) did worst (\(signed(w.pnl.netProfit, amount))).")
         }
 
-        // 4. Net worth
         let change = r.netWorthChange
         if let name = r.scopeName {
             if abs(change) < 1 { out.append("Your share of \(name) was worth \(amount(r.netWorthEnd.total)), unchanged.") }
@@ -82,7 +76,6 @@ public enum ReportSummary {
             out.append(s + ".")
         }
 
-        // 5. Year: tax and dividends. Otherwise cash and what happened.
         if r.kind == .year, g.taxPaid > 0 || g.dividendsReceived > 0 || g.personalTax > 0 {
             var parts: [String] = []
             if g.taxPaid > 0 { parts.append("paid \(amount(g.taxPaid)) in tax") }
@@ -114,7 +107,6 @@ public enum ReportSummary {
         }
     }
 
-    /// The company whose profit moved most in the direction the group moved, when it explains a good part of the change.
     private static func leader(_ r: PeriodReport, prev: ReportPrevious, direction: Double) -> String? {
         guard direction != 0 else { return nil }
         var best: (name: String, move: Double)?
@@ -128,7 +120,6 @@ public enum ReportSummary {
         return b.name
     }
 
-    /// The part of net worth that changed most, as a phrase.
     private static func driver(_ r: PeriodReport) -> String? {
         let d = r.netWorthEnd - r.netWorthStart
         let parts: [(String, Double)] = [("your account", d.cash), ("investments", d.investments), ("the value of your companies", d.companies),

@@ -2,8 +2,6 @@ import Foundation
 import GameCore
 import Employees
 
-/// How good the company's work is this week. Original: `qualityTarget` (engine/company/model.js).
-/// Quality moves 18% of the way to this target each week; reputation then follows quality slowly.
 public enum QualityModel {
     public static func target(_ co: Company, _ bd: Trade, utilisation util: Double, _ w: World, goods: (m: Double, q: Double)) -> Double {
         if let q = SpecialFamilies.qualityTarget(co, bd) { return q }
@@ -21,10 +19,10 @@ public enum QualityModel {
         var q = 28 + 0.3 * sk + eqQ + Knobs.effect(co, bd, "q", w, sum: true)
         if co.managerID != nil { q += 9 * ManagerModel.quality(co, bd, people: w.state.people) }
         if co.ownerHours > 46 && co.managerID == nil { q -= (co.ownerHours - 46) * 0.7 }
-        q -= max(0, util - 0.97) * 40 + max(0, util - CompanyWeek.congestionStart) * 5 * (CompanyWeek.congestionFamilyShare[bd.family] ?? 0)   // a rushed kitchen or floor
+        q -= max(0, util - 0.97) * 40 + max(0, util - CompanyWeek.congestionStart) * 5 * (CompanyWeek.congestionFamilyShare[bd.family] ?? 0)
         q += [-3.0, 0, 2][min(2, max(0, co.maintenance))]
         q += goods.q
-        q += ManagerTargets.qualityCare(co, week: w.week)   // a rating target: more care for quality
+        q += ManagerTargets.qualityCare(co, week: w.week)
         return clamp(q, 5, 99)
     }
 }

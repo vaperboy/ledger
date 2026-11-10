@@ -6,13 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// THE contract discussion with one employee: the only screen where pay rises, promotions, hours, pay basis, bonus plans, benefits, notice and moves
-/// are agreed, for workers and for the store manager. It replaces the raise menu, the promotion sheet, the contract menu and the manager's raise,
-/// move and profit-share buttons. Either side opens it: you from the staff profile or the manager card, the person with a request (which also
-/// reaches the Inbox, where agree / delay / decline run the same engine path).
-///
-/// No rule lives here. The engine (`ContractTalk`) decides what can be discussed, what each choice costs, how the quit risk moves, what the country's
-/// labour data requires, and what the person answers. The screen shows the preview before anything is confirmed and the answer after.
 struct ContractDiscussionView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -58,9 +51,6 @@ struct ContractDiscussionView: View {
         .onChange(of: topic) { _, _ in resetChoice() }
     }
 
-    // MARK: Who and what
-
-    /// Bonus plans, benefits and promises open once the company has five staff or a manager; a request already on the table stays answerable.
     private func termsOpen(_ e: GameEngine) -> Bool { e.staffTermsUnlocked(companyID: companyID) }
     private func extra(_ t: ContractTalk.Topic) -> Bool { t == .bonus || t == .benefits }
 
@@ -90,7 +80,6 @@ struct ContractDiscussionView: View {
         }
     }
 
-    /// Their request, or the talk you started and they answered with a counter.
     @ViewBuilder private func open(_ e: GameEngine, _ co: Company, _ n: Person, _ talk: ContractTalk.Talk, _ cur: Currency) -> some View {
         if talk.isRequest {
             let pv = e.contractPreview(companyID: companyID, personID: personID, proposal: talk.proposal, asRequest: true)
@@ -133,7 +122,6 @@ struct ContractDiscussionView: View {
         }
     }
 
-    /// Quick counters between your last offer and their ask (a quarter, half, three quarters of the way); the editor below takes any exact figure.
     @ViewBuilder private func partWay(_ t: ContractTalk.Talk, _ cur: Currency) -> some View {
         let p = t.proposal
         if [.payRise, .promotion, .hours].contains(p.topic), p.amount > 0 {
@@ -167,8 +155,6 @@ struct ContractDiscussionView: View {
         default: return p.topic.title
         }
     }
-
-    // MARK: Topics and the editor
 
     private func topics(_ e: GameEngine) -> some View {
         let unlocked: Bool = termsOpen(e)
@@ -268,8 +254,6 @@ struct ContractDiscussionView: View {
         store.engine?.contractChoices(companyID: companyID, personID: personID, topic: .promotion).first { $0.id == post }?.amount
     }
 
-    // MARK: The proposal, its consequences and sending it
-
     private func currentProposal(_ e: GameEngine) -> ContractTalk.Proposal {
         switch topic {
         case .payRise: return .init(.payRise, amount: percent)
@@ -311,7 +295,6 @@ struct ContractDiscussionView: View {
 
     private func signed(_ v: Double, _ cur: Currency) -> String { (v > 0 ? "+" : "") + cur.tidyShort(v) }
 
-    /// Employer cost of the whole company's people before and after, the difference a month and a year, and this person's own difference.
     @ViewBuilder private func costRows(_ c: ContractTalk.Consequences, _ cur: Currency) -> some View {
         FlatRow(label: "People cost a month, with employer charges", value: "\(cur.tidyShort(c.costBefore)) \u{2192} \(cur.tidyShort(c.costAfter))", rule: false)
         FlatRow(label: "Difference", value: "\(signed(c.costPerMonth, cur)) a month", sub: "\(signed(c.costPerYear, cur)) a year", tint: c.costPerMonth > 0 ? Theme.loss : c.costPerMonth < 0 ? Theme.gain : Theme.ivory)
@@ -328,7 +311,6 @@ struct ContractDiscussionView: View {
         }
     }
 
-    /// Payroll and operational impact and how the person may react, all in words.
     @ViewBuilder private func words(_ c: ContractTalk.Consequences) -> some View {
         if !c.payrollImpact.isEmpty { FlatRow(label: "Payroll", value: "", sub: c.payrollImpact) }
         if !c.operationalImpact.isEmpty { FlatRow(label: "The business", value: "", sub: c.operationalImpact) }
@@ -350,7 +332,6 @@ struct ContractDiscussionView: View {
         let talk = e.contractTalk(personID: personID)
         let answering = talk?.isRequest == true && talk?.proposal.topic == topic
         let sendable: Bool = pv.blocked.isEmpty
-        // The send button is pinned under the long discussion so it never scrolls out of reach.
         Color.clear.frame(height: 0)
             .popupFooter {
                 VStack(spacing: Theme.Space.xs) {
@@ -365,13 +346,11 @@ struct ContractDiscussionView: View {
                         }
                 }
                 .disabled(!sendable).opacity(sendable ? 1 : 0.4)
-                // Says why it cannot be sent right under the greyed button.
                 if !sendable { Text(pv.blocked.tidyText).popupText(.caption).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true) }
                 }
             }
     }
 
-    /// The figure that goes with a counter, in the unit of the topic.
     private func counterValue(_ p: ContractTalk.Proposal) -> Double { p.topic == .promotion || p.topic == .payRise || p.topic == .hours ? p.amount : p.amount }
 
     private func summary(_ c: ContractTalk.Consequences, _ cur: Currency) -> String {
@@ -394,7 +373,6 @@ struct ContractDiscussionView: View {
         }
     }
 
-    /// Tells the reply to what the player chose (`chosen`) in the outcome popup; a counter or an unwilling answer stays in the talk.
     private func show(_ r: ContractTalk.Reply?, _ chosen: String) {
         guard let r else { store.show("No game is loaded.", tone: "warn"); return }
         switch r {
@@ -410,8 +388,6 @@ struct ContractDiscussionView: View {
         }
         if let e = store.engine, let co = e.state.company(companyID), !isEmployee(co) { dismiss() }
     }
-
-    // MARK: Working percentage, the current contract, promises and history
 
     private func percentEditor() -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -454,7 +430,6 @@ struct ContractDiscussionView: View {
         return PromiseMaker(kinds: StaffPromises.Kind.allCases, details: words, benefits: promiseBenefits(e), percents: [20, 50, 80, 100], current: workPercent, label: label, add: add)
     }
 
-    /// A promise made here goes to Company > Team > Promises, where its date, status and consequences are kept.
     @ViewBuilder private func promiseSection(_ e: GameEngine, _ co: Company, _ n: Person) -> some View {
         TeamBlock("Promise") {
             VStack(alignment: .leading, spacing: 8) {
@@ -477,8 +452,6 @@ struct ContractDiscussionView: View {
             }
         }
     }
-
-    // MARK: Defaults
 
     private func seed() {
         guard !seeded, let e = store.engine, let co = e.state.company(companyID) else { return }

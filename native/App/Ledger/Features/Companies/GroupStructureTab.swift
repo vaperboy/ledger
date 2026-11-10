@@ -3,10 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Structure tab of the Group: what you own and who runs it. A hero with the group's value, how much of it you control, influence or
-/// only hold, and one line on managers and waiting decisions; then the tree from `engine.structureTree()` collapsed to you and your
-/// holdings, chains and companies. A card opens to show what sits under it (locations, subsidiaries, divisions, stakes) and its chain of
-/// command. Anything struggling or waiting on a decision opens its parents on first sight.
 struct GroupStructureTab: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -15,7 +11,6 @@ struct GroupStructureTab: View {
     @State private var expanded: Set<String> = []
     @State private var seeded = false
 
-    /// One visible card and how deep it sits.
     private struct Row: Identifiable {
         var node: StructureNode
         var depth: Int
@@ -43,9 +38,6 @@ struct GroupStructureTab: View {
         .onAppear { seed(nodes) }
     }
 
-    // MARK: Tree
-
-    /// The cards in display order: the children of you, then the children of every open card.
     private func rows(_ nodes: [StructureNode]) -> [Row] {
         var kids: [String: [StructureNode]] = [:]
         for n in nodes { if let p = n.parentID { kids[p, default: []].append(n) } }
@@ -60,7 +52,6 @@ struct GroupStructureTab: View {
         return out
     }
 
-    /// The parents of every struggling node or node with a decision waiting, all the way up (you is always open).
     private func autoExpanded(_ nodes: [StructureNode]) -> Set<String> {
         var byID: [String: StructureNode] = [:]
         for n in nodes { byID[n.id] = n }
@@ -87,8 +78,6 @@ struct GroupStructureTab: View {
         }
     }
 
-    // MARK: Card
-
     private func card(_ r: Row, _ nodes: [StructureNode], _ lines: [Int: GroupManagement.Line], _ list: [GroupEntity]) -> some View {
         let n: StructureNode = r.node
         let rungs: [StructureRung] = chainOfCommand(n, nodes, lines)
@@ -103,7 +92,6 @@ struct GroupStructureTab: View {
             .padding(.leading, CGFloat(r.depth) * Theme.Space.l)
     }
 
-    /// From the top of the chain down to the person who runs the company; a chain takes its head office's.
     private func chainOfCommand(_ n: StructureNode, _ nodes: [StructureNode], _ lines: [Int: GroupManagement.Line]) -> [StructureRung] {
         var cid: Int? = n.companyID
         if cid == nil, n.kind == .chain {
@@ -118,9 +106,6 @@ struct GroupStructureTab: View {
         }
     }
 
-    // MARK: Opening
-
-    /// The Group page of a chain, holding or company; a location of a chain finds the chain's page.
     private func entity(for n: StructureNode, _ list: [GroupEntity]) -> GroupEntity? {
         if n.kind == .chain, let cid = Int(n.id.dropFirst("chain:".count)) {
             return list.first(where: { (g: GroupEntity) -> Bool in g.chainID == cid })
@@ -129,7 +114,6 @@ struct GroupStructureTab: View {
         return GroupEntities.find(list, companyID: c)
     }
 
-    /// Decide opens the board, Appoint manager the Management tab, Fix and Open the page itself; locations, divisions and stakes open their company.
     private func perform(_ n: StructureNode, own: Bool, target: GroupEntity?) {
         switch n.primaryAction {
         case .decide: go(target, .board, n)
@@ -141,8 +125,6 @@ struct GroupStructureTab: View {
     private func go(_ g: GroupEntity?, _ section: GroupSection, _ n: StructureNode) {
         if let g { onPick(g, section) } else if let c = n.companyID { store.openCompany(c) }
     }
-
-    // MARK: Hero
 
     private func hero(_ nodes: [StructureNode], _ mgmt: GroupManagement?) -> some View {
         let value: Double = (store.netWorthNow ?? engine.netWorth).companies
@@ -180,8 +162,6 @@ struct GroupStructureTab: View {
 
     private func pct(_ share: Double) -> String { "\(Int(saturating: (share * 100).rounded()))%" }
 
-    /// How the value of what you own splits by how much of each company is yours: over 50% control, 20-50% influence, under 20% passive.
-    /// Holdings and chains are left out because the companies under them are counted.
     private func tierShares(_ nodes: [StructureNode]) -> (control: Double, influence: Double, passive: Double) {
         var c: Double = 0
         var i: Double = 0

@@ -6,8 +6,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// A foreign company follows the rules of its OWN country: owner-salary withholding, severance social charge, VAT, corporate tax.
-/// Written by tracing the code (no Swift toolchain was available when they were added).
 final class CompanyCountryRulesTests: XCTestCase {
     private func abroad() throws -> (GameEngine, Int, String) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 11)
@@ -32,7 +30,6 @@ final class CompanyCountryRulesTests: XCTestCase {
             expected = Taxes.personalIncomeTax(4_000_000 * 12, kind: .wage, in: ctx.country(of: s.companies[i], s)) / 12
             home = Taxes.personalIncomeTax(4_000_000 * 12, kind: .wage, in: ctx.homeCountry(s)) / 12
             let t = Payday.dayNumber(week: s.week, day: s.day)
-            // a company still being set up pays no one, and a fresh payroll book counts this month's owner pay as already made
             s.companies[i].status = .open
             var cfg = Payday.config(s.companies[i], today: t)
             cfg.ownerPaidMonth = Payday.monthNumber(t) - 1

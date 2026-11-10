@@ -4,17 +4,12 @@ import Countries
 import Finance
 import Employees
 
-/// People you care about: staff stories (anniversaries, thank-you notes, life events, retirement), the one rival owner who makes it
-/// personal (the nemesis, with a running score) and the Top 50 every January.
-/// Original: features/people/staff_stories_and_nemesis.js (`staffWeek`, `nemWeek`, `top50`). The business paper and the interviews are `Press`.
 public enum Stories {
     public static let annAction = "st28ann", retAction = "st28ret", lifeAction = "st28life", proAction = "st28pro"
     public static func handlesAnswer(_ action: String) -> Bool { [annAction, retAction, lifeAction, proAction].contains(action) }
 
-    /// Entry-level roles: a worker in one of these who has learned the job may be offered the next step up. Original: `JUN`.
     static let juniorRoles: Set<String> = ["helper", "cleaner", "cashier", "waiter", "barista", "housek", "labour", "fworker", "usher", "waiterB", "carwash", "courier", "recept", "groom", "seaman", "farmh", "teller"]
 
-    /// The next role up in this trade's own staff list: the cheapest non-entry role paying clearly more than the current one. Original: `nextRole`.
     static func nextRole(_ co: Company, _ m: StaffMember, data: GameData) -> String? {
         guard let bd = data.catalog[co.type] else { return nil }
         let roles = data.catalog.tables.roles
@@ -26,9 +21,6 @@ public enum Stories {
         return up.min { (roles[$0]?.baseMonthlyWage ?? 0) < (roles[$1]?.baseMonthlyWage ?? 0) }
     }
 
-    // MARK: Helpers
-
-    /// A draw that does not touch the game's shared random stream (so these stories never move the rest of the simulation).
     static func roll(_ s: GameState, _ tag: String) -> Double { var h = HashedRandom("\(s.seed):st28:\(tag):\(s.week)"); return h.next() }
 
     static func mood(_ co: Company) -> Double { co.value("mood").isNull ? 60 : co.num("mood") }
@@ -36,7 +28,6 @@ public enum Stories {
     static func first(_ name: String) -> String { name.split(separator: " ").first.map(String.init) ?? name }
     static func roleName(_ s: GameState, _ data: GameData, _ role: String) -> String { (data.catalog.tables.roles[role]?.name ?? "worker").lowercased() }
 
-    /// A line in a worker's story, at most 20 (the second is dropped first). Original: `story`.
     static func addStory(_ m: inout StaffMember, week: Int, _ text: String) {
         var l = m.value("st28").array
         l.append(.object(["w": .number(Double(week)), "t": .string(text)]))
@@ -58,16 +49,12 @@ public enum Stories {
         (s.rest["hof28"]?.array ?? []).map { ($0["n"].string, $0["t"].string, $0["w"].int) }
     }
 
-    // MARK: Every week
-
     public static func weekly(_ s: inout GameState, data: GameData) {
         for ci in s.companies.indices where s.companies[ci].status == .open { staffWeek(&s, ci, data: data) }
         quietDefaults(&s, data: data)
         nemesisWeek(&s, data: data)
         if GameCalendar.year(week: s.week) != GameCalendar.year(week: s.week - 1) { top50(&s, data: data) }
     }
-
-    // MARK: Staff stories
 
     static func staffWeek(_ s: inout GameState, _ ci: Int, data: GameData) {
         let co0 = s.companies[ci]
@@ -83,7 +70,6 @@ public enum Stories {
             let role = roleName(s, data, m.role)
             if m.value("st28").isNull { m.set("st28", .array([.object(["w": .number(Double(hired)), "t": .string("Joined \(co.name) as \(role)")])])) }
             let y = (s.week - hired) / 52
-            // anniversaries: one year is a story line; every fifth year asks what the team does
             if y > m.int("an28") && y >= 1 {
                 if y == 1 { m.set("an28", y); addStory(&m, week: s.week, "One year at \(co.name)"); bumpMood(&s, ci, 0.5) }
                 else if ![5, 10, 15, 20, 25, 30].contains(y) { m.set("an28", y) }
@@ -98,7 +84,6 @@ public enum Stories {
                                  action: annAction, data: .object(["co": .number(Double(co.id)), "s": .number(Double(id)), "y": .number(Double(y))]), expiresWeek: s.week + 2)
                 }
             }
-            // from the bottom up: a junior who has learned the job next door may be promoted
             if juniorRoles.contains(m.role) && y >= 1 && m.value("pr28").isNull && fresh,
                StaffModel.skill(m, person: n, salesRoles: data.catalog.tables.salesRoles) >= 66, roll(s, "pro:\(id)") < 0.04,
                let to = nextRole(co, m, data: data) {
@@ -111,7 +96,6 @@ public enum Stories {
                              options: [.option("Promote \(first(n.name))", "Loyal, motivated, and already knows the place."), .option("Not yet", "\(first(n.name)) may look elsewhere.")],
                              action: proAction, data: .object(["co": .number(Double(co.id)), "s": .number(Double(id)), "to": .string(to), "wage": .number(wage)]), expiresWeek: s.week + 3)
             }
-            // retirement
             if Double(n.age) + Double(s.week - hired) / 52 >= 67 && m.value("ret28").isNull && fresh {
                 m.set("ret28", s.week); fresh = false
                 s.companies[ci].set("sl28", s.week)
@@ -120,7 +104,6 @@ public enum Stories {
                              options: [.option("A farewell party", "\(cur.display(cur.scaledPrice(8000))). The whole team comes."), .option("A gift and a speech", "\(cur.display(cur.scaledPrice(3000)))."), .option("A card", "")],
                              action: retAction, data: .object(["co": .number(Double(co.id)), "s": .number(Double(id)), "y": .number(Double(max(1, y)))]), expiresWeek: s.week + 2)
             }
-            // thank-you notes after a raise or a course
             let raised = m.num("wl28") > 0 && m.monthlyWage >= m.num("wl28") * 1.04, trained = m.num("crs") > m.num("cr28")
             if (raised || trained) && s.week - (m.value("ty28").isNull ? -99 : m.int("ty28")) > 26 && fresh && roll(s, "ty:\(id)") < 0.5 {
                 m.set("ty28", s.week); fresh = false
@@ -132,7 +115,6 @@ public enum Stories {
                 bumpMood(&s, ci, 1)
             }
             m.set("wl28", m.monthlyWage); m.set("cr28", m.num("crs"))
-            // life
             if fresh && teamSize <= 40 && roll(s, "life:\(id)") < 0.0025 {
                 let events = [("is getting married", "Married"), ("has become a parent", "Became a parent"), ("bought a first home", "Bought a home")]
                 let e = events[min(2, Int(roll(s, "ev:\(id)") * 3))]
@@ -144,7 +126,6 @@ public enum Stories {
             }
             if let k2 = s.companies[ci].staff.firstIndex(where: { $0.id == id }) { s.companies[ci].staff[k2] = m }
         }
-        // the manager
         let co = s.companies[ci]
         if let mid = co.managerID, let mn = s.people[mid], !co.value("mgrW0").isNull {
             let y = (s.week - co.int("mgrW0")) / 52
@@ -204,7 +185,6 @@ public enum Stories {
         }
     }
 
-    /// Nobody answered a farewell: the quiet default is a card, and the person still goes. Original: the `m.auto` pass.
     static func quietDefaults(_ s: inout GameState, data: GameData) {
         for k in s.inbox.indices where s.inbox[k].actionID == retAction && s.inbox[k].status == "done" && s.inbox[k].value("auto").double != 0 && s.inbox[k].value("done28").isNull {
             s.inbox[k].set("done28", 1)
@@ -212,8 +192,6 @@ public enum Stories {
             answer(&s, message: msg, option: 2, data: data)
         }
     }
-
-    // MARK: The nemesis
 
     public struct Nemesis: Equatable, Sendable {
         public var owner: String, groupID: String, groupName: String, since: Int, wins: Int, losses: Int, bankrupt: Bool
@@ -234,7 +212,6 @@ public enum Stories {
         guard (s.rest["nem28"] ?? .null).isNull, s.week >= 10 else { return }
         let live = s.companies.filter { $0.status == .open }
         guard !live.isEmpty else { return }
-        // nobody picks a fight with a newcomer; you have to matter first
         let w = World(state: s, data: data)
         let matters = live.count >= 3 || live.contains { c in data.catalog[c.type].map { MarketMap.noticed(s, c, $0, w) } ?? false }
         guard matters else { return }
@@ -253,7 +230,6 @@ public enum Stories {
         Press.add(&s, priority: 5, head: "\(g.owner) takes aim at \(s.player.name)", deck: "The owner of \(g.name) has a new rival.")
     }
 
-    /// Score a round. Kind: "w" you, "l" them, "d" a draw that only goes in the log. Original: `tally`.
     static func tally(_ s: inout GameState, _ kind: String, _ text: String, data: GameData) {
         guard var nm = s.rest["nem28"], !nm.isNull else { return }
         if kind == "w" { nm["w"] = .number(nm["w"].double + 1) } else if kind == "l" { nm["l"] = .number(nm["l"].double + 1) }
@@ -300,7 +276,6 @@ public enum Stories {
             else if t.hasPrefix("Bought ") && t.hasSuffix(" from you") { rounds.append(("d", "You sold them a company.")) }
             else if t.hasPrefix("Bought ") { rounds.append(("l", "They bought a business in your market before you did.")) }
         }
-        // how earlier rounds ended
         var keep: [JSONValue] = []
         for p in pend {
             if s.week < p["w"].int { keep.append(p); continue }
@@ -317,7 +292,6 @@ public enum Stories {
         nm["pend"] = .array(keep)
         nm["seen"] = .number(Double(s.week))
         s.rest["nem28"] = nm
-        // each new year: who ranks higher
         if GameCalendar.year(week: s.week) != GameCalendar.year(week: s.week - 1) {
             let b = CompanyRanking.board(s, data: data, scope: .country, metric: .revenue)
             if let me = b.you, let them = b.entries.first(where: { $0.groupID == g.id }) {
@@ -327,8 +301,6 @@ public enum Stories {
         }
         for r in rounds { tally(&s, r.0, r.1, data: data) }
     }
-
-    // MARK: The Top 50
 
     public struct TopFifty: Equatable, Sendable {
         public struct Row: Equatable, Sendable { public var name: String, revenue: Double, isYou: Bool, groupID: String?, trades: String }
@@ -340,7 +312,6 @@ public enum Stories {
                         yourRank: t["rk"].isNull ? nil : t["rk"].int, of: t["of"].int)
     }
 
-    /// Every January the paper prints the 50 biggest companies by sales. Original: `top50`.
     static func top50(_ s: inout GameState, data: GameData) {
         let b = CompanyRanking.board(s, data: data, scope: .country, metric: .revenue)
         guard let me = b.you else { return }

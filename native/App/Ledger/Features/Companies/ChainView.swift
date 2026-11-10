@@ -5,9 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// One chain as a whole: its head office, what needs you, the locations as cards (each opens its company), who manages the chain and each city,
-/// the rules every store follows, its board, franchising, supply between your companies and growth. Opened from the Group tab and
-/// from a store's Chain section. Store-level work (staff, prices, stock) stays in each store; logic is in `Chains`, `ManagerModel`.
 struct ChainView: View {
     @EnvironmentObject var store: GameStore
     var chainID: Int
@@ -16,7 +13,6 @@ struct ChainView: View {
     @State private var newName = ""
     @State private var part: ChainPart = .stores
 
-    /// The chain page in three sections: the head office and its locations, who manages them and by which rules, and how it grows.
     enum ChainPart: String, CaseIterable, Hashable { case stores = "Locations", people = "Managers and rules", growth = "Growth" }
 
     @ViewBuilder private func partBody(_ p: ChainPart, _ e: GameEngine, _ sum: Chains.Summary, _ cur: Currency) -> some View {
@@ -47,7 +43,6 @@ struct ChainView: View {
                     SegmentedPill(items: ChainPart.allCases, title: { $0.rawValue }, selection: $part)
                     partBody(part, e, sum, cur)
                 }
-                // The chain's blocks sit on the page: plain cards draw flat.
                 .environment(\.insideCard, true)
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 1100).frame(maxWidth: .infinity)
@@ -67,7 +62,6 @@ struct ChainView: View {
         }
     }
 
-    /// The rename question in the in-game popup: the new name, what it costs, then Cancel or Rename.
     private func renamePopup(_ sum: Chains.Summary, _ cur: Currency) -> some View {
         PopupBody {
             VStack(alignment: .leading, spacing: PopupSpace.block) {
@@ -115,11 +109,9 @@ struct ChainView: View {
     }
 }
 
-/// The chain's figures in one block.
 struct ChainFigures: View {
     var summary: Chains.Summary
     var currency: Currency
-    /// The chain's combined cash (one company: the stores share it) and how many weeks in a row it has been below zero.
     var cash: (cash: Double, weeksOverdrawn: Int)? = nil
 
     private var items: [KeyFigures.Item] {
@@ -136,7 +128,6 @@ struct ChainFigures: View {
     var body: some View {
         let r = summary.reach
         let reachNote: String = r.nextAt > 0 ? "At \(r.nextAt) outlets: wider name, more demand, cheaper goods." : "A worldwide name."
-        // The chain's monthly profit is the hero; revenue sits under it, the reach and buying figures follow in one strip.
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text("Profit a month").textStyle(.label, tint: Theme.inkFaint)
@@ -164,7 +155,6 @@ struct ChainFigures: View {
     }
 }
 
-/// What in the chain needs the owner: stores losing money or out of cash, stores nobody manages, board items, franchise applicants.
 struct ChainAttention: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -213,7 +203,6 @@ struct ChainAttention: View {
         }
     }
 
-    /// A store out of cash can borrow from the sister store with the most to spare, repaid once it has a cushion again.
     private func lendRow(_ c: Company) -> some View {
         let weekly = engine.companyHealth(c).weeklyCost
         let need = currency.roundedStep(max(0, -c.cash) + weekly * 4, about: 1000)
@@ -247,7 +236,6 @@ struct ChainAttention: View {
     }
 }
 
-/// Every location as a card: sort, search, group by city, and open any store's company. Each store can take its own rules.
 struct ChainStoreComparison: View {
     enum Sort: String, CaseIterable, Hashable { case profit = "Profit", revenue = "Revenue", city = "City", name = "Name" }
     @EnvironmentObject var store: GameStore
@@ -302,8 +290,6 @@ struct ChainStoreComparison: View {
         }
         .confirmAction($pending)
     }
-
-    // MARK: A branch leaves the chain
 
     private func askClose(_ id: Int) {
         guard let p = engine.branchClosurePlan(storeID: id) else { store.show("This store cannot be closed as a branch.", tone: "warn"); return }
@@ -368,7 +354,6 @@ struct ChainStoreComparison: View {
     }
 }
 
-/// The rules every store of the chain follows.
 struct ChainRulesSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -443,7 +428,6 @@ struct ChainRulesSection: View {
         }
     }
 
-    /// A chain standard for one way of selling: mandatory for the stores while set (they see it locked), or left to each store.
     private func knobStandard(_ knob: Knob, _ current: JSONValue) -> some View {
         let cur = engine.homeCurrency
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -458,7 +442,6 @@ struct ChainRulesSection: View {
                     }.buttonStyle(TinyButtonStyle(tint: current.isNull ? Theme.gold : Theme.ivoryMuted))
                     ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in
                         if knob.isMulti {
-                            // Add-ons: the standard is the whole set. Tapping one adds it to, or drops it from, the set the chain fixes.
                             let on = !current.isNull && current.int & (1 << i) != 0
                             Button((on ? "In: " : "") + o.name) { askStandard(knob, Knobs.mask(current.isNull ? 0 : current.int, option: i, on: !on), cur) }
                                 .buttonStyle(TinyButtonStyle(tint: on ? Theme.gold : Theme.ivoryMuted))
@@ -480,7 +463,6 @@ struct ChainRulesSection: View {
         }
     }
 
-    /// What a choice is called: the option, or the add-ons that are on.
     private func optionNames(_ knob: Knob, _ value: Int) -> String {
         if knob.isMulti {
             let on = knob.options.enumerated().filter { value & (1 << $0.offset) != 0 }.map { $0.element.name }
@@ -512,8 +494,6 @@ struct ChainRulesSection: View {
     }
 }
 
-
-/// Your other companies of the same trade that could join the chain.
 struct ChainJoin: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

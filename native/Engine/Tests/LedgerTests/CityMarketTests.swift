@@ -3,7 +3,6 @@ import GameCore
 import Countries
 import Businesses
 
-/// Real-life population and demand by place: city data spread, income bands, luxury demand and rivals by city.
 final class CityMarketTests: XCTestCase {
     func data() throws -> GameData { try GameData.bundled() }
 
@@ -37,7 +36,7 @@ final class CityMarketTests: XCTestCase {
         let nyc = us.incomeBands(in: us.city("nyc")!), smallUS = us.incomeBands(in: us.city("smallus")!)
         XCTAssertGreaterThan(nyc.affluent, smallUS.affluent * 3)
         XCTAssertGreaterThan(us.incomeBands(in: us.city("sfo")!).affluent, us.incomeBands(in: us.city("la")!).affluent)
-        XCTAssertLessThan(no.incomeBands(in: no.city("small")!).affluent, nyc.affluent)   // a small Norwegian town against New York
+        XCTAssertLessThan(no.incomeBands(in: no.city("small")!).affluent, nyc.affluent)
     }
 
     func testLuxuryDrawsCustomersInRichBigCitiesAndAlmostNoneInSmallTowns() throws {
@@ -47,15 +46,12 @@ final class CityMarketTests: XCTestCase {
             let c = d.countries[cc]!
             return CityMarket.affordRatio(trade: trade, priceMultiplier: pm, country: c, city: c.city(city)!, tables: tables)
         }
-        // At an average price the gap is modest; a premium or luxury position needs the rich and the gap is wide
         XCTAssertGreaterThan(ratio("boutique", "US", "la"), ratio("boutique", "NO", "small"))
         XCTAssertGreaterThan(ratio("boutique", "US", "la", pm: 1.4), 1.5)
         XCTAssertLessThan(ratio("boutique", "NO", "small", pm: 1.9), 0.3)
         XCTAssertGreaterThan(ratio("boutique", "US", "la", pm: 1.9), 5 * ratio("boutique", "NO", "small", pm: 1.9))
-        // A luxury price position needs the rich: the town loses far more than at an average price
         XCTAssertLessThan(ratio("boutique", "NO", "small", pm: 1.9), ratio("boutique", "NO", "small", pm: 1))
-        XCTAssertEqual(ratio("grocery", "US", "la"), 1)   // everyday trades: only size counts
-        // Rivals follow the customers who can pay
+        XCTAssertEqual(ratio("grocery", "US", "la"), 1)
         let us = d.countries["US"]!, no = d.countries["NO"]!
         XCTAssertGreaterThan(CityMarket.rivalDensity(trade: "boutique", country: us, city: us.city("la")!, tables: tables), 1)
         XCTAssertLessThan(CityMarket.rivalDensity(trade: "boutique", country: no, city: no.city("small")!, tables: tables), 1)

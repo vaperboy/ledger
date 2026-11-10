@@ -1,11 +1,9 @@
 import AudioToolbox
 import AVFoundation
 
-/// The moments that can make a sound. Short built-in system sounds only: nothing is bundled.
 enum SoundCue {
     case dayClose, weekReport, goal, paymentOut, record, unlock, warning
 
-    /// iOS system sound IDs (short clicks and chimes).
     fileprivate var systemSoundID: SystemSoundID {
         switch self {
         case .dayClose: return 1104
@@ -19,8 +17,6 @@ enum SoundCue {
     }
 }
 
-/// Quiet sound cues, off by default and switched in Settings. The ambient audio session keeps them silent while the ringer switch
-/// is muted and never changes the volume or interrupts the player's own music.
 @MainActor
 enum SoundCues {
     static var enabled: Bool {

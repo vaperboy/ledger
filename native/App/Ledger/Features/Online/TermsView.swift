@@ -19,13 +19,11 @@ enum Terms {
 
 struct TermsView: View {
     var onAccept: () -> Void
-    /// The name of the one profile, asked here once; the profile screen shows and edits it from then on.
     @State private var name = ""
 
     private let P: OutsidePalette = .passport
 
     private var nameReady: Bool { ProfileRules.problem(with: name) == nil }
-    /// Shown only once something is typed, so the empty field does not start with a complaint.
     private var nameProblem: String? { name.isEmpty ? nil : ProfileRules.problem(with: name) }
 
     var body: some View {

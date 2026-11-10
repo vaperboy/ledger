@@ -4,10 +4,6 @@ import Businesses
 import Countries
 import Simulation
 
-/// Sale add-ons of a car sales company (used cars or new cars): dealer warranty, car loans through the bank and insurance at the sale.
-/// For each one: the setup (partner contracts and licences with their costs and review time), then on/off, the dealer's margin and prices,
-/// and a live preview of what a sale brings. The rules are in `DealerAddons` (engine); this view only reads and sets.
-/// Embed it in the company's settings or customers screen for trades `usedcar` and `cardealer` (`DealerAddons.supports(company)`).
 struct DealerAddonsView: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -32,8 +28,6 @@ struct DealerAddonsView: View {
         }
     }
 
-    // MARK: Preview
-
     private func previewBlock(_ cur: Currency) -> some View {
         let offers: [DealerAddonOffer] = engine.dealerAddonPreview(companyID: company.id, priceFactor: Self.factors[priceStep])
         let total: Double = offers.filter { $0.active }.reduce(0) { $0 + $1.expectedNet }
@@ -51,8 +45,6 @@ struct DealerAddonsView: View {
             }
         }
     }
-
-    // MARK: One add-on
 
     private func addonBlock(_ a: DealerAddon, _ cur: Currency) -> some View {
         let setup: DealerSetupStatus? = engine.dealerAddonSetup(companyID: company.id, addon: a)
@@ -164,8 +156,6 @@ struct DealerAddonsView: View {
         }
     }
 
-    // MARK: Controls of an approved add-on
-
     private func controls(_ a: DealerAddon, _ offer: DealerAddonOffer?, _ cur: Currency) -> some View {
         let set: DealerAddonSettings = engine.dealerAddonSettings(companyID: company.id) ?? DealerAddonSettings()
         let on: Bool = a == .warranty ? set.warrantyOn : (a == .loan ? set.loanOn : set.insuranceOn)
@@ -243,8 +233,6 @@ struct DealerAddonsView: View {
         store.act { $0.setDealerCommission(companyID: company.id, addon: a, rate: v) }
     }
 
-    // MARK: Records
-
     private func recordsBlock(_ cur: Currency) -> some View {
         let t: DealerAddonTotals = engine.dealerAddonTotals(companyID: company.id) ?? DealerAddonTotals()
         let reserve: Double = engine.dealerWarrantyReserve(companyID: company.id)
@@ -262,13 +250,10 @@ struct DealerAddonsView: View {
         }
     }
 
-    // MARK: Text
-
     private func percent(_ v: Double) -> String { String(format: "%.1f%%", v * 100) }
     private func signed(_ v: Double, _ cur: Currency) -> String { v >= 0 ? "+" + cur.tidyShort(v) : "-" + cur.tidyShort(-v) }
 }
 
-/// The add-ons as a page of their own (pushed from the Sales tab of a car dealer), reading the company again from the engine.
 struct DealerAddonsPage: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int

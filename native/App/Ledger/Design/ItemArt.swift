@@ -4,9 +4,6 @@ import Simulation
 import UIKit
 #endif
 
-/// Supplied pictures for the drawn art. An image set named `art.<category>.<id>` in `Assets.xcassets/Art` (for example `art.trade.cafe`,
-/// `art.artifact.compass`, `art.avatar.av.briefcase`) replaces the drawn emblem for that id; nothing else needs to change. Ids are the
-/// engine ids (trade ids, artifact ids, cosmetic and reward ids, `BoxKind` raw values, avatar ids). `native/tools/add_art.py` makes the image set.
 extension ArtLibrary {
     static func catalogueName(_ category: ArtCategory, _ id: String) -> String { "art." + category.rawValue + "." + id }
 
@@ -17,8 +14,6 @@ extension ArtLibrary {
     #endif
 }
 
-/// The art of one thing, by category and id: a supplied picture when the asset catalogue has one, else the drawn emblem. The rarity gives
-/// the frame. `size` is the height; plates and backdrops are drawn as squares unless `wide` is set.
 struct ItemArt: View {
     var category: ArtCategory
     var id: String
@@ -26,7 +21,6 @@ struct ItemArt: View {
     var colors: [UInt32] = []
     var size: CGFloat = 44
     var wide: Bool = false
-    /// Forces a shape (a round slot for a trade, for instance).
     var shape: EmblemShape? = nil
 
     init(category: ArtCategory, id: String, rarity: BoxRarity? = nil, colors: [UInt32] = [], size: CGFloat = 44, wide: Bool = false, shape: EmblemShape? = nil) {
@@ -46,7 +40,6 @@ struct ItemArt: View {
         self.init(category: .box, id: kind.rawValue, rarity: r, size: size)
     }
 
-    /// A season reward or store cosmetic. `rarity` is the frame; a Plus-track reward with none given gets the rare frame.
     init(reward r: SeasonReward, rarity: BoxRarity? = nil, size: CGFloat = 44, wide: Bool = false) {
         self.init(category: ItemArt.category(of: r), id: r.id, rarity: rarity ?? (r.premium ? .rare : nil), colors: r.colors, size: size, wide: wide)
     }
@@ -75,7 +68,6 @@ struct ItemArt: View {
         }
     }
 
-    /// True when there is art for this id (always, except a trade the game does not know).
     var hasArt: Bool { EmblemCatalog.spec(category: category, id: id, colors: colors) != nil }
 
     private var resolved: EmblemSpec? {

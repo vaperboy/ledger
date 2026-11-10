@@ -5,10 +5,6 @@ import Businesses
 import Events
 import Simulation
 
-// MARK: - Money
-
-/// An entity's money as one vertical list: cash with Put in, group loans, dividends, and (a holding) a dividend to you.
-/// A holding invests its treasury in the Market app.
 struct GroupEntityMoney: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -42,9 +38,7 @@ struct GroupEntityMoney: View {
         .confirmAction($pending)
     }
 
-    /// The cash leads as a figure; moving money in or out are rows under it.
     private var cashBox: some View {
-        // A chain is one company: its stores share one combined cash.
         let cash: Double = entity.chainID.map { (id: Int) -> Double in engine.chainCash(chainID: id).cash } ?? cos.reduce(0) { (a: Double, c: Company) -> Double in a + c.cash }
         let id: Int = entity.companyID
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -58,7 +52,6 @@ struct GroupEntityMoney: View {
         }
     }
 
-    /// The holding pays you a dividend: an amount and one action.
     private var treasuryBox: some View {
         let main: Company? = engine.state.company(entity.companyID)
         let cur: Currency = main.map { (c: Company) -> Currency in engine.currency(for: c) } ?? engine.homeCurrency
@@ -101,7 +94,6 @@ struct GroupEntityMoney: View {
         }
     }
 
-
     private func askDividend(_ cur: Currency) {
         let id: Int = entity.companyID
         let amt: Double = amount
@@ -116,7 +108,6 @@ struct GroupEntityMoney: View {
         }
     }
 
-    /// What sister companies lent each other, as one row; when a company is short, the row offers the loan.
     private var loansBox: some View {
         let owed: Double = cos.reduce(0) { (a: Double, c: Company) -> Double in a + engine.groupLoanBalance(companyID: c.id) }
         let short: Company? = cos.first { (c: Company) -> Bool in c.cash < 0 && c.type != "hold" }
@@ -140,7 +131,6 @@ struct GroupEntityMoney: View {
                          valueNote: owed > 0 ? "owed now" : "", identifier: "money-lend", action: { askLoan(c, need, cur) })
     }
 
-    /// The dividend desk, or (while the company has no retained profit to pay out) a locked line that says what opens it. A holding collects, so it is never locked.
     @ViewBuilder private var dividendsOrLock: some View {
         if let lock = engine.unlockItem("dividends", companyID: entity.companyID), !lock.unlocked {
             LockedBlock(title: "Dividends", reason: lock.reason)
@@ -185,9 +175,6 @@ struct GroupEntityMoney: View {
     }
 }
 
-// MARK: - Dividend policy popup
-
-/// The dividend policy of one company in a centred popup: how much of the profit is proposed each quarter. Nothing is paid by itself.
 struct DividendPolicySheet: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int

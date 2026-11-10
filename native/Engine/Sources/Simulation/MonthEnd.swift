@@ -4,18 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// Month end and year end for companies. Original: `monthEndCoCore`, `taxAccrue`, `settle`, `monthEnd`, `yearEnd`
-/// (engine/core/week.js).
-///
-/// Order at a month end (documented so cash never moves by surprise):
-///  1. each company: manager bonus, corporate tax accrual (profit minus losses carried forward), VAT registration
-///     reminder, the tax accrued so far paid at once, VAT settled when the return is due, bills that could not be paid counted,
-///     monthly history line written, month's books closed;
-///  2. the player: overdraft interest, loan instalments, credit score; tax on interest and wealth tax;
-///  3. the currencies drift.
-/// Payroll and supplier bills are NOT paid here: they have their own days (see `Payday`).
 public enum MonthEnd {
-    /// Corporate tax rate of a company: some industries pay more. Original: `coTaxRate`.
     public static func taxRate(_ co: Company, _ bd: Trade, _ country: Country) -> Double {
         if bd.hasTrait("oil") { return Taxes.specialRate("oil", in: country, fallback: min(0.5, country.corporateTax + 0.2)) }
         if bd.id == "salmon" { return Taxes.specialRate("salmon", in: country, fallback: country.corporateTax) }
@@ -23,18 +12,14 @@ public enum MonthEnd {
         return country.corporateTax
     }
 
-    /// Tax a limited company owes so far this year, with losses carried forward. Original: `taxAccrue`.
     static func accrueTax(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData) {
         var co = s.companies[i]
         let w = World(state: s, data: data)
         let rate = taxRate(co, bd, w.country(co))
         let lc0 = co.lossCarryAtYearStart ?? 0
-        // In a tax group (a holding and the companies it owns 90% or more of) profit covers a sister company's loss.
         let gc = HoldingModel.groupContribution(co, in: s)
-        // Profit kept out of the tax base this year: legal deductions and concealed takings (see `Misconduct`).
         let ev = co.value("evade")
         let kept = ev["y"].int == GameCalendar.year(week: s.week) ? ev["c"].double + ev["l"].double : 0
-        // Carried-forward losses offset profit only up to the country's cap (`Taxes.lossOffsetLimit`; no cap where the data has none).
         let country = w.country(co)
         let profitBeforeLosses = co.yearProfitSoFar - gc.out - kept
         let used = min(lc0, Taxes.lossOffsetLimit(profit: profitBeforeLosses, in: country))
@@ -49,7 +34,6 @@ public enum MonthEnd {
             s.companies[i].addPayable("tax", delta)
             Payments.book(&s, companyID: co.id, category: "tax", amount: delta)
         } else if delta < 0 {
-            // Profit fell since the last month: first cancel what is still unpaid, then refund what was already paid.
             let unpaid = min(-delta, s.companies[i].payables["tax"] ?? 0)
             s.companies[i].addPayable("tax", -unpaid)
             Payments.book(&s, companyID: co.id, category: "tax", amount: delta)
@@ -63,14 +47,12 @@ public enum MonthEnd {
         }
     }
 
-    /// At a year end: split the losses carried forward into yearly lots, take this year's use from the oldest lot, add this year's loss, and let
-    /// lots older than the country's limit (`Country.lossYears`, e.g. Japan and Mexico 10 years) lapse. Sets `lossCarryForward` to what is left.
     static func rollLossLots(_ co: inout Company, country: Country, closingYear: Int) {
         let lc0 = co.lossCarryAtYearStart ?? 0
         let carry = co.lossCarryForward
         let covered = co.yearProfitSoFar + co.value("gc")["in"].double
         let newLoss = max(0, -covered)
-        var remaining = max(0, lc0 + newLoss - carry)   // what this year's profit used up
+        var remaining = max(0, lc0 + newLoss - carry)
         var lots: [(year: Int, amount: Double)] = co.value("lossLots").array.map { ($0[0].int, $0[1].double) }
         if abs(lots.reduce(0) { $0 + $1.amount } - lc0) > 0.5 { lots = lc0 > 0 ? [(closingYear - 1, lc0)] : [] }
         lots.sort { $0.year < $1.year }
@@ -84,9 +66,6 @@ public enum MonthEnd {
         co.set("lossLots", .array(lots.map { .array([.number(Double($0.year)), .number($0.amount)]) }))
     }
 
-    /// Pay the corporate tax owed so far as far as the account (with its overdraft room) allows. Run right after each month's accrual, so tax is
-    /// paid as it arises; whatever could not be paid stays owed and is retried next month. Returns what could not be paid.
-    /// In day mode wages, rent and suppliers are settled on their own days, so only tax is settled here. Original: `settle` under R29.
     @discardableResult
     static func settleTax(_ s: inout GameState, companyIndex i: Int, context: FinanceContext) -> Double {
         var co = s.companies[i]
@@ -100,20 +79,17 @@ public enum MonthEnd {
             co.addTransaction(week: s.week, amount: -jsRound(paid), label: "Corporate tax")
             s.stats.taxPaid += paid
         }
-        // What is left of last year's tax after the year end is the arrears; it cannot exceed what is still owed.
         co.taxPrevYear = min(co.taxPrevYear, co.payables["tax"] ?? 0)
         if co.taxPrevYear < 1 { co.taxDue = false }
         s.companies[i] = co
         return owed - paid
     }
 
-    /// A company's month. Original: `monthEndCoCore`.
     public static func closeMonth(_ s: inout GameState, companyIndex i: Int, data: GameData, context: FinanceContext) {
         let co0 = s.companies[i]
         guard let bd = data.catalog[co0.type] else { return }
         var w = World(state: s, data: data)
         let country = w.country(co0)
-        // Manager's profit bonus: a share of the month's profit on top of salary, booked as wages, paid with the next payroll.
         if co0.managerID != nil, co0.managerProfitBonus > 0, s.people[co0.managerID!] != nil, co0.status == .open {
             let b = co0.books.month
             let p0 = (b["rev"] ?? 0) - Books.expenses(b)
@@ -138,7 +114,6 @@ public enum MonthEnd {
             accrueTax(&s, companyIndex: i, bd, data: data)
             co = s.companies[i]
         }
-        // VAT registration reminder
         w = World(state: s, data: data)
         let threshold = country.vatThreshold
         if threshold > 0 && co.status == .open && !co.value("flags")["vatAsk"].bool && !Knobs.documentOK(co, "vat")
@@ -152,11 +127,8 @@ public enum MonthEnd {
         }
         s.companies[i] = co
         let unpaidTax = settleTax(&s, companyIndex: i, context: context)
-        // VAT return, when it is due
         co = s.companies[i]
         let freq = max(1, country.vatFilingMonths == 0 ? 2 : country.vatFilingMonths)
-        // Like any other bill: only what the account (with its overdraft room) can cover is paid. The rest stays owed ("vatOver"),
-        // draws a 5 % penalty and then 1 % interest a month, and counts as unpaid tax for the "unpaid for months" check.
         var vatUnpaid = 0.0
         let filing = GameCalendar.monthIndex(week: s.week) % freq == freq - 1
         let vatRoom = max(0, s.companies[i].cash + context.overdraftRoom(s.companies[i], s))
@@ -172,8 +144,6 @@ public enum MonthEnd {
                 }
                 var rest = v - pay
                 if rest > 1 {
-                    // The 5 % penalty is charged once, on the VAT of this return that was left unpaid. Arrears carried from earlier
-                    // returns (`vatOver`) already contain their own penalty and interest and are not penalised again.
                     let carried = min(s.companies[i].num("vatOver"), v)
                     let penalty = jsRound(min(rest, max(0, v - carried)) * 0.05)
                     Payments.book(&s, companyID: co.id, category: "fine", amount: penalty)
@@ -210,7 +180,6 @@ public enum MonthEnd {
             } else { s.companies[i].set("vatOver", over); vatUnpaid = over }
         }
         co = s.companies[i]
-        // Unpaid tax counts as unpaid bills
         if unpaidTax + vatUnpaid > w.currency(co).scaledPrice(1500) {
             co.unpaidMonths += 1
             s.companies[i] = co
@@ -236,10 +205,8 @@ public enum MonthEnd {
         s.companies[i] = co
     }
 
-    /// All month-end processing. Original: `monthEnd`.
     public static func closeMonth(_ s: inout GameState, data: GameData, context: FinanceContext) {
         for i in s.companies.indices where s.companies[i].status.isLive { closeMonth(&s, companyIndex: i, data: data, context: context) }
-        // A tax group is settled once every member's month is in. Original: 'a tax group is settled once every member's month is in'.
         for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].status != .setup
             && s.companies[i].lossCarryAtYearStart != nil && HoldingModel.taxGroup(of: s.companies[i], in: s) != nil {
             if let bd = data.catalog[s.companies[i].type] {
@@ -248,13 +215,11 @@ public enum MonthEnd {
             }
         }
         FootballModel.monthly(&s)
-        // Dividends are never automatic: the owner decides in Group.
         PersonalFinance.monthly(&s, context: context)
         PersonalFinance.withholdNow(&s, context: context)
         TaxSettlement.withholdWealthTax(&s, data: data, context: context)
         var rates = ExchangeRates(drift: s.exchangeRates.values)
         rates.monthlyDrift(book: data.countries, homeCode: s.homeCountryCode, random: &s.random)
-        // Euro countries move together. Original: 'euro countries move together'.
         let euro = data.countries.countries.filter { $0.currencyCode == "EUR" }.map { $0.code }
         let homeIsEuro = euro.contains(s.homeCountryCode)
         let v: Double = homeIsEuro ? 1 : (euro.compactMap { rates.drift[$0] }.first(where: { $0 != 0 }) ?? 1)
@@ -263,7 +228,6 @@ public enum MonthEnd {
         Abroad.regulationMonth(&s, data: data)
     }
 
-    /// Year end. Original: `yearEnd`.
     public static func closeYear(_ s: inout GameState, data: GameData, context: FinanceContext) {
         let world = World(state: s, data: data)
         let closingYear = GameCalendar.year(week: s.week)
@@ -273,7 +237,6 @@ public enum MonthEnd {
             do {
                 let country = world.country(co)
                 rollLossLots(&co, country: country, closingYear: closingYear)
-                // The year's tax was paid month by month on the profit so far, so the last month's accrual was the true-up; only unpaid tax is arrears.
                 co.taxPrevYear = co.payables["tax"] ?? 0
                 co.taxDue = co.taxPrevYear >= 1
                 co.taxDueWeek = s.week

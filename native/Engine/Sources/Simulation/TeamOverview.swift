@@ -5,65 +5,44 @@ import Employees
 import Finance
 import Businesses
 
-/// The Team tab's read model. Who runs each company day to day (the delegation chain of `ManagerModel.decisionChain`: store manager,
-/// regional manager, chain manager, chain CEO or managing director, group managing director), and the problems that need the owner:
-/// decisions waiting, wages at risk, companies nobody runs, managers who leave or fail, and staff trouble in the companies you run yourself.
-/// Staff trouble inside a company a manager runs is listed as handled by that manager, not as yours.
-/// Also: the posts with no one in them (store, company, chain and group level) and every store manager's scorecard.
 public struct TeamOverview: Sendable {
     public struct CompanyLine: Identifiable, Sendable {
         public var id: Int
         public var name: String
-        /// "You" or the name of the person who runs it day to day.
         public var managedBy: String
         public var managerTitle: String?
         public var delegated: Bool
-        /// The store manager's authority (0 asks you, 1 within limits, 2 full control); -1 without a store manager.
         public var authority: Int
         public var staff: Int
         public var monthlyWages: Double
         public var chainID: Int?
         public var holdingID: Int?
         public var issues: Int
-        /// The chain's or the holding's name, for grouping on screen.
         public var chainName: String?
         public var holdingName: String?
-        /// The store manager's scorecard (0-100, `Headquarters.review`); nil without a store manager.
         public var score: Int?
-        /// The store manager's overall quality (0-1, `ManagerModel.quality`); nil without a store manager.
         public var managerQuality: Double?
-        /// The store manager is working their notice.
         public var managerLeaving: Bool
         public var isHolding: Bool
     }
 
-    /// A post with no one in it. `needed` means something goes unrun without it (a store nobody runs, a manager on notice, a big chain
-    /// with no one above the stores); the others are posts the engine has room for, to fill when it pays.
     public struct Vacancy: Identifiable, Sendable {
         public var id: String
         public var title: String
-        /// store, company, chain, region or group.
         public var scope: String
         public var place: String
         public var detail: String
         public var companyID: Int?
         public var chainID: Int?
         public var needed: Bool
-        /// Who would employ the person: the company, the chain, the holding, or the group office.
         public var employer: String = ""
-        /// What kind of post: mgr (store or company manager), team (a company's management team), chainmgr, ceo56, region, md or hq.
         public var post: String = ""
-        /// The team slot key ("ceo", "reg", "sales" ...), the main-office role, or the city of a regional manager.
         public var key: String = ""
-        /// The boss above who hires into this post (a regional manager, chain manager or CEO), nil when the owner hires.
         public var hirerName: String? = nil
         public var hirerTitle: String? = nil
-        /// That boss's authority: 0 asks you first, 1 within your limits, 2 full control. -1 when the owner hires.
         public var hirerAuthority: Int = -1
     }
 
-    /// Someone in a management post above or beside the store managers, with the entity that employs them.
-    /// `scope` is store, company, chain, region or group (the badge every management list shows).
     public struct Member: Identifiable, Sendable {
         public var id: String
         public var name: String
@@ -73,11 +52,9 @@ public struct TeamOverview: Sendable {
         public var monthlyWage: Double
         public var companyID: Int?
         public var chainID: Int?
-        /// The person record, for the portrait.
         public var personID: Int? = nil
     }
 
-    /// The group office the owner may set up: until then there are no group-level posts (no group managing director, no shared-service staff).
     public struct GroupOffice: Sendable {
         public var established: Bool
         public var tierName: String?
@@ -93,32 +70,24 @@ public struct TeamOverview: Sendable {
         public var messageID: Int?
         public var title: String
         public var detail: String
-        /// 3 act now, 2 soon, 1 for information.
         public var severity: Int
-        /// "You", or the name of the manager whose job it is.
         public var handledBy: String
-        /// A request a manager (or someone above them) passed to you because it is above what they may decide or afford.
         public var beyondAuthority: Bool = false
         public var needsOwner: Bool { handledBy == TeamOverview.you }
     }
 
     public static let you = "You"
-    /// Message actions that carry a request passed up because it is above the asker's authority or budget
-    /// (`ManagerModel.propose`, the seasonal proposals, and the chain hierarchy's own requests).
     public static let escalations: Set<String> = ["prop", "org56", "cpx56"]
 
     public var companies: [CompanyLine]
     public var issues: [Issue]
     public var vacancies: [Vacancy] = []
-    /// Department heads, chain, regional and group people, each with their scope and employer.
     public var members: [Member] = []
     public var groupOffice = GroupOffice(established: false, tierName: nil, employer: "Your group office")
-    /// Scorecards of every store manager, weakest first.
     public var scorecards: [Headquarters.Scorecard] = []
 }
 
 public extension GameEngine {
-    /// Title of a boss in the delegation chain.
     static func bossTitle(_ kind: String, trade: Trade?) -> String {
         switch kind {
         case "mgr": return trade.map { ManagerModel.title($0) } ?? "Manager"
@@ -130,7 +99,6 @@ public extension GameEngine {
         }
     }
 
-    /// What someone on a budget may decide (0 tight asks you, 1 normal within limits, 2 free full control), in the words every screen uses.
     static func authorityText(level: Int) -> String { (Budget(rawValue: min(2, max(0, level))) ?? .tight).text }
 
     func teamOverview() -> TeamOverview {
@@ -156,11 +124,9 @@ public extension GameEngine {
                                   title: title, detail: detail, severity: sev, handledBy: by))
             }
 
-            // Wages and cash: always the owner's problem, whoever runs the company.
             if !co.value("pr29")["late"].isNull { add(.payroll, "Wages are late at \(co.name)", "Staff have not been paid in full. Unpaid wages lead to claims and fines.", 3, by: TeamOverview.you) }
             else if wages > 0 && co.cash < wages && co.status == .open { add(.cash, "\(co.name) has less cash than a month of wages", "Next payday may not be covered. Move money in or cut costs.", 2, by: TeamOverview.you) }
 
-            // Who runs it.
             let ownerWorksThere = co.ownerHours > 0 && co.type != "hold"
             if co.managerID == nil && !ownerWorksThere && co.status == .open && !co.staff.isEmpty && co.type != "hold" {
                 add(.vacancy, "No one runs \(co.name)", bosses.isEmpty ? "You do not work there and it has no manager." : "No store manager; \(runner) oversees it from above.", bosses.isEmpty ? 3 : 2, by: TeamOverview.you)
@@ -177,7 +143,6 @@ public extension GameEngine {
                 }
             }
 
-            // Staff trouble: the runner's job when someone runs the company, yours when you run it yourself.
             let sick = co.staff.filter { ($0.sickUntilWeek ?? -1) >= s.week }.count
             let leaving = co.staff.filter { $0.noticeWeeks > 0 }.count
             let tired = co.staff.filter { $0.tiredness > 75 }.count
@@ -187,7 +152,6 @@ public extension GameEngine {
             if leaving > 0 { add(.staffLeaving, "\(leaving) working their notice at \(co.name)", "Replace them before they go.", 1, by: staffBoss) }
             if tired > 0 { add(.tired, "\(tired) worn out at \(co.name)", "Long hours raise mistakes and resignations.", 1, by: staffBoss) }
 
-            // Decisions waiting on this company; a request passed up because it is above the asker's authority is marked as such.
             for m in s.inbox where m.status == "open" && m.companyID == co.id {
                 let escalated = TeamOverview.escalations.contains(m.actionID)
                 var detail = m.from
@@ -212,7 +176,6 @@ public extension GameEngine {
                                isHolding: co.type == "hold"))
             issues += mine
 
-            // Posts with no one in them at this company.
             if co.type != "hold" && co.status == .open && trade?.family != "club" {
                 let title = trade.map { ManagerModel.title($0) } ?? "Manager"
                 if co.managerID == nil && !ownerWorksThere && !co.staff.isEmpty {
@@ -229,8 +192,6 @@ public extension GameEngine {
                     vacancies.append(v)
                 }
             }
-            // Department heads and the managing director appear once the company's headcount justifies them (`ManagerModel.headsOK`, `mdOK`);
-            // whoever fills them is employed by the company itself (by the holding, for a holding's own leadership).
             for slot in ManagerModel.teamSlots(s, companyID: co.id, data: data) {
                 let scope = slot.key == "reg" ? "region" : (slot.key == "ceo" && co.type == "hold") ? "group" : "company"
                 if let pid = slot.personID, let p = s.people[pid] {
@@ -245,9 +206,6 @@ public extension GameEngine {
             }
         }
 
-        // Chains: the chain's own leadership is employed by the chain (its stores share the pay, `ManagerModel.groupMonthly`).
-        // A chain manager is offered from two stores (the rule in `ManagerPromotions`); a chain CEO from five, the size at which a chain
-        // with no one above the store managers counts as short. Such a chain needs someone above the stores.
         let regs = ManagerModel.regionals(s)
         for ch in chains {
             let id = ch["id"].int
@@ -285,7 +243,6 @@ public extension GameEngine {
                 v.post = "ceo56"
                 vacancies.append(v)
             }
-            // A city with four or more stores of the chain gets its own regional manager, appointed by the chain manager (or the CEO).
             let byCity = Dictionary(grouping: stores.filter { $0.status == .open }, by: { $0.cityID })
             for city in byCity.keys.sorted() where (byCity[city]?.count ?? 0) >= HierarchyHiring.regionalMinStores && !regs.contains(where: { $0["scope"].string == "chain:\(id):\(city)" }) {
                 let place = ManagerModel.cityName(s, city, data)
@@ -297,9 +254,6 @@ public extension GameEngine {
             }
         }
 
-        // The group office is the owner's choice. Before it exists there are no group-level posts, only each company's own.
-        // After it: the group managing director once there is more than one company, and each main-office role that is unlocked
-        // (the same `Headquarters.unlocked` rules as "Opens with N companies") and has a desk.
         let established = Headquarters.established(s)
         let groupEmployer = Headquarters.employerName(s, data)
         let md = s.rest["org56"]?["md"] ?? .null
@@ -331,7 +285,6 @@ public extension GameEngine {
             }
         }
 
-        // Decisions not tied to a company.
         for m in s.inbox where m.status == "open" && (m.companyID == 0 || s.company(m.companyID) == nil) {
             issues.append(.init(id: "decision-\(m.id)", kind: .decision, companyID: nil, chainID: nil, messageID: m.id, title: m.title, detail: m.from, severity: 3,
                                 handledBy: TeamOverview.you, beyondAuthority: TeamOverview.escalations.contains(m.actionID)))
@@ -345,20 +298,13 @@ public extension GameEngine {
         return out
     }
 
-    // MARK: The manager's profit share and duties (read-only previews for the screens)
-
     struct ProfitBonusPreview: Equatable, Sendable {
-        /// The share set now (0-0.3).
         public var current: Double
-        /// Average monthly profit over the last three months, never below zero.
         public var averageMonthlyProfit: Double
-        /// What the asked share would cost a month at that profit, employer costs included.
         public var monthlyCost: Double
-        /// The bonus booked at the last month end (profit share or target bonus).
         public var lastPaid: Double
     }
 
-    /// What a profit share of `share` would cost at the recent profit. The engine books it with wages at month end (`MonthEnd`).
     func managerProfitBonusPreview(companyID: Int, share: Double) -> ProfitBonusPreview? {
         guard let co = state.company(companyID), co.managerID != nil else { return nil }
         let h = co.monthlyHistory.suffix(3)
@@ -376,7 +322,6 @@ public extension GameEngine {
         public var manager: Bool
     }
 
-    /// The manager duties the engine acts on, and whether the manager looks after each now. Only `prem` changes what a manager does today.
     func managerDuties(companyID: Int) -> [ManagerDuty] {
         guard let co = state.company(companyID), co.managerID != nil else { return [] }
         return [ManagerDuty(id: "prem", title: "Asking for more space",

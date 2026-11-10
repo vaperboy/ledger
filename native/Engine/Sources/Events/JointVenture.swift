@@ -4,17 +4,11 @@ import Countries
 import Finance
 import Businesses
 
-/// Joint ventures: a limited company the player co-owns with friends. Owners hold real shares (the company's cap table); decisions are taken
-/// at board meetings by `JVRules` (planned each quarter, or urgent when any owner calls one) and a passed item is carried out here through the
-/// game's own actions, so the books stay balanced. Saved on the company as `jv`. The friends come from the online layer; a partner marked
-/// `mock` is a sample player whose votes the app's stand-in service casts.
 public enum JointVenture {
-    // MARK: Saved state
 
     public struct Member: Codable, Equatable, Identifiable, Sendable {
         public var id: String
         public var name: String
-        /// chair, cfo or partner.
         public var role: String
         public var mock: Bool
         public var joined: Int
@@ -31,11 +25,9 @@ public enum JointVenture {
         public var role: String
         public var mock: Bool
         public var pct: Double
-        /// What this friend alone pays; no one else is shown it.
         public var price: Double
         public var sent: Int
         public var expires: Int
-        /// sent, accepted, declined, expired.
         public var status: String
     }
     public struct Item: Codable, Equatable, Identifiable, Sendable {
@@ -56,7 +48,6 @@ public enum JointVenture {
         public var takesMoneyOut: Bool { kind.takesMoneyOut }
         public var votes: [String: JVRules.Choice] = [:]
         public var outcome: JVRules.Outcome? = nil
-        /// What the game did with it, or why it could not.
         public var result: String = ""
         public var applied: Bool = false
         public var chairUsedBefore: Bool = false
@@ -64,7 +55,6 @@ public enum JointVenture {
     public struct Meeting: Codable, Equatable, Identifiable, Sendable {
         public var id: Int
         public var planned: Bool
-        /// The week the agenda went out, the meeting date, and the last week a vote counts.
         public var opened: Int
         public var week: Int
         public var deadline: Int
@@ -76,7 +66,6 @@ public enum JointVenture {
         public var closedWeek: Int? = nil
         public var urgent: Bool { !planned }
     }
-    /// A message the app can turn into a local notification when the date comes.
     public struct Note: Codable, Equatable, Identifiable, Sendable {
         public var id: Int
         public var meetingID: Int
@@ -107,10 +96,7 @@ public enum JointVenture {
         if let d = try? JSONEncoder().encode(st), let v = try? JSONDecoder().decode(JSONValue.self, from: d) { s.companies[i].set("jv", v) }
     }
     public static func isVenture(_ co: Company) -> Bool { state(co) != nil }
-    /// Owners other than you.
     public static func partners(_ st: State) -> [Member] { st.members.filter { $0.id != Member.me } }
-
-    // MARK: Reads
 
     public struct Stake: Identifiable, Equatable, Sendable {
         public var id: String
@@ -132,7 +118,6 @@ public enum JointVenture {
                          pct: Double(sh) / Double(max(1, t.total)) * 100, lockUntil: m.lockUntil, locked: JVRules.isLocked(lockUntil: m.lockUntil, week: s.week), isYou: m.id == Member.me)
         }
     }
-    /// Shares by member id, plus every other holder under "x:<name>" (they take no part in the vote and so abstain).
     static func shareMap(_ co: Company, _ st: State) -> [String: Int] {
         let t = CapTable.table(co)
         var out: [String: Int] = [:]
@@ -148,19 +133,15 @@ public enum JointVenture {
         return JVRules.tally(shares: shareMap(co, st), votes: it.votes)
     }
     public static func venture(_ s: GameState) -> [Company] { s.companies.filter { $0.status.isLive && isVenture($0) } }
-    /// Meetings you still have to vote on (open and you have not voted on every item).
     public static func waitingForYou(_ s: GameState) -> Int {
         venture(s).reduce(0) { n, co in
             n + (state(co)?.meetings.filter { !$0.closed && $0.opened <= s.week && $0.items.contains { $0.votes[Member.me] == nil } }.count ?? 0)
         }
     }
-    /// Why you may not take money out of a company that has partners without a vote; nil when you may.
     public static func payoutBlock(_ s: GameState, companyID: Int) -> String? {
         guard let co = s.company(companyID), let st = state(co), !partners(st).isEmpty else { return nil }
         return "\(co.name) has partners. Money goes out to owners only when a board meeting votes for it."
     }
-
-    // MARK: Inviting a friend
 
     public struct Terms: Equatable, Sendable {
         public var companyName: String
@@ -173,7 +154,6 @@ public enum JointVenture {
     }
     static func companyValue(_ s: GameState, _ co: Company, data: GameData) -> Double { max(0, Valuation.companyValue(co, state: s, trades: data.catalog)) }
 
-    /// What the friend is shown before they join, and what the owner sees as the fair price: a plain list of what will happen.
     public static func terms(_ s: GameState, companyID: Int, pct: Double, price: Double, data: GameData, context fc: FinanceContext) -> Terms? {
         guard let co = s.company(companyID) else { return nil }
         let t = CapTable.table(co)
@@ -193,12 +173,10 @@ public enum JointVenture {
 
     public enum InviteResult: Equatable, Sendable {
         case sent(inviteID: Int)
-        /// The venture has partners, so a meeting must vote first.
         case needsVote(meetingID: Int)
         case refused(String)
     }
 
-    /// Check an invitation against the guard rails; nil when it is fine.
     static func inviteProblem(_ s: GameState, _ co: Company, _ st: State, linkKey: String, pct: Double, price: Double, mock: Bool, myLinkKeys: Set<String>, data: GameData) -> String? {
         if !co.status.isLive || co.status == .setup { return "\(co.name) is not open yet." }
         if co.type == "hold" || s.isBranch(co) { return "Only an ordinary limited company can have partners." }
@@ -218,7 +196,6 @@ public enum JointVenture {
         return inv
     }
 
-    /// Invite a friend with their own price. With no partners yet you decide alone; with partners, the invitation is put to an urgent meeting first.
     public static func invite(_ s: inout GameState, companyID: Int, playerID: String, name: String, linkKey: String, role: String = "partner", mock: Bool = true,
                               pct: Double, price: Double, myLinkKeys: Set<String>, data: GameData, context fc: FinanceContext) -> InviteResult {
         guard let i = s.companyIndex(companyID) else { return .refused("That company is gone.") }
@@ -238,7 +215,6 @@ public enum JointVenture {
         return .needsVote(meetingID: m)
     }
 
-    /// The friend answers. On yes they pay, the shares are issued and they become an owner with a lock-up.
     @discardableResult
     public static func respond(_ s: inout GameState, companyID: Int, inviteID: Int, accept: Bool, data: GameData, context fc: FinanceContext) -> String? {
         guard let i = s.companyIndex(companyID), var st = state(s.companies[i]), let k = st.invites.firstIndex(where: { $0.id == inviteID && $0.status == "sent" }) else { return "That invitation is no longer open." }
@@ -249,7 +225,6 @@ public enum JointVenture {
             s.addMessage(from: "\(co.name) partners", title: "\(inv.name) said no", body: "\(inv.name) turned down the invitation to join \(co.name).", companyID: co.id)
             return nil
         }
-        // The company may have moved since the price was set: the price must still sit in the band.
         if let why = JVRules.priceProblem(price: inv.price, fair: JVRules.fairPrice(value: companyValue(s, co, data: data), pct: inv.pct), mock: inv.mock, rules: s.worldRules) {
             st.invites[k].status = "declined"; save(&s, i, st)
             s.addMessage(from: "\(co.name) partners", title: "\(inv.name) could not join", body: "The value of \(co.name) has moved since the price was set. \(why)", companyID: co.id)
@@ -270,13 +245,10 @@ public enum JointVenture {
         return nil
     }
 
-    // MARK: Agenda items
-
     static func newItem(_ s: inout GameState, _ kind: JVRules.Kind, by: String, _ cur: Currency) -> Item {
         Item(id: s.makeID(), kind: kind, title: kind.title, effect: "", by: by)
     }
 
-    /// Build an agenda item with the facts the vote needs; nil with the reason when it cannot be put.
     public static func makeItem(_ s: inout GameState, companyID: Int, kind: JVRules.Kind, by: String, amount: Double = 0, steps: Int = 0, data: GameData, context fc: FinanceContext) -> (item: Item?, problem: String?) {
         guard let co = s.company(companyID) else { return (nil, "That company is gone.") }
         let cur = fc.currency(co.countryCode, s)
@@ -296,15 +268,12 @@ public enum JointVenture {
         return (it, nil)
     }
 
-    /// Put an item on the next planned meeting (any owner may).
     @discardableResult
     public static func queue(_ s: inout GameState, companyID: Int, item: Item) -> Bool {
         guard let i = s.companyIndex(companyID), var st = state(s.companies[i]), !partners(st).isEmpty else { return false }
         st.queue.append(item); save(&s, i, st)
         return true
     }
-
-    // MARK: Meetings
 
     static func memberTitle(_ m: Member) -> String { "\(m.roleTitle) \(m.name)" }
 
@@ -328,7 +297,7 @@ public enum JointVenture {
         let co = s.companies[i]
         let caller = st.members.first { $0.id == by }
         var its = items
-        for k in its.indices { its[k].votes[by] = .yes }   // the one who puts it, backs it
+        for k in its.indices { its[k].votes[by] = .yes }
         let m = Meeting(id: s.makeID(), planned: false, opened: s.week, week: s.week + JVRules.urgentWindowWeeks, deadline: JVRules.deadline(planned: false, openedWeek: s.week, meetingWeek: s.week),
                         calledBy: by, calledByTitle: caller.map { by == Member.me ? "You" : memberTitle($0) } ?? "A partner", reason: reason, items: its)
         st.meetings.append(m)
@@ -339,7 +308,6 @@ public enum JointVenture {
 
     public enum CallResult: Equatable, Sendable { case called(meetingID: Int), refused(String) }
 
-    /// Any owner, or the holder of a role, calls an urgent meeting with one or two items.
     public static func callUrgent(_ s: inout GameState, companyID: Int, by memberID: String, reason: String, items: [Item], data: GameData, context fc: FinanceContext) -> CallResult {
         guard let i = s.companyIndex(companyID), var st = state(s.companies[i]) else { return .refused("That company has no partners.") }
         guard st.members.contains(where: { $0.id == memberID }) else { return .refused("Only an owner or a role holder can call a meeting.") }
@@ -362,9 +330,6 @@ public enum JointVenture {
         return true
     }
 
-    // MARK: The week
-
-    /// Called once a week: invitations lapse, planned meetings go out two weeks ahead, and meetings past their deadline are counted and carried out.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         for i in s.companies.indices where s.companies[i].status.isLive {
             guard var st = state(s.companies[i]) else { continue }
@@ -386,7 +351,6 @@ public enum JointVenture {
         }
     }
 
-    /// The quarterly agenda: a dividend when there is profit to share, a call for capital when cash runs short, and what owners queued.
     static func plannedMeeting(_ s: inout GameState, _ i: Int, _ st: inout State, date: Int, data: GameData, context fc: FinanceContext) -> Meeting {
         let co = s.companies[i]
         let cur = fc.currency(co.countryCode, s)
@@ -409,7 +373,6 @@ public enum JointVenture {
         return Meeting(id: s.makeID(), planned: true, opened: s.week, week: date, deadline: date, calledBy: "board", calledByTitle: "The board", reason: "Quarterly meeting", items: items)
     }
 
-    /// Count the votes on every item, carry out what passed, close the meeting and tell you.
     static func count(_ s: inout GameState, _ i: Int, _ st: inout State, _ k: Int, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         let shares = shareMap(co, st)
@@ -418,7 +381,6 @@ public enum JointVenture {
         for n in st.meetings[k].items.indices {
             var it = st.meetings[k].items[n]
             let t = JVRules.tally(shares: shares, votes: it.votes)
-            // A tie broken by the chair once: if this kind of item tied and was broken before, the status quo stands.
             let broke = st.meetings.contains { $0.id != st.meetings[k].id && $0.items.contains { $0.kind == it.kind && ($0.outcome == .chairPassed || $0.outcome == .chairFailed) } }
             it.chairUsedBefore = broke
             let out = JVRules.decide(t, chair: it.votes[chairID], chairUsedBefore: broke)
@@ -441,9 +403,6 @@ public enum JointVenture {
         st.notes.append(Note(id: s.makeID(), meetingID: m.id, companyID: co.id, fireWeek: s.week, title: resultTitle, body: body))
     }
 
-    // MARK: Leaving and selling shares
-
-    /// What buying a partner's shares back does, worked out before anything moves.
     public struct ExitTerms: Equatable, Sendable {
         public var name: String
         public var shares: Int
@@ -451,13 +410,10 @@ public enum JointVenture {
         public var price: Double
         public var locked: Bool
         public var lockUntil: Int
-        /// Why it cannot be done now; nil when it can.
         public var problem: String?
-        /// "If you do this, this will happen", in plain lines.
         public var lines: [String]
     }
 
-    /// A partner leaves or sells only after the lock-up. The price is their share of what the company is worth now, with no premium either way.
     public static func exitTerms(_ s: GameState, companyID: Int, memberID: String, data: GameData, context fc: FinanceContext) -> ExitTerms? {
         guard let co = s.company(companyID), let st = state(co), let m = st.members.first(where: { $0.id == memberID && $0.id != Member.me }) else { return nil }
         let t = CapTable.table(co)
@@ -479,7 +435,6 @@ public enum JointVenture {
         return ExitTerms(name: m.name, shares: shares, pct: pct, price: price, locked: locked, lockUntil: m.lockUntil, problem: problem, lines: lines)
     }
 
-    /// You buy a partner's shares back (they have asked to leave, or you offer and they agree). Returns why it did not go through.
     @discardableResult
     public static func buyOut(_ s: inout GameState, companyID: Int, memberID: String, data: GameData, context fc: FinanceContext) -> String? {
         guard let i = s.companyIndex(companyID), var st = state(s.companies[i]), let k = st.members.firstIndex(where: { $0.id == memberID && $0.id != Member.me }),
@@ -496,7 +451,6 @@ public enum JointVenture {
         return nil
     }
 
-    /// A partner asks to sell or leave. Inside the lock-up it is refused and nothing is sent; after it, you are told what buying them out costs.
     @discardableResult
     public static func partnerWantsOut(_ s: inout GameState, companyID: Int, memberID: String, data: GameData, context fc: FinanceContext) -> String? {
         guard let t = exitTerms(s, companyID: companyID, memberID: memberID, data: data, context: fc), let co = s.company(companyID) else { return "That partner is no longer here." }
@@ -506,7 +460,6 @@ public enum JointVenture {
         return nil
     }
 
-    /// After a sale of the whole company: what each owner's shares got, in one message. (Partners' own money is theirs; this is the record.)
     static func announceSale(_ s: inout GameState, company co: Company, price: Double, buyer: String, context fc: FinanceContext) {
         guard let st = state(co), !partners(st).isEmpty else { return }
         let cur = fc.currency(co.countryCode, s)
@@ -515,9 +468,6 @@ public enum JointVenture {
         s.addMessage(from: "\(co.name) board", title: "\(co.name) was sold to \(buyer)", body: "Paid out by shares from \(cur.display(price)): " + lines.joined(separator: ", ") + ".", companyID: co.id, tone: "good")
     }
 
-    // MARK: Reminders
-
-    /// The board meeting waiting for your vote that the app should remind you of: an emergency meeting before a planned one, the soonest first.
     public struct PendingVote: Equatable, Sendable {
         public var companyName: String
         public var urgent: Bool
@@ -533,9 +483,6 @@ public enum JointVenture {
         return PendingVote(companyName: hit.1.name, urgent: hit.0.urgent, reason: hit.0.reason, weeksLeft: max(0, hit.0.deadline - s.week))
     }
 
-    // MARK: Carrying out a passed item
-
-    /// The game's own actions do the work, so the books balance exactly as they would for the owner alone.
     static func apply(_ s: inout GameState, _ i: Int, _ st: inout State, _ it: Item, data: GameData, context fc: FinanceContext) -> (ok: Bool, text: String) {
         let co = s.companies[i]
         let cur = fc.currency(co.countryCode, s)
@@ -570,7 +517,6 @@ public enum JointVenture {
             makeInvite(&s, i, &st, playerID: it.playerID, name: it.name, linkKey: it.linkKey, role: it.role, mock: it.mock, pct: it.pct, price: it.price)
             return (true, "\(it.name) was invited. They join when they accept.")
         case .capital:
-            // Only your own share is real money here: a sample partner has no account to take cash from, and money booked for them would come from nowhere.
             let t = CapTable.table(co)
             let mine = jsRound(it.amount * t.youPct / 100)
             guard Payments.liquid(s) >= mine else { return (false, "You do not have your \(cur.display(mine)) for it.") }
@@ -580,7 +526,7 @@ public enum JointVenture {
             let value = companyValue(s, s.companies[i], data: data)
             let shares = shareMap(s.companies[i], st)
             let pay = JVRules.dissolvePayout(value: value, shares: shares)
-            s.rest["jvgo"] = .number(Double(co.id))   // the board's own decision: the sale guard lets this one through
+            s.rest["jvgo"] = .number(Double(co.id))
             let done = CompanySale.complete(&s, companyIndex: i, buyer: "Dissolution", price: value, data: data, context: fc)
             s.rest["jvgo"] = nil
             guard done != nil else { return (false, "The company cannot be dissolved now.") }

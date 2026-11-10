@@ -3,19 +3,9 @@ import GameCore
 import Countries
 import Finance
 
-/// The finance manager. Original: `genFinManagers`, `hireFinManager`, `fmAdd`, `fmWithdraw`, `fireFinManager`, the manager part of
-/// `investWeek` (engine/world/investing.js) and `ACT.hfin` with the weekly 'week.after' step of the holdings
-/// (features/world/rivals_holdings_software.js).
-///
-/// Two different people share the name in the original and are kept apart here:
-///  - the fund manager you hand your own money to (Investing screen): `rest["fm"]` = { npc, mandate, fee, bal, cost, skill, ret, warned },
-///    `rest["fmPool"]` = ids of the three candidates, who live in `people` with role "fin";
-///  - the finance manager of the main office (role "fin" in `rest["office"].staff`), who runs holding companies: the entry's `holds`
-///    lists the holding ids. Each week he invests spare cash of those holdings in the index fund and sells units to cover a negative balance.
 public enum FinanceManager {
     public enum Mandate: String, CaseIterable, Sendable {
         case cautious = "cons", balanced = "bal", aggressive = "aggr"
-        /// Share of the index move that is followed, steady weekly return, and weekly noise.
         var parameters: (beta: Double, drift: Double, noise: Double) {
             switch self {
             case .cautious: return (0.5, 0.0003, 0.004)
@@ -30,16 +20,13 @@ public enum FinanceManager {
         public var id: Int
         public var name: String
         public var age: Int
-        /// What the CV says (may be exaggerated); the true skill is never shown.
         public var claimedSkill: Double
         public var yearsClaimed: Double
-        /// Yearly fee as a share of the managed money.
         public var fee: Double
     }
 
     public enum HireResult: Equatable, Sendable { case ok, busy, notEnoughCash, tooSmall, unknown }
 
-    /// The running arrangement, if any.
     public struct Account: Equatable, Sendable {
         public var personID: Int
         public var name: String
@@ -50,15 +37,12 @@ public enum FinanceManager {
         public var result: Double { cost > 0 ? balance / cost - 1 : 0 }
     }
 
-    // MARK: Your own fund manager
-
     public static func account(_ s: GameState) -> Account? {
         guard let f = s.rest["fm"], !f.isNull, let m = Mandate(rawValue: f["mandate"].string) else { return nil }
         return Account(personID: f["npc"].int, name: s.people[f["npc"].int]?.name ?? "Your fund manager", mandate: m,
                        fee: f["fee"].double, balance: f["bal"].double, cost: f["cost"].double)
     }
 
-    /// The three candidates offered (made on first look, kept until the manager is dismissed). Original: `S.fmPool` / `genFinManagers`.
     @discardableResult
     public static func pool(_ s: inout GameState, data: GameData) -> [Candidate] {
         if (s.rest["fmPool"]?.array ?? []).isEmpty {
@@ -91,7 +75,6 @@ public enum FinanceManager {
         }
     }
 
-    /// Hand `amount` to one of the candidates with a mandate. The money leaves your account.
     public static func hire(_ s: inout GameState, personID: Int, mandate: Mandate, amount: Double) -> HireResult {
         guard let n = s.people[personID], n.role == "fin" else { return .unknown }
         if account(s) != nil || n.employerID != 0 { return .busy }
@@ -108,7 +91,6 @@ public enum FinanceManager {
         return .ok
     }
 
-    /// Put more money in (from the current account). Original: `fmAdd`.
     @discardableResult
     public static func add(_ s: inout GameState, amount: Double) -> Bool {
         let amt = jsRound(amount)
@@ -120,7 +102,6 @@ public enum FinanceManager {
         return true
     }
 
-    /// Take money out. A gain is taxed as a capital gain when it is taken out (the weekly sweep pays it). Original: `fmWithdraw`.
     @discardableResult
     public static func withdraw(_ s: inout GameState, amount: Double) -> Bool {
         guard var f = s.rest["fm"], !f.isNull, f["bal"].double > 0, amount > 0 else { return false }
@@ -136,7 +117,6 @@ public enum FinanceManager {
         return true
     }
 
-    /// Dismiss: everything comes back to you. Original: `fireFinManager`.
     @discardableResult
     public static func fire(_ s: inout GameState) -> Bool {
         guard let a = account(s) else { return false }
@@ -149,7 +129,6 @@ public enum FinanceManager {
         return true
     }
 
-    /// The bank forces a sale: the managed money is cashed in when cash is still short. Original: end of `liquidateInvestments`.
     public static func cashIn(_ s: inout GameState, need: Double) {
         guard s.cash < need, var f = s.rest["fm"], !f.isNull, f["bal"].double > 0 else { return }
         let bal = f["bal"].double
@@ -160,7 +139,6 @@ public enum FinanceManager {
         Ledger.move(&s, .me, bal, why: "Fund manager account cashed in to cover debts")
     }
 
-    /// One week of the managed money: follows the market by the mandate, plus (or minus) the manager's skill, less the fee.
     static func weeklyManaged(_ s: inout GameState) {
         guard var f = s.rest["fm"], !f.isNull, let m = Mandate(rawValue: f["mandate"].string) else { return }
         let p = m.parameters
@@ -180,28 +158,21 @@ public enum FinanceManager {
         }
     }
 
-    // MARK: The finance manager of the main office and your holding companies
-
     static func officeFinanceIndex(_ s: GameState) -> Int? {
         (s.rest["office"]?["staff"].array ?? []).firstIndex { $0["role"].string == "fin" }
     }
 
-    /// Ids of the holdings the office finance manager runs.
     public static func managedHoldings(_ s: GameState) -> [Int] {
         guard let k = officeFinanceIndex(s) else { return [] }
         return (s.rest["office"]?["staff"].array[k]["holds"].array ?? []).map { $0.int }
     }
     public static func manages(_ s: GameState, holdingID: Int) -> Bool { managedHoldings(s).contains(holdingID) }
 
-    /// The office finance manager who negotiates share sales for a holding he runs, and how good he is (0.2...0.98: skill/100 plus
-    /// a point per 100 years of experience). Original: `mg` / `s` in `raisePlan`.
     public static func negotiator(_ s: GameState, holdingID: Int) -> (name: String, skill: Double)? {
         guard manages(s, holdingID: holdingID), let k = officeFinanceIndex(s), let p = s.people[(s.rest["office"]?["staff"].array[k]["id"].int) ?? 0] else { return nil }
         return (p.name, clamp((p.value("skill").isNull ? 55 : p.value("skill").double) / 100 + p.value("exp").double * 0.01, 0.2, 0.98))
     }
 
-    /// Let the finance manager run a holding, or take it back. Returns the new state (nil: no finance manager in the office).
-    /// Original: `ACT.hfin`.
     @discardableResult
     public static func toggleHolding(_ s: inout GameState, holdingID: Int) -> Bool? {
         guard let k = officeFinanceIndex(s), var o = s.rest["office"], let h = s.company(holdingID), h.type == "hold" else { return nil }
@@ -217,8 +188,6 @@ public enum FinanceManager {
         return now
     }
 
-    /// Spare cash of a managed holding goes into the index fund; a negative balance is covered by selling units.
-    /// Original: the 'rivals_holdings_software weekly' step.
     static func weeklyHoldings(_ s: inout GameState, context fc: FinanceContext) {
         for id in managedHoldings(s) {
             guard let h = s.company(id), h.status == .open else { continue }
@@ -234,7 +203,6 @@ public enum FinanceManager {
         }
     }
 
-    /// The weekly turn of both. Original: `investWeek` (manager part) and the holdings' 'week.after' step.
     public static func weekly(_ s: inout GameState, context fc: FinanceContext) {
         weeklyManaged(&s)
         weeklyHoldings(&s, context: fc)

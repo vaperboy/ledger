@@ -6,9 +6,7 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// A holding buys shares of other companies in whole or in part: price, cap table, tiers, dividends, board, merge and net worth.
 final class HoldingStakesTests: XCTestCase {
-    /// A holding with plenty of cash and a company whose shares are 70% yours and 30% an outside investor's.
     private func setup() throws -> (GameEngine, hid: Int, cid: Int) {
         var e = try ChainsTests.engine("UK")
         guard case .success(let hid) = e.createHolding(name: "H", companies: []) else { throw XCTSkip("holding was not created") }
@@ -81,7 +79,6 @@ final class HoldingStakesTests: XCTestCase {
         XCTAssertEqual(pct(e, hid, cid), 10, accuracy: 0.01)
         XCTAssertEqual(e.holdingStakeTier(holdingID: hid, companyID: cid), .passive)
         XCTAssertEqual(try XCTUnwrap(e.state.company(cid)).ownership, 70, accuracy: 0.01, "your own share did not change")
-        // outsiders hold 20% now; 15% more takes the holding to 25%, the price of an influence stake
         let more = try e.holdingStakeQuote(holdingID: hid, companyID: cid, percent: 15, from: .others).get()
         XCTAssertEqual(more.priceFactor, 1)
         XCTAssertEqual(more.price, v * 0.15, accuracy: tolerance(v))
@@ -89,7 +86,6 @@ final class HoldingStakesTests: XCTestCase {
         XCTAssertEqual(e.holdingStakeTier(holdingID: hid, companyID: cid), .influence)
         let rest = try XCTUnwrap(e.state.company(cid)).value("holders").array.first { $0["name"].string == "Angel" }
         XCTAssertEqual(rest?["pct"].double ?? 0, 5, accuracy: 0.01)
-        // more than is for sale is refused with a reason
         if case .failure(let f) = e.holdingStakeQuote(holdingID: hid, companyID: cid, percent: 10, from: .others) { XCTAssertFalse(f.reason.isEmpty) } else { XCTFail("only 5% is left to buy") }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
@@ -142,10 +138,10 @@ final class HoldingStakesTests: XCTestCase {
 
     func testMergeWithControlWhenOnlyYouOwnTheRest() throws {
         var (e, hid, cid) = try setup()
-        _ = try e.holdingBuyStake(holdingID: hid, companyID: cid, percent: 30, from: .others).get()   // the investor sells; you hold the rest
+        _ = try e.holdingBuyStake(holdingID: hid, companyID: cid, percent: 30, from: .others).get()
         XCTAssertEqual(e.holdingStakeTier(holdingID: hid, companyID: cid), .influence)
         XCTAssertFalse(e.holdingMergeTerms(holdingID: hid, companyID: cid).allowed, "30% is not control")
-        _ = try e.holdingBuyStake(holdingID: hid, companyID: cid, percent: 30).get()   // 30% more of your own shares: 60% in all
+        _ = try e.holdingBuyStake(holdingID: hid, companyID: cid, percent: 30).get()
         XCTAssertEqual(pct(e, hid, cid), 60, accuracy: 0.01)
         let terms = e.holdingMergeTerms(holdingID: hid, companyID: cid)
         XCTAssertTrue(terms.allowed, terms.reason)
@@ -163,7 +159,6 @@ final class HoldingStakesTests: XCTestCase {
         let o = try XCTUnwrap(e.holdingOverview(companyID: hid))
         XCTAssertEqual(o.companiesValue, v * 0.25, accuracy: tolerance(v))
         XCTAssertEqual(o.subsidiaries.first { $0.id == cid }?.ownership ?? 0, 25, accuracy: 0.01)
-        // moving your remaining shares under the holding does not change net worth either
         XCTAssertTrue(e.moveToHolding(companyID: cid, holdingID: hid))
         XCTAssertEqual(pct(e, hid, cid), 70, accuracy: 0.01, "25% bought + your 45% moved")
         XCTAssertEqual(e.netWorth.total, nw0, accuracy: tolerance(v))
@@ -182,7 +177,6 @@ final class HoldingStakesTests: XCTestCase {
         XCTAssertTrue(e.holdingReleaseStake(holdingID: hid, companyID: cid))
         XCTAssertEqual(try XCTUnwrap(e.state.company(cid)).ownership, 70, accuracy: 0.01)
         XCTAssertEqual(e.netWorth.total, nw0, accuracy: tolerance(v))
-        // the whole-company move still works as before
         XCTAssertTrue(e.moveToHolding(companyID: cid, holdingID: hid))
         XCTAssertEqual(try XCTUnwrap(e.state.company(cid)).holdingID, hid)
         XCTAssertTrue(e.releaseFromHolding(companyID: cid))
@@ -191,14 +185,13 @@ final class HoldingStakesTests: XCTestCase {
 
     func testDividendsGoToHoldersProRata() throws {
         var (e, hid, cid) = try setup()
-        _ = try e.holdingBuyStake(holdingID: hid, companyID: cid, percent: 25).get()   // holding 25%, you 45%, investor 30%
+        _ = try e.holdingBuyStake(holdingID: hid, companyID: cid, percent: 25).get()
         let amount = (e.maximumDividend(companyID: cid) * 0.5).rounded(.down)
         XCTAssertGreaterThan(amount, 0)
         let h0 = cash(e, hid), p0 = e.state.cash
         let hp = pct(e, hid, cid), mine = try XCTUnwrap(e.state.company(cid)).ownership
         XCTAssertEqual(e.payDividend(companyID: cid, amount: amount), .ok)
         XCTAssertEqual(cash(e, hid) - h0, amount * hp / 100, accuracy: 1e-6, "the holding's share lands in its cash")
-        // Dividend tax is withheld on payout, so the account gets the share less that tax.
         let received = e.state.cash - p0 + e.state.tax.paidDividend
         XCTAssertEqual(received, amount * mine / 100, accuracy: 1, "your own share is paid to you")
         XCTAssertEqual((cash(e, hid) - h0) / amount, 0.25, accuracy: 0.0001)
@@ -218,7 +211,6 @@ final class HoldingStakesTests: XCTestCase {
         XCTAssertEqual(cash(e, hid), h0 + q.price, accuracy: 1e-6)
         XCTAssertEqual(pct(e, hid, cid), 15, accuracy: 0.01)
         XCTAssertEqual(try XCTUnwrap(e.state.company(cid)).ownership, 45, accuracy: 0.01)
-        // selling to you is at fair value and the shares come back to you
         let p0 = e.state.cash
         let toYou = try e.holdingSellStake(holdingID: hid, companyID: cid, percent: 15, to: .owner).get()
         XCTAssertEqual(toYou.amount, v * 0.15, accuracy: tolerance(v))
@@ -238,7 +230,7 @@ final class HoldingStakesTests: XCTestCase {
         if case .failure = e.holdingTakeBoardSeat(holdingID: hid, companyID: cid) {} else { XCTFail("a passive stake has no seat") }
         if case .failure = e.holdingBoardRound(holdingID: hid, companyID: cid) {} else { XCTFail("no seat, no round") }
 
-        _ = try e.holdingBuyStake(holdingID: hid, companyID: cid, percent: 15, from: .others).get()   // 25%
+        _ = try e.holdingBuyStake(holdingID: hid, companyID: cid, percent: 15, from: .others).get()
         XCTAssertTrue(e.holdingBoardSeat(holdingID: hid, companyID: cid).canTake)
         _ = try e.holdingTakeBoardSeat(holdingID: hid, companyID: cid).get()
         let seat = e.holdingBoardSeat(holdingID: hid, companyID: cid)

@@ -7,7 +7,6 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// The owner's talks by position, the strategic direction, and replacing the CEO (a vote by shares with co-owners).
 final class OwnerMeetingsTests: XCTestCase {
     private func mood(_ e: GameEngine, _ id: Int) -> Double { let v = e.state.company(id)!.value("mood"); return v.isNull ? 60 : v.double }
     private func setup(seed: Int, holders: Bool = false) throws -> (GameEngine, Int, Int) {
@@ -32,7 +31,6 @@ final class OwnerMeetingsTests: XCTestCase {
         return (e, id, cands[0].id)
     }
 
-    /// One quarterly review with the CEO and exactly two choices in it: the direction and the budget. Nobody else holds a talk.
     func testOnlyTheCEOHoldsTheQuarterlyReviewWithTwoChoices() throws {
         let (e, id, mgr) = try setup(seed: 41)
         let who = e.ownerCounterparts(companyID: id)
@@ -127,11 +125,9 @@ final class OwnerMeetingsTests: XCTestCase {
 
     func testCoOwnersVoteByShareAndAFailedVoteBlocksTheProposal() throws {
         var (e, id, _) = try setup(seed: 47, holders: true)
-        // a profitable company: the co-owners back the CEO, you hold 45% so you cannot decide alone
         e.update { s, _, _ in
             if let i = s.companyIndex(id) { s.companies[i].monthlyHistory = (0..<6).map { MonthRecord(monthIndex: $0, revenue: 50_000, profit: 9_000, cash: 10_000) } }
         }
-        // the co-owners' views are mostly settled by the results; a rare change of heart is a hash of name and week, so look for an ordinary week
         var calm = 0, v = e.ceoVote(companyID: id)
         for w in 20..<60 { e.update { s, _, _ in s.week = w }; v = e.ceoVote(companyID: id); if !v.passes { calm = w; break } }
         XCTAssertGreaterThan(calm, 0)
@@ -183,8 +179,6 @@ final class OwnerMeetingsTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    /// The weekly check remembers the manager in post (`mgr12`) and raises "the manager has left" when it finds the post empty. A change the owner
-    /// made on purpose must clear that memory, or the next week brings an emergency about something the owner just did.
     func testReplacingTheCeoClearsTheManagerHasLeftMemory() throws {
         var (e, id, mgr) = try setup(seed: 61)
         e.update { s, _, _ in s.companies[s.companyIndex(id)!].set("mgr12", .number(Double(mgr))) }

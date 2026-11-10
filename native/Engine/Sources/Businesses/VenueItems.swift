@@ -3,20 +3,11 @@ import GameCore
 import Countries
 import Finance
 
-/// Venues with capacity tickets and passes (nightclub, casino, fun, skires, indoorski, gym, club). The venue sells entry tickets by peak and off-peak, tables,
-/// lift passes, memberships, season passes, lessons, parties, bar, food and merchandise; each is an item with its own real cost: the direct cost of one sale
-/// (bottle, pour, meal, duty, comps) plus its share of what the venue costs a week (wages, rent, depreciation, loans, the lifts, the cooling plant) divided by
-/// what it really sold. The profit or loss slider on the price is true to that cost. Cost of sales moves with the volume sold, not with the price
-/// the owner charges (`cogsFactor`, exactly 1 at default prices). The football club keeps its own model (`FootballModel`): its items are attributed from the
-/// club's own week and the match and season ticket price moves the existing ticket level (`clubTixShift`, exactly 0 at default prices).
-/// Save keys: `items27` (the items), `itemsv2` (their records), `w9u` (set once the items were set up).
 public enum VenueItems {
     public static var trades: Set<String> { ItemTradeGroups.venues }
     static let allTrades: Set<String> = ["nightclub", "casino", "fun", "skires", "indoorski", "gym", "club"]
     static let key = "w9u"
     static let prefix = "w9:"
-
-    // MARK: Data
 
     struct Def {
         var id: String, name: String, kind: String, model: ItemModels.Model
@@ -42,8 +33,6 @@ public enum VenueItems {
 
     static func isManaged(_ id: String) -> Bool { id.hasPrefix(prefix) }
 
-    // MARK: Economics of one item
-
     public struct Part: Equatable, Sendable { public var label: String; public var weekly: Double }
 
     public struct Economics: Equatable, Sendable {
@@ -51,9 +40,7 @@ public enum VenueItems {
         public var name: String
         public var kindLabel: String
         public var modelLabel: String
-        /// "guest", "skier day", "member-week" ... the unit one sale is.
         public var per: String
-        /// What the item can sell a week (0 = no capacity), and per night, day or match.
         public var capacity: Double
         public var capacityPerSession: Double
         public var sessionName: String
@@ -61,7 +48,6 @@ public enum VenueItems {
         public var occupancy: Double
         public var price: Double
         public var marketPrice: Double
-        /// Direct cost of one sale (bottle, meal, duty, comps), independent of the price charged.
         public var variablePerSale: Double
         public var fixedParts: [Part]
         public var fixedWeekly: Double
@@ -69,20 +55,14 @@ public enum VenueItems {
         public var breakEvenPrice: Double
         public var weeklyRevenue: Double
         public var weeklyProfit: Double
-        /// Month demand index of the trade (1 = an average month).
         public var seasonIndex: Double
-        /// Sales booked in advance for the coming weeks (parties, hire, tournaments), an estimate.
         public var booked: Int
-        /// Members or pass holders (passes and memberships only), and the share of them lost a month.
         public var holders: Double
         public var churnMonthly: Double
-        /// Casino: house edge, and the money played per sale that gives the price.
         public var edge: Double
         public var playedPerSale: Double
-        /// Visits a pass or booking covers, and the whole price of it at the price per visit now.
         public var bundleDays: Double
         public var bundlePrice: Double
-        /// What it is made of, and where it comes from.
         public var recipe: String
         public var isSub: Bool
     }
@@ -113,7 +93,6 @@ public enum VenueItems {
         return total
     }
 
-    /// Scale on the direct costs so that at default prices the venue's cost of sales is exactly the trade's share (what the books book).
     static func costScale(_ items: [SalesItems.Item], _ spec: Spec, _ bd: Trade) -> Double {
         var weight = 0.0, direct = 0.0
         for d in spec.items {
@@ -126,7 +105,6 @@ public enum VenueItems {
 
     static func churnBase(_ bd: Trade) -> Double { bd.trait("churn") ?? 0.006 }
 
-    /// Casino: this week's luck (the venue's win against its edge) lands on the games, not on food.
     static func luck(_ co: Company, _ bd: Trade) -> Double {
         guard bd.trait("variance") != nil else { return 1 }
         let f = co.value("fm")["lastHold"]
@@ -188,9 +166,6 @@ public enum VenueItems {
         }
     }
 
-    // MARK: The football club (own model, attributed)
-
-    /// Matchday revenue split by the item weights among match tickets, season tickets and boxes; the rest read from the club's own week (`fm.wk`).
     static func clubComputed(_ s: GameState, _ co: Company, _ bd: Trade, _ spec: Spec, _ data: GameData) -> [Computed] {
         let w = World(state: s, data: data)
         let rows = SalesItems.rows(s, companyID: co.id, data: data)
@@ -223,7 +198,6 @@ public enum VenueItems {
             let id = prefix + d.id
             let row = rows.first { $0.id == id }
             let rev = revs[n]
-            // Sponsorship is priced by the club's own deals: a unit is one deal, its price the deal's weekly money.
             let deals = Double(co.value("fm")["sp"].object.filter { $0.value["until"].double > Double(s.week) }.count)
             let price = d.id == "spons" ? (deals > 0 ? rev / deals : 0) : (row?.price ?? 0) * (1 - (row?.discountPercent ?? 0) / 100)
             let market = d.id == "spons" ? price : (row?.marketPrice ?? 0)
@@ -243,8 +217,6 @@ public enum VenueItems {
         }
     }
 
-    /// Shift of the club's ticket level from the owner's prices for match tickets, season tickets and boxes (their average against the market, weighted by their
-    /// takings): +50% on the price is the top level (+1) of the club's own ticket setting. Exactly 0 for a club that is not on item records or at market prices.
     public static func clubTixShift(_ co: Company) -> Double {
         guard trades.contains("club"), !co.value(SalesItems.key).isNull, !co.value(key).isNull else { return 0 }
         var num = 0.0, den = 0.0
@@ -254,8 +226,6 @@ public enum VenueItems {
         return den > 0 ? 2 * num / den : 0
     }
 
-    // MARK: Reads
-
     public static func economics(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> Economics? {
         computed(s, companyID: companyID, data: data).first { $0.itemID == itemID }?.econ
     }
@@ -264,8 +234,6 @@ public enum VenueItems {
         computed(s, companyID: companyID, data: data).map { $0.econ }
     }
 
-    /// The factor on the week's cost of sales from what the items really cost against the trade's share of the same takings: 1 at default prices
-    /// (the direct costs are rescaled to the trade's share), above 1 when the owner prices below the market, below 1 above it. 1 for the club (own model).
     public static func cogsFactor(_ s: GameState, companyID: Int, data: GameData) -> Double {
         guard let co = s.company(companyID), allTrades.contains(co.type), co.type != "club", !co.value(key).isNull, let bd = data.catalog[co.type], let spec = specs[co.type] else { return 1 }
         let items = SalesItems.items(co, bd)
@@ -282,10 +250,6 @@ public enum VenueItems {
         return cost / (rev * bd.costOfSales)
     }
 
-    // MARK: Setting the items up
-
-    /// Put the venue's items in as items and records and refresh their costs. Idempotent. The old titles-only items are dropped on the first run; items the owner
-    /// added are kept.
     public static func sync(_ s: inout GameState, companyID: Int, data: GameData) {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open, let bd = data.catalog[s.companies[i].type], allTrades.contains(bd.id), let spec = specs[bd.id] else { return }
         let co = s.companies[i]
@@ -319,7 +283,6 @@ public enum VenueItems {
             r.model = d.model
             ItemModels.put(&s, i, r)
         }
-        // A smoothed weekly cost of the company (monthly bills would otherwise make the unit costs jump); for the club the last home matchday takings.
         let wk = Books.expenses(s.companies[i].books.week), prev = s.companies[i].value(key)["exp"].double
         var o: [String: JSONValue] = ["w": .number(Double(s.week)), "exp": .number(wk > 0 ? (prev > 0 ? 0.9 * prev + 0.1 * wk : wk) : prev)]
         let md = s.companies[i].value("fm")["wk"]["match"].double
@@ -328,7 +291,6 @@ public enum VenueItems {
         refresh(&s, i, companyID: companyID, spec: spec, data: data)
     }
 
-    /// This week's true line in every item's history, then the cost of one sale, capacity, stock (holders) and bookings from the books.
     static func refresh(_ s: inout GameState, _ i: Int, companyID: Int, spec: Spec, data: GameData) {
         let week = s.week
         for c in computed(s, companyID: companyID, data: data) {
@@ -347,7 +309,6 @@ public enum VenueItems {
         }
     }
 
-    /// Weekly, after `ItemModels.weeklyTick`: set up the items, refresh costs and the history line.
     public static func weekly(_ s: inout GameState, _ i: Int, data: GameData) {
         guard s.companies.indices.contains(i), trades.contains(s.companies[i].type), s.companies[i].status == .open else { return }
         sync(&s, companyID: s.companies[i].id, data: data)

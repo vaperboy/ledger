@@ -4,17 +4,12 @@ import Countries
 import Finance
 import Businesses
 
-/// Orders of stock that travel: paid for and charged freight at once, delivered after the transit time, and exposed on the way to
-/// border holds (late arrival, storage and inspection fees), spoilage of perishables that wait too long, damage in transit and the lost
-/// sales of a shelf that runs empty. Shipments live in `rest["lg"]["ship"]`.
 public enum Shipments {
     public enum OrderResult: Equatable, Sendable {
-        /// Ordered; `shipment` is nil when the goods arrived at once.
         case ok(landed: Double, shipment: Int?)
         case unknownCompany, notOpen, badOrder, noCash
     }
 
-    /// Chance that a shipment over a border is held by control.
     static let holdChance = 0.15
     static let inspectionChance = 0.08
     static let damageChance = 0.03
@@ -23,18 +18,14 @@ public enum Shipments {
         (s.rest["lg"]?["ship"].array ?? []).filter { companyID == nil || $0["co"].int == companyID! }
     }
 
-    /// One shipment on its way, for the "in transit" list.
     public struct Row: Identifiable, Equatable, Sendable {
         public var id: Int
         public var companyID: Int
         public var supplier: String
         public var from: String
-        /// What the goods cost (they are paid for already).
         public var goods: Double
         public var arrivesWeek: Int
-        /// Whole weeks until it arrives (0 = this week).
         public var weeksLeft: Int
-        /// Weeks added by a hold at the border.
         public var delayedWeeks: Int
         public var crossesBorder: Bool
         public var perishable: Bool
@@ -47,13 +38,11 @@ public enum Shipments {
         }.sorted { $0.arrivesWeek != $1.arrivesWeek ? $0.arrivesWeek < $1.arrivesWeek : $0.id < $1.id }
     }
 
-    /// A line in the week's report and a message in the Inbox about a delivery or a loss of stock.
     static func tell(_ s: inout GameState, companyID: Int, title: String, body: String, tone: String = "bad") {
         s.note(body, tone: tone, companyID: companyID)
         s.addMessage(kind: "info", from: "Deliveries", title: title, body: body, companyID: companyID, tone: tone)
     }
 
-    /// Order `units` from an offer. The goods and the fees are paid now; the goods join the stock on arrival.
     @discardableResult
     public static func order(_ s: inout GameState, companyID: Int, offer: TransportCost.Offer, units: Double, cargo: TransportCost.Cargo = .standard, supplierName: String = "", data: GameData) -> OrderResult {
         guard let i = s.companyIndex(companyID) else { return .unknownCompany }
@@ -84,9 +73,6 @@ public enum Shipments {
         return .ok(landed: q.landed, shipment: n)
     }
 
-    // MARK: Weekly
-
-    /// Deliver what is due; border control may hold a shipment instead.
     public static func weekly(_ s: inout GameState, data: GameData) {
         guard var lg = s.rest["lg"], !lg["ship"].array.isEmpty else { return }
         var keep: [JSONValue] = []
@@ -117,14 +103,12 @@ public enum Shipments {
                 }
             }
             let delay = sh["delay"].int
-            // Damage on the road: an insured company is paid all but the excess.
             if r.next() < damageChance {
                 let share = 0.1 + 0.3 * r.next()
                 let st = StockInsurance.settle(&s, companyID: cid, amount: goods * share, fromInventory: false, data: data)
                 goods -= st.loss
                 tell(&s, companyID: cid, title: "A delivery was damaged", body: "A delivery for \(name) was damaged on the way: \(cur.display(st.loss)) of goods lost\(st.paid > 0 ? ", \(cur.display(st.paid)) paid by the insurance" : "").")
             }
-            // Perishable goods that waited are partly spoiled; the loss is booked, the cash was paid at the order.
             if sh["perish"].bool && delay > 0 && goods > 0 {
                 let spoiled = min(goods, jsRound(goods * min(0.7, 0.12 * Double(delay))))
                 if spoiled > 0 {
@@ -133,7 +117,6 @@ public enum Shipments {
                     tell(&s, companyID: cid, title: "Goods spoiled in a delay", body: "Part of a delayed delivery for \(name) spoiled: \(cur.display(spoiled)) lost.")
                 }
             }
-            // A shelf that ran low during the delay sold less.
             if delay > 0, let bd = data.catalog[s.companies[i].type] {
                 let cover = StockHandling.policyTarget(s.companies[i], bd)
                 if let target = cover, s.companies[i].inventory < target * 0.5 {

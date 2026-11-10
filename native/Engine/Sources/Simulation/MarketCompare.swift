@@ -5,32 +5,24 @@ import Finance
 import Businesses
 import Events
 
-/// One player in a market: one of your companies or a rival, with the same measures for each.
 public struct MarketCompetitor: Identifiable, Equatable, Sendable {
-    /// "c<company id>" for yours, "r<rival id>" for a rival, or the name key of a national player.
     public var id: String
     public var name: String
     public var isYours: Bool
     public var companyID: Int?
     public var rivalID: Int?
-    /// Share of the market's yearly sales, 0...1, and those sales.
     public var share: Double
     public var revenue: Double
-    /// Price against the market average (1 = average of everybody in the market); nil in national markets.
     public var priceIndex: Double?
-    /// Average review stars (nil in national markets) and the number of reviews.
     public var rating: Double?
     public var reviewCount: Int
-    /// "Small", "Medium" or "Large" against the market.
     public var sizeWord: String
-    /// Sales growth a year, as a share: yours from the books (last 3 months against the 3 before); nil for rivals, whose books are private.
     public var growth: Double?
     public var forSale: Bool
     public var groupName: String?
     public var watched: Bool
 }
 
-/// One of your companies against its market.
 public struct CompanyMarketPosition: Identifiable, Equatable {
     public var id: Int { companyID }
     public var companyID: Int
@@ -39,18 +31,13 @@ public struct CompanyMarketPosition: Identifiable, Equatable {
     public var cityID: String, cityName: String
     public var countryCode: String
     public var marketKey: String
-    /// Banks, insurers and funds compete across the whole country, against named national players.
     public var national: Bool
-    /// The company's share of the market's yearly sales (0...1), and the share as your analyst (or only a feeling) puts it.
     public var share: Double
     public var shareText: String
     public var knowledge: MarketMap.Knowledge.Level
-    /// The market's monthly share snapshots (your companies in it together), oldest first, and the change of the latest month (share points, 0...1 scale).
     public var shareHistory: [Double]
     public var shareChange: Double?
-    /// Place by sales among everybody selling in the market (1 = biggest).
     public var rank: Int, of: Int
-    /// Your price against the market average (1 = average), and your rating against the average of the others (stars, + is better).
     public var priceIndex: Double?
     public var rating: Double?
     public var marketRating: Double?
@@ -58,24 +45,20 @@ public struct CompanyMarketPosition: Identifiable, Equatable {
     public var growth: Double?
     public var yourSales: Double
     public var marketSales: Double
-    /// The three biggest rivals, and everybody in the market (you included), biggest first.
     public var topRivals: [MarketCompetitor]
     public var competitors: [MarketCompetitor]
 }
 
-/// A rival business in one of your markets, for the rivals list and the acquisition flow (`offerForRival` / `buyRival` with `companyID`).
 public struct MarketRivalRow: Identifiable, Equatable, Sendable {
     public var id: Int
     public var name: String, owner: String
     public var marketKey: String
-    /// Your company in that market: the one that buys it and against which its numbers are read.
     public var companyID: Int
     public var tradeID: String, tradeName: String
     public var cityID: String, cityName: String
     public var countryCode: String
     public var size: Double
     public var sizeWord: String
-    /// What the business is worth (its price at a multiple of 1), its yearly sales and profit (estimates from what can be seen).
     public var valuation: Double
     public var revenue: Double
     public var profit: Double
@@ -86,43 +69,35 @@ public struct MarketRivalRow: Identifiable, Equatable, Sendable {
     public var inTrouble: Bool
     public var strategy: String
     public var groupID: String?, groupName: String?
-    /// Opened within the last eight weeks.
     public var isNewEntrant: Bool
     public var watched: Bool
 }
 
-/// A rival group (a chain of businesses with an owner) that competes where you are.
 public struct MarketGroupRow: Identifiable, Equatable, Sendable {
     public var id: String
     public var name: String, owner: String
     public var strategyName: String
     public var branches: Int
     public var revenue: Double, profit: Double
-    /// What the group is worth, and the share of it you own (0...1).
     public var valuation: Double
     public var yourStake: Double
     public var countries: [String]
     public var trades: [String]
     public var inTrouble: Bool
-    /// Its businesses in your markets.
     public var rivalIDs: [Int]
 }
 
 public extension GameEngine {
-    // MARK: Your companies against their markets
 
-    /// Every open company of yours that has a market, against it.
     func marketPositions() -> [CompanyMarketPosition] {
         MarketMap.markets(state, data: data).flatMap { m in m.companyIDs.compactMap { marketPosition(companyID: $0, market: m) } }
     }
 
-    /// One company against its market (nil when it has none: a holding, a project developer, a company not open).
     func marketPosition(companyID: Int) -> CompanyMarketPosition? {
         guard let m = MarketMap.markets(state, data: data).first(where: { $0.companyIDs.contains(companyID) }) else { return nil }
         return marketPosition(companyID: companyID, market: m)
     }
 
-    /// The players of one company's market with the same measures (for "Compare with").
     func marketCompetitors(companyID: Int) -> [MarketCompetitor] { marketPosition(companyID: companyID)?.competitors ?? [] }
 
     private func marketPosition(companyID: Int, market m: MarketMap.Market) -> CompanyMarketPosition? {
@@ -136,7 +111,6 @@ public extension GameEngine {
         var rows: [MarketCompetitor] = []
         let mine = m.companyIDs.compactMap { state.company($0) }
         let rivals = national ? [] : Rivals.rivals(state, for: co)
-        // Prices in money: yours from your ticket, rivals' from theirs; the market average is everybody's plain mean.
         var prices: [String: Double] = [:]
         if !national {
             for c in mine { prices["c\(c.id)"] = Pricing.ticket(c, bd, w) }
@@ -180,7 +154,6 @@ public extension GameEngine {
                                      topRivals: Array(rows.filter { !$0.isYours }.prefix(3)), competitors: rows)
     }
 
-    /// Yearly sales growth from the books: the last three months against the three before (nil with fewer than six months, or no sales).
     static func growth(_ c: Company) -> Double? {
         let h = c.monthlyHistory.suffix(6)
         guard h.count == 6 else { return nil }
@@ -188,9 +161,6 @@ public extension GameEngine {
         return a > 0 ? pow(b / a, 4) - 1 : nil
     }
 
-    // MARK: Rivals across your markets
-
-    /// Every rival business in the markets of your open companies, biggest first. `search` matches name, owner, trade, city or group.
     func marketRivals(search: String = "") -> [MarketRivalRow] {
         let w = World(state: state, data: data)
         let watched = Set(watchedRivalIDs)
@@ -231,13 +201,11 @@ public extension GameEngine {
         return out.sorted { ($0.revenue, $1.id) > ($1.revenue, $0.id) }
     }
 
-    /// A rival that opened in the last eight weeks, after your company was there (rivals from before entry weeks were kept never count).
     static func isNewEntrant(_ w0: JSONValue?, week: Int, opened: Int) -> Bool {
         guard let w0, !w0.isNull else { return false }
         return w0.int > opened + 1 && week - w0.int <= 8
     }
 
-    /// Rival groups that compete in your countries, with their value and your stake.
     func marketRivalGroups() -> [MarketGroupRow] {
         let stakes = GroupDeals.stakes(state)
         return rivalGroupsAround().map { g in
@@ -248,18 +216,13 @@ public extension GameEngine {
         }
     }
 
-    // MARK: Watchlist
-
-    /// Rivals you starred, in the order starred (`rest["mwatch"]`).
     var watchedRivalIDs: [Int] { (state.rest["mwatch"]?.array ?? []).map { $0.int } }
     func isWatched(rivalID: Int) -> Bool { watchedRivalIDs.contains(rivalID) }
-    /// The starred rivals that are still in your markets.
     var watchlist: [MarketRivalRow] {
         let rows = marketRivals()
         return watchedRivalIDs.compactMap { id in rows.first { $0.id == id } }
     }
 
-    /// Star or unstar a rival; returns whether it is starred now. Rivals no longer in any of your markets are dropped from the list.
     @discardableResult
     mutating func toggleWatch(rivalID: Int) -> Bool {
         let present = Set(marketRivals().map { $0.id })

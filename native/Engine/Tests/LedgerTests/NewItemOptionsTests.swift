@@ -15,13 +15,11 @@ final class NewItemOptionsTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 100_000_000) else { throw XCTSkip("could not start") }
         for _ in 0..<weeks { e.week() }
-        // items can only be added to an open company, and licences take a while
         var extra = 0
         while e.state.company(id)?.status != .open, extra < 40 { e.week(); extra += 1 }
         return (e, id)
     }
 
-    /// Gives the company a market advisor through the duty route (any employee).
     func giveAdvisorDuty(_ e: inout GameEngine, _ id: Int) throws {
         e.update { s, _, _ in
             guard let i = s.companyIndex(id), !s.companies[i].staff.isEmpty else { return }
@@ -49,7 +47,6 @@ final class NewItemOptionsTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(ids.count, 60)
         for id in ids {
             let rows = NewItemOptions.catalog[id] ?? []
-            // the item trade groups replaced the add-item list of their trades with the real products they sell (4 or more); the others keep the wide generic list
             let minimum = ItemTradeGroups.all.contains(id) ? 4 : 6
             XCTAssertGreaterThanOrEqual(rows.count, minimum, "\(id) needs at least \(minimum) options")
             XCTAssertEqual(Set(rows.map { $0.name.lowercased() }).count, rows.count, "\(id) has duplicate names")

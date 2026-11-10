@@ -2,9 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// Level progress and the two small cards under the progress strip: the current mission with any reward waiting to be claimed (opens the
-/// goals popup), and the Season Pass (claim what is ready, or watch an ad for XP). Calm by design: no flashing, no pulse, never blocks,
-/// and the cards can be put away until next week with the cross.
 struct HomeLevelBar: View {
     var engine: GameEngine
 
@@ -30,7 +27,6 @@ struct HomeMissionStrip: View {
     @Environment(Entitlements.self) private var ent
     @Environment(AdCoordinator.self) private var ads
     @ObservedObject private var season = SeasonModel.shared
-    /// The game week in which the player put the cards away; they return the week after.
     @AppStorage("ledger.home.missionsHiddenWeek") private var hiddenWeek: Int = -1
     var engine: GameEngine
 
@@ -59,8 +55,6 @@ struct HomeMissionStrip: View {
             .contentShape(Rectangle())
     }
 
-    // MARK: Mission
-
     private var missionCard: some View {
         let waiting: Int = store.claimableGoals.count
         let ladder: PlayerGoals.LadderGoal? = PlayerGoals.currentLadderGoal(engine.state)
@@ -87,8 +81,6 @@ struct HomeMissionStrip: View {
         .coachAnchor(.goalCard)
         .accessibilityIdentifier("home-mission-card")
     }
-
-    // MARK: Season Pass
 
     @State private var watching = false
 

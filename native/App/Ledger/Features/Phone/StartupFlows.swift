@@ -6,18 +6,13 @@ import Finance
 import Events
 import Simulation
 
-/// Shared by the four startup popups: dismissing and the one question every action asks first, "If you do this, this will happen".
 private struct StartupPopup {
-    /// The popup that asks before anything is done: what it costs, what you own afterwards, the lock-up, the tax and what happens if the startup fails.
     static func ask(title: String, lines: [String], button: String, risk: String, run: @escaping () -> Void) -> PendingAction {
         PendingAction(title: title, message: (["If you do this, this will happen:"] + lines.map { "\u{2022} " + $0 }).joined(separator: "\n"), button: button,
                       alwaysAsk: true, risk: risk, tone: .investment, icon: "chart.pie", run: run)
     }
 }
 
-// MARK: Founding
-
-/// Open a startup that other players can fund. The cost comes first: the entry cost, the founder's own money and the registration.
 struct FoundCrowdStartupSheet: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market = StartupMarketStore.shared
@@ -113,9 +108,6 @@ struct FoundCrowdStartupSheet: View {
     }
 }
 
-// MARK: Investing
-
-/// Put money into the open stage of a startup. The price is the rule's; the popup before confirming states the cost, the share, the lock-up and the risk.
 struct InvestStartupSheet: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market = StartupMarketStore.shared
@@ -202,9 +194,6 @@ struct InvestStartupSheet: View {
     }
 }
 
-// MARK: Second-hand shares
-
-/// Buy shares another player offers. The price is inside the band around real value; the transfer tax comes on top.
 struct BuySharesSheet: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market = StartupMarketStore.shared
@@ -277,7 +266,6 @@ struct BuySharesSheet: View {
     }
 }
 
-/// Sell part or all of a holding to a buyer. The price must lie in the band around real value; the buyer pays the transfer tax, you pay tax on a gain.
 struct SellSharesSheet: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market = StartupMarketStore.shared

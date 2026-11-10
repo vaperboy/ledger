@@ -4,18 +4,10 @@ import Countries
 import Employees
 import Finance
 
-/// Equipment that goes with a person, not with the size of the business: a car per estate agent, a van per three cleaners, a
-/// laptop for everyone. Their number limits what the people can do; own cars with mileage; fuel cost of bigger vans for couriers and
-/// hauliers; the class of a taxi fleet and the nice car of a salesman in demand.
-/// Originals: `PER`, `ruleOf`, `prodN`, `needOf`, `adjCap`, `fleetEff`, `taxiClass`, the `postWeek` own-car and fuel lines, the
-/// 'demand' step of features/company/realistic_buying.js, `ACT.carallow` and `carOffer`/`car7`.
 public enum PersonalEquipment {
     public struct Rule: Equatable, Sendable {
-        /// Roles that use one. "*" means everyone.
         public var roles: [String]
-        /// How many people share one.
         public var peoplePerUnit: Double
-        /// How much of the work can go on without it (0 to 1).
         public var workWithout: Double
     }
 
@@ -32,7 +24,6 @@ public enum PersonalEquipment {
                 "barber:chair": r(["barber"], 1, 0), "physio:bench": r(["physio"], 1, 0), "pets:groom": r(["groom"], 1, 0), "photo:cam": r(["photog"], 1, 0)]
     }()
 
-    /// Original: `ruleOf`. Laptops and workstations go with every person.
     public static func rule(_ bd: Trade, _ e: EquipmentSpec, tables: TradeTables) -> Rule? {
         if bd.foreignItems.contains(where: { $0.id == e.id }) { return nil }
         if let r = table[bd.id + ":" + e.id] ?? e.personalRule { return r }
@@ -45,14 +36,12 @@ public enum PersonalEquipment {
 
     static func ownerWorks(_ co: Company) -> Bool { co.managerID == nil && co.ownerHours > 0 }
 
-    /// People who work with it, you included if you work in the business yourself. Original: `prodN`.
     public static func people(_ co: Company, _ bd: Trade, roles: [String]) -> Int {
         var n = co.staff.filter { (roles[0] == "*" || roles.contains($0.role)) && $0.noticeWeeks <= 0 }.count
         if ownerWorks(co) && (roles[0] == "*" || (bd.standardStaff.first.map { roles.contains($0.role) } ?? false)) { n += 1 }
         return n
     }
 
-    /// How many the company needs. Original: `needOf`.
     public static func needed(_ co: Company, _ bd: Trade, _ e: EquipmentSpec, tables: TradeTables) -> Double {
         let std = CompanySetup.standardEquipment(bd, size: co.size)[e.id] ?? 0
         guard let rl = rule(bd, e, tables: tables) else { return e.isRequired ? max(1, std) : std }
@@ -63,13 +52,11 @@ public enum PersonalEquipment {
         return w > 0 ? (w / rl.peoplePerUnit).rounded(.up) : 0
     }
 
-    /// "one per cleaner" or "one per 3 cleaners on a job". Original: `perText`.
     public static func perText(_ rl: Rule, tables: TradeTables) -> String {
         let first = rl.roles[0] == "*" ? "person" : (tables.roles[rl.roles[0]]?.name.lowercased() ?? "worker")
         return rl.peoplePerUnit == 1 ? "one per \(first)" : "one per \(Int(rl.peoplePerUnit)) \(first)\(first.hasSuffix("s") ? "" : "s") on a job"
     }
 
-    /// Bigger or smaller vans change what a courier or haulier can carry. Original: `fleetEff`.
     static func fleetEfficiency(_ co: Company, _ e: EquipmentSpec, tables: TradeTables) -> Double {
         let veh = tables.raw["VEH"]
         let vs = co.value("veh").array.filter { $0["eq"].string == e.id && !veh[$0["model"].string].isNull }
@@ -78,8 +65,6 @@ public enum PersonalEquipment {
         return clamp(mean / veh[std][5].double, 0.75, 1.5)
     }
 
-    /// Put the personal-equipment limits into the capacity parts. Original: `adjCap` (the 'capacity.core' step).
-    /// Returns whether anything changed; the caller works out the new capacity.
     static func adjustCapacity(_ parts: inout [CapacityPart], _ co: Company, _ bd: Trade, _ w: World) -> Bool {
         let tables = w.catalog.tables
         var changed = false
@@ -92,7 +77,6 @@ public enum PersonalEquipment {
             let rp = parts.indices.filter { idx in parts[idx].kind == .staff && (rl.roles[0] == "*" || rl.roles.contains { parts[idx].key == "role:" + $0 }) }
             if rp.isEmpty { continue }
             let base = rp.map { parts[$0].capacity }.min() ?? 0
-            // Units in repair are counted by `EquipmentOutage`; here only what is owned limits the people.
             let installed = CapacityModel.equipmentCount(co, e), cond = CapacityModel.equipmentCondition(co, e)
             let have = EquipmentOutage.unitsCounted(installed: installed, available: CapacityModel.equipmentAvailable(co, e), need: need)
             let frac = min(1, have / need)
@@ -108,16 +92,11 @@ public enum PersonalEquipment {
         return changed
     }
 
-    // MARK: Weekly costs
-
-    /// What one person on their own car is paid a month for mileage (the contract talk shows it before you agree). Where the country's data has a
-    /// mileage rate it is the trade's business kilometres times that rate; otherwise the game's flat figure.
     public static func mileagePerMonth(_ cur: Currency, country: Country, _ bd: Trade, tables: TradeTables) -> Double {
         if let rate = country.vehicleRules.mileagePerKm { return VehicleRunning.kmPerWeek(bd, tables: tables) * 52 / 12 * rate }
         return cur.scaledPrice(4500)
     }
 
-    /// Mileage for people on their own car, and the fuel cost of bigger vans for couriers and hauliers. Original: `postWeek` lines.
     static func weeklyCosts(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData) {
         let co = s.companies[i]
         let cur = World(state: s, data: data).currency(co)
@@ -138,17 +117,12 @@ public enum PersonalEquipment {
         }
     }
 
-    // MARK: Taxi classes and nice cars (demand)
-
-    /// Average class of a taxi fleet: 0 economy, 1 comfort, 2 premium. Original: `taxiClass`.
     public static func taxiClass(_ co: Company) -> Double {
         let cls: [String: Double] = ["car_s": 0, "car_ev": 0, "taxi_ev": 0, "taxi_cmf": 1, "taxi_xl": 1, "taxi_prm": 2, "car_lux": 2]
         let vs = co.value("veh").array.filter { $0["eq"].string == "car" }
         return vs.isEmpty ? 0 : vs.reduce(0) { $0 + (cls[$1["model"].string] ?? 0) } / Double(vs.count)
     }
 
-    /// Demand factor of the fleet: better taxis draw more riders and carry a higher price; luxury cars help estate agents and dealers.
-    /// Original: the 'demand' step 'taxi classes and cars for sales people'.
     static func demandFactor(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         var f = 1.0
         let veh = co.value("veh").array
@@ -166,18 +140,12 @@ public enum PersonalEquipment {
         return f
     }
 
-    // MARK: Own car or company car
-
-    /// Roles of this trade that may use their own car instead of a company car: the roles a vehicle marked `o` in the trade's data is assigned to
-    /// (the estate agent's car, the sales rep's car, the visiting professional's car). Original: `carOffer`, which was estate agents only.
     public static func ownCarRoles(_ bd: Trade, tables: TradeTables) -> [String] {
         bd.equipment.filter { $0.allowsOwnCar }.flatMap { rule(bd, $0, tables: tables)?.roles ?? [] }
     }
     public static func canUseOwnCar(role: String, _ bd: Trade, tables: TradeTables) -> Bool { ownCarRoles(bd, tables: tables).contains(role) }
-    /// Does this trade let any of its people use their own car?
     public static func offersOwnCar(_ co: Company, _ bd: Trade, tables: TradeTables) -> Bool { !ownCarRoles(bd, tables: tables).isEmpty }
 
-    /// Switch a person between a company car and their own car with mileage. Original: `ACT.carallow`.
     @discardableResult
     public static func toggleOwnCar(_ s: inout GameState, companyID: Int, staffID: Int, set: Bool? = nil) -> Bool? {
         guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == staffID }) else { return nil }

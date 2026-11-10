@@ -4,13 +4,9 @@ import Countries
 import Finance
 @testable import Businesses
 
-/// The property and finance families must give the same numbers as the original on the same saved game.
-/// Golden/rf_save.json and Golden/rf_oracle.json were produced by tools/ref/snippets/rental_finance_oracle.js.
 final class RentalFinanceDifferentialTests: XCTestCase {
     func loaded() throws -> (GameState, JSONValue, GameData) {
         var s = try Golden.state("rf_save")
-        // Intended difference, not a regression: the Swift game has named, living rivals (strategy, fortune) whose strength moves the
-        // "rivals" part of demand (Rivals.strengthFactor, 0.88...1.1). The original has no such factor, so compare without the rivals list.
         if var mk = s.rest["mk"] { for k in mk.object.keys { mk[k]["riv"] = .array([]) }; s.rest["mk"] = mk }
         s.useOriginalInflation()
         return (s, try Golden.load("rf_oracle"), try GameData.bundled())
@@ -70,7 +66,6 @@ final class RentalFinanceDifferentialTests: XCTestCase {
             if !close(CompanyFigures.assets(co), v["assets"].double, 1e-9) { bad.append("\(key) assets \(CompanyFigures.assets(co)) vs \(v["assets"].double)") }
             if !close(CompanyFigures.debts(co, loans: s.loans), v["debts"].double, 1e-9) { bad.append("\(key) debts \(CompanyFigures.debts(co, loans: s.loans)) vs \(v["debts"].double)") }
             if !close(CompanyFigures.fixedAssets(co), v["coAssets"].double, 1e-9) { bad.append("\(key) fixed assets") }
-            // Property companies carry no goodwill in the original; a limited company is worth its net assets, to the unit.
             if key == "resrent" || key == "comrent" || key == "parking" {
                 let val = Valuation.companyValue(co, state: s, trades: data.catalog)
                 if abs(val - v["value"].double) > 1 { bad.append("\(key) value \(val) vs \(v["value"].double)") }
@@ -155,7 +150,6 @@ final class RentalFinanceDifferentialTests: XCTestCase {
         let id = g["ids"]["insco"].int
         let i = s.companyIndex(id)!
         let o = g["ops"]["insco"]
-        // The save from the HTML game has Norwegian product ids; the import turns them into the native ones.
         let native = Set(s.companies[i].value("fm")["prods"].object.keys)
         XCTAssertEqual(native, Set(o["prods"].object.keys.map { RentalFinance.legacyProducts[$0] ?? $0 }))
         XCTAssertEqual(FinanceModel.setProduct(&s, companyID: id, product: "life", on: true, data: data), .ok)

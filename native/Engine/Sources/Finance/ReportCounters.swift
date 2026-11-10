@@ -1,32 +1,25 @@
 import Foundation
 import GameCore
 
-/// Running totals that the weekly, monthly and yearly reports take their differences from. Native addition.
-///
-/// Every movement on the player's private account passes through `Ledger.move` with a label; the label decides which total it
-/// is added to. The totals only ever grow (they are never reset), so a report for any period is "total now minus total at the
-/// start of the period" and can be checked against the ledger. They live in `GameState.rest["rptCum"]` and travel with the save.
 public enum ReportCounters {
     static let storeKey = "rptCum"
 
-    /// Keys of the player's own account. Amounts have the sign they have on the account (money in is positive).
     public enum Key {
-        public static let invested = "p.invested"       // money put into your companies
-        public static let dividends = "p.dividends"     // dividends from your companies
-        public static let salary = "p.salary"           // salary from your companies
-        public static let markets = "p.markets"         // shares, crypto and funds bought and sold, and their dividends
-        public static let deposits = "p.deposits"       // fixed deposits (money in and back)
-        public static let tax = "p.tax"                 // personal income, advance, dividend, gains, interest and wealth tax
-        public static let loans = "p.loans"             // loans drawn and instalments paid
-        public static let interest = "p.interest"       // overdraft interest
-        public static let companies = "p.companies"     // founding, selling and winding up companies
+        public static let invested = "p.invested"
+        public static let dividends = "p.dividends"
+        public static let salary = "p.salary"
+        public static let markets = "p.markets"
+        public static let deposits = "p.deposits"
+        public static let tax = "p.tax"
+        public static let loans = "p.loans"
+        public static let interest = "p.interest"
+        public static let companies = "p.companies"
         public static let other = "p.other"
-        public static let answered = "n.answered"       // decisions the player answered (a count)
+        public static let answered = "n.answered"
     }
 
     public static let personalKeys: [String] = [Key.invested, Key.dividends, Key.salary, Key.markets, Key.deposits, Key.tax, Key.loans, Key.interest, Key.companies, Key.other]
 
-    /// Which total a statement label belongs to.
     public static func key(forLabel label: String) -> String {
         func has(_ p: String) -> Bool { label.hasPrefix(p) }
         if has("Invested in") { return Key.invested }
@@ -53,7 +46,6 @@ public enum ReportCounters {
         s.rest[storeKey] = .object(o)
     }
 
-    /// Called by `Ledger.move` for every line on the player's account.
     static func recordPersonal(_ s: inout GameState, label: String?, amount: Double) {
         add(&s, key(forLabel: label ?? "Other"), amount)
     }

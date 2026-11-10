@@ -6,8 +6,6 @@ import Finance
 import Events
 import Simulation
 
-/// Software of your own: a web-development company can build a product (coders, your own hours, how customers pay, what your own companies pay).
-/// Hidden while none of your companies can build one.
 struct VenturesSoftwareSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -115,5 +113,3 @@ struct VenturesSoftwareSection: View {
         }
     }
 }
-
-

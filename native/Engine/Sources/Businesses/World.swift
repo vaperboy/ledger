@@ -3,8 +3,6 @@ import GameCore
 import Countries
 import Employees
 
-/// Everything the company model reads: the game state plus the static game data. Passed to the demand,
-/// capacity and cost calculations so none of them needs a global.
 public struct World {
     public var state: GameState
     public let countries: CountryBook
@@ -35,10 +33,8 @@ public struct World {
     }
     public func trade(_ co: Company) -> Trade? { catalog[co.type] }
 
-    /// Prices grow with inflation over the years: the cumulative index in the economy (each week's inflation applied once).
     public var inflationIndex: Double { economy.inflationIndex }
 
-    /// The competitor market a company sells in. Original: `S.mk[mkKey(co)]`.
     public func market(for co: Company) -> JSONValue? {
         let m = state.rest["mk"]?[co.type + "|" + co.cityID]
         return (m == nil || m!.isNull) ? nil : m
@@ -47,13 +43,10 @@ public struct World {
     public func person(_ id: Int) -> Person? { state.people[id] }
 }
 
-/// Smooth, repeatable "noise" that depends on the game seed, so the same game always gets the same wiggles.
 enum SeededNoise {
-    /// Original: `wave(key, wk)`.
     static func wave(seed: Int, key: String, week: Int) -> Double {
         sin(2 * Double.pi * (Double(week) + HashedRandom.first("\(seed):ph:\(key)") * 52) / 52)
     }
-    /// Smooth value between 0 and 1 that changes every `span` weeks. Original: `nz(key, wk, span)`.
     static func smooth(seed: Int, key: String, week: Int, span: Double) -> Double {
         let b = (Double(week) / span).rounded(.down)
         let f = Double(week) / span - b

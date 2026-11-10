@@ -3,7 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The arrow symbol of a price move and whether it is up (green), down (red) or level (nil).
 private func priceMove(_ d: EnergyMarket.Direction) -> (symbol: String, up: Bool?) {
     switch d {
     case .up: return ("arrow.up.right", true)
@@ -12,7 +11,6 @@ private func priceMove(_ d: EnergyMarket.Direction) -> (symbol: String, up: Bool
     }
 }
 
-/// The Energy row of the Market overview: what electricity costs now and why, in words.
 struct EnergyMarketRow: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -48,7 +46,6 @@ struct EnergyMarketRow: View {
     }
 }
 
-/// The World prices card: electricity and every commodity the economy prices, as an index where 100% is normal.
 struct WorldPricesCard: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

@@ -4,22 +4,13 @@ import Countries
 import Employees
 import Finance
 
-/// The weekly costs of running a company, and how they reach the books. Originals: `wagesWeek`, `rentWeek`,
-/// `accWeek`, `insWeek`, `leaseWeek`, `premValueWeek`, `eqWeek` (engine/company/*.js).
-///
-/// Timing: wages and rent are *accrued* every week (they are an expense of the week and a debt to staff and
-/// landlord); the cash leaves on payday (default the 25th) and on the last day of the month (rent, suppliers,
-/// insurance, fees). See `Payday`.
 public enum CompanyCosts {
-    // MARK: Wages
 
-    /// Commission owed on each seller's own full sales last week. Original: `commissionWeek`.
     static func commission(_ co: inout Company, _ bd: Trade, _ w: World) -> Double {
         let salesRoles = w.catalog.tables.salesRoles
         var staff = co.staff
         let sellerIdx = staff.indices.filter { PayPlans.sells(staff[$0], salesRoles: salesRoles) }
         if sellerIdx.isEmpty { return 0 }
-        // The used car dealer pays on the profit of each car sold (a share of the gross profit, never on a loss), and the buyer on what he saved against fair value.
         let usedCar = bd.id == UsedCarDealer.tradeID
         let rev = usedCar ? co.num("ucg") * UsedCarDealer.profitShareMultiple : co.lastWeekRevenue
         let skills = sellerIdx.map { usedCar && staff[$0].role == "buyer" ? 0 : StaffModel.skill(staff[$0], person: w.state.people[staff[$0].id], salesRoles: salesRoles) + 10 }
@@ -43,16 +34,14 @@ public enum CompanyCosts {
         return c
     }
 
-    /// Accrue this week's payroll. `factor` < 1 for a closed company. Returns the cost incl. employer charges.
     @discardableResult
     public static func wages(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData, factor f: Double = 1) -> Double {
         var co = s.companies[i]
         let w = World(state: s, data: data)
         let country = w.country(co)
         let commissionPay = co.status == .closed ? 0 : commission(&co, bd, w)
-        let factor = Payroll.averageFactor(co, country: country)   // the real people's on-cost, not the median-wage factor
+        let factor = Payroll.averageFactor(co, country: country)
         let cost = (Payroll.weeklyCost(co, country: country, sickWeek: s.week, capScale: w.inflationIndex) + commissionPay * factor) * f
-        // Bonuses judged at the month or year end (WorkerBonus) are paid through payroll: the same employer charges and the same payable as wages.
         let bonus = co.num("bnPend") * factor
         if bonus != 0 { co.raw.removeValue(forKey: "bnPend") }
         co.addPayable("wages", cost + bonus)
@@ -63,9 +52,6 @@ public enum CompanyCosts {
         return cost + bonus
     }
 
-    // MARK: Rent
-
-    /// Rent accrues weekly; it is paid on the last day of the month. Original: `rentWeekCore`.
     public static func rent(_ s: inout GameState, companyIndex i: Int, data: GameData) {
         var co = s.companies[i]
         let prem = co.value("prem")
@@ -78,7 +64,6 @@ public enum CompanyCosts {
             co.set("prem", p)
         }
         var r = co.value("prem")["rent"].double * prem["m2"].double / 52
-        // A cheaper first lease, or a renewal at a new price, from a decision (flags.rent27 = { m: factor, until: week }).
         let r27 = co.value("flags")["rent27"]
         if !r27.isNull, s.week < r27["until"].int, r27["m"].double > 0 { r *= r27["m"].double }
         co.addPayable("rent", r)
@@ -87,16 +72,11 @@ public enum CompanyCosts {
         PremisesExtras.rentToLandlord(&s, tenantIndex: i, rent: r)
     }
 
-    // MARK: Fixed costs, accountant, insurance, leases
-
-    /// Fixed overhead of the week at the company's size, city and the inflation since the start. Original: part of `weekEnd`.
     public static func fixedOverhead(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         let size06 = pow(co.size, 0.6) * pow(w.city(co)?.rent ?? 1, 0.3)
         return (bd.fixedWeekly * size06 + Knobs.effect(co, bd, "w", w, sum: true)) * w.inflationIndex
     }
 
-    /// The week's instalments on leased equipment (service included) and leased vehicles, with their input VAT. A lease is a contract: it runs while
-    /// the company is open or temporarily closed, and ends only when the company is wound up or fails (`EquipmentMarket.endAllLeases`).
     static func leaseInstalments(_ s: inout GameState, companyIndex i: Int, data: GameData) {
         let id = s.companies[i].id
         for (_, monthly) in s.companies[i].value("eqL").object.sorted(by: { $0.key < $1.key }) where monthly.double > 0 {
@@ -111,7 +91,6 @@ public enum CompanyCosts {
         }
     }
 
-    /// Accountant's fee for the week. Original: `accWeek`.
     public static func accountant(_ co: Company, _ w: World) -> Double {
         let c = w.currency(co)
         var fee: Double
@@ -123,7 +102,6 @@ public enum CompanyCosts {
         return fee * sz * w.inflationIndex * 12 / 52
     }
 
-    /// Insurance premium for one product, per week. Original: `insPremium`.
     public static func insurancePremium(_ co: Company, product k: String, rate: Double, _ w: World) -> Double {
         let base: Double
         if k == "prop" {
@@ -137,10 +115,6 @@ public enum CompanyCosts {
         return jsRound(base * rate / 52 * (1 + riskUp) * Advisers.premiumFactor(co))
     }
 
-    // MARK: Depreciation and wear
-
-    /// Equipment and vehicle wear for the week: depreciation is an expense, condition falls with use, upkeep is paid.
-    /// Original: `eqWeekCore`.
     public static func equipmentWeek(_ s: inout GameState, companyIndex i: Int, utilisation util: Double, _ bd: Trade, data: GameData) {
         var co = s.companies[i]
         var books = co.books
@@ -188,7 +162,6 @@ public enum CompanyCosts {
             let run = VehicleRunning.vehicleWeek(v, bd: bd, util: util, tables: data.catalog.tables, country: runCountry, currency: runCurrency, fuelIndex: s.economy.fuel)
             vehicles[n]["km"] = .number(v["km"].double + run.km)
             fuel += run.fuel
-            // A leased vehicle is serviced by the lessor ("Service included in lease"): no upkeep bill on top of the lease payment.
             if v["mode"].string != "lease" { upkeep += v["cost"].double * mc * 1.3 / 52 }
         }
         co.set("eq", eq)
@@ -199,12 +172,11 @@ public enum CompanyCosts {
         s.companies[i] = co
         if fuel > 0 { Payments.companyPays(&s, companyID: co.id, amount: fuel, category: "oth", label: "Fuel"); Vat.input(&s, companyIndex: i, net: fuel, data: data) }
         if upkeep > 0 {
-            let fixDisc = Suppliers.repairDiscount(s, company: co, data: data)   // the repair supplier's discount (fixDisc)
-            SupplyTerms.payRepairs(&s, companyIndex: i, amount: upkeep * (1 - fixDisc), label: nil, data: data)   // on the repair terms agreed (SupplyTerms)
+            let fixDisc = Suppliers.repairDiscount(s, company: co, data: data)
+            SupplyTerms.payRepairs(&s, companyIndex: i, amount: upkeep * (1 - fixDisc), label: nil, data: data)
         }
     }
 
-    /// Owned premises follow the housing market and cost 1% of their value per year to keep. Original: `premValueWeek`.
     public static func premisesValue(_ s: inout GameState, companyIndex i: Int, data: GameData) {
         var co = s.companies[i]
         var prem = co.value("prem")

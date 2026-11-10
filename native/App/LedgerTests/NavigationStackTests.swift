@@ -1,8 +1,6 @@
 import XCTest
 @testable import Ledger
 
-/// The navigation rules, on the store that owns every tab's stack (no engine needed): a link to a record already on a stack
-/// never stacks a copy, a link pushes on the open tab and never changes tab, the switcher swaps the top screen, choosing the open tab pops to root.
 @MainActor
 final class NavigationStackTests: XCTestCase {
 
@@ -52,7 +50,6 @@ final class NavigationStackTests: XCTestCase {
         XCTAssertEqual(store.tab, .company)
         XCTAssertEqual(store.path(for: .company), [.companyAt(2, .staff), .entity("co2", .management)])
         XCTAssertTrue(store.path(for: .group).isEmpty)
-        // Back pops to the company, still on Home.
         store.setPath([.companyAt(2, .staff)], for: .company)
         XCTAssertEqual(store.tab, .company)
         XCTAssertEqual(store.depth(.company), 1)

@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Where an administrator code is spent. The code is typed here and checked by the server; the app holds no code and no admin flag of its
-/// own. When the server says the account is an administrator, the page offers the Admin screen.
 struct AdminAccessView: View {
     @Environment(OnlineSession.self) private var online
     @State private var code = ""

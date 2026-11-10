@@ -3,9 +3,6 @@ import GameCore
 import Businesses
 import Events
 
-/// The local stand-in for the startup market server. It seeds startups of the sample players (and one of the player's own other account, to show the
-/// linked-account rule), lets mock investors fund them under the very rules of `CrowdStartupRules`, moves milestones and failures week by week, and
-/// keeps second-hand offers. Its book is saved as one blob (see `StartupMarketStore.attach`); with no storage it is drawn again, the same, each launch.
 final class MockStartupMarketService: StartupMarketService {
     var onChange: (() -> Void)?
 
@@ -39,8 +36,6 @@ final class MockStartupMarketService: StartupMarketService {
         onChange?()
     }
 
-    // MARK: Reading
-
     func startups() -> [CrowdStartup] { book.startups }
     func startup(_ id: String) -> CrowdStartup? { book.startups.first { $0.id == id } }
     func myHoldings() -> [CrowdHolding] { book.holdings }
@@ -69,8 +64,6 @@ final class MockStartupMarketService: StartupMarketService {
         let n = Int(roll("buyer" + startupID) * 30)
         return StartupBuyer(id: "inv\(100 + n)", name: "Investor \(100 + n)", linkKey: "inv\(100 + n)", accountWeeks: 40)
     }
-
-    // MARK: Writing
 
     func list(_ s: CrowdStartup) {
         activity = true
@@ -106,8 +99,6 @@ final class MockStartupMarketService: StartupMarketService {
         }
         persist()
     }
-
-    // MARK: Time
 
     func advance(today: Int, scale: Double, own: [String: CrowdStartups.Progress]) -> [StartupMarketEvent] {
         if !book.seeded { seed(today: today, scale: scale) }
@@ -146,7 +137,6 @@ final class MockStartupMarketService: StartupMarketService {
             let mine = st.founderID == CrowdStartups.me
             let key = "\(st.id):\(week):"
             let myLines = st.investments.filter { $0.investorID == CrowdStartups.me }
-            // Investors arrive at their own pace; now and then a startup is talked about and many come at once.
             let wasViral = st.viral(today: day)
             if st.openStage != nil {
                 let burst = roll(key + "burst") < 0.025
@@ -157,7 +147,6 @@ final class MockStartupMarketService: StartupMarketService {
                 events.append(.viral(startupID: st.id, name: st.name, mine: mine))
             }
             if !mine {
-                // Milestones and failures of other players' startups are rolled; the player's own run on their real books.
                 let fragile = roll("fragile" + st.id) < 0.3
                 if st.milestones < 3, roll(key + "fail") < (fragile ? 0.02 : 0.006) {
                     let back = CrowdStartupRules.fail(&st)
@@ -184,8 +173,6 @@ final class MockStartupMarketService: StartupMarketService {
         return events
     }
 
-    // MARK: Seeds
-
     private static let trades = ["Software", "Bakery chain", "Brewery", "Fitness studios", "Games", "Clean energy", "Delivery", "Health clinic", "Fashion", "Food truck", "Farm tech", "Education"]
     private static let words = ["Nova", "Mint", "Harbor", "Lumen", "Pixel", "Orchard", "Kite", "Ember", "Atlas", "Fable", "Quill", "Tidal", "Oak", "Spark"]
     private static let pitches = ["Sells to small shops that have no online presence.", "Wants to open its first three sites in one city.", "Builds a tool people pay for every month.",
@@ -211,7 +198,6 @@ final class MockStartupMarketService: StartupMarketService {
             for stage in 0...target {
                 if stage > 3 { break }
                 guard st.openStage == stage else { break }
-                // Fill the stage: a full one, or part of the current one.
                 let fill = stage < target ? 1.0 : (0.2 + 0.7 * roll("fill\(i)"))
                 var n = 0
                 while st.raised(stage: stage) < CrowdStartupRules.stageTarget(plan, stage: stage) * fill - 1, n < 14 {
@@ -231,7 +217,6 @@ final class MockStartupMarketService: StartupMarketService {
                 st.weeklyProfit = (0..<13).map { _ in v * (0.7 + 0.6 * roll("wp\(i)")) }
                 st.assets = max(plan.founderPutIn, st.assets)
             }
-            // Two startups were just talked about: five or six different investors in the last days.
             if i == 2 || i == 9 {
                 for k in 0..<6 {
                     guard let stage = st.openStage else { break }

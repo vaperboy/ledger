@@ -1,14 +1,10 @@
 import SwiftUI
 
-/// The day's close inside the daily report: a thin 7-segment bar of the week (filled up to today, the seventh outlined), the day's
-/// profit on one line (counting from 0, a green up or red down arrow) and one priority line. Shown by `DailyReportPopup`.
 struct DayCloseView: View {
     var profit: Double?
-    /// Days played in the week so far (1 to 6 on an ordinary day).
     var daysDone: Int
     var instant: Bool
     var format: (Double) -> String
-    /// The third line, in priority: a new Inbox item, the week's best day, the briefing's first sentence, else "A quiet day."
     var newInboxTitle: String? = nil
     var bestDay: Bool = false
     var briefing: String? = nil
@@ -35,7 +31,6 @@ struct DayCloseView: View {
         }
     }
 
-    /// One line, at most 70 characters.
     private var priorityLine: String {
         var line: String = "A quiet day."
         if let t = newInboxTitle, !t.isEmpty { line = "New in Inbox: " + t }

@@ -4,11 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Minimal screens for the 2 Nov 2026 systems, each inside an existing screen: a Growth block in the worker profile, one Brand line
-/// (Group overview, company Sales), and a Research row with its popup (a company's page in the Market app).
-
-// MARK: - Growth (worker profile)
-
 struct WorkerGrowthSection: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -71,7 +66,6 @@ struct WorkerGrowthSection: View {
     }
 
     private func buttons(_ g: GrowthPath) -> some View {
-        // Promote shows only when they are ready; until then the line above says what is missing.
         HStack(spacing: Theme.Space.xs) {
             if g.isReady {
                 Button("Promote to " + g.nextRoleName.lowercased()) { Haptics.tap(); promote(g) }.buttonStyle(TertiaryButtonStyle(size: .compact))
@@ -133,9 +127,6 @@ struct WorkerGrowthSection: View {
     }
 }
 
-// MARK: - Brand lines
-
-/// Group overview: "Brand" in words, with what lifts it explained in an (i) popover.
 struct GroupBrandLine: View {
     var engine: GameEngine
 
@@ -154,25 +145,6 @@ struct GroupBrandLine: View {
     }
 }
 
-/// Company Sales header: "Brand" in words.
-struct CompanyBrandLine: View {
-    var engine: GameEngine
-    var companyID: Int
-
-    var body: some View {
-        let score: Double = engine.brandValue(companyID: companyID)
-        return HStack(spacing: 6) {
-            Text("Brand").textStyle(.caption)
-            Text(BrandWords.label(score: score)).textStyle(.caption, tint: Theme.accent, weight: .semibold)
-            BrandBar(score: score)
-            Spacer(minLength: 0)
-        }
-    }
-}
-
-// MARK: - Research
-
-/// A "Research" row that opens the research popup, on a company's page of the Market app.
 struct ResearchRow: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -257,7 +229,6 @@ struct ResearchSheet: View {
         }
     }
 
-    /// The inbox document that delivered this report (matched by its reference number), if it is still in the inbox.
     private func reportDocument(_ r: ResearchReport) -> InboxDocument? {
         let ref: String = "LMR-" + String(format: "%05d", r.id)
         guard let e = store.engine else { return nil }

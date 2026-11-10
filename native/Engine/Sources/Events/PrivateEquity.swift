@@ -4,14 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// Private equity funds you commit money to. Each year four funds raise money (buyout, growth, infrastructure, venture). You commit an amount;
-/// the fund calls it in over its first four years, invests it, charges 2% a year on what you committed while it invests (1% after) and 20% of
-/// the profit above an 8% a year hurdle, pays back from year four and winds up after ten years. The value moves with the fund's own deals and
-/// with the stock market; venture funds swing most. Miss a capital call and you lose half your stake. You can sell a stake early on the secondary
-/// market at a discount. Gains are taxed when money comes back above what you paid in. Counted in net worth as funds (`Valuation`).
-/// Original: features/world/private_equity.js (round 56, `PE56`).
-///
-/// State: `rest["pe56"]` = { offers: [...], y: year, mine: [fund...] }. The original gates it behind "Ledger Pro"; the native game has no Pro tier, so it is open.
 public enum PrivateEquity {
     public struct Style: Equatable { public var name: String, blurb: String; var r: Double, v: Double, beta: Double }
     public static let styles: [String: Style] = [
@@ -26,7 +18,6 @@ public enum PrivateEquity {
     public struct Offer: Identifiable, Equatable {
         public var id: String
         public var style: String, name: String
-        /// What you can see of the manager's past record (a noisy read of how good they are).
         public var seenQuality: Double
         public var minimum: Double
         public var trackRecord: String { PrivateEquity.track(seenQuality) }
@@ -45,11 +36,8 @@ public enum PrivateEquity {
 
     static func track(_ q: Double) -> String { q >= 0.75 ? "Top quartile" : q >= 0.55 ? "Above median" : q >= 0.4 ? "Median" : "Below median" }
 
-    // MARK: Reading
-
     static func yearsIn(_ f: JSONValue, _ s: GameState) -> Double { Double(s.week - f["w0"].int) / 52 }
 
-    /// This year's funds, drawn from the game seed (the same every time you look). Original: `offersFor`.
     static func makeOffers(_ s: GameState, year y: Int, minimumScale cur: Currency) -> [JSONValue] {
         order.enumerated().map { i, k in
             var r = HashedRandom("\(s.seed):pe:\(y):\(k)")
@@ -61,7 +49,6 @@ public enum PrivateEquity {
             return .object(["id": .string("pe\(y)\(i)"), "k": .string(k), "n": .string(nm), "q": .number(qq), "seen": .number(seen), "min": .number(cur.scaledPrice(k == "venture" ? 500_000 : k == "infra" ? 2_500_000 : 1_000_000)), "y": .number(Double(y))])
         }
     }
-    /// A new set of funds every calendar year.
     public static func refresh(_ s: inout GameState, context fc: FinanceContext) {
         var pe = s.rest["pe56"] ?? .object(["offers": .array([]), "y": .null, "mine": .array([])])
         let y = GameCalendar.year(week: s.week)
@@ -75,7 +62,6 @@ public enum PrivateEquity {
         refresh(&s, context: fc)
         return (s.rest["pe56"]?["offers"].array ?? []).map { Offer(id: $0["id"].string, style: $0["k"].string, name: $0["n"].string, seenQuality: $0["seen"].double, minimum: $0["min"].double) }
     }
-    /// This year's funds already drawn (read only; `weekly` keeps them current).
     public static func offersOnTable(_ s: GameState) -> [Offer] {
         (s.rest["pe56"]?["offers"].array ?? []).map { Offer(id: $0["id"].string, style: $0["k"].string, name: $0["n"].string, seenQuality: $0["seen"].double, minimum: $0["min"].double) }
     }
@@ -89,7 +75,6 @@ public enum PrivateEquity {
     static func discount(_ f: JSONValue, _ s: GameState) -> Double {
         clamp(0.35 - yearsIn(f, s) * 0.025 - (f["q"].double - 0.5) * 0.1 + (s.economy.demand < 0.97 ? 0.08 : 0), 0.08, 0.45)
     }
-    /// What a buyer would pay for your stake today on the secondary market.
     public static func secondaryPrice(_ s: GameState, fundID: Int) -> Double {
         guard let f = (s.rest["pe56"]?["mine"].array ?? []).first(where: { $0["id"].int == fundID }) else { return 0 }
         return jsRound(f["nav"].double * (1 - discount(f, s)))
@@ -98,11 +83,8 @@ public enum PrivateEquity {
         (s.rest["pe56"]?["mine"].array ?? []).first(where: { $0["id"].int == fundID }).map { discount($0, s) } ?? 0
     }
 
-    // MARK: Actions
-
     public enum CommitResult: Equatable { case ok, tooSmall, notRichEnough, gone }
 
-    /// Commit an amount to a fund. Funds take money only from investors whose net worth is at least 1.5 times the commitment. Original: `commit`.
     @discardableResult
     public static func commit(_ s: inout GameState, offerID: String, amount: Double, data: GameData, context fc: FinanceContext) -> CommitResult {
         refresh(&s, context: fc)
@@ -121,15 +103,11 @@ public enum PrivateEquity {
         return .ok
     }
 
-    /// Sell a stake on the secondary market. Returns the cash you get. Original: `PE56.sell`.
     @discardableResult
     public static func sellStake(_ s: inout GameState, fundID: Int) -> Double? {
         sellStakeAsking(&s, fundID: fundID, askMultiplier: nil)?.proceeds
     }
 
-    // MARK: The week
-
-    /// Value moves every week; every quarter: fees, capital calls, money back, and winding up after ten years. Original: 'private equity funds' step.
     public static func weekly(_ s: inout GameState, context fc: FinanceContext) {
         refresh(&s, context: fc)
         guard var pe = s.rest["pe56"], var mine = Optional(pe["mine"].array), !mine.isEmpty else { return }

@@ -1,20 +1,14 @@
 import SwiftUI
 
-/// The one slider of the app: a slim 3pt track, the active part in the accent, a plain 20pt ink thumb (no shadow, no ring) inside an invisible
-/// 44pt touch area, an optional value text, step snapping, and a haptic only when a snap point (or an end) is reached.
-/// Same use as `Slider(value:in:step:onEditingChanged:)`; `onEditingChanged(true)` fires when a drag starts and `(false)` when it ends,
-/// so a caller can commit on release while the binding follows the finger.
 struct LedgerSlider: View {
     @Binding var value: Double
     var range: ClosedRange<Double>
     var step: Double? = nil
-    /// A value text shown above the track on the right (optional; the caller formats it).
     var valueText: String? = nil
     var onEditingChanged: (Bool) -> Void = { _ in }
     @Environment(\.outsidePalette) private var P
     @Environment(\.isEnabled) private var isEnabled
     @State private var dragging = false
-    /// The direction of the current drag: nil until decided, true for sideways (moves the value), false for a scroll (ignored).
     @State private var axis: Bool? = nil
     @State private var lastTick: Double = .nan
 
@@ -30,20 +24,11 @@ struct LedgerSlider: View {
     private var span: Double { max(range.upperBound - range.lowerBound, 0.000001) }
     private let thumb: CGFloat = 22
     private var hit: CGFloat = 48
-    /// Uneven snap points (sorted, inside the range); empty: `step` or a free value.
     private var stops: [Double] = []
 
-    /// A shorter touch area for dense rows (still at least 30pt high); the default is 44pt.
     func hitHeight(_ h: CGFloat) -> LedgerSlider {
         var c: LedgerSlider = self
         c.hit = max(30, h)
-        return c
-    }
-
-    /// Snaps to the nearest of `values` (uneven steps such as 0, 10, 25, 50, 100) instead of `step`. Empty keeps the default.
-    func detents(_ values: [Double]) -> LedgerSlider {
-        var c: LedgerSlider = self
-        c.stops = values.filter { range.contains($0) }.sorted()
         return c
     }
 
@@ -81,7 +66,6 @@ struct LedgerSlider: View {
         }
     }
 
-    /// One VoiceOver adjustment: the next detent, else one `step` (or a twentieth of the range).
     private func nudged(up: Bool) -> Double {
         if !stops.isEmpty {
             let next: Double? = up ? stops.first(where: { (s: Double) -> Bool in s > value }) : stops.last(where: { (s: Double) -> Bool in s < value })
@@ -136,8 +120,6 @@ struct LedgerSlider: View {
             .frame(width: w, height: hit)
             .contentShape(Rectangle())
             .gesture(
-                // Only a clearly sideways drag moves the value: a scroll that starts on the track (mostly vertical) is ignored, so the
-                // page scrolls instead and no value changes by accident.
                 DragGesture(minimumDistance: 8)
                     .onChanged { (g: DragGesture.Value) in
                         if axis == nil { axis = abs(g.translation.width) > abs(g.translation.height) * 1.2 }
@@ -158,7 +140,6 @@ struct LedgerSlider: View {
     }
 }
 
-/// The refined switch: a small 38x23 capsule with a champagne "on" state. Used on its own where a row has its own label.
 struct LedgerSwitch: View {
     @Binding var isOn: Bool
     @Environment(\.outsidePalette) private var P
@@ -168,7 +149,6 @@ struct LedgerSwitch: View {
 
     init(isOn: Binding<Bool>) { self._isOn = isOn }
 
-    /// A shorter touch area for dense rows.
     func hitHeight(_ h: CGFloat) -> LedgerSwitch {
         var c: LedgerSwitch = self
         c.rowHeight = max(28, h)
@@ -196,8 +176,6 @@ struct LedgerSwitch: View {
     }
 }
 
-/// `Toggle` with a visible label: the label on the left, the refined switch on the right. Set once at the app root and inside popups.
-/// A toggle with a hidden label uses `LedgerSwitch` directly instead.
 struct LedgerToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 10) {

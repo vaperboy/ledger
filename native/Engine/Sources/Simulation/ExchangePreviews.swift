@@ -5,23 +5,16 @@ import Finance
 import Businesses
 import Events
 
-/// What an exchange order, a listing or a dividend would do, worked out on a copy of the game so that nothing in the real one changes.
-/// Each preview carries the plain lines for "If you do this, this will happen".
 public struct ExchangeOrderPreview: Equatable, Sendable {
     public var instrument: String
     public var side: ExchangeSide
     public var shares: Int
     public var limit: Double
-    /// Shares times the limit price: the most the order can move.
     public var amount: Double
-    /// The broker's fee when it fills.
     public var fee: Double
-    /// Your cash now, and the lowest it can be once a buy fills in full at the limit.
     public var cashNow: Double
     public var cashAfterBuy: Double?
-    /// The price band around the value per share, when the share is known.
     public var bandLow: Double?, bandHigh: Double?
-    /// Why the order would be refused; nil when it would be placed.
     public var refusal: OrderRefusal?
     public var allowed: Bool { refusal == nil }
     public var lines: [String]
@@ -30,7 +23,6 @@ public struct ExchangeOrderPreview: Equatable, Sendable {
 public struct ExchangeListingPreview: Equatable, Sendable {
     public var holdingID: Int
     public var outcome: ExchangeListOutcome
-    /// What taking the holding public costs now (0 when it would be refused).
     public var fee: Double
     public var sharesInIssue: Int
     public var valuePerShare: Double
@@ -43,14 +35,12 @@ public struct ExchangeDividendPreview: Equatable, Sendable {
     public var result: ExchangeDividendResult
     public var amount: Double
     public var perShare: Double
-    /// The part that reaches you by your stake.
     public var yourShare: Double
     public var allowed: Bool { if case .ok = result { return true } else { return false } }
     public var lines: [String]
 }
 
 public extension GameEngine {
-    /// What `placeExchangeOrder` would do. Nothing changes in this game.
     func previewOrder(instrument: String, side: ExchangeSide, shares: Int, limit: Double) -> ExchangeOrderPreview {
         var trial: GameEngine = self
         let cur: Currency = homeCurrency
@@ -76,7 +66,6 @@ public extension GameEngine {
                                     cashAfterBuy: side == .buy ? cash - amount - fee : nil, bandLow: row?.low, bandHigh: row?.high, refusal: refusal, lines: lines)
     }
 
-    /// What `listOnExchange` would do and cost. Nothing changes in this game.
     func previewListing(holdingID: Int) -> ExchangeListingPreview {
         var trial: GameEngine = self
         let cur: Currency = homeCurrency
@@ -101,7 +90,6 @@ public extension GameEngine {
         return ExchangeListingPreview(holdingID: holdingID, outcome: outcome, fee: fee, sharesInIssue: shares, valuePerShare: perShare, lines: lines)
     }
 
-    /// What `declareExchangeDividend` would do. Nothing changes in this game.
     func previewDividend(holdingID: Int, amount: Double) -> ExchangeDividendPreview {
         var trial: GameEngine = self
         let cur: Currency = homeCurrency

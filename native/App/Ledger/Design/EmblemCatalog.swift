@@ -1,14 +1,11 @@
 import SwiftUI
 import Simulation
 
-/// What a piece of art is about: the category fixes the shape and pattern, the id fixes the symbol and colours.
 enum ArtCategory: String, CaseIterable {
     case trade, artifact, theme, backdrop, namePlate, tradePlate, flair, box, badge, advisor, saveSlot, gold, avatar
 }
 
-/// The drawn emblem for every id the game has. Pure data: category -> shape and pattern, id -> symbol and colours, so a family looks alike.
 enum EmblemCatalog {
-    // MARK: Colour helpers
 
     static func mix(_ a: UInt32, _ b: UInt32, _ t: Double) -> UInt32 {
         func ch(_ v: UInt32, _ shift: UInt32) -> Double { Double((v >> shift) & 0xFF) }
@@ -39,8 +36,6 @@ enum EmblemCatalog {
         }
     }
 
-    // MARK: Trades
-
     private struct Family {
         var top: UInt32, bottom: UInt32, ink: UInt32
         var motif: EmblemMotif
@@ -60,7 +55,6 @@ enum EmblemCatalog {
         "club": Family(top: 0xB04646, bottom: 0x551C1C, ink: 0xFFD0D0, motif: .stripes),
     ]
 
-    /// Trade id -> (symbol, small second symbol, family). Every trade of `trades.json` has a row.
     private static let trades: [String: (String, String?, String)] = [
         "startup": ("lightbulb.fill", "arrow.up", "svc"), "cons": ("briefcase.fill", nil, "svc"), "tutor": ("graduationcap.fill", nil, "svc"),
         "carclean": ("car.fill", "drop.fill", "svc"), "photo": ("camera.fill", nil, "svc"), "handy": ("hammer.fill", nil, "svc"),
@@ -98,8 +92,6 @@ enum EmblemCatalog {
         return EmblemSpec(symbol: t.0, badge: t.1, top: f.top, bottom: f.bottom, ink: f.ink, motif: f.motif, shape: .tile)
     }
 
-    // MARK: Artifacts
-
     private static let collectionLook: [String: (top: UInt32, bottom: UInt32, ink: UInt32, motif: EmblemMotif)] = [
         "counting": (0xA8803A, 0x4A3512, 0xFFE9B0, .rings), "harbour": (0x2F7080, 0x143642, 0xBDEBF2, .waves),
         "market": (0xB2677A, 0x57293A, 0xFAD2DC, .stripes), "archive": (0x9C957F, 0x45423A, 0xF1ECDD, .grid),
@@ -116,8 +108,6 @@ enum EmblemCatalog {
         guard let def = ArtifactCatalog.def(id), let look = collectionLook[def.collection] else { return nil }
         return EmblemSpec(symbol: artifactSymbols[id] ?? "seal.fill", top: look.top, bottom: look.bottom, ink: look.ink, motif: look.motif, shape: .medal)
     }
-
-    // MARK: Cosmetics (colours come from the reward: tint first, deep tone second)
 
     private static func pair(_ colors: [UInt32]) -> (tint: UInt32, deep: UInt32) {
         let tint: UInt32 = colors.first ?? 0xD6B889
@@ -158,8 +148,6 @@ enum EmblemCatalog {
         else if id.contains("archive") { symbol = "seal.fill" }
         return EmblemSpec(symbol: symbol, badge: badge, top: mix(p.deep, p.tint, 0.4), bottom: p.deep, ink: mix(p.tint, 0xFFFFFF, 0.2), motif: motif, shape: .medal)
     }
-
-    // MARK: Boxes and pass rewards
 
     static func box(_ id: String) -> EmblemSpec {
         switch id {

@@ -1,8 +1,5 @@
 import SwiftUI
 
-// Shared pieces for the pages of the Phone apps (Inbox, News, Stats, Goals, Market, Luxury, Ventures, Settings), built on
-// NewLook.swift: a titled card section, a figure card, an icon row, and a few extra house icons in the same 24 x 24 style.
-
 extension Glyph {
     static let chevronDown = "M5 9 L12 16 L19 9"
     static let chevronUp = "M5 15 L12 8 L19 15"
@@ -30,7 +27,6 @@ extension Glyph {
     static let lock = "M6 11 H18 V20 H6 Z M8 11 V8 A4 4 0 0 1 16 8 V11"
     static let sort = "M7 5 V19 M4 8 L7 5 L10 8 M17 19 V5 M14 16 L17 19 L20 16"
 
-    /// The icon for a kind of weather (see `WeatherEvents.kindWords`).
     static func weather(_ kind: String) -> String {
         switch kind {
         case "sun", "heat": return sun
@@ -44,15 +40,12 @@ extension Glyph {
 
 private struct InsideCardKey: EnvironmentKey { static let defaultValue = false }
 extension EnvironmentValues {
-    /// True inside a `CardSection`: nested figure strips drop their own frame instead of drawing a card in a card.
     var insideCard: Bool {
         get { self[InsideCardKey.self] }
         set { self[InsideCardKey.self] = newValue }
     }
 }
 
-/// A titled group: the caps label above (with an optional note or link at the right), the content on one surface group with no
-/// border. Cards inside draw flat. Rows inside separate themselves with `CardLine()` (a hairline).
 struct CardSection<Content: View, Trailing: View>: View {
     var title: String
     var rule = true
@@ -82,12 +75,10 @@ extension CardSection where Trailing == EmptyView {
     }
 }
 
-/// The line between two rows inside a card: the one hairline.
 struct CardLine: View {
     var body: some View { Hairline() }
 }
 
-/// Key figures on a surface tile (flat inside a group): `FigureRow`, cells separated by hairlines.
 struct FigureCard: View {
     typealias Item = KeyFigures.Item
     var items: [Item]
@@ -98,7 +89,6 @@ struct FigureCard: View {
     }
 }
 
-/// The headline of a page: a caps label over one big serif figure (`Figure` at display size), with an optional grey line under it.
 struct HeroFigure: View {
     var label: String
     var value: String
@@ -113,7 +103,6 @@ struct HeroFigure: View {
     }
 }
 
-/// An explanatory note on a surface tile (flat inside a group): a faint glyph and a line of text.
 struct NoteCard: View {
     var text: String
     var glyph: String = Glyph.info
@@ -131,7 +120,6 @@ struct NoteCard: View {
     }
 }
 
-/// A row inside a card: `LedgerRow` in its compact density (glyph, title and grey line, a value with a grey line, optional chevron).
 struct RowLine: View {
     var glyph: String
     var tint: Color = Theme.accent
@@ -148,7 +136,6 @@ struct RowLine: View {
     }
 }
 
-/// A quiet link: accent text and a chevron, 44 pt tall (the tertiary button's look).
 struct LinkLabel: View {
     var text: String
     @Environment(\.outsidePalette) private var palette
@@ -161,14 +148,12 @@ struct LinkLabel: View {
     }
 }
 
-/// The other answers next to a primary one: the secondary button.
 struct GreyOutlineButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         SecondaryButtonStyle().makeBody(configuration: configuration)
     }
 }
 
-/// The body of a Phone app page: a `ScrollScreen` with the Phone margins, on the page background.
 struct PhonePageScroll<Content: View>: View {
     var spacing: CGFloat = 14
     @ViewBuilder var content: () -> Content

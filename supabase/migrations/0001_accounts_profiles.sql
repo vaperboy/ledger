@@ -1,7 +1,3 @@
--- Accounts, profiles, friends, blocks, reports and cloud saves.
--- Privacy is enforced here: clients read other players only through the SECURITY DEFINER functions below, which return exactly
--- the fields the viewer may see (hidden fields come back null). Clients never write level, week or companies directly.
-
 create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;
 
@@ -10,7 +6,6 @@ create type public.company_health as enum ('new', 'struggling', 'steady', 'growi
 create type public.friendship_status as enum ('pending', 'accepted');
 create type public.report_status as enum ('open', 'reviewed', 'dismissed');
 
--- Shareable code like K7M-4PQ2 (no 0/O/1/I/L).
 create function private.new_code() returns text language plpgsql volatile as $$
 declare chars text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; s text := ''; i int;
 begin
@@ -18,7 +13,6 @@ begin
   return substr(s, 1, 3) || '-' || substr(s, 4, 4);
 end $$;
 
--- Display-name rules, mirroring the app's ProfileRules (blocklist and reserved words after undoing look-alike characters).
 create function private.name_problem(n text) returns text language plpgsql immutable as $$
 declare flat text; w text;
 begin
@@ -34,9 +28,6 @@ begin
   return null;
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Tables
--- ---------------------------------------------------------------------------------------------------------------------
 create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   code text not null unique default private.new_code(),
@@ -76,7 +67,6 @@ create table public.friendships (
   responded_at timestamptz,
   constraint friendship_not_self check (requester_id <> addressee_id)
 );
--- One row per unordered pair, whichever direction asked first.
 create unique index friendships_pair_key on public.friendships (least(requester_id, addressee_id), greatest(requester_id, addressee_id));
 
 create table public.blocks (
@@ -97,7 +87,6 @@ create table public.reports (
   created_at timestamptz not null default now()
 );
 
--- Cloud saves: the app encrypts the save on the device and uploads base64 text; the platform also encrypts the disk at rest.
 create table public.save_blobs (
   user_id uuid not null references public.profiles (id) on delete cascade,
   slot int not null check (slot between 0 and 9),
@@ -107,7 +96,6 @@ create table public.save_blobs (
   primary key (user_id, slot)
 );
 
--- Index plan: profiles(code) is unique-indexed; name search uses a trigram index; friendship lookups by either side; blocks by blocked side.
 create extension if not exists pg_trgm with schema extensions;
 create index profiles_name_trgm on public.profiles using gin (lower(display_name) extensions.gin_trgm_ops) where deleted_at is null;
 create index friendships_requester on public.friendships (requester_id, status);
@@ -115,7 +103,6 @@ create index friendships_addressee on public.friendships (addressee_id, status);
 create index blocks_blocked on public.blocks (blocked_id);
 create index reports_open on public.reports (status, created_at) where status = 'open';
 
--- Name rules on every write of display_name (simulated seed players are exempt).
 create function private.check_name() returns trigger language plpgsql as $$
 declare why text;
 begin
@@ -127,7 +114,6 @@ end $$;
 create trigger profiles_check_name before insert or update of display_name on public.profiles
   for each row execute function private.check_name();
 
--- Blocking someone ends any friendship or request between the pair.
 create function private.drop_friendship_on_block() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   delete from public.friendships
@@ -136,9 +122,6 @@ begin
 end $$;
 create trigger blocks_drop_friendship after insert on public.blocks for each row execute function private.drop_friendship_on_block();
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Row Level Security: the direct table surface. Cross-player reads go through the functions further down.
--- ---------------------------------------------------------------------------------------------------------------------
 alter table public.profiles enable row level security;
 alter table public.companies_public enable row level security;
 alter table public.friendships enable row level security;
@@ -146,7 +129,6 @@ alter table public.blocks enable row level security;
 alter table public.reports enable row level security;
 alter table public.save_blobs enable row level security;
 
--- Column grants: a client can change only these profile columns; level, week, trades, badges and is_simulated are server-set.
 revoke all on public.profiles, public.companies_public, public.friendships, public.blocks, public.reports, public.save_blobs from anon, authenticated;
 grant select on public.profiles to authenticated;
 grant update (display_name, avatar_colour, country_code, privacy) on public.profiles to authenticated;
@@ -156,36 +138,25 @@ grant select, insert, delete on public.blocks to authenticated;
 grant insert on public.reports to authenticated;
 grant select, insert, update, delete on public.save_blobs to authenticated;
 
--- profiles: you read only your own row directly (others' fields are filtered by view_profile and the search functions).
 create policy profiles_select_own on public.profiles for select to authenticated using (id = auth.uid() and deleted_at is null);
--- profiles: you edit only your own row, and only the granted columns.
 create policy profiles_update_own on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
 
--- companies_public: the owner reads their own rows; writes happen only inside share_progress; others see them through profile_json.
 create policy companies_select_own on public.companies_public for select to authenticated using (owner_id = auth.uid());
 
--- friendships: either side sees the row; creation and acceptance go through RPCs so nobody can forge a pair.
 create policy friendships_select_party on public.friendships for select to authenticated
   using (requester_id = auth.uid() or addressee_id = auth.uid());
--- friendships: either side may delete (cancel, decline or unfriend).
 create policy friendships_delete_party on public.friendships for delete to authenticated
   using (requester_id = auth.uid() or addressee_id = auth.uid());
 
--- blocks: you see, add and remove only your own blocks (the blocked player cannot see that they are blocked).
 create policy blocks_select_own on public.blocks for select to authenticated using (blocker_id = auth.uid());
 create policy blocks_insert_own on public.blocks for insert to authenticated with check (blocker_id = auth.uid());
 create policy blocks_delete_own on public.blocks for delete to authenticated using (blocker_id = auth.uid());
 
--- reports: insert-only as yourself; no policy lets a client read them back (staff use the dashboard).
 create policy reports_insert_own on public.reports for insert to authenticated
   with check (reporter_id = auth.uid() and status = 'open');
 
--- save_blobs: full control of your own saves only.
 create policy saves_own on public.save_blobs for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Helpers (private schema: not callable by clients)
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.is_blocked_between(a uuid, b uuid) returns boolean language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.blocks where (blocker_id = a and blocked_id = b) or (blocker_id = b and blocked_id = a));
 $$;
@@ -203,8 +174,6 @@ create function private.relation(viewer uuid, target uuid) returns text language
     else 'none' end;
 $$;
 
--- The one place that decides what a viewer sees. Output keys match the app's PlayerProfile; hidden fields are JSON null.
--- Public: name, level, badges, company count, week, trades (companies for friends). Friends: name, level, badges (rest for friends). Private: name only.
 create function private.profile_json(viewer uuid, target uuid) returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare p public.profiles; rel text; is_self boolean; is_friend boolean; see_level boolean; see_detail boolean; see_companies boolean;
         n int; comps jsonb;
@@ -240,10 +209,6 @@ begin
   return uid;
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- RPC functions (the client surface). Errors are raised as short codes the app maps to OnlineError.
--- ---------------------------------------------------------------------------------------------------------------------
--- Creates the caller's profile on first sign-in (idempotent). Anonymous guests have no profile.
 create function public.ensure_profile() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user(); anon boolean;
 begin
@@ -254,7 +219,6 @@ begin
   return private.profile_json(uid, uid);
 end $$;
 
--- A profile as the caller may see it; null id means the caller. Someone who blocked the caller looks like "not found".
 create function public.view_profile(p_id uuid default null) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user(); target uuid := coalesce(p_id, uid); j jsonb;
 begin
@@ -276,7 +240,6 @@ begin
   return private.profile_json(uid, target);
 end $$;
 
--- Name substring or exact code; never the caller or anyone blocked in either direction; at most 20 rows.
 create function public.search_players(p_query text) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user(); q text := trim(coalesce(p_query, '')); pat text; res jsonb;
 begin
@@ -301,7 +264,7 @@ begin
   if found then
     if f.status = 'accepted' then raise exception 'already_friends' using errcode = 'P0001'; end if;
     if f.requester_id = uid then raise exception 'request_pending' using errcode = 'P0001'; end if;
-    update public.friendships set status = 'accepted', responded_at = now() where id = f.id;   -- they had asked us first
+    update public.friendships set status = 'accepted', responded_at = now() where id = f.id;
     return;
   end if;
   insert into public.friendships (requester_id, addressee_id) values (uid, p_target);
@@ -316,7 +279,6 @@ begin
   if n = 0 then raise exception 'not_found' using errcode = 'P0001'; end if;
 end $$;
 
--- Friends plus incoming and outgoing requests, shaped as the app's FriendsOverview.
 create function public.my_friends() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user();
 begin
@@ -335,8 +297,6 @@ begin
   return coalesce((select jsonb_agg(private.profile_json(uid, blocked_id)) from public.blocks where blocker_id = uid), '[]'::jsonb);
 end $$;
 
--- The only way level, week, trades, badges and companies change: validated here, never trusted from a client column write.
--- Null arguments leave a field as it is; p_companies replaces the whole list.
 create function public.share_progress(p_level int default null, p_badges text[] default null, p_game_week int default null,
                                       p_trades_completed int default null, p_companies jsonb default null)
 returns jsonb language plpgsql security definer set search_path = '' as $$
@@ -375,7 +335,6 @@ begin
   return private.profile_json(uid, uid);
 end $$;
 
--- Everything held about the caller, for the "export my data" screen.
 create function public.export_my_data() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user();
 begin
@@ -388,10 +347,8 @@ begin
                          from public.save_blobs where user_id = uid), '[]'::jsonb));
 end $$;
 
--- HOOK: the supply-contract migration replaces this body with a real check; deletion is refused while it returns true.
 create function private.has_open_obligations(uid uuid) returns boolean language sql stable as $$ select false; $$;
 
--- Soft delete (marks the row for the rest of the transaction), then hard delete of the auth user, which cascades to every table above.
 create function public.delete_my_account() returns void language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user();
 begin
@@ -400,7 +357,6 @@ begin
   delete from auth.users where id = uid;
 end $$;
 
--- Execute rights: only signed-in users call the client functions; everything in `private` stays closed.
 revoke execute on all functions in schema public from public, anon;
 grant execute on function public.ensure_profile(), public.view_profile(uuid), public.profile_by_code(text), public.search_players(text),
   public.send_friend_request(uuid), public.accept_friend_request(uuid), public.my_friends(), public.blocked_players(),

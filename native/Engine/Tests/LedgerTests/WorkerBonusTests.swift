@@ -6,8 +6,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Bonus plans for ordinary staff: judged with the manager's targets machinery, paid through payroll with the employer's charges, set in the contract
-/// discussion, visible in the profile, saved, and the books stay balanced.
 final class WorkerBonusTests: XCTestCase {
     private func shop(seed: Int = 5, trade: String = "cafe", country: String = "UK") throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: country, playerName: "Tester", seed: seed)
@@ -54,13 +52,11 @@ final class WorkerBonusTests: XCTestCase {
         let a = hire(&e, id), b = hire(&e, id)
         _ = e.contractPropose(companyID: id, personID: a, proposal: .init(.bonus, choice: "plan:standard"))
         let wageA = e.state.company(id)!.staff.first { $0.id == a }!.monthlyWage
-        // two of three targets met: 2 x 2% of the monthly pay, for the one on a plan only
         e.update { s, _, _ in WorkerBonus.monthEnd(&s, s.companyIndex(id)!, hits: 2) }
         let co = e.state.company(id)!
         XCTAssertEqual(co.num("bnPend"), wageA * 0.04, accuracy: 1e-6, "2 targets of 2% each; no month on record yet, so no performance reward")
         XCTAssertGreaterThan(co.num("bnPend"), 0)
         XCTAssertEqual(co.staff.first { $0.id == b }?.num("bnM") ?? 0, 0)
-        // paid through the weekly payroll accrual with the employer's charges
         let pend = co.num("bnPend")
         let country = World(state: e.state, data: e.data).country(co)
         let wages0 = co.books.week["wages"] ?? 0
@@ -70,10 +66,8 @@ final class WorkerBonusTests: XCTestCase {
         let routine = after.lastWages
         XCTAssertEqual((after.books.week["wages"] ?? 0) - wages0, routine + pend * country.employerCostFactor, accuracy: 1e-6)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        // a month with no target met pays no target bonus
         e.update { s, _, _ in WorkerBonus.monthEnd(&s, s.companyIndex(id)!, hits: 0) }
         XCTAssertLessThan(e.state.company(id)!.num("bnPend"), pend, "no target bonus when none was met")
-        // the average that counts as pay follows the months
         XCTAssertGreaterThan(e.state.company(id)!.staff.first { $0.id == a }!.num("bnEma"), 0)
     }
 

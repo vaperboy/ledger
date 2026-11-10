@@ -233,7 +233,6 @@ struct ProfileView: View {
         }
     }
 
-    /// The friend code of the one profile. A guest links an account here to get one; nothing else about the profile changes.
     @ViewBuilder private var codeSection: some View {
         if online.isSignedIn, let p = online.profile {
             HStack(spacing: Theme.Space.xs) {
@@ -287,7 +286,6 @@ struct ProfileView: View {
         .accessibilityIdentifier("profile-privacy")
     }
 
-    /// Keeps the online side in step with this profile: the name chosen at the start, and the open companies, level and week.
     private func syncOnline() async {
         guard online.isSignedIn else { return }
         await online.refreshProfile()

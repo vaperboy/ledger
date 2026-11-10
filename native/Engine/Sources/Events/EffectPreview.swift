@@ -2,8 +2,6 @@ import Foundation
 import GameCore
 import Countries
 
-/// Plain-language preview of what an answer will do, shown before the player commits. Reads the same `fx` data
-/// that `EventEngine.apply` uses, so a preview can never promise something the answer does not do.
 public enum EffectPreview {
     public static func lines(_ fx: JSONValue, currency: Currency) -> [String] {
         if fx.isNull { return [] }
@@ -45,6 +43,5 @@ public enum EffectPreview {
         return out
     }
 
-    // Amounts are already in the company's money (scaled in `EventEngine.resolve`).
     static func whole(_ v: Double, _ cur: Currency) -> Double { abs(v) }
 }

@@ -6,7 +6,6 @@ import Businesses
 import Simulation
 import SaveSystem
 
-/// Weekly, monthly and yearly reports: they must come from the books, add up, be the same every time, and survive a save.
 final class ReportsTests: XCTestCase {
     func newEngine(seed: Int = 4242) throws -> GameEngine { try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed) }
 
@@ -23,14 +22,12 @@ final class ReportsTests: XCTestCase {
         return id
     }
 
-    /// What the books and the account said at the end of the seventh day, just before the week is reported.
     struct Frozen {
         var booksTotal: [Int: [String: Double]] = [:]
         var cash = 0.0, companyCash = 0.0, netWorth = 0.0
         var week = 0
     }
 
-    /// Play whole weeks. Returns the books as they stood at the end of the last week (before its report was written).
     @discardableResult
     func play(_ e: inout GameEngine, weeks: Int) -> Frozen {
         var f = Frozen()
@@ -58,15 +55,12 @@ final class ReportsTests: XCTestCase {
         return String(data: try enc.encode(x), encoding: .utf8) ?? ""
     }
 
-    // MARK: Reconciliation
-
     func testWeeklyReportsAddUpToTheBooks() throws {
         var e = try twoCompanyGame()
         let f = play(&e, weeks: 20)
         let weeks = e.reports(.week)
         XCTAssertEqual(weeks.count, 20)
         XCTAssertEqual(weeks.map { $0.id }, Array(0..<20))
-        // Group: the lines of all weeks equal the books of all companies since the start.
         var sum = ReportPnL()
         for w in weeks { sum = sum + w.group.pnl }
         var books = ReportPnL()
@@ -76,16 +70,13 @@ final class ReportsTests: XCTestCase {
         XCTAssertEqual(sum.tax, books.tax, accuracy: 0.01)
         XCTAssertEqual(sum.netProfit, books.netProfit, accuracy: 0.01)
         XCTAssertGreaterThan(sum.revenue, 0, "the companies should have traded")
-        // And the same with the game's own definition of profit.
         let own = f.booksTotal.values.reduce(0) { $0 + Books.profit($1) }
         XCTAssertEqual(sum.profitBeforeTax, own, accuracy: 0.01)
-        // Per company.
         for (id, b) in f.booksTotal {
             let mine = weeks.compactMap { $0.company(id) }.reduce(ReportPnL()) { $0 + $1.pnl }
             XCTAssertEqual(mine.revenue, b["rev"] ?? 0, accuracy: 0.01)
             XCTAssertEqual(mine.profitBeforeTax, Books.profit(b), accuracy: 0.01)
         }
-        // The group is the sum of its companies.
         for w in weeks {
             let parts = w.companies.reduce(ReportPnL()) { $0 + $1.pnl }
             XCTAssertEqual(parts.revenue, w.group.pnl.revenue, accuracy: 0.01)
@@ -111,7 +102,6 @@ final class ReportsTests: XCTestCase {
         XCTAssertEqual(last.netWorthEnd.total, f.netWorth, accuracy: 0.5)
         XCTAssertEqual(last.id, f.week)
         for w in weeks {
-            // The account's movements explain its change exactly; the net worth parts add up to the total.
             XCTAssertEqual(w.group.accountFlows.reduce(0) { $0 + $1.amount }, w.group.accountEnd - w.group.accountStart, accuracy: 0.01)
             let n = w.netWorthEnd
             XCTAssertEqual(n.cash + n.investments + n.companies + n.luxury - n.debt, n.total, accuracy: 0.5)
@@ -166,14 +156,12 @@ final class ReportsTests: XCTestCase {
         XCTAssertEqual(ReportCounters.key(forLabel: "Bought ACME"), ReportCounters.Key.markets)
         XCTAssertEqual(ReportCounters.key(forLabel: "Annual tax assessment (income, gains, wealth)"), ReportCounters.Key.tax)
         XCTAssertEqual(ReportCounters.key(forLabel: "something new"), ReportCounters.Key.other)
-        // The owner's money shows in the report of the week it moved, on both sides.
         play(&e, weeks: 1)
         let w = try XCTUnwrap(e.reports(.week).last)
         XCTAssertLessThan(w.group.accountFlows.first { $0.id == ReportCounters.Key.invested }?.amount ?? 0, -999_000)
         XCTAssertGreaterThan(w.group.ownerIn, 1_000_000)
     }
 
-    /// Not a pass/fail test: prints a sample year and month for reading (LEDGER_REPORT_SAMPLE=1).
     func testPrintSample() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_REPORT_SAMPLE"] != nil else { return }
         var e = try twoCompanyGame()
@@ -187,19 +175,15 @@ final class ReportsTests: XCTestCase {
         print("NW", y.netWorthStart, y.netWorthEnd)
     }
 
-    // MARK: Determinism, summary, saves
-
     func testSameSeedGivesTheSameReports() throws {
         var a = try twoCompanyGame(seed: 77), b = try twoCompanyGame(seed: 77)
         play(&a, weeks: 18); play(&b, weeks: 18)
-        // The engine sums some floating point numbers in dictionary order, so two runs agree to the last few bits, not always exactly.
         for k in ReportKind.allCases { XCTAssertTrue(try close(a.reports(k), b.reports(k)), "\(k)") }
         var c = try twoCompanyGame(seed: 78)
         play(&c, weeks: 18)
         XCTAssertFalse(try close(a.reports(.week), c.reports(.week)))
     }
 
-    /// Writing a report is a pure function of the state: the same state gives exactly the same report, byte for byte.
     func testReportsArePureFunctionsOfTheState() throws {
         var e = try twoCompanyGame()
         play(&e, weeks: 6)
@@ -280,11 +264,9 @@ final class ReportsTests: XCTestCase {
         XCTAssertNil(e.pendingReportPrompt())
         let gapsBefore = Ledger.gaps(e.state).count
         play(&e, weeks: 4)
-        // The first week end only starts the books; there is nothing earlier to compare with, and nothing is invented.
         XCTAssertEqual(e.reports(.week).count, 3)
         XCTAssertEqual(e.reports(.week).first?.id, 16)
         XCTAssertEqual(Ledger.gaps(e.state).count, gapsBefore, "playing does not add gaps to the books")
-        // Saving it and reading it back keeps what was written.
         s = e.state
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ledger-reports-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }

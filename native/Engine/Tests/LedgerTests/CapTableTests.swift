@@ -6,7 +6,6 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// One cap table with real share counts. Repeated rounds, all four operations, migration of old percentages and a save round trip.
 final class CapTableTests: XCTestCase {
     private func company() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
@@ -58,7 +57,7 @@ final class CapTableTests: XCTestCase {
 
     func testOldPercentagesMigrateWithoutLossAndOverfullTablesAreScaled() throws {
         var (e, id) = try company()
-        e.update { s, _, _ in   // what the old code left behind: holders 104.9% and you at 41.5%
+        e.update { s, _, _ in
             let i = s.companyIndex(id)!
             s.companies[i].ownership = 41.47
             s.companies[i].set("holders", .array([.object(["name": "X", "pct": 60, "in": 1]), .object(["name": "Y", "pct": 44.88, "in": 1])]))

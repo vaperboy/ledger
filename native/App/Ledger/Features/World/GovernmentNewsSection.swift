@@ -2,8 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// The Government part of the News app: what the state announces (new rates, printing, elections, terms, the watchlist), newest first, set
-/// in the paper's own type. The first line is the lead; the rest are short items under it.
 struct GovernmentNewsSection: View {
     var engine: GameEngine
     @EnvironmentObject var store: GameStore

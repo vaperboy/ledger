@@ -2,48 +2,37 @@ import Foundation
 import GameCore
 import Countries
 
-/// What happened out in the market, kept as a small log for the app's animations (no inbox messages): `rest["mev"]`.
-/// Everything here only reads existing facts; it draws no random numbers and changes no money.
 public struct MarketEvent: Identifiable, Equatable, Sendable {
     public enum Kind: String, Sendable, CaseIterable {
         case competitorLaunch, supplierPriceChange, majorContract, acquisitionOpportunity, competitorLostShare, newCountry, recognition
-        /// A rival answering your low prices (a price cut or a marketing push).
         case priceResponse
     }
     public var id: Int
-    public var day: Int            // week * 7 + day
+    public var day: Int
     public var kind: Kind
     public var title: String
     public var detail: String
     public var companyID: Int?
     public var amount: Double?
-    public var tone: String        // "good", "bad" or "n"
-    public var employeeID: Int? = nil   // the person a recognition event is about
-    /// One short line on what it does to you ("Demand about 4% lower for 6 weeks"). Empty for older entries.
+    public var tone: String
+    public var employeeID: Int? = nil
     public var consequence: String = ""
-    /// Recognition only: true once `acknowledgeRecognition` has been used.
     public var acknowledged: Bool = false
 }
 
 public struct MarketTrend: Equatable, Sendable {
-    /// Change of the trade's market price index over the last 28 days, as a fraction (0.02 = up 2 percent).
     public var priceIndexChangeThisMonth: Double
-    /// Up to 30 daily values of the index, oldest first.
     public var points: [Double]
 }
 
 public enum MarketEvents {
     static let cap = 60
-    /// At most this many entries are written in one week, and the same fact (kind, title, company) is not written again within `dedupeWeeks`.
     static let perWeek = 3
-    /// Market-wide kinds (suppliers, rivals, countries): one a week at most. Contracts and recognition are about your own people and customers.
     static let marketWide: Set<MarketEvent.Kind> = [.supplierPriceChange, .competitorLaunch, .priceResponse, .newCountry, .acquisitionOpportunity, .competitorLostShare]
     static let dedupeWeeks = 4
 
     static func dayKey(_ s: GameState) -> Int { s.week * 7 + s.day }
 
-    /// Append one entry (oldest dropped beyond the cap). Not written when this week already has 3 entries or the same fact was logged lately;
-    /// returns whether it was written. Effects that go with an event are applied by the caller whether or not it was written.
     @discardableResult
     public static func log(_ s: inout GameState, _ kind: MarketEvent.Kind, title: String, detail: String, companyID: Int? = nil, amount: Double? = nil, tone: String = "n", employeeID: Int? = nil, consequence: String = "") -> Bool {
         var m = s.rest["mev"] ?? .object([:])
@@ -69,7 +58,6 @@ public enum MarketEvents {
         return true
     }
 
-    /// Newest first.
     public static func events(_ s: GameState, limit: Int) -> [MarketEvent] {
         let list = s.rest["mev"]?["log"].array ?? []
         return list.suffix(max(0, limit)).reversed().compactMap { e in
@@ -80,8 +68,6 @@ public enum MarketEvents {
         }
     }
 
-    /// A contract offer worth at least 5 percent of the company's yearly sales is a major contract.
-    /// `outcome` says what the manager did with it; without one the offer waits in the inbox to be accepted or declined.
     public static func noteContractOffer(_ s: inout GameState, company co: Company, customer: String, worth: Double, outcome: String? = nil) {
         let yearly = MarketMap.annualRevenue(co)
         guard yearly > 0, worth >= yearly * 0.05 else { return }
@@ -89,9 +75,6 @@ public enum MarketEvents {
             consequence: outcome ?? "The offer is in your inbox: accept or decline it there.")
     }
 
-    // MARK: Largest payment of the day
-
-    /// Called where customers pay a company. Keeps the largest one of the current day per company; a new day starts again.
     public static func notePayment(_ s: inout GameState, companyID: Int, amount: Double, from: String) {
         guard amount > 0 else { return }
         var m = s.rest["mev"] ?? .object([:])
@@ -118,9 +101,6 @@ public enum MarketEvents {
         return best
     }
 
-    // MARK: Market price index trend
-
-    /// Weekly samples of each market's price index are kept (six of them); the daily points are read off between them.
     static func record(_ s: inout GameState) {
         guard let mk = s.rest["mk"], !mk.object.isEmpty else { return }
         var m = s.rest["mev"] ?? .object([:])
@@ -159,13 +139,8 @@ public enum MarketEvents {
         return MarketTrend(priceIndexChangeThisMonth: past > 0 ? pts[29] / past - 1 : 0, points: pts)
     }
 
-    // MARK: Recognition
-
-    /// Weeks of good mood a thanked employee gets (the existing `happyUntilWeek`: lower quit risk, a line on the mood card).
     static let thanksWeeks = 13
 
-    /// Thank the person a recognition event is about: a small lift in mood and loyalty (`happyUntilWeek` runs 13 weeks from now), noted in the
-    /// company's log. Once per event; ignoring the event does nothing. nil when done, else the reason.
     public static func acknowledgeRecognition(_ s: inout GameState, eventID: Int) -> String? {
         var m = s.rest["mev"] ?? .object([:])
         var list = m["log"].array
@@ -184,9 +159,6 @@ public enum MarketEvents {
         return nil
     }
 
-    // MARK: Weekly sweep (facts that are easiest to see by comparing with last week)
-
-    /// Called once at the end of the week. A first sighting is only remembered, never announced.
     public static func weekly(_ s: inout GameState, data: GameData) {
         record(&s)
         MarketPressure.prune(&s)
@@ -201,9 +173,6 @@ public enum MarketEvents {
         s.rest["mev"] = m
     }
 
-    /// What a move of an index does to a company's weekly cost of sales, in its own currency (materials and fuel flow into the cost rate in
-    /// `CompanyWeek.costRate`: materials 0.3 of the rate outside goods and projects, fuel by the trade's fuel trait). Power and freight have no
-    /// single cost-of-sales line, so they get no money figure.
     static func costChange(_ s: GameState, key: String, from old: Double, to new: Double, data: GameData) -> (company: Company, weekly: Double)? {
         guard key == "materials" || key == "fuel" else { return nil }
         var best: (company: Company, weekly: Double)?
@@ -218,11 +187,8 @@ public enum MarketEvents {
         return best
     }
 
-    /// Weeks an index must rest after it has been announced before it can be announced again.
     static let supplierCooldown = 4
 
-    /// One "Supplier prices" event a week at most: every index that moved 3 percent or more since it was last announced (and has rested 4 weeks) is
-    /// folded into it; the biggest move is the title, the others are listed in the consequence line.
     static func sweepEconomy(_ s: inout GameState, _ seen: inout JSONValue, data: GameData) {
         let E = s.economy
         let idx: [(String, String, Double)] = [("materials", "Materials", E.materials), ("fuel", "Fuel", E.fuel), ("power", "Power", E.power), ("freight", "Freight", E.freight)]
@@ -254,11 +220,9 @@ public enum MarketEvents {
     static func sweepCountries(_ s: inout GameState, _ seen: inout JSONValue, data: GameData) {
         let known: Set<String>? = seen["ctry"].isNull ? nil : Set(seen["ctry"].array.map { $0.string })
         let now = Set(s.companies.filter { $0.status.isLive }.map { $0.countryCode })
-        // Starting a company abroad is your own doing and is not announced as a market event; a rival group entering is (`RivalGroups`).
         seen["ctry"] = .array(now.union(known ?? []).sorted().map { .string($0) })
     }
 
-    /// Yearly anniversary of a hire.
     static func sweepAnniversaries(_ s: inout GameState) {
         for co in s.companies where co.status.isLive {
             for p in co.staff where p.hiredWeek > 0 && s.week > p.hiredWeek && (s.week - p.hiredWeek) % 52 == 0 {
@@ -270,7 +234,6 @@ public enum MarketEvents {
         }
     }
 
-    /// Rivals newly for sale, and rivals losing a point of market share week over week (the shares the app's rival rows use).
     static func sweepRivals(_ s: inout GameState, _ seen: inout JSONValue, data: GameData) {
         var listedNow: [JSONValue] = []
         let hadSale = !seen["sale"].isNull

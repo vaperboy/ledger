@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The company's loans: what it owes and on what terms, and early repayment. New loans are applied for with the Bank's apply flow.
-/// Original: money.js `loansheet/loanterm/loango/repaysheet/repaygo`. Uses the engine's `takeLoan` and `repayLoan`.
 struct CompanyLoans: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -60,7 +58,6 @@ struct CompanyLoans: View {
     }
 }
 
-/// Pay a loan off early, in part or in full, from company cash.
 struct RepayLoanSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore

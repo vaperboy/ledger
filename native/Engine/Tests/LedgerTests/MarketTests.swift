@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The equipment market, the choice of premises and the luxury shop run, and the books balance.
 final class MarketTests: XCTestCase {
     private func cafe(_ e: inout GameEngine) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
@@ -56,7 +55,6 @@ final class MarketTests: XCTestCase {
             let unit = try XCTUnwrap(owned.units.first { $0.boughtUsed })
             XCTAssertGreaterThan(e.sellEquipmentUnit(companyID: id, equipmentID: item.equipmentID, unitID: unit.id), 0)
         }
-        // the weeks run with the brand's units
         for _ in 0..<(6 * 7) { _ = e.nextDay() }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }

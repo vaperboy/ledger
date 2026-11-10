@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// No cut-off between your own companies, but an own supplier left short-paid for long is flagged to the group and keeps back capacity.
 final class OwnCompanyLatenessTests: XCTestCase {
     func testShortPaidOwnSupplierIsFlaggedAndDeliversLessThenRecovers() throws {
         var e = try ChainsTests.engine()
@@ -21,7 +20,6 @@ final class OwnCompanyLatenessTests: XCTestCase {
         XCTAssertEqual(e.switchSupplier(companyID: hotel, input: "clean", to: .ownCompany(cleaning, mode: "mkt")), .ok)
         XCTAssertTrue(e.setSupplyPaymentTerms(companyID: hotel, input: "clean", term: "net14"))
         XCTAssertEqual(SupplyTerms.ownLateWeeks(e.state, buyer: hotel, supplier: cleaning), 0)
-        // the buyer cannot pay: its account is far overdrawn
         for _ in 0..<(9 * 7) {
             e.update { s, _, _ in Ledger.set(&s, .company(hotel), to: -1_000_000_000_000) }
             e.nextDay()
@@ -32,9 +30,7 @@ final class OwnCompanyLatenessTests: XCTestCase {
         XCTAssertTrue(e.state.inbox.contains { $0.title.contains("short-paying") }, "the group is told")
         let option = try XCTUnwrap(e.supplierInputs(companyID: hotel).first { $0.id == "clean" }?.current)
         XCTAssertTrue(option.risks.contains { $0.contains("unpaid") })
-        // nobody is cut off: the link is still there
         XCTAssertNotNil(IntercompanySupply.link(e.state, buyer: hotel, kind: "clean"))
-        // pay up: the flag goes
         e.update { s, _, _ in Ledger.set(&s, .company(hotel), to: 1_000_000_000_000) }
         ChainsTests.play(&e, days: 14)
         XCTAssertEqual(SupplyTerms.ownLateWeeks(e.state, buyer: hotel, supplier: cleaning), 0)

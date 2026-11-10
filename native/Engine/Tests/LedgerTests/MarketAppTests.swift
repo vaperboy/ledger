@@ -6,8 +6,6 @@ import Businesses
 import Investments
 import Simulation
 
-/// The Market reads and the one trading surface: portfolio cost basis and results for you and holding treasuries, quotes with fees,
-/// refusals, cost bases for old saves, and each company against its market.
 final class MarketAppTests: XCTestCase {
     private func position(_ e: GameEngine, _ id: String) throws -> PortfolioPosition { try XCTUnwrap(e.portfolio.positions.first { $0.id == id }, "no position \(id)") }
 
@@ -32,7 +30,6 @@ final class MarketAppTests: XCTestCase {
         XCTAssertEqual(p.pnlWeek, 0, "units bought this week have not lived through a price move")
         XCTAssertEqual(p.allocation, 1, accuracy: 1e-9)
 
-        // The price rises 10%: the result is the rise less the fee.
         e.update { s, _, _ in let px = Brokerage.price(s, .fund, "idx"); s.rest["fundPx"]?["idx"] = .number(px * 1.1) }
         p = try position(e, "me:fund:idx")
         XCTAssertEqual(p.value, 55_000, accuracy: 1e-6)
@@ -40,7 +37,6 @@ final class MarketAppTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(p.pnlPercent), (5_000 - fee) / (50_000 + fee), accuracy: 1e-9)
         XCTAssertEqual(e.portfolio.totals.pnl, p.pnl, accuracy: 1e-6)
 
-        // Sell half: proceeds less the fee, the realised gain is taxed as a capital gain, half the basis stays.
         let gainsBefore = e.state.tax.gains
         let sq = e.marketSellQuote(position: p.id, units: p.units / 2)
         XCTAssertNil(sq.refusal)
@@ -55,7 +51,6 @@ final class MarketAppTests: XCTestCase {
         XCTAssertEqual(p.costBasis, (50_000 + fee) / 2, accuracy: 1e-6)
         XCTAssertEqual(p.value, 27_500, accuracy: 1e-6)
 
-        // Selling by amount more than is held sells everything.
         XCTAssertTrue(e.marketSell(position: p.id, amount: 1e12).done)
         XCTAssertNil(e.portfolio.positions.first { $0.id == "me:fund:idx" })
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
@@ -68,7 +63,6 @@ final class MarketAppTests: XCTestCase {
         let h = Markets.fundHistory(e.state, "idx")
         XCTAssertGreaterThanOrEqual(h.count, 1)
         let p = try position(e, "me:fund:idx")
-        // The first week the history is kept has one close, so the move is read from the second week on.
         if h.count >= 2 { XCTAssertEqual(p.pnlWeek, p.units * (h[h.count - 1] - h[h.count - 2]), accuracy: 1e-6) }
         ChainsTests.play(&e, days: 7)
         let h2 = Markets.fundHistory(e.state, "idx")
@@ -79,7 +73,6 @@ final class MarketAppTests: XCTestCase {
         XCTAssertEqual(e.state.day, 0)
         XCTAssertEqual(p1.pnlToday, p1.pnlWeek, accuracy: 1e-9, "prices move on day 0")
         XCTAssertEqual(p1.history, h2)
-        // A second purchase in the new week adds units that have not moved yet.
         XCTAssertTrue(e.marketBuy(asset: "fund:idx", owner: .player, amount: 80_000).done)
         let p2 = try position(e, "me:fund:idx")
         XCTAssertEqual(p2.pnlWeek, p1.pnlWeek, accuracy: 1e-6)
@@ -147,7 +140,6 @@ final class MarketAppTests: XCTestCase {
         XCTAssertNil(e.portfolio.positions.first { $0.id == p.id })
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
 
-        // The index fund still goes through the old keys, so older screens and the finance manager keep working.
         XCTAssertTrue(e.marketBuy(asset: "fund:idx", owner: .holding(hid), amount: 100_000).done)
         let fm = try XCTUnwrap(e.state.company(hid)).value("fm")
         XCTAssertEqual(fm["idxCost"].double, 100_000, accuracy: 1e-6)
@@ -160,7 +152,6 @@ final class MarketAppTests: XCTestCase {
         var e = try ChainsTests.engine("UK")
         guard case .success(let hid) = e.createHolding(name: "H", companies: []) else { return XCTFail("holding") }
         XCTAssertTrue(e.marketBuy(asset: "fund:mm", owner: .player, amount: 30_000).done)
-        // As a save from before cost bases: index units without a basis in the holding, a personal fund without one.
         e.update { s, _, _ in
             guard let i = s.companyIndex(hid) else { return }
             var fm = s.companies[i].value("fm")
@@ -179,7 +170,6 @@ final class MarketAppTests: XCTestCase {
         XCTAssertEqual(h.pnl, 0, accuracy: 0.01)
         let me = try position(loaded, "me:fund:mm")
         XCTAssertEqual(me.pnl, 0, accuracy: 0.01)
-        // A basis that exists is never touched.
         let again = GameEngine(state: loaded.state, data: e.data, events: e.events, marketing: e.marketing)
         XCTAssertEqual(again.state.company(hid)?.value("fm")["idxCost"].double, fm["idxCost"].double)
     }
@@ -206,7 +196,6 @@ final class MarketAppTests: XCTestCase {
         if let mr = m.marketRating, let r = m.rating { XCTAssertEqual(try XCTUnwrap(m.ratingVsMarket), r - mr, accuracy: 1e-9) }
         XCTAssertFalse(m.shareHistory.isEmpty, "a month has ended")
 
-        // The rivals list carries the company that would buy, and the watchlist keeps a star.
         let rivals = e.marketRivals()
         XCTAssertFalse(rivals.isEmpty)
         XCTAssertTrue(rivals.allSatisfy { $0.companyID == cafe && $0.valuation > 0 })
@@ -219,7 +208,6 @@ final class MarketAppTests: XCTestCase {
         XCTAssertTrue(e.watchlist.isEmpty)
         XCTAssertFalse(e.toggleWatch(rivalID: -1), "a rival not in your markets cannot be starred")
 
-        // Overview and world.
         let o = e.marketOverview
         XCTAssertEqual(o.markets, 1)
         XCTAssertEqual(try XCTUnwrap(o.combinedShare), m.share, accuracy: 1e-9)

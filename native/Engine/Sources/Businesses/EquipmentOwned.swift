@@ -3,7 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// What a company owns, unit by unit, as the Owned and Fleet tabs show it. Original: `ownTab`, `unitRow`, `vehTab`, `vehRow`, `softTab`.
 public extension EquipmentMarket {
     struct UnitRow: Identifiable, Equatable, Sendable {
         public var id: Int
@@ -12,7 +11,6 @@ public extension EquipmentMarket {
         public var boughtUsed: Bool
         public var warranty: String
         public var wear: String
-        /// What the owner can tell of the condition, 0 to 1
         public var seenCondition: Double
         public var daysInRepair: Int
     }
@@ -20,7 +18,7 @@ public extension EquipmentMarket {
     struct VehicleRow: Identifiable, Equatable, Sendable {
         public var id: Int
         public var name: String
-        public var mode: String          // own, fin, lease
+        public var mode: String
         public var kilometres: Int
         public var warranty: String
         public var wear: String
@@ -28,9 +26,7 @@ public extension EquipmentMarket {
         public var daysInRepair: Int
         public var monthlyLease: Double
         public var bookValue: Double
-        /// Who drives it, for a company-car perk car; empty otherwise.
         public var driver: String = ""
-        /// Fuel the vehicle burns in a week at full use (0 where the fuel is carried in the cost of sales or the customer buys it).
         public var fuelPerWeek: Double = 0
     }
 
@@ -44,7 +40,6 @@ public extension EquipmentMarket {
         public var leaseMonthly: Double
         public var units: [UnitRow]
         public var vehicles: [VehicleRow]
-        /// Subscription plan name and monthly fee, or licence description, for software
         public var subscription: String?
         public var licence: String?
         public var subscriptionMonthly: Double
@@ -97,7 +92,6 @@ public extension EquipmentMarket {
                              subscriptionMonthly: rec["sub"]["fee"].double, outdated: (rec["perf"].isNull ? 1 : rec["perf"].double) < 0.95 && !rec["soft"].isNull,
                              bookValue: rec["bv"].double, serviceCost: jsRound(rec["cost"].double * 0.04 * (1 - Suppliers.repairDiscount(s, company: co, data: data)))))
         }
-        // Cars leased for the company-car perk are vehicles of their own, named after their driver (CompanyCarPerk)
         let perkRows = co.value("veh").array.filter { !$0["perk"].isNull }.map { row($0, perk: true) }
         if !perkRows.isEmpty {
             out.append(Owned(equipmentID: CompanyCarPerk.equipmentID, name: "Company cars (perk)", kind: "veh", count: Double(perkRows.count), leasedCount: 0, leaseMonthly: 0, units: [], vehicles: perkRows,
@@ -106,18 +100,15 @@ public extension EquipmentMarket {
         return out
     }
 
-    /// Pay for servicing all units of one kind of equipment: 4% of what it cost, and the wear is partly undone. Original: `repaireq`.
     @discardableResult
     static func serviceAll(_ s: inout GameState, companyID: Int, equipmentID: String, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID) else { return .notPossible }
         let rec = s.companies[i].value("eq")[equipmentID]
         guard !rec.isNull else { return .notPossible }
-        let c = jsRound(rec["cost"].double * 0.04 * (1 - Suppliers.repairDiscount(s, company: s.companies[i], data: data)))   // the repair supplier's discount (fixDisc)
-        // on the repair terms agreed (`SupplyTerms`): paid now, or invoiced and paid later
+        let c = jsRound(rec["cost"].double * 0.04 * (1 - Suppliers.repairDiscount(s, company: s.companies[i], data: data)))
         let t = SupplyTerms.repairTerm(s, s.companies[i], data: data)
         if (t == nil || t!.days == 0) && s.companies[i].cash < c * (1 + (t?.priceEffect ?? 0)) { return .notEnoughCash }
         SupplyTerms.payRepairs(&s, companyIndex: i, amount: c, label: "Equipment service", data: data)
-        // The record's condition rises; the units follow at the start of next week ('eqWeek.before').
         var eq = s.companies[i].value("eq")
         eq[equipmentID]["cond"] = .number(min(1, eq[equipmentID]["cond"].double + 0.3))
         s.companies[i].set("eq", eq)

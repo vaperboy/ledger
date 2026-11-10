@@ -7,28 +7,14 @@ import Businesses
 import Investments
 import Events
 
-/// The game itself: creates a new game, moves time forward one day at a time, and answers the player's actions.
-///
-/// ORDER OF A DAY (documented so every change of money and state has a reason). Every day is the same; the calendar only decides
-/// which weekday a process has and which day closes a month:
-///  1. the day number moves on (after day 6 the week counter turns and the week just ended is reported from what the days did)
-///  2. the day's slice of the weekly processes: companies whose slot is today (`GameCalendar.slot`) run their seven-day model,
-///     then the world process of today's weekday (see `runWorldProcesses`); the money and messages of the slice are held back
-///  3. on the last day of a month the books close (every company, then you), on 31 December the year too
-///  4. every open company trades the day (customers, sales, cash in)
-///  5. payroll and bills that fall due today are paid (see `Payday`)
-///  6. a seventh of every held-back batch (this slice's and the six before it) lands
 public struct GameEngine {
     public private(set) var state: GameState { didSet { stateStamp = ReadMemo.nextStamp() } }
-    /// Changes whenever `state` does (see `ReadMemo`).
     var stateStamp: UInt64 = ReadMemo.nextStamp()
     let readMemo = ReadMemo()
     public let data: GameData
     public let context: FinanceContext
     public let events: EventLibrary
     public let marketing: MarketingTables
-    /// The TechPro Store lists every item in the game for every company: working out all those prices is the slow part of a screen, so the
-    /// result is kept per company until the day, the company's cash or what it owns changes (a reference, shared by the copies of the engine).
     let needsMemo = NeedsMemo()
 
     public init(state: GameState, data: GameData, events: EventLibrary, marketing: MarketingTables) {
@@ -41,19 +27,14 @@ public struct GameEngine {
         self.events = events
         self.marketing = marketing
         var lending = LendingModifiers()
-        lending.marginAdjustment = { [data] _, _, s in -Ambitions.loanMarginCut(s, data) }   // the financier / dynasty ambition perk: cheaper loans
+        lending.marginAdjustment = { [data] _, _, s in -Ambitions.loanMarginCut(s, data) }
         self.context = FinanceContext(countries: data.countries, trades: data.catalog, lending: lending)
     }
 
-    /// Load all bundled data. Throws if a data file is missing or broken.
     public static func loadResources() throws -> (GameData, EventLibrary, MarketingTables) {
         (try GameData.bundled(), try EventLibrary.bundled(), try MarketingTables.bundled())
     }
 
-    // MARK: New game
-
-    /// Start a new game. Original: `newGame` (engine/core/state.js). The player begins with a start-up loan and an empty
-    /// current account of that size, and no companies.
     public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, story: LifeStory = .loan, ambition: String? = nil,
                                tradeID: String? = nil, companyName: String? = nil, chooseFirstItem: Bool = false,
                                difficulty: Difficulty = .classic,
@@ -70,7 +51,7 @@ public struct GameEngine {
         json["uid"] = 1000; json["week"] = 0; json["day"] = 0; json["country"] = .string(country.code)
         json["player"] = .object(["name": .string(playerName.isEmpty ? "You" : playerName),
                                   "city": .string(cityID ?? country.cities[0].id), "skill": .object([:])])
-        let startCash = story == .loan ? loan : 0   // other stories are funded through the ledger, so no loan record is ever made and removed
+        let startCash = story == .loan ? loan : 0
         json["cash"] = .number(startCash); json["cash0"] = .number(startCash); json["flow"] = .object([:])
         json["loans"] = .array([]); json["credit"] = 62; json["overdraft"] = 0
         json["overdraftLimit"] = .number(currency.scaledPrice(25000))
@@ -97,9 +78,9 @@ public struct GameEngine {
             state.loans.append(l)
         }
         state.economy.set("rate0", state.economy.policyRate)
-        state.rest["gameID"] = .string("g\(seed)")   // deterministic: the same seed gives the same state; the app clears remembered details at every new game
+        state.rest["gameID"] = .string("g\(seed)")
         state.rest[Difficulty.restKey] = .string(difficulty.rawValue)
-        PlayerGoals.startLadder(&state)   // the M1 to M10 ladder and its gates
+        PlayerGoals.startLadder(&state)
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
         if story == .loan {
@@ -120,22 +101,17 @@ public struct GameEngine {
         engine.openReportBaselines()
         engine.snapshot()
         engine.recordDay()
-        // An ambition chosen on the start screen is stored like any other choice (perk active at once: there is nothing to switch from).
         if let ambition, Ambitions.path(ambition) != nil { engine.chooseAmbition(path: ambition) }
-        // The administrators' rules first, then the country's government (created only when the app passes the server's administrator list).
         if let worldRules { engine.state.worldRules = worldRules }
         if let admins { engine.update { s, _, ctx in GovernmentBridge.ensureHome(&s, admins: admins, context: ctx) } }
         return engine
     }
-
-    // MARK: Reading
 
     public var netWorth: NetWorth { Valuation.netWorth(state, trades: data.catalog) }
     public var homeCurrency: Currency { context.homeCurrency(state) }
     public var homeCountry: Country { context.homeCountry(state) }
     public var date: String { GameCalendar.dateString(week: state.week, dayOffset: state.day) }
 
-    /// Record net worth for the charts. Original: `snapshot`.
     mutating func snapshot() {
         let nw = netWorth.total
         state.netWorthHistory.append(jsRound(nw))
@@ -144,14 +120,10 @@ public struct GameEngine {
         MarketBook.recordHistory(&state, data: data)
     }
 
-    /// Replace the state, e.g. after the player acts through a service in a view model.
     public mutating func update(_ body: (inout GameState, GameData, FinanceContext) -> Void) {
         body(&state, data, context)
     }
 
-    // MARK: Answering the inbox
-
-    /// The player picks one of the options of an open message (a decision, a payroll approval ...).
     @discardableResult
     public mutating func answer(messageID: Int, option: Int) -> Bool {
         let d = data, c = context, mk = marketing
@@ -175,7 +147,7 @@ public struct GameEngine {
             if m.actionID == "acct" { KeyAccounts.answer(&s, message: m, option: idx); return true }
             if m.actionID == VolumeContracts.action { VolumeContracts.answer(&s, message: m, option: idx); return true }
             if m.actionID == "g27poach" { RivalGroups.answerPoach(&s, message: m, option: idx, data: d); return true }
-            if m.actionID == RivalBids.action { RivalBids.answer(&s, message: m, option: idx, data: d, context: c); return true }   // rival group bids ("g27bid")
+            if m.actionID == RivalBids.action { RivalBids.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if m.actionID == WeeklyFocus.action { WeeklyFocus.answer(&s, message: m, option: idx, data: d); return true }
             if RivalStories.handlesAnswer(m.actionID) { RivalStories.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if m.actionID == "fav31" { WorldAround.answerFavour(&s, message: m, option: idx, data: d); return true }
@@ -185,8 +157,7 @@ public struct GameEngine {
             if Stories.handlesAnswer(m.actionID) { Stories.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == Press.interviewAction { Press.answerInterview(&s, questionIndex: m.value("data")["q"].int, option: idx); return true }
             if m.actionID == WeatherEvents.prepareAction { WeatherEvents.answerPrepare(&s, data: d, message: m, option: idx); return true }
-            if m.actionID == "pay29s" { return true }   // a payroll-short notice: acknowledging it moves no money; back pay is automatic
-            // An action nobody handles must not be marked as answered: the message stays open and the problem is logged.
+            if m.actionID == "pay29s" { return true }
             s.note("Unknown inbox action \"\(m.actionID)\": the answer was not applied.", tone: "bad")
             return false
         }
@@ -194,18 +165,13 @@ public struct GameEngine {
         return ok
     }
 
-    /// True while an open inbox message comes from a blocking event (`blocking` in events.json): Play waits until it is answered.
     public var hasBlockingDecision: Bool { blockingMessage != nil }
 
-    /// The first open message from a blocking event, if any.
     public var blockingMessage: Message? {
         state.inbox.first { $0.status == "open" && events[$0.str("ev")]?.blocking == true }
     }
 
-    /// Open messages waiting for an answer, newest first.
     public var openDecisions: [Message] { state.inbox.filter { $0.status == "open" } }
-
-    // MARK: Time
 
     public struct DayOutcome {
         public var newMessages: [Message]
@@ -213,7 +179,6 @@ public struct GameEngine {
         public var gameOver: Bool
     }
 
-    /// Move one day forward. Original: `dayStep`. Every simulation step runs inside a day: nothing waits for the week to end.
     @discardableResult
     public mutating func nextDay() -> DayOutcome {
         let before = Set(state.inbox.map { $0.id })
@@ -223,10 +188,8 @@ public struct GameEngine {
         if state.day < 6 {
             state.day += 1
         } else {
-            // The seventh day is over: the calendar counter turns and the week, month and year just ended are reported. The reports only
-            // read what the days already did.
             closeReportPeriods()
-            sweepLadder()   // M1 (first week closed) finishes in the week it closed
+            sweepLadder()
             openWeekReport()
             state.week += 1
             state.day = 0
@@ -242,39 +205,32 @@ public struct GameEngine {
         sweepCareer()
         sweepLevel()
         checkMilestones(weekClosed: completed)
-        routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })   // a hired rank takes what is theirs
+        routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })
         Tutorial.advance(&state, from: .nextDay)
         Tutorial.sync(&state)
         let fresh = state.inbox.filter { !before.contains($0.id) }
         return DayOutcome(newMessages: fresh, completedWeek: completed, gameOver: state.isGameOver)
     }
 
-    /// Finishes ladder goals whose condition now holds (PlayerGoals.ladderSweep); cheap, so it runs every day.
     mutating func sweepLadder() {
         update { s, _, ctx in PlayerGoals.ladderSweep(&s, currency: ctx.homeCurrency(s)) }
     }
 
     mutating func tradeAndPay(day: Int) {
-        Engagement.runDay(&state, data: data)   // Desk answers come due in the morning (Businesses/Desk.swift)
-        JobAds.runDay(&state, data: data)   // applicants to job ads arrive over the weeks
+        Engagement.runDay(&state, data: data)
+        JobAds.runDay(&state, data: data)
         Agency.runDay(&state, data: data)
-        StoreOrders.runDay(&state, data: data)   // TechPro Store orders arrive on their delivery day
-        ManagerOpening.runDay(&state, data: data)   // a manager builds a new place up day by day
+        StoreOrders.runDay(&state, data: data)
+        ManagerOpening.runDay(&state, data: data)
         DailyTrade.runDay(&state, day: day, data: data)
-        runExchangeDay()   // the closing auction of the day that just ended (Simulation/ExchangeActions.swift)
+        runExchangeDay()
         ProjectWeek.runDay(&state, day: day, data: data)
         Payday.onDay(&state, data: data, context: context)
     }
 
-    // MARK: The day's slice of the weekly processes
-
-    /// The part of the world that changes in one day beyond trade and pay: each company's seven-day model on its own weekday, every
-    /// world process on a weekday of its own, and the month and year books on their real last day. The money a slice works out is held
-    /// and released over the next seven days (`endSlice` / `releaseDay`), so cash moves a little every day.
     mutating func runDaySlices() {
         if state.isGameOver { return }
         HeldMoney.normalise(&state)
-        // A save from the weekly turn already worked out the week it was saved in: the slices start with the next one.
         if let from = state.rest["sliceStart"], !from.isNull, state.week < from.int { return }
         let day = state.day
         let mark = beginSlice()
@@ -284,7 +240,6 @@ public struct GameEngine {
         if !state.isGameOver, GameCalendar.isMonthEnd(week: state.week, day: day) { runMonthEnd() }
     }
 
-    /// What a slice must remember to hold back the money and messages it creates.
     struct SliceMark {
         var meBefore: Double
         var coBefore: [Int: Double]
@@ -303,7 +258,6 @@ public struct GameEngine {
                          newsBefore: (state.rest["news"]?.array ?? []).count)
     }
 
-    /// Hold back the slice's money, messages and news and spread them over the next seven days (day 0 of the spread is today).
     mutating func endSlice(_ mark: SliceMark) {
         let rows = state.transient.stagedPlayerLines ?? []
         state.transient.stagedPlayerLines = nil
@@ -330,7 +284,7 @@ public struct GameEngine {
         for i in state.companies.indices {
             let id = state.companies[i].id
             guard let b = mark.coBefore[id] else { continue }
-            guard state.companies[i].status.isLive else { continue }   // sold or bust during the slice: nothing is held back for a company that is gone
+            guard state.companies[i].status.isLive else { continue }
             let d = state.companies[i].cash - b
             if d != 0 {
                 var one = 0.0
@@ -359,8 +313,6 @@ public struct GameEngine {
         state.rest["pend"] = pend
     }
 
-    /// Lands today's part of everything held back: a seventh of each company's money (its one-off bills at once), the player's lines
-    /// and the messages and news whose day has come. Original: `releaseDay`.
     mutating func releaseDay(_ day: Int) {
         HeldMoney.normalise(&state)
         guard var P = state.rest["pend"], !P.isNull else { return }
@@ -397,15 +349,11 @@ public struct GameEngine {
         state.rest["pend"] = P
     }
 
-    /// Start the week report's baseline (net worth, cash) on the day the calendar turns. Called before the week counter moves.
     mutating func openWeekReport() {
         state.rest["rep"] = .object(["ev": .array([]), "w": .number(Double(state.week)), "from": .number(Double(state.week)),
                                      "nw0": .number(netWorth.total), "cash0": .number(state.cash)])
     }
 
-    // MARK: The weekly models, one day each
-
-    /// Each company's seven-day model runs on its own weekday: documents, customers sold, books, costs, staff, marketing, events.
     mutating func runCompanyModels(day: Int) {
         for i in state.companies.indices {
             guard state.companies[i].status.isLive, GameCalendar.slot(ofCompany: state.companies[i].id) == day else { continue }
@@ -423,19 +371,14 @@ public struct GameEngine {
         }
     }
 
-    /// The processes of the world, each once in seven days on its own weekday (0 = the first day of a game week):
-    ///  0 economy, stock markets, luxury, market facts          1 competitors, leagues, rivals, price moves, market shares
-    ///  2 funds, brokerage, finance manager, software, tenders, research   3 lawsuits, cyber, staffing plan, follow-ups, expiry, unlocks
-    ///  4 decisions, ventures, awards, special families, chains  5 staff record, ambitions, giving, weather, perks, manager targets
-    ///  6 failure checks, bankruptcy, portraits, the net worth point, game over
     mutating func runWorldProcesses(day: Int) {
         switch day {
         case 0:
             WorldWeek.economy(&state, data: data)
             Markets.weekly(&state)
             Luxury.weekly(&state)
-            MarketEvents.weekly(&state, data: data)   // log of market facts for the app (no inbox messages)
-            Marketplace.weekly(&state)   // forget talks and purchases of expired listings
+            MarketEvents.weekly(&state, data: data)
+            Marketplace.weekly(&state)
         case 1:
             WorldWeek.competitors(&state, data: data)
             FootballModel.leaguesWeek(&state, data: data)
@@ -445,53 +388,49 @@ public struct GameEngine {
         case 2:
             Markets.fundsWeekly(&state)
             Brokerage.weekly(&state)
-            FinanceManager.weekly(&state, context: context)   // your fund manager's returns, the office finance manager's holdings
+            FinanceManager.weekly(&state, context: context)
             SoftwareProducts.weekly(&state, data: data)
             ProjectTenders.weekly(&state, data: data, context: context)
-            MarketResearch.weekly(&state, data: data)   // ordered research reports arrive (inbox message)
+            MarketResearch.weekly(&state, data: data)
         case 3:
             Lawsuits.weekly(&state, data: data)
             Cyber.weekly(&state, data: data)
-            StaffingPlan.weekly(&state, data: data)   // vacancies, replacements, growth and seasonal crews (Businesses/StaffingPlan.swift)
-            Aftermath.weekly(&state, data: data, context: context)   // follow-ups of earlier lawsuits, breakdowns, resignations ... (Events/Aftermath.swift)
+            StaffingPlan.weekly(&state, data: data)
+            Aftermath.weekly(&state, data: data, context: context)
             EventEngine.expire(&state, data: data, context: context)
-            Unlocks.weekly(&state, context: context)   // newly satisfied unlocks are recorded once per company (Businesses/Unlocks.swift)
+            Unlocks.weekly(&state, context: context)
             Gates.recordOpen(&state, data: data)
-            Engagement.weekly(&state, data: data)   // weekly plan and rival stories, once their pages are open (Businesses/Engagement.swift)
+            Engagement.weekly(&state, data: data)
         case 4:
             StrategicDecisions.weekly(&state, data: data, context: context)
-            Ventures.weekly(&state, data: data, context: context)   // startups, private equity, the big meeting, owners of your companies
+            Ventures.weekly(&state, data: data, context: context)
             Awards.weekly(&state, data: data, context: context)
             SpecialFamilies.weeklyAfter(&state, data: data, context: context)
-            Chains.weekly(&state, data: data, context: context, marketing: marketing)   // chains, franchises, supply between your companies
-            ChainBranches.weekly(&state, data: data)   // a chain is one company: a branch short of cash is covered by the chain first
+            Chains.weekly(&state, data: data, context: context, marketing: marketing)
+            ChainBranches.weekly(&state, data: data)
         case 5:
-            MiscWeekly.run(&state, data: data, context: context)   // staff record, ambitions, giving, weather, cyber, perks ... (MiscWeekly.swift)
-            // In the week that holds a month end the targets are set by the month's own close (`runMonthEnd`), after the books are in.
+            MiscWeekly.run(&state, data: data, context: context)
             if !GameCalendar.isMonthEnd(week: state.week) { ManagerTargets.weekly(&state, data: data) }
-            GovernmentBridge.weekly(&state, data: data, context: context)   // elections, printing's price effect, price support, illegal-route audits (Simulation/GovernmentBridge.swift)
+            GovernmentBridge.weekly(&state, data: data, context: context)
         default:
             runFailureChecks()
         }
     }
 
-    /// Companies that cannot pay are warned, frozen in their first year, or declared bankrupt; then the net worth point and game over.
     mutating func runFailureChecks() {
-        Failure.warn(&state, context: context)   // a company close to a forced sale says so first (red alert)
-        FirstYear.freezeSweep(&state, balance: data.balance)   // before week 27 a company in the red is frozen, not bankrupt (Businesses/FirstYear.swift)
+        Failure.warn(&state, context: context)
+        FirstYear.freezeSweep(&state, balance: data.balance)
         let bankruptcyOn = FirstYear.effective(state, balance: data.balance).bankruptcyActive(week: state.week)
         for i in state.companies.indices where bankruptcyOn {
             let c = state.companies[i]
-            if state.isBranch(c) { continue }   // a branch is not a legal entity: only its whole chain can fail (Failure.chainChecks)
+            if state.isBranch(c) { continue }
             if (c.status == .open || c.status == .closed) && c.weeksNegative > 12 && c.cash < -context.overdraftRoom(c, state) * 2 {
                 Failure.bankrupt(&state, companyIndex: i, reason: "cash", data: data, context: context)
             }
             else if (c.status == .open || c.status == .closed) && c.int("loanCall") > 0 && state.week >= c.int("loanCall") {
-                // The bank called the loan after three missed instalments and the company did not catch up in time.
                 Failure.bankrupt(&state, companyIndex: i, reason: "loan", data: data, context: context)
             }
             else if (c.status == .open || c.status == .closed) && c.cash < 0 && Payday.unpaidForMonths(c, today: Payday.dayNumber(week: state.week, day: state.day)) {
-                // Rent, suppliers or tax left unpaid for months while the account is empty: creditors close the company.
                 Failure.bankrupt(&state, companyIndex: i, reason: "unpaid", data: data, context: context)
             }
         }
@@ -500,21 +439,18 @@ public struct GameEngine {
             if let i = state.companyIndex(id), !state.isBranch(state.companies[i]) { Failure.bankrupt(&state, companyIndex: i, reason: "insolvent", data: data, context: context) }
         }
         if bankruptcyOn { Failure.chainChecks(&state, data: data, context: context, insolvent: Set(insolvent)) }
-        FaceBook.sweep(&state, data: data)   // portraits: hired people keep theirs for good, stale candidates give theirs back
+        FaceBook.sweep(&state, data: data)
         snapshot()
         let ctx = context
         Failure.checkOver(&state, data: data, context: ctx, liquidate: { s, need in Brokerage.liquidate(&s, need: need, currency: ctx.homeCurrency(s)); FinanceManager.cashIn(&s, need: need) })
     }
 
-    // MARK: Calendar steps
-
-    /// The books of the month (and of the year, on 31 December) close on the real last day, with the money moving that day.
     mutating func runMonthEnd() {
         state.transient.simulatingWeek = true
         defer { state.transient.simulatingWeek = false }
         MiscWeekly.monthly(&state, data: data, context: context)
         MonthEnd.closeMonth(&state, data: data, context: context)
         if GameCalendar.isYearEnd(week: state.week, day: state.day) { MonthEnd.closeYear(&state, data: data, context: context) }
-        ManagerTargets.weekly(&state, data: data)   // monthly targets and yearly budget of managed companies (after the month is closed)
+        ManagerTargets.weekly(&state, data: data)
     }
 }

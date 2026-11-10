@@ -1,7 +1,6 @@
 import SwiftUI
 import Simulation
 
-/// The Cabinet: every artifact the player owns, the collections and their rewards, and the wardrobe where owned cosmetics are put on.
 struct CabinetView: View {
     private let session = StoreSession.shared
     @ObservedObject private var season = SeasonModel.shared
@@ -68,7 +67,6 @@ struct CabinetView: View {
     }
 }
 
-/// Owned cosmetics grouped by kind with a Use button; the choice is kept with the Season Pass wardrobe.
 struct WardrobeGroup: View {
     @ObservedObject private var season = SeasonModel.shared
 
@@ -96,46 +94,6 @@ struct WardrobeGroup: View {
                     .padding(.vertical, Theme.Space.s).frame(minHeight: 52)
                 }
             }
-        }
-    }
-}
-
-/// The Cabinet section of a profile: how much is collected and the rarest pieces, with a way into the Cabinet.
-struct CabinetSummary: View {
-    private let session = StoreSession.shared
-
-    var body: some View {
-        let cabinet: Cabinet = session.state.cabinet
-        let done: Int = ArtifactCatalog.collections.filter { cabinet.isComplete($0) }.count
-        let total: Int = ArtifactCatalog.collections.count
-        VStack(alignment: .leading, spacing: 0) {
-            OnlineLine(glyph: Glyph.luxury, title: cabinet.items.count == 1 ? "1 artifact" : "\(cabinet.items.count) artifacts",
-                       note: "\(done) of \(total) collections complete")
-            ForEach(Array(cabinet.sorted.prefix(3).enumerated()), id: \.element.id) { (_: Int, item: ArtifactItem) in
-                Hairline()
-                ArtifactRow(item: item)
-            }
-            Hairline()
-            NavigationLink { CabinetView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Open the Cabinet", note: "Collections, selling and what you wear", chevron: true) }
-                .buttonStyle(PressableStyle())
-        }
-        .task { await session.load() }
-    }
-}
-
-/// The player's name on the plate they chose in the wardrobe (plain text when none is chosen).
-struct NamePlateText: View {
-    var name: String
-    @ObservedObject private var season = SeasonModel.shared
-
-    var body: some View {
-        if let id = season.pass.equipped[SeasonReward.Kind.namePlate.rawValue], let r = SeasonRewards.item(id), r.colors.count >= 2 {
-            Text(name).textStyle(.title, tint: Color(hex: r.colors[0]))
-                .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.xs)
-                .background(Capsule().fill(Color(hex: r.colors[1])))
-                .overlay(Capsule().strokeBorder(Color(hex: r.colors[0]).opacity(0.5), lineWidth: 1))
-        } else {
-            Text(name).textStyle(.title)
         }
     }
 }

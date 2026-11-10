@@ -5,10 +5,7 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Every simulation step runs inside a day: companies are spread over the week by id, the world's processes have a weekday each, the
-/// money of a step is released over seven days, and a month closes on its real last day.
 final class DaySlicesTests: XCTestCase {
-    /// An engine with `count` funded, set-up cafes; returns their ids.
     private func engine(cafes count: Int, seed: Int = 4242) throws -> (GameEngine, [Int]) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         var ids: [Int] = []
@@ -26,8 +23,6 @@ final class DaySlicesTests: XCTestCase {
     }
 
     private func lastRun(_ e: GameEngine, _ id: Int) -> Int { e.state.company(id)?.value("slotRun").int ?? -1 }
-
-    // MARK: The calendar
 
     func testSlotsSpreadConsecutiveCompaniesOverAllSevenWeekdays() {
         XCTAssertEqual(Set((0..<7).map { GameCalendar.slot(ofCompany: 1000 + $0) }).count, 7)
@@ -52,8 +47,6 @@ final class DaySlicesTests: XCTestCase {
             XCTAssertEqual(years.count, GameCalendar.isYearEnd(week: week) ? 1 : 0, "week \(week)")
         }
     }
-
-    // MARK: Companies act on their own day
 
     func testCompaniesRunTheirModelOnTheirOwnWeekday() throws {
         var (e, ids) = try engine(cafes: 4)
@@ -81,7 +74,7 @@ final class DaySlicesTests: XCTestCase {
         var (e, ids) = try engine(cafes: 1)
         let id = try XCTUnwrap(ids.first)
         for _ in 0..<(3 * 7) { e.nextDay() }
-        var runs: [Int] = []   // 1 on a day the company's model ran
+        var runs: [Int] = []
         var before = lastRun(e, id)
         for _ in 0..<(8 * 7) {
             e.nextDay()
@@ -93,7 +86,6 @@ final class DaySlicesTests: XCTestCase {
     }
 
     func testNothingWaitsForTheWeekToClose() throws {
-        // The day the week completes is not special: with companies on every weekday, the models run on all seven days of a week.
         var (e, ids) = try engine(cafes: 7)
         let slots = Set(ids.map { GameCalendar.slot(ofCompany: $0) })
         var ranOn = Set<Int>()
@@ -110,14 +102,12 @@ final class DaySlicesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(slots.count, 3)
     }
 
-    // MARK: Money moves every day and balances
-
     func testAStepsMoneyIsReleasedOverSevenDaysAndLeavesNoGap() throws {
         var (e, ids) = try engine(cafes: 1)
         let id = try XCTUnwrap(ids.first)
         for _ in 0..<(4 * 7) { e.nextDay() }
         var before = lastRun(e, id)
-        while true {   // to the day the company's model has just run
+        while true {
             e.nextDay()
             let now = lastRun(e, id)
             if now != before { break }
@@ -128,7 +118,7 @@ final class DaySlicesTests: XCTestCase {
             e.nextDay()
             XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "day \(k): \(Ledger.gaps(e.state))")
         }
-        e.nextDay()   // the company's next step: its previous batch has landed by now
+        e.nextDay()
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
@@ -145,13 +135,10 @@ final class DaySlicesTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(s).isEmpty)
     }
 
-    // MARK: Old saves
-
     func testASavedWeekFromTheWeeklyTurnLoadsAndIsFinishedByTheDays() throws {
         let (e0, _) = try engine(cafes: 1)
         var s = e0.state
         s.week = 5; s.day = 2
-        // The old format: one batch, days 0...6 of its week, no "v" key.
         s.rest["pend"] = .object(["rows": .array([.object(["a": .number(800), "l": .string("Sale"), "co": .number(0), "d": .number(3)])]),
                                   "co": .array([.array([.number(1001), .number(700), .number(0)])]), "msgs": .array([]), "news": .array([])])
         let legacyRemaining = HeldMoney.remaining(s, companyID: 1001)
@@ -162,8 +149,6 @@ final class DaySlicesTests: XCTestCase {
         XCTAssertEqual(HeldMoney.playerRemaining(e.state), legacyPlayer, accuracy: 0.001)
         XCTAssertEqual(e.state.rest["sliceStart"]?.int, 6, "the week that was already worked out is not worked out again")
     }
-
-    // MARK: The month closes on its last day
 
     func testAMonthClosesOnItsRealLastDay() throws {
         var (e, ids) = try engine(cafes: 1)

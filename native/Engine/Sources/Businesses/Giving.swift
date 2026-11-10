@@ -3,10 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Giving back: sponsor the club, fund a scholarship, build a park or a hospital wing, start a foundation. Each leaves a named mark,
-/// raises your standing in a city (a little more demand there) and adds to your legacy.
-/// Originals: `GIVE`, `giveTo`, `giveWeek`, `ACT.give28`, `ACT.found28`, the 'gifts to the city' demand step
-/// (features/player/giving_and_goals.js).
 public enum Giving {
     public struct Gift: Equatable, Sendable, Identifiable {
         public var id: String
@@ -44,7 +40,6 @@ public enum Giving {
     public static func cost(of id: String, _ s: GameState, _ data: GameData) -> Double { gift(id).map { cost($0, s, data) } ?? 0 }
     static func cityName(_ cc: String, _ city: String, _ data: GameData) -> String { data.countries[cc]?.city(city)?.name ?? city }
 
-    /// The mark's text, with the city. Original: `g.mark(city)`.
     public static func markText(_ id: String, city: String, _ s: GameState) -> String {
         let sur = surname(s)
         switch id {
@@ -58,7 +53,6 @@ public enum Giving {
         }
     }
 
-    /// Cities where you work (and home), with your standing in each. Original: `cities()`.
     public static func places(_ s: GameState, _ data: GameData) -> [Place] {
         var seen: [String: (String, String)] = [:]
         for c in s.companies where c.status == .open { seen[key(c.countryCode, c.cityID)] = (c.countryCode, c.cityID) }
@@ -73,7 +67,6 @@ public enum Giving {
     public static func foundation(_ s: GameState) -> (capital: Double, given: Double)? { let f = state(s)["found"]; return f.isNull ? nil : (f["cap"].double, f["given"].double) }
     public static func standing(_ s: GameState, countryCode: String, cityID: String) -> Double { state(s)["rep"][key(countryCode, cityID)].double }
 
-    /// Give. Original: `giveTo(k, cc, city, fromFound)`.
     @discardableResult
     public static func give(_ s: inout GameState, giftID: String, countryCode cc: String, cityID city: String, data: GameData, fromFoundation: Bool = false) -> Result {
         guard let g = gift(giftID) else { return .unknown }
@@ -106,7 +99,6 @@ public enum Giving {
         return .ok
     }
 
-    /// Put money into a foundation that gives about 4 % a year. Original: `ACT.found28`.
     @discardableResult
     public static func startFoundation(_ s: inout GameState, amount: Double, data: GameData) -> Result {
         guard foundation(s) == nil else { return .alreadyDone }
@@ -122,13 +114,11 @@ public enum Giving {
         return .ok
     }
 
-    /// Demand factor from standing in the company's city (up to +6 %). Original: the 'gifts to the city' step.
     public static func demandFactor(_ co: Company, _ s: GameState) -> Double {
         let v = state(s)["rep"][key(co.countryCode, co.cityID)].double
         return v > 0 ? 1 + min(0.06, v * 0.0008) : 1
     }
 
-    /// Yearly sponsorships renew, standing fades, the foundation gives. Original: `giveWeek`.
     public static func weekly(_ s: inout GameState, data: GameData) {
         guard s.rest["give28"] != nil else { return }
         var st = state(s)

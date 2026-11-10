@@ -1,10 +1,7 @@
 import XCTest
 
-/// Shared base of the UI tours: launches the showcase game and keeps screenshots, skipping a picture identical to the previous one
-/// (a scroll or tap that changed nothing) and recording a "note-" attachment instead, so the tour never fails on a missing control.
 class TourCase: XCTestCase {
     var app: XCUIApplication!
-    /// More launch arguments for a tour that needs a differently prepared game (for example "-showcase-rich").
     var extraLaunchArguments: [String] { [] }
     private var lastShot: Data?
 
@@ -33,11 +30,9 @@ class TourCase: XCTestCase {
         add(a)
     }
 
-    /// Waits for the Home summary; on a slow runner this is the only long wait of a test.
     @discardableResult
     func waitForHome(_ seconds: TimeInterval = 20) -> Bool {
         let found = app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: seconds) || app.staticTexts["NET WORTH"].firstMatch.waitForExistence(timeout: 2)
-        // The ambition popup at the start of a game covers Home until it is answered.
         let later = app.buttons["ambition-later"].firstMatch
         if later.waitForExistence(timeout: 2) { later.tap(); sleep(1) }
         return found

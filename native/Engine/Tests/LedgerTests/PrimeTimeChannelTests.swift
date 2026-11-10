@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// One data-driven Prime-time TV channel, named from each country's own media data; no country codes in code.
 final class PrimeTimeChannelTests: XCTestCase {
     func testEveryCountryGetsTheChannelNamedFromItsOwnMedia() throws {
         let tables = try MarketingTables.bundled()
@@ -37,7 +36,6 @@ final class PrimeTimeChannelTests: XCTestCase {
         var none = big
         none.pack["media"] = .null
         XCTAssertNil(base.offered(in: none))
-        // an ordinary channel does not depend on population
         let google = try XCTUnwrap(tables.channels["google"])
         XCTAssertEqual(google.scale(in: Currency(country: big, rates: ExchangeRates())) / big.costIndex, google.scale, accuracy: 1e-6)
     }
@@ -58,7 +56,6 @@ final class PrimeTimeChannelTests: XCTestCase {
 
     func testManagersNeverPickIt() throws {
         let tables = try MarketingTables.bundled()
-        // the only channels managers buy (ManagerWeek, ManagerProposals) and the chain's brand marketing
         for k in ["google", "meta"] { XCTAssertFalse(try XCTUnwrap(tables.channels[k]).isPrimeTime) }
         let brandPool = tables.channels.values.filter { !$0.isPrimeTime && !$0.isNational && !$0.isHighVariance }
         XCTAssertFalse(brandPool.contains { $0.id == "primetime" })

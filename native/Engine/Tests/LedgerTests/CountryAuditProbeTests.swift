@@ -6,10 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Audit part 4a: the 16 countries the first calculations audit did not probe (all 23 minus UK, US, MX, PL, DE, JP, NO).
-/// Per country: a limited-company cafe played 26 weeks day by day (ledger gaps empty, equity = capital put in + profit), the minimum wage on
-/// the cheapest job, notice and severance quoted equal to what is booked, the employer on-cost shared by payroll and the quotes, VAT data and the
-/// personal-tax quote.
 final class CountryAuditProbeTests: XCTestCase {
     static let codes = ["SE", "LT", "FR", "ES", "NL", "CA", "AU", "KR", "BR", "CH", "AE", "IT", "DK", "FI", "IE", "SG"]
 
@@ -25,8 +21,6 @@ final class CountryAuditProbeTests: XCTestCase {
         return (e, id)
     }
 
-    // MARK: Twenty-six weeks
-
     private func runHalfYear(_ code: String) throws {
         var (e, id) = try cafe(code)
         for _ in 0..<(26 * 7) {
@@ -38,7 +32,6 @@ final class CountryAuditProbeTests: XCTestCase {
         guard let co = e.state.company(id), co.status.isLive else { return }
         let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: e.state.loans)
         let profit = Books.profit(co.books.total) - (co.books.total["tax"] ?? 0)
-        // The gap swings by tens of thousands inside a week (sales cash lands before the week's books close), so the bound is wider than one day's takings.
         XCTAssertEqual(equity, co.injectedCapital + profit, accuracy: max(60_000, abs(profit) * 0.02), "\(code) equity \(equity) vs injected \(co.injectedCapital) + profit \(profit)")
     }
 
@@ -58,8 +51,6 @@ final class CountryAuditProbeTests: XCTestCase {
     func testHalfYearFI() throws { try runHalfYear("FI") }
     func testHalfYearIE() throws { try runHalfYear("IE") }
     func testHalfYearSG() throws { try runHalfYear("SG") }
-
-    // MARK: Minimum wage on the cheapest job, dismissal quote = booking
 
     private func hireOne(_ e: inout GameEngine, _ id: Int, wage: Double?) -> Int? {
         var pid = 0
@@ -91,7 +82,6 @@ final class CountryAuditProbeTests: XCTestCase {
             var (e, id) = try cafe(c.code, seed: 13)
             guard let pid = hireOne(&e, id, wage: nil) else { continue }
             tested += 1
-            // five years' service, then a redundancy
             e.update { s, _, _ in
                 let i = s.companyIndex(id)!, k = s.companies[i].staff.firstIndex { $0.id == pid }!
                 s.companies[i].staff[k].hiredWeek = s.week - 5 * 52
@@ -111,8 +101,6 @@ final class CountryAuditProbeTests: XCTestCase {
             XCTAssertTrue(Ledger.gaps(s).isEmpty, c.code)
         }
     }
-
-    // MARK: Data checks
 
     func testEmployerOnCostIsOneRateEverywhere() throws {
         for c in try countries() {
@@ -152,7 +140,6 @@ final class CountryAuditProbeTests: XCTestCase {
             XCTAssertTrue(r.hasMinimum, c.code)
             XCTAssertGreaterThan(r.leaveDays, 0, "\(c.code) statutory leave")
             XCTAssertGreaterThan(r.termination(tenureWeeks: 5 * 52, reason: .redundancy).noticeWeeks, 0, "\(c.code) notice after five years")
-            // overtime: paid above the standard week at the data's premium
             let pay = r.overtimePay(monthlyWage: 100_000, contracted: r.stdHours, worked: r.stdHours + 5)
             XCTAssertEqual(pay, 100_000 * 12 / 52 / r.stdHours * 5 * (1 + r.overtimePremium), accuracy: 1e-6, c.code)
         }

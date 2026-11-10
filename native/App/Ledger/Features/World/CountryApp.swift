@@ -4,13 +4,10 @@ import Countries
 import Businesses
 import Simulation
 
-/// The pages of the Country app. Each page draws its own header and palette; Back from a page returns to the overview.
 enum CountrySection: Hashable {
     case overview, donate, election, president, record, shadow
 }
 
-/// Country: the state's treasury, rates, president, printed money and prices, and the doors to donating, the election, the president's desk,
-/// the record of convictions and the dark side of business.
 struct CountryApp: View {
     @EnvironmentObject var store: GameStore
     @State private var page: CountrySection = .overview
@@ -48,8 +45,6 @@ struct CountryApp: View {
     }
 }
 
-/// The overview: brass on night blue. The treasury as the one big figure, the two tax rates as dials, the president, the public record
-/// of printed money with the price level it feeds, and the latest government news.
 struct CountryOverview: View {
     var e: GameEngine
     var r: CountryRead
@@ -73,8 +68,6 @@ struct CountryOverview: View {
         .outsideScreen(.civic)
         .accessibilityIdentifier("country-overview")
     }
-
-    // MARK: Treasury
 
     private var hero: some View {
         let supply: GovMoneySupply = r.gov.supply
@@ -112,8 +105,6 @@ struct CountryOverview: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: Doors
-
     private var tiles: some View {
         let cols: [GridItem] = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
         return LazyVGrid(columns: cols, spacing: 12) {
@@ -139,8 +130,6 @@ struct CountryOverview: View {
 
     private var deskLine: String { r.isPresident ? "You hold the office." : "Rates and price support." }
 
-    // MARK: Rates
-
     private var rates: some View {
         let pol: GovPolicy = r.gov.policy
         let tr: ClosedRange<Double> = GovPolicy.transferRange
@@ -164,8 +153,6 @@ struct CountryOverview: View {
         let left: Int = GovPolicy.changeGapWeeks - (r.week - last)
         return left > 0 ? base + " Next change possible in \(CivicWords.weeks(left))." : base
     }
-
-    // MARK: President
 
     private var presidentCard: some View {
         section("President") {
@@ -217,8 +204,6 @@ struct CountryOverview: View {
 
     private func tradeName(_ id: String) -> String { e.data.catalog.trades[id]?.name ?? id }
 
-    // MARK: Printed money
-
     private var supplyCard: some View {
         let mints: [GovMint] = Array(r.gov.supply.mints.reversed())
         let shown: [GovMint] = showAllMints ? mints : Array(mints.prefix(4))
@@ -243,8 +228,6 @@ struct CountryOverview: View {
         }
     }
 
-    // MARK: Price index
-
     private var priceCard: some View {
         let from: Int = max(1, r.week - 25)
         let series: [Double] = r.week >= from ? (from...max(from, r.week)).map { (w: Int) -> Double in GovInflation.index(r.gov.supply, atWeek: w) } : [1]
@@ -262,8 +245,6 @@ struct CountryOverview: View {
                 .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
-
-    // MARK: Treasury flows
 
     private var flowsCard: some View {
         let list: [GovTreasuryEntry] = Array(r.gov.treasury.entries.prefix(5))
@@ -293,8 +274,6 @@ struct CountryOverview: View {
         }
     }
 
-    // MARK: News
-
     private var newsCard: some View {
         let list: [GovNews] = Array(r.gov.news.prefix(4))
         return section("From the government", trailing: "Open News", onTrailing: { store.openApp(.news) }) {
@@ -315,8 +294,6 @@ struct CountryOverview: View {
     }
 
     private func toneColor(_ tone: String) -> Color { tone == "good" ? P.gain : tone == "bad" ? P.loss : P.accent }
-
-    // MARK: Section frame
 
     private func section<C: View>(_ title: String, trailing: String = "", onTrailing: @escaping () -> Void = {}, @ViewBuilder _ content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 10) {

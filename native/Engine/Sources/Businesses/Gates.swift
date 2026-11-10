@@ -3,29 +3,19 @@ import GameCore
 import Countries
 import Finance
 
-/// What a feature waits for. One vocabulary for the app surfaces (gates) and the per-company unlocks; `Gates.table` is the only place
-/// that says which feature waits for what, and `Gates.met` is the only place that tests it.
 public enum UnlockRule: Equatable, Sendable {
-    /// Nothing to wait for (a company-level feature only needs the company to exist).
     case always
-    /// A game week, a ladder goal (1 to 10), profitable closed quarters, or wealth.
     case week(Int), goal(Int), profitableQuarters(Int), rich
-    /// A week closed with sales, a month closed in profit, a loss or fine booked or a month closed at a loss.
     case firstSalesWeek, firstProfitMonth, firstLossEvent
-    /// Company level: weeks traded, twelve closed months in profit, a proven pilot, a possible board seat, profit to pay out.
     case weeksTraded(Int), profitableYear, provenConcept, boardSeat, retainedProfit
-    /// Any one of these.
     case anyOf([UnlockRule])
 }
 
-/// A feature of the table: a surface of the app or a per-company unlock (by its `Unlocks` id).
 enum Feature: Hashable, Sendable {
     case gate(Gate)
     case unlock(String)
 }
 
-/// One row of the table: the rule, the plain-words condition, and whether the roadmap lists it (systems that only follow another
-/// system's gate are left out so the roadmap names each thing once).
 struct RuleEntry: Sendable {
     var feature: Feature
     var title: String
@@ -34,9 +24,6 @@ struct RuleEntry: Sendable {
     var roadmap = true
 }
 
-/// A surface of the app that stays hidden (not greyed) until its gate. Views ask `Gates.visibility`; no screen decides this itself.
-/// Systems that only serve another system share its rule: reviews follow marketing, the weather app follows insurance, AirStay follows
-/// property, TechPro follows management, the marketplace follows suppliers and the ventures feed follows ventures.
 public enum Gate: String, CaseIterable, Sendable {
     case hiring, marketing, ownerMoney, bank, newCompany, management, accounting, insurance, suppliers, property
     case group, rivals, ventures, luxury, atlas
@@ -45,7 +32,6 @@ public enum Gate: String, CaseIterable, Sendable {
 
     var rule: UnlockRule { Gates.entry(.gate(self)).rule }
 
-    /// The line shown when the gate is near; nil for owner hours (silent).
     public var lockText: String? {
         let t: String = Gates.entry(.gate(self)).text
         return t.isEmpty ? nil : t
@@ -54,39 +40,25 @@ public enum Gate: String, CaseIterable, Sendable {
 
 public enum GateVisibility: Equatable, Sendable {
     case open
-    /// Closed but near: show the surface dimmed with this line.
     case locked(String)
-    /// Closed and far: not on Home, not in the grid, no Inbox items, no menu entries.
     case hidden
 }
 
-/// One locked feature for the "what unlocks next" screen.
 public struct UnlockRoadmapItem: Equatable, Sendable, Identifiable {
-    /// "gate.<name>" for an app surface, "unlock.<id>" for a company feature.
     public var id: String
     public var title: String
-    /// What it waits for, in plain words.
     public var condition: String
-    /// 0 to 1, how close the player is.
     public var progress: Double
-    /// A short "2 of 3 companies" style line; empty when there is nothing to count.
     public var detail: String
-    /// The company that is closest, for a company feature (nil for an app surface).
     public var companyID: Int?
 }
 
 public enum Gates {
-    /// Net worth above this many median monthly wages opens the luxury surfaces.
     public static let richMultiple = 50.0
-    /// Owner hours are capped at this until week 13 (silently).
     public static let earlyHoursCap = 45.0
-    /// A week gate is "near" within this many weeks; a goal gate within one goal.
     static let nearWeeks = 2
-    /// Event gates (first sales, first profit, first loss) show dimmed from this week on.
     static let eventNearWeek = 2
 
-    /// The one rule table. Insurance opens with the first profitable month or the first loss (the two moments a business learns it needs
-    /// cover) and suppliers after the first week of sales; the manager-related features stay with the ladder's manager goal and the 52-week chain.
     static let table: [RuleEntry] = [
         RuleEntry(feature: .gate(.hiring), title: "Hiring", rule: .week(3), text: "Unlocks in week 3"),
         RuleEntry(feature: .gate(.marketing), title: "Marketing", rule: .anyOf([.goal(3), .week(6)]), text: "Unlocks after your first hire, or in week 6"),
@@ -117,7 +89,6 @@ public enum Gates {
                   text: "Unlocks after your first profitable quarter, or in week 26", roadmap: false),
         RuleEntry(feature: .gate(.luxury), title: "Luxury", rule: .rich, text: "Unlocks when you are rich"),
         RuleEntry(feature: .gate(.ownerHours), title: "Owner hours", rule: .week(13), text: "", roadmap: false),
-        // Company features, announced once by `Unlocks`.
         RuleEntry(feature: .unlock("board"), title: "Board", rule: .boardSeat,
                   text: "Unlocks when a limited company has a manager or candidate who could take a seat, or it gets co-owners or a chain"),
         RuleEntry(feature: .unlock("chain"), title: "Chain", rule: .weeksTraded(Unlocks.weeksChain),
@@ -129,7 +100,6 @@ public enum Gates {
                   text: "Unlocks when the company is \(Unlocks.weeksResearch) weeks old"),
         RuleEntry(feature: .unlock("dividends"), title: "Dividends", rule: .retainedProfit, text: "Unlocks when the company has retained profit to pay out"),
         RuleEntry(feature: .unlock("marketplace"), title: "Marketplace", rule: .always, text: "Unlocks when the company exists", roadmap: false),
-        // Player-level pages: `Unlocks.check` adds that the ladder's first steps must be done, so the roadmap leaves them out.
         RuleEntry(feature: .unlock("desk"), title: "Desk", rule: .weeksTraded(Unlocks.weeksDesk), text: "Unlocks when the company has traded \(Unlocks.weeksDesk) weeks and the first steps are done", roadmap: false),
         RuleEntry(feature: .unlock("focus"), title: "Weekly plan", rule: .weeksTraded(Unlocks.weeksFocus), text: "Unlocks when the company has traded \(Unlocks.weeksFocus) weeks and the first steps are done", roadmap: false),
         RuleEntry(feature: .unlock("rivals"), title: "Rivals", rule: .weeksTraded(Unlocks.weeksRivals), text: "Unlocks when the company has traded \(Unlocks.weeksRivals) weeks and the first steps are done", roadmap: false),
@@ -139,19 +109,14 @@ public enum Gates {
         table.first { (e: RuleEntry) -> Bool in e.feature == f } ?? RuleEntry(feature: f, title: "", rule: .always, text: "", roadmap: false)
     }
 
-    /// The ladder is on for games started with it (`rest["ldr"]`); an older save has no ladder and nothing is gated.
     public static func ladderOn(_ s: GameState) -> Bool { s.rest["ldr"] != nil }
 
-    /// Goals finished on the ladder (it is linear, so also the number of the open goal minus one, 0 to 10).
     public static func goalsDone(_ s: GameState) -> Int { s.rest["ldr"]?["done"].object.count ?? 0 }
 
-    /// Goal `n` (1 to 10) is finished.
     public static func goalDone(_ s: GameState, _ n: Int) -> Bool { !(s.rest["ldr"]?["done"]["M\(n)"] ?? .null).isNull }
 
-    /// Companies the player owns (a holding is not counted).
     public static func companiesOwned(_ s: GameState) -> Int { s.companies.filter { $0.status.isLive && $0.type != "hold" }.count }
 
-    /// Closed years in which the group's companies together made a profit, counted back from the latest twelve closed months.
     public static func profitableYears(_ s: GameState) -> Int {
         let cs = s.companies.filter { $0.type != "hold" }
         let years = (cs.map { $0.monthlyHistory.count }.max() ?? 0) / 12
@@ -192,14 +157,11 @@ public enum Gates {
         data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode).medianMonthlyWage * richMultiple
     }
 
-    /// Companies that have been trading (a holding does not trade); closed ones still count, their history is the player's.
     static func trading(_ s: GameState) -> [Company] { s.companies.filter { $0.type != "hold" } }
 
-    /// The quarterly group review and the annual report open after a first full year played.
     public static let reviewRule: UnlockRule = .week(52)
     public static func reviewOpen(_ s: GameState) -> Bool { met(reviewRule, s, data: nil, company: nil, context: nil) }
 
-    /// The one test of a rule. `company` is needed for company-level rules, `data` for wealth and `context` for dividends.
     static func met(_ r: UnlockRule, _ s: GameState, data: GameData?, company: Company?, context: FinanceContext?) -> Bool {
         switch r {
         case .always: return company?.status.isLive ?? true
@@ -238,7 +200,6 @@ public enum Gates {
         }
     }
 
-    /// How close a rule is to being met: a fraction and a short count ("2 of 3 companies"); event rules have no count and show 0 or a half.
     static func progress(_ r: UnlockRule, _ s: GameState, data: GameData?, company: Company?) -> (fraction: Double, detail: String) {
         func ratio(_ a: Double, _ b: Double) -> Double { b <= 0 ? 0 : min(1, max(0, a / b)) }
         switch r {
@@ -292,7 +253,6 @@ public enum Gates {
         return met(g.rule, s, data: data, company: nil, context: nil)
     }
 
-    /// Records every gate whose rule holds, so a surface the player has opened never closes again.
     public static func recordOpen(_ s: inout GameState, data: GameData) {
         guard ladderOn(s) else { return }
         var rec: JSONValue = s.rest[openKey] ?? .object([:])
@@ -304,7 +264,6 @@ public enum Gates {
         if changed { s.rest[openKey] = rec }
     }
 
-    /// A closed rule is "near" when it is one goal, two weeks or one year away (event rules from week 2).
     static func near(_ r: UnlockRule, _ s: GameState) -> Bool {
         switch r {
         case .week(let w): return w - s.week <= nearWeeks
@@ -315,20 +274,16 @@ public enum Gates {
         }
     }
 
-    /// Open, locked-and-near or hidden.
     public static func visibility(_ g: Gate, _ s: GameState, data: GameData) -> GateVisibility {
         if isOpen(g, s, data: data) { return .open }
         guard let text = g.lockText else { return .hidden }
         return near(g.rule, s) ? .locked(text) : .hidden
     }
 
-    /// Hours cap for the owner this week: 45 before week 13 in a game with the ladder, else the usual cap.
     public static func ownerHoursCap(_ s: GameState) -> Double {
         ladderOn(s) && s.week < 13 ? earlyHoursCap : OwnerHours.weeklyCap
     }
 
-    /// Every feature still locked, closest first (ties in table order): app surfaces by the player's state, company features by the
-    /// company nearest to opening them. A feature the player has opened through any company is not listed.
     public static func roadmap(_ s: GameState, data: GameData, context: FinanceContext) -> [UnlockRoadmapItem] {
         let live: [Company] = s.companies.filter { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
         var rows: [(order: Int, item: UnlockRoadmapItem)] = []

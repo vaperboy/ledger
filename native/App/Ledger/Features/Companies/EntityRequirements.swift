@@ -5,10 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The real-life requirements guide of the chain and franchise path (Group entity > Expansion). Every requirement is one row: its status chip
-/// (Done, Waiting for review, Missing), a one-line "how", and the button that fulfils it right here: a document application opens as a centred
-/// paper (trademark, disclosure document) or a short confirmation (the operations manual), staff goes to the hire flow, and the proven concept
-/// shows its progress as a thin line. Every action is an existing engine call (`applyForChainDocument`).
 struct RequirementGuide: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -34,8 +30,6 @@ struct RequirementGuide: View {
             paper(d.id, cur)
         }
     }
-
-    // MARK: Rows
 
     private func row(_ r: Chains.Requirement, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -63,7 +57,6 @@ struct RequirementGuide: View {
         }
     }
 
-    /// The engine's own line says what is missing or how long the review takes; a done row says so briefly.
     private func how(_ r: Chains.Requirement) -> String {
         r.ok ? "Nothing more to do." : r.detail.tidyMoney
     }
@@ -93,7 +86,6 @@ struct RequirementGuide: View {
         cur.tidyShort(engine.documentFee(companyID: company.id, document: key))
     }
 
-    /// The disclosure document rests on the other steps: the engine refuses it until they are done.
     private func blocked(_ r: Chains.Requirement) -> Bool {
         r.key == "fran" && requirements.contains(where: { (x: Chains.Requirement) -> Bool in x.key != "fran" && !x.ok })
     }
@@ -131,8 +123,6 @@ struct RequirementGuide: View {
         }
         .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
     }
-
-    // MARK: The paper
 
     @ViewBuilder private func paper(_ key: String, _ cur: Currency) -> some View {
         let isMark: Bool = key == "trademark"

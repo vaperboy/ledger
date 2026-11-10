@@ -6,10 +6,6 @@ import Finance
 import Events
 import Simulation
 
-// MARK: Group stakes
-
-/// Stakes in groups: the offer on the table from the big meeting (buy, ask for 10% off, walk away), the stakes you hold, and the groups you can
-/// bid for a share of.
 struct VenturesGroupsSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -125,8 +121,6 @@ struct VenturesGroupsSection: View {
     }
 }
 
-/// Bid for part of a group in an auction: pick the share, how far above or below fair value to bid, read the quote and the chance of winning,
-/// then confirm. Losing the auction costs nothing; winning takes the price from your cash.
 struct GroupStakeSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -138,7 +132,6 @@ struct GroupStakeSheet: View {
     @State private var pending: PendingAction?
     @State private var failure: GroupDeals.StakeFailure?
 
-    /// A higher bid wins more often: even at fair value, 1.5 times it almost always.
     private var chance: Double { min(0.95, max(0.1, 0.5 + (multiplier - 1))) }
 
     var body: some View {

@@ -3,9 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// Runs the guided help of `CoachTours` over every tab: the new player's step-by-step tutorial (it leads the other help while it runs) and a
-/// short tour for each tab, company page and phone app the first time it opens. One card at a time; it waits (hidden) while any popup is up,
-/// an announcement is queued or a day is playing, and a tour is never shown again after it ends or is skipped.
 struct CoachTourHost: ViewModifier {
     @Environment(\.popupHost) private var popupHost
 
@@ -21,29 +18,22 @@ private struct CoachTourLayer: View {
     @ObservedObject var host: PopupHost
     var anchors: [CoachStop: Anchor<CGRect>]
     @State private var seen: Set<String> = Set(CoachTours.all.filter { (t: CoachTour) -> Bool in FirstRunFlags.seen(t.key) }.map { (t: CoachTour) -> String in t.id })
-    /// Table index of the mark a tour is on, and how many marks it has already passed (for the "n of m" count).
     @State private var cursor: [String: Int] = [:]
     @State private var passed: [String: Int] = [:]
-    /// The tour on show stays the one on show until it stops being eligible.
     @State private var activeID: String?
-    /// The tour key that has held long enough to be drawn; empty while waiting.
     @State private var readyKey: String = ""
-
-    // MARK: Conditions
 
     private var firstCompanyID: Int? {
         guard let e = store.engine else { return nil }
         return e.state.companies.first { (c: Company) -> Bool in c.type != "hold" && c.status.isLive }?.id
     }
 
-    /// Anything that must be read or answered first: a popup, a queued announcement, a day in progress.
     private var blocked: Bool {
         host.hasVisible || store.popupOpen || !store.unlockQueue.isEmpty || store.customPickerOpen || store.workerPopup != nil || store.isAdvancing
     }
 
     private func atRoot(_ t: AppTab) -> Bool { store.tab == t && store.path(for: t).isEmpty }
 
-    /// A company page is on top of the tab being shown (pushed, or the Custom tab's destination).
     private var companyOnTop: Bool {
         if let r = store.path(for: store.tab).last {
             switch r {
@@ -70,16 +60,12 @@ private struct CoachTourLayer: View {
         }
     }
 
-    // MARK: Marks on screen
-
-    /// True when the mark's view is on screen (an anchor whose page is off to the side does not count).
     private func available(_ m: CoachMark, _ geo: GeometryProxy) -> Bool {
         guard let a = m.anchor(in: anchors) else { return false }
         let onScreen: CGRect = geo[a].intersection(CGRect(origin: .zero, size: geo.size))
         return !onScreen.isNull && onScreen.width > 8 && onScreen.height > 8
     }
 
-    /// The first mark at or after `from` that is on screen.
     private func nextIndex(_ t: CoachTour, from: Int, _ geo: GeometryProxy) -> Int? {
         guard from >= 0, from < t.marks.count else { return nil }
         for i in from..<t.marks.count where available(t.marks[i], geo) { return i }
@@ -97,7 +83,6 @@ private struct CoachTourLayer: View {
         return list.first
     }
 
-    /// How many marks after `i` are on screen now.
     private func remaining(_ t: CoachTour, after i: Int, _ geo: GeometryProxy) -> Int {
         var n: Int = 0
         var k: Int = i + 1
@@ -108,37 +93,28 @@ private struct CoachTourLayer: View {
         return n
     }
 
-    // MARK: Tutorial
-
-    /// The mark the tutorial shows now: the first of the step's places that is on screen.
     private func tutorialMark(_ step: TutorialStep, _ geo: GeometryProxy) -> CoachMark? {
         CoachTours.tutorial(step).first { (m: CoachMark) -> Bool in available(m, geo) }
     }
 
     private var tutorialPosition: Int { (TutorialStep.allCases.firstIndex(where: { (s: TutorialStep) -> Bool in s == store.tutorialStep }) ?? 0) + 1 }
 
-    /// Opening a company page is the first step.
     private func noteCompanyOpened() {
         if companyOnTop { store.tutorialAdvance(from: .openCompany) }
     }
 
-    /// Opening the Inbox app is the step that shows it.
     private func noteInboxOpened() {
         if store.showsApp(.inbox) { store.tutorialAdvance(from: .openInbox) }
     }
 
-    /// The guide has nothing left to point at when the company is gone.
     private func endIfAbandoned() {
         if store.tutorialActive && firstCompanyID == nil { store.tutorialFinish() }
     }
-
-    // MARK: Body
 
     var body: some View {
         GeometryReader { (geo: GeometryProxy) in
             let step: TutorialStep? = store.tutorialStep
             let tutMark: CoachMark? = step.flatMap { (s: TutorialStep) -> CoachMark? in tutorialMark(s, geo) }
-            // While the tutorial runs it leads: the other tours wait for it to end.
             let tour: CoachTour? = step == nil ? pick(geo) : nil
             let index: Int? = tour.flatMap { (t: CoachTour) -> Int? in nextIndex(t, from: cursor[t.id] ?? 0, geo) }
             let tutKey: String = step.flatMap { (s: TutorialStep) -> String? in tutMark.map { (m: CoachMark) -> String in "tutorial.\(s.rawValue).\(m.stop)" } } ?? ""
@@ -158,7 +134,6 @@ private struct CoachTourLayer: View {
                 }
             }
             .allowsHitTesting(drawn)
-            // A tour waits for its trigger to hold for a moment, and again after every popup.
             .task(id: key) {
                 guard !key.isEmpty else { readyKey = ""; return }
                 let wait: Double = key.hasPrefix("tutorial.") ? 0.25 : (CoachTours.all.first(where: { (t: CoachTour) -> Bool in t.id == key })?.delay ?? 0.6)
@@ -176,7 +151,6 @@ private struct CoachTourLayer: View {
         }
     }
 
-    /// The mark as drawn: pointing at its fallback when its own view is not there, and "Next" reading "Done" on the last one on screen.
     private func shownMark(_ t: CoachTour, _ i: Int, last: Bool) -> CoachMark {
         var m: CoachMark = t.marks[i]
         if anchors[m.stop] == nil, let f = m.fallback { m.stop = f }

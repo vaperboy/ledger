@@ -1,11 +1,6 @@
 import Foundation
 import GameCore
 
-/// Customer invoices as records. Every invoice the simulation raises on a business customer (key accounts one by one, other trade customers
-/// as one invoice for the week) is written here when it is raised and closed when the customer pays (Paid) or never does (Written off).
-/// Status is derived at read time: Sent until the due week, Overdue after it, Paid, Written off. There is no Draft: the simulation has no step before sending.
-/// Payment is recorded when the customer's money arrives in the company account (the ledger row "Customer invoices paid"); the player cannot mark an
-/// invoice paid by hand, that would be a made-up receipt.
 public enum InvoiceBook {
     public static let keep = 300
 
@@ -24,7 +19,6 @@ public enum InvoiceBook {
         public var gross: Double
         public var tax: Double
         public var lines: [Line]
-        /// "sent", "paid" or "bad".
         public var closed: String
         public var paidWeek: Int?
     }
@@ -41,7 +35,6 @@ public enum InvoiceBook {
         return number
     }
 
-    /// The invoices raised last week are sent to the customers at the start of the next weekly run (a draft until then).
     static func sendDrafts(_ co: inout Company, week: Int) {
         var book = co.value("invb").array
         var changed = false
@@ -49,7 +42,6 @@ public enum InvoiceBook {
         if changed { co.set("invb", .array(book)) }
     }
 
-    /// Send one draft now. Returns false when it is not a draft.
     public static func send(_ co: inout Company, number: String, week: Int) -> Bool {
         var book = co.value("invb").array
         guard let k = book.lastIndex(where: { $0["no"].string == number && $0["st"].string == "draft" }) else { return false }

@@ -5,9 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Chain and group level management posts (group managing director, chain CEO, chain manager, regional managers), shown from Group and
-/// from a company's Chain section. Same people, same rules as the Team list on a company: role, name and budget chip, search, hire, let go.
-/// `chainID == nil` is the group level. Pay comes from the chain's stores (chain levels) or from you (group level), as the engine decides.
 struct ExecutivePosts: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -75,7 +72,6 @@ struct ExecutivePosts: View {
         }
     }
 
-    /// The entity that employs these people: the chain for chain levels, otherwise the group office (or the holding that carries it).
     private var employer: String {
         guard let cid = chainID else { return engine.groupOfficeEmployer }
         let name = engine.state.rest["chains"]?.array.first { $0["id"].int == cid }?["name"].string ?? ""
@@ -135,7 +131,6 @@ struct ExecutivePosts: View {
         }
     }
 
-    /// A regional manager for a city where the chain has stores and none yet.
     @ViewBuilder private func addRegional(_ cur: Currency) -> some View {
         if let cid = chainID {
             let have = Set(engine.regionalManagers.compactMap { r -> String? in

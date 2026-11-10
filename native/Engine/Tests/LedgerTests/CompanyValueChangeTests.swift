@@ -4,7 +4,6 @@ import Countries
 import Finance
 @testable import Simulation
 
-/// The Group tab shows each company's value with its change over the last month, read from a per-company day history.
 final class CompanyValueChangeTests: XCTestCase {
     func testCompanyValueChangeFollowsItsOwnHistory() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)

@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Multi-choice "how you sell" knobs are bit masks: several add-ons can be on at once.
 final class KnobMultiTests: XCTestCase {
     func testSeveralAddOnsRunTogetherAndSwitchOffIndependently() throws {
         var e = try ChainsTests.engine()
@@ -20,7 +19,6 @@ final class KnobMultiTests: XCTestCase {
         XCTAssertEqual(e.toggleKnobOption(companyID: id, knob: k.id, option: 0, on: false), .done)
         co = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(Knobs.activeOptions(co, k).map { $0.id }, [k.options[2].id])
-        // switching on twice does not change anything
         e.toggleKnobOption(companyID: id, knob: k.id, option: 2, on: true)
         XCTAssertEqual(Knobs.activeOptions(try XCTUnwrap(e.state.company(id)), k).count, 1)
     }

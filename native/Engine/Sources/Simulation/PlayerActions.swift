@@ -7,18 +7,12 @@ import Businesses
 import Investments
 import Events
 
-/// Everything the player can do. Each action is one function here, so a button in the app is always one call, and
-/// every action can be tested without any screen. Original: the `ACT.*` handlers in the HTML game (the ones ported so far).
 public extension GameEngine {
     enum ActionResult: Equatable { case done, refused(String) }
 
-    // MARK: Companies
-
-    /// Create a company and set it up with standard choices. Returns its id.
     mutating func startCompany(tradeID: String, cityID: String, size: Double? = nil, name: String? = nil, countryCode: String? = nil,
                                accountantID: Int? = nil, fundWith amount: Double, quickSetup: Bool = true, allowRetired: Bool = false) -> Result<Int, CompanySetup.StartError> {
         var result: Result<Int, CompanySetup.StartError> = .failure(.notAllowedHere)
-        // Trades whose weekly model is not ported yet would sit inert, and retired trades are no longer offered; only a test or a tool passes `allowRetired`.
         guard let trade = data.catalog[tradeID],
               SpecialFamilies.isStartable(trade) || (allowRetired && SpecialFamilies.isRetired(trade) && CompanyWeek.isSupported(trade)) else { return .failure(.notYetAvailable) }
         update { s, data, ctx in
@@ -48,8 +42,6 @@ public extension GameEngine {
         }
     }
 
-    /// Whether the player works in this company. Stepping out sets the hours to 0 and keeps them there; stepping in starts at the least a working
-    /// owner gives and the weekly adjustment (`OwnerHours`) takes it from there.
     @discardableResult
     mutating func setWorksHere(companyID: Int, works: Bool) -> SettingResult {
         applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
@@ -68,9 +60,6 @@ public extension GameEngine {
     mutating func setMaintenance(companyID: Int, level: Int) { update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].maintenance = min(2, max(0, level)) } } }
     mutating func setStockPolicy(companyID: Int, level: Int) { update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].set("stockPol", min(2, max(0, level))) } } }
 
-    /// Switch one add-on of a multi-choice knob on or off. Several add-ons can run together: the knob is a bit mask,
-    /// so this sets or clears that option's bit and leaves the others alone. An add-on that needs a licence applies for it
-    /// (fee paid now); a chain standard or franchise agreement that fixes the knob refuses.
     @discardableResult
     mutating func toggleKnobOption(companyID: Int, knob: String, option: Int, on: Bool) -> ActionResult {
         var result = ActionResult.done
@@ -85,42 +74,31 @@ public extension GameEngine {
         return result
     }
 
-    /// What changing a single-choice knob to option `option` (or a multi-choice knob to the bit mask `option`) costs and commits you to.
     func knobChangeQuote(companyID: Int, knob: String, option: Int) -> KnobChangeQuote? {
         KnobChange.quote(state, data, companyID: companyID, knob: knob, value: option)
     }
 
-    /// The same for switching one add-on of a multi-choice knob on or off.
     func knobToggleQuote(companyID: Int, knob: String, option: Int, on: Bool) -> KnobChangeQuote? {
         guard let co = state.company(companyID), let k = data.catalog[co.type]?.knobs.first(where: { $0.id == knob }), k.isMulti else { return nil }
         return KnobChange.quote(state, data, companyID: companyID, knob: knob, value: Knobs.mask(KnobChange.currentValue(co, k), option: option, on: on))
     }
 
-    /// What one option of a knob (an add-on) costs to keep each month, in the company's currency: the weekly overhead the turn charges for
-    /// it times 52/12, at today's prices. An estimate. Nil when the company, knob or option does not exist; 0 when the option has no running cost.
     func knobOptionMonthlyCost(companyID: Int, knob: String, option: Int) -> Double? {
         guard let co = state.company(companyID), let k = data.catalog[co.type]?.knobs.first(where: { $0.id == knob }), k.options.indices.contains(option) else { return nil }
         return KnobChange.monthlyRunningCost(state, data, option: k.options[option])
     }
 
-    /// A read-only before/after estimate of that change (customers, capacity, price, sales, what is left after direct costs), as ranges
-    /// over the weeks ahead, worked out by the engine's own demand, price, capacity and cost functions. Nil where the trade has no
-    /// ordinary weekly sales model. `option` is an option index, or the bit mask of a multi-choice knob.
     func knobChangePreview(companyID: Int, knob: String, option: Int) -> KnobPreview? {
         KnobChange.preview(state, data, marketing: marketing, companyID: companyID, knob: knob, value: option)
     }
 
-    /// The same estimate for switching one add-on of a multi-choice knob on or off.
     func knobTogglePreview(companyID: Int, knob: String, option: Int, on: Bool) -> KnobPreview? {
         guard let co = state.company(companyID), let k = data.catalog[co.type]?.knobs.first(where: { $0.id == knob }), k.isMulti else { return nil }
         return knobChangePreview(companyID: companyID, knob: knob, option: Knobs.mask(KnobChange.currentValue(co, k), option: option, on: on))
     }
 
-    /// Who fixes this knob for the company (its chain's standard, its franchise agreement), or nil when the owner decides.
     func knobGovernedBy(companyID: Int, knob: String) -> String? { state.company(companyID).flatMap { KnobChange.governedBy(state, $0, knob: knob) } }
 
-    /// Change how the business sells (a single-choice knob): pays the changeover and any licences, then trades at reduced
-    /// capacity for a few weeks. Nothing is promised about the result.
     @discardableResult
     mutating func changeKnob(companyID: Int, knob: String, option: Int) -> KnobChangeOutcome {
         var out = KnobChangeOutcome.refused("not a choice of this business")
@@ -131,9 +109,6 @@ public extension GameEngine {
         return out
     }
 
-    /// Start, change or stop a marketing campaign. A campaign cannot be cut before its minimum length.
-    /// `weeks`: how long it runs from now (at least the channel's minimum); 0 = until you stop it; nil = a new campaign
-    /// runs until stopped and a running one keeps its end date. Original: `setMkt` + the planner's `plgo`.
     mutating func setCampaign(companyID: Int, channel: String, weeklyBudget: Double, weeks: Int? = nil) -> ActionResult {
         var result = ActionResult.done
         let channels = marketing.channels
@@ -170,8 +145,6 @@ public extension GameEngine {
         return result
     }
 
-    /// The channels this company can buy, as its country offers them (a country-media channel carries the country's own name).
-    /// The prime-time channel comes last; managers never pick it (they choose search or social ads only).
     func marketingChannels(companyID: Int) -> [MarketingChannel] {
         guard let co = state.company(companyID) else { return [] }
         let country = World(state: state, data: data).country(co)
@@ -180,7 +153,6 @@ public extension GameEngine {
             .sorted { $0.isPrimeTime != $1.isPrimeTime ? !$0.isPrimeTime : $0.name < $1.name }
     }
 
-    /// What starting this campaign commits you to; shown before the player confirms. Nil for an unknown company or channel.
     func campaignPlan(companyID: Int, channel: String, weeklyBudget: Double, weeks: Int?) -> CampaignPlan? {
         guard let co = state.company(companyID), let c = marketing.channels[channel] else { return nil }
         let cur = co.value("mkt")[channel]
@@ -192,20 +164,16 @@ public extension GameEngine {
                             blocked: FranchiseStandards.campaignRefusal(co, channel: channel))
     }
 
-    // MARK: People
-
     mutating func searchWorkers(companyID: Int, role: String, mode: Hiring.SearchMode) -> [Person] {
         var out: [Person] = []
         update { s, data, _ in
             guard let co = s.company(companyID) else { return }
-            let fee = Hiring.searchFee(mode)   // 0 today: searches are free
+            let fee = Hiring.searchFee(mode)
             if fee > 0 { Payments.companyPays(&s, companyID: companyID, amount: fee, category: "oth", label: "Search for staff") }
             out = Hiring.search(role: role, company: co, mode: mode, state: &s, data: data)
         }
         return out
     }
-
-    // MARK: Money
 
     mutating func takeLoan(kind: String, amount: Double, termMonths: Int, companyID: Int?) -> Banking.LoanOfferResult {
         var out = Banking.LoanOfferResult.declined
@@ -241,14 +209,12 @@ public extension GameEngine {
         return ok
     }
 
-    /// Pays the owner a salary through the company's payroll (the only way to take money out besides dividends). Completes ladder M6.
     @discardableResult
     mutating func payYourself(companyID: Int, monthly: Double) -> Bool {
         guard state.company(companyID) != nil else { return false }
         return !setOwnerSalary(companyID: companyID, monthly: monthly).isRefused
     }
 
-    /// True once ladder milestone M8 has unlocked the classic start (the app mirrors it into `ledger.classicStartUnlocked`).
     var classicStartUnlocked: Bool { PlayerGoals.ladderFlag(state, "classic") }
 
     mutating func payDividend(companyID: Int, amount: Double) -> Payments.DividendResult {
@@ -258,8 +224,6 @@ public extension GameEngine {
         return r
     }
 
-    /// Most monthly owner pay a company can carry: a sixth of its own equity (assets less debts, so borrowed cash adds nothing) plus its average
-    /// monthly profit over the last three months before owner pay. Stops a loan being drawn out as salary and the company then walking away from it.
     func ownerSalaryRoom(companyID: Int) -> Double {
         guard let co = state.company(companyID) else { return 0 }
         let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: state.loans)
@@ -282,9 +246,6 @@ public extension GameEngine {
         }
     }
 
-    // MARK: Investing
-
-    /// Buying shares in listed companies is not offered; shares already held can still be sold. Crypto and funds trade as before.
     mutating func buyInvestment(_ kind: Brokerage.Kind, symbol: String, amount: Double) -> Brokerage.BuyResult {
         if kind == .stock { return .delisted }
         var r = Brokerage.BuyResult.notEnoughCash
@@ -294,7 +255,7 @@ public extension GameEngine {
     mutating func sellInvestment(_ kind: Brokerage.Kind, symbol: String, fraction: Double) {
         update { s, _, ctx in
             Brokerage.sell(&s, kind, symbol, fraction: fraction, currency: ctx.homeCurrency(s))
-            PersonalFinance.withholdNow(&s, context: ctx)   // the tax on the gain is paid at the sale
+            PersonalFinance.withholdNow(&s, context: ctx)
         }
     }
     mutating func openDeposit(amount: Double, weeks: Int) -> Bool {
@@ -309,18 +270,13 @@ public extension Banking {
     enum LoanOfferResult: Equatable { case ok, declined, tooSmall }
 }
 
-// MARK: Reading for screens, and setup
-
 public extension GameEngine {
     func openingChecklist(companyID: Int) -> [OpeningChecklist.Item] {
         guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return [] }
         return OpeningChecklist.items(co, bd, World(state: state, data: data))
     }
 
-    /// Fill in whatever is missing with standard choices (documents, premises, equipment). Returns what was bought.
     @discardableResult
-    /// The "fill in what is missing" button: the same set-up, but only as far as the company's cash carries (required equipment and the core team);
-    /// what it left out comes back with its cost.
     mutating func quickSetupWithinBudget(companyID: Int) -> CompanySetup.SetupReport {
         var rep = CompanySetup.SetupReport()
         guard tutorialComplete else { return rep }
@@ -345,15 +301,12 @@ public extension GameEngine {
         state.company(companyID).map { Payments.maximumDividend($0, state: state, context: context) } ?? 0
     }
 
-    /// Roles this company can hire for, from its trade's standard staff.
     func hireableRoles(companyID: Int) -> [String] {
         guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return [] }
         var roles = bd.standardStaff.map { $0.role }
-        // A market analyst can be added to any company with a market share to measure (not part of the standard staff).
         if MarketMap.market(of: co, state, data: data) != nil, !roles.contains("mktan") { roles.append("mktan") }
         return roles
     }
 
-    /// The trade definition behind a company.
     func tradeInfo(companyID: Int) -> Trade? { state.company(companyID).flatMap { data.catalog[$0.type] } }
 }

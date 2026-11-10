@@ -6,8 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The extra trophies (acquisitions, gifts, luxury, review counts, franchise units) are reached when their system is used,
-/// are kept in the same record, and the books still balance.
 final class TrophiesMoreTests: XCTestCase {
     func testAcquisitionGiftAndLuxuryTrophies() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242)

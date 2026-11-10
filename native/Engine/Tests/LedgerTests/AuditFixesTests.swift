@@ -7,7 +7,6 @@ import Finance
 @testable import Events
 @testable import Simulation
 
-/// Fixes from the connectivity and calculations audits (first steps, trophies, payroll on-cost, VAT penalty, held week money, inbox actions).
 final class AuditFixesTests: XCTestCase {
     private func cafe(seed: Int = 11) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -21,8 +20,6 @@ final class AuditFixesTests: XCTestCase {
         e.update { s, d, _ in let p = Hiring.generateCandidate(role: "barista", company: s.company(id), tier: "mid", state: &s, data: d); pid = p.id; ask = p.askingMonthlyWage }
         XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: wage ?? ask * 1.2, terms: Hiring.Terms()), .ok)
     }
-
-    // MARK: Ladder facts and trophies
 
     func testLadderFactsCanAllCompleteInOrder() throws {
         var (e, id) = try cafe()
@@ -45,7 +42,7 @@ final class AuditFixesTests: XCTestCase {
             s.addMessage(kind: "decision", from: "Test", title: "Decide", body: "", companyID: id, tone: "n", status: "open", options: [.option("A", ""), .option("B", "")], expiresWeek: s.week + 3)
         }
         let mid = e.state.inbox.first { $0.title == "Decide" }!.id
-        e.update { s, _, _ in  // an ignored decision that expired does not count
+        e.update { s, _, _ in
             let k = s.inbox.firstIndex { $0.id == mid }!; s.inbox[k].set("status", "done"); s.inbox[k].set("pick", -1); s.inbox[k].set("auto", 1)
         }
         XCTAssertFalse(done("inbox"), "an expired decision is not an answered one")
@@ -65,8 +62,6 @@ final class AuditFixesTests: XCTestCase {
         XCTAssertEqual(Trophies.all.filter { $0.group == "market" }.count, 9)
     }
 
-    // MARK: Employer on-cost
-
     func testOneEmployerOnCostForPayrollAndQuotes() throws {
         let book = try CountryBook.bundled()
         for code in ["UK", "US", "DE", "PL", "NO"] {
@@ -83,7 +78,6 @@ final class AuditFixesTests: XCTestCase {
         let med = mx.medianMonthlyWage
         XCTAssertEqual(mx.payrollFactor(monthlyWage: med), mx.employerCostFactor, accuracy: 1e-9)
         XCTAssertLessThan(mx.payrollFactor(monthlyWage: med * 10), mx.employerCostFactor - 0.05, "capped contributions cost less on a high wage")
-        // and the books use it
         var e = try GameEngine.newGame(countryCode: "MX", playerName: "T", seed: 5)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 200_000_000) else { return XCTFail("start") }
@@ -110,25 +104,20 @@ final class AuditFixesTests: XCTestCase {
         }
     }
 
-    // MARK: VAT penalty
-
     func testVatPenaltyIsChargedOnceOnTheNewUnpaidAmount() throws {
         var (e, id) = try cafe()
         e.update { s, d, c in
             let i = s.companyIndex(id)!
             let freq = max(1, c.country(of: s.companies[i], s).vatFilingMonths == 0 ? 2 : c.country(of: s.companies[i], s).vatFilingMonths)
             while GameCalendar.monthIndex(week: s.week) % freq != freq - 1 { s.week += 1 }
-            Ledger.set(&s, .company(id), to: -1e9)   // no room to pay anything
+            Ledger.set(&s, .company(id), to: -1e9)
             s.companies[i].vatBalance = 125_000
-            s.companies[i].set("vatOver", 105_000)   // earlier arrears, penalty and interest included
+            s.companies[i].set("vatOver", 105_000)
             MonthEnd.closeMonth(&s, companyIndex: i, data: d, context: c)
             XCTAssertEqual(s.companies[i].vatBalance, 126_000, accuracy: 1, "5% of the 20,000 new unpaid VAT, not of the whole 125,000")
         }
     }
 
-    // MARK: Week money held back
-
-    /// Play until the company has money from its latest seven-day step still held back (the company trades, so its weekly change is not zero).
     private func playToHeldMoney(_ e: inout GameEngine, _ id: Int) {
         hireOne(&e, id)
         for _ in 0..<(7 * 30) {
@@ -157,11 +146,9 @@ final class AuditFixesTests: XCTestCase {
         var (e, id) = try cafe()
         playToHeldMoney(&e, id)
         XCTAssertNotEqual(HeldMoney.remaining(e.state, companyID: id), 0)
-        e.update { s, _, _ in s.companies[s.companyIndex(id)!].status = .sold }   // gone without settling
+        e.update { s, _, _ in s.companies[s.companyIndex(id)!].status = .sold }
         XCTAssertFalse(Ledger.gaps(e.state).isEmpty)
     }
-
-    // MARK: Inbox and subscriptions
 
     func testUnknownInboxActionIsNotMarkedAnswered() throws {
         var (e, id) = try cafe()

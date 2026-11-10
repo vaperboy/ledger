@@ -4,9 +4,6 @@ import Businesses
 import Simulation
 import Countries
 
-/// The News phone app, drawn as a newspaper front page: masthead with the date and the weather line, one big lead story with its
-/// standfirst, a two-column grid of smaller stories under section labels, and the older items as a plain list. Every story is a real
-/// engine news item (`e.news`) or front page (`e.frontPages`); nothing is invented. Tap the masthead line to read how the paper sees you.
 struct NewsView: View {
     private var P: OutsidePalette { .news }
     @EnvironmentObject var store: GameStore
@@ -38,8 +35,6 @@ struct NewsView: View {
             .navigationDestination(isPresented: $showPaper) { paperPage(e) }
         }
     }
-
-    // MARK: Masthead
 
     private func masthead(_ e: GameEngine) -> some View {
         let f = e.weatherForecast(countryCode: e.state.homeCountryCode)
@@ -75,8 +70,6 @@ struct NewsView: View {
         .padding(.bottom, 14)
     }
 
-    // MARK: Sections
-
     enum NewsSection: String, CaseIterable, Identifiable {
         case world = "World and economy", players = "Players", government = "Government"
         var id: String { rawValue }
@@ -108,8 +101,6 @@ struct NewsView: View {
         Text(text).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 12)
     }
 
-    // MARK: Front page
-
     private struct Lead {
         var headline: String
         var standfirst: String
@@ -138,7 +129,6 @@ struct NewsView: View {
         }
     }
 
-    /// The lead is the newest printed front page; with none yet, the first news item (bad news first) leads without a standfirst.
     private func lead(_ e: GameEngine, thisWeek: [NewsItem], older: [NewsItem]) -> Lead? {
         if let p = e.frontPages.first {
             let side: [String] = p.side.map { e.displayText($0) }
@@ -170,8 +160,6 @@ struct NewsView: View {
         }
         .padding(.bottom, 16)
     }
-
-    // MARK: Two-column grid
 
     private func sectionLabel(_ title: String) -> some View {
         HStack(spacing: 10) {
@@ -230,8 +218,6 @@ struct NewsView: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: Earlier
-
     private func earlierList(_ items: [NewsItem]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             sectionLabel("Earlier")
@@ -250,8 +236,6 @@ struct NewsView: View {
             }
         }
     }
-
-    // MARK: The paper (how it sees you, the printed front pages)
 
     private func paperPage(_ e: GameEngine) -> some View {
         ScrollView {

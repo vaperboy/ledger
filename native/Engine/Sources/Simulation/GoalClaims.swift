@@ -4,10 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// Claiming goal rewards. A finished goal (ladder, career or daily) waits as "completed, unclaimed" until the player claims it:
-/// only then do its effects apply and its cash is paid. The cash is one `Ledger.move` with its own statement line, so the books balance.
-/// State: `rest["ldr"]["done"][id]["u"]` and `rest["car"]["done"][id]["u"]` are 1 while unclaimed (saves without the key count as claimed);
-/// `rest["dy59"]["cl"]` is the date key of the daily goal whose reward was claimed.
 public enum GoalClaims {
     public enum Kind: String, Sendable { case ladder, career, daily }
 
@@ -15,16 +11,13 @@ public enum GoalClaims {
         public var kind: Kind
         public var goalID: String
         public var title: String
-        /// The reward in words.
         public var reward: String
-        /// Cash paid on claiming, in the player's currency.
         public var cash: Double
         public var id: String { kind.rawValue + ":" + goalID }
     }
 
     public enum Result: Equatable, Sendable {
         case claimed(title: String, reward: String, cash: Double)
-        /// Not finished, already claimed or unknown.
         case notReady
     }
 
@@ -38,7 +31,6 @@ public enum GoalClaims {
 
     public static func rewardLabel(_ title: String) -> String { "Goal reward: " + title }
 
-    /// Every reward waiting to be claimed: ladder first, then career, then today's daily goal.
     public static func claimable(_ s: GameState, data: GameData, currency cur: Currency, today: String) -> [Claimable] {
         var out: [Claimable] = []
         for g in PlayerGoals.ladder(s) ?? [] where g.unclaimed {
@@ -59,7 +51,6 @@ public enum GoalClaims {
         return PlayerGoals.dailyDefs.first { $0.id == d["k"].string } ?? PlayerGoals.dailyDefs.first { $0.id == "grow" }
     }
 
-    /// Claims one goal: applies its effect, pays its cash through the ledger and clears the unclaimed mark.
     @discardableResult
     public static func claim(_ s: inout GameState, kind: Kind, id: String, data: GameData, currency cur: Currency, today: String) -> Result {
         switch kind {
@@ -112,12 +103,10 @@ public enum GoalClaims {
 }
 
 public extension GameEngine {
-    /// Goal rewards waiting to be claimed.
     func claimableGoals(now: Date = Date()) -> [GoalClaims.Claimable] {
         GoalClaims.claimable(state, data: data, currency: homeCurrency, today: Self.dayString(now))
     }
 
-    /// Claims one finished goal (`claimGoal(kind: .ladder, id: "M3")`). Pays through the ledger; `.notReady` when there is nothing to claim.
     @discardableResult
     mutating func claimGoal(kind: GoalClaims.Kind, id: String, now: Date = Date()) -> GoalClaims.Result {
         var r: GoalClaims.Result = .notReady

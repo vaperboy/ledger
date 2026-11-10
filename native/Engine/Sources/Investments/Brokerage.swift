@@ -3,14 +3,10 @@ import GameCore
 import Countries
 import Finance
 
-/// Buying and selling investments and fixed deposits. Original: `buyAsset`, `sellAsset`, `saveMove`,
-/// `openDeposit`, `investWeek` (engine/world/investing.js).
 public enum Brokerage {
     public enum Kind: String, Sendable { case stock, crypto, fund }
     public enum BuyResult: Equatable, Sendable { case ok, tooSmall, notEnoughCash, delisted }
 
-    /// The broker's fee: 0.1 % with a minimum, and the smallest purchase. Both minimums are in the reference economy's prices; a currency
-    /// scales them to the country's price level (`Currency.scaledPrice`). Without one (`nil`) they stay 29 and 100.
     public static func brokerFee(_ v: Double, currency: Currency? = nil) -> Double { max(currency?.scaledPrice(29) ?? 29, v * 0.001) }
     public static func minimumPurchase(_ currency: Currency?) -> Double { currency?.scaledPrice(100) ?? 100 }
 
@@ -36,8 +32,7 @@ public enum Brokerage {
         var bag = inv[bagKey(kind)]
         var pos = bag[sym].isNull ? JSONValue.object(["q": 0, "cost": 0]) : bag[sym]
         pos["q"] = .number(pos["q"].double + amt / px)
-        pos["cost"] = .number(pos["cost"].double + amt + fee)   // the buy fee is part of the cost base, so a round trip is not taxed as a gain
-        // Units bought this week have not lived through the week's price move (portfolio day and week results).
+        pos["cost"] = .number(pos["cost"].double + amt + fee)
         let lb = pos["buy"]
         pos["buy"] = .object(["w": .number(Double(s.week)), "q": .number((!lb.isNull && lb["w"].int == s.week ? lb["q"].double : 0) + amt / px)])
         bag[sym] = pos
@@ -46,7 +41,6 @@ public enum Brokerage {
         return .ok
     }
 
-    /// Sell a share (0...1) of a holding; returns the sale value. The gain goes to the tax year; the caller pays its tax at the sale (`PersonalFinance.withholdNow`).
     @discardableResult
     public static func sell(_ s: inout GameState, _ kind: Kind, _ sym: String, fraction frac: Double, currency: Currency? = nil) -> Double {
         var inv = s.rest["inv"] ?? .object([:])
@@ -74,7 +68,6 @@ public enum Brokerage {
         return p.isNull ? 0 : p["q"].double * price(s, kind, sym)
     }
 
-    /// A fixed deposit pays more the longer it is locked. Original: `openDeposit`.
     public static func openDeposit(_ s: inout GameState, amount: Double, weeks requested: Int) -> Bool {
         let weeks = min(max(1, requested), 52)
         if s.cash < amount { return false }
@@ -88,7 +81,6 @@ public enum Brokerage {
         return true
     }
 
-    /// Dividends each quarter, deposits maturing. Original: `investWeek`.
     public static func weekly(_ s: inout GameState) {
         var inv = s.rest["inv"] ?? .object([:])
         if s.week % 13 == 0 {
@@ -114,7 +106,6 @@ public enum Brokerage {
         s.rest["inv"] = inv
     }
 
-    /// Sell everything to cover debts, fixed deposits first, until `cash >= need`. Original: `liquidateInvestments`.
     public static func liquidate(_ s: inout GameState, need: Double, currency: Currency? = nil) {
         if s.cash >= need { return }
         var inv = s.rest["inv"] ?? .object([:])

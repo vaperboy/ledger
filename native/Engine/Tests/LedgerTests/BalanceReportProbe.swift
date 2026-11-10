@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Multi-year balance driver. Skipped unless LEDGER_REPORT=1.
-/// LEDGER_TRADES=a,b  LEDGER_SEEDS=11,12,13  LEDGER_YEARS=5  LEDGER_OUT=/path/file.csv (one line per run is appended).
 final class BalanceReportProbe: XCTestCase {
     static let mw: Set<MarketEvent.Kind> = [.supplierPriceChange, .competitorLaunch, .priceResponse, .newCountry, .acquisitionOpportunity, .competitorLostShare]
     static let defaultTrades = ["carclean", "barber", "restaurant", "hotel", "factory", "carrental", "tutor", "bakery", "courier", "cons", "webdev", "grocery", "airline", "gym"]
@@ -61,7 +59,6 @@ final class BalanceReportProbe: XCTestCase {
                     e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
                     invested += top
                 }
-                // hiring spend: new transactions since yesterday
                 let tx = co.transactions
                 var k = tx.count
                 for c in 0...tx.count { if Array(tx[c...]) == Array(prevTx.prefix(tx.count - c)) { k = c; break } }

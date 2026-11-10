@@ -6,7 +6,6 @@ import Countries
 import Finance
 import Simulation
 
-/// One co-owner buy-back, one big meeting; sale proceeds of a company inside a holding go to the holding; the car-dealer plant discount stays in one country.
 final class OwnershipRoutingTests: XCTestCase {
     private func setup() throws -> (GameEngine, cafe: Int, hold: Int) {
         var e = try ChainsTests.engine("UK")
@@ -86,12 +85,10 @@ final class OwnershipRoutingTests: XCTestCase {
                 s.companies[di].set("lastW", .object(["rev": 100_000, "cogs": 80_000]))
             }
         }
-        // another country: the plant earns nothing
         prep(plantCountry: "NO")
         var p0 = try XCTUnwrap(e.state.company(plant)).cash
         e.update { s, d, _ in Chains.reachWeek(&s, data: d) }
         XCTAssertEqual(try XCTUnwrap(e.state.company(plant)).cash, p0, accuracy: 0.5)
-        // same country: the plant earns what the dealer saves (6% of the dealer's sales)
         let home = try XCTUnwrap(e.state.company(dealer)).countryCode
         prep(plantCountry: home)
         p0 = try XCTUnwrap(e.state.company(plant)).cash

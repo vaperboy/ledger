@@ -4,15 +4,11 @@ import Countries
 import Businesses
 import Simulation
 
-/// Customer complaints, placed at the end of Operations: a mailbag (a quote and three ways to answer, each with what it costs).
-/// Giving up premises and changing the accountant moved to
-/// Workplace and Insurance and advisers.
 struct CompanyOtherSections: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
 
-    /// One open complaint, wrapped so a list of them is Identifiable.
     private struct Complaint: Identifiable {
         var id: Int
         var who: String
@@ -25,8 +21,6 @@ struct CompanyOtherSections: View {
             complaints
         }
     }
-
-    // MARK: Complaints, a mailbag
 
     private var complaintItems: [Complaint] {
         engine.openComplaints(companyID: company.id).map { Complaint(id: $0["id"].int, who: $0["who"].string, text: $0["t"].string, raw: $0) }
@@ -95,8 +89,6 @@ struct CompanyOtherSections: View {
     }
 }
 
-/// Places in a chain that are short of a role, with a sister store that has one to spare: each a small transfer card,
-/// the store that needs a worker on one side and the one with a spare on the other.
 struct ChainStaffShortages: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

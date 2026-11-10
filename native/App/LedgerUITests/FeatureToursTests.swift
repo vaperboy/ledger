@@ -1,11 +1,6 @@
 import XCTest
 
-/// Feature tours (manual CI job `ui-tours`, see .github/workflows/native-ios.yml). One class so one summary covers every tour; the tours
-/// are separate test methods (each relaunches the app on the prepared `-showcase -showcase-rich -showcase-board` game) so one crash or one
-/// long screen cannot take the others down. Methods run in name order; testT99 prints the summary. See FeatureToursKit for the step rules.
 final class FeatureToursTests: FeatureTourCase {
-
-    // MARK: T01 tabs and Home
 
     func testT01_TabsAndHome() {
         let tabs: [String] = tabIDs()
@@ -21,7 +16,6 @@ final class FeatureToursTests: FeatureTourCase {
             }
             step("tab \(title): health") { health("tab \(title)", title: false) }
         }
-        // Home: one scroll with net worth, Needs you, the companies, rank and the shortcuts.
         _ = goTab("Home")
         step("home: Next day is in view without scrolling") { primaryInView("next-day") }
         step("home: the companies list shows at most 6 rows or a 'Show all'") {
@@ -74,8 +68,6 @@ final class FeatureToursTests: FeatureTourCase {
         }
     }
 
-    // MARK: T02 and T03 Phone apps
-
     private func tourApp(_ title: String) {
         var opened = false
         step("phone app \(title): opens") {
@@ -95,7 +87,6 @@ final class FeatureToursTests: FeatureTourCase {
         step("phone app \(title): Back returns to the grid") {
             guard opened else { return .skip("not opened") }
             if lastOpenWhy == "pick" {
-                // At the root of the Pick tab there is no grid to go back to: re-selecting the tab must keep the app at its root.
                 guard let t = find({ $0.id == "tab-\(title)" && $0.type == .button }) else { return .fail("the Pick tab does not carry the app's name") }
                 touch(t)
                 return find(wait: 2, { $0.id == "tab-\(title)" && $0.selected }) != nil ? .pass("Pick tab root") : .fail("re-selecting the Pick tab left the app")
@@ -113,16 +104,12 @@ final class FeatureToursTests: FeatureTourCase {
         for t in ["Market", "Reviews", "Achievements", "Settings", "AirStay", "TechPro Store", "Atlas Insurance", "Marketplace"] { tourApp(t) }
     }
 
-    // MARK: T04 Group: entity pages, Boardroom, Ownership
-
-    /// The Group entity to work on: the café (it has the co-owner of the board game), else the first one.
     private func groupEntity() -> String {
         guard goGroup("Structure") else { return "" }
         if let h = find(wait: 4, { $0.id.hasPrefix("group-entity-co") && $0.type == .button && $0.label.range(of: "Caf", options: [.caseInsensitive, .diacriticInsensitive]) != nil }) { return h.id }
         return ids(prefix: "group-entity-co", wait: 1).first ?? ids(prefix: "group-entity-", wait: 1).first ?? ""
     }
 
-    /// Taps a tab of the entity page's tab strip; the strip scrolls sideways, so it is dragged until the tab is on screen.
     private func tapGroupTab(_ name: String) -> Bool {
         let id: String = "group-tab-\(name)"
         for i in 0..<5 {
@@ -184,7 +171,6 @@ final class FeatureToursTests: FeatureTourCase {
         step("boardroom: the review settles a direction and a budget and ends with a result") {
             guard openEntityTab(entity, "Boardroom"), tapPrefix("boardroom-review-", wait: 4) else { return .skip("nobody to review with") }
             guard popupUp(3) else { return .fail("the review did not open") }
-            // Pick a direction and a budget, then settle; the settle button stays off when both picks are already in force.
             tapID("boardroom-choice-dir:lean", wait: 2)
             tapID("boardroom-choice-bud:2", wait: 2)
             let settled: Bool = tapID("boardroom-review-settle", wait: 2)
@@ -196,8 +182,6 @@ final class FeatureToursTests: FeatureTourCase {
             return raw.isEmpty ? .pass(settled ? "settled" : "nothing to change") : .fail(raw.joined(separator: "; "))
         }
     }
-
-    // MARK: T07 Group > Ownership: parts and the sell route picker
 
     func testT07_Ownership() {
         let entity: String = groupEntity()
@@ -233,8 +217,6 @@ final class FeatureToursTests: FeatureTourCase {
         }
     }
 
-    // MARK: T06 Ventures tab
-
     func testT06_Ventures() {
         step("ventures tab: opens") { goTab("Ventures") ? .pass(signature().text) : .fail("no Ventures tab") }
         for part in ["Projects", "Portfolio", "Bids", "Done"] {
@@ -249,8 +231,6 @@ final class FeatureToursTests: FeatureTourCase {
             return has("ventures-start", wait: 3) ? .pass() : .fail("no Start a venture section: \(signature().text)")
         }
     }
-
-    // MARK: T05 swipe back from pushed screens
 
     func testT05_SwipeBack() {
         step("swipe back: company page returns to Home") {
@@ -287,8 +267,6 @@ final class FeatureToursTests: FeatureTourCase {
             return isSelected("company-tab-team") ? .pass() : .fail("an edge swipe did not return to Team (\(signature().text))")
         }
     }
-
-    // MARK: T99 summary
 
     func testT99_Summary() {
         let block: String = log.finish()

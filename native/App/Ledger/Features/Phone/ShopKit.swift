@@ -4,10 +4,6 @@ import GameCore
 import UIKit
 #endif
 
-/// The one shop kit of the outside shopping apps (AirStay, TechPro Store, Atlas Insurance, Marketplace): top bar, page, hero, sections,
-/// product card, choice rows, facts, checkout pieces and the success page. Each app keeps its own palette (`OutsidePalette.airStay`,
-/// `.techPro`, `.atlas`, `.marketplace`); every piece reads its colours from `\.outsidePalette` and its type, spacing and buttons from the
-/// design system. Content sits on the page: no boxes, hierarchy by type and space.
 extension Glyph {
     static let airStay = "M3 11 L12 4 L21 11 M5.5 9.5 V20 H18.5 V9.5 M9.5 20 V14 H14.5 V20"
     static let techPro = "M5 8 H19 L18 21 H6 Z M9 8 V6.5 A3 3 0 0 1 15 6.5 V8 M9.5 13 H14.5"
@@ -20,15 +16,10 @@ extension Glyph {
     static let pin = "M12 21 C7 15 5 12 5 9 A7 7 0 0 1 19 9 C19 12 17 15 12 21 M12 7 A2 2 0 1 0 12 11 A2 2 0 1 0 12 7"
 }
 
-/// The widest a shop page gets (content centred on a larger screen).
 enum ShopMetrics {
     static let maxWidth: CGFloat = 480
 }
 
-// MARK: Chrome
-
-/// The app's top bar: back, the brand mark and name, a trailing control. On the page colour like a real app's navigation bar; the brand
-/// colour is only in the mark. `color` tints the mark.
 struct ShopBand<Trailing: View>: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -77,7 +68,6 @@ extension ShopBand where Trailing == EmptyView {
     }
 }
 
-/// The in-app tabs under the bar (Store, Products, My items ...): the one segment control, with a marker on a tab holding something new.
 struct ShopTabs<T: Hashable>: View {
     @Environment(\.outsidePalette) private var P
     var items: [T]
@@ -94,7 +84,6 @@ struct ShopTabs<T: Hashable>: View {
     }
 }
 
-/// A scrolling page at phone width.
 struct ShopScroll<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
@@ -110,7 +99,6 @@ struct ShopScroll<Content: View>: View {
     }
 }
 
-/// A shop page: the scroll, the page margins and one rhythm between its sections (28 pt).
 struct ShopPage<Content: View>: View {
     var spacing: CGFloat = 28
     @ViewBuilder var content: () -> Content
@@ -123,10 +111,6 @@ struct ShopPage<Content: View>: View {
     }
 }
 
-// MARK: Headings and sections
-
-/// The opening of a screen: a small label, the one figure or state that matters (large serif), one line of context, and an optional
-/// control under it (the screen's action).
 struct ShopHero<Action: View>: View {
     @Environment(\.outsidePalette) private var P
     var label: String = ""
@@ -161,7 +145,6 @@ extension ShopHero where Action == EmptyView {
     }
 }
 
-/// A page title with an optional line under it (Checkout, Payment details, Choose company).
 struct ShopPageTitle: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -179,7 +162,6 @@ struct ShopPageTitle: View {
     }
 }
 
-/// The title above a block ("Deals this week", "Delivery"): the caps section label in faint ink, with a count or note on the right.
 struct ShopHeading: View {
     @Environment(\.outsidePalette) private var P
     var text: String
@@ -193,7 +175,6 @@ struct ShopHeading: View {
     }
 }
 
-/// A block of a shop page: heading, an optional one-line note, the content. No box: spacing and type carry it.
 struct ShopSection<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     var title: String = ""
@@ -213,7 +194,6 @@ struct ShopSection<Content: View>: View {
     }
 }
 
-/// A short titled paragraph with an optional text action under it ("Or buy it", "Space in your own building").
 struct ShopNote: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -237,7 +217,6 @@ struct ShopNote: View {
     }
 }
 
-/// A visible "nothing here" state with an optional way out, for every shop list that can be empty (never a blank page).
 struct ShopEmptyNote: View {
     @Environment(\.outsidePalette) private var P
     var text: String
@@ -259,16 +238,12 @@ struct ShopEmptyNote: View {
     }
 }
 
-// MARK: Pictures and product cards
-
-/// A photo from the asset catalogue (the premises and vehicle pictures), or a quiet tile with the icon while it is missing.
 struct ShopPhoto: View {
     @Environment(\.outsidePalette) private var P
     var name: String
     var glyph: String
     var height: CGFloat = 150
     var cornerRadius: CGFloat = Theme.Radius.large
-    /// A cell key of the items sheet (`ArtLibrary.itemKey`); wins over `name` when the cell exists.
     var item: String = ""
 
     var body: some View {
@@ -303,7 +278,6 @@ struct ShopPhoto: View {
     }
 }
 
-/// A small square picture for a list row (48 pt, rounded).
 struct ShopThumb: View {
     var photo: String = ""
     var glyph: String
@@ -316,8 +290,6 @@ struct ShopThumb: View {
     }
 }
 
-/// The one product card of the shops: the picture on its own, then the name, grey lines, the price (with a unit and a discount) and a
-/// status note straight on the page. Grids use it at a small picture height, listings at a tall one. The caller wraps it in a button.
 struct ShopProductCard: View {
     @Environment(\.outsidePalette) private var P
     var photo: String = ""
@@ -365,7 +337,6 @@ struct ShopProductCard: View {
     }
 }
 
-/// Two product cards to a line.
 struct ShopGrid<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
@@ -375,16 +346,12 @@ struct ShopGrid<Content: View>: View {
     }
 }
 
-// MARK: Controls
-
-/// The one filled button of an app, in the app's own colour: the primary button at full width.
 struct ShopFilledButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         PrimaryButtonStyle(fullWidth: true).makeBody(configuration: configuration)
     }
 }
 
-/// A chip of a row of choices (a department, a filter). The chosen one is filled in ink, like a real store's filter pills.
 struct ShopChip: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -414,7 +381,6 @@ struct ShopChip: View {
     }
 }
 
-/// A sideways row of chips (filters): a carousel, the one place a shop scrolls sideways.
 struct ShopChipRow<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
@@ -426,7 +392,6 @@ struct ShopChipRow<Content: View>: View {
     }
 }
 
-/// A sort or filter menu shown as a small icon and the current choice ("Needed first").
 struct ShopMenuLabel: View {
     @Environment(\.outsidePalette) private var P
     var text: String
@@ -442,7 +407,6 @@ struct ShopMenuLabel: View {
     }
 }
 
-/// "…": the secondary actions of a row or a screen, in a menu.
 struct ShopMoreMenu<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     var label = "More actions"
@@ -464,7 +428,6 @@ struct ShopMoreMenu<Content: View>: View {
     }
 }
 
-/// The search field of a shop: a magnifier, the words, a clear button while there are words. A soft capsule.
 struct ShopSearchField: View {
     @Environment(\.outsidePalette) private var P
     var prompt: String
@@ -497,8 +460,6 @@ struct ShopSearchField: View {
     }
 }
 
-/// A row of a list the player chooses one from: a selection mark, a title, a grey line and a trailing text. Flat; the chosen row takes
-/// the app's wash.
 struct ShopChoiceRow: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -538,7 +499,6 @@ struct ShopChoiceRow: View {
     }
 }
 
-/// Who the app is working for (shopping for, insured company): a caps caption and the company's name, a menu when there is a choice.
 struct ShopCompanyMenu: View {
     @Environment(\.outsidePalette) private var P
     struct Choice: Identifiable { var id: Int; var name: String; var detail: String }
@@ -582,9 +542,6 @@ struct ShopCompanyMenu: View {
     }
 }
 
-// MARK: Facts and checkout
-
-/// A label and a value on one line (a fact, a price line, a total). `strong` is the total: it gets a figure.
 struct ShopFact: View {
     @Environment(\.outsidePalette) private var P
     var label: String
@@ -608,7 +565,6 @@ struct ShopFact: View {
     }
 }
 
-/// Facts one under the other with hairlines between, unboxed; a strong fact (the total) sits under a hairline of its own.
 struct ShopFacts: View {
     var facts: [(label: String, value: String)]
     var total: (label: String, value: String)? = nil
@@ -628,7 +584,6 @@ struct ShopFacts: View {
     }
 }
 
-/// "Receipt goes to": which company's accounting records file the receipt. Only asked when there is more than one company.
 struct ShopReceiptPicker: View {
     var companies: [Company]
     @Binding var selection: Int
@@ -647,7 +602,6 @@ struct ShopReceiptPicker: View {
     }
 }
 
-/// A price over its unit, for the left of an action bar ("2,400 / per month").
 struct ShopPriceTag: View {
     var value: String
     var caption: String
@@ -661,7 +615,6 @@ struct ShopPriceTag: View {
     }
 }
 
-/// The end of a flow (Rent confirmed, Order placed, Insurance active): a tick, the title large, one line, the facts and two buttons.
 struct ShopSuccess<Extra: View>: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -707,7 +660,6 @@ extension ShopSuccess where Extra == EmptyView {
     }
 }
 
-/// The strip pinned under a page with a figure on the left and the page's one action on the right.
 struct ShopActionBar<Left: View, Action: View>: View {
     @Environment(\.outsidePalette) private var P
     @ViewBuilder var left: () -> Left
@@ -727,7 +679,6 @@ struct ShopActionBar<Left: View, Action: View>: View {
     }
 }
 
-/// The page's one action pinned at the bottom at full width, with an optional line above it.
 struct ShopBottomAction<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @ViewBuilder var content: () -> Content
@@ -742,7 +693,6 @@ struct ShopBottomAction<Content: View>: View {
     }
 }
 
-/// A small round count on the cart.
 struct ShopCount: View {
     @Environment(\.outsidePalette) private var P
     var count: Int

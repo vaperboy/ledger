@@ -1,14 +1,6 @@
 import Foundation
 import GameCore
 
-/// One country's rules, derived from its data file (`Resources/countries.json`).
-///
-/// All money amounts here are in the game's **accounting unit** (an internal unit the player never sees and that is not any
-/// country's currency). A country's own currency is worth `fx` accounting units per 1 local unit. To show a player a local amount, divide by the country's
-/// current exchange rate (see `ExchangeRates`).
-///
-/// To change a country's economy, edit `countries.json`; no code needs to change.
-/// One employer contribution component: a share of pay up to `capUnits` times the contribution unit (0 = no cap).
 public struct EmployerContribution: Equatable, Sendable {
     public var name: String
     public var rate: Double
@@ -19,33 +11,24 @@ public struct Country: Equatable, Sendable, Identifiable {
     public struct City: Equatable, Sendable, Identifiable {
         public var id: String
         public var name: String
-        public var population: Double   // thousands
-        public var rent: Double          // rent level, 1 = national average
-        public var wage: Double          // wage level
-        public var demand: Double        // customer demand level
-        public var price: Double         // price level
-        /// Metropolitan population, thousands (`population` is the city proper). Informational; people in the commuter belt shop here too.
+        public var population: Double
+        public var rent: Double
+        public var wage: Double
+        public var demand: Double
+        public var price: Double
         public var metro: Double = 0
-        /// Median household income against the country's median (1 = the national median). Data field `inc`; else derived from the wage level.
         public var affluence: Double = 1
-        /// Gini coefficient of household incomes in this city (`CityMarket.swift`).
         public var inequality: Double = 0.33
-        /// How many visitors the city draws against the country's tourism share (1 = as the country; hubs and resorts more, industrial towns less).
         public var touristIndex: Double = 1
-        /// Added by the real-life city data (`city_market.json`), not one of the original game's cities.
         public var isExtra: Bool = false
     }
 
-    /// The original game's cities, in order. Things that were generated from the city list (league clubs, group names, average demand)
-    /// keep using these, so adding real-life places does not reshuffle them.
     public var coreCities: [City] { cities.filter { !$0.isExtra } }
 
     public struct IncomeTax: Equatable, Sendable {
         public var flat: Double
         public var allowance: Double
-        /// [share, maximum] standard deduction for employees, if the country has one
         public var wageDeduction: (share: Double, maximum: Double)?
-        /// (from income, marginal rate), ascending
         public var brackets: [(from: Double, rate: Double)]
         public var socialFloor: Double
         public var socialCapShare: Double
@@ -76,14 +59,10 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var region: String
     public var currencyCode: String
     public var currencySymbol: String
-    /// Accounting units per one unit of local currency (before monthly drift)
     public var fx: Double
     public var populationMillions: Double
-    /// Gini coefficient of household disposable income (data field `gini`, set in `city_market.json`; 0.33 when missing).
     public var gini: Double
-    /// Price level versus the reference economy
     public var priceLevel: Double
-    /// Real spending power (customers' purchasing strength)
     public var marketStrength: Double
     public var startingPolicyRate: Double
     public var bureaucracy: Double
@@ -95,23 +74,16 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var specialTax: [String: Double]
     public var dividendTax: Double
     public var dividendShield: Double
-    /// Private investors' tax on realised gains (`tax.capitalGains`; the dividend rate when the data has none).
     public var capitalGainsTax: Double
-    /// Tax on savings and deposit interest (`tax.savingsInterest`; the dividend rate when the data has none).
     public var savingsInterestTax: Double
-    /// Loss carry-forward limits (`tax.loss`): losses offset up to `free` of profit plus `share` of profit above it (share 1 and free 0 = no cap);
-    /// a loss expires after `years` years (0 = never).
     public var lossFree: Double
     public var lossShare: Double
     public var lossYears: Int
     public var employerSocial: Double
     public var employerPension: Double
     public var employerInjury: Double
-    /// Employer contribution table (components with a rate and a cap in UMA-style units), e.g. Mexico's IMSS branches; empty where the flat rates above are used.
     public var employerContributions: [EmployerContribution] = []
-    /// The UMA-style unit behind the caps, per month in accounting units (0 where there are no capped components).
     public var contributionUnitMonthly: Double = 0
-    /// A state/regional payroll tax paid by the employer on gross pay (share of payroll), included in `employerSocial` when a table is used.
     public var statePayrollTax: Double = 0
     public var employeeSocial: Double
     public var selfEmployedSocial: Double
@@ -119,7 +91,6 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var wealthRate: Double
     public var wealthThreshold: Double
     public var wealthCompanyShare: Double
-    /// How well local people can afford things, relative to the reference country (1 = same). Original: `bp20`.
     public var buyingPower: Double
     public var inheritanceFree: Double
     public var inheritanceRate: Double
@@ -128,32 +99,24 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var vat: VAT
     public var vatThreshold: Double
     public var vatFilingMonths: Int
-    /// US-style sales tax: charged to consumers only
     public var usesSalesTax: Bool
     public var shareCapitalMinimum: Double
     public var registrationFee: Double
     public var companyForms: [String: String]
-    /// Added to the policy rate to get the overdraft rate (`economy.overdraftMargin`).
     public var overdraftMargin: Double
-    /// Fuel price, mileage rate, motor insurance, road tax and company-car benefit, where the data has sourced figures (empty otherwise).
     public var vehicleRules: VehicleRules = .none
     public var firstNames: [String]
     public var lastNames: [String]
     public var companyNameStarts: [String]
     public var cities: [City]
-    /// The original data file, kept whole for features that read extra fields (authorities, documents, tourism ...)
     public var pack: JSONValue
 
     public var id: String { code }
 
-    /// Employer's total payroll multiplier: wages cost this much more than the gross pay. Original: `OC()`.
     public var employerCostFactor: Double { 1 + employerSocial + employerPension + employerInjury }
 
-    /// What one unit of pay at this wage costs the employer: `1 + employerOnCost`.
     public func payrollFactor(monthlyWage: Double) -> Double { 1 + employerOnCost(monthlyWage: monthlyWage) }
 
-    /// The employer's contribution rate for one wage (accounting units a month): the table components each on the pay up to their cap,
-    /// plus the state payroll tax and the flat pension/injury rates. Without a table it is the flat `employerSocial`.
     public func employerSocialRate(monthlyWage: Double) -> Double {
         guard !employerContributions.isEmpty, monthlyWage > 0 else { return employerSocial }
         let unit = contributionUnitMonthly
@@ -164,33 +127,24 @@ public struct Country: Equatable, Sendable, Identifiable {
         return charged / monthlyWage + statePayrollTax
     }
 
-    /// The employer's full on-cost rate for one wage: contributions (`employerSocialRate`) plus pension and injury. The one rate behind payroll
-    /// (`employerCostFactor` is 1 + this at the median wage), notice paid in lieu, contract talks and vehicle running costs.
     public func employerOnCost(monthlyWage: Double) -> Double { employerSocialRate(monthlyWage: monthlyWage) + employerPension + employerInjury }
 
-    /// Median monthly gross wage in accounting units: the reference economy's median times this country's wage level.
-    /// Every money limit that is really "a number of months of an ordinary wage" (loan floors, income assumptions) derives from this.
     public var medianMonthlyWage: Double { ReferenceEconomy.medianWage * wageLevel }
 
-    /// Cost level used to scale fixed prices from the reference economy. Original: `costIdx`.
     public var costIndex: Double { 0.5 + 0.5 * priceLevel }
 
     public func city(_ id: String) -> City? { cities.first { $0.id == id } }
 }
 
-/// The price level the trades' prices, wages and rents are written at, and that every country is measured against. These are
-/// tuning constants of the game, not a country: each country's own numbers come only from its data file. Original: `REF_ECONOMY`.
 public enum ReferenceEconomy {
     public static let medianWage = 56000.0
     public static let priceIndex = 137.0
     public static let officeRent = 2500.0
     public static let spendPerPerson = 330000.0
-    /// The baseline in the round-20 economy table: cost 110, wage 97, buying power 90.
     public static let round20Reference = (costIndex: 110.0, wageIndex: 97.0, buyingPowerIndex: 90.0)
 }
 
 extension Country {
-    /// Build a country from its data-file entry. Original: `defineCountry(p)`.
     public init(pack p: JSONValue) {
         let fx = p["fx"].double
         func B(_ v: Double) -> Double { v * fx }
@@ -267,10 +221,8 @@ extension Country {
         companyNameStarts = p["names"]["companyStart"].array.map { $0.string }
         self.pack = p
 
-        // Cities. Original: MKCITY. Demand grows with the log of the city's population.
         let rentL = rentLevel, wageL = wageLevel, mkt = marketStrength, pl = priceLevel
         let derivedCities: [City] = p["cities"].array.map { x in
-            // A city written out in full (id, name, pop, rent, wage, dem, price) or in the compact form that derives the rest.
             if !x["id"].isNull {
                 return City(id: x["id"].string, name: x["name"].string, population: x["pop"].double,
                             rent: x["rent"].double, wage: x["wage"].double, demand: x["dem"].double, price: x["price"].double)
@@ -284,11 +236,8 @@ extension Country {
             )
         }
 
-        // "Round 20" economy table (original: features/world/country_economics.js). Real-world cost, wage and
-        // buying-power indices (USD-based) replace the first-draft price, wage and demand levels. Applied once.
         let ei = p["economyIndex"]
         if p["citiesFinal"].bool {
-            // The cities are written out in full in the data; only the country-level levels are derived.
             cities = derivedCities
             if ei.isNull { buyingPower = 1 } else {
                 let ref = ReferenceEconomy.round20Reference
@@ -318,12 +267,10 @@ extension Country {
             buyingPower = ei["buyingPowerIndex"].double / ref.buyingPowerIndex
         }
 
-        // Place data (metro size, income level and spread, tourist draw), after the country's final wage level is known.
         var entries: [String: JSONValue] = [:]
         for x in p["cities"].array { entries[x["id"].isNull ? x[0].string : x["id"].string] = x }
         let finalWageLevel = wageLevel
         cities = cities.map { City.withPlaceData($0, entry: entries[$0.id] ?? .null, countryGini: giniValue, wageLevel: finalWageLevel) }
-        // With a contribution table the flat social rate is that table evaluated at the median wage (so flat estimates stay consistent).
         if !employerContributions.isEmpty { employerSocial = employerSocialRate(monthlyWage: B(eco["medianWage"].double)) }
     }
 }

@@ -4,10 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// Boards, the management team, chain and group executives, the main office, meetings, the academy, owners and the big meeting, as player actions.
-/// Models: `ManagerTeam`, `ManagerBoards`, `ManagerMeetings`, `ManagerPromotions`, `ManagerProposals`, `ChainHierarchy`, `Headquarters`, `Academy`.
 public extension GameEngine {
-    // MARK: Management team of a company (managing director, department heads, regional manager)
 
     func teamSlots(companyID: Int) -> [ManagerModel.TeamSlot] { ManagerModel.teamSlots(state, companyID: companyID, data: data) }
     mutating func searchTeam(companyID: Int, key: String) -> [Person]? {
@@ -20,15 +17,11 @@ public extension GameEngine {
     mutating func releaseTeam(companyID: Int, key: String, regionalID: Int? = nil) -> Bool {
         var r = false; update { s, d, _ in r = ManagerModel.releaseTeam(&s, companyID: companyID, key: key, regionalID: regionalID, data: d) }; return r
     }
-    /// The budget of the company's managing director.
     @discardableResult
     mutating func setTeamBudget(companyID: Int, budget: Budget) -> SettingResult {
         applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in ManagerModel.setTeamBudget(&s, companyID: companyID, budget: budget) }
     }
-    /// Who decides above the manager, lowest first.
     func decisionChain(companyID: Int) -> [ManagerModel.Boss] { state.company(companyID).map { ManagerModel.decisionChain(state, $0, data: data) } ?? [] }
-
-    // MARK: Chain and group executives
 
     mutating func searchExecutive(_ level: ManagerModel.ExecLevel) -> [Person]? {
         var r: [Person]?; update { s, d, _ in r = ManagerModel.searchExecutive(&s, level: level, data: d) }; return r
@@ -40,28 +33,21 @@ public extension GameEngine {
     mutating func releaseExecutive(_ level: ManagerModel.ExecLevel, chainID: Int? = nil, regionalID: Int? = nil) -> Bool {
         var r = false; update { s, d, _ in r = ManagerModel.releaseExecutive(&s, level: level, chainID: chainID, regionalID: regionalID, data: d) }; return r
     }
-    /// The budget of a chain or group executive.
     @discardableResult
     mutating func setExecutiveBudget(_ level: ManagerModel.ExecLevel, chainID: Int? = nil, regionalID: Int? = nil, budget: Budget) -> SettingResult {
         applySetting(probe: { s in .array([.object(s.rest), Chains.chain(s, id: chainID ?? -1) ?? .null]) }) { s, _, _ in
             ManagerModel.setExecutiveBudget(&s, level: level, chainID: chainID, regionalID: regionalID, budget: budget)
         }
     }
-    /// Deals above this amount always come to you.
     @discardableResult
     mutating func setGroupLimit(_ amount: Double) -> SettingResult {
         applySetting(probe: { .object($0.rest) }) { s, _, _ in ManagerModel.setGroupLimit(&s, amount: amount) }
     }
     var regionalManagers: [JSONValue] { ManagerModel.regionals(state) }
     var groupManagingDirector: JSONValue { state.rest["org56"]?["md"] ?? .null }
-    /// The owner has set up a group office (`rentOffice`); group-level posts exist only from then on.
     var groupOfficeEstablished: Bool { Headquarters.established(state) }
-    /// Who employs the group office's people: a holding with spare cash, else the office the owner set up.
     var groupOfficeEmployer: String { Headquarters.employerName(state, data) }
-    /// What the group office costs a month now (0 before it is set up).
     var groupOfficeMonthlyCost: Double { Headquarters.monthlyCost(state, data) }
-
-    // MARK: Boards
 
     var boardKeys: [String] { ManagerModel.boardKeys(state) }
     func boardKey(companyID: Int) -> String? { state.company(companyID).map { ManagerModel.boardKey(state, $0) } }
@@ -70,16 +56,11 @@ public extension GameEngine {
     func boardSeats(key: String) -> [ManagerModel.Seat] { ManagerModel.seats(state, key: key) }
     func boardVoters(key: String) -> [ManagerModel.Voter] { ManagerModel.voters(state, key: key) }
     func boardMeetings(key: String) -> [ManagerModel.BoardMeeting] { ManagerModel.meetings(state, key: key) }
-    /// The one list of what the board puts to you: sell, close, dividend, replace the CEO, put in capital, open or close a location. Each item carries
-    /// the recommendation of whoever knows the company; the ones they recommend come first.
     func boardDecisionList() -> [ManagerModel.BoardDecision] { ManagerModel.boardDecisions(state, data: data) }
-    /// The decision list of one board.
     func boardDecisionList(key: String) -> [ManagerModel.BoardDecision] { ManagerModel.boardDecisions(state, key: key, data: data) }
-    /// Approve (the shares vote, then it is carried out) or decline an item of the decision list by its `id`.
     @discardableResult
     mutating func decideBoardItem(id: String, approve: Bool) -> ManagerModel.BoardDecisionResult {
         guard let d = boardDecisionList().first(where: { $0.id == id }) else { return .gone }
-        // Winding a company up is an engine action of its own; the board only puts it to the vote around it.
         if d.kind == "close" && approve {
             if let pct = ManagerModel.boardGate(state, kind: "close", companyID: d.companyID) {
                 update { s, _, _ in ManagerModel.settleDecision(&s, d, approved: false) }
@@ -94,21 +75,15 @@ public extension GameEngine {
         update { s, dt, c in r = ManagerModel.decideBoardItem(&s, id: id, approve: approve, data: dt, context: c) }
         return r
     }
-    /// Points waiting for you on one board (decision list plus unanswered emergencies); the number on the badges.
     func boardOpenDecisions(key: String) -> Int { ManagerModel.openDecisionCount(state, key: key, data: data) }
-    /// Points waiting for you across every board.
     var boardDecisionsWaiting: Int { boardKeys.reduce(0) { $0 + boardOpenDecisions(key: $1) } }
     func boardFollowUps(key: String) -> [ManagerModel.FollowUp] { ManagerModel.followUps(state, key: key) }
     @discardableResult
     mutating func completeBoardFollowUp(key: String, id: Int) -> Bool { var ok = false; update { s, _, _ in ok = ManagerModel.completeFollowUp(&s, key: key, id: id) }; return ok }
-    /// Answer an emergency meeting from its page; "hire" comes back when you now need to pick a manager.
     @discardableResult
     mutating func pickEmergency(key: String, meetingID: Int, option: Int) -> String? { var r: String?; update { s, d, _ in r = ManagerModel.pickEmergency(&s, key: key, meetingID: meetingID, option: option, data: d) }; return r }
-    /// What the board and owners say to selling ("sell"), closing ("close") or a big loan ("loan").
     func boardVote(kind: String, companyID: Int, amount: Double = 0) -> ManagerModel.BoardVote { ManagerModel.boardVote(state, kind: kind, companyID: companyID, amount: amount) }
     mutating func recordPushedThrough(companyID: Int) { update { s, _, _ in ManagerModel.recordPushedThrough(&s, companyID: companyID) } }
-
-    // MARK: Your right hand and the main office
 
     var rightHand: Headquarters.RightHand? { Headquarters.rightHand(state) }
     @discardableResult
@@ -133,7 +108,6 @@ public extension GameEngine {
     mutating func hireOffice(role: String, personID: Int, monthlyWage: Double) -> Headquarters.HireResult {
         var r = Headquarters.HireResult.refuse; update { s, d, _ in r = Headquarters.hire(&s, role: role, personID: personID, monthlyWage: monthlyWage, data: d) }; return r
     }
-    /// True when that person worked in the group office and has been let go.
     @discardableResult
     mutating func fireOffice(personID: Int) -> Bool { var ok = false; update { s, _, _ in ok = Headquarters.fire(&s, personID: personID) }; return ok }
     @discardableResult
@@ -144,9 +118,6 @@ public extension GameEngine {
     @discardableResult
     mutating func requestAnalystReport(companyID: Int?) -> [ManagerModel.AnalystLine]? { var r: [ManagerModel.AnalystLine]?; update { s, d, _ in r = ManagerModel.analystReport(&s, companyID: companyID, data: d) }; return r }
 
-    // MARK: Meetings with managers
-
-    /// The manager brings proposals to the table as messages. Returns how many.
     @discardableResult
     mutating func meetForProposals(companyID: Int) -> Int? { var r: Int?; update { s, d, _ in r = ManagerModel.meetForProposals(&s, companyID: companyID, data: d) }; return r }
     var managersDueMeeting: [Company] { ManagerModel.managersDueMeeting(state) }
@@ -154,10 +125,7 @@ public extension GameEngine {
     mutating func setManagerDuty(companyID: Int, duty: String, manager: Bool) { update { s, _, _ in ManagerModel.setManagerDuty(&s, companyID: companyID, duty: duty, manager: manager) } }
     func personReport(companyID: Int, personID: Int) -> ManagerModel.PersonReport? { ManagerModel.personReport(state, companyID: companyID, personID: personID, data: data) }
 
-    // MARK: Chains: money between stores, requests
-
     func groupLoanBalance(companyID: Int) -> Double { ManagerModel.groupLoanBalance(state, companyID: companyID) }
-    /// Move money from a sister store as a group loan (what a boss does for a store that is short).
     @discardableResult
     mutating func lendFromSister(companyID: Int, amount: Double) -> Bool {
         var ok = false
@@ -165,11 +133,8 @@ public extension GameEngine {
         return ok
     }
 
-    // MARK: Academy
-
     func courses(companyID: Int) -> [Academy.Course] { state.company(companyID).map { Academy.courses(forTrade: $0.type) } ?? [] }
     func courseCost(_ c: Academy.Course, companyID: Int) -> Double { state.company(companyID).map { Academy.cost(c, company: $0, data: data, state: state) } ?? 0 }
-    /// `staffID` 0 sends the owner.
     mutating func sendOnCourse(companyID: Int, staffID: Int, courseID: String) -> Academy.Outcome {
         var r = Academy.Outcome.unavailable; update { s, d, _ in r = Academy.send(&s, companyID: companyID, staffID: staffID, course: courseID, data: d) }; return r
     }

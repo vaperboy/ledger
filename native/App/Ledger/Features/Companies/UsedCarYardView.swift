@@ -4,7 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Which vehicle photo a used car gets, by its class: the photos in the asset catalogue (`AppPhotos`). A class without a photo shows the vehicle icon.
 enum UsedCarPhotos {
     static func name(family: String, title: String) -> String {
         let direct: String = TechPhotos.vehicle(model: family)
@@ -18,7 +17,6 @@ enum UsedCarPhotos {
     }
 }
 
-/// The round vehicle photo of a used car (same slot as the portrait of a person in the Team list), the vehicle icon while the photo is missing.
 struct UsedCarPhoto: View {
     var family: String
     var title: String
@@ -48,19 +46,16 @@ struct UsedCarPhoto: View {
     }
 }
 
-/// An amount for the yard: short for a big figure, to the cent for a small one, so a real figure never reads as zero.
 func usedCarMoney(_ v: Double, _ cur: Currency) -> String {
     let a: Double = abs(v)
     return a / cur.rate >= 100 ? cur.tidyShort(a) : itemAmount(a, cur)
 }
 
-/// "Profit 1.2k" in green or "Loss 800" in red from a quote; "Break-even" in grey only when it really is nothing.
 func usedCarProfitReading(_ q: UsedCarQuote, _ cur: Currency) -> (text: String, tint: Color) {
     if abs(q.profit) / cur.rate < 0.005 { return ("Break-even", Theme.ivoryMuted) }
     return (q.verdict + " " + usedCarMoney(q.profit, cur), q.isProfit ? Theme.gain : Theme.loss)
 }
 
-/// The grey status of a car: In repair, Quoted, Ready (a car that arrived this week has not been looked at yet).
 func usedCarStatusText(_ c: UsedCarStockItem) -> String {
     switch c.status {
     case "repair": return c.repairWeeksLeft > 0 ? "In repair, back in \(c.repairWeeksLeft) \(c.repairWeeksLeft == 1 ? "week" : "weeks")" : "In repair"
@@ -70,8 +65,6 @@ func usedCarStatusText(_ c: UsedCarStockItem) -> String {
     }
 }
 
-/// One car of the yard in the Team list row layout (`PersonCard`): photo, name, grey status (and a reserved chip), price and profit or loss at the right.
-/// A car at the garage is greyed out; customers can still reserve it.
 struct UsedCarRowView: View {
     var car: UsedCarStockItem
     var cur: Currency
@@ -111,11 +104,8 @@ struct UsedCarRowView: View {
     }
 }
 
-/// A tapped car, for the page.
 struct UsedCarPick: Identifiable, Hashable { var id: Int }
 
-/// The yard of a used car dealer, in place of the generic "Your products" list: the cars in the Team list layout (caption CARS, count and stock value
-/// at the right), the lot, the buyers with their track record, the repair setting and the last sales. A car opens its page (`UsedCarPageView`).
 struct UsedCarYardSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -136,8 +126,6 @@ struct UsedCarYardSection: View {
         .navigationDestination(item: $openCar) { (p: UsedCarPick) in UsedCarPageView(companyID: company.id, carID: p.id) }
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "buyer") }
     }
-
-    // MARK: Cars
 
     private func carsGroup(_ cars: [UsedCarStockItem], _ cur: Currency) -> some View {
         let value: Double = cars.reduce(0) { (a: Double, c: UsedCarStockItem) -> Double in a + c.purchasePrice + c.repairs }
@@ -167,8 +155,6 @@ struct UsedCarYardSection: View {
             .accessibilityIdentifier("dealer-car-\(id)")
     }
 
-    // MARK: Lot
-
     private func lotBlock(_ cur: Currency) -> some View {
         let lot: UsedCarLot? = engine.usedCarLot(companyID: company.id)
         let spaces: Int = lot?.spaces ?? 0
@@ -183,8 +169,6 @@ struct UsedCarYardSection: View {
             }
         }
     }
-
-    // MARK: Buyers
 
     private func buyersBlock() -> some View {
         let recs: [UsedCarBuyerRecord] = engine.usedCarBuyers(companyID: company.id)
@@ -220,8 +204,6 @@ struct UsedCarYardSection: View {
         return "\(r.deals) \(r.deals == 1 ? "deal" : "deals"), \(pct) percent \(how) fair value on average"
     }
 
-    // MARK: Repairs
-
     private func repairBlock() -> some View {
         let on: Bool = engine.usedCarAutoRepair(companyID: company.id)
         let binding: Binding<Bool> = Binding<Bool>(get: { on }, set: { (v: Bool) in
@@ -236,8 +218,6 @@ struct UsedCarYardSection: View {
             }
         }
     }
-
-    // MARK: Sales
 
     @ViewBuilder private func salesBlock(_ cur: Currency) -> some View {
         let sold: [UsedCarSale] = Array(engine.usedCarSales(companyID: company.id).suffix(6).reversed())

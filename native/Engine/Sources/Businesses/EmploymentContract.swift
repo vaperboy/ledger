@@ -4,53 +4,37 @@ import Countries
 import Employees
 import Finance
 
-/// The employment contract of one team member as ONE read: the type (full time, part time, seasonal, temporary, hourly, fixed monthly salary), the
-/// working percentage, real start and end dates, the notice the country's labour data sets, the renewal question and the history of every change.
-/// Nothing is stored twice: the percentage is the contracted hours over the full week (`StaffMember.weeklyHours`), the end of a temporary or seasonal
-/// contract is the existing `ft` week (`FixedTerm`), the season is `seas`. Old records (a part-timer on 20 hours, a seasonal worker on 25) read as the
-/// equivalent percentage and lose nothing.
 public enum EmploymentContract {
     public struct Summary: Equatable, Sendable {
         public var personID: Int
-        /// "Full time", "Part time", "Seasonal", "Temporary": every label that applies, in this order.
         public var typeLabels: [String]
-        /// The labels as one line, e.g. "Seasonal, part time".
         public var typeLabel: String
-        /// "hour" (paid by the hour), "fix" (a fixed monthly salary), with the commission plan, if any, in `payPlan`.
         public var payBasis: String
         public var payBasisLabel: String
         public var payPlan: String?
-        /// The share of a full week, as a percentage 0-100 (a person on 20 hours of a 37.5 hour week works 53.3).
         public var workingPercent: Double
         public var contractedHoursPerWeek: Double
         public var expectedHoursPerMonth: Double
         public var startWeek: Int
         public var startDate: GameCalendar.Date
-        /// The end of a temporary or seasonal contract; nil for a permanent one.
         public var endWeek: Int?
         public var endDate: GameCalendar.Date?
         public var isPermanent: Bool
-        /// Seasonal: the months (1-12), whether the person is on season now, and the next start and end of the season.
         public var seasonMonths: [Int]
         public var seasonText: String
         public var onSeason: Bool
         public var nextSeasonStartWeek: Int?
         public var nextSeasonEndWeek: Int?
-        /// Notice the employee works if they resign, and what the labour data requires of the employer for a dismissal without cause and for the end of a term.
         public var resignationNoticeWeeks: Int
         public var employerNoticeWeeks: Double
         public var termEndNoticeWeeks: Double
-        /// The week the owner is asked whether to renew (a few weeks before the end), nil for a permanent contract.
         public var renewalQuestionWeek: Int?
         public var renewals: Int
-        /// The most hours a week this person can work (one in four candidates studies), nil when nothing limits it.
         public var hoursLimit: Double?
         public var history: [ContractHistory.Entry]
     }
 
-    /// Contracted hours a week (a full-timer works the full week).
     public static func hours(_ m: StaffMember) -> Double { m.weeklyHours ?? StaffModel.fullWeekHours }
-    /// Working percentage, 0-100.
     public static func percent(_ m: StaffMember) -> Double { (hours(m) / StaffModel.fullWeekHours * 100 * 100).rounded() / 100 }
 
     public static func isSeasonal(_ m: StaffMember) -> Bool { !m.value("seas").isNull }
@@ -99,11 +83,9 @@ public enum EmploymentContract {
     }
 }
 
-/// Every change to a contract with its date, kept on the staff record (`chist`, the last 40 entries).
 public enum ContractHistory {
     public struct Entry: Equatable, Sendable, Identifiable {
         public var week: Int
-        /// "hired", "hours", "pay", "basis", "term", "season", "benefit", "role", "promise", "notice", "move".
         public var kind: String
         public var text: String
         public var id: String { "\(week):\(kind):\(text.stableHash)" }
@@ -124,7 +106,6 @@ public enum ContractHistory {
         m.set(key, .array(l))
     }
 
-    /// Write one entry on the person's record.
     public static func record(_ s: inout GameState, companyID: Int, staffID: Int, kind: String, text: String) {
         guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == staffID }) else { return }
         var st = s.companies[ci].staff
@@ -132,7 +113,6 @@ public enum ContractHistory {
         s.companies[ci].staff = st
     }
 
-    /// The terms of a job as they stand, to compare before and after a change.
     struct Snapshot: Equatable {
         var wage: Double, hours: Double, basis: String, plan: String, end: Int?, seasons: [Int], bonus: String, ownCar: Bool, expenses: Int
     }
@@ -142,7 +122,6 @@ public enum ContractHistory {
                  seasons: m.value("seas").array.map { $0.int }.sorted(), bonus: m.str("bp"), ownCar: m.flag("ownCar"), expenses: StaffExpenses.on(m).count)
     }
 
-    /// What changed between two snapshots, in words (money in the company's currency).
     static func describe(_ a: Snapshot, _ b: Snapshot, currency cur: Currency) -> [(kind: String, text: String)] {
         var out: [(String, String)] = []
         if abs(a.hours - b.hours) > 0.01 {
@@ -162,7 +141,6 @@ public enum ContractHistory {
 
     static func fmt(_ x: Double) -> String { String(format: "%g", (x * 10).rounded() / 10) }
 
-    /// Record what a change did, given the state before it. Called from the doors that change a contract.
     static func recordChange(_ s: inout GameState, companyID: Int, staffID: Int, before: Snapshot?, extra: String? = nil, data: GameData) {
         guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == staffID }) else { return }
         let cur = World(state: s, data: data).currency(s.companies[ci])
@@ -178,15 +156,10 @@ public enum ContractHistory {
 }
 
 extension String {
-    /// A stable small hash for ids (Swift's `hashValue` differs between runs).
     var stableHash: Int { unicodeScalars.reduce(7) { ($0 &* 31 &+ Int($1.value)) & 0x7fffffff } }
 }
 
-// MARK: Seasons with real dates
-
 extension StaffTalks {
-    /// The first week that is outside the season after `occurrences` seasons have run, counting a season already under way as the first.
-    /// `months` are 1-12. nil if the months are empty or cover the whole year.
     static func seasonEnd(months: [Int], fromWeek: Int, occurrences: Int) -> Int? {
         let set = Set(months)
         guard !set.isEmpty, set.count < 12, occurrences > 0 else { return nil }
@@ -201,7 +174,6 @@ extension StaffTalks {
         return nil
     }
 
-    /// The week the next season begins (the first week in a season month after one outside it); nil for all-year months.
     static func nextSeasonStart(months: [Int], from: Int) -> Int? {
         let set = Set(months)
         guard !set.isEmpty, set.count < 12 else { return nil }
@@ -213,7 +185,6 @@ extension StaffTalks {
         return nil
     }
 
-    /// Bring a seasonal worker back for one more season: the contract runs to the end of the next season (or of the one now running when none follows).
     @discardableResult
     static func renewSeason(_ s: inout GameState, companyID: Int, staffID: Int) -> Bool {
         guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == staffID }), FixedTerm.isFixed(s.companies[ci].staff[k]) else { return false }
@@ -227,8 +198,6 @@ extension StaffTalks {
         return true
     }
 
-    /// Set the working percentage (10-100) of a worker: the hours a week follow, and so do pay for people paid by the hour, employer cost, expected
-    /// hours, capacity and productivity. Nothing is clipped silently: a limit on the person's hours (`Hiring.maxHoursPerWeek`) answers `.student`.
     @discardableResult
     public static func setWorkingPercentage(_ s: inout GameState, companyID: Int, staffID: Int, percent: Double) -> OfferResult {
         guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == staffID }) else { return .unknown }
@@ -237,7 +206,6 @@ extension StaffTalks {
         if hours > s.companies[ci].staff[k].num("maxH", 999) + 1e-9 { return .student }
         var st = s.companies[ci].staff
         if percent >= 100 - 1e-9 {
-            // full time: the pay of an hourly worker returns to a full week
             if payFollowsHours(st[k]), let h = st[k].weeklyHours { st[k].monthlyWage = st[k].monthlyWage * StaffModel.fullWeekHours / h }
             for key in ["hrs", "pt"] { st[k].raw.removeValue(forKey: key) }
         } else {

@@ -2,8 +2,6 @@ import SwiftUI
 import Businesses
 import Simulation
 
-/// A card on Home, offered once after the first profitable month: pick what you want to build, or leave it for later. It never holds up
-/// play. The choice can be changed freely for four weeks (Phone > Goals); "Not now" keeps the ambition open there.
 struct AmbitionCard: View {
     @EnvironmentObject var store: GameStore
     var compact: Bool = false

@@ -4,10 +4,6 @@ import UIKit
 import GoogleMobileAds
 import UserMessagingPlatform
 
-// Compiled only when the two Swift packages are added (see the commented block in project.yml): Google Mobile Ads 11.x and the
-// User Messaging Platform 2.x. Until then `PlaceholderAdProvider` is used and the app has no ad dependency.
-// Not compiled by the author (no Mac): check the symbols against the pinned SDK versions on the first CI build with the packages.
-
 @MainActor
 final class AdMobProvider: NSObject, AdProvider, GADFullScreenContentDelegate {
     var isAvailable: Bool { true }
@@ -62,7 +58,7 @@ final class AdMobProvider: NSObject, AdProvider, GADFullScreenContentDelegate {
     }
 
     func showRewarded() async -> Bool {
-        guard finish == nil else { return false }   // one full-screen ad at a time: a second call would leak the first continuation
+        guard finish == nil else { return false }
         if rewarded == nil { await load() }
         guard finish == nil, let ad = rewarded, let vc = top else { return false }
         rewarded = nil

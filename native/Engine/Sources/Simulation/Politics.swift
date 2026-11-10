@@ -1,14 +1,8 @@
 import Foundation
 import GameCore
 
-// The presidency. A cycle has a nomination period and a voting period of seven weeks each and fills a twelve-week term. Standing costs a very
-// high, non-refundable fee that goes to the treasury. A candidate may state up to three promises, each checked against what the office can
-// really do. One account, one vote (linked accounts share it); the ballot is kept apart from the voter and the count is shown only after
-// voting closes. The result, the promises and every change the president makes wait for an administrator.
-
 public struct GovCitizen: Equatable, Sendable {
     public var account: String
-    /// Accounts of one owner share a key and so share one vote.
     public var linkKey: String
     public var country: String
     public var name: String
@@ -27,7 +21,6 @@ public struct GovCitizen: Equatable, Sendable {
 public struct CampaignPromise: Codable, Equatable, Sendable {
     public enum Kind: String, Codable, Sendable { case transferTax, gainsTax, priceSupport }
     public var kind: Kind
-    /// The rate promised (transfer or gains tax) or the share of sales (price support).
     public var value: Double
     public var tradeID: String?
     public var kept = false
@@ -53,10 +46,8 @@ public struct Election: Codable, Equatable, Identifiable, Sendable {
     public var nominateUntil: Int
     public var votingUntil: Int
     public var candidates: [ElectionCandidate] = []
-    /// Who has voted and the keys already used: no choice is stored here.
     public var voted: Set<String> = []
     public var usedKeys: Set<String> = []
-    /// What was cast, as counts only: nothing ties a ballot to a person or a time.
     public var ballots: [String: Int] = [:]
     public var winner: String?
     public var confirmed = false
@@ -70,7 +61,6 @@ public enum Politics {
     public static let candidateMinAgeWeeks = 8
     public static let maxPromises = 3
     public static let manifestoLimit = 300
-    /// Reference price of standing for president (scaled to the country's price level by the caller). Very high on purpose.
     public static let candidacyFeeReference = 500_000.0
 
     public static func mayVote(_ c: GovCitizen, country: String) -> Bool {
@@ -80,8 +70,6 @@ public enum Politics {
         c.country == country && !c.simulated && c.ageWeeks >= candidateMinAgeWeeks && !c.barredFromOffice
     }
 
-    /// Why a promise cannot be kept within one term (nil when it is realistic). A rate may move one point at a time and not more often
-    /// than every seven weeks, so a twelve-week term allows two steps.
     public static func realismProblem(_ p: CampaignPromise, policy: GovPolicy, treasury: Double, rules: WorldRules = WorldRules.defaults) -> String? {
         let reach = rules.taxStep * Double((Government.termWeeks - 1) / rules.taxGapWeeks + 1)
         func pct(_ x: Double) -> Int { Int((x * 100).rounded()) }
@@ -106,9 +94,6 @@ public enum Politics {
 extension Government {
     public var electionRunning: Bool { election.map { $0.status != .closed } ?? false }
 
-    // MARK: Standing
-
-    /// Everything that must hold before a fee is taken. The caller checks this, takes the fee, then calls `stand`.
     public func validateStand(_ c: GovCitizen, promises: [CampaignPromise], week: Int) throws {
         guard let e = election, e.status == .nomination, week < e.nominateUntil else { throw GovError.notOpen }
         guard Politics.mayStand(c, country: country) else { throw GovError.notEligible("You cannot stand: you must live here, be at least 8 weeks old, and not be barred.") }
@@ -122,7 +107,6 @@ extension Government {
         for p in promises { if let why = Politics.realismProblem(p, policy: policy, treasury: treasury.balance, rules: rules) { throw GovError.unrealistic(why) } }
     }
 
-    /// Enters the candidate. The fee has been taken from them and is credited to the treasury here; it is never given back.
     public mutating func stand(_ c: GovCitizen, manifesto: String, promises: [CampaignPromise], fee: Double, week: Int) throws {
         try validateStand(c, promises: promises, week: week)
         guard var e = election else { throw GovError.notOpen }
@@ -138,7 +122,6 @@ extension Government {
         }
     }
 
-    /// A candidate withdraws during nomination. The fee is not returned.
     public mutating func withdraw(account: String, week: Int) throws {
         guard var e = election, e.status == .nomination, week < e.nominateUntil else { throw GovError.notOpen }
         guard e.candidates.contains(where: { $0.account == account }) else { throw GovError.notFound }
@@ -147,8 +130,6 @@ extension Government {
         for i in pending.indices where pending[i].kind == .promises && pending[i].status == .open && pending[i].proposer == account { pending[i].status = .rejected }
         log(account, "withdraw", "", week: week)
     }
-
-    // MARK: Voting
 
     public mutating func castBallot(_ c: GovCitizen, for candidate: String, week: Int) throws {
         guard var e = election, e.status == .voting, week < e.votingUntil else { throw GovError.notOpen }
@@ -163,16 +144,11 @@ extension Government {
 
     public func hasVoted(_ account: String) -> Bool { election?.voted.contains(account) ?? false }
 
-    /// The count, shown only once voting has closed.
     public func tally() -> [(account: String, votes: Int)]? {
         guard let e = election, e.status == .counted || e.status == .closed else { return nil }
         return e.candidates.map { (account: $0.account, votes: e.ballots[$0.account] ?? 0) }
     }
 
-    // MARK: The weekly turn
-
-    /// Moves the election forward, ends a finished term and opens a new cycle. `canStand` is asked again at the count: a candidate who has
-    /// since been barred cannot win. `hasCitizens` is false for a country nobody lives in.
     public mutating func advance(week: Int, canStand: (String) -> Bool, hasCitizens: Bool = true) {
         expireSupports(week: week)
         if let o = office, week >= o.termEnd { endTerm(o, week: week) }
@@ -192,7 +168,6 @@ extension Government {
         }
     }
 
-    /// Most votes wins; a tie goes to whoever was nominated first. No ballots, no winner. A winner waits for an administrator.
     private mutating func count(_ e: inout Election, week: Int, canStand: (String) -> Bool) {
         let ranked = e.candidates.filter { canStand($0.account) }.sorted {
             let a = e.ballots[$0.account] ?? 0, b = e.ballots[$1.account] ?? 0
@@ -214,8 +189,6 @@ extension Government {
             publish("The vote ended with no winner. The office stays vacant.", week: week)
         }
     }
-
-    // MARK: Confirmation hooks (called from `confirm` and `reject`)
 
     mutating func installWinner(_ p: GovPending, week: Int) throws {
         guard var e = election, e.id == p.electionID, e.status == .counted, let w = e.winner,
@@ -251,8 +224,6 @@ extension Government {
         election = e
     }
 
-    // MARK: Keeping promises
-
     mutating func markKept(policyKinds: Bool, week: Int) {
         guard var o = office else { return }
         for i in o.promises.indices {
@@ -273,7 +244,6 @@ extension Government {
         office = o
     }
 
-    /// The term has run out: the president leaves, with a public tally of promises. Open proposals from them lapse.
     mutating func endTerm(_ o: GovOffice, week: Int) {
         let kept = o.promises.filter { $0.kept }.count
         publish("\(o.name)'s term has ended" + (o.promises.isEmpty ? "." : ": \(kept) of \(o.promises.count) promises kept."), week: week)
@@ -282,7 +252,6 @@ extension Government {
         log("system", "term_end", o.holder, week: week)
     }
 
-    /// A president who loses the right to hold office (a conviction) leaves at once.
     public mutating func removeFromOffice(account: String, reason: String, week: Int) {
         guard let o = office, o.holder == account else { return }
         publish("\(o.name) has been removed from office: \(reason)", tone: "bad", week: week)
@@ -298,6 +267,5 @@ extension Government {
             pending[i].decidedWeek = week
             if pending[i].kind == .priceSupport, let k = supports.firstIndex(where: { $0.id == pending[i].supportID }) { supports[k].status = .rejected }
         }
-        // Support the president started keeps running to its end; only proposals still waiting lapse.
     }
 }

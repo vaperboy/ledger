@@ -3,26 +3,17 @@ import GameCore
 import Countries
 import Finance
 
-/// First-year economics. Kinder numbers while the player learns; the behaviours themselves
-/// (demand, supplier cut-off, competition authority, bankruptcy) are unchanged and only ask this table whether they apply yet.
 public struct FirstYear: Sendable, Equatable {
-    /// Demand multiplier by quarter of a company's first year (weeks 0 to 51 after it opened): a new-business honeymoon that fades.
     public var demandMult: [Double] = [1.25, 1.15, 1.05, 1.0]
-    /// False: suppliers do not cut a buyer off until `supplierCutoffWeek`.
     public var supplierCutoffEnabled = false
     public var supplierCutoffWeek = 27
-    /// False: the competition authority stays away until `competitionAuthorityWeek`.
     public var competitionAuthorityEnabled = false
     public var competitionAuthorityWeek = 52
-    /// False: no company goes bankrupt before `bankruptcyWeek`; after `frozenAfterWeeks` weeks below zero the bank freezes the account instead.
     public var bankruptcyEnabled = false
     public var bankruptcyWeek = 27
     public var frozenAfterWeeks = 4
-    /// New-player start: until this week no account goes into overdraft; a bill the cash cannot cover waits for the next day.
     public var noOverdraftWeeks = 12
-    /// New-player start: weeks of fixed costs and payroll added to the start-up cost to make the starting cash.
     public var startRunwayWeeks = 8
-    /// Demand multiplier for a shop whose owner has chosen neither how to sell nor any campaign (ladder games only); it also replaces the honeymoon.
     public var untendedDemand = 1.0
     public var untendedServe = 1.0
 
@@ -44,18 +35,14 @@ public struct FirstYear: Sendable, Equatable {
         if !j["untendedServe"].isNull { untendedServe = j["untendedServe"].double }
     }
 
-    /// The bundled table (for code that has no `GameData` at hand).
     public static let bundled: FirstYear = (try? Balance.bundled().firstYear) ?? FirstYear()
 
-    /// Multiplier on demand for a company this many weeks old: by quarter of its first year, 1 afterwards.
     public func demandMultiplier(week: Int) -> Double {
         guard week >= 0, week < 52, !demandMult.isEmpty else { return 1 }
         return demandMult[min(demandMult.count - 1, week / 13)]
     }
-    /// A ladder game whose owner has made no selling choice and run no campaign yet: the shop is left on its defaults.
     public func untended(_ s: GameState) -> Bool { (untendedDemand < 1 || untendedServe < 1) && Gates.ladderOn(s) && !Gates.goalDone(s, 2) && !Gates.goalDone(s, 5) }
     public func serveShare(_ s: GameState) -> Double { untended(s) ? min(1, max(0, untendedServe)) : 1 }
-    /// The no-overdraft protection of a new-player game (ladder games only) is on.
     public func noOverdraftActive(_ s: GameState) -> Bool { Gates.ladderOn(s) && s.week < noOverdraftWeeks }
     public func supplierCutoffActive(week: Int) -> Bool { supplierCutoffEnabled || week >= supplierCutoffWeek }
     public func bankruptcyActive(week: Int) -> Bool { bankruptcyEnabled || week >= bankruptcyWeek }
@@ -66,8 +53,6 @@ public struct FirstYear: Sendable, Equatable {
     public static let frozenAction = "bankfrz"
     public static let frozenText = "The bank has frozen the account until the balance is back above zero."
 
-    /// Weekly, before the bankruptcy checks: a company below zero for `frozenAfterWeeks` weeks before the cut-off week gets one Inbox item
-    /// (once per spell below zero). The engine skips bankruptcy while `bankruptcyActive` is false.
     public static func freezeSweep(_ s: inout GameState, balance: Balance) {
         let f = effective(s, balance: balance)
         noticeSweep(&s, balance: balance)
@@ -82,11 +67,8 @@ public struct FirstYear: Sendable, Equatable {
         }
     }
 
-    /// Weeks a company has traded: game week minus the week it opened (founded, until it opens).
     public static func companyAge(_ co: Company, week: Int) -> Int { week - (co.openedWeek ?? co.foundedWeek) }
 
-    /// Weekly: tell the player, once, when each first-year protection ends. Game-wide ones are keyed to the game week
-    /// (a save loaded long after that week stays quiet), the demand honeymoon to each company's own first anniversary.
     public static func noticeSweep(_ s: inout GameState, balance: Balance) {
         let f = effective(s, balance: balance)
         var done = s.rest["fyNotes"] ?? .object([:])

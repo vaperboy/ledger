@@ -4,9 +4,6 @@ import Countries
 import Employees
 import Finance
 
-/// The academy: send a worker (or yourself) on one of the trade's courses. Results are uncertain, and a worker who did very well
-/// may be poached by a competitor. Original: `takeCourse` (engine/people/people.js), the academy screen (features/screens/restyled_screens.js)
-/// and the `crs` list of each trade (courses.json, taken from engine/businesses/*.js).
 public enum Academy {
     static let book: JSONValue = {
         guard let url = Bundle.module.url(forResource: "courses", withExtension: "json", subdirectory: "Resources"),
@@ -17,10 +14,8 @@ public enum Academy {
     public struct Course: Identifiable, Equatable, Sendable {
         public var id: String
         public var name: String
-        /// In the reference economy; scale with `Currency.scaledPrice`.
         public var baseCost: Double
         public var days: Int
-        /// Skill points a good result adds.
         public var gain: Double
     }
 
@@ -38,7 +33,6 @@ public enum Academy {
         case done(message: String, gain: Double, poached: Bool)
     }
 
-    /// `staffID` 0 sends the owner. Original: `takeCourse`.
     public static func send(_ s: inout GameState, companyID: Int, staffID: Int, course cid: String, data: GameData) -> Outcome {
         guard let ci = s.companyIndex(companyID), let c = courses(forTrade: s.companies[ci].type).first(where: { $0.id == cid }) else { return .unavailable }
         let co = s.companies[ci]
@@ -55,7 +49,6 @@ public enum Academy {
         else if roll < 0.9 { gain = c.gain; msg = "Solid gain" }
         else { gain = c.gain * 1.8; msg = "Great result" }
         let name = staffID == 0 ? s.player.name : (s.people[staffID]?.name ?? "A worker")
-        // A very good result makes the person attractive to a competitor.
         let poach = staffID != 0 && roll > 0.9 && s.random.chance(0.3)
         if staffID == 0 {
             s.companies[ci].ownerSkill = clamp(s.companies[ci].ownerSkill + gain, 0, 100)

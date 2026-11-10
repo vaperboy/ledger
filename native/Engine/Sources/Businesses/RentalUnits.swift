@@ -3,19 +3,11 @@ import GameCore
 import Countries
 import Finance
 
-/// RENT trades (resrent, comrent, parking, carrental, hotel, pcbang). Every rentable unit is an item of the company: a building of flats, shops or
-/// parking spaces (a `Property`), each rental car or van (a `veh` record), a room type of the hotel, a class of gaming seat. The item's rate is the live
-/// slider, its cost is built from the company's own books (loan interest, upkeep, depreciation, wages, fixed costs, rent) divided by the periods
-/// it was actually rented, so the profit or loss on the rate is true to the unit. Nothing here moves cash: the attributions come from what the
-/// weekly model already books. The only effect on the model is `rateMultiplier`, the rate a landlord charges for a building.
-/// Save keys: `items27` (the units become items), `itemsv2` (their records), `w8u` (set once the units were set up).
 public enum RentalUnits {
     public static var trades: Set<String> { ItemTradeGroups.rentals }
     static let allTrades: Set<String> = ["resrent", "comrent", "parking", "carrental", "hotel", "pcbang"]
     static let key = "w8u"
     static let unitPrefix = "w8u:", extraPrefix = "w8x:"
-
-    // MARK: Data
 
     struct TypeSpec { var id: String; var name: String; var ratio: Double; var share: Double; var fleet: Double }
     struct ExtraSpec { var name: String; var ratio: Double; var share: Double; var cost: Double }
@@ -42,25 +34,19 @@ public enum RentalUnits {
 
     static func isManaged(_ id: String) -> Bool { id.hasPrefix(unitPrefix) || id.hasPrefix(extraPrefix) }
 
-    // MARK: Units (pure read of the company's own data)
-
     public struct Part: Equatable, Sendable { public var label: String; public var weekly: Double }
 
-    /// One rentable unit or group of units, before the rate and occupancy are known.
     struct UnitBase {
         var itemID: String
         var name: String
         var kindLabel: String
         var count: Double
-        /// Periods (nights, days, hours, weeks) the units can be rented in a week.
         var periods: Double
-        /// Relative share of the customers (units rented) the item takes, and the price of one period against the trade's going price.
         var share: Double
         var ratio: Double
         var overheadWeight: Double
         var parts: [Part]
         var status: String
-        /// Periods rented now, when the model itself knows it (a building's occupied flats); nil = the item's sales.
         var rentedNow: Double?
     }
 
@@ -105,7 +91,7 @@ public enum RentalUnits {
                          Part(label: "Property tax", weekly: p.value * ptax / 52)]
             var u = UnitBase(itemID: unitPrefix + "p\(p.id)", name: p.name, kindLabel: label, count: p.units, periods: p.units, share: max(occupied, 1e-6),
                              ratio: rentEff, overheadWeight: p.value, parts: parts, status: p.condition < 0.4 ? "repair" : "", rentedNow: occupied)
-            u.ratio = rentEff   // absolute: turned into a ratio against the going price when the items are written
+            u.ratio = rentEff
             return u
         }
     }
@@ -168,35 +154,25 @@ public enum RentalUnits {
         }
     }
 
-    // MARK: Economics of one unit
-
     public struct UnitEconomics: Equatable, Sendable {
         public var itemID: String
         public var name: String
         public var kindLabel: String
-        /// "night", "day", "hour" or "week".
         public var per: String
         public var units: Double
-        /// Periods the units can be rented in a week, and the periods rented last week.
         public var capacity: Double
         public var rented: Double
         public var occupancy: Double
-        /// Rate now and at the going price, accounting units per period.
         public var rate: Double
         public var marketRate: Double
-        /// Cost that only exists when the unit is rented (turnover, damage, channel commission) per rented period.
         public var variablePerPeriod: Double
-        /// Weekly fixed cost of the unit by cause, overhead share included.
         public var fixedParts: [Part]
         public var fixedWeekly: Double
-        /// What one rented period costs at the occupancy basis, and the rate that covers it.
         public var costPerPeriod: Double
         public var breakEvenRate: Double
         public var weeklyProfit: Double
         public var status: String
-        /// Month demand index of the trade (1 = an average month).
         public var seasonIndex: Double
-        /// Periods already booked in advance for the coming week.
         public var booked: Int
     }
 
@@ -227,7 +203,6 @@ public enum RentalUnits {
         return m >= 0 && m < table.count ? table[m] : 1
     }
 
-    /// Trailing occupancy of an item over its last quarter (13 weeks) of history (nil without history).
     static func trailingOccupancy(_ r: ItemModels.Record?, capacity: Double) -> Double? {
         guard let r, capacity > 0 else { return nil }
         let last = r.history.suffix(13)
@@ -236,12 +211,10 @@ public enum RentalUnits {
         return u > 0 ? u / capacity : nil
     }
 
-    /// Everything about the unit behind one item, at its current rate. Nil for an item that is not a unit.
     public static func economics(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> UnitEconomics? {
         computed(s, companyID: companyID, data: data).first { $0.base.itemID == itemID }?.econ
     }
 
-    /// Economics of every unit of the company, in item order.
     public static func allEconomics(_ s: GameState, companyID: Int, data: GameData) -> [UnitEconomics] {
         computed(s, companyID: companyID, data: data).map { $0.econ }
     }
@@ -258,7 +231,6 @@ public enum RentalUnits {
             return Line(b: b, row: row, rented: b.rentedNow ?? row.weeklyUnits, price: row.price * (1 - row.discountPercent / 100),
                         hist: trailingOccupancy(ItemModels.record(co, itemID: b.itemID), capacity: b.periods))
         }
-        // What the books say the company costs a week, less what the units and extras carry directly, is the overhead the units share (by value or rate).
         var direct = 0.0
         for l in lines {
             let e = econ(l.b, spec, overhead: 0, overheadTotal: 1, market: l.row.marketPrice, price: l.price, rented: l.rented, historyOccupancy: l.hist, season: season)
@@ -273,10 +245,6 @@ public enum RentalUnits {
         }
     }
 
-    // MARK: The rate a landlord charges
-
-    /// The rate of one building against its market rate (1 = at the market). The weekly rental model charges and fills the building with it.
-    /// 1 for a company that is not on item records, so old saves are unchanged.
     public static func rateMultiplier(_ co: Company, _ bd: Trade, propertyID: Int) -> Double {
         guard trades.contains(bd.id), !co.value(SalesItems.key).isNull else { return 1 }
         let id = unitPrefix + "p\(propertyID)"
@@ -284,10 +252,6 @@ public enum RentalUnits {
         return it.effectiveMultiplier
     }
 
-    // MARK: Setting the units up as items
-
-    /// Put the company's units in as items and records and refresh their costs. Idempotent. Old titles-only items that the units replace are
-    /// dropped on the first run; items the owner added are kept.
     public static func sync(_ s: inout GameState, companyID: Int, data: GameData) {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open, let bd = data.catalog[s.companies[i].type], allTrades.contains(bd.id), let spec = specs[bd.id] else { return }
         let co = s.companies[i]
@@ -300,7 +264,6 @@ public enum RentalUnits {
         let existing = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
         var kept: [SalesItems.Item] = old.filter { !isManaged($0.id) && !(first && $0.id.hasPrefix("d")) }
         let isProperty = spec.kind == "property"
-        // Managed items: the units, then (for trades whose extras really sell) the extras.
         var managed: [SalesItems.Item] = []
         let svc = SalesItems.isService(bd)
         func fresh(_ id: String, _ name: String, svc: Bool) -> SalesItems.Item {
@@ -316,13 +279,12 @@ public enum RentalUnits {
         if !isProperty {
             for (k, x) in spec.extras.enumerated() {
                 let id = extraPrefix + "\(k)"
-                if !first && existing[id] == nil { continue }   // an extra the owner removed stays removed
+                if !first && existing[id] == nil { continue }
                 var it = fresh(id, x.name, svc: true)
                 it.unitShare = x.share; it.ratio = x.ratio
                 managed.append(it)
             }
         }
-        // Shares add up to one with the owner's own items; for goods and booking trades the ratios keep the revenue weights at one.
         let keptShare = kept.reduce(0.0) { $0 + $1.unitShare }
         let managedShare = managed.reduce(0.0) { $0 + $1.unitShare }
         if managedShare > 0 {
@@ -336,7 +298,6 @@ public enum RentalUnits {
         }
         kept.append(contentsOf: managed)
         SalesItems.store(&s, i, kept)
-        // Records.
         var rec = s.companies[i].value("itemsv2").isNull ? [:] : s.companies[i].value("itemsv2").object
         let live = Set(kept.map { $0.id })
         for id in rec.keys where isManaged(id) && !live.contains(id) { rec.removeValue(forKey: id) }
@@ -354,13 +315,11 @@ public enum RentalUnits {
             r.stock = Int(saturating: u.count.rounded()); r.capacity = u.periods; r.status = u.status
             ItemModels.put(&s, i, r)
         }
-        // A smoothed weekly cost of the company (monthly bills would otherwise make the unit costs jump).
         let wk = Books.expenses(s.companies[i].books.week), prev = s.companies[i].value(key)["exp"].double
         s.companies[i].set(key, .object(["w": .number(Double(s.week)), "exp": .number(wk > 0 ? (prev > 0 ? 0.9 * prev + 0.1 * wk : wk) : prev)]))
         refreshCosts(&s, i, companyID: companyID, spec: spec, data: data)
     }
 
-    /// This week's true line in every unit's history (rented periods, revenue, profit), then the cost of one rented period from the books.
     static func refreshCosts(_ s: inout GameState, _ i: Int, companyID: Int, spec: Spec, data: GameData) {
         let week = s.week
         let rows = SalesItems.rows(s, companyID: companyID, data: data)
@@ -378,7 +337,6 @@ public enum RentalUnits {
         }
     }
 
-    /// Weekly, after `ItemModels.weeklyTick`: set up new units, drop sold ones, refresh costs and the history line.
     public static func weekly(_ s: inout GameState, _ i: Int, data: GameData) {
         guard s.companies.indices.contains(i), trades.contains(s.companies[i].type), s.companies[i].status == .open else { return }
         sync(&s, companyID: s.companies[i].id, data: data)

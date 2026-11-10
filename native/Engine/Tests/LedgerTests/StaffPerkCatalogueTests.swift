@@ -5,10 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// The perk catalogue is data (`staff_perks.json`). These pins are the numbers of the five perks that used to be hard-coded in Swift:
-/// the move to data must not change any of them (golden equality), and the new per-role-group choice must add up to the same books.
 final class StaffPerkCatalogueTests: XCTestCase {
-    /// id, name, monthly cost per person at the reference price level, quit factor, pull, only the manager and team leads.
     static let golden: [(String, String, Double, Double, Double, Bool)] = [
         ("car", "Company car", 5500, 0.82, 0.15, true),
         ("gym", "Gym membership", 450, 0.95, 0.15, false),
@@ -59,10 +56,8 @@ final class StaffPerkCatalogueTests: XCTestCase {
         for g in Self.golden { XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: g.0), true) }
         let co = try XCTUnwrap(e.state.company(id))
         let cur = World(state: e.state, data: e.data).currency(co)
-        // 3 staff + the manager are the headcount; the manager and the one team lead hold the keys.
         XCTAssertEqual(StaffPerks.headcount(co), 4)
         XCTAssertEqual(StaffPerks.keyPeople(co), 2)
-        // The company car is no flat per-head figure any more: it is a leased car for each of the two key people (vehicle machinery).
         let carCost = CompanyCarPerk.monthlyCost(e.state, co, data: e.data)
         XCTAssertEqual(e.companyCarRecipients(companyID: id).compactMap { $0.carName }.count, 2)
         XCTAssertGreaterThan(carCost, 0)
@@ -77,12 +72,9 @@ final class StaffPerkCatalogueTests: XCTestCase {
         let lead = co.staff[1], waiter = co.staff[0]
         XCTAssertEqual(StaffPerks.quitFactor(co, lead), all, accuracy: 1e-12)
         XCTAssertEqual(StaffPerks.quitFactor(co, waiter), all / 0.82, accuracy: 1e-12, "the car is for the keys only")
-        // a week: paid with the wages, long weeks eased by 1.5, the manager is happier by the car and the trip
         let cash0 = co.cash
         e.update { s, d, _ in StaffPerks.weekly(&s, data: d) }
         let after = try XCTUnwrap(e.state.company(id))
-        // Benefits in kind attract the employer's charges like pay does (deliberate model rule: StaffPerks.weekly adds the country's on-cost
-        // at the median wage), so the perk line is the catalogue cost times (1 + on-cost), not the bare catalogue cost.
         let country = World(state: e.state, data: e.data).country(co)
         let onCost = 1 + country.employerOnCost(monthlyWage: country.medianMonthlyWage)
         XCTAssertGreaterThan(onCost, 1)
@@ -102,8 +94,6 @@ final class StaffPerkCatalogueTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)?.value("perks58")["gym"].double, 0)
     }
 
-    // MARK: Per role group
-
     func testAPerkCanGoToOneRoleGroupOnly() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
         let id = try cafe(&e)
@@ -112,7 +102,6 @@ final class StaffPerkCatalogueTests: XCTestCase {
         XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "lunch", group: "crew"), true)
         let co = try XCTUnwrap(e.state.company(id))
         let cur = World(state: e.state, data: e.data).currency(co)
-        // the crew are the waiter and the barista; the manager and the lead hold the keys and are not covered
         XCTAssertEqual(e.staffPerkPeople(companyID: id, group: "crew"), 2)
         XCTAssertEqual(e.staffPerkMonthlyCost(companyID: id, perk: "lunch"), cur.scaledPrice(1500) * 2, accuracy: 1e-6)
         XCTAssertEqual(StaffPerks.quitFactor(co, co.staff[0]), 0.94, accuracy: 1e-12)
@@ -121,12 +110,10 @@ final class StaffPerkCatalogueTests: XCTestCase {
         XCTAssertEqual(StaffPerks.pull(co, role: "lead"), 0, accuracy: 1e-12)
         XCTAssertTrue(StaffPerks.isOn(co, "lunch"))
         XCTAssertFalse(StaffPerks.isOnForAll(co, "lunch"))
-        // only the covered are eased (0.5 for lunch)
         e.update { s, d, _ in StaffPerks.weekly(&s, data: d) }
         let after = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(after.staff[0].tiredness, 20 - 0.5, accuracy: 1e-9)
         XCTAssertEqual(after.staff[1].tiredness, 10, accuracy: 1e-9)
-        // the other group too: the stored state goes back to the plain flag
         XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "lunch", group: "keys"), true)
         XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "lunch", group: "sales"), true)
         XCTAssertEqual(e.state.company(id)?.value("perks58")["lunch"].double, 1)

@@ -6,8 +6,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Pins what every dismissal path pays today, before the paths share one engine function (roadmap A1, A2). The expected numbers are worked
-/// out from `World.terminationPayments`, so the tests hold whether or not the paths share code.
 final class DismissalCharacterizationTests: XCTestCase {
     private func cafe(_ code: String = "UK", seed: Int = 9) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)

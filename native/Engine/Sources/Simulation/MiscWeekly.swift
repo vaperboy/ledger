@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Events
 
-/// The weekly steps of the smaller systems (staff record, ambitions, giving, weather, cyber attacks, perks ...), in the order the
-/// original runs them after the companies (`week.after` steps). One place, so GameEngine has a single line for all of them.
 enum MiscWeekly {
     static func run(_ s: inout GameState, data: GameData, context: FinanceContext) {
         StaffProfile.trackWeek(&s)
@@ -22,7 +20,7 @@ enum MiscWeekly {
         PromiseReminders.weekly(&s, data: data)
         Giving.weekly(&s, data: data)
         Ambitions.weekly(&s, data: data)
-        Stories.weekly(&s, data: data)   // staff stories, the rivalry, the Top 50 (before the paper picks its front page)
+        Stories.weekly(&s, data: data)
         Press.weekly(&s, data: data)
         WeatherEvents.weekly(&s, data: data)
         PlayerSupply.weekly(&s)
@@ -30,7 +28,6 @@ enum MiscWeekly {
         StockInsurance.weekly(&s, data: data)
     }
 
-    /// Original: `regulationMonth` and the other month-end steps of these systems. Runs on the last day of the month (`GameEngine.runMonthEnd`).
     static func monthly(_ s: inout GameState, data: GameData, context: FinanceContext) {
         Suppliers.monthly(&s)
         Agency.monthly(&s, data: data)

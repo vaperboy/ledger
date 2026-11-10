@@ -3,10 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-// Progressive unlocks in the app (engine: Businesses/Unlocks.swift): the announcement popup, the queue the store
-// holds, and the locked block a screen shows in place of a feature that is not open yet (dimmed, a lock, one line saying what opens it).
-
-/// One announcement waiting to be shown (the engine's items are not Identifiable, so this wraps one).
 struct UnlockPrompt: Identifiable, Equatable {
     var id: String
     var companyID: Int
@@ -17,17 +13,14 @@ struct UnlockPrompt: Identifiable, Equatable {
 }
 
 extension GameStore {
-    /// One registry item of one company, nil when the game has no such company.
     func unlock(_ id: String, companyID: Int) -> UnlockItem? { engine?.unlockItem(id, companyID: companyID) }
 
-    /// True when the feature is open (or unknown: a missing item never hides anything).
     func isUnlocked(_ id: String, companyID: Int) -> Bool { unlock(id, companyID: companyID)?.unlocked ?? true }
 
-    /// Takes what the weekly sweep announced and has not been shown yet into the queue.
     func queueUnlocks() {
         guard let e = engine else { return }
         for u in e.pendingUnlocks() {
-            let pid: String = u.id   // an unlock belongs to the player: one prompt, whichever company earned it
+            let pid: String = u.id
             if unlockQueue.contains(where: { (p: UnlockPrompt) -> Bool in p.id == pid }) { continue }
             let name: String = e.state.company(u.companyID)?.name ?? "This company"
             unlockQueue.append(UnlockPrompt(id: pid, companyID: u.companyID, featureID: u.id, title: u.title, line: Self.unlockLine(u.id, name), target: u.target))
@@ -46,13 +39,11 @@ extension GameStore {
         }
     }
 
-    /// The announcement to show now: the first in the queue, once the day's reports, rewards and notices have been read.
     var unlockReady: UnlockPrompt? {
         guard !isAdvancing, reportSheet == nil, dailySheet == nil, celebrationQueue.isEmpty, !popupOpen else { return nil }
         return unlockQueue.first
     }
 
-    /// The announcement has been seen (Skip, or the close button): it is marked shown and the next one may follow.
     func dismissUnlock(_ p: UnlockPrompt) {
         let cid: Int = p.companyID
         let fid: String = p.featureID
@@ -60,13 +51,11 @@ extension GameStore {
         unlockQueue.removeAll(where: { (x: UnlockPrompt) -> Bool in x.id == p.id })
     }
 
-    /// "Take me there": the announcement is closed and the exact page opens.
     func goToUnlock(_ p: UnlockPrompt) {
         dismissUnlock(p)
         openUnlockTarget(p.target, companyID: p.companyID)
     }
 
-    /// Opens where a feature lives: a Group entity section, or the company's market.
     func openUnlockTarget(_ target: String, companyID: Int) {
         switch target {
         case "research": openMarket(companyID: companyID)
@@ -76,8 +65,6 @@ extension GameStore {
     }
 }
 
-/// The centred announcement: a champagne mark that scales in, "<Feature> unlocked!", why, and two buttons (Take me there is the
-/// highlighted one, Skip is quiet). Locked: a tap outside does not close it. One light haptic, none of the motion under Reduce Motion.
 struct UnlockPopup: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -128,8 +115,6 @@ struct UnlockPopup: View {
     }
 }
 
-/// What a screen shows in place of a feature that is not open yet: a lock, the feature's name and one line that says what opens it, dimmed.
-/// With a progress fraction a thin line shows how far along it is.
 struct LockedBlock: View {
     var title: String
     var reason: String
@@ -152,7 +137,6 @@ struct LockedBlock: View {
     }
 }
 
-/// A progress line with no label or number: `ProgressLine`.
 struct ThinProgress: View {
     var fraction: Double
     var tint: Color = Theme.accent

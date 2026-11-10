@@ -13,7 +13,6 @@ public enum ExchangeListOutcome: Equatable, Sendable {
 }
 
 extension GameEngine {
-    /// The closing auction of the day that just ended. Holdings that were listed before the exchange kept its own books get their share first.
     mutating func runExchangeDay() {
         update { st, d, ctx in
             for co in st.companies where Funding.isListed(co) && co.status.isLive && !PublicExchange.isRegistered(st, holdingID: co.id) {
@@ -27,16 +26,13 @@ extension GameEngine {
 }
 
 public extension GameEngine {
-    /// Every share on the exchange with your position, for the market screen.
     var exchangeMarket: [ExchangeRow] { PublicExchange.market(state, context: context) }
     var exchangeOrders: [ExchangeOpenOrder] { PublicExchange.openOrders(state) }
-    /// Net worth as the rankings count it, with a breakdown in words.
     var wealth: WealthStatement { Wealth.statement(state, trades: data.catalog, currency: homeCurrency) }
     func leaderboardSubmission(playerID: String) -> LeaderboardSubmission {
         Leaderboards.submission(state, trades: data.catalog, currency: homeCurrency, playerID: playerID)
     }
 
-    /// What taking a holding public needs, before the player tries.
     func exchangeListingCheck(holdingID: Int) -> ExchangeListOutcome {
         guard let co = state.company(holdingID), co.type == "hold", co.status.isLive else { return .notAHolding }
         if Funding.isListed(co) { return .alreadyListed }
@@ -47,7 +43,6 @@ public extension GameEngine {
         }
     }
 
-    /// Take a holding public: the listing fee is paid and its shares start trading at its value per share.
     @discardableResult
     mutating func listOnExchange(holdingID: Int) -> ExchangeListOutcome {
         let check = exchangeListingCheck(holdingID: holdingID)
@@ -80,7 +75,6 @@ public extension GameEngine {
         return ok
     }
 
-    /// A listed holding pays a dividend to everybody who holds its shares.
     @discardableResult
     mutating func declareExchangeDividend(holdingID: Int, amount: Double) -> ExchangeDividendResult {
         if let why = JointVenture.payoutBlock(state, companyID: holdingID) { return .refused(why) }

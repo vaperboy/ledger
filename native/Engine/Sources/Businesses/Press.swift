@@ -3,22 +3,15 @@ import GameCore
 import Countries
 import Finance
 
-/// The local business paper (front page every week), interviews, and the public image they build (trust, boldness, care).
-/// Originals: `paperName` (world_around_you.js), `PR`, `pressAdd`, `issue`, `QS`, `maybeInterview`, `ACTS.pr28int`, `imgWord`
-/// (features/people/staff_stories_and_nemesis.js), the screen `paper40`.
 public enum Press {
     public static let interviewAction = "pr28int"
 
-
-    /// The paper is named after your city. Original: `R31.paperName` (falls back to the business weekly of the country).
     public static func paperName(_ s: GameState, data: GameData) -> String {
         let cc = s.homeCountryCode
         guard let c = data.countries[cc], let city = c.city(s.player.cityID) ?? c.cities.first else { return CountryTraits.text(cc, "paper") ?? "The Weekly Ledger" }
         let n = city.name
         return CountryTraits.cityPaperName(cc, city: n) ?? "The " + n + " Ledger"
     }
-
-    // MARK: State
 
     static func state(_ s: GameState) -> JSONValue {
         s.rest["pr28"] ?? .object(["img": .object(["trust": 50, "bold": 50, "care": 50]), "iss": .array([]), "cand": .array([]), "top": .null, "lastInt": -99, "quote": .null])
@@ -28,19 +21,16 @@ public enum Press {
     public static func image(_ s: GameState) -> Image {
         let i = state(s)["img"]; return Image(trust: i["trust"].double, bold: i["bold"].double, care: i["care"].double)
     }
-    /// "Seen as trustworthy", "Seen as bold", "Seen as caring" or "Not well known yet". Original: `imgWord`.
     public static func imageWord(_ s: GameState) -> String {
         let i = image(s)
         let best = [("trust", i.trust), ("bold", i.bold), ("care", i.care)].max { $0.1 < $1.1 }!
         return best.1 < 55 ? "Not well known yet" : ["trust": "Seen as trustworthy", "bold": "Seen as bold", "care": "Seen as caring"][best.0]!
     }
-    /// Move one of the three image numbers. Original: `img(k, d)`.
     public static func moveImage(_ s: inout GameState, _ key: String, by d: Double) {
         var p = state(s); var img = p["img"]
         img[key] = .number(clamp(img[key].double + d, 0, 100)); p["img"] = img; s.rest["pr28"] = p
     }
 
-    /// A story for the next front page. Original: `pressAdd(priority, head, deck)`.
     public static func add(_ s: inout GameState, priority: Double, head: String, deck: String = "") {
         var p = state(s)
         var c = p["cand"].array
@@ -54,9 +44,6 @@ public enum Press {
         state(s)["iss"].array.map { FrontPage(week: $0["w"].int, headline: $0["head"].string, deck: $0["deck"].string, side: $0["side"].array.map { $0.string }) }
     }
 
-    // MARK: Weekly
-
-    /// Pick the biggest story of the week for the front page. Original: `issue()`.
     static func issue(_ s: inout GameState) {
         let sur = s.player.name.split(separator: " ").last.map(String.init) ?? s.player.name
         var p = state(s)
@@ -86,7 +73,6 @@ public enum Press {
         ({ _ in true }, "What is the secret of your business?",
          [("Honest prices", "trust", "Fair prices and we keep our promises."), ("Outwork everyone", "bold", "We simply work harder than the competition."), ("Happy staff, happy customers", "care", "Treat your people well and they treat the customers well.")])]
 
-    /// A reporter asks for an interview now and then. Original: `maybeInterview`.
     static func maybeInterview(_ s: inout GameState, data: GameData) {
         let p = state(s)
         guard s.week - p["lastInt"].int >= 13, s.companies.contains(where: { $0.status == .open }), s.week >= 16, s.random.chance(0.3) else { return }
@@ -101,7 +87,6 @@ public enum Press {
                      action: interviewAction, data: .object(["q": .number(Double(qi))]), expiresWeek: s.week + 2)
     }
 
-    /// Answer an interview. Original: `ACTS.pr28int`.
     public static func answerInterview(_ s: inout GameState, questionIndex: Int, option idx: Int) {
         guard questions.indices.contains(questionIndex) else { return }
         let q = questions[questionIndex]

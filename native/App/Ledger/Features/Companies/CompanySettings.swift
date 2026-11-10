@@ -6,8 +6,6 @@ import Businesses
 import Events
 import Simulation
 
-/// Company settings: the name, closing the company for a while, closing it for good, and its documents and permits. Each action shows
-/// what it costs and what follows before it is confirmed, and reports the engine's answer.
 struct CompanySettings: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -29,8 +27,6 @@ struct CompanySettings: View {
         }
         .confirmAction($pending)
     }
-
-    // MARK: Name
 
     @ViewBuilder private func rename(_ cur: Currency) -> some View {
         let cost = engine.renameCost(companyID: company.id)
@@ -64,8 +60,6 @@ struct CompanySettings: View {
             }
         }
     }
-
-    // MARK: Closing for a while
 
     @ViewBuilder private func closing(_ cur: Currency) -> some View {
         if company.status == .closed {
@@ -127,8 +121,6 @@ struct CompanySettings: View {
         }
     }
 
-    // MARK: Winding up
-
     @ViewBuilder private func windUp(_ cur: Currency) -> some View {
         if company.status.isLive && engine.isBranch(companyID: company.id) {
             branchExit(cur)
@@ -150,7 +142,6 @@ struct CompanySettings: View {
         }
     }
 
-    /// A branch of a chain is not wound up as a company: it is closed into the chain or sold as a going concern, and the money stays in the chain.
     @ViewBuilder private func branchExit(_ cur: Currency) -> some View {
         let plan = engine.branchClosurePlan(storeID: company.id), quote = engine.branchSaleQuote(storeID: company.id)
         CardSection("Close or sell this branch") {
@@ -196,7 +187,6 @@ struct CompanySettings: View {
     private func confirmWindUp(_ back: Double, _ cur: Currency) {
         let name = company.name, staff = company.staff.count
         pending = PendingAction(title: "Wind up \(name)?", message: "This is final. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back)).", button: "Wind up for good", destructive: true, tone: .danger, icon: "xmark.octagon") {
-            // Closing against every other owner and board seat: they remember it (their mood drops, the Inbox gets a line).
             let alone = engine.boardVote(kind: "close", companyID: company.id).pushedThroughAlone
             if store.act({ $0.windUpCompany(companyID: company.id) }) == true {
                 if alone { store.act { $0.recordPushedThrough(companyID: company.id) } }
@@ -206,8 +196,6 @@ struct CompanySettings: View {
             }
         }
     }
-
-    // MARK: Documents
 
     @ViewBuilder private func documents(_ cur: Currency) -> some View {
         let lic = engine.financeOverview(companyID: company.id).licences

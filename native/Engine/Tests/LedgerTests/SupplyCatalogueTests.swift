@@ -5,13 +5,11 @@ import Finance
 import Businesses
 import Simulation
 
-/// What each trade buys from suppliers, and how the choice of supplier reaches the books.
 final class SupplyCatalogueTests: XCTestCase {
     private func open(_ trade: String, seed: Int = 11) throws -> (GameEngine, Int) {
         var e = try ChainsTests.engine("NO", seed: seed)
         let id = ChainsTests.start(&e, trade)
         ChainsTests.season(&e, id)
-        // The opening checklist is another subject: open the doors and give the company staff-free trading cash.
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].status = .open
@@ -25,8 +23,6 @@ final class SupplyCatalogueTests: XCTestCase {
         let rows = e.supplyLines(companyID: id).flatMap { $0.rows }
         return try XCTUnwrap(rows.first { $0.id == line }, "no \(line) in \(rows.map { $0.id })")
     }
-
-    // MARK: The lists
 
     func testEveryTradeHasASensibleList() throws {
         let (e, id) = try open("cafe")
@@ -94,8 +90,6 @@ final class SupplyCatalogueTests: XCTestCase {
         }
     }
 
-    // MARK: Choice reaches the books
-
     func testTierPriceAndQualityOfAFactoryAndACafe() throws {
         for trade in ["factory", "cafe"] {
             var (e, id) = try open(trade)
@@ -136,7 +130,6 @@ final class SupplyCatalogueTests: XCTestCase {
         let solid = try XCTUnwrap(sw.offers.first { $0.quality == "Solid" && !$0.name.hasPrefix("Market") })
         cod.chooseSupply(companyID: idc, change: basic.change); inv.chooseSupply(companyID: idi, change: solid.change)
         for _ in 0..<7 { ChainsTests.play(&market, days: 1); ChainsTests.play(&cod, days: 1); ChainsTests.play(&inv, days: 1) }
-        // paying on delivery moves cash out of the week; on invoice it is owed and booked as an expense
         let owedMarket = market.state.company(idm)?.payables["other"] ?? 0
         let owedInv = inv.state.company(idi)?.payables["other"] ?? 0
         XCTAssertGreaterThanOrEqual(owedInv, owedMarket - 1)
@@ -150,7 +143,6 @@ final class SupplyCatalogueTests: XCTestCase {
         var s = e.state
         let co0 = try XCTUnwrap(s.company(id)); let bd = try XCTUnwrap(e.data.catalog[co0.type])
         for w in 0..<300 { XCTAssertEqual(SupplyCatalogue.availability(s, co0, bd, week: w, data: e.data), 1, "the market never misses") }
-        // name the least reliable stock supplier
         let worst = try XCTUnwrap(e.supplierCandidates(companyID: id, scope: "goods").min { $0.rating < $1.rating })
         Suppliers.chooseGoodsVendor(&s, companyID: id, vendorID: worst.id)
         let co = try XCTUnwrap(s.company(id))

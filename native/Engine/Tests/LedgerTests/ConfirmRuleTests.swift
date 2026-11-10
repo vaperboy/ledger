@@ -1,7 +1,6 @@
 import XCTest
 @testable import Events
 
-/// The single "Are you sure" rule: a spend at or above the player's size and anything irreversible ask; everything else applies at once.
 final class ConfirmRuleTests: XCTestCase {
     func testIrreversibleAlwaysAsks() {
         XCTAssertTrue(ConfirmRule.asks(irreversible: true, amount: nil, limit: nil))
@@ -26,7 +25,6 @@ final class ConfirmRuleTests: XCTestCase {
     }
 
     func testInboxRoutineAnswersNeverReachTheQuestion() {
-        // An answer that spends nothing and cannot be undone is not a question at all, whatever the size.
         let none = DecisionConfirmation(amount: nil, irreversible: false)
         XCTAssertFalse(none.needsQuestion)
         XCTAssertFalse(ConfirmRule.asks(irreversible: none.irreversible, amount: none.amount, limit: 0))

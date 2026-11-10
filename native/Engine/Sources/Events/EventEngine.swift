@@ -5,18 +5,11 @@ import Employees
 import Finance
 import Businesses
 
-/// Random events and the decisions they put in the inbox. Original: engine/events/engine.js.
-///
-/// Each week every open company may have an event, weighted by its trade's list, its own risk (some choices make a
-/// business riskier), its condition (broken kit makes breakdowns likelier) and how long it has been open. Events that
-/// need a decision wait in the inbox with a deadline and a preview of what each answer costs; unanswered ones take
-/// the cheapest answer. A manager with authority decides for you.
 public enum EventEngine {
-    /// The numbers an event's formulas can use. Original: `evCtx`.
     struct Context {
-        var wk: Double      // typical weekly revenue
-        var pay: Double     // weekly payroll
-        var eqv: Double     // equipment value
+        var wk: Double
+        var pay: Double
+        var eqv: Double
         var variables: [String: Double]
     }
 
@@ -32,11 +25,6 @@ public enum EventEngine {
         return Context(wk: wk, pay: pay, eqv: eqv, variables: v)
     }
 
-    /// Replace formulas in an effects object by their rounded numbers. Original: `resolveFx`.
-    ///
-    /// Money amounts written as plain numbers (`cash`, `fine`, `loss`, `bonus`, `owner`) are at the reference price level and are
-    /// scaled here to the company's country (`currency.scaledPrice`). Amounts from a formula are already in the company's money
-    /// (they come from its own weekly figures) and are not scaled again.
     static let moneyKeys: Set<String> = ["cash", "fine", "loss", "bonus", "owner"]
     static func resolve(_ fx: JSONValue, _ ctx: Context, currency: Currency? = nil) -> JSONValue {
         switch fx {
@@ -53,9 +41,6 @@ public enum EventEngine {
         }
     }
 
-    // MARK: Weekly roll
-
-    /// Roll this week's events for one open company. Original: `spawnEvents`.
     public static func spawn(_ s: inout GameState, companyIndex i: Int, library: EventLibrary, data: GameData, context fc: FinanceContext) {
         guard let bd = data.catalog[s.companies[i].type] else { return }
         var cooldown = s.companies[i].value("flags")["evCool"].double
@@ -71,16 +56,14 @@ public enum EventEngine {
             let co = s.companies[i]
             guard let e = library[id] else { continue }
             if e.minimumCompanyAgeWeeks > 0 && s.week - co.foundedWeek < e.minimumCompanyAgeWeeks { continue }
-            // Praise, awards and big orders need real customers: a first company must have traded for 12 weeks, a second or later one 6
-            // (the owner has been through it before and the trade is already known).
             if (e.tone == "good" || id == "g_press" || id == "g_offer") && !(co.lastWeekUnits > 0.5 && co.openedWeek != nil && s.week - co.openedWeek! >= goodEventMinimumWeeks(s, companyIndex: i)) { continue }
             if co.staff.isEmpty && mentionsStaff(e) { continue }
             if co.staff.isEmpty && co.managerID == nil && !soloAllowed(id, co) { continue }
             var p = e.weight * risk * 0.6 * (e.condition?.evaluate(c.variables) ?? 1)
-            if e.tone == "bad" { p *= Difficulty.of(s).eventRamp(data.balance, week: s.week) }   // first-year easing, tuned in balance.json `eventRamp`, stretched or tightened by the game mode
+            if e.tone == "bad" { p *= Difficulty.of(s).eventRamp(data.balance, week: s.week) }
             if !(p > 0) { p = 0 }
             if p <= 0 || !s.random.chance(p) { continue }
-            if Sourcing.shields(s, companyID: co.id, eventID: id) {   // supplied from inside: outside supplier trouble does not reach it
+            if Sourcing.shields(s, companyID: co.id, eventID: id) {
                 if e.tone == "bad" {
                     Threat.survived(&s, companyID: co.id, text: "supplier trouble at \(co.name) never reached it: its own supply chain absorbed it.")
                     s.addMessage(from: co.name, title: "Supplier trouble did not reach \(co.name)", body: "Its own supply chain absorbed it. Nothing needs doing.", companyID: co.id, tone: "good")
@@ -89,27 +72,22 @@ public enum EventEngine {
             }
             if !e.options.isEmpty && s.companies[i].value("flags")["evCool"].double > 0 { continue }
             if !e.options.isEmpty && !decisionRoom(s) { continue }
-            if e.tone == "bad" && !takeBadSlot(&s, companyID: co.id, eventID: id) { continue }   // weeks 1-12: one bad event a week, the rest wait
+            if e.tone == "bad" && !takeBadSlot(&s, companyID: co.id, eventID: id) { continue }
             if !e.options.isEmpty { setFlag(&s, i, "evCool", cooldownWeeks(s, companyID: co.id, event: e)) }
             fire(&s, companyIndex: i, e, ctx: c, data: data, context: fc)
         }
     }
 
-    /// Weeks of trading a company needs before good events and big orders can reach it: 12 for the first, 6 for later ones.
     static func goodEventMinimumWeeks(_ s: GameState, companyIndex i: Int) -> Int {
         s.companies.prefix(i).contains { $0.type != "hold" } ? 6 : 12
     }
 
-    /// Quiet weeks after a decision event: good news is allowed back sooner than trouble, and each draw varies a little (hashed, so
-    /// the main random stream is untouched).
     static func cooldownWeeks(_ s: GameState, companyID: Int, event e: GameEvent) -> Double {
         var h = HashedRandom("\(s.seed):evcool:\(s.week):\(companyID):\(e.id)")
         let base: Double = e.tone == "good" ? 3 : (e.tone == "bad" ? 6 : 4)
         return base + Double(min(2, Int(h.next() * 3)))
     }
 
-    /// In the first weeks (12 on Classic, see `Difficulty.badEventCapWeeks`) only one bad event may fire a week across all companies; a second one is put off to the next week
-    /// (state kept in `rest["evBad"]`: `week`, `n`, and `later` = [{c: company, e: event}]). Returns whether this event may fire now.
     static func takeBadSlot(_ s: inout GameState, companyID: Int, eventID: String) -> Bool {
         guard s.week <= Difficulty.of(s).badEventCapWeeks else { return true }
         var st = s.rest["evBad"] ?? .object([:])
@@ -128,7 +106,6 @@ public enum EventEngine {
         return true
     }
 
-    /// Fire the bad events put off from an earlier week for this company (one per week while the cap applies).
     static func fireDeferred(_ s: inout GameState, companyIndex i: Int, library: EventLibrary, data: GameData, context fc: FinanceContext) {
         guard var st = s.rest["evBad"], !st["later"].array.isEmpty else { return }
         let id = s.companies[i].id
@@ -156,7 +133,6 @@ public enum EventEngine {
         return e.options.contains { o in o.effects["quit"].bool || !o.effects["raise"].isNull || !o.effects["sick"].isNull }
     }
 
-    /// A one-person business with no staff can still have customer-side events. Original: `SOLO_CUST`, `SOLO_MKT`.
     static let soloCustomerEvents: Set<String> = ["g_late", "g_review", "g_lawsuit", "g_offer", "c_scope", "c_clientloss", "c_damage", "c_wedding", "c_malprac", "c_patient",
                                                   "v_critic", "v_poison", "v_overbook", "v_injury", "v_churn", "v_bigwin", "v_cheat", "v_addict"]
     static let soloMarketingEvents: Set<String> = ["g_press", "g_award", "v_ota"]
@@ -164,14 +140,10 @@ public enum EventEngine {
     static func soloAllowed(_ id: String, _ co: Company) -> Bool {
         if soloCustomerEvents.contains(id) { return true }
         if soloMarketingEvents.contains(id) { return co.value("mkt").object.values.contains { $0["b"].double > 0 } }
-        // The trade packs of the starter trades are about clients, so a one-person business gets them (events that name staff were skipped above).
         if let trade = id.split(separator: "_").first, id.contains("_"), packTrades.contains(String(trade)) { return true }
         return false
     }
 
-    // MARK: Firing
-
-    /// A machine the company owns, for texts like "{eq} has broken down". Original: `pickEqName`.
     static func pickEquipmentName(_ s: inout GameState, companyIndex i: Int, data: GameData) -> String {
         let co = s.companies[i]
         guard let bd = data.catalog[co.type] else { return "A key machine" }
@@ -183,7 +155,6 @@ public enum EventEngine {
     static func fire(_ s: inout GameState, companyIndex i: Int, _ e: GameEvent, ctx: Context, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         let cur = Currency(country: fc.country(of: co, s), rates: fc.rates(s))
-        // A special event with options runs its own code only when an option asks for it (effect key `special`).
         let optionsRunSpecial = e.options.contains { !$0.effects["special"].isNull }
         if !optionsRunSpecial {
             let topBefore: Int = s.inbox.first?.id ?? -1
@@ -194,11 +165,10 @@ public enum EventEngine {
             }
         }
         var title = e.text.replacingOccurrences(of: "{n}", with: co.name)
-        // The original always draws the equipment name, even when the text has no {eq}; keep the same number of random draws.
         let machine = pickEquipmentName(&s, companyIndex: i, data: data)
         title = title.replacingOccurrences(of: "{eq}", with: machine)
         title = TextTokens.resolve(title, country: fc.country(of: co, s), currency: cur)
-        if e.id == "g_break", EquipmentWarranty.repairIfCovered(&s, companyIndex: i, itemName: machine, data: data) {   // under warranty: no decision
+        if e.id == "g_break", EquipmentWarranty.repairIfCovered(&s, companyIndex: i, itemName: machine, data: data) {
             Threat.survived(&s, companyID: co.id, text: "\(title) at \(co.name), covered by the warranty.")
             return
         }
@@ -298,7 +268,6 @@ public enum EventEngine {
 
     enum Decider { case owner, manager }
 
-    /// Who decides: you, or a manager whose budget covers this size of decision. Original: `decider`.
     static func decider(_ co: Company, options: [JSONValue], state s: GameState, data: GameData) -> Decider {
         guard co.managerID != nil, s.people[co.managerID!] != nil else { return .owner }
         let cost = options.map { max(abs($0["fx"]["cash"].double), abs($0["fx"]["loss"].double), $0["fx"]["fine"].double) }.max() ?? 0
@@ -307,8 +276,6 @@ public enum EventEngine {
         return ManagerModel.withinBudget(co, amount: cost, s, data: data) ? .manager : .owner
     }
 
-    /// A manager's pick: the option that scores best for the business, with some noise that shrinks with quality.
-    /// Original: `chooseOpt`, `scoreFx`.
     static func choose(_ co: Company, options: [JSONValue], ctx: Context, quality q: Double, random r: inout DeterministicRandom) -> Int {
         let scores = options.map { score($0["fx"], ctx) + r.gauss() * ctx.wk * (1.2 - q) * 0.4 }
         var best = 0
@@ -336,9 +303,6 @@ public enum EventEngine {
         return s
     }
 
-    // MARK: Answering and expiring
-
-    /// The player answers a decision. Messages that carry an action (payroll, offers ...) are passed on to `actions`.
     @discardableResult
     public static func answer(_ s: inout GameState, messageID: Int, option idx: Int, data: GameData, context fc: FinanceContext,
                               actions: (inout GameState, Message, Int) -> Bool = { _, _, _ in true }) -> Bool {
@@ -358,9 +322,7 @@ public enum EventEngine {
         return true
     }
 
-    /// Unanswered decisions take the cheapest answer when time runs out. Original: `expireMsgs`.
     public static func expire(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
-        // Answering can add messages at the front of the inbox, so each expired message is found again by id after its effects ran.
         for due in s.inbox.filter({ $0.status == "open" && $0.expiresWeek.map { s.week >= $0 } == true }).map({ $0.id }) {
             guard var k = s.inbox.firstIndex(where: { $0.id == due }) else { continue }
             let m = s.inbox[k]
@@ -368,7 +330,7 @@ public enum EventEngine {
             if m.kind == "decision" {
                 guard let ci = i else { s.inbox[k].set("status", "done"); continue }
                 var bestIndex = 0, best = -Double.infinity
-                for (n, o) in m.options.enumerated() where o["fx"]["tier"].isNull {   // the late-game extra answer is never a default
+                for (n, o) in m.options.enumerated() where o["fx"]["tier"].isNull {
                     let v = -abs(o["fx"]["cash"].double)
                     if v > best { best = v; bestIndex = n }
                 }
@@ -384,7 +346,7 @@ public enum EventEngine {
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", pick); s.inbox[k].set("auto", 1)
                 s.note("No answer in time on \"\(m.title)\". Default taken: \(m.options.indices.contains(pick) ? m.options[pick]["l"].string : "").", tone: "bad", companyID: m.companyID)
             } else if m.actionID == Shareholders.action {
-                Shareholders.expired(&s, message: m, data: data, context: fc)   // no answer = you refused
+                Shareholders.expired(&s, message: m, data: data, context: fc)
                 if let k2 = s.inbox.firstIndex(where: { $0.id == due }) { k = k2 }
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", -1); s.inbox[k].set("auto", 1)
             } else if !m.actionID.isEmpty {

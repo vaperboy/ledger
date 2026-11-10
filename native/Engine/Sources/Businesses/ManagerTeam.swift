@@ -4,15 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// The management team above the manager: a managing director (CEO) per company, department heads, regional managers, and for a chain
-/// the chain manager and CEO, and for the whole group a managing director. Who decides what climbs this ladder (`decisionChain`).
-/// Originals: features/people/management_team.js (TEAM56, MR56), features/company/org_chart.js (ORG56), engine/management/managers.js
-/// (`chainOf`, `decider`, `genExec`, `groupWagesMonth`), features/company/chain_hierarchy.js (CHN56).
-/// Saved on the company as `team` {ceo, heads{sales,ops,fin,hr,mkt}} (each {npc, wage, lvl, buy, w0}); regional and chain managers in
-/// `rest["group"]["regional"]`, the group's managing director in `rest["org56"]["md"]`, a chain's CEO in the chain's `ceo56`.
 extension ManagerModel {
-    // MARK: Roles
-
     public struct TeamRole: Equatable, Sendable {
         public var key: String
         public var title: String
@@ -22,7 +14,6 @@ extension ManagerModel {
         public var fromPeople: Double
     }
 
-    /// Department heads. Original: `ROLES` in management_team.js.
     public static let teamRoles: [TeamRole] = [
         TeamRole(key: "sales", title: "Sales director", stat: "sales", payFactor: 1.85, text: "More customers: about 2% more demand, up to 5% in business-to-business trades.", fromPeople: 10),
         TeamRole(key: "ops", title: "Operations manager", stat: "ops", payFactor: 1.8, text: "Runs the place better: about 5% more capacity.", fromPeople: 15),
@@ -33,14 +24,11 @@ extension ManagerModel {
     static let bigTrades: Set<String> = ["bank", "insco", "fund", "airline", "shipping", "oilgas", "hotel", "factory", "casino"]
     static let teamStatNames: [String: String] = ["ops": "Running things", "people": "People", "sales": "Sales", "fin": "Money", "risk": "Risk sense"]
 
-    // MARK: Small helpers
-
     public static func playerCurrency(_ s: GameState, _ data: GameData) -> Currency {
         let w = World(state: s, data: data)
         return Currency(country: w.countries[s.homeCountryCode]!, rates: w.rates)
     }
     static func firstName(_ n: String) -> String { n.split(separator: " ").first.map(String.init) ?? n }
-    /// Average of the five leadership numbers, 0 to 1. Original: `qOf`.
     public static func leadership(_ n: Person?) -> Double {
         guard let n = n, !n.value("stats").isNull else { return 0.5 }
         let st = n.value("stats")
@@ -67,7 +55,6 @@ extension ManagerModel {
     }
     static func team(_ co: Company) -> JSONValue { co.value("team").isNull ? .object(["ceo": .null, "heads": .object([:])]) : co.value("team") }
 
-    /// Titles by country and level. Original: `titleFor`.
     public static func titleFor(_ co: Company?, kind: String, data: GameData, state s: GameState) -> String {
         let code = co?.countryCode ?? s.homeCountryCode
         switch kind {
@@ -82,8 +69,6 @@ extension ManagerModel {
         }
     }
 
-    // MARK: What the team does
-
     static func headsOK(_ co: Company, _ r: TeamRole) -> Bool {
         co.type != "hold" && Double(headCount(co)) >= r.fromPeople * (bigTrades.contains(co.type) ? 0.5 : 1)
     }
@@ -96,14 +81,12 @@ extension ManagerModel {
         guard let n = person(s, rec) else { return 0 }
         return skill01(n, r.stat)
     }
-    /// The managing director of the company, or of the holding above it.
     static func companyMD(_ s: GameState, _ co: Company) -> Person? {
         if let n = person(s, team(co)["ceo"]) { return n }
         if co.holdingID != 0, let h = s.company(co.holdingID), let n = person(s, team(h)["ceo"]) { return n }
         return nil
     }
 
-    /// Pay of a team member for a week (with employer's tax). Chain and group levels are paid in `groupMonthly`.
     static func teamWeek(_ s: inout GameState, _ ci: Int, _ bd: Trade, data: GameData) {
         let co = s.companies[ci]
         guard co.status == .open else { return }
@@ -116,11 +99,9 @@ extension ManagerModel {
             let social = World(state: s, data: data).country(co).employerOnCost(monthlyWage: monthly)
             Payments.companyPays(&s, companyID: co.id, amount: monthly * 12 / 52 * (1 + social), category: "wages")
         }
-        // what they do, cached for demand, capacity, marketing and quits (read in Demand, Capacity, Marketing, StaffRoutine)
         var tm: [String: JSONValue] = [:]
         for r in teamRoles { let v = headSkill(s, co, r.key); if v > 0 { tm[r.key] = .number(v) } }
         s.companies[ci].set("tm", .object(tm))
-        // a managing director coaches the manager
         let md = companyMD(s, co)
         s.companies[ci].set("mdCoach", md.map { 0.06 * skill01($0, "people") } ?? 0)
         let hr = headSkill(s, co, "hr")
@@ -131,7 +112,6 @@ extension ManagerModel {
             s.companies[ci].staff = staff
         }
         if md != nil && co.managerID != nil { s.companies[ci].set("mood", clamp(mood(s.companies[ci]) + 0.15 * skill01(md, "people"), 0, 100)) }
-        // bosses above lift (or drag) every manager under them; a boss also halves how fast a left-alone manager slips
         var lift = 1.0
         let boss = decisionChain(s, s.companies[ci], data: data).filter { $0.kind != "mgr" }
         if let rg = s.companies[ci].value("region").isNull ? nil : regionals(s).first(where: { $0["id"].int == s.companies[ci].value("region").int }) {
@@ -143,22 +123,16 @@ extension ManagerModel {
         s.companies[ci].set("boss56", !boss.isEmpty)
     }
 
-    // MARK: Who decides
-
     public struct Boss: Equatable, Sendable {
-        public var kind: String        // mgr, region, chainmgr, ceo56, mdir, md
+        public var kind: String
         public var personID: Int
-        /// The budget preset (`Budget.rawValue`): 0 tight, 1 normal, 2 free.
         public var level: Int
-        /// What they decide alone for one purchase or hire (`Budget.spendLimit`).
         public var buy: Double
         public var regionalID: Int?
         public var name: String
-        /// The fixed rule: they decide a commitment alone when it is within their budget, otherwise it goes up the chain.
         public func decides(_ cost: Double) -> Bool { level >= 1 && cost <= buy }
     }
 
-    /// Who stands above a company's manager, lowest first. Original: `chainOf`.
     public static func decisionChain(_ s: GameState, _ co: Company, data: GameData) -> [Boss] {
         var out: [Boss] = []
         let execCurrency = playerCurrency(s, data)
@@ -187,8 +161,6 @@ extension ManagerModel {
         return out
     }
 
-    // MARK: Slots (what the screens show)
-
     public struct TeamSlot: Identifiable, Equatable, Sendable {
         public var id: String
         public var key: String
@@ -196,14 +168,12 @@ extension ManagerModel {
         public var detail: String
         public var personID: Int?
         public var monthlyWage: Double
-        /// The budget preset (`Budget.rawValue`).
         public var level: Int
         public var buy: Double
         public var since: Int
         public var regionalID: Int?
     }
 
-    /// The roles a company has room for, each with the person in it or empty. Original: `T56.slots`.
     public static func teamSlots(_ s: GameState, companyID: Int, data: GameData) -> [TeamSlot] {
         guard let co = s.company(companyID), co.status != .setup, data.catalog[co.type]?.family != "club" else { return [] }
         let t = team(co)
@@ -242,9 +212,6 @@ extension ManagerModel {
         }
     }
 
-    // MARK: Hiring through the agency
-
-    /// Pay an executive search and get three candidates for a team role. `key`: ceo, reg, sales, ops, fin, hr, mkt. Original: `MR56[k].gen`.
     public static func searchTeam(_ s: inout GameState, companyID: Int, key: String, data: GameData) -> [Person]? {
         guard let ci = s.companyIndex(companyID), key == "ceo" || key == "reg" || teamRoles.contains(where: { $0.key == key }) else { return nil }
         let cur = World(state: s, data: data).currency(s.companies[ci])
@@ -260,20 +227,15 @@ extension ManagerModel {
         }
     }
 
-    /// The going monthly rate for a post on the management team (`key`: ceo, reg, sales, ops, fin, hr, mkt) at this company.
     public static func teamGoingRate(company co: Company, key: String, state s: GameState, data: GameData) -> Double {
         World(state: s, data: data).currency(co).roundedStep(managerGoingRate(company: co, state: s, data: data) * teamPayFactor(key), about: 500)
     }
 
-    /// The rank of a team post for the pay talk: the managing director sits above the department heads.
     public static func teamRank(_ key: String) -> String { key == "ceo" ? "ceo" : key == "reg" ? "region" : "teamHead" }
 
-    /// Hire into a team role: at or above what they would settle for they accept, below it they counter, refuse or walk away
-    /// (higher posts are more patient). Original: `hireTeam`.
     public static func hireTeam(_ s: inout GameState, companyID: Int, key: String, personID: Int, monthlyWage w: Double, data: GameData) -> OfferResult {
         guard let ci = s.companyIndex(companyID), let n0 = s.people[personID] else { return .refused }
         if n0.employerID != 0 { return .taken }
-        // With outside directors the board approves a new CEO; a refusal changes nothing.
         if key == "ceo" {
             let d = ceoDirectors(s, companyID: companyID, appointing: personID)
             if d.decide && !d.passes {
@@ -308,12 +270,10 @@ extension ManagerModel {
         return .ok
     }
 
-    /// Let a team member go: one month of pay. Original: `ACT.tm56fire`.
     @discardableResult
     public static func releaseTeam(_ s: inout GameState, companyID: Int, key: String, regionalID: Int? = nil, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID) else { return false }
         let co = s.companies[ci]
-        // With outside directors the board decides whether the CEO goes.
         if key == "ceo", !team(co)["ceo"].isNull {
             let d = ceoDirectors(s, companyID: companyID)
             if d.decide && !d.passes {
@@ -338,8 +298,6 @@ extension ManagerModel {
         return true
     }
 
-    // MARK: Chain and group levels
-
     public enum ExecLevel: String, Sendable, CaseIterable { case md, ceo56, chainmgr, region
         public var title: String { self == .md ? "Managing director" : self == .ceo56 ? "CEO" : self == .chainmgr ? "Chain manager" : "Regional manager" }
         var pay: Double { self == .md ? 130000 : self == .ceo56 ? 95000 : self == .chainmgr ? 70000 : 58000 }
@@ -353,7 +311,6 @@ extension ManagerModel {
         }
     }
 
-    /// Search for a chain or group executive; the agency is paid by the player (group) or the first store. Original: `MR56` in org_chart.js, `genExec`.
     public static func searchExecutive(_ s: inout GameState, level: ExecLevel, data: GameData) -> [Person]? {
         let cur = playerCurrency(s, data)
         let fee = searchFee(currency: cur)
@@ -362,7 +319,6 @@ extension ManagerModel {
         return generateExecutives(&s, level: level, data: data)
     }
 
-    /// Three candidates for a chain or group executive post, with no agency fee (the shortlist a boss finds through the network).
     static func generateExecutives(_ s: inout GameState, level: ExecLevel, data: GameData) -> [Person] {
         let cur = playerCurrency(s, data)
         return (0..<3).map { _ in
@@ -376,22 +332,17 @@ extension ManagerModel {
         }
     }
 
-    /// The going monthly rate for a chain or group executive: the level's pay at the player's price level.
     public static func executiveGoingRate(level: ExecLevel, state s: GameState, data: GameData) -> Double {
         playerCurrency(s, data).scaledPrice(level.pay)
     }
 
-    /// The rank of an executive level for the pay talk: the higher the post, the more patience.
     public static func execRank(_ level: ExecLevel) -> String {
         switch level { case .md: return "groupDirector"; case .ceo56: return "ceo"; case .chainmgr: return "chainManager"; case .region: return "region" }
     }
 
-    /// Hire a chain or group executive. `chainID` for chain levels; `city` for a regional manager. At or above what they would settle for they
-    /// accept; below it they counter, refuse or walk away, and the higher the post the more patience they have. Original: `MR56[r].hire`.
     public static func hireExecutive(_ s: inout GameState, level: ExecLevel, personID: Int, monthlyWage w: Double, chainID: Int?, city: String?, data: GameData) -> OfferResult {
         guard let n0 = s.people[personID] else { return .refused }
         if n0.employerID != 0 { return .taken }
-        // The group managing director belongs to the group office, which the owner sets up first (`Headquarters.rentOffice`).
         if level == .md && !Headquarters.established(s) { return .refused }
         let reply = Hiring.answer(personID: personID, employer: chainID ?? 0, rank: execRank(level), offer: w, currency: playerCurrency(s, data), about: 500, state: &s)
         if let r = offerResult(reply.answer) { return r }
@@ -422,7 +373,6 @@ extension ManagerModel {
         return .ok
     }
 
-    /// Each store reports to its city's regional manager, else the chain manager. Original: `chiefFor`.
     static func assignRegions(_ s: inout GameState, chainID: Int) {
         guard let ch = Chains.chain(s, id: chainID) else { return }
         let regs = regionals(s)
@@ -432,7 +382,6 @@ extension ManagerModel {
         }
     }
 
-    /// Let the group managing director, a chain's CEO, or a chain/regional manager go. Original: `fireExec`.
     @discardableResult
     public static func releaseExecutive(_ s: inout GameState, level: ExecLevel, chainID: Int? = nil, regionalID: Int? = nil, data: GameData) -> Bool {
         var rec: JSONValue = .null
@@ -458,24 +407,18 @@ extension ManagerModel {
         return true
     }
 
-    /// Budget of a chain or group executive (`authority` 0 tight, 1 normal, 2 free). The old spending limit is the preset's now, so `buy` is ignored.
     public static func setExecutiveAuthority(_ s: inout GameState, level: ExecLevel, chainID: Int? = nil, regionalID: Int? = nil, authority: Int? = nil, buy: Double? = nil) {
         guard let a = authority else { return }
         setExecutiveBudget(&s, level: level, chainID: chainID, regionalID: regionalID, budget: Budget(rawValue: min(2, max(0, a))) ?? .normal)
     }
 
-    /// How much the group may decide before it comes to you. Original: `ACT.setbig`.
     public static func setGroupLimit(_ s: inout GameState, amount: Double) { updateGroup(&s) { $0["big"] = .number(amount) } }
 
-    // MARK: Monthly: group salaries, chain management shared by stores
-
-    /// Original: `groupWagesMonth` and the 'organisation is paid by the companies it runs' step.
     static func groupMonthly(_ s: inout GameState, data: GameData) {
         var g = 0.0
         for r in regionals(s) where r["payCo"].isNull && r["payCo"].int == 0 { g += r["wage"].double }
         if let c = s.rest["group"]?["ceo"], person(s, c) != nil { g += c["wage"].double }
         if g > 0 { Headquarters.payHeadOffice(&s, g * 1.14, label: "Group management salaries") }
-        // chain management and the managing director are shared by the stores by revenue
         let md = s.rest["org56"]?["md"] ?? .null
         var share: [(Int, Double)] = []
         for ch in Chains.list(s) {
@@ -496,12 +439,6 @@ extension ManagerModel {
     static func rev(_ c: Company) -> Double { max(1, c.value("lastW")["rev"].double) }
 }
 
-/// A scaled amount for a company's country.
-enum Playing {
-    static func scaled(_ s: GameState, _ data: GameData, _ co: Company, _ v: Double) -> Double { World(state: s, data: data).currency(co).scaledPrice(v) }
-}
-
 extension JSONValue {
-    /// A copy with one key set.
     func with(_ key: String, _ v: JSONValue) -> JSONValue { var c = self; c[key] = v; return c }
 }

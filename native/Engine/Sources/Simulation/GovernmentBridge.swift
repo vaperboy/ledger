@@ -4,12 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-// Where the government models meet the player's books. Every money move is a pair: the player or company pays through `Payments` (so the
-// ledger stays balanced) and the same whole amount is posted to the treasury, or the treasury pays and the player is credited the same.
-// The world is kept in `rest["gov"]` and does not exist until something creates it, so a game that never uses it is unchanged.
-
 public struct GovernmentWorld: Codable, Equatable, Sendable {
-    /// The account the player acts as, and the name shown on ballots and the watchlist.
     public var account = "me"
     public var name = "You"
     public var countries: [String: Government] = [:]
@@ -35,13 +30,9 @@ public extension GameState {
 }
 
 public enum GovernmentBridge {
-    // MARK: Access
 
     public static func world(_ s: GameState) -> GovernmentWorld { s.governmentWorld ?? GovernmentWorld() }
 
-    /// Creates the country's government when it does not exist yet. `admins` come from the server.
-    /// A government nobody has used yet (no printing, no money in the treasury, no donations) takes the given supply; a used one keeps its own.
-    /// The administrator list follows the server's: the accounts given are added.
     public static func ensure(_ s: inout GameState, country: String, admins: Set<String>, startingSupply: Double) {
         var w = world(s)
         if var g = w.countries[country] {
@@ -54,9 +45,6 @@ public enum GovernmentBridge {
         s.governmentWorld = w
     }
 
-    /// The home country's government at game start: the supply is a billion in the reference economy, scaled to the country's money, and
-    /// `admins` are the account ids the server lists as administrators (empty when there are none). `account` and `name` say who the player is
-    /// on ballots and in the audit log; nil keeps what is there.
     public static func ensureHome(_ s: inout GameState, admins: Set<String>, account: String? = nil, name: String? = nil, context: FinanceContext) {
         let cc: String = s.homeCountryCode
         let supply: Double = max(1, context.currency(cc, s).scaledPrice(1_000_000_000))
@@ -67,7 +55,6 @@ public enum GovernmentBridge {
         s.governmentWorld = w
     }
 
-    /// Every government runs on the game's last rules snapshot, else the defaults.
     static func syncRules(_ w: inout GovernmentWorld, _ s: GameState) {
         let r: WorldRules = s.worldRules
         for cc in Array(w.countries.keys) { w.countries[cc]?.activeRules = r }
@@ -79,7 +66,6 @@ public enum GovernmentBridge {
                    barredFromOffice: w.justice.barred(w.account, .office, week: s.week))
     }
 
-    /// Runs a change on one government that needs no money from the player. The closure gets the player's account and the week.
     @discardableResult
     public static func act<T>(_ s: inout GameState, country: String, _ body: (inout Government, String, Int) throws -> T) throws -> T {
         var w = world(s)
@@ -92,7 +78,6 @@ public enum GovernmentBridge {
         return r
     }
 
-    /// New public news lines of every government go to the player's news.
     static func flushNews(_ s: inout GameState, _ w: inout GovernmentWorld) {
         for cc in w.countries.keys.sorted() {
             guard let g = w.countries[cc] else { continue }
@@ -102,9 +87,6 @@ public enum GovernmentBridge {
         }
     }
 
-    // MARK: Money moves
-
-    /// A gift to the treasury, in whole units, from the player's own cash.
     public static func donate(_ s: inout GameState, country: String, amount: Double) throws {
         var w = world(s)
         guard var g = w.countries[country] else { throw GovError.notFound }
@@ -118,12 +100,10 @@ public enum GovernmentBridge {
         s.governmentWorld = w
     }
 
-    /// What standing for president costs here, in whole units of the country's money.
     public static func candidacyFee(_ s: GameState, country: String, context: FinanceContext) -> Double {
         jsRound(context.currency(country, s).scaledPrice(Politics.candidacyFeeReference))
     }
 
-    /// Stands for president: checks everything, takes the fee from the player's cash, enters the candidate. The fee is never returned.
     public static func stand(_ s: inout GameState, country: String, manifesto: String, promises: [CampaignPromise], context: FinanceContext) throws {
         var w = world(s)
         guard var g = w.countries[country] else { throw GovError.notFound }
@@ -146,7 +126,6 @@ public enum GovernmentBridge {
         s.governmentWorld = w
     }
 
-    /// An administrator overturns a conviction of the player: the bans end and the fine comes back out of the treasury.
     public static func quash(_ s: inout GameState, country: String, convictionID: Int) throws {
         var w = world(s)
         guard var g = w.countries[country] else { throw GovError.notFound }
@@ -159,8 +138,6 @@ public enum GovernmentBridge {
         w.countries[country] = g
         s.governmentWorld = w
     }
-
-    // MARK: Illegal routes and dirty tricks
 
     public static func routeWarning(_ s: inout GameState, route: IllegalRoute, companyID: Int) -> RouteWarning {
         var w = world(s)
@@ -195,8 +172,6 @@ public enum GovernmentBridge {
         return jsRound(context.currency(co.countryCode, s).scaledPrice(kind.costReference))
     }
 
-    /// A capped dirty trick by one of your companies against `target` (a name or id). If the target is a company in this game it loses the
-    /// reputation. If the trick is traced back it costs a fine and a short trading ban.
     @discardableResult
     public static func trick(_ s: inout GameState, kind: DirtyTrick, companyID: Int, target: String, token: Int, confirmed: Bool, context: FinanceContext) throws -> TrickOutcome {
         let clean: String = target.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -206,8 +181,6 @@ public enum GovernmentBridge {
         return try run(&s, kind: kind, companyID: companyID, targetKey: clean, rivalID: nil, token: token, confirmed: confirmed, context: context)
     }
 
-    /// A dirty trick against a rival business, by the id its rival card carries (`MarketOpportunity.rivalID`, `MarketRivalRow.id`). The rival's
-    /// health and its mood towards you fall; a rival that is not on any market is refused before anything is paid.
     @discardableResult
     public static func trick(_ s: inout GameState, kind: DirtyTrick, companyID: Int, rivalID: Int, token: Int, confirmed: Bool, context: FinanceContext) throws -> TrickOutcome {
         guard Rivals.marketKey(ofRival: rivalID, in: s) != nil else { throw GovError.notFound }
@@ -220,7 +193,6 @@ public enum GovernmentBridge {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open else { throw GovError.notOpen }
         guard !w.justice.barred(w.account, .trade, week: s.week) else { throw GovError.notEligible("You are banned from trading.") }
         guard !target.isEmpty else { throw GovError.badAmount("Name the target.") }
-        // Your own companies are never the target: a trick is against someone else.
         if let own = Int(target), s.companyIndex(own) != nil { throw GovError.notEligible("A trick must be against someone else, not one of your own companies.") }
         let cost = trickCost(s, kind: kind, companyID: companyID, context: context)
         guard s.companies[i].cash >= cost else { throw GovError.cannotAfford("The company cannot pay for it.") }
@@ -245,9 +217,6 @@ public enum GovernmentBridge {
         return out
     }
 
-    // MARK: The weekly turn
-
-    /// Once a week: elections and terms, the lagged price effect of printing, price support paid to companies, route earnings and audits.
     public static func weekly(_ s: inout GameState, data: GameData, context: FinanceContext) {
         guard var w = s.governmentWorld, s.week > w.lastWeek else { return }
         w.lastWeek = s.week
@@ -279,8 +248,6 @@ public enum GovernmentBridge {
         s.governmentWorld = w
     }
 
-    /// An audit: the gains handed back and a fine to the treasury, then by level a suspension, or a seizure of the company's cash and
-    /// closure with no pay-out to the owner, a conviction and, at the top, the public watchlist.
     static func settle(_ s: inout GameState, _ w: inout GovernmentWorld, audit a: RouteAudit, companyIndex i: Int, data: GameData, context: FinanceContext) {
         let id = s.companies[i].id, name = s.companies[i].name, cc = s.companies[i].countryCode, week = s.week
         let cur = context.currency(cc, s)
@@ -300,7 +267,6 @@ public enum GovernmentBridge {
             let c1 = s.companies[i].cash
             if seize >= 1 { _ = Payments.companyPays(&s, companyID: id, amount: seize, category: nil, label: "Assets seized") }
             paid += max(0, c1 - s.companies[i].cash)
-            // Closed with no pay-out: the owner's share is held at zero while the failure rules settle debts and staff.
             let own = s.companies[i].ownership
             s.companies[i].ownership = 0
             Failure.bankrupt(&s, companyIndex: i, reason: "closed", data: data, context: context, announce: false)

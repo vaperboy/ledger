@@ -5,7 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Goal rewards wait as completed and unclaimed; claiming pays through the ledger, once. The player level keeps its points in the save.
 final class GoalClaimsTests: XCTestCase {
     private func game() throws -> GameEngine {
         try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test")

@@ -3,7 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-/// The Deposits tab. Your account: fixed deposits (the engine's `openDeposit`), funded from the account. A company account has none.
 struct BankDepositsTab: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -20,7 +19,6 @@ struct BankDepositsTab: View {
     }
 }
 
-/// Fixed deposits of your account.
 struct BankFixedDeposits: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore

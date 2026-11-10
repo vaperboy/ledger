@@ -7,7 +7,6 @@ import Simulation
 import Investments
 import Events
 
-/// Every player action goes through one function on the engine; these check they change the game and keep the books.
 final class PlayerActionsTests: XCTestCase {
     func testSuggestionsOpenTheSectionThatNeedsThePlayer() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
@@ -108,7 +107,6 @@ final class ShowcaseTests: XCTestCase {
 }
 
 final class StaffTalksTests: XCTestCase {
-    /// Plays a restaurant (several staff) until somebody asks about pay; tries a few seeds because people come and go.
     func testPeopleAskForRaisesAndAnswersChangeWagesAndMood() throws {
         for seed in [21, 22, 23, 24, 25] {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
@@ -120,7 +118,7 @@ final class StaffTalksTests: XCTestCase {
                 for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
                 if let m = e.openDecisions.first(where: { $0.actionID == "staffx" }) {
                     if m.value("data")["t"].string == "payask" { asked = m; break }
-                    e.answer(messageID: m.id, option: 0)     // a fixed-salary request: accept it
+                    e.answer(messageID: m.id, option: 0)
                     let sid = m.value("data")["sid"].int
                     XCTAssertEqual(e.state.company(id)?.staff.first { $0.id == sid }?.payBasis, "fix")
                 }
@@ -203,7 +201,6 @@ final class AutoDividendTests: XCTestCase {
 
 final class InsightTests: XCTestCase {
     func testHealthAndInsightsComeFromTheCompanysOwnNumbers() throws {
-        // 157 days: at 150 days one showcase company had a week with no trade at all after the hiring talks changed the random path (it trades normally a week later)
         let e = try GameEngine.showcase(days: 157)
         for co in e.state.liveCompanies {
             let h = e.companyHealth(co)

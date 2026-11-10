@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Which sheet a stake's menu opens.
 enum HoldingStakeSheet: Identifiable, Hashable {
     case sell(Int), sellRival(Int), board(Int), merge(Int), division(Int), talk(Int), buy(String)
 
@@ -22,14 +21,10 @@ enum HoldingStakeSheet: Identifiable, Hashable {
     }
 }
 
-// MARK: - Sell part of a stake
-
-/// Sell part of a stake: choose the percent, read what it fetches and what the holding keeps, then confirm.
 struct HoldingSellSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.popupClose) private var popupClose
     var holdingID: Int
-    /// A company the holding owns bought shares of, or nil for a stake in another business (then `rivalID`).
     var companyID: Int?
     var rivalID: Int?
     @State private var percent = 0.0
@@ -50,7 +45,6 @@ struct HoldingSellSheet: View {
 
     private func close() { popupClose?() }
 
-    /// Percent the holding owns and what the whole business is worth, for either kind of stake.
     private func facts(_ e: GameEngine) -> (name: String, owned: Double, value: Double)? {
         if let cid = companyID, let c = e.state.company(cid) {
             let line: Double = e.holdingStakes(holdingID: holdingID).first { (s: (company: Company, percent: Double, tier: HoldingStakes.Tier)) -> Bool in s.company.id == cid }?.percent ?? 0
@@ -95,7 +89,6 @@ struct HoldingSellSheet: View {
                 summary(cur, f.name, q.percent, q.price, q.heldAfter, q.tierAfter, q.priceFactor, bought: q.boughtPercent, moved: q.movedPercent)
             case .failure(let fail):
                 Text(fail.reason).popupText(.risk).fixedSize(horizontal: false, vertical: true)
-                // Shares moved under the holding cannot be bought back by the owner; the market is the only buyer for them.
                 if buyer == .owner {
                     Button("Sell to the market instead") { Haptics.tap(); buyer = .market }
                         .buttonStyle(SecondaryButtonStyle(fullWidth: true))
@@ -103,7 +96,6 @@ struct HoldingSellSheet: View {
                 }
             }
         } else {
-            // A stake in another business sells to the market at the engine's own factor for the size of the stake.
             let factor: Double = HoldingStakes.sellFactor(beforePercent: f.owned)
             let left: Double = max(0, f.owned - pct)
             summary(cur, f.name, pct, (f.value * pct / 100 * factor).rounded(), left, HoldingStakes.tier(forPercent: left), factor)
@@ -123,7 +115,6 @@ struct HoldingSellSheet: View {
         }
     }
 
-    /// Which of the shares sold were bought by the holding and which are your own moved under it.
     @ViewBuilder private func splitLine(_ bought: Double, _ moved: Double) -> some View {
         if bought > 0 && moved > 0 {
             Text("\(holdingPct(bought)) were bought by the holding, \(holdingPct(moved)) are your own shares moved under it.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
@@ -156,9 +147,6 @@ struct HoldingSellSheet: View {
     }
 }
 
-// MARK: - Merge into the holding
-
-/// Buy out every other owner and make the holding the only owner; the terms and the cash needed are shown first.
 struct HoldingMergeSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.popupClose) private var popupClose
@@ -218,9 +206,6 @@ struct HoldingMergeSheet: View {
     }
 }
 
-// MARK: - Board
-
-/// The board of a company the holding sits on: each seat reports, and the holding asks what the board would say to a sale, a closing or a loan.
 struct HoldingBoardSheet: View {
     @EnvironmentObject var store: GameStore
     var holdingID: Int
@@ -275,14 +260,10 @@ struct HoldingBoardSheet: View {
     }
 }
 
-// MARK: - Choose what goes under the holding
-
-/// Tick the companies to put under the holding and choose how much of your own stake in each goes in (all, or part with the rest kept by you).
 struct HoldingMoveSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.popupClose) private var popupClose
     var holdingID: Int
-    /// Companies ticked, each with the share of your own stake that goes in, in percent (100 is all of it).
     @State private var picked: [Int: Double] = [:]
     @State private var pending: PendingAction?
 

@@ -4,7 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Insurance policies and the three advisers of one company: insurer, law firm and accountant. Summary first, then the choices.
 struct CompanyCoverageScreen: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -38,8 +37,6 @@ struct CompanyCoverageScreen: View {
             EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
-
-    // MARK: Policies
 
     @ViewBuilder private func policies(_ e: GameEngine, _ co: Company, _ o: CoverageOverview, _ cur: Currency) -> some View {
         CardSection("Policies") {
@@ -90,8 +87,6 @@ struct CompanyCoverageScreen: View {
             pending = PendingAction(title: "Switch on \(name)?", message: "\(p.blurb) Costs about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month from company cash, starting this week, until you switch it off.", button: "Switch on", amount: p.weeklyPremium * 52 / 12, currency: cur, tone: .info, icon: "shield", run: run)
         }
     }
-
-    // MARK: Providers
 
     @ViewBuilder private func providers(_ e: GameEngine, _ co: Company, _ o: CoverageOverview, _ kind: Advisers.Kind, _ title: String, _ cur: Currency, empty: String) -> some View {
         let current: AdviserOption? = currentAdviser(kind, o)

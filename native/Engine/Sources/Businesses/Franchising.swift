@@ -3,15 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Franchising from both sides.
-///
-/// You as the franchisor (`co.fr`): a proven chain launches a franchise system, people apply, you talk terms, units pay a
-/// fee and royalties, struggle, renew, leave or are ended. You as the franchisee (`co.franchise`): you pay royalties and a
-/// marketing fund, the brand holds you to a quality standard, and the contract ends after its term.
-/// Originals: engine/world/deals.js (`frReq`, `frSetup`, `frApplicants`, `frAcceptCore`), features/world/franchise_lifecycle.js
-/// (`frWeek`, `franchiseeWeek`, `endUnit`, `leaveBrand`), features/company/franchise_talks.js, engine/world/abroad.js (`frMaster`, `masterWeek`).
 public enum Franchising {
-    // MARK: Helpers
 
     static func pay(_ s: inout GameState, _ id: Int, _ amount: Double, _ category: String?, _ label: String? = nil) {
         Payments.companyPays(&s, companyID: id, amount: amount, category: category, label: label)
@@ -25,7 +17,6 @@ public enum Franchising {
     }
     static func round(_ v: Double) -> Double { jsRound(v) }
 
-    /// What it costs a franchisee to open one unit. Original: `unitSetupCost`.
     public static func unitSetupCost(_ co: Company, _ bd: Trade, data: GameData) -> Double {
         let t = data.catalog.tables
         var eq = 0.0
@@ -38,13 +29,8 @@ public enum Franchising {
         return ((eq + pm + bd.openingCost) / 1000).rounded() * 1000
     }
 
-    // MARK: Requirements
-
     public typealias Requirement = Chains.Requirement
 
-    /// What a franchisor really needs: a proven concept (a year of trading and
-    /// four profitable quarters), a registered trademark, an operations manual, a franchise disclosure document prepared with a lawyer, and someone
-    /// to support franchisees. No cash balance, reputation or store count is demanded.
     public static func requirements(_ s: GameState, _ co: Company) -> [Requirement] {
         let ch = Chains.chain(s, of: co)
         let L = ch.map { Chains.stores(s, $0) } ?? [co]
@@ -60,14 +46,12 @@ public enum Franchising {
         ]
     }
 
-    /// Real franchisors need a proven pilot: traded at least 52 weeks and each of the last four quarters (three months each) profitable.
     public static func provenConcept(_ s: GameState, _ co: Company) -> (ok: Bool, detail: String) {
         let p = provenProgress(s, co)
         let ok = p.weeks >= 52 && p.quarters == 4
         return (ok, "Traded \(max(0, p.weeks)) of 52 weeks; profitable quarters \(p.quarters) of 4")
     }
 
-    /// How far a pilot is from a proven concept: weeks traded and how many of the last four quarters (three months each) were profitable.
     public static func provenProgress(_ s: GameState, _ co: Company) -> (weeks: Int, quarters: Int) {
         let weeks = co.openedWeek.map { s.week - $0 } ?? 0
         let H = Array(co.monthlyHistory.suffix(12))
@@ -78,7 +62,6 @@ public enum Franchising {
 
     public enum LaunchResult: Equatable, Sendable { case ok, already, notYet(String), needDocuments, notFranchisable }
 
-    /// Start franchising a concept. The franchise documents must be approved first. Original: `frSetup`.
     public static func launch(_ s: inout GameState, companyID: Int, fee: Double, royalty: Double, support: Int) -> LaunchResult {
         guard let i = s.companyIndex(companyID) else { return .notYet("") }
         let co = s.companies[i]
@@ -91,12 +74,10 @@ public enum Franchising {
         return .ok
     }
 
-    // MARK: Applicants
-
     static func applicantsWeek(_ s: inout GameState, _ i: Int, data: GameData) {
         var f = s.companies[i].value("fr")
         guard f["on"].bool, f["units"].array.count + f["app"].array.count < 14 else { return }
-        let hs = StaffPerks.hosted(s, "fr")   // prospects you hosted come twice as often, keener and with more money
+        let hs = StaffPerks.hosted(s, "fr")
         guard s.week % (hs > 0 ? 3 : 6) == 0, s.random.chance(0.55 + f["brand"].double / 200 + 0.2 * hs) else { return }
         let co = s.companies[i]
         guard let country = data.countries[co.countryCode] else { return }
@@ -117,12 +98,10 @@ public enum Franchising {
     }
 
     static let patience: [String: Double] = ["eager": 4, "careful": 3, "tough": 2]
-    /// How many offers an applicant sits through, by character.
     public static func patienceDots(for personality: String) -> Int { Int(patience[personality] ?? 3) }
 
     public enum AcceptResult: Equatable, Sendable { case ok, gone, poor, cash }
 
-    /// Sign an applicant: the unit opens. Without agreed terms the franchise's standard terms apply. Original: `frAcceptCore` + `frAccept.after`.
     public static func accept(_ s: inout GameState, companyID: Int, applicantID: Int, data: GameData) -> AcceptResult {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return .gone }
         var f = s.companies[i].value("fr")
@@ -162,13 +141,9 @@ public enum Franchising {
         return .ok
     }
 
-    // MARK: The talk with an applicant
-
     public struct TalkTerms: Equatable, Sendable {
-        /// 1 full entry fee, 0.5 half, 0 waived
         public var feeFactor = 1.0
         public var royalty = 0.06
-        /// "none", "l25" (lend a quarter of the set-up), "l50", "c50" (cover half for a share of the profit)
         public var help = "none"
         public var profitShare = 0.45
         public var years = 10
@@ -197,7 +172,6 @@ public enum Franchising {
         public var personality: String
         public var age: Int
         public var patience: Int
-        /// Set when the applicant is another player (their profile code).
         public var profileCode: String
         public var isPlayer: Bool
         init(_ j: JSONValue) {
@@ -211,7 +185,6 @@ public enum Franchising {
 
     public static func applicants(_ co: Company) -> [Applicant] { co.value("fr")["app"].array.map { Applicant($0) } }
 
-    /// The concept's own margin, kept within reason for the trade. Original: `conceptMargin`.
     static func conceptMargin(_ co: Company, _ bd: Trade) -> Double {
         let f = co.value("fr")
         var own = f["cmE"].isNull ? nil : f["cmE"].double
@@ -223,7 +196,6 @@ public enum Franchising {
         return clamp(own ?? bd.margin, bd.margin - 0.04, bd.margin + 0.12)
     }
 
-    /// Years a franchisee accepts to earn back what they put in. Original: `payback` (PB_FAM, PB_PERS).
     static func payback(_ bd: Trade, _ a: Applicant, setup: Double, scaledSix: Double) -> Double {
         let fam: [String: Double] = ["svc": 3, "retail": 4.5, "venue": 5, "prod": 6, "logi": 4.5, "project": 4]
         var base = fam[bd.family] ?? 4.5
@@ -234,7 +206,6 @@ public enum Franchising {
 
     static func talkRate(_ s: GameState) -> Double { ((s.economy.policyRate + 0.03) * 1000).rounded() / 1000 }
 
-    /// What the unit would earn in a normal year, and who gets what. Original: `sums` in franchise_talks.js.
     public static func talkSums(_ s: GameState, company co: Company, applicant a: Applicant, terms t: TalkTerms, data: GameData) -> TalkSums {
         guard let bd = data.catalog[co.type] else { return TalkSums() }
         let f = co.value("fr")
@@ -257,11 +228,9 @@ public enum Franchising {
     public struct TalkAnswer: Equatable, Sendable {
         public var ok: Bool
         public var text: String
-        /// A kind of help that would close the gap, if one would
         public var hint: String?
     }
 
-    /// Their answer to an offer. Original: `answer` in franchise_talks.js.
     public static func talkAnswer(_ s: GameState, company co: Company, applicant a: Applicant, terms t: TalkTerms, data: GameData, context fc: FinanceContext) -> TalkAnswer {
         guard let bd = data.catalog[co.type] else { return TalkAnswer(ok: false, text: "", hint: nil) }
         let sm = talkSums(s, company: co, applicant: a, terms: t, data: data)
@@ -292,13 +261,10 @@ public enum Franchising {
     public struct OfferResult: Equatable, Sendable {
         public var answer: TalkAnswer
         public var signed: Bool
-        /// The applicant gave up
         public var walkedAway: Bool
         public var note: String?
     }
 
-    /// The player sends an offer. If they say yes and the cash is there, the contract is signed. Otherwise patience goes down.
-    /// Original: `ACT.frt56go`.
     public static func makeOffer(_ s: inout GameState, companyID: Int, applicantID: Int, terms t: TalkTerms, data: GameData, context fc: FinanceContext) -> OfferResult? {
         guard let i = s.companyIndex(companyID) else { return nil }
         let co = s.companies[i]
@@ -335,9 +301,6 @@ public enum Franchising {
         return OfferResult(answer: ans, signed: false, walkedAway: gone, note: gone ? "\(a.name) has found another opportunity." : nil)
     }
 
-    // MARK: Ending units
-
-    /// Original: `endUnit`. how: "term" (you ended it), "left" (did not renew), "bust".
     static func endUnit(_ s: inout GameState, _ i: Int, _ f: inout JSONValue, unitID: Int, how: String, context fc: FinanceContext) {
         var units = f["units"].array
         guard let k = units.firstIndex(where: { $0["id"].int == unitID }) else { return }
@@ -372,7 +335,6 @@ public enum Franchising {
         if owed > 0 { f["lostOwed"] = .number(f["lostOwed"].double + owed * (how == "term" ? 0.6 : 1)) }
     }
 
-    /// Terminate one unit's contract. Original: `ACT.fr24term`.
     public static func terminate(_ s: inout GameState, companyID: Int, unitID: Int, context fc: FinanceContext) -> Bool {
         guard let i = s.companyIndex(companyID) else { return false }
         var f = s.companies[i].value("fr")
@@ -382,14 +344,11 @@ public enum Franchising {
         return true
     }
 
-    // MARK: Master franchise abroad
-
     public static let masterSupportShare = 0.4
     public static func masterCap(_ c: Country) -> Double { clamp(c.populationMillions.squareRoot().rounded(), 3, 8) }
 
     public enum MasterResult: Equatable, Sendable { case ok, noFranchise, bad, already, banned(String), cash }
 
-    /// Sell a whole country to a local partner for a big fee and half the royalties. Original: `frMaster`.
     public static func sellMaster(_ s: inout GameState, companyID: Int, country code: String, data: GameData) -> MasterResult {
         guard let i = s.companyIndex(companyID) else { return .bad }
         let co = s.companies[i]
@@ -403,7 +362,7 @@ public enum Franchising {
         let franCost = Documents.definition("fran", country: C, tables: data.catalog.tables)?.cost ?? 25000
         let legal = cur.scaledPrice(franCost * C.bureaucracy)
         if co.cash < legal { return .cash }
-        let fee = f["fee"].double * 3 * BrandValues.salePremium(BrandValues.company(s, co).score)   // a licence for a known brand sells for more
+        let fee = f["fee"].double * 3 * BrandValues.salePremium(BrandValues.company(s, co).score)
         pay(&s, co.id, legal, "oth", "Master franchise legal work: \(C.name)")
         receive(&s, co.id, fee, "rev", "Master franchise fee: \(C.name)")
         masters.append(.object(["c": .string(code), "w0": .number(Double(s.week)), "ready": .number(Double(s.week) + (6 * C.bureaucracy * 1.3).rounded(.up)), "n": 0, "cap": .number(masterCap(C)), "rev": 0]))
@@ -434,8 +393,6 @@ public enum Franchising {
         }
         return tot * (1 - masterSupportShare)
     }
-
-    // MARK: The franchisor's week
 
     static func askAboutUnit(_ s: inout GameState, _ i: Int, unit u: JSONValue, kind: String, context fc: FinanceContext, data: GameData) {
         let co = s.companies[i]
@@ -510,7 +467,6 @@ public enum Franchising {
             }
             if asked != 0 && Double(s.week) - asked > 13 { u["asked"] = 0 }
             if qasked != 0 && Double(s.week) - qasked > 13 { u["qasked"] = 0 }
-            // store the unit back before it may be removed
             if let k = f["units"].array.firstIndex(where: { $0["id"].int == uid }) { var arr = f["units"].array; arr[k] = u; f["units"] = .array(arr) }
             if (u["neg"].double > 30 && uSupp < 2) || u["neg"].double > 52 { endUnit(&s, i, &f, unitID: uid, how: "bust", context: fc); continue }
             if Double(s.week) >= u["end"].double {
@@ -537,7 +493,6 @@ public enum Franchising {
         f["brand"] = .number(clamp(f["brand"].double + Double(units.count) * 0.05 + (s.companies[i].quality - 60) * 0.0015 + (qAvg - 55) * 0.002 * min(1, Double(units.count) / 3) - f["brand"].double * 0.003, 0, 100))
         let mw = masterWeek(&s, i, &f, bd, data: data)
         f["income"] = .number(roy + renew + mw)
-        // the store's own trading margin, without franchise money (so paying for set-ups does not make the concept look worse)
         let lw = s.companies[i].value("lastW")
         let r = lw["rev"].double
         if r > 0 && s.companies[i].status == .open {
@@ -548,8 +503,6 @@ public enum Franchising {
         s.companies[i].set("fr", f)
     }
 
-    // MARK: The franchisee's week
-
     public static func brandMinimumQuality(_ f: JSONValue) -> Double { (min(f["std"].isNull ? 60 : f["std"].double, 72) - 27).rounded() }
 
     static func franchiseeWeek(_ s: inout GameState, _ i: Int, rev: Double, context fc: FinanceContext) {
@@ -557,8 +510,6 @@ public enum Franchising {
         guard f["fran"].bool else { return }
         let co = s.companies[i]
         if f["term"].double > 0 && !f["w0"].isNull && f["end"].isNull { f["end"] = .number(f["w0"].double + f["term"].double * 52) }
-        // The brand's marketing fund takes its share of sales; where the agreement requires local marketing, what the unit does not
-        // spend itself goes to the fund instead. Both are costs of the franchisee; the brand is outside the player's books.
         let spent = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value["b"].double }
         let topUp = max(0, rev * FranchiseStandards.requiredShare(co) - spent)
         let due = rev * (f["roy"].double + f["mkt"].double) + topUp
@@ -613,7 +564,6 @@ public enum Franchising {
 
     static func refitCost(_ s: GameState, _ co: Company, _ fc: FinanceContext) -> Double { fc.currency(co.countryCode, s).scaledPrice(30000) * max(1, co.size) }
 
-    /// Leave the brand: by choice, at contract end, or terminated by the franchisor. Original: `leaveBrand`.
     static func leaveBrand(_ s: inout GameState, _ i: Int, why: String, context fc: FinanceContext) {
         let f = s.companies[i].value("franchise")
         guard !f.isNull else { return }
@@ -628,18 +578,16 @@ public enum Franchising {
                tone: why == "term" ? "bad" : "n", companyID: co.id)
     }
 
-    /// What it costs to leave early. Original: `R24.buyout`.
     public static func buyout(_ co: Company, week: Int) -> Double {
         let f = co.value("franchise")
         guard !f.isNull, !f["end"].isNull else { return 0 }
         let yrs = max(0, (f["end"].double - Double(week)) / 52)
-        let weeks = Double(max(1, min(GameCalendar.weeksIntoYear(week: week), week - (co.openedWeek ?? 0))))   // the year book starts on 1 January, not at week % 52
+        let weeks = Double(max(1, min(GameCalendar.weeksIntoYear(week: week), week - (co.openedWeek ?? 0))))
         let yRoy = ((co.books.year["rev"] ?? 0) / weeks * 52) * (f["roy"].double + f["mkt"].double)
         let base = max(f["fee"].double * 0.25 * min(1, yrs / 3), min(f["fee"].double * 1.5, yRoy * yrs * 0.5))
         return (base / 1000).rounded() * 1000 + f["owed"].double.rounded()
     }
 
-    /// Buy out the rest of the contract and go independent. Original: `ACT.fb24leave`.
     public static func leaveFranchise(_ s: inout GameState, companyID: Int, context fc: FinanceContext) -> Bool {
         guard let i = s.companyIndex(companyID), !s.companies[i].value("franchise").isNull else { return false }
         let fee = buyout(s.companies[i], week: s.week)
@@ -649,11 +597,8 @@ public enum Franchising {
         return true
     }
 
-    // MARK: Answers to the messages
-
     public static func handlesAnswer(_ action: String) -> Bool { action == "fr24" || action == "fb24" }
 
-    /// The player's answer to a franchisee/franchisor question. Original: `ACTS.fr24`, `ACTS.fb24`.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, context fc: FinanceContext) {
         guard let i = s.companyIndex(m.companyID) else { return }
         let d = m.value("data")
@@ -698,9 +643,6 @@ public enum Franchising {
         }
     }
 
-    // MARK: The week
-
-    /// Everything franchising does once a week. Original: `fbWeek`, `frWeek`, `franchiseeWeek` and the answers to unanswered questions.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         FranchiseBrands.weekly(&s, data: data)
         PlayerDeals.weekly(&s)
@@ -717,7 +659,6 @@ public enum Franchising {
             if co.value("fr")["on"].bool { franchisorWeek(&s, i, data: data, context: fc) }
             if co.value("franchise")["fran"].bool, !s.companies[i].value("lastW").isNull { franchiseeWeek(&s, i, rev: s.companies[i].lastWeekRevenue, context: fc) }
         }
-        // Questions nobody answered: royalty and quality questions give time / a warning; the franchisor ends the contract, an expired one is not renewed.
         for k in s.inbox.indices {
             let m = s.inbox[k]
             guard handlesAnswer(m.actionID), m.status == "done", m.flag("auto"), !m.flag("done24") else { continue }

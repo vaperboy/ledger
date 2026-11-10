@@ -4,22 +4,11 @@ import Countries
 import Finance
 import Businesses
 
-/// The player's own quarterly review of their group: a calm look at the quarter that just closed, one or two targets for the next, and a
-/// grade (Missed, Met, Beat) when that quarter closes. Not the boards of the companies (`ManagerModel` boards, `BoardDecision`): this is the
-/// owner holding the group to account.
-///
-/// It opens after a first full year (`Gates.reviewOpen`) and the first review comes at the first quarter end after that.
-/// The figures are sums of the month reports (`Reports`), so they are the books' own. Kept in `rest["qrv"]`:
-///   `since` the week the review opened, `hist` graded quarters, `last` the figures of the latest quarter, `act` the targets now running,
-///   `offer` the review waiting to be answered.
-/// The consequence is mild: a graded quarter moves the credit score by one or two points (loan terms follow it), a miss only while the score
-/// is not already low, so a bad run does not turn into a spiral.
 public enum ReviewGrade: Int, Codable, Equatable, Sendable {
     case missed = 0, met = 1, beat = 2
 
     public var word: String { switch self { case .missed: return "Missed"; case .met: return "Met"; case .beat: return "Beat" } }
 
-    /// Average score to a grade: Beat from 1.5, Met from 0.5.
     public static func from(score: Double) -> ReviewGrade { score >= 1.5 ? .beat : (score >= 0.5 ? .met : .missed) }
 }
 
@@ -31,13 +20,10 @@ public enum TargetKind: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// What the three months showed, from the month reports.
 public struct QuarterFigures: Codable, Equatable, Sendable {
     public var sales = 0.0
     public var costs = 0.0
-    /// After tax.
     public var profit = 0.0
-    /// The account and every company's cash at the quarter end.
     public var cashEnd = 0.0
     public var staff = 0
     public var reputationStart = 0.0
@@ -46,28 +32,20 @@ public struct QuarterFigures: Codable, Equatable, Sendable {
     public var months = 0
     public var bestName = ""
     public var bestProfit = 0.0
-    /// Companies that traded in the quarter.
     public var companies = 0
 
-    /// Costs as a share of sales (nil without sales).
     public var costShare: Double? { sales > 0 ? costs / sales : nil }
-    /// -1, 0 or +1: how customers' opinion moved (a change under two points is no change).
     public var opinionMove: Int { let d = reputationEnd - reputationStart; return d >= 2 ? 1 : (d <= -2 ? -1 : 0) }
 }
 
-/// One target: what it asks for, measured at the quarter end.
 public struct ReviewTarget: Codable, Equatable, Sendable, Identifiable {
     public var id: String { kind.rawValue }
     public var kind: TargetKind
-    /// Level that counts as Met and level that counts as Beat. For `costs` these are shares of sales (lower is better).
     public var goal = 0.0
     public var stretch = 0.0
-    /// The measure when the target was set.
     public var start = 0.0
-    /// The measure at the quarter end, once graded.
     public var result: Double? = nil
     public var grade: ReviewGrade? = nil
-    /// Words for the popup, written when the target is offered ("Sales of at least £48k", "now £46k").
     public var goalText = ""
     public var stretchText = ""
     public var nowText = ""
@@ -81,9 +59,7 @@ public struct ReviewTarget: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
-/// A closed quarter in the history.
 public struct QuarterRecord: Codable, Equatable, Sendable, Identifiable {
-    /// The game week the quarter closed in.
     public var id: Int
     public var year: Int
     public var label: String
@@ -91,11 +67,9 @@ public struct QuarterRecord: Codable, Equatable, Sendable, Identifiable {
     public var targets: [ReviewTarget] = []
     public var score: Double? = nil
     public var grade: ReviewGrade? = nil
-    /// What the grade did, in words.
     public var note = ""
 }
 
-/// The review waiting for the player: the quarter in words and arrows, what the last targets came to, and the targets on offer.
 public struct ReviewOffer: Codable, Equatable, Sendable {
     public var label: String
     public var nextLabel: String
@@ -103,9 +77,7 @@ public struct ReviewOffer: Codable, Equatable, Sendable {
     public var previous: QuarterFigures? = nil
     public var graded: QuarterRecord? = nil
     public var options: [ReviewTarget] = []
-    /// The month counter of the quarter the targets cover ends in.
     public var nextEnd = 0
-    /// Shown again from this week (the player said not now).
     public var deferUntil = 0
 }
 
@@ -123,7 +95,6 @@ struct ReviewState: Codable, Equatable {
     var offer: ReviewOffer? = nil
 }
 
-/// What setting the targets told the player.
 public struct ReviewChoice: Equatable, Sendable {
     public var chosen: String
     public var result: String
@@ -133,24 +104,15 @@ public enum GroupReview {
     static let key = "qrv"
     static let kept = 24
 
-    // MARK: Storage
-
     static func load(_ s: GameState) -> ReviewState { Reports.read(s.rest[key], as: ReviewState.self) ?? ReviewState() }
     static func save(_ s: inout GameState, _ st: ReviewState) { s.rest[key] = Reports.write(st) }
 
-    // MARK: Calendar
-
-    /// A quarter closes with March, June, September and December.
     static func isQuarterEnd(_ week: Int) -> Bool { GameCalendar.isMonthEnd(week: week) && GameCalendar.month(week: week) % 3 == 2 }
 
-    /// "Oct to Dec 2026" for the quarter that ends in month counter `endMonth` (quarters sit inside one calendar year).
     static func label(endMonth: Int) -> String {
         "\(GameCalendar.monthNames[(endMonth - 2) % 12]) to \(GameCalendar.monthNames[endMonth % 12]) \(endMonth / 12)"
     }
 
-    // MARK: Figures
-
-    /// The quarter that ends this week: the sum of its month reports (fewer than three when the game is younger).
     static func figures(_ s: GameState) -> QuarterFigures? {
         let cur = GameCalendar.monthIndex(week: s.week)
         let months = Reports.stored(s, .month).filter { r in let m = GameCalendar.monthIndex(week: r.lastWeek); return m > cur - 3 && m <= cur }
@@ -178,7 +140,6 @@ public enum GroupReview {
         return f
     }
 
-    /// The measure a target is graded on.
     static func measure(_ kind: TargetKind, _ f: QuarterFigures) -> Double? {
         switch kind {
         case .sales: return f.sales
@@ -188,14 +149,12 @@ public enum GroupReview {
         }
     }
 
-    /// Rounds up to three significant figures, so a goal reads as a clean number and is never below the exact one.
     static func roundUp(_ x: Double) -> Double {
         guard x > 0 else { return 0 }
         let unit = pow(10, floor(log10(x)) - 2)
         return (x / unit).rounded(.up) * unit
     }
 
-    /// Rounds down to three significant figures (a floor that is never above the exact figure).
     static func roundDown(_ x: Double) -> Double {
         guard x > 0 else { return 0 }
         let unit = pow(10, floor(log10(x)) - 2)
@@ -204,7 +163,6 @@ public enum GroupReview {
 
     static func percent(_ share: Double) -> String { "\(Int((share * 100).rounded())) percent" }
 
-    /// The targets a review can offer, with thresholds from the quarter's own books. A target that makes no sense now (sales of nothing) is left out.
     static func options(_ f: QuarterFigures, cur: Currency) -> [ReviewTarget] {
         var out: [ReviewTarget] = []
         if f.sales > 0 {
@@ -240,7 +198,6 @@ public enum GroupReview {
         return out
     }
 
-    /// The target's result in words, in the same form as its goal.
     static func resultText(_ t: ReviewTarget, value: Double?, cur: Currency) -> String {
         guard let v = value else { return "no sales to measure" }
         switch t.kind {
@@ -250,9 +207,6 @@ public enum GroupReview {
         }
     }
 
-    // MARK: Grading
-
-    /// Grades the running targets against the quarter that has just closed and applies the consequence. Returns the quarter's record.
     static func grade(_ s: inout GameState, active: ActiveTargets, f: QuarterFigures, cur: Currency) -> QuarterRecord {
         var rec = QuarterRecord(id: s.week, year: GameCalendar.year(week: s.week), label: active.label)
         rec.figures = f
@@ -270,7 +224,6 @@ public enum GroupReview {
         let score = scored.reduce(0, +) / Double(scored.count)
         let g = ReviewGrade.from(score: score)
         rec.score = score; rec.grade = g
-        // A small move of the credit score, which the banks price loans on. A miss costs only while the score is not already low.
         switch g {
         case .beat: s.credit = clamp(s.credit + 2, 0, 100); rec.note = "Your lenders noted a strong quarter, and loan terms are a touch friendlier."
         case .met: s.credit = clamp(s.credit + 1, 0, 100); rec.note = "Your lenders noted that you did what you said you would."
@@ -281,10 +234,6 @@ public enum GroupReview {
         return rec
     }
 
-    // MARK: The quarter end
-
-    /// Called when a week has closed (after the reports): records when the review opened, and at a quarter end grades the last targets and
-    /// prepares the next review.
     static func close(_ s: inout GameState, context: FinanceContext) {
         guard GameCalendar.isMonthEnd(week: s.week) else { return }
         var st = load(s)
@@ -310,24 +259,19 @@ public enum GroupReview {
 }
 
 public extension GameEngine {
-    /// The review to show now: nil when none is waiting or the player said not now for a while.
     var reviewOffer: ReviewOffer? {
-        guard state.rest[GroupReview.key]?["offer"].isNull == false else { return nil }   // cheap for the popup layer, which asks on every redraw
+        guard state.rest[GroupReview.key]?["offer"].isNull == false else { return nil }
         guard let o = GroupReview.load(state).offer, state.week >= o.deferUntil else { return nil }
         return o
     }
 
-    /// Graded quarters, oldest first.
     var reviewHistory: [QuarterRecord] { GroupReview.load(state).hist }
 
-    /// The targets running for the quarter in progress.
     var reviewTargets: [ReviewTarget] { GroupReview.load(state).act?.targets ?? [] }
     var reviewTargetsLabel: String { GroupReview.load(state).act?.label ?? "" }
 
-    /// The grade of a calendar year: the average of its graded quarters (nil when none was graded).
     func reviewYearGrade(_ year: Int) -> ReviewGrade? { GroupReview.yearGrade(GroupReview.load(state).hist, year: year) }
 
-    /// How the board and lenders see the group, in words, from the last four graded quarters. Nil before the first grade.
     var reviewStanding: (words: String, trend: Int)? {
         let h = reviewHistory.filter { $0.score != nil }
         guard !h.isEmpty else { return nil }
@@ -340,7 +284,6 @@ public extension GameEngine {
         return (words, trend)
     }
 
-    /// Sets one or two targets for the next quarter from the review on offer.
     @discardableResult
     mutating func setReviewTargets(_ kinds: [TargetKind]) -> ReviewChoice? {
         var out: ReviewChoice?
@@ -360,7 +303,6 @@ public extension GameEngine {
         return out
     }
 
-    /// Not now: the review comes back next week (and lapses when the next quarter closes).
     mutating func deferReview() {
         update { s, _, _ in
             var st = GroupReview.load(s)
@@ -371,7 +313,6 @@ public extension GameEngine {
         }
     }
 
-    /// No targets this quarter: nothing is graded and nothing changes.
     mutating func skipReview() {
         update { s, _, _ in
             var st = GroupReview.load(s)

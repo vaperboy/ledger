@@ -3,20 +3,15 @@ import SwiftUI
 import UIKit
 #endif
 
-/// The families of things that can carry a picture.
 enum ThumbKind: String, CaseIterable {
     case premises
     case person
     case trade
     case luxury
-    /// A 16:9 photo of premises from the premises sheet; the key is a cell id from `ArtLibrary.premisesKey`.
     case premisesPhoto
-    /// A firm's logo from the logos sheet; the key is a firm key such as `group|g12` (see `ArtLibrary.logoKey`).
     case logo
-    /// A trophy, badge or award from the trophies sheet; the key is a cell id from `ArtLibrary.trophyKey` or `awardKey`.
     case trophy
 
-    /// The icon shown while no picture has been supplied.
     var fallbackGlyph: String {
         switch self {
         case .premises: return Glyph.home
@@ -33,25 +28,18 @@ enum ThumbKind: String, CaseIterable {
 enum ThumbShape {
     case round
     case square
-    /// 16:9: `size` is the height, the width is size x 16/9 (premises photos).
     case wide
 }
 
-/// What a row needs to say to get a thumbnail, so shared rows (CardRow) can take one as a single value.
 struct ThumbSpec {
     var kind: ThumbKind
     var key: String
-    /// Replaces the kind's default icon while no picture exists.
     var glyph: String? = nil
-    /// People only: the name whose initials fill the circle while no picture exists.
     var initials: String? = nil
     var shape: ThumbShape = .round
-    /// Employees only: the portrait key the engine gave the person (`Person.faceKey`, see Design/FaceSheet.swift).
     var face: String? = nil
 }
 
-/// One picture slot for a premises, a person (by role), a trade (company) or a luxury item. A sheet picture fills the slot when there
-/// is one; otherwise it shows the house icon circle (or the person's initials). The slot is always exactly `size` square, with or without art, so rows never reflow.
 struct ThumbnailView: View {
     var kind: ThumbKind
     var key: String
@@ -60,7 +48,6 @@ struct ThumbnailView: View {
     var glyph: String? = nil
     var initials: String? = nil
     var tint: Color = Theme.gold
-    /// Employees only: shows a portrait from the faces sheet; the initials or icon stay as the fallback when the sheet cannot be loaded.
     var face: String? = nil
 
     init(kind: ThumbKind, key: String, size: CGFloat = 40, shape: ThumbShape = .round, glyph: String? = nil, initials: String? = nil, tint: Color = Theme.gold,
@@ -76,19 +63,16 @@ struct ThumbnailView: View {
 
     private var corner: CGFloat { max(6, size * 0.22) }
 
-    /// The slot is always this size, with or without art, so rows never reflow.
     private var slotWidth: CGFloat { shape == .wide ? (size * 16 / 9).rounded() : size }
 
     var body: some View {
         slot.frame(width: slotWidth, height: size).accessibilityHidden(true)
     }
 
-    /// The portrait cut from the faces sheet for an employee; nil for anything else, when the engine gave none, or when the sheet is missing.
     private var facePicture: CGImage? { kind == .person ? FaceSheet.image(face) : nil }
 
     @ViewBuilder private var slot: some View {
         if let cg = facePicture {
-            // The cut is already a square: fill the slot exactly, clip to the circle, and use the same border as every other avatar.
             let image = Image(decorative: cg, scale: 1).resizable().interpolation(.high).aspectRatio(1, contentMode: .fill).frame(width: size, height: size).clipped()
             image.clipShape(Circle()).overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
         } else {
@@ -109,7 +93,6 @@ struct ThumbnailView: View {
     }
 
     #if canImport(UIKit)
-    /// The sliced sheet cell for the kind; premises and people have no picture and show their icon or initials, trades their drawn emblem (`ItemArt`).
     private var picture: UIImage? {
         switch kind {
         case .premises, .person, .trade:
@@ -155,7 +138,6 @@ struct ThumbnailView: View {
         }
     }
 
-    /// Inside a square or wide frame: the logo's initials when it has no picture, else the house icon.
     @ViewBuilder private var squareFallback: some View {
         if kind == .logo, let initials, !initials.isEmpty {
             Text(ArtLibrary.initials(initials)).font(.system(size: size * 0.38, weight: .semibold)).foregroundStyle(tint)

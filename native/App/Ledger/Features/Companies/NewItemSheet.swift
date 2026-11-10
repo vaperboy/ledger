@@ -4,15 +4,12 @@ import Countries
 import Businesses
 import Simulation
 
-/// "Add a product" / "Add a service": the engine's choices as compact rows (name and, with a market advisor, the profit and market change).
-/// A tap asks for confirmation, then puts the item on sale at once.
 struct NewItemSheet: View {
     @EnvironmentObject var store: GameStore
     let companyID: Int
     let isService: Bool
     var onClose: () -> Void
     var onHireAdvisor: () -> Void
-    /// Called with the name of an item that went on sale, so the caller can open its page.
     var onAdded: ((String) -> Void)? = nil
     @State private var pending: PendingAction?
     @State private var own = ""
@@ -101,7 +98,6 @@ struct NewItemSheet: View {
         })
     }
 
-    /// Items of the trade's real range this company does not sell yet (shops and garages), added at once.
     @ViewBuilder private func catalogueRows(_ e: GameEngine, _ list: NewItemOptionList) -> some View {
         let taken: Set<String> = Set(list.options.map { (o: NewItemOption) -> String in o.name.lowercased() })
         let extra: [RetailItems.Def] = e.retailAddableItems(companyID: companyID)

@@ -1,11 +1,3 @@
-# OWNER STEPS (run once, from the repo root): install the Supabase CLI and `supabase login`; run
-# `supabase link --project-ref ktcjbitrwuieuxthrqhu` (it asks for the database password, which only you hold; never commit it);
-# run `supabase db push` to apply supabase/migrations, then paste supabase/seed.sql into the dashboard SQL editor (dev data only).
-# In the dashboard under Authentication > Providers enable Apple (Services ID + key) and Google (web client ID + secret) and turn on
-# "Allow anonymous sign-ins"; under Authentication > URL Configuration set the site URL and redirect URLs to the app's URL scheme
-# (for example ledger://auth-callback). Keep the provider secrets in the dashboard or in a git-ignored supabase/.env, never in this file.
-# Finally set `OnlineConfig.useServer = true` in native/App/Ledger/Core/Online/OnlineConfig.swift and ship a build.
-
 project_id = "ktcjbitrwuieuxthrqhu"
 
 [api]

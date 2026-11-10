@@ -3,9 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Licences, registrations and permits a business needs before it can open. Original: `docDef`, `docCost`,
-/// `docNeeds`, `applyDoc`, `docsWeek` (engine/company/company.js, engine/countries/document_rules.js).
-/// Names, fees and waiting times come from `tables.json` (the standard list) and each country's data file (overrides).
 public enum Documents {
     public struct Definition: Equatable {
         public var name: String
@@ -18,7 +15,7 @@ public enum Documents {
 
     public static func definition(_ id: String, country: Country, tables: TradeTables) -> Definition? {
         var base = tables.raw["DOCS"][id]
-        if base.isNull { base = Chains.extraDocuments[id] ?? .null }   // chain registration and franchise papers (Chains.swift)
+        if base.isNull { base = Chains.extraDocuments[id] ?? .null }
         if base.isNull { return nil }
         let override = country.pack["documents"]["overrides"][id]
         func v(_ i: Int) -> JSONValue { (!override.isNull && !override[i].isNull) ? override[i] : base[i] }
@@ -29,7 +26,6 @@ public enum Documents {
         country.pack["documents"]["notNeeded"].array.contains { $0.string == id }
     }
 
-    /// Which documents the company needs now. Original: `docNeeds`.
     public static func needed(_ co: Company, _ bd: Trade, _ w: World) -> [String] {
         let country = w.country(co)
         var need = bd.documents.filter { !($0 == "vat" && Vat.isExempt(co, w)) }
@@ -38,12 +34,10 @@ public enum Documents {
         }
         if !co.value("foreignOf").isNull && !need.contains("foreign_entity") { need.append("foreign_entity") }
         if !need.contains("accountant_agreement") { need.append("accountant_agreement") }
-        // VAT registration is always on the opening list: you do it once and forget it. Not for an exempt business.
         if !need.contains("vat") && !Vat.isExempt(co, w) { need.append("vat") }
         return need.filter { !isSkipped($0, country: country) }
     }
 
-    /// Fee for an application. Original: `docCost`.
     public static func cost(_ id: String, company co: Company, _ bd: Trade, _ w: World) -> Double {
         let country = w.country(co)
         guard let dd = definition(id, country: country, tables: w.catalog.tables) else { return 0 }
@@ -70,8 +64,6 @@ public enum Documents {
         return jsRound(Currency.nicePrice(c / fx) * fx)
     }
 
-    /// How many weeks an application takes for this company: the document's own weeks, longer abroad (the country's bureaucracy, shorter
-    /// with a head office there), shorter for an owner-run law practice. What `apply` waits and what a quote shows are the same number.
     public static func waitWeeks(_ id: String, definition dd: Definition, company co: Company, _ w: World) -> Int {
         let s = w.state
         var weeks = Double(dd.weeks)
@@ -83,7 +75,6 @@ public enum Documents {
 
     public enum ApplyResult: Equatable { case ok, alreadyHeld, notEnoughCash, pickAccountant }
 
-    /// Apply for a document: pay the fee, wait the weeks. Original: `applyDoc`.
     public static func apply(_ id: String, companyID: Int, state s: inout GameState, data: GameData) -> ApplyResult {
         guard let i = s.companyIndex(companyID) else { return .alreadyHeld }
         let co = s.companies[i]
@@ -102,8 +93,6 @@ public enum Documents {
         return .ok
     }
 
-    /// The player filled in the form and signed it. The authority reviews it and may refuse; a refusal is told with a reason and the player may
-    /// apply again at once (no cooldown: real authorities have none unless a rule says so), paying the fee again.
     public static func applySigned(_ id: String, companyID: Int, state s: inout GameState, data: GameData) -> ApplyResult {
         let r = apply(id, companyID: companyID, state: &s, data: data)
         if r == .ok, let i = s.companyIndex(companyID) {
@@ -114,7 +103,6 @@ public enum Documents {
         return r
     }
 
-    /// The chance a signed application is refused: small for routine registrations, larger for the heavier licences, and higher with a poor accountant.
     static func refusalChance(_ id: String, company co: Company) -> Double {
         let routine: Set<String> = ["registration", "vat", "accountant_agreement", "police", "privacy"]
         let base = routine.contains(id) ? 0.04 : 0.10
@@ -123,7 +111,6 @@ public enum Documents {
 
     static let refusalReasons = ["Some details did not match the register.", "A supporting paper was missing or unclear.", "The inspector asked for changes before approving.", "The form was signed but the address could not be checked."]
 
-    /// Weekly: approvals arrive, renewals fall due. Original: `docsWeek`.
     public static func weekly(_ s: inout GameState, companyIndex i: Int, data: GameData) {
         let co = s.companies[i]
         let w = World(state: s, data: data)
@@ -144,7 +131,6 @@ public enum Documents {
                 }
             } else if d["st"].string == "ok" && dd.renewalCost > 0 && Double(s.week) - d["ok"].double >= 52
                         && (Int(Double(s.week) - d["ok"].double) % 52 == 0 || d["due"].bool) {
-                // A renewal that cannot be paid on the day gets four weeks of grace before the licence lapses.
                 let fee = renewalCost(id, company: co, w)
                 if fee <= 0 || co.cash >= fee {
                     if fee > 0 { payments.append((fee, "Renewal: \(dd.name)")) }

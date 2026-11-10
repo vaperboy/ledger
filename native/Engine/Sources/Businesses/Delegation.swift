@@ -2,12 +2,7 @@ import Foundation
 import GameCore
 import Finance
 
-/// What the player's people do without asking. It follows who is hired:
-/// an accountant or a manager approves routine payroll, a manager replaces people who leave, staff answer routine complaints, and what a
-/// manager commits alone is their `Budget`: anything above it comes to the owner. Without a manager everything comes to the owner.
 public enum Delegation {
-    /// The ranks that can take a decision, lowest first. A decision has a level (1 to 5); the lowest rank present at or above it takes it,
-    /// and only a decision above the highest rank present reaches the owner (level 5).
     public enum Rank: Int, Sendable, CaseIterable {
         case assistantManager = 1, manager, director, ceo, owner
         public var title: String {
@@ -24,14 +19,10 @@ public enum Delegation {
     public static func hasAccountant(_ co: Company) -> Bool { !co.value("acc").isNull }
     public static func hasManager(_ co: Company) -> Bool { co.managerID != nil }
 
-    /// A hired manager replaces people who leave.
     public static func autoRehire(_ s: GameState, _ co: Company) -> Bool { hasManager(co) }
-    /// Staff answer routine complaints when there is staff.
     public static func staffAnswerComplaints(_ s: GameState, _ co: Company) -> Bool { !co.staff.isEmpty }
-    /// Weeks of running costs a company keeps in cash before it pays for marketing.
     public static let cashReserveWeeks = 2.0
 
-    /// The highest rank present in a company: what the lowest-level decisions can climb to before they reach the owner.
     public static func topRank(_ s: GameState, _ co: Company, data: GameData) -> Rank {
         let chain = ManagerModel.decisionChain(s, co, data: data)
         if chain.contains(where: { $0.kind == "ceo56" || $0.kind == "md" }) { return .ceo }
@@ -41,16 +32,12 @@ public enum Delegation {
         return .owner
     }
 
-    /// Who takes a decision of this level in this company: the lowest rank present that is at least the level (the owner if none is).
     public static func handler(level: Int, _ s: GameState, _ co: Company, data: GameData) -> Rank {
         let top = topRank(s, co, data: data)
         if top == .owner { return .owner }
         return level <= top.rawValue ? Rank(rawValue: max(level, 1)) ?? .owner : .owner
     }
 
-    /// How serious a message is, 1 (routine) to 5 (only the owner can take it), by its kind and its size against the owner's net worth: payroll is routine; people matters are a manager's; bad news is a director's or more; selling or buying out a
-    /// shareholder, and dividend proposals, are the CEO's or the owner's. A size of more than a hundredth of net worth raises the level, a small one
-    /// lowers it (a 10k matter is a manager's at 10M, a 1k one routine). Read-only news is routine unless it is bad.
     public static func level(of m: Message, netWorth nw: Double = 0) -> Int {
         let kind = m.value("data")["kind"].string
         var base: Int
@@ -58,8 +45,8 @@ public enum Delegation {
         if m.actionID.hasPrefix("pay29") { return 1 }
         if m.actionID == "staffx" || m.actionID == PromiseReminders.action || m.actionID == "mgrraise" || m.actionID == "mgrpoach" { base = 2 }
         else if kind == "exit" || kind == PremisesProposals.kind { return 5 }
-        else if m.actionID == HierarchyHiring.action { return 5 }   // a boss below the owner asks for the owner's say on a hire
-        else if kind == Appointments.kind { return max(3, m.value("data")["lvl"].int) }   // an assistant hire: decided by the level above the manager
+        else if m.actionID == HierarchyHiring.action { return 5 }
+        else if kind == Appointments.kind { return max(3, m.value("data")["lvl"].int) }
         else if kind == "divq" || kind == "div" || kind == "rofr" { base = 4 }
         else { base = m.tone == "bad" ? 4 : 3 }
         guard nw > 0 else { return base }
@@ -69,7 +56,6 @@ public enum Delegation {
         return min(5, max(1, base))
     }
 
-    /// The money a message is about: the largest figure it or any of its options names.
     public static func amount(of m: Message) -> Double {
         var amount = m.value("data")["amt"].double
         for o in m.options {
@@ -79,15 +65,12 @@ public enum Delegation {
         return amount
     }
 
-    /// May the company's manager take this decision? It must be within their budget (a tight budget takes none); anything above goes up or to the owner.
     public static func managerMayTake(_ m: Message, _ co: Company, _ s: GameState, data: GameData) -> Bool {
         ManagerModel.budget(of: co).actsAlone && ManagerModel.withinBudget(co, amount: amount(of: m), s, data: data)
     }
 
-    /// The share of the owner's net worth a manager may spend on one thing without asking.
     public static let spendShareOfNetWorth = 0.005
 
-    /// What the player's managers may spend without asking, in the home currency (0 when no company has a manager: everything is asked).
     public static func spendLimit(_ s: GameState, data: GameData) -> Double {
         guard s.companies.contains(where: { $0.status.isLive && hasManager($0) }) else { return 0 }
         return Valuation.netWorth(s, trades: data.catalog).total * spendShareOfNetWorth

@@ -5,8 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Skill pays: advertising stacks on the organic name with diminishing returns, the planner's payback figure is the one the game plays,
-/// and opening a second outlet tells the player what cash and time it takes.
 final class MasteryTests: XCTestCase {
     private func game(trade: String = "cafe", seed: Int = 7) throws -> (GameEngine, Int) {
         let e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed, story: .fresh, tradeID: trade, companyName: "T")

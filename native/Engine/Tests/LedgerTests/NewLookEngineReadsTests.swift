@@ -5,7 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// The reads the new look needs: payroll alerts, the Bank app, the trade picker and its costs, and the Hiring screen.
 final class NewLookEngineReadsTests: XCTestCase {
     private func game(seed: Int = 7) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
@@ -17,8 +16,6 @@ final class NewLookEngineReadsTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 50_000_000) else { throw XCTSkip("no company") }
         return id
     }
-
-    // MARK: Payroll alerts and the Bank app
 
     func testRoutinePayrollTheCompanyCanPayIsNotAnAlert() throws {
         var e = try game()
@@ -54,8 +51,6 @@ final class NewLookEngineReadsTests: XCTestCase {
         XCTAssertEqual(bank.total, bank.rows.reduce(0) { $0 + $1.balance }, accuracy: 0.01)
     }
 
-    // MARK: Trade picker
-
     func testTradePickerPricesTheHomeCityAndSplitsTheCost() throws {
         let e = try game()
         let city = e.state.player.cityID
@@ -65,13 +60,11 @@ final class NewLookEngineReadsTests: XCTestCase {
         XCTAssertEqual(row.startUpCost, e.tradeAffordability().first { $0.tradeID == "cafe" }?.cost)
         XCTAssertEqual(row.sector, e.data.catalog["cafe"]?.category)
         XCTAssertLessThanOrEqual(row.staffMin, row.staffMax)
-        // Demand follows the city: the same café is High in the capital and Low in a small town.
         let uk = e.data.countries["UK"]!
         let small = try XCTUnwrap(uk.cities.first { $0.name == "Small town" })
         let big = try XCTUnwrap(uk.cities.first { $0.name == "London" })
         XCTAssertEqual(e.tradePickerRows(cityID: big.id).first { $0.tradeID == "cafe" }?.demand, .high)
         XCTAssertEqual(e.tradePickerRows(cityID: small.id).first { $0.tradeID == "cafe" }?.demand, .low)
-        // The breakdown adds up to the picker's figure with the standard place, and to the plan's total with a picked one.
         let b = try XCTUnwrap(e.startUpCostBreakdown(tradeID: "cafe", cityID: city))
         XCTAssertEqual(b.lines.prefix(3).map(\.label), ["Registration and licences", "Fit-out and equipment", "Deposit and first month"])
         XCTAssertEqual(b.total, row.startUpCost!, accuracy: 0.5)
@@ -82,7 +75,6 @@ final class NewLookEngineReadsTests: XCTestCase {
         let bought = try XCTUnwrap(e.startUpCostBreakdown(tradeID: "cafe", cityID: city, premises: pick))
         XCTAssertEqual(bought.total, e.newCompanyPlan(tradeID: "cafe", cityID: city, size: size, pick: pick)!.total, accuracy: 0.5)
         XCTAssertTrue(bought.buying)
-        // Monthly costs: rent plus running costs plus the wages the start-up cost holds one month of.
         let m = try XCTUnwrap(e.monthlyFixedCostEstimate(tradeID: "cafe", cityID: city))
         XCTAssertEqual(m.lines.first?.label, "Rent")
         XCTAssertEqual(m.lines.first { $0.id == "wages" }?.amount, e.newCompanyPlan(tradeID: "cafe", cityID: city, size: size)!.estimate.firstPayroll)
@@ -90,13 +82,11 @@ final class NewLookEngineReadsTests: XCTestCase {
         XCTAssertEqual(e.monthlyFixedCostEstimate(tradeID: "cafe", cityID: city, premises: pick)?.lines.first?.label, "Mortgage payment")
     }
 
-    // MARK: Hiring
-
     func testApplicantsShowOnlyWhatIsVisibleAndSearchesAreFree() throws {
         var e = try game()
         let id = try cafe(&e)
         let options = e.hiringSearchOptions()
-        XCTAssertEqual(options.map(\.mode), [.ads, .agency])   // the network option is gone for the player
+        XCTAssertEqual(options.map(\.mode), [.ads, .agency])
         XCTAssertTrue(options.allSatisfy { $0.fee == 0 }, "searching costs nothing in the game today")
         let cashBefore = e.state.company(id)!.cash
         let found = e.searchWorkers(companyID: id, role: "barista", mode: .ads)

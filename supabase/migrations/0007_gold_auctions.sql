@@ -1,9 +1,3 @@
--- Gold wallet, collectible artifacts and timed auctions. Mirrors the engine's GoldWallet, ArtifactCatalog and AuctionRules.
--- Gold is premium currency held on the server: it is only ever spent (or held while a bid leads), never turned into game money, and it
--- leaves a wallet only through a purchase, a sale fee or a won auction. Clients cannot write any of these tables; every change is one of
--- the functions below. Gold enters only through grant_gold_purchase, which the payment webhook (service role) calls after it has
--- verified the store receipt.
-
 create type public.artifact_rarity as enum ('common', 'rare', 'epic', 'legendary');
 create type public.auction_status as enum ('live', 'sold', 'unsold', 'cancelled');
 
@@ -20,7 +14,6 @@ insert into public.gold_packs (id, name, price_cents, gold) values
 create table public.gold_wallets (
   user_id uuid primary key references public.profiles (id) on delete cascade,
   balance int not null default 0 check (balance >= 0),
-  -- Part of the balance reserved for bids that currently lead.
   held int not null default 0 check (held >= 0),
   first_purchase_done boolean not null default false,
   constraint held_within_balance check (held <= balance)
@@ -36,7 +29,6 @@ create table public.gold_ledger (
 );
 create index gold_ledger_user on public.gold_ledger (user_id, created_at desc);
 
--- One row per store transaction, so a receipt that is delivered twice credits once.
 create table public.gold_purchases (
   store_transaction_id text primary key,
   user_id uuid not null references public.profiles (id) on delete cascade,
@@ -55,7 +47,6 @@ create table public.artifact_defs (
   name text not null,
   collection_id text not null references public.artifact_collections (id),
   rarity public.artifact_rarity not null,
-  -- How many exist; the serial of a piece runs from 1 to this.
   edition int not null check (edition > 0)
 );
 insert into public.artifact_collections (id, name, reward_id) values
@@ -71,7 +62,6 @@ insert into public.artifact_defs (id, name, collection_id, rarity, edition) valu
   ('stamp', 'Ink stamp', 'archive', 'common', 5000), ('map', 'Old town map', 'archive', 'rare', 1500),
   ('scroll', 'Charter scroll', 'archive', 'epic', 500), ('charter', 'Royal charter', 'archive', 'legendary', 100);
 
--- Each numbered piece exists once. The piece has an owner; while it is on auction it stays with the seller and points at the auction.
 create table public.artifact_pieces (
   def_id text not null references public.artifact_defs (id),
   serial int not null check (serial >= 1),
@@ -89,7 +79,6 @@ begin
 end $$;
 create trigger artifact_pieces_serial before insert or update of serial, def_id on public.artifact_pieces for each row execute function private.check_piece_serial();
 
--- The cosmetic a finished collection pays, once ever.
 create table public.cosmetic_grants (
   user_id uuid not null references public.profiles (id) on delete cascade,
   cosmetic_id text not null,
@@ -104,7 +93,6 @@ create table public.auctions (
   serial int not null,
   seller_id uuid not null references public.profiles (id) on delete cascade,
   start_price int not null check (start_price >= 10),
-  -- Hidden minimum: below it the piece is not sold. Bidders only learn whether it has been met.
   reserve int,
   starts_at timestamptz not null default now(),
   ends_at timestamptz not null,
@@ -129,7 +117,6 @@ create table public.auction_bids (
 );
 create index auction_bids_auction on public.auction_bids (auction_id, id desc);
 
--- What a player is told about an auction that ended and touched them (shown once).
 create table public.auction_notices (
   id bigint generated always as identity primary key,
   user_id uuid not null references public.profiles (id) on delete cascade,
@@ -169,7 +156,6 @@ create policy gold_purchases_own on public.gold_purchases for select to authenti
 create policy artifact_pieces_own on public.artifact_pieces for select to authenticated using (owner_id = auth.uid());
 create policy cosmetic_grants_own on public.cosmetic_grants for select to authenticated using (user_id = auth.uid());
 create policy auction_notices_own on public.auction_notices for select to authenticated using (user_id = auth.uid());
--- Auctions and bids are read through auctions_snapshot() (it hides the reserve and blocked pairs).
 
 create or replace function private.auctions_open(uid uuid) returns boolean language sql stable as $$
   select exists (select 1 from public.auctions where status = 'live' and seller_id = uid)
@@ -177,9 +163,6 @@ create or replace function private.auctions_open(uid uuid) returns boolean langu
                   where b.bidder_id = uid and a.status = 'live' and b.id = (select max(id) from public.auction_bids where auction_id = a.id));
 $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Wallet primitives (private: other functions call them, clients never do)
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.wallet(uid uuid) returns public.gold_wallets language plpgsql security definer set search_path = '' as $$
 declare w public.gold_wallets;
 begin
@@ -188,7 +171,6 @@ begin
   return w;
 end $$;
 
--- Spends gold that is not held; a short wallet raises not_enough_gold:<missing>.
 create function private.gold_spend(uid uuid, amount int, kind text, ref text default '') returns void language plpgsql security definer set search_path = '' as $$
 declare w public.gold_wallets := private.wallet(uid);
 begin
@@ -204,8 +186,6 @@ begin
   insert into public.gold_ledger (user_id, delta, kind, ref) values (uid, greatest(0, amount), kind, coalesce(ref, ''));
 end $$;
 
--- Called by the payment webhook with the service role, after the store receipt has been verified. Idempotent on the store transaction id.
--- The first pack ever bought carries a one-time bonus of half as much gold again.
 create function public.grant_gold_purchase(p_user uuid, p_pack text, p_transaction text) returns int language plpgsql security definer set search_path = '' as $$
 declare pk public.gold_packs; w public.gold_wallets; total int;
 begin
@@ -231,9 +211,6 @@ begin
     'cosmetics', coalesce((select jsonb_agg(cosmetic_id) from public.cosmetic_grants where user_id = uid), '[]'::jsonb));
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Auction rules
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.auction_increment(price int) returns int language sql immutable as $$
   select case when price < 100 then 5 when price < 500 then 10 when price < 2000 then 25 when price < 10000 then 100 else 500 end;
 $$;
@@ -243,7 +220,6 @@ create function private.auction_top(aid uuid) returns public.auction_bids langua
   select * from public.auction_bids where auction_id = aid order by id desc limit 1;
 $$;
 
--- Gives the winner the piece, pays the seller less the fee (the fee is burned) and hands out a finished collection's cosmetic once.
 create function private.auction_close(a public.auctions) returns void language plpgsql security definer set search_path = '' as $$
 declare top public.auction_bids; v_fee int; done text[] := '{}'; col text; reward text;
 begin
@@ -275,7 +251,6 @@ begin
   end if;
 end $$;
 
--- Closes every auction whose time is up. Safe to run at any time (the platform also schedules it).
 create function private.settle_due_auctions() returns int language plpgsql security definer set search_path = '' as $$
 declare a public.auctions; n int := 0;
 begin
@@ -303,10 +278,6 @@ begin
                         from public.auction_bids b where b.auction_id = a.id), '[]'::jsonb));
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Auction functions
--- ---------------------------------------------------------------------------------------------------------------------
--- Everything the screen needs after settling what is due: live auctions (not of blocked players), the caller's wallet, and what ended for them.
 create function public.auctions_snapshot() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); notices jsonb;
 begin
@@ -336,8 +307,6 @@ begin
   return private.auction_json(a, uid);
 end $$;
 
--- A bid is held while it leads and returned when beaten. A bid in the last two minutes pushes the end out to two minutes after it
--- (at most twelve times), so an auction cannot be sniped and cannot run for ever.
 create function public.place_bid(p_auction uuid, p_amount int) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); a public.auctions; top public.auction_bids; minimum int; w public.gold_wallets; new_end timestamptz;
 begin
@@ -363,7 +332,6 @@ begin
   return private.auction_json(a, uid);
 end $$;
 
--- Takes a listing back while nobody has bid.
 create function public.cancel_auction(p_auction uuid) returns void language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); a public.auctions;
 begin
@@ -374,7 +342,6 @@ begin
   update public.artifact_pieces set in_auction = null where def_id = a.def_id and serial = a.serial;
 end $$;
 
--- Staff / the box-opening function put a numbered piece into a cabinet (service role only).
 create function public.grant_artifact(p_user uuid, p_def text, p_serial int) returns void language plpgsql security definer set search_path = '' as $$
 begin
   insert into public.artifact_pieces (def_id, serial, owner_id) values (p_def, p_serial, p_user);

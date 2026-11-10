@@ -5,9 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// A page of a company that is its own screen, pushed on top of the company screen: Marketing, Customers, Setup, and a trade's
-/// own page (Plant, Fish, Club, Chain, Book). The five sections of the company itself (Overview, Team, Manage, Sales, Stats) are not
-/// here: they are the fixed bar of `CompanyDetailView`.
 struct CompanySectionScreen: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -46,13 +43,11 @@ struct CompanySectionScreen: View {
     }
 }
 
-/// Pages of the trade that have no section of their own (Plant, Fish, Club, Chain, Book): rows on the section they belong to.
 struct CompanyMorePages: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     var pages: [CompanySection]
-    /// Rows inside a group that already has rows above (each row gets a rule above it), instead of a group of their own.
     var ruled = false
     @Environment(\.outsidePalette) private var P
 
@@ -78,8 +73,6 @@ struct CompanyMorePages: View {
 
 }
 
-/// Projects of one project business (builders, developers, event firms): its running jobs and developments with their stages, and its order
-/// book (jobs, tenders, developments). It is the Projects part of Sales and only exists for those companies (`CompanyDetailView.hasProjects`).
 struct CompanyProjectsPage: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

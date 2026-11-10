@@ -3,27 +3,18 @@ import GameCore
 import Countries
 import Finance
 
-/// The businesses that have a weekly model of their own: energy (power producer, oil and gas), the salmon farm, the holding company
-/// and the football club. `CompanyWeek` asks this file whether it should hand the week over, and how the opening checklist, the
-/// purchase of equipment and a few other places differ for them. The models themselves are in `EnergyModel`, `SalmonModel`,
-/// `HoldingModel` and `FootballModel`. Originals: `FAM.energy`, `FAM.prod.custom` (salmon), `FAM.hold`, `FAM.club`.
 public enum SpecialFamilies {
-    /// Does this trade use one of the special weekly models?
     public static func handles(_ bd: Trade) -> Bool {
         bd.family == "energy" || bd.family == "hold" || bd.family == "club" || bd.id == "salmon" || bd.id == StartupModel.tradeID
     }
 
-    /// Trades nobody can start any more: a saved game that already owns one keeps it running, but the new-company list does not offer it
-    /// (loans and insurance stay as world services; football clubs and leagues are hidden for now).
     public static let retiredTrades: Set<String> = ["bank", "insco", "fund", "casino", "club"]
     public static func isRetired(_ bd: Trade) -> Bool { retiredTrades.contains(bd.id) }
 
-    /// Trades that are started from the trade menu. A holding has its own entry point (it takes the companies it holds).
     public static func isStartable(_ bd: Trade) -> Bool {
         CompanyWeek.isSupported(bd) && bd.family != "hold" && bd.family != "club" && bd.id != StartupModel.tradeID && !isRetired(bd)
     }
 
-    /// The week of a company with a special model: returns what the common bookkeeping (`book`, `weekEnd`) needs.
     static func week(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) -> CompanyWeek.WeekContext {
         switch bd.family {
         case "hold": return HoldingModel.context(&s, i, data)
@@ -34,7 +25,6 @@ public enum SpecialFamilies {
         }
     }
 
-    /// Extra things a company of this kind needs before it can open. Original: `FAM.*.checklist`.
     static func checklist(_ co: Company, _ bd: Trade, _ w: World) -> [OpeningChecklist.Item] {
         if bd.hasTrait("power") {
             let n = co.value("eq")["turb"]["n"].double
@@ -47,36 +37,27 @@ public enum SpecialFamilies {
         return []
     }
 
-    /// Called after equipment was bought. Original: `FAM.*.afterBuy`.
     static func afterBuy(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, equipmentID: String, quantity: Double) {
         EnergyModel.afterBuy(&s, i, bd, equipmentID: equipmentID, quantity: quantity)
     }
 
-    /// An event effect that only some businesses understand (salmon: `ill`). Original: `FAM.prod.fx`.
     public static func applyEventEffect(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, fx: JSONValue) {
         if bd.id == "salmon" { SalmonModel.applyIllness(&s, companyIndex: i, amount: fx["ill"].double) }
     }
 
-    /// Quality of a football club is the strength of its squad. Original: `qualityTarget`.
     static func qualityTarget(_ co: Company, _ bd: Trade) -> Double? {
         bd.family == "club" ? clamp(co.value("fm")["s"].isNull ? 50 : co.value("fm")["s"].double, 5, 99) : nil
     }
 
-    /// What the start-up estimate adds for this trade (salmon: fifteen months without sales).
     static func extraStartupBuffer(_ bd: Trade, size: Double, country: Country) -> Double {
         bd.id == "salmon" ? SalmonModel.startupBuffer(bd, size: size, country: country) : 0
     }
 
-    /// Steps run once a week after the companies, in the order of the original's 'week.after' steps.
     public static func weeklyAfter(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         EnergyModel.weeklyAfter(&s, data: data)
         HoldingModel.weekly(&s, data: data, context: fc)
     }
 
-    // MARK: A blank company record (for companies that are bought, not started)
-
-    /// A company in the same shape `CompanySetup.create` makes, without charging the owner for registration or share capital.
-    /// Used for football clubs, which are bought or founded rather than started.
     public static func blankCompany(_ s: inout GameState, tradeID: String, country: Country, cityID: String, name: String, size: Double, data: GameData) -> Int? {
         guard let bd = data.catalog[tradeID] else { return nil }
         var co = Company(raw: [:])

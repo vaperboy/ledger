@@ -6,8 +6,6 @@ import Businesses
 import Investments
 import Simulation
 
-/// Personal and company tax is paid as it arises (dividends, gains, interest, wealth, sole-trader income, corporate profit);
-/// the year end only settles the difference between the correct annual total and what was paid.
 final class TaxAtSourceTests: XCTestCase {
     private func fresh(_ code: String = "UK") throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 7)
@@ -38,7 +36,6 @@ final class TaxAtSourceTests: XCTestCase {
             XCTAssertEqual(s.cash - cash0, mine - tax, accuracy: 1, "the account gets the dividend less the tax")
             let line = s.statement.first { $0.label == "Dividend tax" }
             XCTAssertEqual(line?.amount ?? 0, -tax, accuracy: 1, "its own statement line")
-            // The year-end figure agrees: nothing is left to settle for it.
             let b = PersonalFinance.breakdown(s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
             XCTAssertEqual(b.dividendTax, tax, accuracy: 1)
             XCTAssertEqual(b.total, 0, accuracy: 1)
@@ -77,7 +74,6 @@ final class TaxAtSourceTests: XCTestCase {
             MonthEnd.closeMonth(&s, data: data, context: ctx)
             XCTAssertEqual(s.tax.paidWealth, annual * months / 12, accuracy: annual * 0.02, "\(code): the months so far, a twelfth each")
             XCTAssertTrue(s.statement.contains { $0.label == "Wealth tax" })
-            // The same month again owes nothing more.
             let paid = s.tax.paidWealth
             PersonalFinance.withholdWealthTax(&s, context: ctx, netWorth: Valuation.netWorth(s, trades: data.catalog).total, ownedCompanyValue: 0)
             XCTAssertEqual(s.tax.paidWealth, paid, accuracy: annual * 0.01)
@@ -88,13 +84,11 @@ final class TaxAtSourceTests: XCTestCase {
         var e = try fresh()
         e.update { s, _, ctx in
             let c = ctx.homeCountry(s)
-            // Gains of 2M were taxed at their sales; a later loss then lowered the year's gains to 1.5M: a refund is due.
             s.tax.gains = 2_000_000
             PersonalFinance.withholdNow(&s, context: ctx)
             let paidOnGains = s.tax.paidGains
             XCTAssertEqual(paidOnGains, Taxes.capitalGainsTax(2_000_000, in: c), accuracy: 1)
             s.tax.gains = 1_500_000
-            // Dividends of 3M arrived without a sweep: their tax is still unpaid.
             s.tax.dividends = 3_000_000
             let dividendTax = Taxes.dividendTax(3_000_000, shield: s.tax.dividendShield, in: c)
             let before = s.cash

@@ -4,15 +4,11 @@ import Businesses
 import Simulation
 
 extension Glyph {
-    /// A pennant on a pole: the Rivals app.
     static let rivalsFlag = "M7 4 V20 M7 5 H18 L15 8.5 L18 12 H7"
-    /// Arrows for a change: up and down.
     static let moveUp = "M12 19 V5 M6 11 L12 5 L18 11"
     static let moveDown = "M12 5 V19 M6 13 L12 19 L18 13"
 }
 
-/// A small arrow for what a move means to you: green up when it helps you, red down when it works against you. The direction and the
-/// accessibility label say the same, so colour is never alone.
 struct EffectArrow: View {
     var effect: Int
     var size: CGFloat = 16
@@ -28,9 +24,6 @@ struct EffectArrow: View {
     }
 }
 
-/// Rivals: the named competitors of your markets told as slow stories. Each shows its trade, city, how it stands against you in words, how it
-/// is doing, and a short timeline of what it did lately. A rival decision (a struggling rival for sale, a price cut) waits as a row here
-/// and in the Inbox. Nothing here asks for a quick answer.
 struct RivalsApp: View {
     @EnvironmentObject var store: GameStore
 
@@ -61,7 +54,6 @@ struct RivalsApp: View {
         }
     }
 
-    /// Rival decisions that wait for an answer: each opens in the usual decision popup.
     @ViewBuilder private func decisions(_ e: GameEngine) -> some View {
         let open: [Message] = e.openDecisions.filter { (m: Message) -> Bool in RivalStories.handlesAnswer(m.actionID) }
         if !open.isEmpty {
@@ -119,7 +111,6 @@ struct RivalsApp: View {
         }
     }
 
-    /// Everything the rivals of this market did lately, newest first.
     private func recent(_ e: GameEngine, companyID: Int) -> some View {
         let moves: [RivalStories.Move] = e.rivalMoves(companyID: companyID, limit: 12)
         return CardSection("Lately") {

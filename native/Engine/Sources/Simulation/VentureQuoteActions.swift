@@ -4,10 +4,7 @@ import Finance
 import Businesses
 import Events
 
-/// Quotes and actions for the Ventures screens: the same numbers the engine uses when the action runs (`VentureQuotes`, `StartupHolding`).
-/// An asking price is a multiple of the quoted proceeds between `VentureSale.askLowest` and `VentureSale.askHighest`; leaving it out sells at the quote.
 public extension GameEngine {
-    // MARK: Startups you invest in
 
     func startupInvestQuote(pitchID: Int, amount: Double) -> Startups.InvestQuote {
         Startups.investQuote(state, pitchID: pitchID, amount: amount, context: context)
@@ -15,7 +12,6 @@ public extension GameEngine {
     func startupStakeSellQuote(stakeID: Int, fraction: Double) -> VentureSale.Quote {
         Startups.sellQuote(state, stakeID: stakeID, fraction: fraction)
     }
-    /// Sell part of a startup stake at an asking price. A counter-offer sells nothing: ask exactly the counter to take it.
     @discardableResult
     mutating func sellStartupStake(stakeID: Int, fraction: Double, askingMultiplier: Double?) -> VentureSale.Outcome {
         var r = VentureSale.Outcome.unavailable("You hold no such stake.")
@@ -23,13 +19,10 @@ public extension GameEngine {
         return r
     }
 
-    // MARK: Private equity funds
-
     func fundCommitCheck(offerID: String, amount: Double) -> PrivateEquity.CommitCheck {
         PrivateEquity.commitCheck(state, offerID: offerID, amount: amount, data: data)
     }
     func fundSecondaryQuote(fundID: Int) -> VentureSale.Quote { PrivateEquity.sellQuote(state, fundID: fundID) }
-    /// Sell a fund stake on the secondary market at an asking price; nil when the stake is not live.
     @discardableResult
     mutating func sellFundStake(fundID: Int, askingMultiplier: Double?) -> VentureSale.Outcome? {
         var r: VentureSale.Outcome?
@@ -37,20 +30,15 @@ public extension GameEngine {
         return r
     }
 
-    // MARK: Stakes in other groups
-
     func groupStakeQuote(groupID: String, fraction: Double, multiplier: Double, chance: Double) -> GroupDeals.StakeQuote {
         GroupDeals.stakeQuote(state, groupID: groupID, fraction: fraction, multiplier: multiplier, chance: chance)
     }
-    /// Bid for part of a group. Success is the price paid; failures say why (outbid, could not pay, bid not allowed).
     @discardableResult
     mutating func buyGroupStake(groupID: String, fraction: Double, multiplier: Double, chance: Double) -> Result<Double, GroupDeals.StakeFailure> {
         var r: Result<Double, GroupDeals.StakeFailure> = .failure(.noGroup)
         update { s, _, c in r = GroupDeals.buyStakeChecked(&s, groupID: groupID, fraction: fraction, multiplier: multiplier, chance: chance, context: c) }
         return r
     }
-
-    // MARK: A holding's stakes in startups
 
     func holdingStartupStakes(holdingID: Int) -> [StartupHolding.Stake] { StartupHolding.stakes(state, holdingID: holdingID) }
     func holdingStartupInvestQuote(holdingID: Int, pitchID: Int, amount: Double) -> Result<Startups.InvestQuote, HoldingStakes.Failure> {

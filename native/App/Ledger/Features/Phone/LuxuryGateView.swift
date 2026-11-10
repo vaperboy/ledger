@@ -2,7 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// The first screen of the Luxury app: entry is by application. It never says what is looked at, only the answer.
 struct LuxuryGateView: View {
     @EnvironmentObject var store: GameStore
     private var P: OutsidePalette { .luxury }

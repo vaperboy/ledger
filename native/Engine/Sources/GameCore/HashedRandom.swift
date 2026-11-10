@@ -1,7 +1,5 @@
 import Foundation
 
-/// A small random generator seeded from text (original: `hrng(str)`). Used for traits that must stay the same
-/// for the same person or company, for example "how fast does this employee learn". Same text, same numbers.
 public struct HashedRandom: Sendable {
     private var h: UInt32
 
@@ -14,7 +12,6 @@ public struct HashedRandom: Sendable {
         h = hash
     }
 
-    /// Next number in [0, 1).
     public mutating func next() -> Double {
         h = h &+ 0x6D2B79F5
         var t = (h ^ (h >> 15)) &* (h | 1)
@@ -22,7 +19,6 @@ public struct HashedRandom: Sendable {
         return Double(t ^ (t >> 14)) / 4294967296.0
     }
 
-    /// One-shot helper: the first number for this text.
     public static func first(_ text: String) -> Double {
         var r = HashedRandom(text)
         return r.next()

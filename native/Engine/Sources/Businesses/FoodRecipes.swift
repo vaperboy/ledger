@@ -3,22 +3,14 @@ import GameCore
 import Countries
 import Finance
 
-/// Made goods with recipes (bakery, cafe, restaurant, foodtruck, brewery, vineyard, farm).
-/// An item of these trades is a product with a recipe (`Resources/food_recipes.json`): inputs bought from the company's suppliers, spoilage, labour minutes,
-/// batch size, capacity per shift, shelf life, lead time (brewing, ageing, growing) and allergens. The record (`ItemModels`, model MADE, or STK for bought-in
-/// drinks and beans) carries `cost` = the rolled-up inputs and `prep` = the spoilage cost of one unit sold.
-/// The input shares are scaled per trade so the weighted food cost equals the trade's cost of sales and the weighted spoilage equals its perish and shrink
-/// cost: the books (`CompanyWeek`) already charge exactly that, so profit does not move, the item page only shows where it comes from.
 public enum FoodRecipes {
     public static let trades: Set<String> = ["bakery", "cafe", "restaurant", "foodtruck", "brewery", "vineyard", "farm"]
-    /// Items made from these recipes get ids "w3-<recipe id>".
     static let prefix = "w3-"
     static let planKind = "w3"
 
     public struct Input: Equatable, Sendable {
         public var name: String
         public var qty: String
-        /// Share of the item's market price (before the trade scale).
         public var share: Double
     }
 
@@ -38,18 +30,15 @@ public enum FoodRecipes {
         public var leadDays: Int
         public var allergens: String
         public var boughtIn: Bool
-        /// Harvest start (week of the year) and length in weeks; nil for year-round production.
         public var harvestStart: Int?
         public var harvestWeeks: Int
         public var inputShare: Double { inputs.reduce(0) { $0 + $1.share } }
     }
 
-    /// A machine the named products cannot be made or sold without; `off` says what the customer misses.
     struct MachineNeed { var off: String; var products: [String] }
 
     struct Spec { var shifts: Double; var products: [Recipe]; var needs: [String: MachineNeed] = [:] }
 
-    /// The share of the trade's customers who buy what this machine makes, and what they miss while it is in repair; nil when no product is linked to it.
     static func dependentShare(trade: String, equipmentID: String) -> (share: Double, off: String)? {
         guard let spec = specs[trade], let need = spec.needs[equipmentID] else { return nil }
         let total = spec.products.reduce(0) { $0 + $1.customers }
@@ -77,9 +66,6 @@ public enum FoodRecipes {
         return out
     }()
 
-    // MARK: Matching and scale
-
-    /// The recipe of an item: its own id, else the first recipe whose words are in the name, else the trade's average product.
     public static func recipe(trade: String, itemID: String, name: String) -> Recipe? {
         guard let spec = specs[trade] else { return nil }
         if itemID.hasPrefix(prefix), let r = spec.products.first(where: { prefix + $0.id == itemID }) { return r }
@@ -88,7 +74,6 @@ public enum FoodRecipes {
         return average(spec, name: name)
     }
 
-    /// A product the trade has no named recipe for (a player-added line): the trade's average inputs, labour and capacity.
     static func average(_ spec: Spec, name: String) -> Recipe {
         let ps = spec.products.filter { !$0.boughtIn }
         let w = ps.reduce(0.0) { $0 + $1.customers * $1.ratio }
@@ -99,7 +84,6 @@ public enum FoodRecipes {
                       allergens: "See the allergen sheet", boughtIn: false, harvestStart: nil, harvestWeeks: 0)
     }
 
-    /// Multipliers on the authored input shares and spoilage so that the trade's default mix equals its books (cost of sales; perish and shrink).
     public static func scales(trade: String, _ bd: Trade) -> (inputs: Double, spoilage: Double) {
         guard let spec = specs[trade], !spec.products.isEmpty else { return (1, 1) }
         let ps = spec.products
@@ -112,12 +96,9 @@ public enum FoodRecipes {
         return (cost > 0 ? bd.costOfSales / cost : 1, waste > 0 ? wasteTarget / waste : 0)
     }
 
-    // MARK: Card (what the item page shows)
-
     public struct Line: Equatable, Sendable {
         public var name: String
         public var qty: String
-        /// Cost of this input in one unit, accounting units, before the supplier's relationship discount.
         public var cost: Double
     }
 
@@ -125,22 +106,18 @@ public enum FoodRecipes {
         public var recipeName: String
         public var boughtIn: Bool
         public var lines: [Line]
-        /// All inputs of one unit after the relationship discount of the linked supplier.
         public var inputCost: Double
         public var supplierDiscount: Double
         public var supplierName: String?
-        /// Cost of unsold and spoilt product carried by each unit sold.
         public var spoilageCost: Double
         public var unitCost: Double
         public var price: Double
-        /// Inputs as a share of the price shown (the food cost percent).
         public var foodCostPercent: Double
         public var labourMinutes: Double
         public var batch: Int
         public var perShift: Double
         public var capacityPerWeek: Double
         public var weeklyUnits: Double
-        /// Weekly units over weekly capacity; above 1 the kitchen, tank or field cannot make what customers ask for.
         public var capacityUse: Double
         public var shelfDays: Int
         public var leadDays: Int
@@ -150,7 +127,6 @@ public enum FoodRecipes {
 
     static func monthWord(weekOfYear w: Int) -> String { GameCalendar.monthNames[max(0, min(11, w * 12 / 52))] }
 
-    /// The recipe card of an item at a price (nil price = its own price). nil for a trade or item without a made record.
     public static func card(_ s: GameState, companyID: Int, itemID: String, price: Double? = nil, data: GameData) -> Card? {
         guard let co = s.company(companyID), trades.contains(co.type), let bd = data.catalog[co.type],
               let rec = ItemModels.record(co, itemID: itemID), rec.model == .made || rec.model == .stk,
@@ -185,9 +161,6 @@ public enum FoodRecipes {
         return t
     }
 
-    // MARK: Writes
-
-    /// Weeks of sales on hand: the made stock, or in a harvest trade what the store holds.
     static func coverWeeks(_ r: Recipe) -> Double { Double(max(1, r.coverDays)) / 7 }
 
     static func bestSupplier(_ s: GameState, _ co: Company, data: GameData) -> String? {
@@ -211,7 +184,6 @@ public enum FoodRecipes {
         return out
     }
 
-    /// Put the recipe on an item's record: cost, spoilage, lead time, capacity, stock. Keeps the supplier, history and other plans.
     static func fill(_ rec: inout ItemModels.Record, _ r: Recipe, spec: Spec, co: Company, market: Double, k: (inputs: Double, spoilage: Double), units: Double, week: Int) {
         rec.model = r.boughtIn ? .stk : .made
         rec.cost = market * r.inputShare * k.inputs
@@ -228,15 +200,11 @@ public enum FoodRecipes {
         rec.plans.append(contentsOf: fresh)
     }
 
-    /// Bring one company's items up to the recipe model: the untouched default titles become the trade's real product list (same demand), every item gets
-    /// a record with its recipe cost and stock. Idempotent and also the weekly refresh (costs follow the market price, stock follows sales).
-    /// Returns how many records were written.
     @discardableResult
     public static func apply(_ s: inout GameState, companyID: Int, data: GameData, trades set: Set<String> = ItemTradeGroups.food) -> Int {
         guard let i = s.companyIndex(companyID), set.contains(s.companies[i].type), let bd = data.catalog[s.companies[i].type],
               let spec = specs[s.companies[i].type] else { return 0 }
         let type = s.companies[i].type
-        // 1. The product list.
         let before = SalesItems.items(s.companies[i], bd)
         if before == SalesItems.defaults(s.companies[i], bd) {
             let sq = spec.products.reduce(0.0) { $0 + $1.customers }
@@ -248,7 +216,6 @@ public enum FoodRecipes {
             SalesItems.store(&s, i, list)
             dropRecords(&s, i, except: Set(list.map { $0.id }))
         }
-        // 2. A record per item.
         let rows = SalesItems.rows(s, companyID: companyID, data: data)
         let k = scales(trade: type, bd)
         var n = 0
@@ -257,7 +224,6 @@ public enum FoodRecipes {
             guard let r = recipe(trade: type, itemID: row.id, name: row.name) else { continue }
             let co = s.companies[i]
             var rec = ItemModels.record(co, itemID: row.id) ?? ItemModels.Record(id: row.id, model: .made)
-            // A hand-managed stocked record (units on hand, not ours) is left as it is.
             if rec.model == .stk, rec.stock > 0, !rec.plans.contains(where: { $0.kind == planKind }) { continue }
             fill(&rec, r, spec: spec, co: co, market: row.marketPrice, k: k, units: row.weeklyUnits, week: s.week)
             if rec.supplierID == nil { rec.supplierID = supplier }
@@ -275,7 +241,6 @@ public enum FoodRecipes {
         s.companies[i].set("itemsv2", .object(o))
     }
 
-    /// Weekly: every open company of an opted-in trade is brought up to date. Costs follow the market price, stock follows sales.
     public static func weeklyTick(_ s: inout GameState, data: GameData, trades set: Set<String> = ItemTradeGroups.food) {
         guard !set.isEmpty else { return }
         let ids: [Int] = s.companies.filter { $0.status == .open && set.contains($0.type) }.map { $0.id }

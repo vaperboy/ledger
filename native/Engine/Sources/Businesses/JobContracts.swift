@@ -3,15 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// PROJ and job-contract model: construction, electrician, plumber, handyman, engineering office and security firm sell real jobs.
-/// A job type is an item with a quoted price per job or per hour, materials at cost plus a markup, labour hours and the crew and vehicle it needs, a
-/// lead time before the crew can start, call-outs (arrive within a day, jump the queue) against scheduled jobs (wait in the backlog), a warranty
-/// callback rate, phases with subcontractors (construction), and contracts (guard hours per site per month, consultancy retainers, monitoring,
-/// maintenance and inspection plans). Data: `Resources/job_contracts.json`. Only `items27` and `itemsv2` (both existing) are written.
-/// Money: the books keep the trade's cost of sales (`mat` + `sub` traits for the job trades, `cogs` for handyman and security). Item materials costs are
-/// scaled on install so the weighted menu equals that share and the revenue weights add up to 1, so a company that never touches a price plays as
-/// before. The labour of the crew and the expected warranty callbacks are the item's `prep`: they make the live profit and loss real, but they are
-/// not booked twice (wages are already in the weekly costs). Nothing here moves cash.
 public enum JobContracts {
     public struct Phase: Equatable, Sendable {
         public var name: String
@@ -24,7 +15,6 @@ public enum JobContracts {
         public var model: ItemModels.Model
         public var share: Double
         public var rel: Double
-        /// Person-hours of labour in one job (before the trade's hour scale), and the people who do it (roles).
         public var hours: Double
         public var crew: [String]
         public var mat: Double
@@ -50,7 +40,6 @@ public enum JobContracts {
         public var trade: String
         public var skill: String
         public var skillLabel: String
-        /// Hours are real time and are not scaled to the books (handyman, security).
         public var fixedHours: Bool
         public var items: [Spec]
         public var extra: [Spec]
@@ -72,10 +61,8 @@ public enum JobContracts {
     }()
 
     public static var fteHours: Double { file["fteHours"].double > 0 ? file["fteHours"].double : 36 }
-    /// Share of a job's hours a warranty callback takes, and of its materials.
     public static var callbackHours: Double { file["callbackHours"].double > 0 ? file["callbackHours"].double : 0.4 }
     static let callbackMaterials = 0.25
-    /// Employer cost on top of pay.
     public static var onCost: Double { file["onCost"].double > 0 ? file["onCost"].double : 1.2 }
 
     static let specs: [String: TradeSpec] = {
@@ -96,8 +83,6 @@ public enum JobContracts {
         return (t.items + t.extra).first { $0.name.lowercased() == n }
     }
 
-    // MARK: Menu weights and cost calibration
-
     public static func mix(_ items: [Spec]) -> (q: [Double], ratio: [Double]) {
         let total = items.reduce(0.0) { $0 + $1.share }
         guard total > 0 else { return ([], []) }
@@ -106,12 +91,10 @@ public enum JobContracts {
         return (q, items.map { norm > 0 ? $0.rel / norm : 1 })
     }
 
-    /// What the books charge as cost of sales: materials and subcontractors for the job trades (as `ProjectModel` does), `cogs` for the others.
     public static func targetCostShare(_ bd: Trade) -> Double {
         ProjectModel.sellsHours(bd) ? (bd.traits["mat"] ?? 0) + (bd.traits["sub"] ?? 0) : bd.costOfSales
     }
 
-    /// Factor on the materials and subcontract costs that makes the weighted menu equal the books' share. 0 when the books charge none (engineering office).
     public static func calibration(_ t: TradeSpec, target: Double) -> Double {
         let m = mix(t.items)
         var stock = 0.0, direct = 0.0
@@ -124,41 +107,32 @@ public enum JobContracts {
 
     public static func costShare(_ s: Spec, calibration k: Double) -> Double { s.isStock ? s.buy : k * (s.mat + s.sub) }
 
-    // MARK: Hours and labour
-
     static func meanHours(_ t: TradeSpec) -> Double {
         let rows = t.items.filter { !$0.isStock && $0.hours > 0 }
         let total = rows.reduce(0.0) { $0 + $1.share }
         return total > 0 ? rows.reduce(0.0) { $0 + $1.share * $1.hours } / total : 0
     }
 
-    /// Factor on the data's job hours. Job trades: a job is worth its hours at the books' hour value (`ProjectModel.hourValue`), so the menu's average
-    /// job takes the hours its going ticket pays for. Handyman and security sell real time (a guard hour is an hour): hours stay as in the data.
     static func hourScale(_ co: Company, _ bd: Trade, _ t: TradeSpec, _ w: World) -> Double {
         guard ProjectModel.sellsHours(bd), !t.fixedHours else { return 1 }
         let mh = meanHours(t), hv = ProjectModel.hourValue(co, bd, w), mt = SalesItems.marketTicket(co, bd, w)
         return mh > 0 && hv > 0 && mt > 0 ? mt / (hv * mh) : 1
     }
 
-    /// Person-hours the firm can work in a week: the going volume of average jobs for the job trades, the full-time people for the others.
     static func hoursPerWeek(_ t: TradeSpec, scale: Double, _ bd: Trade, _ cap: CapacityResult) -> Double {
         if ProjectModel.sellsHours(bd), !t.fixedHours { return cap.capacity * meanHours(t) * scale }
         return cap.parts.filter { $0.kind == .staff }.reduce(0.0) { $0 + $1.have } * fteHours
     }
 
-    /// Cost of one person-hour of this crew: market pay of its roles, a year over its working hours, plus employer cost.
     static func hourlyCost(_ s: GameState, _ co: Company, crew: [String], data: GameData) -> Double {
         guard !crew.isEmpty else { return 0 }
         let monthly = crew.reduce(0.0) { $0 + ManagerModel.marketWage(s, co, role: $1, data: data) } / Double(crew.count)
         return monthly * 12 / (52 * fteHours) * onCost
     }
 
-    /// Labour plus the expected warranty callbacks of one job (the item's `prep`).
     static func prepCost(labour: Double, materials: Double, _ sp: Spec) -> Double {
         labour + sp.warrantyRate * (labour * callbackHours + materials * callbackMaterials)
     }
-
-    // MARK: Install
 
     static func isUntouched(_ co: Company, _ bd: Trade) -> Bool {
         let raw = co.value("items27")
@@ -173,7 +147,6 @@ public enum JobContracts {
     static let stockCoverWeeks = 3.0
     static let reorderCoverWeeks = 1.0
 
-    /// Most jobs of this kind a week if the whole firm did only that.
     static func maxPerWeek(_ sp: Spec, scale: Double, hoursWeek: Double) -> Double {
         let h = sp.hours * scale
         return h > 0 && hoursWeek > 0 ? hoursWeek / h : 0
@@ -194,8 +167,6 @@ public enum JobContracts {
         return r
     }
 
-    /// Put a company of an opted-in trade on real jobs: an untouched list becomes the trade's real menu, every item without a record gets one.
-    /// Idempotent. Returns how many records were made.
     @discardableResult
     public static func install(_ s: inout GameState, companyID: Int, data: GameData, trades: Set<String> = ItemTradeGroups.jobs) -> Int {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive, trades.contains(s.companies[i].type),
@@ -230,10 +201,6 @@ public enum JobContracts {
         return made
     }
 
-    // MARK: Weekly
-
-    /// Weekly: records for new items, labour and callback cost at today's pay and hours, capacity, and the stock cycle of stocked items.
-    /// Called next to `ItemModels.weeklyTick`. Without an opted-in trade or a record it does nothing.
     public static func weekly(_ s: inout GameState, _ i: Int, data: GameData, trades: Set<String> = ItemTradeGroups.jobs) {
         guard s.companies.indices.contains(i), trades.contains(s.companies[i].type) else { return }
         let id = s.companies[i].id
@@ -287,8 +254,6 @@ public enum JobContracts {
         }
     }
 
-    // MARK: Facts for the item page
-
     public struct PhaseFact: Equatable, Sendable {
         public var name: String
         public var amount: Double
@@ -302,11 +267,9 @@ public enum JobContracts {
         public var model: ItemModels.Model
         public var price: Double
         public var marketPrice: Double
-        /// Materials and subcontractors at cost, what the quote charges for them (cost plus markup) and the markup.
         public var materialsCost: Double
         public var markup: Double
         public var materialsCharge: Double
-        /// Labour in the job: person-hours, the crew, cost of it, and what is left of the price for labour after materials.
         public var hours: Double
         public var crew: [String]
         public var crewSize: Int
@@ -315,13 +278,11 @@ public enum JobContracts {
         public var labourCharge: Double
         public var chargePerHour: Double
         public var costPerHour: Double
-        /// Price against the real cost (materials, labour, expected callbacks) and the profit per person-hour.
         public var fullCost: Double
         public var profit: Double
         public var profitPerHour: Double?
         public var isCallout: Bool
         public var leadDays: Int
-        /// Weeks of booked work ahead of a new scheduled job, and when a new job of this kind would really start.
         public var backlogWeeks: Double
         public var startInDays: Double
         public var weeklyJobs: Double
@@ -351,7 +312,6 @@ public enum JobContracts {
         public var weeksOfCover: Double?
     }
 
-    /// Weeks of booked work in the order book (project trades keep real jobs) or, for the other trades, what demand above capacity piles up.
     static func backlogWeeks(_ co: Company, _ bd: Trade, _ cap: CapacityResult, utilisation: Double) -> Double {
         if ProjectModel.sellsHours(bd) {
             let hw = ProjectModel.hoursPerWeek(bd, capacity: cap.capacity)

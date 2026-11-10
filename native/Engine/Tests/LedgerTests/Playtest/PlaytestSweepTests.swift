@@ -5,8 +5,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The sweep: bot policies x countries x trades x seeds x scenarios, 3 in-game years each, invariants checked daily/weekly.
-/// Enabled only with LEDGER_PLAYTEST=1. Narrow with LEDGER_PT_COUNTRIES, LEDGER_PT_TRADES, LEDGER_PT_SEEDS, LEDGER_PT_POLICIES, LEDGER_PT_SCENARIOS, LEDGER_PT_YEARS.
 final class PlaytestSweepTests: XCTestCase {
     static var allTrades: [String] {
         guard let e = try? GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 1) else { return [] }
@@ -38,7 +36,6 @@ final class PlaytestSweepTests: XCTestCase {
         return out
     }
 
-    /// Every startable trade as the first company, per country and policy.
     func testSweepTrades() throws {
         try XCTSkipUnless(PT.enabled, "set LEDGER_PLAYTEST=1")
         let trades = PT.list("LEDGER_PT_TRADES", Self.allTrades)
@@ -49,7 +46,6 @@ final class PlaytestSweepTests: XCTestCase {
         runJobs(jobs([.single], trades: trades, countries: countries, policies: policies, seeds: seeds))
     }
 
-    /// Multi-company, chain/franchise, holding, startup and football scenarios.
     func testSweepScenarios() throws {
         try XCTSkipUnless(PT.enabled, "set LEDGER_PLAYTEST=1")
         let scenarios = PT.list("LEDGER_PT_SCENARIOS", ["multi", "chain", "holding", "startup", "football"]).compactMap { Scenario(rawValue: $0) }
@@ -59,14 +55,12 @@ final class PlaytestSweepTests: XCTestCase {
         let seeds = PT.ints("LEDGER_PT_SEEDS", [1, 2])
         var js: [Job] = []
         for sc in scenarios {
-            // football and startup do not depend on the first trade: one trade is enough
             let ts = (sc == .football || sc == .startup) ? [trades[0]] : trades
             js += jobs([sc], trades: ts, countries: countries, policies: policies, seeds: seeds)
         }
         runJobs(js)
     }
 
-    /// The reworked systems in a full game: manager, owner meetings, CEO replacement and one sale route per seed (five seeds cover every route).
     func testSweepRework() throws {
         try XCTSkipUnless(PT.enabled, "set LEDGER_PLAYTEST=1")
         let trades = PT.list("LEDGER_PT_TRADES", ["cafe", "bakery", "hardware", "cleaning", "tutor", "barber"])
@@ -75,7 +69,6 @@ final class PlaytestSweepTests: XCTestCase {
         runJobs(jobs([.rework], trades: trades, countries: countries, policies: policies, seeds: PT.ints("LEDGER_PT_SEEDS", [1, 2, 3, 4, 5])))
     }
 
-    /// Passive and reckless policies over every trade in two countries.
     func testSweepPolicies() throws {
         try XCTSkipUnless(PT.enabled, "set LEDGER_PLAYTEST=1")
         let trades = PT.list("LEDGER_PT_TRADES", Self.allTrades)
@@ -83,7 +76,6 @@ final class PlaytestSweepTests: XCTestCase {
         runJobs(jobs([.single], trades: trades, countries: countries, policies: [.reckless, .passive], seeds: PT.ints("LEDGER_PT_SEEDS", [2])))
     }
 
-    /// Same seed twice must give an identical state hash.
     func testDeterminism() throws {
         try XCTSkipUnless(PT.enabled, "set LEDGER_PLAYTEST=1")
         let trades = PT.list("LEDGER_PT_TRADES", ["cafe", "bakery", "hardware", "cleaning", "taxi", "barber"])
@@ -100,7 +92,6 @@ final class PlaytestSweepTests: XCTestCase {
         Findings.shared.flush(tag: PT.tag + "-det")
     }
 
-    /// Re-run one job: LEDGER_PT_COUNTRY/TRADE/SEED/POLICY/SCENARIO. Prints findings.
     func testRepro() throws {
         try XCTSkipUnless(PT.enabled && PT.env["LEDGER_PT_TRADE"] != nil, "set LEDGER_PLAYTEST=1 and LEDGER_PT_TRADE")
         let job = Job(country: PT.env["LEDGER_PT_COUNTRY"] ?? "UK", trade: PT.env["LEDGER_PT_TRADE"]!, seed: Int(PT.env["LEDGER_PT_SEED"] ?? "1") ?? 1,

@@ -6,7 +6,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Longer event chains, the late-game fourth answer, the trade packs, streak perks and protection, the return recap and the mastery reads.
 final class ChainsAndStreaksTests: XCTestCase {
     static let chainKinds = ["breachclaim", "breachpress", "suppnotice", "suppcash", "suppstop", "licwarn", "licreview", "pwreply", "pwlong", "pwtruce"]
     static let packTrades = ["cons", "tutor", "carclean", "photo", "handy", "cleaning", "webdev", "mktg", "law", "acctfirm", "staffing", "barber"]
@@ -28,7 +27,6 @@ final class ChainsAndStreaksTests: XCTestCase {
             }
         }
         for _ in 0..<(weeks * 7) { e.nextDay() }
-        // Each company's own weekday decides when its paperwork clears and it opens: play on until all have.
         var extra = 0
         while ids.contains(where: { e.state.company($0)?.status != .open }) && extra < 28 { e.nextDay(); extra += 1 }
         return (e, first)
@@ -41,8 +39,6 @@ final class ChainsAndStreaksTests: XCTestCase {
         let c = EventEngine.context(for: s.companies[i], data: data, country: World(state: s, data: data).country(s.companies[i]))
         EventEngine.fire(&s, companyIndex: i, e, ctx: c, data: data, context: ctx)
     }
-
-    // MARK: Chains
 
     func testEveryChainStepHasThreeCostedOptionsAndKeepsTheBooksBalanced() throws {
         let (base, id) = try engineWithCompany()
@@ -85,7 +81,6 @@ final class ChainsAndStreaksTests: XCTestCase {
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
             let c = EventEngine.context(for: s.companies[i], data: data, country: World(state: s, data: data).country(s.companies[i]))
-            // The answer "Leave it" of the security review.
             EventEngine.apply(&s, companyIndex: i, .object(["cyberTarget": 1]), ctx: c, event: GameEvent(id: "aft_secreview", json: .object([:])), data: data, context: ctx)
             XCTAssertTrue(kinds(s, id).contains("breachclaim"))
             s.week += 20
@@ -131,14 +126,12 @@ final class ChainsAndStreaksTests: XCTestCase {
             let i = s.companyIndex(id)!
             s.companies[i].set("lastW", .object(["units": 10]))
             s.companies[i].priceLevel = 0
-            Aftermath.scanTriggers(&s)   // first sight: remembered, nothing queued
+            Aftermath.scanTriggers(&s)
             XCTAssertFalse(kinds(s, id).contains("pwreply"))
-            // A price level moved by an event answer is recorded as seen.
             let c = EventEngine.context(for: s.companies[i], data: data, country: World(state: s, data: data).country(s.companies[i]))
             EventEngine.apply(&s, companyIndex: i, .object(["pr": -1]), ctx: c, event: GameEvent(id: "r_priceWar", json: .object([:])), data: data, context: ctx)
             Aftermath.scanTriggers(&s)
             XCTAssertFalse(kinds(s, id).contains("pwreply"))
-            // The player's own cut: some week of the next few draws the reply.
             var queued = false
             for w in 1...40 where !queued {
                 s.week += 1
@@ -153,8 +146,6 @@ final class ChainsAndStreaksTests: XCTestCase {
             XCTAssertTrue(queued)
         }
     }
-
-    // MARK: Late-game answer and thinning
 
     func testLateGamePlayersGetAFourthAnswerAndEarlyOnesDoNot() throws {
         let lib = try EventLibrary.bundled()
@@ -178,7 +169,6 @@ final class ChainsAndStreaksTests: XCTestCase {
         XCTAssertTrue(late.answer(messageID: m.id, option: m.options.count - 1))
         XCTAssertLessThan(late.state.company(lid)!.cash, cash, "the extra answer costs money")
         XCTAssertTrue(Ledger.gaps(late.state).isEmpty)
-        // The extra answer is never the default when time runs out.
         late.update { s, data, ctx in
             fire(ev, &s, lid, data: data, ctx: ctx)
             s.week += 10
@@ -214,8 +204,6 @@ final class ChainsAndStreaksTests: XCTestCase {
         }
     }
 
-    // MARK: Trade packs
-
     func testEachStarterTradePackIsDefinedAttachedAndShaped() throws {
         let lib = try EventLibrary.bundled()
         let (data, _, _) = try GameEngine.loadResources()
@@ -232,9 +220,6 @@ final class ChainsAndStreaksTests: XCTestCase {
         }
     }
 
-    // MARK: Streaks
-
-    /// A day whose goal ("play two weeks", counted from week -5) is already done, so the first read grows the streak.
     func dailyState(_ e: inout GameEngine, streak: Int, last: Date, day: Date, prot: Int = 0) {
         e.update { s, _, _ in
             var d: [String: JSONValue] = ["streak": .number(Double(streak)), "last": .string(GameEngine.dayString(last)), "d": .string(GameEngine.dayString(day)), "got": 0, "k": "weeks",
@@ -265,13 +250,11 @@ final class ChainsAndStreaksTests: XCTestCase {
         dailyState(&e, streak: 6, last: yesterday, day: day)
         XCTAssertEqual(try XCTUnwrap(e.dailyGoal(now: day)).streak, 7)
         XCTAssertEqual(e.streakInfo(now: day).protectionTokens, 1)
-        // A missed day with a token: coming back restores the streak and uses the token.
         dailyState(&e, streak: 4, last: twoAgo, day: day, prot: 1)
         XCTAssertTrue(e.streakInfo(now: day).savedByProtection)
         XCTAssertEqual(e.streakInfo(now: day).count, 4)
         XCTAssertEqual(try XCTUnwrap(e.dailyGoal(now: day)).streak, 5)
         XCTAssertEqual(e.streakInfo(now: day).protectionTokens, 0)
-        // Without a token the streak starts again.
         dailyState(&e, streak: 4, last: twoAgo, day: day)
         XCTAssertEqual(e.streakInfo(now: day).count, 0)
         XCTAssertEqual(try XCTUnwrap(e.dailyGoal(now: day)).streak, 1)
@@ -304,8 +287,6 @@ final class ChainsAndStreaksTests: XCTestCase {
         XCTAssertTrue(SessionHooks.reminders(e.state, now: day).allSatisfy { !$0.body.contains("streak") })
     }
 
-    // MARK: Advanced goals
-
     func testAdvancedGoalsAppearOnlyAfterTheLadderAndAreMarkedAdvanced() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
         XCTAssertTrue(PlayerGoals.advancedGoals(e.state).isEmpty)
@@ -318,8 +299,6 @@ final class ChainsAndStreaksTests: XCTestCase {
         XCTAssertTrue(adv.allSatisfy { $0.advanced && !$0.done && $0.reward.isEmpty })
         XCTAssertTrue(PlayerGoals.ladder(e.state)?.allSatisfy { !$0.advanced } ?? false)
     }
-
-    // MARK: Recap and mastery reads
 
     func testSinceYouLeftReportsDaysPassedAndNothingWhenNothingChanged() throws {
         var (e, _) = try engineWithCompany(weeks: 1)

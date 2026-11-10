@@ -4,33 +4,26 @@ import Countries
 import Finance
 import Employees
 
-/// What a repair of one car would cost and how long it would take, from the player's own mechanic company (a `carrepair` company, used as a
-/// supplier) or, when there is none that can take the job, an independent garage at market price.
 public struct UsedCarRepairOffer: Sendable, Equatable {
-    public var supplierID: Int          // 0: an independent garage
+    public var supplierID: Int
     public var supplierName: String
     public var isOwn: Bool
     public var price: Double
     public var weeks: Int
-    /// The price an independent garage would ask for the same work.
     public var marketPrice: Double
 }
 
-/// Live answer to "what if I ask this price for this car": profit or loss, and how fast it would sell.
 public struct UsedCarQuote: Sendable, Equatable {
     public var price: Double
     public var buyPrice: Double
-    /// Repairs paid, ordered or quoted. `repairsKnown` is false for a car nobody has looked at yet (the hidden faults are not in the number).
     public var repairs: Double
     public var repairsKnown: Bool
     public var holdingSoFar: Double
     public var holdingAhead: Double
     public var fairValue: Double
     public var priceVsFair: Double
-    /// Chance that it sells in a week at this price, and the weeks it is expected to sit (1 / chance).
     public var weeklyOdds: Double
     public var expectedWeeks: Double
-    /// price - buy - repairs - holding (to date and for the expected wait).
     public var profit: Double
     public var isProfit: Bool { profit >= 0 }
     public var verdict: String { profit >= 0 ? "Profit" : "Loss" }
@@ -42,16 +35,12 @@ public struct UsedCarLot: Sendable, Equatable {
     public var free: Int { max(0, spaces - used) }
 }
 
-/// How good the deals of one buyer (a hired buyer, the manager or you) have been, against the cars' fair value.
 public struct UsedCarBuyerRecord: Sendable, Equatable, Identifiable {
     public var id: String
     public var name: String
-    /// "buyer", "manager" or "you".
     public var role: String
     public var deals: Int
-    /// 1 - paid / fair value over all deals: 0.06 means 6 percent under fair value on average (negative: overpaid).
     public var averageDiscount: Double
-    /// 0 to 100 from the track record (50 = pays fair value).
     public var rating: Double
 }
 
@@ -66,32 +55,18 @@ public struct UsedCarSale: Sendable, Equatable {
     public var profit: Double { price - buyPrice - repairs - holding }
 }
 
-/// The used car dealer's yard: lot spaces from the premises, repair orders to your own mechanic company or a garage,
-/// reservations on cars being fixed, stuck cars and forced sales, buyers (hired, manager or you) and the live price quote.
 extension UsedCarDealer {
     public static let offerAction = "ucoffer"
-    /// A salesperson or buyer on commission gets the plan's rate times this share of the profit of the car (default plan rates 3 and 6 percent give 12 and 24
-    /// percent of the gross profit, the range dealers really pay; the rate steps 2 to 12 percent give 8 to 48 percent). Nothing is paid on a car sold at a loss.
     public static let profitShareMultiple = 4.0
-    /// A hired buyer or a manager buys at most this many cars a week.
     static let buyerPerWeek = 2, managerPerWeek = 1
-    /// Value a car loses a week once stuck (on top of `depreciation`), and how fast its sale chance falls (weeks over `staleAfter` per halving step).
     static let staleDepreciation = 0.005
     static let staleOddsWeeks = 12.0
-    /// Share of the mechanic company's capacity set aside for the dealer's job order.
     static let bayShare = 0.25
-    /// The group (transfer) price of an own mechanic company against what an independent garage asks.
     static let ownRepairFactor = 0.8
-    /// Parts, as a share of what the mechanic company bills the dealer, bought from outside.
     static let partsShare = 0.35
-    /// A wholesaler's offer for a stuck car is this share of its fair value, plus up to `offerSpread`.
     static let offerShare = 0.7, offerSpread = 0.1
-    /// Auction price of a forced sale (lot over capacity, overdrawn account) against fair value.
     static let auctionShare = 0.78, auctionSpread = 0.1
 
-    // MARK: Lot spaces
-
-    /// Share of the premises used for cars and the area one car needs (aisles included), by premises kind.
     static let lotLayout: [String: (share: Double, perCar: Double)] = [
         "yard": (0.85, 22), "industrial": (0.6, 28), "warehouse": (0.7, 26), "shop": (0.5, 30), "office": (0.25, 30), "home": (0, 30),
     ]
@@ -106,15 +81,11 @@ extension UsedCarDealer {
 
     public static func lot(_ co: Company) -> UsedCarLot { UsedCarLot(spaces: lotSpaces(co), used: co.value("stk").array.count) }
 
-    // MARK: Repair orders
-
-    /// What the hidden faults cost to put right at an independent garage (the cleaning and preparation is done in the yard, see `prep`).
     static func repairNeed(fair: Double, wear: Double) -> Double { fair * 0.3 * max(0, wear - 0.15) }
     static func prep(fair: Double) -> Double { fair * 0.008 }
 
     public static func autoRepair(_ co: Company) -> Bool { co.value("ucAuto").isNull ? true : co.value("ucAuto").bool }
 
-    /// The offer for a repair worth `need` at market price, from the best own mechanic company or an independent garage.
     static func repairOffer(_ s: GameState, company co: Company, need: Double, data: GameData) -> UsedCarRepairOffer {
         let w = World(state: s, data: data)
         let cur = w.currency(co)
@@ -141,14 +112,12 @@ extension UsedCarDealer {
         return repairOffer(s, company: co, need: c["rq"].double, data: data)
     }
 
-    /// Order the repair of the car `k` of company `i`'s yard.
     static func startJob(_ s: GameState, _ co: Company, _ c: inout JSONValue, data: GameData) {
         let o = repairOffer(s, company: co, need: c["rq"].double, data: data)
         c["job"] = .object(["due": .number(Double(s.week + o.weeks)), "sup": .number(Double(o.supplierID)), "sn": .string(o.supplierName),
                             "price": .number(o.price), "from": .number(Double(s.week))])
     }
 
-    /// The job is done: pay the garage (the money must be there), the cost becomes part of the car. False when the account cannot pay yet.
     static func finishJob(_ s: inout GameState, _ i: Int, _ c: inout JSONValue, data: GameData) -> Bool {
         let job = c["job"], price = job["price"].double
         guard s.companies[i].cash >= price else { return false }
@@ -160,7 +129,6 @@ extension UsedCarDealer {
         if sup != 0, let si = s.companyIndex(sup), s.companies[si].status.isLive {
             Payments.companyReceives(&s, companyID: sup, amount: price, category: "rev", label: "Repairs for \(dealer)")
             Payments.companyPays(&s, companyID: sup, amount: price * partsShare, category: "cogs", label: "Parts for repairs")
-            // The own garage's bill is a taxable supply like any other, in the same country only; the dealer reclaims the VAT unless it is exempt.
             if s.companies[si].countryCode == s.companies[i].countryCode {
                 IntercompanySupply.transferVat(&s, supplier: s.companies[si], buyerIndex: i, net: price, data: data, World(state: s, data: data), cashNow: true)
             }
@@ -171,9 +139,6 @@ extension UsedCarDealer {
         return true
     }
 
-    // MARK: Stock changes
-
-    /// Put a car bought on the Marketplace into the yard. The money leaves cash and becomes stock at cost. False when the lot is full or the cash is short.
     static func addStock(_ s: inout GameState, companyIndex i: Int, listing: MarketListing, hidden h: Marketplace.Hidden, price: Double, by: String = "me") -> Bool {
         guard s.companies[i].cash >= price, lot(s.companies[i]).free > 0 else { return false }
         let id = s.makeID()
@@ -198,7 +163,6 @@ extension UsedCarDealer {
         co.set("ucb", b)
     }
 
-    /// Everything one sale needs: remove the car and return what it brought in.
     struct SaleResult { var price: Double; var cost: Double; var gross: Double }
     static func logSale(_ co: inout Company, car c: JSONValue, price: Double, week: Int, forced: String) {
         var log = co.value("ucs").array
@@ -206,14 +170,8 @@ extension UsedCarDealer {
         co.set("ucs", .array(Array(log.suffix(40))))
     }
 
-    // MARK: Stuck cars
-
-    /// How much a car's sale chance is cut by the time it has sat on the lot.
     static func freshness(weeks: Int) -> Double { 1 / (1 + Double(max(0, weeks - staleAfter)) / staleOddsWeeks) }
 
-    // MARK: Buyers
-
-    /// Rating from a track record: 50 pays fair value, 100 is 10 percent under on average, 0 is 10 percent over.
     static func rating(discount: Double) -> Double { min(100, max(0, 50 + discount * 500)) }
 
     public static func buyerRecords(_ s: GameState, _ co: Company) -> [UsedCarBuyerRecord] {
@@ -230,7 +188,6 @@ extension UsedCarDealer {
         return out
     }
 
-    /// The person who buys for the company when no one is asked: a hired buyer first, else the manager. Skill blends the person's own with the track record.
     static func autoBuyer(_ s: GameState, _ co: Company, _ bd: Trade) -> (who: String, skill: Double, perWeek: Int)? {
         let records = buyerRecords(s, co)
         func blend(_ own: Double, _ who: String) -> Double {
@@ -247,8 +204,6 @@ extension UsedCarDealer {
         return nil
     }
 
-    /// The buyer (or the manager) looks for cars when the yard runs low: the best value in the ads first, a lemon is noticed with a chance that
-    /// grows with skill, and the seller is pushed as many times as his skill allows. A deal is only made at or under fair value.
     static func autoBuy(_ s: inout GameState, _ i: Int, _ bd: Trade, demand D: Double, data: GameData) {
         let co0 = s.companies[i]
         guard let me = autoBuyer(s, co0, bd) else { return }
@@ -256,7 +211,6 @@ extension UsedCarDealer {
         var rnd = HashedRandom("ucbuy:\(s.seed):\(s.week):\(co0.id)")
         var bought = 0
         var lines: [String] = []
-        // One quiet note a week for what the buyer or manager bought on his own (a message per car was noise, and the owner had bought nothing himself).
         defer {
             if !lines.isEmpty {
                 let who: String = me.who == "mgr" ? (co0.managerID.flatMap { s.people[$0]?.name } ?? "Your manager") : (Int(me.who).flatMap { s.people[$0]?.name } ?? "Your buyer")
@@ -289,9 +243,6 @@ extension UsedCarDealer {
         }
     }
 
-    // MARK: Price quote
-
-    /// Share of a car's market value that the dealer's stock has cost (cost plus repairs over fair value), or nil with an empty yard. Used to forecast profit.
     public static func costRatio(_ co: Company) -> Double? {
         let list = co.value("stk").array
         let fair = list.reduce(0) { $0 + $1["fair"].double }
@@ -299,14 +250,11 @@ extension UsedCarDealer {
         return list.reduce(0) { $0 + $1["cost"].double + $1["rep"].double } / fair
     }
 
-    /// Customers a week who could come to this yard (the demand model), for the sale chance.
     public static func weeklyShoppers(_ s: GameState, _ co: Company, data: GameData) -> Double {
         guard let bd = data.catalog[co.type] else { return 0 }
         return DemandModel.compute(co, bd, World(state: s, data: data)).customers
     }
 
-    /// Chance that a car sells within a week at `price`: each shopper sees up to three cars and takes the best value, buying with the chance that
-    /// falls as price rises over what the car looks worth (and as it gets old).
     public static func weeklyOdds(_ co: Company, car c: JSONValue, price: Double, week: Int, shoppers: Double) -> Double {
         let n = co.value("stk").array.filter { $0["res"].isNull }.count
         guard n > 0, shoppers > 0 else { return 0 }
@@ -333,11 +281,8 @@ extension UsedCarDealer {
                             priceVsFair: fair > 0 ? p / fair : 0, weeklyOdds: odds, expectedWeeks: weeks, profit: p - c["cost"].double - repairs - sofar - ahead)
     }
 
-    // MARK: Player actions
-
     static func carIndex(_ co: Company, _ carID: Int) -> Int? { co.value("stk").array.firstIndex { $0["id"].int == carID } }
 
-    /// Set the asking price of one car (any price above zero; a reserved car keeps the price the customer reserved at).
     public static func setPrice(_ s: inout GameState, companyID: Int, carID: Int, price: Double) -> Bool {
         guard let i = s.companyIndex(companyID), s.companies[i].type == tradeID, price.isFinite, price > 0, let k = carIndex(s.companies[i], carID) else { return false }
         var list = s.companies[i].value("stk").array
@@ -346,7 +291,6 @@ extension UsedCarDealer {
         return true
     }
 
-    /// Send a quoted car to the garage now.
     public static func sendToRepair(_ s: inout GameState, companyID: Int, carID: Int, data: GameData) -> Bool {
         guard let i = s.companyIndex(companyID), s.companies[i].type == tradeID, let k = carIndex(s.companies[i], carID) else { return false }
         var list = s.companies[i].value("stk").array
@@ -357,7 +301,6 @@ extension UsedCarDealer {
         return true
     }
 
-    /// Sell a quoted car as it is: no repair, customers see its faults and pay less.
     public static func sellAsIs(_ s: inout GameState, companyID: Int, carID: Int) -> Bool {
         guard let i = s.companyIndex(companyID), s.companies[i].type == tradeID, let k = carIndex(s.companies[i], carID) else { return false }
         var list = s.companies[i].value("stk").array
@@ -381,9 +324,6 @@ extension UsedCarDealer {
         }
     }
 
-    // MARK: Wholesaler offer for a stuck car (a decision)
-
-    /// Maybe a wholesaler offers to take a stuck car off the dealer's hands, for less than it is worth. One open offer at a time.
     static func maybeOffer(_ s: inout GameState, _ i: Int, rnd: inout HashedRandom, data: GameData) {
         let co = s.companies[i]
         guard !s.inbox.contains(where: { $0.status == "open" && $0.actionID == offerAction && $0.companyID == co.id }) else { return }

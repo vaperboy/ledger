@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Registers the company the draft describes (the engine pays the mandatory set-up, skips what the cash cannot carry), tells the player and
-/// opens the company. Returns the refusal text, or nil when the company was registered. Shared by the one-page start and the review step.
 @MainActor func registerNewCompany(_ store: GameStore, engine e: GameEngine, draft d: NewCompanyDraft) -> String? {
     guard let plan = d.plan(e) else { return "This company can no longer be priced." }
     let size: Double? = d.size(e)
@@ -37,9 +35,6 @@ import Simulation
     }
 }
 
-/// New company, step 2 of 3 on one page: a name, the whole start-up cost as one number (premises, tools and papers from the engine's
-/// default plan, `pick: nil`) and the accountant. "Customise" opens the detailed set-up; both end in the review,
-/// the only place money is paid.
 struct NewCompanySetupView: View {
     @EnvironmentObject var store: GameStore
     var tradeID: String
@@ -92,7 +87,6 @@ struct NewCompanySetupView: View {
         }
     }
 
-    /// Goes to the review: nothing is paid on this step.
     private func startBar(_ plan: NewCompanyPlan?) -> some View {
         let reason: String? = plan == nil ? "This company can no longer be priced."
             : ((plan?.registrationShortfall ?? 0) > 0 ? "Needs \(store.money(plan?.registrationShortfall ?? 0)) more cash." : nil)
@@ -100,7 +94,6 @@ struct NewCompanySetupView: View {
     }
 }
 
-/// The bottom bar of a new-company step: the one primary action, with the reason under it when it is blocked.
 struct NewCompanyStepBar: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -118,6 +111,5 @@ struct NewCompanyStepBar: View {
 }
 
 extension NewCompanyPlan {
-    /// What leaves the cash today: the money put into the company, share capital, registration and any abroad costs.
     var payToday: Double { intoCompany + estimate.shareCapital + estimate.registration + estimate.abroad }
 }

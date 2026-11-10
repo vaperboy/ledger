@@ -5,11 +5,6 @@ import Countries
 import Events
 import Simulation
 
-/// Owners, raising money and issuing or selling shares, in Group > Ownership. Logic: `Funding`, `Shareholders`, `CompanySale`.
-///
-/// `mode` picks the page: owners (a control hero with your share, a stacked ownership bar and what the other owners can do, then the holders
-/// with votes, mood, buy-backs and the dividend policy), raise (investors, pitches and offers; a holding: listing and issuing shares) or
-/// shares (offers for blocks of your shares and new shares for an investor). Looking for a buyer for a stake is a route in `SaleRoutePicker`.
 struct CompanyOwnershipSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -19,7 +14,6 @@ struct CompanyOwnershipSection: View {
     @State private var pending: PendingAction?
     @State private var policyOpen = false
 
-    /// One slice of the ownership bar.
     private struct Piece: Identifiable {
         var id: String
         var pct: Double
@@ -47,8 +41,6 @@ struct CompanyOwnershipSection: View {
         .confirmAction($pending)
         .centerSheet(isPresented: $policyOpen) { DividendPolicySheet(companyID: company.id).environmentObject(store) }
     }
-
-    // MARK: Control
 
     private func pieces(_ owners: [Shareholders.Holder]) -> [Piece] {
         var out: [Piece] = [Piece(id: "You", pct: company.ownership, tint: Theme.gold)]
@@ -102,8 +94,6 @@ struct CompanyOwnershipSection: View {
         .accessibilityLabel("Ownership: you \(Int(saturating: company.ownership.rounded())) percent")
     }
 
-    // MARK: Owners
-
     @ViewBuilder private func owners(_ cur: Currency) -> some View {
         let list = engine.owners(companyID: company.id)
         let all: [Piece] = pieces(list)
@@ -155,15 +145,12 @@ struct CompanyOwnershipSection: View {
         }
     }
 
-    /// One home for the policy: the same sheet as the group's Money page (`DividendPolicySheet`).
     private var dividendPolicy: some View {
         let chosen: String = engine.dividendPolicy(companyID: company.id)
         return SharpTable {
             SettingsTableRow(title: "Dividend policy", value: Shareholders.policyNames[chosen] ?? chosen, opens: .sheet) { policyOpen = true }
         }
     }
-
-    // MARK: Raise money
 
     @ViewBuilder private func raise(_ cur: Currency) -> some View {
         if isHolding { holdingRaise(cur) } else { investors(cur) }
@@ -238,8 +225,6 @@ struct CompanyOwnershipSection: View {
         }
     }
 
-    // MARK: Holding: listing and issuing shares
-
     private func holdingRaise(_ cur: Currency) -> some View {
         let id = company.id
         let listed: Bool = engine.isListed(companyID: id)
@@ -285,8 +270,6 @@ struct CompanyOwnershipSection: View {
             }
         }
     }
-
-    // MARK: Sell shares
 
     private func sell(_ cur: Currency) -> some View {
         let id = company.id
@@ -341,7 +324,6 @@ struct CompanyOwnershipSection: View {
         }
     }
 
-    /// New shares are issued for money: say what it costs before doing it, and report what the engine raised.
     private func confirmRaise(_ goal: Double, publicOffering: Bool, cur: Currency) {
         let id = company.id
         pending = PendingAction(title: "Raise about \(cur.tidyShort(goal))?",

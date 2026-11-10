@@ -4,7 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Equipment categories show only where the trade has use for them.
 final class EquipmentReadsTests: XCTestCase {
     private func start(_ tradeID: String) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)

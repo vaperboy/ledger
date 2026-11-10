@@ -4,8 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-// MARK: Read models: reviews, business customers, rivals, price moves, market map, IT security
-
 public struct ReviewLine: Identifiable, Equatable {
     public var id: Int
     public var who: String
@@ -13,17 +11,15 @@ public struct ReviewLine: Identifiable, Equatable {
     public var text: String
     public var age: Int
     public var weeksAgo: Int
-    /// Flag of the country a tourist writes from; empty for locals.
     public var flag: String = ""
 }
 
 public struct ReviewSummary: Equatable {
     public var rating: Double
     public var count: Int
-    public var histogram: [Int]       // index 0 = one star
+    public var histogram: [Int]
     public var lines: [ReviewLine]
     public var word: String
-    /// Fewer than three reviews: the rating is not shown as a number yet.
     public var enough: Bool
 }
 
@@ -48,7 +44,7 @@ public struct ReviewGroup: Identifiable, Equatable {
 public struct RivalRow: Identifiable, Equatable {
     public var id: Int
     public var rival: Rivals.Rival
-    public var priceGap: Double          // their price against yours, as a share
+    public var priceGap: Double
     public var sizeWord: String
     public var feel: String
     public var mood: String
@@ -80,7 +76,7 @@ public struct PriceMovesInfo: Equatable {
     public var yourTicket: Double
     public var rivalsAverage: Double?
     public var margin: Double?
-    public var againstMarket: Double          // your price level against the going price, as a share
+    public var againstMarket: Double
     public var discountPercent: Int?
     public var discountWeeksLeft: Int
     public var discountOptions: [Int]
@@ -127,7 +123,7 @@ public struct MarketDetail: Equatable {
 public struct CyberInfo: Equatable {
     public var status: Cyber.Status
     public var yearOdds: Double
-    public var levelCosts: [Double]     // monthly, for each level
+    public var levelCosts: [Double]
     public var backupsCost: Double
     public var trainingCost: Double
     public var insured: Bool
@@ -136,7 +132,6 @@ public struct CyberInfo: Equatable {
 }
 
 public extension GameEngine {
-    // MARK: Reviews
 
     func reviewSummary(_ co: Company, limit: Int = 12) -> ReviewSummary {
         let country = data.countries.resolve(co.countryCode, orHome: state.homeCountryCode)
@@ -146,7 +141,6 @@ public extension GameEngine {
                              word: n < Reviews.minimumShown ? "No rating yet" : Reviews.word(r), enough: n >= Reviews.minimumShown)
     }
 
-    /// Every business in your markets, best rated first: yours and your rivals'. Original: `reviewList`.
     func reviewBoard() -> [ReviewGroup] {
         var out: [ReviewGroup] = []
         var seen = Set<String>()
@@ -175,8 +169,6 @@ public extension GameEngine {
         return out
     }
 
-    // MARK: Business customers
-
     func keyAccountInfo(_ co: Company) -> (allowed: Bool, limit: Int, accounts: [KeyAccounts.Account]) {
         guard let bd = data.catalog[co.type] else { return (false, 0, []) }
         return (KeyAccounts.allowed(co, bd), KeyAccounts.maximum(co), KeyAccounts.accounts(co))
@@ -187,12 +179,9 @@ public extension GameEngine {
         update { s, d, _ in r = KeyAccounts.meet(&s, companyID: companyID, accountID: accountID, data: d) }
         return r
     }
-    /// True when the key-account contract existed and is ended.
     @discardableResult
     mutating func dropAccount(companyID: Int, accountID: Int) -> Bool { var ok = false; update { s, _, _ in ok = KeyAccounts.drop(&s, companyID: companyID, accountID: accountID) }; return ok }
     mutating func setAccountDiscount(companyID: Int, accountID: Int, percent: Int) { update { s, _, _ in KeyAccounts.setDiscount(&s, companyID: companyID, accountID: accountID, percent: percent) } }
-
-    // MARK: Rivals
 
     func rivalRows(_ co: Company) -> [RivalRow] {
         let w = World(state: state, data: data)
@@ -268,7 +257,6 @@ public extension GameEngine {
         return r
     }
 
-    /// What it would cost to buy a rival at a multiple of its value (the multiple 1.0 is the going price).
     func rivalValue(companyID: Int, rivalID: Int) -> Double {
         guard let co = state.company(companyID), let bd = data.catalog[co.type], let r = Rivals.rivals(state, for: co).first(where: { $0.id == rivalID }) else { return 0 }
         return Rivals.value(bd, r, World(state: state, data: data), co)
@@ -285,12 +273,11 @@ public extension GameEngine {
         return r
     }
 
-    /// Complete a purchase the owner agreed to.
     mutating func buyRival(companyID: Int, rivalID: Int, price: Double) -> Rivals.AcquireResult {
         var r = Rivals.AcquireResult.failed("Nothing happened.")
         update { s, d, c in
             r = Rivals.acquire(&s, companyID: companyID, rivalID: rivalID, price: price, data: d, context: c)
-            if case .ok = r { Ambitions.countEvent(&s, "buy") }   // counts for the market dominator ambition
+            if case .ok = r { Ambitions.countEvent(&s, "buy") }
         }
         return r
     }
@@ -307,7 +294,6 @@ public extension GameEngine {
     }
     mutating func endPriceWar(companyID: Int) { update { s, _, _ in Rivals.endPriceWar(&s, companyID: companyID) } }
 
-    /// Groups that compete in the countries you are in.
     func rivalGroupsAround() -> [RivalGroups.Group] {
         Set(state.companies.filter { $0.status.isLive }.map { $0.countryCode } + [state.homeCountryCode]).sorted().flatMap { cc in
             RivalGroups.groups(state, country: cc).filter { g in !RivalGroups.members(state, groupID: g.id).isEmpty || !g.moves.isEmpty }
@@ -321,8 +307,6 @@ public extension GameEngine {
             return (co, r)
         }
     }
-
-    // MARK: Price moves
 
     func priceMoves(_ co: Company) -> PriceMovesInfo? {
         let w = World(state: state, data: data)
@@ -340,7 +324,6 @@ public extension GameEngine {
                               recentCut: PriceMoves.recentCut(co, week: state.week, balance: data.balance))
     }
 
-    /// Change the price by a share, e.g. +0.05. Returns the real change.
     @discardableResult
     mutating func changePrice(companyID: Int, byShare d: Double) -> Double? {
         var r: Double?
@@ -353,8 +336,6 @@ public extension GameEngine {
         return msg.map { .refused($0) } ?? .done
     }
     mutating func endDiscount(companyID: Int) { update { s, _, _ in PriceMoves.endCampaign(&s, companyID: companyID) } }
-
-    // MARK: Market map
 
     func marketRows() -> [MarketRow] {
         let all = MarketMap.markets(state, data: data)
@@ -388,8 +369,6 @@ public extension GameEngine {
                             report: k.level == .feeling ? [] : MarketMap.report(state, m, k, data: data), firstCompanyID: first)
     }
 
-    // MARK: IT security
-
     func cyberInfo(_ co: Company) -> CyberInfo {
         let cur = currency(for: co)
         let st = Cyber.status(co)
@@ -413,10 +392,7 @@ public extension GameEngine {
     }
 }
 
-// MARK: Analysts, forecasts, rankings, the world around you, own software
-
 public extension GameEngine {
-    /// What a market analyst in this company would give you (the hire screen). Original: `R26.mktanHire`.
     func marketAnalystVerdict(companyID: Int) -> MarketMap.HireVerdict { MarketMap.analystHireVerdict(state, companyID: companyID, data: data) }
     var hasDataAnalyst: Bool { MarketMap.hasDataAnalyst(state) }
     mutating func dataAnalystCandidates() -> [Person] {
@@ -429,11 +405,9 @@ public extension GameEngine {
         update { s, d, _ in r = MarketMap.hireDataAnalyst(&s, personID: personID, monthlyWage: monthlyWage, data: d) }
         return r
     }
-    /// True when there was a data analyst to let go.
     @discardableResult
     mutating func fireDataAnalyst() -> Bool { var ok = false; update { s, _, _ in ok = MarketMap.fireDataAnalyst(&s) }; return ok }
     func economyWeight() -> MarketMap.Weight { MarketMap.weight(state, data: data) }
-    /// Ask your market analyst for a report now (market map), or your data analyst for one on a company or all of them.
     mutating func orderMarketReport(marketKey: String) -> ActionResult {
         var msg: String?
         update { s, d, _ in msg = MarketMap.orderMarketReport(&s, marketKey: marketKey, data: d) }
@@ -445,23 +419,18 @@ public extension GameEngine {
         return msg.map { .refused($0) } ?? .done
     }
 
-    /// The forecast boxes of the price-move screen: customers and margin, as you or your analyst see them. Original: `est`, `fcBoxes`.
     func priceForecast(companyID: Int, byShare d: Double, campaignPercent cp: Int = 0) -> (forecast: PriceMoves.Forecast, text: PriceMoves.ForecastText)? {
         guard let f = PriceMoves.forecast(state, companyID: companyID, byShare: d, campaignPercent: cp, data: data) else { return nil }
         return (f, PriceMoves.forecastText(f, state, key: "p\(companyID):\(Int(saturating: jsRound(d * 100))):\(cp)", campaign: cp > 0))
     }
 
-    /// The biggest companies by sales, profit, value or growth. Original: `R27.ranked`.
     func rankingBoard(scope: CompanyRanking.Scope, metric: CompanyRanking.Metric) -> CompanyRanking.Board { CompanyRanking.board(state, data: data, scope: scope, metric: metric) }
     func yourRanking(scope: CompanyRanking.Scope = .country, metric: CompanyRanking.Metric = .revenue) -> (rank: Int, of: Int)? {
         CompanyRanking.yourRank(state, data: data, scope: scope, metric: metric)
     }
 
-    // MARK: IT security picked by the manager
     mutating func leaveCyberToManager(companyID: Int) { update { s, _, _ in Cyber.leaveToManager(&s, companyID: companyID) } }
 
-    // MARK: World around you
-    /// How each group sees you (press, city, bank ...), worked out from the same trust/bold/care numbers as `publicImage`.
     func worldImage() -> WorldAround.Image { WorldAround.image(state, data: data) }
     mutating func peopleYouKnow() -> [WorldAround.Contact] {
         var r: [WorldAround.Contact] = []
@@ -493,10 +462,8 @@ public extension GameEngine {
     }
     var localPaperName: String? { WorldAround.paperName(state, data: data) }
 
-    // MARK: Key accounts: what they sell
     func keyAccountProfile(_ a: KeyAccounts.Account) -> KeyAccounts.Profile { KeyAccounts.profile(a, data: data) }
 
-    // MARK: Software of your own
     func softwareProduct(companyID: Int) -> SoftwareProducts.Product? { SoftwareProducts.product(state, companyID: companyID) }
     mutating func startSoftware(companyID: Int, type: String, model: String, name: String? = nil) -> Bool {
         var r = false

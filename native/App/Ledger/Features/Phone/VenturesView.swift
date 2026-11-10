@@ -6,9 +6,6 @@ import Finance
 import Events
 import Simulation
 
-/// What the venture portfolio is worth and how it stands, read once from the engine so the header and the sections agree.
-/// Your share of your own startups, stakes in other founders' startups, funds and group stakes; `gain` is the value (plus fund payouts)
-/// against everything put in.
 struct VenturesFigures {
     var cur: Currency
     var founded: [Startups.Founded]
@@ -57,7 +54,6 @@ struct VenturesFigures {
 
     var isEmpty: Bool { founded.isEmpty && stakes.isEmpty && funds.isEmpty && groupCount == 0 }
 
-    /// "2 startups of your own · 1 stake · 1 fund": what the total is made of.
     var parts: String {
         var out: [String] = []
         if !founded.isEmpty { out.append(founded.count == 1 ? "1 startup of your own" : "\(founded.count) startups of your own") }
@@ -67,14 +63,12 @@ struct VenturesFigures {
         return out.joined(separator: " \u{00B7} ")
     }
 
-    /// "+1.2M (+8%) on 15M put in", or empty when nothing has gone in.
     var changeLine: String {
         guard invested > 0 else { return "" }
         let pct: Int = Int(saturating: (gain / invested * 100).rounded())
         return (gain >= 0 ? "+" : "\u{2212}") + cur.tidyShort(abs(gain)) + " (" + (pct >= 0 ? "+" : "\u{2212}") + "\(abs(pct))%) on \(cur.tidyShort(invested)) put in"
     }
 
-    /// What needs a look, most pressing first.
     var notes: [(text: String, tone: AcctPill.Tone)] {
         var out: [(text: String, tone: AcctPill.Tone)] = []
         if shortRunway > 0 { out.append((shortRunway == 1 ? "1 startup has under 8 weeks of runway" : "\(shortRunway) startups have under 8 weeks of runway", .bad)) }
@@ -85,7 +79,6 @@ struct VenturesFigures {
     }
 }
 
-/// The popups of the venture portfolio. One popup at a time, opened from a row.
 enum VentureSheet: Identifiable, Equatable {
     case found, launch(Int), back(Int), sellStake(Int), fund(String), sellFund(Int), groupBuy(String)
     var id: String {
@@ -101,15 +94,10 @@ enum VentureSheet: Identifiable, Equatable {
     }
 }
 
-/// The one home of the venture portfolio (Ventures > Portfolio, and the standalone phone app): a portfolio header, then your startups, the
-/// startups and funds you back, group stakes and software, each with one row per holding and its main action. Founding, backing, committing
-/// and selling run in popups with the price or cost shown first.
-/// Logic: `Startups`, `PrivateEquity`, `BigMeeting`, `GroupDeals`, `SoftwareProducts`.
 struct VenturesHome: View {
     @EnvironmentObject var store: GameStore
     @State private var sheet: VentureSheet?
     @State private var pending: PendingAction?
-    /// The row that is open (its actions showing): one at a time across the whole page.
     @State private var open: String?
 
     var body: some View {
@@ -165,8 +153,6 @@ struct VenturesHome: View {
     }
 }
 
-/// Header of the portfolio: its value as the one big figure, the change against what went in, what the total is made of, the things that
-/// need a look, and the main action.
 struct VenturesHeader: View {
     var figures: VenturesFigures
     var found: () -> Void

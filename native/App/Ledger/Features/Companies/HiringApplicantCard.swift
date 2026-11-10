@@ -5,7 +5,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Patience is never shown as a number: only a feeling, from how much of the engine's patience is left (no rules, only wording).
 enum PatienceWords {
     static func feeling(left: Int, of total: Int) -> (text: String, tint: Color) {
         let f: Double = total > 0 ? Double(left) / Double(total) : 0
@@ -15,17 +14,12 @@ enum PatienceWords {
     }
 }
 
-/// THE applicant row, the same on the Applicants page and the hire page: portrait, name, age, role and experience, and what they are likely
-/// to ask as the row's value. A tap on the row opens the terms talk; the chevron at the right opens the CV, the first impression,
-/// references, trial notes and the paid trial week. Only what the player can see before an interview is shown, in words: never a skill figure.
 struct ApplicantRow: View {
     @Environment(\.outsidePalette) private var P
     var applicant: Applicant
     var roleName: String
-    /// The company they answered, when the list spans several companies.
     var companyName: String = ""
     var currency: Currency
-    /// The engine's ask preview for this person (`applicantAskPreview`), when there is one.
     var ask: (ask: Double, market: Double)?
     var open: Bool
     var talkIdentifier: String
@@ -33,7 +27,6 @@ struct ApplicantRow: View {
     var onTrial: () -> Void
     var onTalk: () -> Void
 
-    /// The paid trial week costs a week of the going monthly pay.
     static func trialCost(_ a: Applicant) -> Double { a.marketYearly / 12 / 4 }
 
     private var experienceLine: String {
@@ -42,7 +35,6 @@ struct ApplicantRow: View {
         return "\(n) \(n == 1 ? "year" : "years")"
     }
 
-    /// Likely ask in words against the going rate, else the going rate (the figure itself is the row's value).
     private var wageWords: String {
         guard let ask, ask.market > 0 else { return "going rate" }
         let ratio: Double = ask.ask / ask.market
@@ -122,7 +114,6 @@ struct ApplicantRow: View {
     }
 }
 
-/// The paid trial week, asked the same way from every applicant list.
 @MainActor
 enum ApplicantTrial {
     static func ask(_ store: GameStore, _ a: Applicant, companyID: Int, _ cur: Currency) -> PendingAction {

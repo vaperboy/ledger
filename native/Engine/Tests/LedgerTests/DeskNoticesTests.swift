@@ -6,7 +6,6 @@ import Businesses
 @testable import Businesses
 @testable import Simulation
 
-/// Notices carry a severity and an audience; routine matters go to the desk that answers for them and only serious ones reach the owner.
 final class DeskNoticesTests: XCTestCase {
     private func game() throws -> (GameEngine, Int, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
@@ -69,7 +68,6 @@ final class DeskNoticesTests: XCTestCase {
         XCTAssertNil(Delegation.desk("owner", in: co, state: e.state, data: e.data))
     }
 
-    /// A notice addressed to a desk must name who handles it; with nobody at the desk it is the owner's own notice.
     func testApplicantNoticeIsAddressedToTheHrDeskOnlyWhenSomebodyIsThere() throws {
         var (e, a, _) = try game()
         e.update { s, d, _ in JobAds.arrive(&s, companyIndex: s.companyIndex(a)!, role: "waiter", agency: false, boost: 0, data: d) }

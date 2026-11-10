@@ -3,15 +3,10 @@ import Charts
 import Countries
 import Simulation
 
-// The pieces of the Reports overview: a chart of the last periods, the "in short" story rows, and the profit and loss lines as one
-// overview table where each row opens its own detail page. Everything is read from the stored reports; money comes through `ReportFormat`.
-
-/// Which line of the profit and loss a table row stands for.
 struct ReportLineKey: Hashable, Identifiable {
     var id: String
     var title: String
     var glyph: String
-    /// A cost: a rise is bad news.
     var isCost: Bool
     var strong = false
 
@@ -48,7 +43,6 @@ struct ReportLineKey: Hashable, Identifiable {
     }
 }
 
-/// How the change of one figure reads: an arrow, the share (or the amount when no share exists), and whether it is good news.
 struct ReportChangeText {
     var text: String
     var tint: Color
@@ -63,12 +57,8 @@ struct ReportChangeText {
     }
 }
 
-// MARK: Chart
-
-/// What the chart plots.
 enum ReportChartMetric: String, CaseIterable, Hashable { case profit = "Profit after tax", worth = "Net worth" }
 
-/// Bars of the last periods (the chosen one marked), from the real report history.
 struct ReportHistoryChart: View {
     var reports: [PeriodReport]
     var selectedID: Int
@@ -122,7 +112,6 @@ struct ReportHistoryChart: View {
     }
 }
 
-/// The chart in its card, with the choice of what to plot.
 struct ReportChartCard: View {
     var reports: [PeriodReport]
     var selectedID: Int
@@ -135,7 +124,6 @@ struct ReportChartCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Last \(kind.noun)s".uppercased()).capsLabel()
                 SegmentedPill(items: ReportChartMetric.allCases, title: { $0.rawValue }, selection: $metric)
-                // A new identity per metric rebuilds the bars, so they redraw (the wipe from the left) instead of morphing in place.
                 ReportHistoryChart(reports: reports, selectedID: selectedID, metric: metric, format: format)
                     .id(metric)
                     .revealOnChange(of: metric)
@@ -144,9 +132,6 @@ struct ReportChartCard: View {
     }
 }
 
-// MARK: Story
-
-/// "In short": three to five short bordered rows, each with an icon circle.
 struct ReportStoryRows: View {
     var lines: [String]
 
@@ -177,9 +162,6 @@ struct ReportStoryRows: View {
     }
 }
 
-// MARK: Line detail
-
-/// One profit and loss line over the last periods, and (for the group) which company it came from.
 struct ReportLineDetail: View {
     var report: PeriodReport
     var history: [PeriodReport]

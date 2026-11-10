@@ -1,10 +1,8 @@
 import SwiftUI
 
-/// Hidden engine numbers shown as words. One mapping for the whole app (BrandWords covers the brand itself).
 enum Words {
     enum Scale { case quality, mood, condition }
 
-    /// A 0-100 style value (or value out of `most`) as a plain word for the chosen scale.
     static func level(_ value: Double, scale: Scale, of most: Double = 100) -> String {
         let share: Double = most > 0 ? value / most : 0
         switch scale {
@@ -27,7 +25,6 @@ enum Words {
         }
     }
 
-    /// How a value moved, in words.
     static func move(_ from: Double, _ to: Double, scale: Scale) -> String {
         let a: String = level(from, scale: scale)
         let b: String = level(to, scale: scale)

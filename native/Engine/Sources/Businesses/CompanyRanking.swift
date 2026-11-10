@@ -3,11 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// The ranking of the biggest companies, by sales, profit, value or growth: you, the rival groups, the rivals you face by name, and
-/// the ordinary firms of the business register (a crowd worked out from a size curve per country and trade, so a newcomer starts near
-/// the bottom of thousands). Your place among your industries, your country or the world feeds the business awards.
-/// Original: features/world/rival_groups.js (`entities`, `meEntity`, `localRivals`, `crowd`, `ranked`, `myRank`, `rankSnap`).
-/// Not ported: the national banks, insurers and funds as ranked names; the crowd firms shown as named rows next to you.
 public enum CompanyRanking {
     public enum Metric: String, CaseIterable, Sendable {
         case revenue, profit, value, growth
@@ -25,25 +20,20 @@ public enum CompanyRanking {
         public var previousRevenue: Double, previousProfit: Double, previousValue: Double
         public var isYou = false
         public var groupID: String?
-        /// A rival you face: the company of yours it competes with, and its id in that market.
         public var rivalCompanyID: Int?, rivalID: Int?
         public var companyCount = 0
         public var rank = 0, previousRank = 0
 
         public func figure(_ m: Metric) -> Double { switch m { case .revenue: return revenue; case .profit: return profit; case .value: return value; case .growth: return growth } }
         func before(_ m: Metric) -> Double { switch m { case .revenue: return previousRevenue; case .profit: return previousProfit; case .value: return previousValue; case .growth: return growth } }
-        /// Places gained since last month (positive = moved up).
         public var movement: Int { previousRank - rank }
     }
 
     public struct Board: Equatable, Sendable {
         public var entries: [Entry]
-        /// Everyone ranked, the register's crowd included.
         public var total: Int
         public var you: Entry? { entries.first { $0.isYou } }
     }
-
-    // MARK: Who is on the list
 
     static func figures(_ s: GameState, _ id: String) -> (prev: (Double, Double, Double)?, history: [Double]) {
         let p = s.rest["rk27"]?["prev"][id] ?? .null
@@ -87,7 +77,6 @@ public enum CompanyRanking {
         }
     }
 
-    /// Every rival that is not part of a group, in the markets you are in.
     static func rivalEntries(_ s: GameState, data: GameData) -> [Entry] {
         let w = World(state: s, data: data)
         var out: [Entry] = [], seen = Set<Int>()
@@ -108,7 +97,6 @@ public enum CompanyRanking {
         return out
     }
 
-    /// Companies that players run (`RealRivals`), as ordinary rows, except those already shown as a rival you face.
     static func playerEntries(_ s: GameState, data: GameData, skipping names: Set<String>) -> [Entry] {
         guard let list = s.rest["real"]?.array, !list.isEmpty else { return [] }
         var out: [Entry] = []
@@ -127,8 +115,6 @@ public enum CompanyRanking {
         }
         return out
     }
-
-    // MARK: The crowd of ordinary firms
 
     struct Bucket { var cc: String, trade: String, n: Double, ur: Double, m: Double }
 
@@ -149,7 +135,6 @@ public enum CompanyRanking {
 
     static func phi(_ z: Double) -> Double { 0.5 * erfc(-z / 2.0.squareRoot()) }
 
-    /// How many firms of a bucket have a figure above x. Sizes follow a log-normal curve around the usual size of the trade.
     static func above(_ b: Bucket, _ x: Double, _ metric: Metric) -> Double {
         if metric == .growth {
             if x >= 0.8 { return 0 }
@@ -165,8 +150,6 @@ public enum CompanyRanking {
         guard v > 0 else { return b.n }
         return b.n * (1 - phi((log(v / b.ur) + 0.45) / 0.8))
     }
-
-    // MARK: The board
 
     public static func board(_ s: GameState, data: GameData, scope: Scope, metric: Metric) -> Board {
         guard let me = yourEntry(s, data: data) else { return Board(entries: [], total: 0) }
@@ -200,13 +183,11 @@ public enum CompanyRanking {
         return Board(entries: out, total: L.count + Int(bk.reduce(0) { $0 + $1.n }))
     }
 
-    /// Your place, for the awards and the stats page. Original: `R27.myRank`.
     public static func yourRank(_ s: GameState, data: GameData, scope: Scope = .country, metric: Metric = .revenue) -> (rank: Int, of: Int)? {
         let b = board(s, data: data, scope: scope, metric: metric)
         return b.you.map { ($0.rank, b.total) }
     }
 
-    /// Month start: remember where everyone stood, so the next month shows who moved. Original: `rankSnap` and the `prev` of each group.
     static func snapshot(_ s: inout GameState, data: GameData) {
         var root = s.rest["rk27"] ?? .object(["prev": .object([:]), "rh": .object([:])])
         var all = groupEntries(s)

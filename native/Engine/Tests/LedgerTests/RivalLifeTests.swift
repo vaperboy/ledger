@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Rivals with a strategy and a fortune: they fail, leave a gap, press on your demand, and nudge hiring and rate-sensitive trades.
 final class RivalLifeTests: XCTestCase {
     private func game() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242)
@@ -17,7 +16,7 @@ final class RivalLifeTests: XCTestCase {
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6 + 3_000_000)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
-        for _ in 0..<(6 * 7) { e.nextDay() }   // the cafe opens after three weeks of set-up; its market (and rivals) appear the week after
+        for _ in 0..<(6 * 7) { e.nextDay() }
         return (e, id)
     }
 
@@ -28,7 +27,6 @@ final class RivalLifeTests: XCTestCase {
             let rs = Rivals.rivals(s, for: co)
             XCTAssertFalse(rs.isEmpty)
             XCTAssertTrue(rs.allSatisfy { Rivals.strategies.contains($0.strategy) && $0.fortune > 0.5 })
-            // an old record without the new fields still reads
             let old: JSONValue = .object(["id": 77, "name": "Old Co", "size": 1.0, "pm16": 1.0, "ig16": 1])
             XCTAssertTrue(Rivals.strategies.contains(Rivals.strategyOf(old)))
             XCTAssertEqual(Rivals.fortuneOf(old), 1)
@@ -63,8 +61,8 @@ final class RivalLifeTests: XCTestCase {
             XCTAssertEqual(first.count, 1)
             guard !first.isEmpty else { return }
             let msgs = s.inbox.count
-            Rivals.mutate(&s, key: k, id: first[0].id) { $0["fort"] = -1.5; $0["st"] = "expander"; $0["pm16"] = 1; $0["ig16"] = 1; $0["g27"] = .null }   // deep in trouble whatever the year's luck
-            s.week = 52 * 3 + 1   // a new year
+            Rivals.mutate(&s, key: k, id: first[0].id) { $0["fort"] = -1.5; $0["st"] = "expander"; $0["pm16"] = 1; $0["ig16"] = 1; $0["g27"] = .null }
+            s.week = 52 * 3 + 1
             Rivals.fortuneYear(&s, data: data)
             XCTAssertTrue(Rivals.rivals(s, key: k).isEmpty, "out of money, it closes")
             XCTAssertGreaterThan(s.inbox.count, msgs, "you are told")
@@ -114,7 +112,7 @@ final class RivalLifeTests: XCTestCase {
             Rivals.mutate(&s, key: k, id: rid) { $0["st"] = "expander"; $0["fort"] = 2; $0["size"] = 1.3 }
             s.rest["mk"]![tk] = s.rest["mk"]![k]
             Rivals.mutate(&s, key: tk, id: rid) { $0["name"] = "Someone Else" }
-            s.rest["mk"]![tk]["n"] = 3   // expansion only goes where the market is not already crowded (fewer than 8 rivals; London is)
+            s.rest["mk"]![tk]["n"] = 3
             let before = Rivals.rivals(s, key: tk).count
             Rivals.expand(&s, key: k, id: rid, data: data)
             XCTAssertEqual(Rivals.rivals(s, key: tk).count, before + 1)

@@ -51,10 +51,8 @@ final class DocumentReviewTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, fundWith: 5_000_000, quickSetup: false) else { throw XCTSkip("no company") }
         let form = try XCTUnwrap(e.documentForm(companyID: id, documentID: "registration"))
         XCTAssertTrue(["", "ok", "applied"].contains(form.status))
-        // VAT is always on the opening list unless the business is exempt
         let ids = e.openingChecklist(companyID: id).map { $0.id }
         XCTAssertTrue(ids.contains("doc:vat") || e.state.company(id).map { Vat.isExempt($0, World(state: e.state, data: e.data)) } == true)
-        // force a refused state and reapply straight away
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
             var docs = s.companies[i].value("docs"); docs["registration"] = .object(["st": "rejected"]); s.companies[i].set("docs", docs)

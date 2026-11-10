@@ -5,8 +5,6 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// A founded startup is a real company. Builders are hired and paid like staff, the product finishes and waits for a launch decision,
-/// price and marketing drive customers, the company can be sold, rounds use the cap table. Multi-seed runs report survival and revenue.
 final class StartupLifecycleTests: XCTestCase {
     private func game(seed: Int, funds: Double = 5_000_000_000) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
@@ -31,7 +29,6 @@ final class StartupLifecycleTests: XCTestCase {
         let f = try XCTUnwrap(e.foundedStartups.first)
         XCTAssertEqual(f.companyID, sid)
         XCTAssertGreaterThan(try XCTUnwrap(f.product).progress, 0)
-        // More builders build faster; letting them go slows it.
         let n0 = try XCTUnwrap(e.state.company(sid)).staff.count
         e.changeBuilders(startupID: sid, by: 1)
         XCTAssertEqual(try XCTUnwrap(e.state.company(sid)).staff.count, n0 + 1)
@@ -105,9 +102,6 @@ final class StartupLifecycleTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    /// Multi-seed outcomes of the same founding plan (two builders, 4x seed) under three launch strategies: the reference price with no support staff,
-    /// the reference price with a support hire and a campaign, and three times the reference price. How many survive 100 weeks, the revenue
-    /// distribution and why the others end. Printed for the report; nothing is clamped.
     func testMultiSeedSurvivalAndRevenue() throws {
         let seeds = ProcessInfo.processInfo.environment["LEDGER_PROBE_ALL"] == "1" ? Array(1...30) : Array(1...4)
         for (label, priceFactor, support, campaign) in [("reference price, no support", 1.0, false, 0.0), ("reference price, support hire + campaign", 1.0, true, 2000.0), ("3x price", 3.0, false, 0.0)] {

@@ -4,20 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// Writes the weekly, monthly and yearly reports. Native addition; see `ReportModels.swift`.
-///
-/// How it works: when a period starts, a snapshot of the books is kept (`rest["rptBase"]`). When it ends (the seventh day of the
-/// last week of the period is over, so all the week's money has been released), the snapshot is compared with the books now and the
-/// difference is the report. Then a new snapshot starts the next period. Nothing is estimated: every figure is a difference of
-/// something the game already keeps (company books, cash, the ledger totals, net worth).
-///
-/// Stored in the save, all under keys that older saves simply do not have:
-///   `reports`  {"w": [...], "m": [...], "y": [...]}   the last 26 weekly, 36 monthly and 10 yearly reports
-///   `rptBase`  {"w": {...}, "m": {...}, "y": {...}}   where each running period started
-///   `rptCum`   running totals of the player's account by kind (see `ReportCounters`)
-///   `rptSeen`  the newest report of each kind the player has dismissed from Home
 public enum Reports {
-    // MARK: Snapshots
 
     struct CompanyMark: Codable, Equatable {
         var id: Int
@@ -37,7 +24,6 @@ public enum Reports {
         var balance: Double
     }
 
-    /// What the weeks of the running period have shown so far (weekly facts that cannot be taken from a difference).
     struct Accumulator: Codable, Equatable {
         struct Trade: Codable, Equatable { var id: Int; var units = 0.0; var util = 0.0; var weeks = 0 }
         var trade: [Trade] = []
@@ -76,8 +62,6 @@ public enum Reports {
         return snap
     }
 
-    // MARK: Storage
-
     static func read<T: Decodable>(_ v: JSONValue?, as: T.Type = T.self) -> T? {
         guard let v, !v.isNull, let d = try? JSONEncoder().encode(v) else { return nil }
         return try? JSONDecoder().decode(T.self, from: d)
@@ -105,17 +89,13 @@ public enum Reports {
         s.rest["reports"] = .object(o)
     }
 
-    // MARK: Opening and closing periods
-
-    /// Start the running periods from now (a new game).
     public static func openBaselines(_ s: inout GameState, data: GameData) {
         var snap = capture(s, data: data)
-        snap.week = s.week - 1   // the first period starts with the current week
+        snap.week = s.week - 1
         for k in ReportKind.allCases { setBase(&s, k, snap) }
         if s.rest["reports"] == nil { setReports(&s, .week, []) }
     }
 
-    /// The week the player has just lived is over. Writes the week's report, and the month's and year's when they end with it.
     public static func closePeriods(_ s: inout GameState, data: GameData, context: FinanceContext) {
         let now = capture(s, data: data)
         let week = weekFacts(s)
@@ -124,7 +104,6 @@ public enum Reports {
         for kind in ReportKind.allCases {
             let closes: Bool = kind == .week || (kind == .month && monthEnds) || (kind == .year && yearEnds)
             guard var b = base(s, kind) else {
-                // A save from before reports (or a game set up half way): the first period has no start, so it is not reported.
                 var fresh = now
                 fresh.partial = !closes
                 setBase(&s, kind, fresh)
@@ -141,9 +120,6 @@ public enum Reports {
         }
     }
 
-    // MARK: Weekly facts
-
-    /// Customers and capacity of each trading company in the week that has just ended, and what was worth telling.
     static func weekFacts(_ s: GameState) -> Accumulator {
         var a = Accumulator()
         for co in s.companies where co.status == .open {
@@ -153,7 +129,6 @@ public enum Reports {
         }
         var seen = Set<String>()
         func add(_ text: String, _ tone: String, _ co: Int) {
-            // Routine paperwork and openings are not news.
             let routine = text.contains(" approved for ") || text.hasPrefix("Welcome") || text.hasSuffix("is open for business.")
             guard !text.isEmpty, !routine, tone == "good" || tone == "bad", seen.insert(text).inserted else { return }
             a.events.append(ReportEvent(text: text, tone: tone, companyID: co, week: s.week))
@@ -167,8 +142,6 @@ public enum Reports {
         return a
     }
 
-    // MARK: Building a report
-
     static func makeReport(_ kind: ReportKind, base b: Snapshot, now: Snapshot, state s: GameState, data: GameData, previous: PeriodReport?) -> PeriodReport {
         var r = PeriodReport(kind: kind, id: s.week, firstWeek: b.week + 1, lastWeek: s.week, title: "", range: "")
         let firstWeek = max(0, b.week + 1)
@@ -181,7 +154,6 @@ public enum Reports {
         r.range = GameCalendar.dateString(week: firstWeek) + " – " + GameCalendar.dateString(week: s.week, dayOffset: 6)
         r.partial = b.partial
 
-        // Companies
         let bases = Dictionary(b.companies.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let baseLoans = Dictionary(b.loans.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         var rows: [ReportCompany] = []
@@ -225,7 +197,6 @@ public enum Reports {
             row.valueEnd = now.companies.first { $0.id == co.id }?.value ?? 0
             rows.append(row)
         }
-        // Customers and capacity come from the weekly facts gathered while the period ran (including the week that just ended).
         for i in rows.indices {
             if let t = b.acc.trade.first(where: { $0.id == rows[i].id }) {
                 rows[i].customers = t.units
@@ -234,7 +205,6 @@ public enum Reports {
             }
             rows[i].events = b.acc.events.filter { $0.companyID == rows[i].id }
         }
-        // Rows worth showing: still alive, or something happened in the period.
         let shown = rows.filter { row in
             let alive = !(row.status == "sold" || row.status == "bust")
             let active = !row.pnl.isEmpty || row.cashChange != 0 || row.ownerIn != 0 || row.ownerOut != 0 || row.loansTaken != 0 || row.loansRepaid != 0
@@ -242,7 +212,6 @@ public enum Reports {
         }
         r.companies = shown
 
-        // Group
         var g = ReportGroup()
         g.pnl = groupPnL
         g.accountStart = b.cash; g.accountEnd = now.cash
@@ -297,14 +266,12 @@ public enum Reports {
         r.netWorthStart = b.nw
         r.netWorthEnd = now.nw
 
-        // Best, worst, ranking
         let ranked = shown.filter { $0.status != "setup" || !$0.pnl.isEmpty }.filter { !$0.pnl.isEmpty }
             .sorted { $0.pnl.netProfit != $1.pnl.netProfit ? $0.pnl.netProfit > $1.pnl.netProfit : $0.id < $1.id }
         r.ranking = ranked.map { $0.id }
         if let first = ranked.first { r.bestCompanyID = first.id }
         if ranked.count >= 2, let last = ranked.last { r.worstCompanyID = last.id }
 
-        // The period before
         if let p = previous {
             var prev = ReportPrevious(id: p.id, title: p.title)
             prev.pnl = p.group.pnl
@@ -323,7 +290,6 @@ public enum Reports {
 }
 
 extension Reports.Accumulator {
-    /// Add one week's facts to the running period. Keeps the most telling events (bad news first) up to 24.
     mutating func merge(_ week: Reports.Accumulator) {
         for t in week.trade {
             if let i = trade.firstIndex(where: { $0.id == t.id }) { trade[i].units += t.units; trade[i].util += t.util; trade[i].weeks += t.weeks }
@@ -353,16 +319,11 @@ extension ReportPrevious {
     init(id: Int, title: String) { self.id = id; self.title = title }
 }
 
-// MARK: What the app uses
-
 public extension GameEngine {
-    /// Reports of one kind, oldest first.
     func reports(_ kind: ReportKind) -> [PeriodReport] { Reports.stored(state, kind) }
 
     func latestReport(_ kind: ReportKind) -> PeriodReport? { reports(kind).last }
 
-    /// What the year in progress looks like so far for the player's own tax: the income tax that would be due if the year ended now,
-    /// on salary, dividends and interest, minus what was already withheld. Original: `personalTaxEstimate`.
     struct YearInProgress: Equatable, Sendable {
         public var year: Int
         public var weeksIn: Int
@@ -376,24 +337,20 @@ public extension GameEngine {
                               personalTaxEstimate: PersonalFinance.taxEstimate(s, context: context), taxWithheld: s.tax.withheld)
     }
 
-    /// Start the periods from now. Called when a new game begins.
     mutating func openReportBaselines() {
         let data = self.data
         update { s, _, _ in Reports.openBaselines(&s, data: data) }
     }
 
-    /// Close the week that just ended (and the month and year if they end with it).
     mutating func closeReportPeriods() {
         let data = self.data
         update { s, _, c in
             Reports.closePeriods(&s, data: data, context: c)
-            GroupReview.close(&s, context: c)   // the quarterly group review, then the annual report (Simulation/GroupReview.swift, AnnualReport.swift)
+            GroupReview.close(&s, context: c)
             AnnualReports.close(&s, context: c)
         }
     }
 
-    /// The report Home should offer now: the newest one the player has not dismissed, yearly before monthly before weekly.
-    /// A report with nothing in it (no company yet) is not offered.
     func pendingReportPrompt() -> PeriodReport? {
         let seen = state.rest["rptSeen"] ?? .null
         for kind in [ReportKind.year, .month, .week] {
@@ -402,7 +359,6 @@ public extension GameEngine {
         return nil
     }
 
-    /// The player has seen or dismissed this report: it, and the shorter reports that closed with it, are not offered again.
     mutating func dismissReportPrompt(_ report: PeriodReport) {
         update { s, _, _ in
             var o = s.rest["rptSeen"]?.object ?? [:]

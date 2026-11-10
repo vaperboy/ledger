@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 @testable import Simulation
 
-/// A new place with a manager in charge is built up day by day within the manager's budget: people hired to the plan, equipment for the expected customers, stock.
 final class ManagerOpeningTests: XCTestCase {
     private func openedWithManager(_ trade: String, budget: Budget = .normal) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 4)
@@ -14,7 +13,6 @@ final class ManagerOpeningTests: XCTestCase {
             Ledger.move(&s, .me, 500_000_000, why: "Test funds")
             if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) { id = i }
             Payments.injectCash(&s, companyID: id, amount: 300_000_000)
-            // Opened bare: papers in order, the minimum kit only, no team.
             let rep = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(team: .minimum, payrollMonthsReserve: 2, teamInPlace: true))
             _ = rep
             if let i = s.companyIndex(id) {
@@ -35,7 +33,6 @@ final class ManagerOpeningTests: XCTestCase {
     func testTheManagerHiresTheTeamAndBuysEquipmentDayByDay() throws {
         var (e, id) = try openedWithManager("gym", budget: .free)
         let bd = try XCTUnwrap(e.data.catalog["gym"])
-        // The place opened with a few machines only; the manager adds more as customers are expected.
         e.update { s, _, _ in let i = s.companyIndex(id)!; var eq = s.companies[i].value("eq"); eq[bd.equipment[0].id]["n"] = 2; s.companies[i].set("eq", eq) }
         let before = CapacityModel.equipmentCount(try XCTUnwrap(e.state.company(id)), bd.equipment[0])
         let staff0 = try XCTUnwrap(e.state.company(id)).staff.count
@@ -76,7 +73,6 @@ final class ManagerOpeningTests: XCTestCase {
 }
 
 extension ManagerOpeningTests {
-    /// The manager's budget counts a vehicle at its 20% down payment, so it is bought on finance and never outright for the full price.
     func testAManagerBuysACarOnFinanceNotOutright() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 4)
         var id = 0

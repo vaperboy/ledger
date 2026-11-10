@@ -1,19 +1,11 @@
 import SwiftUI
 
-/// How a popup card arrives, by its size and kind. The card starts at `scale`, shifted by (`dx`, `dy`), transparent, and settles with
-/// `animation`. Under Reduce Motion every kind is a plain fade.
 enum PopupEntrance: Equatable {
-    /// A small question or notice: a short scale up.
     case compact
-    /// A list or form: rises a little from below.
     case medium
-    /// A detail panel: slides in from the right.
     case detail
-    /// A large decision (a queued choice with weight): a slower, larger scale with a soft settle.
     case decision
-    /// A confirmation of something done (a reward, a success): a lively spring.
     case confirmation
-    /// An irreversible action: no spring and no bounce, a short plain fade.
     case destructive
 
     var scale: CGFloat {
@@ -45,7 +37,6 @@ enum PopupEntrance: Equatable {
         }
     }
 
-    /// The entrance of a card: an irreversible one never bounces, a reward confirms, a queued decision is large, otherwise by size.
     static func of(category: PopupCategory, variant: PopupVariant, tone: PopupTone, priority: PopupPriority?) -> PopupEntrance {
         if variant == .destructive || tone == .danger { return .destructive }
         if variant == .reward || tone == .success { return .confirmation }
@@ -60,7 +51,6 @@ enum PopupEntrance: Equatable {
 
 private struct PopupPriorityKey: EnvironmentKey { static let defaultValue: PopupPriority? = nil }
 extension EnvironmentValues {
-    /// The queue priority of the popup being drawn (set by the host), so the frame can tell a decision from a plain panel.
     var popupPriority: PopupPriority? {
         get { self[PopupPriorityKey.self] }
         set { self[PopupPriorityKey.self] = newValue }

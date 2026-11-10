@@ -1,8 +1,5 @@
 import Foundation
 
-// The administrator calls over the Supabase RPC functions. Nothing here decides who is an administrator or what a rule may be: the server
-// checks the account on every call (`admins` table) and keeps every rule inside its fixed limits.
-
 extension SupabaseOnlineService {
     func redeemAdminCode(_ code: String) async throws -> AdminCodeResult {
         struct Answer: Decodable { var ok: Bool; var reason: String }

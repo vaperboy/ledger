@@ -5,7 +5,6 @@ import Finance
 @testable import Events
 @testable import Simulation
 
-/// Selling in the Group tab: handshake, broker, auction (reserve, three bidding rounds, hammer or wait), buyout, merger, stake tiers, reasons.
 final class SaleRoutesTests: XCTestCase {
     private func shop(seed: Int = 21) throws -> (GameEngine, Int) {
         var e = try ChainsTests.engine("UK", seed: seed)

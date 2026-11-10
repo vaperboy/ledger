@@ -2,9 +2,6 @@ import Foundation
 import GameCore
 import Businesses
 
-/// The local stand-in for the supply market server: seeds suppliers (from the online player list when it is wired, else its own), lets buyers
-/// sign, works weeks forward (orders, delivery records, suppliers that fail) and applies the rules of `SupplyGuards` and `SupplyContracts`.
-/// Nothing is saved: the market is drawn again, the same, on each launch; the player's own listings and contracts last for the session.
 final class MockSupplyMarketService: SupplyMarketService {
     var onChange: (() -> Void)?
 
@@ -13,7 +10,6 @@ final class MockSupplyMarketService: SupplyMarketService {
     private var orderLog: [String: [SupplyOrder]] = [:]
     private var unitValues: [String: Double] = [:]
     private var buyersOf: [String: Int] = [:]
-    /// Suppliers that will fail: weeks after the market starts, and why.
     private var failPlan: [String: (after: Int, reason: SupplyEnd)] = [:]
     private var failAt: [String: (week: Int, reason: SupplyEnd)] = [:]
     private var knownIDs: Set<String>
@@ -30,12 +26,9 @@ final class MockSupplyMarketService: SupplyMarketService {
         seed()
     }
 
-    // MARK: Seeds
-
     private static let first = ["Ana", "Ben", "Chidi", "Dara", "Elif", "Farid", "Greta", "Hugo", "Ines", "Jonas", "Kira", "Leo", "Mira", "Nils", "Olga", "Pavel", "Quinn", "Rosa", "Sven", "Tala", "Uma", "Vik", "Wren", "Xavi", "Yara", "Zane"]
     private static let last = ["Holt", "Marsh", "Okafor", "Lindqvist", "Varga", "Bright", "Castell", "Dunmore", "Esposito", "Fairweather", "Gallagher", "Hartmann", "Ivanova", "Jansen", "Kowalski", "Lacroix", "Moreno", "Nakamura", "Ortega", "Petrov", "Quigley", "Rask", "Sato", "Thorne"]
     private static let nouns = ["Supply", "Trading", "Works", "Provisions", "& Sons", "Partners", "Group", "Direct"]
-    /// Most suppliers are in the UK; some are abroad, so freight and customs show in the comparison.
     private static let places: [(city: String, region: String, country: String)] = [
         ("Leeds", "North", "UK"), ("Bristol", "South West", "UK"), ("Hamburg", "Hamburg", "DE"), ("Cardiff", "Wales", "UK"), ("Norwich", "East", "UK"),
         ("Birmingham", "Midlands", "UK"), ("Oslo", "Oslo", "NO"), ("Aberdeen", "Scotland", "UK"), ("Exeter", "South West", "UK"), ("Newcastle", "North", "UK"),
@@ -63,7 +56,6 @@ final class MockSupplyMarketService: SupplyMarketService {
                                   priceTier: Int(roll("pt\(i)") * 3), qualityTier: Int(roll("qt\(i)") * 3), capacityPerWeek: cap, leadDays: 1 + Int(roll("ld\(i)") * 5),
                                   minOrder: [5, 10, 20, 25][Int(roll("mo\(i)") * 4)], termsDays: SupplyMarketCatalogue.termOptions[Int(roll("tm\(i)") * 3)],
                                   linkKey: p.linkKey, record: record(i, cap: cap), isFriend: p.isFriend, country: p.country)
-            // Cheap goods are a little less good, dear goods a little better.
             l.qualityTier = min(2, max(0, l.qualityTier + (l.priceTier == 0 ? -1 : l.priceTier == 2 ? 1 : 0)))
             l.committedUnits = Int(Double(cap) * (0.2 + 0.6 * roll("busy\(i)")))
             all.append(l)
@@ -76,7 +68,6 @@ final class MockSupplyMarketService: SupplyMarketService {
         (0..<36).map { i in
             let f = Self.first[i % Self.first.count], l = Self.last[(i * 7 + 3) % Self.last.count]
             let place = Self.places[i % Self.places.count]
-            // One supplier shares an owner with the player's accounts, to show the linked-account rule.
             let linked = i == 7
             return SupplyMarketPlayer(ownerID: "owner\(i)", ownerName: linked ? "Mira Vance (your other account)" : "\(f) \(l)", profileCode: String(format: "P%05d", 40_100 + i * 37),
                                       companyName: "\(l) \(Self.nouns[i % Self.nouns.count])", tradeID: "", city: place.city, region: place.region,
@@ -84,7 +75,6 @@ final class MockSupplyMarketService: SupplyMarketService {
         }
     }
 
-    /// Veterans, steady middle, newcomers and a few that struggle, by position.
     private func record(_ i: Int, cap: Int) -> DeliveryRecord {
         let kind = i % 6
         let weeks: Int = kind == 3 ? 1 + Int(roll("w\(i)") * 3) : 14 + Int(roll("w\(i)") * 60)
@@ -99,8 +89,6 @@ final class MockSupplyMarketService: SupplyMarketService {
                               deliveredTrend: kind == 3 ? nil : (trendOK ? 0.4 + roll("dt\(i)") * 2.5 : -(2 + roll("dt\(i)") * 5)),
                               onTimeTrend: kind == 3 ? nil : (trendOK ? roll("ot\(i)") * 3 - 0.8 : -(1 + roll("ot\(i)") * 6)), lifetimeUnits: Int(Double(promised) * delShare))
     }
-
-    // MARK: Buying
 
     func listings(lineID: String) -> [SupplyListing] { all.filter { $0.lineID == lineID && !$0.stopped } }
     func listing(_ id: String) -> SupplyListing? { all.first { $0.id == id } }
@@ -139,7 +127,6 @@ final class MockSupplyMarketService: SupplyMarketService {
         return .signed(c)
     }
 
-    /// A contract that goes: its units are free on the listing again.
     private func release(_ c: SupplyContract) {
         contracts.removeAll { $0.id == c.id }
         if let i = all.firstIndex(where: { $0.id == c.listingID }) { all[i].committedUnits = max(0, all[i].committedUnits - c.unitsPerWeek) }
@@ -172,7 +159,6 @@ final class MockSupplyMarketService: SupplyMarketService {
             contracts.append(c)
             if let i = all.firstIndex(where: { $0.id == c.listingID }) { all[i].committedUnits += c.unitsPerWeek }
         }
-        // New ids continue after the saved ones.
         let used: [Int] = (saved.map { $0.id } + listings.map { $0.id }).compactMap { Int($0.dropFirst()) }
         counter = max(counter, used.max() ?? 0)
         onChange?()
@@ -191,8 +177,6 @@ final class MockSupplyMarketService: SupplyMarketService {
         SupplyChoice.wellKnown(listings(lineID: lineID), units: units, buyerLinkKeys: buyerLinkKeys, today: today)
     }
 
-    // MARK: Supplying
-
     func myListings(companyID: Int) -> [SupplyListing] { all.filter { $0.companyID == companyID && !$0.stopped } }
 
     func saveListing(_ d: ListingDraft, today: Int) -> ListingSaveResult {
@@ -202,7 +186,6 @@ final class MockSupplyMarketService: SupplyMarketService {
         guard d.capacityPerWeek > 0, d.minOrder > 0, d.minOrder <= d.capacityPerWeek else { return .refused("The minimum order has to fit within the weekly capacity.") }
         guard SupplyMarketCatalogue.durations.contains(d.durationDays) else { return .refused("Choose how long the offer lasts.") }
         if let id = d.listingID, let i = all.firstIndex(where: { $0.id == id }) {
-            // Changing price or quality under a signed contract is recorded against the supplier.
             let changed: Bool = all[i].priceTier != d.priceTier || all[i].qualityTier != d.qualityTier
             if changed && contracts.contains(where: { $0.listingID == id }) { all[i].record.priceChanges += 1 }
             all[i].priceTier = d.priceTier; all[i].qualityTier = d.qualityTier; all[i].capacityPerWeek = d.capacityPerWeek
@@ -244,8 +227,6 @@ final class MockSupplyMarketService: SupplyMarketService {
         return signed + mock
     }
 
-    // MARK: Time
-
     func advance(today: Int, liveCompanyIDs: Set<Int>) -> [SupplyMarketEvent] {
         let week: Int = today / 7
         guard let last = processedWeek else {
@@ -263,7 +244,6 @@ final class MockSupplyMarketService: SupplyMarketService {
 
     private func step(week: Int, liveCompanyIDs: Set<Int>) -> [SupplyMarketEvent] {
         var events: [SupplyMarketEvent] = []
-        // Suppliers that fail or leave: their contracts end at once.
         for (owner, f) in failAt.sorted(by: { $0.key < $1.key }) where week >= f.week {
             events += supplierStopped(ownerID: owner, reason: f.reason).map { SupplyMarketEvent.supplierEnded($0) }
             failAt.removeValue(forKey: owner)
@@ -280,7 +260,6 @@ final class MockSupplyMarketService: SupplyMarketService {
             let key = "\(l.id):\(week)"
             if l.companyID != nil {
                 guard !l.paused, (l.expiresDay ?? Int.max) >= week * 7 else { all[i].committedUnits = contractUnits; continue }
-                // Cheaper, better, and more reliable listings draw more orders.
                 let appeal: Double = 0.35 + 0.15 * Double(2 - l.priceTier) + 0.1 * Double(l.qualityTier) + 0.2 * roll("appeal" + key)
                 let demand: Int = min(cap, Int(Double(cap) * min(1, appeal)))
                 let want: Int = demand >= l.minOrder ? demand : 0
@@ -303,7 +282,6 @@ final class MockSupplyMarketService: SupplyMarketService {
                 if sold > 0 && unit > 0 { events.append(.sale(companyID: l.companyID ?? 0, units: sold, unitPrice: unit, unitCost: unit * 0.88)) }
                 all[i].committedUnits = contractUnits + want
             } else {
-                // Seeded suppliers: a missed delivery now and then, more for the weak.
                 let miss: Double = l.word == .struggling ? 0.3 : l.word == .mostlyReliable ? 0.12 : 0.04
                 let weekPromised: Int = max(1, Int(Double(cap) * (0.2 + 0.4 * roll("load" + key))))
                 let short: Bool = roll("short" + key) < miss
@@ -312,7 +290,6 @@ final class MockSupplyMarketService: SupplyMarketService {
                 all[i].committedUnits = min(cap, Int(Double(cap) * (0.2 + 0.6 * roll("c" + key))) + contractUnits)
             }
             all[i].record = SupplyRecordRules.applying(all[i].record, promised: promised, delivered: delivered, orders: orders, late: late, complaints: complaints)
-            // A supplier the player buys from that delivered short: the books carry the cost (customers served late or not at all).
             if promised > 0 && contracts.contains(where: { $0.listingID == l.id }) { events.append(.delivery(listingID: l.id, promised: promised, delivered: delivered, orders: max(1, orders), late: late)) }
         }
         return events

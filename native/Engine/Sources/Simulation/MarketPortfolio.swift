@@ -6,12 +6,10 @@ import Businesses
 import Investments
 import Events
 
-/// Who holds a position: you (your personal account) or one of your holding companies (its treasury).
 public enum PortfolioOwner: Hashable, Sendable {
     case player
     case holding(Int)
 
-    /// "me" or "h<holding id>"; the first part of every position id.
     public var id: String {
         switch self {
         case .player: return "me"
@@ -26,15 +24,11 @@ public enum PortfolioOwner: Hashable, Sendable {
     }
 }
 
-/// What a position or an investable asset is.
 public enum MarketAssetKind: String, Sendable, CaseIterable {
     case indexFund, bondFund, moneyMarketFund, crypto
-    /// Shares in a listed company bought before such purchases stopped: they can only be sold.
     case stock
-    /// Money handed to your personal fund manager.
     case managedFund
     case fixedDeposit
-    /// Shares in other people's startups, private equity funds, stakes in rival groups and in large companies (the big meeting).
     case startupStake, privateEquity, groupStake, companyStake
 
     public var title: String {
@@ -52,7 +46,6 @@ public enum MarketAssetKind: String, Sendable, CaseIterable {
         case .companyStake: return "Company stake"
         }
     }
-    /// Stakes in private companies and funds: valued by appraisal, sold privately, no market price.
     public var isPrivate: Bool { [.startupStake, .privateEquity, .groupStake, .companyStake].contains(self) }
 }
 
@@ -60,40 +53,27 @@ public enum MarketRisk: String, Sendable, CaseIterable {
     case low = "Low", medium = "Medium", high = "High", veryHigh = "Very high"
 }
 
-/// One position of one owner. Money is in the owner's currency (a holding is registered at home, so in practice home currency).
 public struct PortfolioPosition: Identifiable, Equatable, Sendable {
-    /// "<owner id>:<kind key>:<symbol or record id>", e.g. "me:fund:idx", "h12:fund:bond", "me:crypto:BTC", "me:startup:4711".
     public var id: String
     public var owner: PortfolioOwner
     public var ownerName: String
     public var kind: MarketAssetKind
-    /// The investable asset this position is in (see `marketAssets`), nil for private stakes, deposits and legacy shares.
     public var assetID: String?
     public var name: String
     public var symbol: String
-    /// Fund and crypto units; a stake's ownership in percent; 1 for a deposit, a fund commitment or a managed account.
     public var units: Double
-    /// Value of one unit today (the market price for funds and crypto, without the trading spread).
     public var price: Double
-    /// What was paid, fees included. A position from a save written before cost bases were kept starts at its value on first load.
     public var costBasis: Double
     public var value: Double
-    /// Unrealised result: value minus cost basis (a private equity fund adds what it has paid out).
     public var pnl: Double
-    /// `pnl` against the cost basis (nil when nothing was paid).
     public var pnlPercent: Double?
-    /// The latest price move on the units that lived through it: prices move once a week, at the start of day 0, so `pnlToday` is the
-    /// week's move on day 0 and 0 on the other days. Units bought this week are left out. Private stakes have no market price (0).
     public var pnlToday: Double
     public var pnlWeek: Double
-    /// Share of everything in the portfolio (all owners), and of the owner's own portfolio, 0...1.
     public var allocation: Double
     public var ownerAllocation: Double
-    /// Weekly prices, oldest first, for a sparkline (empty where there is no market price).
     public var history: [Double]
     public var risk: MarketRisk
     public var canSell: Bool
-    /// Why it cannot be sold, or a note on how a sale works (a private sale discount); nil when a sale is ordinary.
     public var sellNote: String?
     public var delisted: Bool
 }
@@ -112,12 +92,10 @@ public struct PortfolioOwnerSummary: Identifiable, Equatable, Sendable {
     public var id: String { owner.id }
     public var owner: PortfolioOwner
     public var name: String
-    /// Money the owner can invest now: your account, or the holding's cash.
     public var cash: Double
     public var totals: PortfolioTotals
 }
 
-/// Every position of every owner with totals. `history` is the total value of the portfolio at each week's end, oldest first.
 public struct Portfolio: Equatable, Sendable {
     public var positions: [PortfolioPosition]
     public var owners: [PortfolioOwnerSummary]
@@ -128,21 +106,17 @@ public struct Portfolio: Equatable, Sendable {
 }
 
 public extension GameEngine {
-    /// Every position of you and of each holding treasury, with cost basis, value, results and allocation; biggest first within each owner.
     var portfolio: Portfolio { MarketBook.portfolio(state, data: data) }
 
-    /// You and each open holding, with the money each can invest (the "who pays" choice of a purchase).
     var marketOwners: [PortfolioOwnerSummary] { portfolio.owners }
 }
 
-/// The portfolio and asset reads, and the cost-basis fill for old saves. Pure reads of the state except `backfillCostBases`.
 enum MarketBook {
     static let fundNames = ["idx": "Index fund", "bond": "Bond fund", "mm": "Money-market fund"]
     static func fundKind(_ sym: String) -> MarketAssetKind { sym == "idx" ? .indexFund : sym == "bond" ? .bondFund : .moneyMarketFund }
     static func fundRisk(_ sym: String) -> MarketRisk { sym == "idx" ? .medium : .low }
     static func cryptoRisk(_ c: JSONValue) -> MarketRisk { c["vol"].double >= 0.09 ? .veryHigh : .high }
 
-    /// Weekly prices of a market asset, oldest first.
     static func history(_ s: GameState, kind: Brokerage.Kind, _ sym: String) -> [Double] {
         switch kind {
         case .fund: return Markets.fundHistory(s, sym)
@@ -151,7 +125,6 @@ enum MarketBook {
         }
     }
 
-    /// The price move of the latest week on the units that lived through it (see `PortfolioPosition.pnlToday`).
     static func weekMove(_ s: GameState, history h: [Double], units: Double, lastBuy: (week: Int, units: Double)?) -> Double {
         guard h.count >= 2 else { return 0 }
         let fresh = lastBuy.map { $0.week >= s.week ? $0.units : 0 } ?? 0
@@ -265,7 +238,6 @@ enum MarketBook {
         return Portfolio(positions: list, owners: owners, totals: totals, history: (s.rest["pfH"]?.array ?? []).map { $0["v"].double })
     }
 
-    /// One point a week of the portfolio's total value (two years kept), for the overview chart.
     static func recordHistory(_ s: inout GameState, data: GameData) {
         let t = portfolio(s, data: data).totals
         var h = s.rest["pfH"]?.array ?? []
@@ -275,8 +247,6 @@ enum MarketBook {
         s.rest["pfH"] = .array(h)
     }
 
-    /// Saves written before cost bases were kept: a position without one gets its value on the day the save is first opened, so its
-    /// result starts at zero instead of showing the whole position as profit. Fills only what is missing; runs on every load.
     static func backfillCostBases(_ s: inout GameState) {
         HoldingModel.backfillCostBasis(&s)
         if var inv = s.rest["inv"], !inv.isNull {

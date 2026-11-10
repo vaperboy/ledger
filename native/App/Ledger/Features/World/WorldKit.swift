@@ -5,11 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-// Shared pieces of the Country app: its icons, one palette per screen, a few drawn controls and the reads and actions that sit between
-// the screens and the engine's government (`GovernmentBridge`). Screens never change government data themselves.
-
 extension Glyph {
-    /// A domed hall: the Country app.
     static let civicDome = "M4 20 H20 M6 20 V11 M10 20 V11 M14 20 V11 M18 20 V11 M3 11 H21 L12 4 Z"
     static let ballotBox = "M4 12 H20 V20 H4 Z M8 12 L6 5 H18 L16 12 M10 8 H14"
     static let gavel = "M5 20 H13 M9 20 V15 M6 9 L12 3 L16 7 L10 13 Z M14 9 L19 14"
@@ -19,7 +15,6 @@ extension Glyph {
 }
 
 extension OutsidePalette {
-    /// Country overview: night-blue state paper with brass.
     static let civic = OutsidePalette(
         ground: Color(hex: 0x0D1424), ground2: Color(hex: 0x080D18), card: Color(hex: 0x141D33), cardDeep: Color(hex: 0x0F172B),
         line: Color(hex: 0x24304D), lineStrong: Color(hex: 0x3B4A70), divider: Color(hex: 0x202B47), hairline: Color(hex: 0x1B253F),
@@ -27,7 +22,6 @@ extension OutsidePalette {
         accent: Color(hex: 0xCBAA6B), accent2: Color(hex: 0x86A9DA), onAccent: Color(hex: 0x0D1424),
         gain: Color(hex: 0x7FCBA0), loss: Color(hex: 0xE39583), caution: Color(hex: 0xDDB872))
 
-    /// Donations: a cream pledge card with burgundy ink.
     static let pledge = OutsidePalette(
         ground: Color(hex: 0xF5EEE0), ground2: Color(hex: 0xEADFC9), card: Color(hex: 0xFBF7EC), cardDeep: Color(hex: 0xEFE5CF),
         line: Color(hex: 0xDACDB1), lineStrong: Color(hex: 0xA8997A), divider: Color(hex: 0xE3D8BF), hairline: Color(hex: 0xE3D8BF),
@@ -35,7 +29,6 @@ extension OutsidePalette {
         accent: Color(hex: 0x7A2E3A), accent2: Color(hex: 0xA57C2E), onAccent: Color(hex: 0xFBF7EC),
         gain: Color(hex: 0x2B6B45), loss: Color(hex: 0xA8322B), caution: Color(hex: 0x86601E), isLight: true)
 
-    /// Elections: ballot paper, black rules, a ballot blue.
     static let ballot = OutsidePalette(
         ground: Color(hex: 0xF4F4EF), ground2: Color(hex: 0xE8E8E0), card: Color(hex: 0xFFFFFF), cardDeep: Color(hex: 0xECECE4),
         line: Color(hex: 0xCFCFC4), lineStrong: Color(hex: 0x1A1A1A), divider: Color(hex: 0xDDDDD2), hairline: Color(hex: 0xDDDDD2),
@@ -43,7 +36,6 @@ extension OutsidePalette {
         accent: Color(hex: 0x1D3F8A), accent2: Color(hex: 0xB3262E), onAccent: Color(hex: 0xFFFFFF),
         gain: Color(hex: 0x2B6B45), loss: Color(hex: 0xB3262E), caution: Color(hex: 0x86601E), isLight: true)
 
-    /// The president's desk: oxblood leather and old gold.
     static let oval = OutsidePalette(
         ground: Color(hex: 0x1B0F13), ground2: Color(hex: 0x12090C), card: Color(hex: 0x2A1920), cardDeep: Color(hex: 0x22141A),
         line: Color(hex: 0x472A33), lineStrong: Color(hex: 0x6A414D), divider: Color(hex: 0x3A222A), hairline: Color(hex: 0x321D24),
@@ -51,7 +43,6 @@ extension OutsidePalette {
         accent: Color(hex: 0xD6B26B), accent2: Color(hex: 0xE9CF98), onAccent: Color(hex: 0x1B0F13),
         gain: Color(hex: 0x8ED0A6), loss: Color(hex: 0xEE9C8C), caution: Color(hex: 0xE3B766))
 
-    /// Off the books: near black with hazard amber and a red for what it costs.
     static let shadow = OutsidePalette(
         ground: Color(hex: 0x0A0A0B), ground2: Color(hex: 0x060607), card: Color(hex: 0x161516), cardDeep: Color(hex: 0x101011),
         line: Color(hex: 0x2A2829), lineStrong: Color(hex: 0x4B4647), divider: Color(hex: 0x222021), hairline: Color(hex: 0x1D1B1C),
@@ -59,7 +50,6 @@ extension OutsidePalette {
         accent: Color(hex: 0xE2A53A), accent2: Color(hex: 0xE2A53A), onAccent: Color(hex: 0x0A0A0B),
         gain: Color(hex: 0x86CFA0), loss: Color(hex: 0xEF6A5C), caution: Color(hex: 0xE2A53A))
 
-    /// Convictions and the watchlist: a cool grey court docket with a red stamp.
     static let docket = OutsidePalette(
         ground: Color(hex: 0xE8EAED), ground2: Color(hex: 0xDADDE2), card: Color(hex: 0xF7F8FA), cardDeep: Color(hex: 0xE0E3E8),
         line: Color(hex: 0xC5CAD3), lineStrong: Color(hex: 0x4A5A73), divider: Color(hex: 0xD3D7DE), hairline: Color(hex: 0xD3D7DE),
@@ -68,9 +58,6 @@ extension OutsidePalette {
         gain: Color(hex: 0x2B6B45), loss: Color(hex: 0xA8322B), caution: Color(hex: 0x86601E), isLight: true)
 }
 
-// MARK: Reads
-
-/// One country's government as the screens read it: the data, the player's account and the week.
 struct CountryRead {
     var code: String
     var name: String
@@ -85,12 +72,10 @@ struct CountryRead {
     var isAdmin: Bool { gov.isAdmin(world.account) }
 
     func isMe(_ acct: String) -> Bool { acct == world.account }
-    /// A name as the public sees it: "You" for the player.
     func shown(_ name: String, account acct: String) -> String { isMe(acct) ? "You" : name }
 }
 
 extension GameEngine {
-    /// The home country's government; nil until it exists (see `GameStore.ensureCountry`).
     func countryRead() -> CountryRead? {
         let w: GovernmentWorld = GovernmentBridge.world(state)
         let cc: String = state.homeCountryCode
@@ -98,16 +83,12 @@ extension GameEngine {
         return CountryRead(code: cc, name: homeCountry.name, gov: g, world: w, week: state.week, cur: homeCurrency)
     }
 
-    /// The trades a price support can name, in menu order.
     func supportTrades() -> [Trade] {
         data.catalog.order.compactMap { (id: String) -> Trade? in id == "hold" ? nil : data.catalog.trades[id] }
     }
 }
 
-// MARK: Actions
-
 extension GameStore {
-    /// Runs a government change on the engine. A refusal is told in the usual popup and returns false.
     @discardableResult
     func govRun(_ body: (inout GameState, GameData, FinanceContext) throws -> Void) -> Bool {
         var failure: String? = nil
@@ -124,7 +105,6 @@ extension GameStore {
         return true
     }
 
-    /// Creates the home country's government on first use, so the screens always have one to show.
     func ensureCountry() {
         guard let e = engine, GovernmentBridge.world(e.state).countries[e.state.homeCountryCode] == nil else { return }
         govRun { (s: inout GameState, _: GameData, c: FinanceContext) -> Void in
@@ -135,13 +115,10 @@ extension GameStore {
     }
 }
 
-// MARK: Words
-
 enum CivicWords {
     static func weeks(_ n: Int) -> String { n == 1 ? "1 week" : "\(n) weeks" }
     static func pct(_ x: Double) -> String { String(format: "%.0f%%", x * 100) }
     static func pct1(_ x: Double) -> String { String(format: "%.1f%%", x * 100) }
-    /// "Week 14" as a date the player knows.
     static func date(_ week: Int) -> String { GameCalendar.dateString(week: week) }
 
     static func treasuryKind(_ k: String) -> String {
@@ -190,9 +167,6 @@ enum CivicWords {
     }
 }
 
-// MARK: Drawn pieces
-
-/// The back button row of a Country page: the round back and a serif title.
 struct CivicHeader: View {
     var title: String
     var subtitle: String = ""
@@ -210,7 +184,6 @@ struct CivicHeader: View {
     }
 }
 
-/// A scrolling page of the Country app: the margins, the width limit and room for the tab bar are the shared ones.
 struct CivicPage<Content: View>: View {
     var spacing: CGFloat = 18
     @ViewBuilder var content: () -> Content
@@ -227,7 +200,6 @@ struct CivicPage<Content: View>: View {
     }
 }
 
-/// A three-quarter ring that fills to `fraction`, with the value in the middle.
 struct CivicDial: View {
     var fraction: Double
     var center: String
@@ -256,7 +228,6 @@ struct CivicDial: View {
     }
 }
 
-/// A line chart without axes.
 struct CivicSpark: View {
     var values: [Double]
     var tint: Color
@@ -278,7 +249,6 @@ struct CivicSpark: View {
     }
 }
 
-/// Minus, a value and plus, for a rate or a count; each target is 44 pt.
 struct CivicStepper: View {
     @Binding var value: Double
     var range: ClosedRange<Double>
@@ -308,7 +278,6 @@ struct CivicStepper: View {
     }
 }
 
-/// A small label in a capsule. Always carries words, so colour is never alone.
 struct CivicTag: View {
     var text: String
     var tint: Color
@@ -323,7 +292,6 @@ struct CivicTag: View {
     }
 }
 
-/// A money field: a symbol and a number typed with the decimal pad.
 struct CivicAmountField: View {
     @Binding var text: String
     var symbol: String
@@ -348,7 +316,6 @@ struct CivicAmountField: View {
     }
 }
 
-/// A row of tiles to open the other Country pages.
 struct CivicTile: View {
     var glyph: String
     var title: String

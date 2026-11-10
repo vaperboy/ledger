@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The shelves of the store. Equipment, software, tools and vehicles used to be four tabs of the Equipment screen; here they are the
-/// departments of one shop.
 enum TechCategory: String, CaseIterable, Hashable {
     case software = "Software", services = "Services", hardware = "IT equipment", payment = "Terminals", machines = "Machines", tools = "Tools", vehicles = "Vehicles", office = "Furniture"
 
@@ -22,7 +20,6 @@ enum TechCategory: String, CaseIterable, Hashable {
         }
     }
 
-    /// Which department an item of equipment is sold in.
     static func of(_ n: EquipmentMarket.Need) -> TechCategory {
         if n.isVehicle { return .vehicles }
         if n.isSoftware { return .software }
@@ -35,7 +32,6 @@ enum TechCategory: String, CaseIterable, Hashable {
     }
 }
 
-/// What the store shows in its list: everything, what is on sale, or one department.
 enum TechShelf: Hashable {
     case all, sale, dept(TechCategory)
 
@@ -47,22 +43,16 @@ enum TechShelf: Hashable {
         }
     }
 
-    /// All items, on sale, then one chip for each department the store really has items in.
     static func every(_ present: Set<TechCategory>) -> [TechShelf] {
         let depts: [TechCategory] = TechCategory.allCases.filter { (c: TechCategory) -> Bool in present.contains(c) }
         return [.all, .sale] + depts.map { (c: TechCategory) -> TechShelf in .dept(c) }
     }
 }
 
-/// The order of the list: what the business needs first, or by price.
 enum PriceSort: String, CaseIterable, Hashable {
     case needs = "Needed first", low = "Price: low to high", high = "Price: high to low", deal = "Biggest discount", az = "A to Z", life = "Longest life", warranty = "Longest warranty"
 }
 
-/// TechPro Store (Phone, green): equipment, software, tools and vehicles for your companies, in one online shop. It merges the old Equipment and
-/// Software screens. The store front opens on what the company still needs; a basket goes to checkout (delivery, which account pays, where the
-/// receipt is filed), then the payment details, then "Order placed" with the order number and the delivery date. Delivery days are the
-/// engine's (`StoreOrders`): the goods arrive on that day, not before.
 struct TechProApp: View {
     private let P = OutsidePalette.techPro
     @EnvironmentObject var store: GameStore
@@ -103,9 +93,6 @@ struct TechProApp: View {
             .onChange(of: store.appRequest) { _, _ in take() }
     }
 
-    // MARK: Chrome
-
-    /// The four tabs under the bar: the store front, every product in one list, what the company owns and its orders.
     private var showsTabs: Bool { step == .store || step == .category || step == .owned || step == .orders }
 
     private var tabBar: some View {
@@ -151,7 +138,6 @@ struct TechProApp: View {
         }
     }
 
-    /// The tab on show, shared by the tab bar and the pager under it.
     private var tabSelection: Binding<TpTab> {
         Binding<TpTab>(
             get: {
@@ -172,7 +158,6 @@ struct TechProApp: View {
             })
     }
 
-    /// The four tabs slide sideways in one pager; the tab bar above (in the top inset) stays fixed and follows the page.
     private func tabsPager(_ e: GameEngine, _ co: Company) -> some View {
         SegmentPager(items: TpTab.allCases, selection: tabSelection) { (t: TpTab) in
             tabPage(e, co, t)
@@ -229,9 +214,6 @@ struct TechProApp: View {
         }
     }
 
-    // MARK: Which store
-
-    /// The companies that buy equipment: live ones with something to buy.
     private func shoppers(_ e: GameEngine) -> [Company] {
         e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }
     }
@@ -277,8 +259,6 @@ struct TechProApp: View {
         return store.short(v)
     }
 
-    // MARK: Store front
-
     private func storeView(_ e: GameEngine, _ co: Company) -> some View {
         let needs: [EquipmentMarket.Need] = e.equipmentNeeds(companyID: co.id)
         return ShopPage {
@@ -293,7 +273,6 @@ struct TechProApp: View {
         .accessibilityIdentifier("tp-store")
     }
 
-    /// The store front's opening: how many product groups the business still lacks, the cash it has, and the way in.
     private func hero(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need]) -> some View {
         let missing: Int = needs.filter { (n: EquipmentMarket.Need) -> Bool in rank(n) <= 1 }.count
         let onSale: Int = needs.filter { (n: EquipmentMarket.Need) -> Bool in n.dealPercent > 0 }.count
@@ -333,8 +312,6 @@ struct TechProApp: View {
             }
         }
     }
-
-    // MARK: What this business needs
 
     private func rank(_ n: EquipmentMarket.Need) -> Int {
         let have: Double = n.have + n.leased
@@ -402,7 +379,6 @@ struct TechProApp: View {
         step = .suppliers
     }
 
-    /// The best discounts of the week, with the headline when it is a big sale day.
     @ViewBuilder private func dealsStrip(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need]) -> some View {
         let onSale: [EquipmentMarket.Need] = needs.filter { (n: EquipmentMarket.Need) -> Bool in n.dealPercent > 0 }
             .sorted { (a: EquipmentMarket.Need, b: EquipmentMarket.Need) -> Bool in a.dealPercent > b.dealPercent }
@@ -423,9 +399,6 @@ struct TechProApp: View {
         }
     }
 
-    // MARK: A department
-
-    /// The items of the shelf on show: every item the store sells this company, narrowed by department or sale and by the search words, in the order chosen.
     private func shelfItems(_ e: GameEngine, _ co: Company) -> [EquipmentMarket.Need] {
         let words: String = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let list: [EquipmentMarket.Need] = e.equipmentNeeds(companyID: co.id).filter { (n: EquipmentMarket.Need) -> Bool in
@@ -499,8 +472,6 @@ struct TechProApp: View {
         return out
     }
 
-    // MARK: An item
-
     private func suppliersView(_ co: Company) -> some View {
         TechProSuppliers(companyID: co.id, equipmentID: itemID, onBack: { step = groupFrom }, onPick: { (key: String) in
             if key == "mk" {
@@ -531,8 +502,6 @@ struct TechProApp: View {
         }
         store.show("Added to your basket.", tone: "good")
     }
-
-    // MARK: Basket
 
     private func linePrice(_ q: StoreOrders.LineQuote) -> String {
         if q.monthly > 0 { return money(q.monthly) + "/mo" }
@@ -607,8 +576,6 @@ struct TechProApp: View {
         .padding(.vertical, Theme.Space.s)
     }
 
-    // MARK: Checkout
-
     private func goCheckout(_ e: GameEngine) {
         delivery = e.storeShipping().ownCompanyID != nil ? .own : .standard
         if e.state.company(receiptID) == nil { receiptID = companyID }
@@ -661,7 +628,6 @@ struct TechProApp: View {
         }
     }
 
-    /// The lines of the order, delivery and the monthly part, then the company account that pays.
     private func summarySection(_ co: Company, _ q: StoreOrders.Quote?) -> some View {
         let monthly: Double = (q?.lines ?? []).reduce(0) { (sum: Double, l: StoreOrders.LineQuote) -> Double in sum + l.monthly }
         var facts: [(label: String, value: String)] = (q?.lines ?? []).map { (l: StoreOrders.LineQuote) -> (label: String, value: String) in (label: l.name, value: linePrice(l)) }
@@ -673,8 +639,6 @@ struct TechProApp: View {
         }
         .accessibilityIdentifier("tp-store-account")
     }
-
-    // MARK: Payment details
 
     private func goPayment(_ e: GameEngine) {
         payError = ""
@@ -744,7 +708,6 @@ struct TechProApp: View {
 
     private func masked(_ n: String) -> String { CardNumberDisplay.masked(n, companyID: companyID) }
 
-    /// The number field shows the bank's number as sixteen digits with the first twelve starred; the engine's number stays what is kept and compared.
     private func numberShown(_ d: BankPaymentDetails?) -> Binding<String> {
         let hidden: String = d.map { (x: BankPaymentDetails) -> String in masked(x.accountNumber) } ?? ""
         return Binding<String>(
@@ -762,7 +725,6 @@ struct TechProApp: View {
 
     private func normalised(_ s: String) -> String { s.lowercased().filter { (c: Character) -> Bool in c.isLetter || c.isNumber } }
 
-    /// The details must be the company account's own (the Bank's name and number): a typed account that is not it is refused.
     private func checkPayment(_ e: GameEngine, _ d: BankPaymentDetails?) {
         guard let d else { return }
         if normalised(holder) != normalised(d.holder) || normalised(number) != normalised(d.accountNumber) {
@@ -812,8 +774,6 @@ struct TechProApp: View {
             step = .basket
         }
     }
-
-    // MARK: Order placed and orders
 
     private func placedView(_ e: GameEngine, _ co: Company) -> some View {
         let facts: [(label: String, value: String)] = [

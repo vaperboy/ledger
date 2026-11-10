@@ -3,7 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-/// The content of the ivory total panel on the Bank's account list (reads the ivory palette its `IvoryPanel` sets).
 struct BankTotalPanel: View {
     @Environment(\.outsidePalette) private var P
     var totalText: String
@@ -31,8 +30,6 @@ struct BankTotalPanel: View {
     }
 }
 
-/// Your wealth: the money you can spend, investments, the ESTIMATED value of your companies (kept apart, never spendable) and what you
-/// owe. From `netWorthBreakdown`, so a company's value is counted once and never shown as cash.
 struct BankWealthCard: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -87,8 +84,6 @@ struct BankWealthCard: View {
     }
 }
 
-/// A company account's reserves, display only: what payroll and tax will need, and what is free. The money stays in the one
-/// account; there are no sub-accounts to move between.
 struct BankReservesCard: View {
     @Environment(\.outsidePalette) private var P
     var reserves: CompanyReserves

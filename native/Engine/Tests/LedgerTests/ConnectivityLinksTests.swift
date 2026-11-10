@@ -5,7 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Links from messages and goals to the screen where they are dealt with (`Message.appLink`, `Career.Goal.link`, `DailyGoal.link`).
 final class ConnectivityLinksTests: XCTestCase {
     private func game() throws -> GameEngine {
         try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5, story: .fresh, tradeID: "cafe", companyName: "Test")

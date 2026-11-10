@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// LEDGER_MGRPROBE=1: managed companies over several seeds, two years: revenue, profit, rating, awareness and how many weeks the
-/// manager had targets for the month. Used to report what a change to the manager-target rules does to managed companies; it asserts nothing.
 final class ManagedTargetsProbeTests: XCTestCase {
     func testPrintManagedCompanies() throws {
         let env = ProcessInfo.processInfo.environment

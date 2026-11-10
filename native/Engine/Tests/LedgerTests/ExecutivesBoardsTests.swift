@@ -13,16 +13,13 @@ final class ExecutivesBoardsTests: XCTestCase {
             guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 6_000_000) else { return XCTFail("start") }
             ids.append(id)
         }
-        // academy
         let c = e.courses(companyID: ids[0])
         XCTAssertFalse(c.isEmpty)
         _ = e.sendOnCourse(companyID: ids[0], staffID: 0, courseID: c[0].id)
-        // office, right hand, hiring
         XCTAssertEqual(e.rentOffice(tier: "small"), .ok)
         if let cands = e.searchOffice(role: "pa", mode: .agency), let n = cands.first {
             _ = e.hireOffice(role: "pa", personID: n.id, monthlyWage: n.askingMonthlyWage * 1.1)
         }
-        // board and meetings
         _ = e.boardDecisionList()
         _ = e.requestAnalystReport(companyID: nil)
         _ = e.boardVote(kind: "sell", companyID: ids[0])
@@ -36,7 +33,6 @@ final class ExecutivesBoardsTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    /// The Team roster rows: hiring fills the slot, the wage reaches the books, letting go empties it again.
     func testTeamSlotHireAndRelease() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 12)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
@@ -49,7 +45,6 @@ final class ExecutivesBoardsTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    /// Group level post: hire the managing director, set authority, let go; the books still balance.
     func testGroupManagingDirectorHireAndRelease() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 13)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }

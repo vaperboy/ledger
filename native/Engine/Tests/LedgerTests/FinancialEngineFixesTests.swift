@@ -5,8 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Fixes from the financial-engine audit, plus the case a profitable business still runs out of cash.
-/// These tests were written by tracing the code (no Swift toolchain was available when they were added).
 final class FinancialEngineFixesTests: XCTestCase {
     private func cafe(seed: Int = 7) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
@@ -17,7 +15,6 @@ final class FinancialEngineFixesTests: XCTestCase {
         return (e, id)
     }
 
-    /// Selling equipment below book value is a loss in the books (it lowers taxable profit), not a silent write-down.
     func testSellingEquipmentBelowBookValueBooksTheLoss() throws {
         var (e, id) = try cafe()
         e.update { s, _, _ in
@@ -35,7 +32,6 @@ final class FinancialEngineFixesTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    /// Bills short for four months, or tax unpaid for six, count as long unpaid (the weekly check then closes the company).
     func testLongUnpaidBillsAreDetected() throws {
         let (e, id) = try cafe(seed: 9)
         let co = try XCTUnwrap(e.state.company(id))
@@ -51,20 +47,18 @@ final class FinancialEngineFixesTests: XCTestCase {
         XCTAssertTrue(Payday.unpaidForMonths(c3, today: t))
     }
 
-    /// A profitable business can still run out of cash: customers have not paid yet, so profit sits in receivables
-    /// while payroll and bills fall due. Payroll stops at the overdraft room, wages are owed (late), and the books stay balanced.
     func testProfitableButOutOfCash() throws {
         var (e, id) = try cafe(seed: 5)
         var room = 0.0
         e.update { s, _, ctx in
             let i = s.companyIndex(id)!
-            Ledger.moveRaw(&s, .company(id), -s.companies[i].cash)                       // no cash at all
+            Ledger.moveRaw(&s, .company(id), -s.companies[i].cash)
             var b = s.companies[i].books
             b.month = [:]; b.year = [:]
-            b.add("rev", 10_000_000); b.add("cogs", 2_000_000); b.add("wages", 1_000_000)  // a clearly profitable month
+            b.add("rev", 10_000_000); b.add("cogs", 2_000_000); b.add("wages", 1_000_000)
             s.companies[i].books = b
             s.companies[i].receivables = [Receivable(amount: 9_000_000, dueWeek: s.week + 6, willDefault: false)]
-            s.companies[i].payables = ["wages": 1e12, "other": 1e12, "rent": 1e12]        // far more than the account can take
+            s.companies[i].payables = ["wages": 1e12, "other": 1e12, "rent": 1e12]
             room = ctx.overdraftRoom(s.companies[i], s)
         }
         let before = try XCTUnwrap(e.state.company(id))

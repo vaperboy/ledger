@@ -1,8 +1,5 @@
 import Foundation
 
-/// Any JSON value. The game state is stored as JSON values underneath (see `JSONRecord`), which means a save
-/// from the original HTML game loads without losing a single field, even for features that are not yet
-/// rewritten in Swift: unknown fields are kept and written back untouched.
 public enum JSONValue: Codable, Equatable, Sendable {
     case null
     case bool(Bool)
@@ -27,7 +24,6 @@ public enum JSONValue: Codable, Equatable, Sendable {
         case .null: try c.encodeNil()
         case .bool(let b): try c.encode(b)
         case .number(let n):
-            // Whole numbers are written without ".0", like the original game's JSON.
             if n.isFinite, n == n.rounded(), abs(n) < 9_007_199_254_740_992 { try c.encode(Int64(n)) }
             else if n.isFinite { try c.encode(n) }
             else { try c.encodeNil() }
@@ -37,8 +33,6 @@ public enum JSONValue: Codable, Equatable, Sendable {
         }
     }
 
-    // MARK: Convenient reading (lenient, like JavaScript: a missing value is 0 / "" / false)
-
     public var double: Double {
         switch self {
         case .number(let n): return n
@@ -47,11 +41,11 @@ public enum JSONValue: Codable, Equatable, Sendable {
         default: return 0
         }
     }
-    public var int: Int { Int(saturating: double.finiteOrZero) }   // a huge saved number must not trap
+    public var int: Int { Int(saturating: double.finiteOrZero) }
     public var string: String {
         switch self {
         case .string(let s): return s
-        case .number(let n): return n.isFinite && abs(n) < 9e18 && n == n.rounded() ? String(Int64(n)) : String(n)   // Int64() traps outside its range
+        case .number(let n): return n.isFinite && abs(n) < 9e18 && n == n.rounded() ? String(Int64(n)) : String(n)
         case .bool(let b): return b ? "true" : "false"
         default: return ""
         }
@@ -82,8 +76,6 @@ public enum JSONValue: Codable, Equatable, Sendable {
         return .null
     }
 
-    // MARK: Building
-
     public init(_ v: Double) { self = .number(v) }
     public init(_ v: Int) { self = .number(Double(v)) }
     public init(_ v: String) { self = .string(v) }
@@ -99,7 +91,6 @@ extension JSONValue: ExpressibleByStringLiteral, ExpressibleByIntegerLiteral, Ex
 }
 
 extension JSONValue {
-    /// One answer to an inbox decision: a short label, a line of explanation, and the effects it has.
     public static func option(_ label: String, _ detail: String = "", effects: [String: JSONValue] = [:]) -> JSONValue {
         .object(["l": .string(label), "d": .string(detail), "fx": .object(effects)])
     }

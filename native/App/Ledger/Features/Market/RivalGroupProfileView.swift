@@ -4,11 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The profile of one rival group (C5, original `grp27`): who owns it, its strategy and ambition, how big and how healthy it looks, where
-/// and in what trades it competes, the rivals of yours it owns, and its recent moves. Opened from Market > Rivals (Groups), a rival's
-/// profile or a country. Read-only: what you can do about a rival (an offer, its price cut) is on the rival's own profile.
-/// Laid out as a dossier: an identity card with the money figures, what it means for you, the strategy, tags for its trades and
-/// countries, and a timeline of its moves.
 struct RivalGroupProfileView: View {
     @EnvironmentObject var store: GameStore
     var groupID: String
@@ -24,7 +19,6 @@ struct RivalGroupProfileView: View {
                     competes(e, g)
                     moves(g)
                 }
-                // Blocks sit on the page with no surface of their own.
                 .environment(\.insideCard, true)
                 .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)
@@ -37,8 +31,6 @@ struct RivalGroupProfileView: View {
         .appScreen(title: "Rival group", subtitle: "Who owns it and how it competes")
         .navigationDestination(item: $next) { (r: MarketRoute) in MarketDestination(route: r) }
     }
-
-    // MARK: Identity and money
 
     private func identity(_ e: GameEngine, _ g: RivalGroups.Group) -> some View {
         let cur = e.homeCurrency
@@ -71,8 +63,6 @@ struct RivalGroupProfileView: View {
         }
     }
 
-    // MARK: What it means for you
-
     @ViewBuilder private func meaning(_ e: GameEngine, _ g: RivalGroups.Group) -> some View {
         let mine = e.rivalsOfGroup(g.id)
         let overlap: [Company] = e.state.companies.filter { $0.status == .open && g.trades.contains($0.type) && g.countries.contains($0.countryCode) }
@@ -96,8 +86,6 @@ struct RivalGroupProfileView: View {
         }
     }
 
-    // MARK: How it plays
-
     private func strategy(_ g: RivalGroups.Group) -> some View {
         MoreBlock("How it plays") {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -110,8 +98,6 @@ struct RivalGroupProfileView: View {
             }
         }
     }
-
-    // MARK: Where it competes
 
     private func tag(_ text: String) -> some View {
         AcctPill(text: text)
@@ -137,8 +123,6 @@ struct RivalGroupProfileView: View {
             }
         }
     }
-
-    // MARK: Recent moves
 
     private func moveRow(_ m: (week: Int, text: String), last: Bool) -> some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {

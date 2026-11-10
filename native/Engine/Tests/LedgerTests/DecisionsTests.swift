@@ -6,7 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The strategic decisions, selling a company, trophies, awards and the rich list run, and the books still balance.
 final class DecisionsTests: XCTestCase {
     func engineWithCompany(trade: String = "cafe", weeks: Int = 0) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 777)
@@ -22,7 +21,6 @@ final class DecisionsTests: XCTestCase {
         return (e, id)
     }
 
-    /// The volume-discount order is sized by the weeks of the calendar year that have run, not by week % 52 (the game starts in October).
     func testVolumeDiscountIsNotSizedByWeekModuloFiftyTwo() throws {
         let (base, id) = try engineWithCompany(weeks: 12)
         var e = base
@@ -33,7 +31,7 @@ final class DecisionsTests: XCTestCase {
                 s.week = week
                 s.companies[i].openedWeek = 0
                 var b = s.companies[i].books
-                b.year["cogs"] = 100_000 * Double(GameCalendar.weeksIntoYear(week: week))   // 100 000 a week since 1 January
+                b.year["cogs"] = 100_000 * Double(GameCalendar.weeksIntoYear(week: week))
                 b.month["cogs"] = 400_000
                 s.companies[i].books = b
                 if let c = StrategicDecisions.byID["g_volume"]?.make?(&s, i, data, ctx) { sizes.append(c["c"].double) }

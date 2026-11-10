@@ -5,32 +5,23 @@ import Employees
 import Finance
 import Businesses
 
-/// Net worth with the estimate kept apart from the money, and the Company Overview / Stats figures (cash first).
-
 public struct CompanyStake: Equatable, Sendable, Identifiable {
     public var id: Int { companyID }
     public var companyID: Int
     public var name: String
-    /// The estimated value of the whole company (assets less debts, plus goodwill): an estimate, never spendable money.
     public var estimatedValue: Double
     public var ownershipPercent: Double
-    /// Your share of the estimate. Counted once: a company inside a holding shows 0 here and is counted in the holding's value.
     public var attributableEquity: Double
-    /// Name of the holding that carries it, if any.
     public var heldThrough: String?
-    /// Loans of the company you have guaranteed personally: a memo, not subtracted until the guarantee is called.
     public var guaranteedDebt: Double
 }
 
 public struct NetWorthBreakdown: Equatable, Sendable {
-    /// Money you can spend: the account's balance.
     public var liquid: Double
     public var investments: Double
     public var luxury: Double
-    /// Your share of the estimated value of private companies and startups (not cash).
     public var estimatedCompanyEquity: Double
     public var stakes: [CompanyStake]
-    /// Startups, stakes in others' companies and funds that are not your own companies.
     public var otherEstimatedHoldings: Double
     public var personalDebt: Double
     public var pendingTax: Double
@@ -47,17 +38,14 @@ public struct ExpenseLine: Equatable, Sendable, Identifiable {
 }
 
 public struct CompanyReserves: Equatable, Sendable {
-    /// Display only, computed from what is owed: no real sub-accounts.
     public var payroll: Double
     public var tax: Double
-    /// What is left of the company's cash after the reserves (can be negative).
     public var free: Double
 }
 
 public struct CompanyOverviewStats: Equatable, Sendable {
     public var companyID: Int
     public var name: String
-    /// The first figure of the screen.
     public var cash: Double
     public var runwayWeeks: Double?
     public var reserves: CompanyReserves
@@ -65,11 +53,8 @@ public struct CompanyOverviewStats: Equatable, Sendable {
     public var revenue: Double
     public var operatingExpenses: Double
     public var profit: Double
-    /// Profit as a share of revenue (nil without revenue).
     public var margin: Double?
-    /// Corporate tax booked in the period, shown apart: it is not in the profit above.
     public var taxBooked: Double
-    /// Costs from the real books, same categories as the profit.
     public var expenses: [ExpenseLine]
     public var loansOwed: Double
     public var guaranteedLoans: Double
@@ -114,7 +99,6 @@ public extension GameEngine {
         return CompanyReserves(payroll: payroll, tax: tax, free: co.cash - payroll - tax)
     }
 
-    /// The Company Overview and Stats figures: cash first, then the result of the period with costs from the real books, then legal and ownership facts.
     func companyOverviewStats(companyID: Int, period: ReportPeriodKind = .year) -> CompanyOverviewStats? {
         guard let co = state.company(companyID) else { return nil }
         let b: [String: Double]
@@ -155,6 +139,5 @@ public extension GameEngine {
 public enum ReportPeriodKind: Sendable { case week, month, year }
 
 public extension Books {
-    /// The categories that make up costs (and so profit): the same list `Books.expenses` adds up.
     static let expensesKeys: [String] = ["cogs", "wages", "rent", "mkt", "ins", "oth", "dep", "int", "fine", "loss", "acc", "fin"]
 }

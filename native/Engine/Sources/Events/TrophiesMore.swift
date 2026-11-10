@@ -4,9 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// More of the trophy wall, for systems the first port did not have: acquisitions, chains, franchise units, review counts, R&D,
-/// luxury pieces, gifts, long tenure, the main office, and sales from abroad. Original: features/player/moments_and_trophies.js (round 28a and 56).
-/// They are added to `Trophies.all` and kept in the same record (`rest["ach28"]`), so saves are unchanged.
 enum TrophiesMore {
     static func ladder(_ pre: String, _ group: String, _ rungs: [(String, String, Double)], _ value: @escaping (Trophies.Facts) -> Double, text: @escaping (Double) -> String) -> [Trophies.Trophy] {
         Trophies.ladder(pre, group, rungs, test: { f, v in value(f) >= v }, text: { _, v in text(v) })
@@ -20,7 +17,6 @@ enum TrophiesMore {
         f.live.first { $0.int("rvN") >= reviews && Reviews.rating($0) >= stars }
     }
 
-    /// Your place among companies in your country by sales (nil without a ranking). Original: `R27.myRank('cc','rev')`.
     static func rankInCountry(_ f: Trophies.Facts) -> Int? { CompanyRanking.yourRank(f.s, data: f.data, scope: .country, metric: .revenue)?.rank }
     static func countryName(_ f: Trophies.Facts) -> String { f.data.countries.resolve(f.s.homeCountryCode, orHome: f.s.homeCountryCode).name }
 

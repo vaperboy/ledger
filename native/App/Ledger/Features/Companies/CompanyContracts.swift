@@ -5,12 +5,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Volume contracts with business customers and the volume tenders on offer, inside Customers. Everything is read from the engine
-/// (`volumeContracts`, `contractLoad`, `contractDetail`, `ProjectTenders.openTenders`) and changed through `endContract` and
-/// `bidOnTender`; the engine works out the money. Contract offers from customers arrive in the inbox (`signContract` is used by tenders).
-///
-/// Layout: a promised-volume summary, then two sub-tabs. Running is a dated list ordered by expiry under a small term timeline;
-/// Tenders is the set of open volume tenders with their bid deadlines.
 struct CompanyContracts: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -24,7 +18,6 @@ struct CompanyContracts: View {
     @State private var pending: PendingAction?
     private let prices: [Double] = [0.85, 0.9, 0.95, 1.0, 1.05, 1.1]
 
-    /// One contract's term on the timeline.
     private struct Span: Identifiable {
         var id: String
         var start: Int
@@ -36,7 +29,6 @@ struct CompanyContracts: View {
         let open: [ProjectTenders.Tender] = openVolumeTenders
         let any: Bool = !engine.volumeContracts(companyID: company.id).isEmpty || !engine.bookedOrders(companyID: company.id).isEmpty
         PageGroup(title: "Volume contracts", spacing: Theme.Space.m, trailing: { EmptyView() }) {
-            // The weekly promise only means something once there is a contract.
             if any { summary }
             if !open.isEmpty {
                 LedgerRow(leading: .glyph(Glyph.reports), leadingTint: Theme.inkSoft, title: "Tenders", subtitle: "Volume contracts you can bid for",
@@ -54,8 +46,6 @@ struct CompanyContracts: View {
         guard engine.projectBoard(companyID: company.id) == nil, ProjectTenders.catalog[company.type] != nil else { return [] }
         return ProjectTenders.openTenders(engine.state, for: company).filter { $0.isVolume }
     }
-
-    // MARK: Summary
 
     @ViewBuilder private var summary: some View {
         let list = engine.volumeContracts(companyID: company.id)
@@ -82,8 +72,6 @@ struct CompanyContracts: View {
             }
         }
     }
-
-    // MARK: Running
 
     @ViewBuilder private var running: some View {
         let list = engine.volumeContracts(companyID: company.id).sorted { $0.endWeek < $1.endWeek }
@@ -223,8 +211,6 @@ struct CompanyContracts: View {
             }
         }
     }
-
-    // MARK: Tenders (project companies show theirs in Projects)
 
     private func tenders(_ open: [ProjectTenders.Tender]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {

@@ -2,7 +2,6 @@ import XCTest
 import GameCore
 import Simulation
 
-/// The play streak and the three reminders.
 final class PlayStreakTests: XCTestCase {
     private func fresh() throws -> GameEngine { try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 1) }
 

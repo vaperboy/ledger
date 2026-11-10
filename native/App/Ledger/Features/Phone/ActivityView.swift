@@ -2,9 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// The one answer to "why did my money move?": every movement of your own account and of every company's account in one list, newest
-/// first, that can be narrowed by account (you or one company), by kind (income, wages, tax, loans, owner pay, investments) and by a
-/// search over the words of the line. Each row says what moved, with whom, and why, and opens nothing else.
 struct ActivityView: View {
     @EnvironmentObject var store: GameStore
     @State private var scope: Scope = .all
@@ -12,12 +9,10 @@ struct ActivityView: View {
     @State private var query: String = ""
     private let shown = 300
 
-    /// Which account the list is narrowed to.
     private enum Scope: Hashable {
         case all, you, company(Int)
     }
 
-    /// What kind of movement it was, from the line's words and the sign of its amount.
     private enum Kind: String, CaseIterable, Hashable, Identifiable {
         case income, wages, tax, loans, ownerPay, investments, other
         var id: String { rawValue }
@@ -32,7 +27,6 @@ struct ActivityView: View {
             case .other: return "Bills and costs"
             }
         }
-        /// The reason, in plain words, shown under every line of this kind.
         var why: String {
             switch self {
             case .income: return "Money earned or received"
@@ -46,15 +40,12 @@ struct ActivityView: View {
         }
     }
 
-    /// One movement from either source, in the shape the list needs.
     private struct Row: Identifiable {
         var id: String
         var week: Int
-        /// The day of the week; nil for a company line, which is kept by week.
         var day: Int?
         var label: String
         var amount: Double
-        /// "You" or the company's name: whose account it went through.
         var who: String
         var scope: Scope
         var kind: Kind
@@ -84,7 +75,6 @@ struct ActivityView: View {
             out.append(Row(id: "co-" + m.id, week: m.week, day: nil, label: m.label, amount: m.amount, who: m.companyName,
                            scope: .company(m.companyID), kind: classify(m.label, amount: m.amount), balance: nil, company: e.state.company(m.companyID)))
         }
-        // Newest first; within a week your own lines (which know the day) come before the companies', each source in its own order.
         return out.enumerated().sorted { (a, b) -> Bool in
             if a.element.week != b.element.week { return a.element.week > b.element.week }
             if (a.element.day ?? -1) != (b.element.day ?? -1) { return (a.element.day ?? -1) > (b.element.day ?? -1) }
@@ -124,8 +114,6 @@ struct ActivityView: View {
         }
     }
 
-    // MARK: Filters
-
     private func filters(_ e: GameEngine) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(spacing: Theme.Space.s) {
@@ -153,7 +141,6 @@ struct ActivityView: View {
         return out
     }
 
-    /// A sideways row of single-choice chips.
     private func chips<T: Hashable>(_ items: [(String, T)], selected: T, identifier: String, pick: @escaping (T) -> Void) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Theme.Space.s) {
@@ -173,10 +160,6 @@ struct ActivityView: View {
         }
     }
 
-    // MARK: List
-
-    /// What came in and went out across the lines shown. Lines of different companies may be in different currencies, so a company
-    /// narrowed to one account is shown in its own money and "All accounts" in the home currency's formatting.
     private func summary(_ list: [Row]) -> some View {
         let moneyIn: Double = list.filter { $0.amount > 0 }.reduce(0) { $0 + $1.amount }
         let moneyOut: Double = list.filter { $0.amount < 0 }.reduce(0) { $0 + abs($1.amount) }
@@ -229,7 +212,6 @@ struct ActivityView: View {
             .accessibilityAddTraits(.isHeader)
     }
 
-    /// What (the line), who (whose account) and why (the kind in words); the balance follows for your own account.
     private func row(_ r: Row) -> some View {
         let income: Bool = r.amount >= 0
         let sign: String = income ? "+" : "\u{2212}"

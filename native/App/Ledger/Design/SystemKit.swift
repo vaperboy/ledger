@@ -1,10 +1,5 @@
 import SwiftUI
 
-// The core pieces of the design system (tokens in Theme.swift). Older components are thin wrappers over these.
-
-// MARK: Icon
-
-/// A house icon at one of the three icon sizes (`Theme.Icon`), always drawn with the same stroke width. No circle, no outline.
 struct LedgerGlyph: View {
     var glyph: String
     var size: CGFloat = Theme.Icon.medium
@@ -15,11 +10,6 @@ struct LedgerGlyph: View {
     }
 }
 
-// MARK: Row
-
-/// The one list row. Leading mark (none, house glyph, SF symbol, initials, picture), title over a caption, a value with an optional
-/// pill and note on the right, an optional red count, and a chevron when the row opens something. With `action` the whole row is the
-/// button. `inset` is the horizontal padding (0 inside a padded group, 14 in a group with no padding of its own).
 struct LedgerRow: View {
     enum Leading { case empty, glyph(String), symbol(String), initials(String), thumb(ThumbSpec) }
     enum Density { case regular, compact }
@@ -33,18 +23,15 @@ struct LedgerRow: View {
     var valueTint: Color? = nil
     var valueNote: String = ""
     var valueNoteTint: Color? = nil
-    /// A money movement shown as an arrow and amount in place of `value` (see `ArrowAmount`): positive green up, negative red down.
     var gain: Double? = nil
     var gainFormat: ((Double) -> String)? = nil
     var pill: String? = nil
     var pillTone: AcctPill.Tone = .neutral
     var badge: Int = 0
-    /// nil: a chevron when the row has an action.
     var chevron: Bool? = nil
     var inset: CGFloat = 0
     var density: Density = .regular
     var lineLimit: Int = 2
-    /// Accessibility identifier of the row (none when empty).
     var identifier: String = ""
     var action: (() -> Void)? = nil
 
@@ -121,7 +108,6 @@ struct LedgerRow: View {
     }
 }
 
-/// Combines a view's children into one accessibility element when `on`.
 struct CombinedElement: ViewModifier {
     var on: Bool
     @ViewBuilder func body(content: Content) -> some View {
@@ -129,7 +115,6 @@ struct CombinedElement: ViewModifier {
     }
 }
 
-/// Sets an accessibility identifier only when there is one, so rows that never had an id do not gain one.
 struct OptionalIdentifier: ViewModifier {
     var identifier: String
     @ViewBuilder func body(content: Content) -> some View {
@@ -137,10 +122,6 @@ struct OptionalIdentifier: ViewModifier {
     }
 }
 
-// MARK: Figures
-
-/// One key number: a label, the value and an optional note. `.display` is the one big number of a screen (serif 34), `.figure` a key
-/// amount (serif 20), `.inline` a cell of a strip (sans 15). `live` rolls and flashes the value when the number behind it changes.
 struct Figure: View {
     enum Size { case display, figure, inline }
     var label: String
@@ -183,13 +164,11 @@ struct Figure: View {
     }
 }
 
-/// Key figures side by side, `columns` to a line, separated by vertical hairlines; a further line follows under a hairline. No box.
 struct FigureRow: View {
     var items: [KeyFigures.Item]
     var columns = 3
     var alignment: HorizontalAlignment = .leading
     var size: Figure.Size = .inline
-    /// Reads each cell as one accessibility element (label and value together).
     var combineCells = false
     @Environment(\.outsidePalette) private var P
 
@@ -217,9 +196,6 @@ struct FigureRow: View {
     }
 }
 
-// MARK: Progress
-
-/// The one progress bar: a 4 pt line on a hairline track, with an optional label and value above it. Animates to a new value.
 struct ProgressLine: View {
     var fraction: Double
     var tint: Color? = nil
@@ -256,10 +232,6 @@ struct ProgressLine: View {
     }
 }
 
-// MARK: States
-
-/// A flat empty or explanatory state: a faint icon, a title and the reason or what to do, an optional action. It sits inside a
-/// section's group and never draws its own card. `centered: false` is the compact inline form (icon left).
 struct EmptyState: View {
     var glyph: String = Glyph.info
     var title: String
@@ -311,7 +283,6 @@ struct EmptyState: View {
     }
 }
 
-/// Something is on its way: an accent spinner with a caption, and optional placeholder rows in the shape of the content.
 struct LoadingState: View {
     var text: String = "Loading"
     var rows: Int = 0
@@ -335,16 +306,11 @@ struct LoadingState: View {
     }
 }
 
-// MARK: Charts
-
-/// The one chart palette: series hues in order, grid, axis text and the zero rule. Defined once; read colours through `color(_:in:)`
-/// so an outside app's palette applies.
 enum ChartPalette {
     static let series: [Color] = [Theme.accent, Theme.slateBlue, Theme.gain, Theme.roseGold, Theme.warn]
     static let grid: Color = Theme.line
     static let axis: Color = Theme.inkFaint
     static let zero: Color = Theme.inkFaint.opacity(0.5)
-    /// Flat fill under a line (no gradient).
     static let areaOpacity: Double = 0.10
     static let lineWidth: CGFloat = 1.5
     static let axisFont: Font = Font.system(size: 11).monospacedDigit()
@@ -356,8 +322,6 @@ enum ChartPalette {
     static func color(_ index: Int, in palette: OutsidePalette) -> Color { color(index).inPalette(palette) }
 }
 
-/// The frame around every chart: a caps title and period, the plot at a fixed height, the key under it, and a quiet line when
-/// there is not enough data. Put a Swift Charts `Chart` (or a `Sparkline`) inside, coloured from `ChartPalette`.
 struct ChartFrame<Plot: View>: View {
     var title: String = ""
     var period: String = ""
@@ -388,10 +352,6 @@ struct ChartFrame<Plot: View>: View {
     }
 }
 
-// MARK: Segments
-
-/// The one segmented control look: an inset track, the chosen option on a lighter fill, no borders. `SegmentedPill` and
-/// `SegmentedChoice` draw through it.
 struct SegmentTrack<T: Hashable>: View {
     var items: [T]
     var title: (T) -> String

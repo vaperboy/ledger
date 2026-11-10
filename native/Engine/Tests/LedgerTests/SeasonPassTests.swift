@@ -2,7 +2,6 @@ import XCTest
 import GameCore
 @testable import Simulation
 
-/// Season Pass: tier math, the daily XP cap, claiming rules, XP from observed play and the real-date season rollover.
 final class SeasonPassTests: XCTestCase {
     private let day0 = 20_000
 
@@ -45,7 +44,6 @@ final class SeasonPassTests: XCTestCase {
             p.award(.milestone, today: day0 + d, count: 99)
             if firstFull == nil && p.isComplete { firstFull = d + 1 }
         }
-        // Even at the daily cap every day, the top tier takes 45 days.
         XCTAssertEqual(firstFull, 45)
         p.xp = SeasonPass.tierCount * SeasonPass.xpPerTier - 10
         XCTAssertEqual(p.award(.milestone, today: day0 + 100), 10, "xp stops at the top tier")
@@ -96,7 +94,6 @@ final class SeasonPassTests: XCTestCase {
         guard case .claimed = p.claim(.premium, tier: 1, isPlus: true) else { return XCTFail("premium should claim with Plus") }
         XCTAssertTrue(p.owned.contains("theme.moss"))
         XCTAssertEqual(p.equipped["theme"], "theme.moss", "the first of a kind is equipped")
-        // Everything open at tier 3: free tier 3, premium tiers 2 and 3.
         XCTAssertEqual(p.claimableCount(isPlus: true), 3)
         XCTAssertEqual(p.claimableCount(isPlus: false), 1)
         XCTAssertEqual(p.claimAll(isPlus: false).map(\.id), ["plate.ledger"])
@@ -109,7 +106,6 @@ final class SeasonPassTests: XCTestCase {
         XCTAssertTrue(SeasonRewards.all.allSatisfy { (1...SeasonPass.tierCount).contains($0.tier) })
         var seen = Set<String>()
         for r in SeasonRewards.all { XCTAssertTrue(seen.insert("\(r.premium)\(r.tier)").inserted, "one reward per tier and track") }
-        // The finisher of each track sits on the last tier.
         XCTAssertNotNil(SeasonRewards.reward(.free, tier: 30))
         XCTAssertNotNil(SeasonRewards.reward(.premium, tier: 30))
     }
@@ -141,10 +137,8 @@ final class SeasonPassTests: XCTestCase {
         XCTAssertTrue(p.claimed.isEmpty)
         XCTAssertEqual(p.owned, owned, "owned cosmetics survive the rollover")
         XCTAssertEqual(p.startDay, day0 + 56)
-        // A long absence lands in the right season, not the next one.
         XCTAssertTrue(p.rollover(today: day0 + 56 * 4 + 3))
         XCTAssertEqual(p.seasonNumber, 5)
-        // Observing rolls the season over too.
         var q = SeasonPass(today: day0)
         q.xp = 900
         q.observe(snap(), today: day0 + 60)

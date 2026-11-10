@@ -1,12 +1,9 @@
 import Foundation
 import Simulation
 
-/// The store stand-in. VISUAL ONLY: real payments are not wired (an AltStore build cannot buy), so `buyPack` and `buySeasonBundle`
-/// just grant the gold and charge nothing. The screens say so. The real StoreKit code (Entitlements) is not involved.
 struct MockStoreService: StoreService {
     let vault: GoldVault
 
-    /// The one switch that lets the stand-in grant gold for free; a real service has no such path.
     private static let grantsGoldWithoutPayment = true
     var isVisualOnly: Bool { Self.grantsGoldWithoutPayment }
 

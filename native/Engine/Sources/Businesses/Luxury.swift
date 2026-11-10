@@ -3,12 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Aurum private sales: cars, watches, art, yachts, private jets, homes and estates. What you own is kept in `rest["lux"]` (like
-/// the original's `S.lux`, so imported saves load) and counts in net worth (`Valuation.netWorth`). Values move every week and
-/// upkeep and insurance are paid; jets and yachts can be chartered, homes let, art lent to a museum; estates earn money; a car or
-/// jet can be bought through a limited company (the company pays and writes it down, you pay benefit-in-kind as salary).
-/// Originals: LUX in ui/screens/mockup.js, features/player/lifestyle.js, features/player/estates.js, hiring_place_swipe_luxury.js.
-/// The catalogue and all rates are data: Resources/luxury.json.
 public enum Luxury {
     static let book: JSONValue = {
         guard let url = Bundle.module.url(forResource: "luxury", withExtension: "json", subdirectory: "Resources"),
@@ -16,21 +10,16 @@ public enum Luxury {
         return json
     }()
 
-    // MARK: Catalogue
-
     public struct Item: Identifiable, Equatable, Sendable {
         public var id: String
         public var category: String
         public var name: String
         public var detail: String
         public var price: Double
-        /// Upkeep, insurance and storage a year, as a share of the price
         public var upkeep: Double
-        /// Yearly change in value
         public var growth: Double
         public var volatility: Double
         public var monthlyUpkeep: Double { upkeep * price / 12 }
-        /// "Usually rises" ... "Loses value fast"
         public var trend: String { growth >= 0.04 ? "Usually rises" : growth > 0 ? "Holds its value" : growth > -0.06 ? "Loses some value" : "Loses value fast" }
     }
 
@@ -57,8 +46,6 @@ public enum Luxury {
         }
     }
 
-    // MARK: What the player owns
-
     public struct Piece: Identifiable, Equatable, Sendable {
         public var id: Int
         public var item: Item
@@ -69,7 +56,6 @@ public enum Luxury {
         public var bookValue: Double
         public var use: String
         public var until: Int
-        /// What it earns a week in its present use or as an estate (before tax)
         public var weeklyIncome: Double
         public var gain: Double { paid > 0 ? (value - paid) / paid : 0 }
         public var isEstate: Bool { item.category == "estates" }
@@ -85,17 +71,13 @@ public enum Luxury {
         }
     }
 
-    /// What the player owns personally, at today's value. Company items sit in the company's books.
     public static func personalValue(_ s: GameState) -> Double { record(s).filter { $0["co"].int == 0 }.reduce(0) { $0 + $1["val"].double } }
     public static func upkeepPerMonth(_ s: GameState) -> Double { pieces(s).reduce(0) { $0 + $1.item.monthlyUpkeep * ($1.paid / max(1, $1.item.price)) } }
-
-    // MARK: Buying and selling
 
     public enum Result: Equatable, Sendable { case ok, notEnoughCash, unknownItem, notPossible }
 
     static func save(_ s: inout GameState, _ list: [JSONValue]) { s.rest["lux"] = .array(list) }
 
-    /// Buy a piece from your personal cash. `price` can be lower than the list price (a private sale). Original: `luxbuygo`.
     @discardableResult
     public static func buy(_ s: inout GameState, itemID: String, price: Double? = nil) -> Result {
         guard let it = item(itemID) else { return .unknownItem }
@@ -108,13 +90,11 @@ public enum Luxury {
         return .ok
     }
 
-    /// Limited companies of the player that can buy a car or a jet (open, in the player's home country).
     public static func companiesThatCanBuy(_ s: GameState, itemID: String) -> [Company] {
         guard let it = item(itemID), (book["companyCategories"].array.map { $0.string }).contains(it.category) else { return [] }
         return s.companies.filter { $0.status == .open && $0.type != "hold" && $0.countryCode == s.homeCountryCode }
     }
 
-    /// A car or jet bought by one of your limited companies: it pays, writes it down and pays the upkeep. Original: `LIFE.buyVia`.
     @discardableResult
     public static func buyThroughCompany(_ s: inout GameState, itemID: String, companyID: Int) -> Result {
         guard let it = item(itemID), let i = s.companyIndex(companyID), companiesThatCanBuy(s, itemID: itemID).contains(where: { $0.id == companyID }) else { return .notPossible }
@@ -128,8 +108,6 @@ public enum Luxury {
         return .ok
     }
 
-    /// Sell a piece: the proceeds are 92% of its value. A company's piece pays the company, and the difference to its book value is
-    /// a gain or loss there; a gain on a personal collectible is taxed with your other gains. Original: `luxsell`.
     @discardableResult
     public static func sell(_ s: inout GameState, pieceID: Int) -> Double {
         var list = record(s)
@@ -173,8 +151,6 @@ public enum Luxury {
         }
     }
 
-    // MARK: Income, estates
-
     static func month(_ s: GameState) -> Int {
         let m = GameCalendar.monthIndex(week: s.week) % 12
         return CountryTraits.isSouthernHemisphere(s.homeCountryCode) ? (m + 6) % 12 : m
@@ -185,7 +161,6 @@ public enum Luxury {
         return CountryTraits.isSouthernHemisphere(s.homeCountryCode) ? (m >= 10 || m <= 2) : (m >= 4 && m <= 8)
     }
 
-    /// What a piece earns this week: chartered jets and yachts, rented homes, and estates by season. Originals: `weekIncome` (both files).
     static func weeklyIncome(_ x: JSONValue, _ it: Item, _ s: GameState) -> Double {
         if it.category == "estates", let d = Optional(book["estates"][it.id]), !d.isNull {
             if it.id == "e5" && x["mode"].string == "private" { return 0 }
@@ -204,7 +179,6 @@ public enum Luxury {
         return d.isNull ? nil : (d["what"].string, d["does"].string, d["yearly"].double)
     }
 
-    /// Benefit-in-kind on a company piece, a year, as a share of the price. Original: `bikOf`.
     static func benefitRate(_ x: JSONValue, _ it: Item, _ s: GameState) -> Double {
         if it.category == "jets" { return 0.08 }
         let b = book["benefitInKind"]
@@ -215,21 +189,14 @@ public enum Luxury {
         p.companyID == 0 ? 0 : jsRound(p.paid * benefitRate(.object(["k": .string(p.item.id)]), p.item, s))
     }
 
-    // MARK: Lending against what you own
-
-    /// Value the bank will lend against: art, watches, homes, boats, jets at 30-60%, estates at half. Original: 'collateral' steps.
     public static func collateral(_ s: GameState) -> Double {
         let ltv: [String: Double] = ["art": 0.4, "watches": 0.5, "homes": 0.6, "yachts": 0.3, "jets": 0.3, "estates": book["estateLoanShare"].double]
         return record(s).filter { $0["co"].int == 0 }.reduce(0) { t, x in t + x["val"].double * (item(x["k"].string).flatMap { ltv[$0.category] } ?? 0) }
     }
 
-    // MARK: Every week
-
-    /// Values move, upkeep and insurance are paid, uses earn, estates earn, risks happen. Original: the three 'week.after' steps.
     public static func weekly(_ s: inout GameState) {
         var list = record(s)
         if list.isEmpty { return }
-        // 1. values move; upkeep
         var personalCost = 0.0
         for n in list.indices {
             guard let it = item(list[n]["k"].string) else { continue }
@@ -243,7 +210,6 @@ public enum Luxury {
         }
         personalCost = jsRound(personalCost)
         if personalCost > 0 { Payments.playerPays(&s, personalCost, label: "Upkeep: private collection") }
-        // 2. what you own: uses, wear, company items, risks
         var gone: [Int] = [], income = 0.0, estateIncome = 0.0
         for n in list.indices {
             guard let it = item(list[n]["k"].string) else { continue }
@@ -293,7 +259,6 @@ public enum Luxury {
         if !gone.isEmpty || list.contains(where: { $0["co"].int != 0 }) { syncBookValues(&s) }
         if income > 0 { Payments.playerReceives(&s, income, label: "Charter and rent"); s.tax.interest += income }
         if estateIncome > 0 { Payments.playerReceives(&s, estateIncome, label: "Estates"); s.tax.interest += estateIncome }
-        // 3. the vintage is set at harvest
         let harvest = month(s) == 9
         if harvest {
             var changed = false
@@ -312,8 +277,6 @@ public enum Luxury {
         q >= 1.25 ? "an exceptional vintage" : q >= 1.05 ? "a good vintage" : q >= 0.85 ? "an ordinary year" : q >= 0.6 ? "a poor year: rain at harvest" : "a disaster: hail in August"
     }
 
-    // MARK: The island, the castle
-
     public enum EstateResult: Equatable, Sendable { case ok, none, wait, notEnoughCash }
 
     public static func setCastleMode(_ s: inout GameState, pieceID: Int, open: Bool) {
@@ -323,10 +286,8 @@ public enum Luxury {
         save(&s, list)
     }
 
-    /// What a retreat on the island costs in `currency`.
     public static func retreatCost(_ currency: Currency) -> Double { currency.scaledPrice(120000) }
 
-    /// A retreat on the island, once a quarter. Your managers are in a better mood afterwards. Original: `EST.retreat`.
     @discardableResult
     public static func hostRetreat(_ s: inout GameState, currency: Currency) -> EstateResult {
         guard record(s).contains(where: { $0["k"].string == "e2" && $0["co"].int == 0 }) else { return .none }
@@ -342,7 +303,6 @@ public enum Luxury {
         return .ok
     }
 
-    /// A week off on the island: you are not working next week and come back rested. Original: `EST.weekOff`.
     @discardableResult
     public static func takeWeekOff(_ s: inout GameState) -> EstateResult {
         guard record(s).contains(where: { $0["k"].string == "e2" && $0["co"].int == 0 }) else { return .none }

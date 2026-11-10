@@ -3,20 +3,12 @@ import GameCore
 import Finance
 import Businesses
 
-/// What paying a coming bill early did.
 public enum EarlyPaymentOutcome: Equatable, Sendable {
-    /// Settled in full; `amount` is what left the account (in the company's currency).
     case paid(amount: Double)
-    /// Nothing moved; the reason, in plain words.
     case refused(String)
 }
 
 public extension GameEngine {
-    /// Pay a coming bill now instead of on its date (Bank > Bills). It is the same payment the due date makes, through the same code:
-    /// rent and supplier bills (`Payday.payBillsEarly`, landlord paid too), supplier invoices (`SupplyTerms.payNow`), unpaid corporate tax
-    /// (`MonthEnd.settleTax`) and the VAT return (booked as the filing books it). Once paid the liability is gone, so the date charges nothing
-    /// more for it; only costs that build up afterwards are still charged then. All or nothing: if the company's account (with its overdraft
-    /// room) cannot cover the whole amount, nothing moves. Payroll and loan instalments have their own actions (`resolvePayrollAlert`, `repayLoan`).
     @discardableResult
     mutating func payObligationNow(_ o: Obligation) -> EarlyPaymentOutcome {
         var result = EarlyPaymentOutcome.refused("This payment cannot be paid early here.")
@@ -37,7 +29,6 @@ public extension GameEngine {
                 if short(owed) { return }
                 if let paid = Payday.payBillsEarly(&s, i, today: today, context: ctx) { result = .paid(amount: paid) }
             case .invoice:
-                // id: "inv<company>|<supplier>|<due week>"
                 let parts = o.id.dropFirst(3).split(separator: "|", omittingEmptySubsequences: false).map(String.init)
                 guard parts.count >= 3, let week = Int(parts[parts.count - 1]) else { return }
                 let name = parts[1..<(parts.count - 1)].joined(separator: "|")
@@ -55,7 +46,6 @@ public extension GameEngine {
                 let v = jsRound(co.vatBalance)
                 guard v > 1 else { result = .refused("No VAT is owed."); return }
                 if short(v) { return }
-                // As the return books it: cash out, "VAT settlement", counted as tax paid, the balance and any arrears cleared.
                 AccountingLedger.note(category: "tax", label: "VAT settlement")
                 Ledger.moveRaw(&s, .company(co.id), -v)
                 s.companies[i].addTransaction(week: s.week, amount: -v, label: "VAT settlement")

@@ -4,23 +4,16 @@ import Countries
 import Employees
 import Businesses
 
-// What a reward to a group employee (executive, head-office member, the analyst) would do, before the owner confirms it. The actions themselves are the
-// `group*` ones in EmploymentReads.swift (`GroupPeople`); this read only prices them, with the same rounding and the same employer-cost rule.
-
 public struct GroupRewardPreview: Equatable, Sendable {
     public var title: String
-    /// Their monthly pay before and after (equal when the reward does not change it).
     public var wageBefore: Double
     public var wageAfter: Double
-    /// What the group pays more a month with the employer's charges (pay and any weekly reimbursement), and what it pays once (a course).
     public var employerCostPerMonth: Double
     public var oneOffCost: Double
-    /// What changes, in words.
     public var lines: [String]
 }
 
 public extension GameEngine {
-    /// `percent` is the pay review (0.05 = 5 percent), `expense` a `StaffExpenses` item id, `workingPercent` the new working percentage.
     func groupRewardPreview(personID: Int, kind: StaffPromises.Kind, percent: Double = 0.05, expense: String = "", workingPercent: Double = 100) -> GroupRewardPreview {
         let wage: Double = GroupPeople.wage(state, personID: personID) ?? 0
         let cur: Currency = ManagerModel.playerCurrency(state, data)

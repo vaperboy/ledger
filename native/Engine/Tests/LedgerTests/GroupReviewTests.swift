@@ -6,8 +6,6 @@ import Businesses
 @testable import Simulation
 import SaveSystem
 
-/// The quarterly group review and the annual report: when they open, quarter boundaries in the day-by-day engine, grading, the saved
-/// history, and a letter that never states a number that is not in the books.
 final class GroupReviewTests: XCTestCase {
     func newEngine(seed: Int = 4242) throws -> GameEngine { try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed) }
 
@@ -32,7 +30,6 @@ final class GroupReviewTests: XCTestCase {
 
     func answerPayroll(_ e: inout GameEngine) { for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
 
-    /// Plays day by day to `week`; `onDay` runs after every day. Returns the game weeks (the week just closed) in which a review appeared.
     @discardableResult
     func play(_ e: inout GameEngine, toWeek week: Int, onDay: (inout GameEngine) -> Void = { _ in }) -> [Int] {
         var offers: [Int] = []
@@ -40,15 +37,13 @@ final class GroupReviewTests: XCTestCase {
         while e.state.week < week && !e.state.isGameOver {
             e.nextDay(); answerPayroll(&e)
             let has = e.state.rest["qrv"]?["offer"].isNull == false
-            if has && !seen { offers.append(e.state.week - 1) }   // the week is advanced right after the reports close
+            if has && !seen { offers.append(e.state.week - 1) }
             seen = has
             onDay(&e)
             if (e.state.rest["qrv"]?["offer"].isNull ?? true) { seen = false }
         }
         return offers
     }
-
-    // MARK: Opening
 
     func testNothingForABrandNewPlayerWithOneCompany() throws {
         var e = try newEngine()
@@ -73,15 +68,12 @@ final class GroupReviewTests: XCTestCase {
         XCTAssertFalse(Gates.reviewOpen(e.state))
     }
 
-    // MARK: Quarters, grading, history
-
     func testReviewsComeOnlyAtQuarterEndsAndTargetsAreGradedAtTheNext() throws {
         var e = try twoCompanyGame()
         var chosen: [String] = []
         var creditAtSet: Double = 0
         let offers = play(&e, toWeek: 91) { e in
             guard let o = e.reviewOffer else { return }
-            // The review of a quarter that has just closed: pick the first two targets on offer.
             let kinds = Array(o.options.prefix(2).map { $0.kind })
             let r = e.setReviewTargets(kinds)
             XCTAssertNotNil(r)
@@ -101,7 +93,6 @@ final class GroupReviewTests: XCTestCase {
         XCTAssertNotNil(first.grade)
         XCTAssertTrue(first.targets.allSatisfy { $0.grade != nil && $0.result != nil })
         _ = creditAtSet
-        // The history is the same after a save.
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ledger-review-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = try SaveStore(directory: dir)
@@ -194,14 +185,10 @@ final class GroupReviewTests: XCTestCase {
         let costs = o.first { $0.kind == .costs }!
         XCTAssertEqual(costs.start, 0.75, accuracy: 0.0001)
         XCTAssertEqual(costs.goal, 0.73, accuracy: 0.0011)
-        // No sales: nothing to grow and no cost share.
         f.sales = 0
         XCTAssertEqual(Set(GroupReview.options(f, cur: cur).map { $0.kind }), [.cash, .hire])
     }
 
-    // MARK: The annual report and its letter
-
-    /// Every number in the letter is one of its figures (or the year), and every figure equals the book value it names.
     func assertLetterHonest(_ r: AnnualReport, file: StaticString = #filePath, line: UInt = #line) {
         let allowed = Set(r.figures.flatMap { numbers($0.text) } + [String(r.year)])
         for p in r.letter {
@@ -236,7 +223,6 @@ final class GroupReviewTests: XCTestCase {
         assertLetterHonest(r)
         XCTAssertEqual(r.closing, "Tester")
         XCTAssertTrue(e.state.inbox.contains { $0.title == "Your annual report for 2027 is ready" })
-        // The quarter that closed in December is already in the review history's world: a review waits, nothing graded yet.
         XCTAssertNil(r.yearGrade)
         XCTAssertTrue(r.letter.contains { $0.contains("no quarterly targets") })
     }
@@ -259,11 +245,8 @@ final class GroupReviewTests: XCTestCase {
         assertLetterHonest(r)
         assertLetterHonest(list[1])
         XCTAssertTrue(r.letter.contains { $0.contains("I set targets for four quarters") })
-        // The December grade is in the year it closes.
         XCTAssertEqual(r.quarters.last?.label, "Oct to Dec 2028")
     }
-
-    // MARK: The letter on its own
 
     func syntheticYear(sales: Double, costs: Double, tax: Double = 0, before: (Double, Double)? = nil) -> PeriodReport {
         var yr = PeriodReport(kind: .year, id: 60, firstWeek: 9, lastWeek: 60, title: "2027", range: "")
@@ -291,7 +274,6 @@ final class GroupReviewTests: XCTestCase {
     }
 
     func testLetterFollowsWhatHappenedAndStatesNoOtherNumber() throws {
-        // A profit, better than the year before.
         let good = try letter(syntheticYear(sales: 400_000, costs: 300_000, tax: 10_000, before: (300_000, 280_000)))
         XCTAssertTrue(good.letter[0].contains("in the black"))
         XCTAssertTrue(good.letter[0].contains("better than the year before"))
@@ -301,7 +283,6 @@ final class GroupReviewTests: XCTestCase {
         XCTAssertEqual(value(good, "tax"), 10_000)
         XCTAssertEqual(value(good, "networth"), 90_000)
         assertLetterHonest(good)
-        // A loss, weaker than the year before.
         let bad = try letter(syntheticYear(sales: 200_000, costs: 260_000, before: (300_000, 250_000)))
         XCTAssertTrue(bad.letter[0].contains("loss-making"))
         XCTAssertFalse(bad.letter.joined().contains("in the black"))
@@ -310,13 +291,11 @@ final class GroupReviewTests: XCTestCase {
         XCTAssertEqual(value(bad, "profit"), 60_000, "a loss is written as an amount lost, never as a negative profit")
         XCTAssertTrue(bad.letter.last!.contains("out of the red"))
         assertLetterHonest(bad)
-        // Break-even, no year before: no comparison is invented, no company is called a biggest mover.
         let flat = try letter(syntheticYear(sales: 100_000, costs: 100_000))
         XCTAssertTrue(flat.letter[0].contains("break-even"))
         XCTAssertFalse(flat.letter[0].contains("year before"))
         XCTAssertNil(flat.mover)
         assertLetterHonest(flat)
-        // Grades: the letter reports what the history says.
         func q(_ label: String, _ g: ReviewGrade) -> QuarterRecord { var x = QuarterRecord(id: 1, year: 2027, label: label); x.score = Double(g.rawValue); x.grade = g; return x }
         let graded = try letter(syntheticYear(sales: 400_000, costs: 300_000), hist: [q("Jan to Mar 2027", .beat), q("Apr to Jun 2027", .beat), q("Jul to Sep 2027", .met)])
         XCTAssertEqual(graded.yearGrade, .beat)
@@ -329,7 +308,6 @@ final class GroupReviewTests: XCTestCase {
 
     func testBiggestMoverAndBestCompanyAreFromTheBooks() throws {
         var yr = syntheticYear(sales: 400_000, costs: 300_000, before: (300_000, 280_000))
-        // Alpha: now 280k revenue, 210k costs = 70k; before 150k - 140k = 10k, so +60k. Beta: now 30k; before 10k, so +20k.
         let r = try letter(yr)
         XCTAssertEqual(r.best?.name, "Alpha Cafe")
         XCTAssertEqual(r.best?.profit ?? 0, 70_000, accuracy: 0.01)

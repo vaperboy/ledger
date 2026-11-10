@@ -1,7 +1,3 @@
--- Startups funded by other players. Mirrors the engine's CrowdStartupRules: a founder never names a price (it comes from the plan and the
--- stage), investors' money sits in escrow until a milestone, shares resell inside a price band after a lock-up, and linked accounts
--- can neither fund nor buy from each other. Money moves only as settlements (see 0002); taxes go to the country treasuries.
-
 create type public.startup_status as enum ('raising', 'live', 'failed', 'closed');
 create type public.startup_offer_status as enum ('open', 'sold', 'cancelled');
 
@@ -19,7 +15,6 @@ create table public.startups (
   stage_opened_at timestamptz not null default now(),
   status public.startup_status not null default 'raising',
   exited boolean not null default false,
-  -- Reported by the founder, clamped by the rules below; they feed the price band of second-hand sales only.
   assets numeric(18, 2) not null default 0 check (assets >= 0),
   weekly_profit numeric(18, 2)[] not null default '{}' check (cardinality(weekly_profit) <= 13),
   created_at timestamptz not null default now(),
@@ -48,7 +43,6 @@ create table public.startup_holdings (
   owner_id uuid not null references public.profiles (id) on delete cascade,
   link_key text not null,
   percent numeric(12, 6) not null check (percent > 0),
-  -- What was paid for these shares: the cost basis for the gains tax.
   paid numeric(18, 2) not null check (paid >= 0),
   bought_at timestamptz not null default now(),
   primary key (startup_id, owner_id)
@@ -72,15 +66,11 @@ alter table public.startup_offers enable row level security;
 revoke all on public.startups, public.startup_investments, public.startup_holdings, public.startup_offers from anon, authenticated;
 grant select on public.startups, public.startup_investments, public.startup_holdings, public.startup_offers to authenticated;
 
--- Other players see startups, offers and totals through the functions (which hide blocked founders). Directly you read only your own rows.
 create policy startups_own on public.startups for select to authenticated using (founder_id = auth.uid());
 create policy startup_investments_own on public.startup_investments for select to authenticated using (investor_id = auth.uid());
 create policy startup_holdings_own on public.startup_holdings for select to authenticated using (owner_id = auth.uid());
 create policy startup_offers_own on public.startup_offers for select to authenticated using (seller_id = auth.uid());
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Rules (the engine's numbers)
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.cs_multiple(stage int) returns numeric language sql immutable as $$ select (array[2.5, 3.5, 5.0])[least(2, greatest(0, stage)) + 1]::numeric; $$;
 create function private.cs_share(stage int) returns numeric language sql immutable as $$ select (array[0.40, 0.35, 0.25])[least(2, greatest(0, stage)) + 1]::numeric; $$;
 create function private.cs_investor_target(s public.startups) returns numeric language sql immutable as $$ select greatest(0, s.plan_cost - s.founder_put_in); $$;
@@ -98,13 +88,11 @@ create function private.cs_sold_percent(sid uuid) returns numeric language sql s
   select coalesce(sum(percent), 0) from public.startup_investments where startup_id = sid and not refunded;
 $$;
 
--- Assets plus the profit of the latest 13 weeks (a loss does not lower it below assets).
 create function private.cs_real_value(s public.startups) returns numeric language sql immutable as $$
   select case when s.status in ('raising', 'live') then
     greatest(0, s.assets) + greatest(0, coalesce((select sum(x) from unnest(s.weekly_profit) x), 0)) else 0 end;
 $$;
 
--- Founders are judged by what they did before.
 create function private.cs_founder_record(uid uuid) returns jsonb language sql stable security definer set search_path = '' as $$
   select jsonb_build_object(
     'exits', (select count(*) from public.startups where founder_id = uid and exited),
@@ -136,7 +124,6 @@ create or replace function private.startups_open(uid uuid) returns boolean langu
       or exists (select 1 from public.startup_investments i where i.investor_id = uid and not i.released and not i.refunded);
 $$;
 
--- Escrow is returned whole; money already released is gone. Marks the startup failed (or closed) and tells each investor.
 create function private.cs_fail(sid uuid, final public.startup_status) returns numeric language plpgsql security definer set search_path = '' as $$
 declare s public.startups; i public.startup_investments; back numeric := 0;
 begin
@@ -152,10 +139,6 @@ begin
   return back;
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Founder functions
--- ---------------------------------------------------------------------------------------------------------------------
--- Lists the founder's company for investors. The entry cost (150,000 in the reference economy, scaled to the currency) is charged and taxed.
 create function public.list_startup(p_company_key text, p_name text, p_trade text, p_pitch text, p_plan_cost numeric, p_founder_put_in numeric, p_currency text)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); s public.startups; fee numeric; cc text;
@@ -173,8 +156,6 @@ begin
   return private.cs_json(s, uid);
 end $$;
 
--- The founder reports the company's progress. At most one milestone moves per call, and not sooner than two weeks after the stage opened,
--- so a founder cannot sweep every stage's escrow at once. Releasing pays the stage's escrow to the founder.
 create function public.report_startup_progress(p_startup uuid, p_milestones int, p_assets numeric, p_weekly_profit numeric default null) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); s public.startups; rel numeric := 0;
@@ -193,7 +174,6 @@ begin
     end if;
     update public.startups set milestones = p_milestones, stage_opened_at = now(), status = 'live' where id = s.id;
   end if;
-  -- Reported values only affect resale prices, so they are capped at three times the plan; the profit list keeps the latest 13 weeks.
   update public.startups set assets = least(p_assets, plan_cost * 3),
       weekly_profit = case when p_weekly_profit is null then weekly_profit
                            else (weekly_profit || greatest(-plan_cost, least(plan_cost, p_weekly_profit)))[greatest(1, cardinality(weekly_profit) + 1 - 12):] end
@@ -201,7 +181,6 @@ begin
   return private.cs_json(s, uid);
 end $$;
 
--- The founder's company closed: escrow goes back to investors, released money is lost.
 create function public.report_startup_closed(p_startup uuid) returns numeric language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin
@@ -209,9 +188,6 @@ begin
   return private.cs_fail(p_startup, 'failed');
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Investor functions
--- ---------------------------------------------------------------------------------------------------------------------
 create function public.list_startups() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin
@@ -254,9 +230,6 @@ begin
            'value', private.cs_real_value(s) * h.percent / 100)) from public.startup_holdings h join public.startups s on s.id = h.startup_id where h.owner_id = uid), '[]'::jsonb);
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Second-hand shares
--- ---------------------------------------------------------------------------------------------------------------------
 create function public.offer_startup_shares(p_startup uuid, p_percent numeric, p_price numeric) returns uuid language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); s public.startups; h public.startup_holdings; fair numeric; already numeric; oid uuid;
 begin
@@ -289,8 +262,6 @@ begin
      from public.startup_offers o where o.startup_id = p_startup and o.status = 'open' and not private.is_blocked_between(uid, o.seller_id)), '[]'::jsonb);
 end $$;
 
--- A buyer takes an offer. The band is checked again against today's real value; the buyer pays the transfer tax on top (to the buyer's
--- country), the seller pays the gains tax on a gain (to the seller's country), and the cost basis moves with the shares.
 create function public.buy_startup_offer(p_offer uuid, p_currency text) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); o public.startup_offers; s public.startups; h public.startup_holdings; fair numeric; basis numeric; gain numeric;
         tax numeric; gtax numeric; bcc text; scc text;
@@ -316,7 +287,6 @@ begin
   gain := o.price - basis;
   tax := round(o.price * private.transfer_tax_rate(bcc), 2);
   gtax := round(greatest(0, gain) * private.gains_tax_rate(scc), 2);
-  -- Shares move; the new owner's lock-up starts now.
   if h.percent - o.percent <= 1e-9 then delete from public.startup_holdings where startup_id = s.id and owner_id = o.seller_id;
   else update public.startup_holdings set percent = percent - o.percent, paid = paid - basis where startup_id = s.id and owner_id = o.seller_id; end if;
   insert into public.startup_holdings (startup_id, owner_id, link_key, percent, paid) values (s.id, uid, private.link_key(uid), o.percent, o.price)
@@ -331,9 +301,6 @@ begin
   return jsonb_build_object('startupID', s.id, 'percent', o.percent, 'price', o.price, 'transferTax', tax, 'gainsTax', gtax);
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Scheduled by the platform (service role only): a stage that has not reached its milestone in 30 game weeks gives its escrow back.
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.run_startup_expiry() returns int language plpgsql security definer set search_path = '' as $$
 declare s record; n int := 0;
 begin

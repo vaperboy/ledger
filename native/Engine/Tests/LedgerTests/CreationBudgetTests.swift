@@ -5,17 +5,12 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Founding a business is financially transparent. The plan lists mandatory costs, optional extras and working capital, keeps a
-/// personal reserve, and quick set-up never hires or buys what the company's cash cannot carry. The matrix probe re-runs the audit's 23 countries
-/// x every trade setup (default start cash, 42 days, payroll approved as it comes) for the old automatic start and the budgeted one.
 final class CreationBudgetTests: XCTestCase {
     private func game(_ code: String = "UK", seed: Int = 7, extra: Double = 0) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: seed)
         if extra > 0 { e.update { s, _, _ in Ledger.move(&s, .me, extra, why: "Test funds") } }
         return e
     }
-
-    // MARK: Plan
 
     func testPlanGroupsMandatoryOptionalAndWorkingCapitalAndShowsRemainingCash() throws {
         let e = try game(extra: 500_000_000)
@@ -24,7 +19,6 @@ final class CreationBudgetTests: XCTestCase {
         XCTAssertFalse(plan.lines.isEmpty)
         XCTAssertGreaterThan(plan.mandatoryTotal, 0)
         XCTAssertGreaterThan(plan.workingCapital, 0)
-        // optional things are not in the bill unless chosen; they are listed as not chosen with their price
         XCTAssertFalse(plan.lines.contains { $0.id == "optEq" })
         let full = try XCTUnwrap(e.newCompanyPlan(tradeID: "cafe", cityID: city, size: 1, choices: SetupChoices(stock: .full, optionalEquipment: true, team: .standard)))
         XCTAssertGreaterThanOrEqual(full.neededNow, plan.neededNow)
@@ -41,7 +35,6 @@ final class CreationBudgetTests: XCTestCase {
         let p1 = try XCTUnwrap(rich.newCompanyPlan(tradeID: "restaurant", cityID: city, size: 2))
         XCTAssertTrue(p1.keepsReserve)
         XCTAssertTrue(p1.alternatives.isEmpty)
-        // the default start cash is far below a restaurant: the plan says so, keeps the reserve and offers cheaper ways
         let poor = try game()
         let p2 = try XCTUnwrap(poor.newCompanyPlan(tradeID: "restaurant", cityID: poor.state.player.cityID, size: 2, choices: SetupChoices(stock: .full, optionalEquipment: true, team: .standard)))
         XCTAssertGreaterThan(p2.shortfall, 0)
@@ -49,8 +42,6 @@ final class CreationBudgetTests: XCTestCase {
         XCTAssertTrue(p2.alternatives.allSatisfy { $0.saving > 0 })
         XCTAssertLessThanOrEqual(p2.intoCompany, max(0, p2.available - p2.registrationAndCapital - p2.personalReserve) + 1)
     }
-
-    // MARK: Nothing optional is bought silently
 
     func testOptionalEquipmentStockAndExtraStaffAreNotBoughtUnlessChosen() throws {
         var e = try game(extra: 800_000_000)
@@ -74,7 +65,7 @@ final class CreationBudgetTests: XCTestCase {
             let id = out.companyID
             e.update { s, d, _ in
                 guard let i = s.companyIndex(id) else { return }
-                _ = CompanySetup.quickSetup(&s, companyID: id, data: d)   // the player equips it; here the test does so
+                _ = CompanySetup.quickSetup(&s, companyID: id, data: d)
                 for k in s.companies[i].value("docs").object.keys { var docs = s.companies[i].value("docs"); docs[k]["st"] = "ok"; s.companies[i].set("docs", docs) }
                 _ = OpeningChecklist.open(&s, companyIndex: i, data: d)
                 paid[choice] = s.companies[i].inventory
@@ -85,25 +76,19 @@ final class CreationBudgetTests: XCTestCase {
         XCTAssertEqual(paid[.half] ?? 0, (paid[.full] ?? 0) * 0.5, accuracy: (paid[.full] ?? 0) * 0.02 + 1)
     }
 
-    // MARK: Hiring stays inside the budget
-
     func testBudgetedHiringNeverBuysWagesTheCashCannotCarry() throws {
         var e = try game(extra: 200_000_000)
         let city = e.state.player.cityID
-        // a thin company: hiring the standard team would cost far more than the cash covers
         guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "restaurant", cityID: city, size: 1, name: nil, pick: nil, fundWith: 2_500_000, choices: SetupChoices(team: .standard)) else { return XCTFail("start") }
         let co = try XCTUnwrap(e.state.company(out.companyID))
         let payroll = co.staff.reduce(0.0) { $0 + $1.monthlyWage }
         XCTAssertLessThanOrEqual(payroll * 2, max(co.cash + payroll * 2, 1) * 1.0 + 1)
         XCTAssertTrue(co.staff.isEmpty, "nobody is hired for the player")
-        // the legacy automatic start on the same money hires without looking
         var legacy = try game(extra: 200_000_000)
         guard case .success(let lid) = legacy.startCompany(tradeID: "restaurant", cityID: city, size: 1, fundWith: 2_500_000) else { return XCTFail("start legacy") }
         let legacyPayroll = legacy.state.company(lid)!.staff.reduce(0.0) { $0 + $1.monthlyWage }
         XCTAssertGreaterThanOrEqual(legacyPayroll, payroll)
     }
-
-    // MARK: Matrix probe (23 countries x every trade)
 
     struct Cell { var accountNegative = false, companyNegative = false, companyBust = false, gameOver = false, started = false, hired = 0 }
 
@@ -140,7 +125,6 @@ final class CreationBudgetTests: XCTestCase {
         return cell
     }
 
-    /// Quick version for every run: a spread of trades in two countries. `LEDGER_PROBE_ALL=1` runs the whole 23 x all matrix and prints the table.
     func testSetupMatrixBudgetedStartsDoNotEndInUnchosenNegatives() throws {
         let all = ProcessInfo.processInfo.environment["LEDGER_PROBE_ALL"] == "1"
         let e0 = try game()

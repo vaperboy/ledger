@@ -4,8 +4,6 @@ import Finance
 import Simulation
 @testable import Businesses
 
-/// The two paid checks of the main office: a reference check on a head-office candidate (original `hqref`) and a manager review of one company
-/// (original `reviewnow`).
 final class OfficeChecksTests: XCTestCase {
     func testReferenceCheckShowsTheRealLevelAndIsPaidOnce() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 31)
@@ -13,7 +11,7 @@ final class OfficeChecksTests: XCTestCase {
         e.update { s, data, _ in
             Ledger.move(&s, .me, 5_000_000, why: "Test funds")
             var p = Hiring.generateCandidate(role: "waiter", company: nil, state: &s, data: data)
-            p.skill = 40; p.claimedSkill = 70   // the CV says Strong, the person is Developing
+            p.skill = 40; p.claimedSkill = 70
             s.people[p.id] = p
             pid = p.id
         }
@@ -69,13 +67,11 @@ final class OfficeChecksTests: XCTestCase {
         XCTAssertEqual(kept["score"].int, card.score)
         XCTAssertEqual(kept["w"].int, e.state.week)
 
-        // with a performance analyst in the main office it is free
         e.update { s, _, _ in s.rest["office"] = .object(["staff": .array([.object(["role": "perf"])])]) }
         let cash1 = e.state.cash
         guard case .ok = e.reviewManagerNow(companyID: id) else { return XCTFail("the review should work") }
         XCTAssertEqual(e.state.cash, cash1)
 
-        // and without money for the external review nothing happens
         e.update { s, _, _ in s.rest["office"] = .null; let c = s.cash; Ledger.move(&s, .me, -c, why: "Spent") }
         XCTAssertEqual(e.reviewManagerNow(companyID: id), .notEnoughCash)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")

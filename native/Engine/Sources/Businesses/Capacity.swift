@@ -3,39 +3,28 @@ import GameCore
 import Countries
 import Employees
 
-/// One limit on how much a company can serve: a staff role, a machine, the space.
 public struct CapacityPart: Equatable {
     public enum Kind: String { case staff, equip, gate, space }
-    public var key: String           // "role:barista", "eq:esp", "prem"
+    public var key: String
     public var label: String
     public var kind: Kind
-    /// How many we have, in full-time equivalents / pieces / m²
     public var have: Double
     public var need: Double
-    /// How many customers this part can serve in a week
     public var capacity: Double
     public var capacityPerUnit: Double
-    /// Owner's share of this role, in FTE
     public var ownerFTE: Double = 0
 }
 
 public struct CapacityResult: Equatable {
-    /// Customers per week the company can serve
     public var capacity: Double
     public var parts: [CapacityPart]
-    /// The part that limits capacity
     public var bottleneck: CapacityPart?
     public var ownerFTE: Double
-    /// Machines in repair this week and what they take away (`EquipmentOutage`); nil when every machine works.
     public var outage: EquipmentOutage.Result? = nil
 }
 
-/// How much a company can serve in a week. Original: `capacityCore` (engine/company/model.js) and its
-/// 'capacity' steps. Capacity is the smallest of: each staff role's output, required equipment, premises space.
 public enum CapacityModel {
-    // MARK: Owner's time
 
-    /// Total hours the owner has committed across all companies they run themselves. Original: `hoursUsed`.
     public static func ownerHoursCommitted(_ s: GameState, except: Int? = nil) -> Double {
         let companies = s.companies.filter { $0.id != except && $0.status.isLive && $0.managerID == nil && $0.type != "hold" }
         let startups = (s.rest["founded"]?.array ?? []).filter { $0["st"].string == "live" }
@@ -43,7 +32,6 @@ public enum CapacityModel {
         return companies.reduce(0) { $0 + $1.ownerHours } + dev
     }
 
-    /// Above 55 hours a week you work less well. Original: `ownerFactor`.
     public static func ownerFactor(_ s: GameState) -> Double {
         if let burn = s.rest["burnUntil"], !burn.isNull, Double(s.week) < burn.double { return 0.15 }
         if let sick = s.rest["sickW"], !sick.isNull, sick.int == s.week { return 0 }
@@ -51,20 +39,15 @@ public enum CapacityModel {
         return t <= 55 ? 1 : max(0.6, 1 - (t - 55) * 0.012)
     }
 
-    // MARK: Entry point
-
     public static func compute(_ co: Company, _ bd: Trade, _ w: World) -> CapacityResult {
         var c = co
         let f = ownerFactor(w.state)
-        // While counting, the owner's hours count for what they can really give.
         if !(f == 1 || co.managerID != nil || co.ownerHours == 0) { c.ownerHours = co.ownerHours * f }
         var res = core(c, bd, w, originalOwnerHours: co.ownerHours)
         applySteps(&res, co, bd, w)
         applyOutage(&res, co, bd, w)
         return res
     }
-
-    // MARK: Core
 
     static func equipmentCount(_ co: Company, _ e: EquipmentSpec) -> Double {
         if e.vehicleModels != nil { return Double(co.value("veh").array.filter { $0["eq"].string == e.id }.count) }
@@ -73,7 +56,6 @@ public enum CapacityModel {
         return own + leased
     }
 
-    /// How many can be used right now: units in for repair do not count. Original: `eqN` (the core plus the step).
     static func equipmentAvailable(_ co: Company, _ e: EquipmentSpec) -> Double {
         EquipmentUnits.availableCount(co, equipmentID: e.id, vehicle: e.vehicleModels != nil, count: equipmentCount(co, e))
     }
@@ -88,7 +70,6 @@ public enum CapacityModel {
         return min(1.15, rec["cond"].double * pow(rec["perf"].isNull ? 1 : rec["perf"].double, 1.5))
     }
 
-    /// Fraction of the manager's week spent working hands-on. Original: `R24.mgrBase` + `mgrFTE`.
     static func managerHandsOn(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         let n = bd.standardStaff.reduce(0) { $0 + $1.count } * co.size
         var base: Double = n < 3 ? 0.85 : n < 6 ? 0.7 : n < 10 ? 0.55 : n < 16 ? 0.35 : 0.15
@@ -96,7 +77,6 @@ public enum CapacityModel {
         let monthProfit = hist.isEmpty ? 0 : hist.reduce(0) { $0 + $1.profit } / Double(hist.count)
         let m = co.managerID.flatMap { w.state.people[$0] }
         if n >= 10, m != nil, monthProfit > (co.managerMonthlyWage != 0 ? co.managerMonthlyWage : (m?.askingMonthlyWage ?? 50000 * w.country(co).wageLevel)) * 4 { base = 0 }
-        // How hard the business pushes against its capacity: demand above capacity makes the manager pitch in.
         let h = co.value("wh22").array.suffix(3).filter { !$0["d"].isNull }
         var pressure: Double
         if h.isEmpty {
@@ -150,7 +130,6 @@ public enum CapacityModel {
         for e in bd.equipment {
             let installed = equipmentCount(co, e)
             if e.isRequired && installed < 1 {
-                // Never bought (or sold): the business cannot open its doors without it. A machine in repair is `EquipmentOutage` instead.
                 parts.append(CapacityPart(key: "eq:\(e.id)", label: e.name + " (required)", kind: .gate, have: installed, need: 1, capacity: 0, capacityPerUnit: 0))
             } else if e.limitsCapacity && e.standardCount > 0 {
                 let need = max(1, jsRound(e.standardCount * co.size))
@@ -165,30 +144,24 @@ public enum CapacityModel {
             parts.append(CapacityPart(key: "prem", label: "Space (\(Int(m2)) m2)", kind: .space, have: m2,
                                       need: jsRound(bd.premisesM2 * co.size), capacity: capD * m2 / bd.premisesM2, capacityPerUnit: 0))
         }
-        // The equipment each person needs (a car per agent, a van per three cleaners ...). Original: step 'capacity.core' of realistic_buying.js.
         _ = PersonalEquipment.adjustCapacity(&parts, co, bd, w)
         var cap = Double.infinity
         var bot: CapacityPart? = nil
         for p in parts where p.capacity < cap { cap = p.capacity; bot = p }
         if !cap.isFinite { cap = capD }
         cap *= Knobs.effect(co, bd, "k", w, sum: false) * DemandModel.modifier(co, "cap") * (over > 0 ? 1 + over * 0.2 : 1)
-        // Capacity held back for your other companies (IntercompanySupply): original step 'capacity' 30, `co.int27u`.
         return CapacityResult(capacity: max(0, cap - (cap.isFinite ? IntercompanySupply.heldBack(co) : 0)), parts: parts, bottleneck: bot, ownerFTE: ownerTotal)
     }
 
-    /// Machines in repair cut the share of the work that depends on them, and the worst of them is named as what held the week back.
     static func applyOutage(_ r: inout CapacityResult, _ co: Company, _ bd: Trade, _ w: World) {
         let o = EquipmentOutage.compute(co, bd, w)
         guard let worst = o.worst, o.lost > 0 else { return }
-        // Something else that stops trading (no staff, a machine never bought) stays the reason.
         guard r.capacity > 0 else { return }
         r.outage = o
         r.capacity *= o.kept
         r.bottleneck = CapacityPart(key: "eq:\(worst.id)", label: worst.name + " (broken, in repair)", kind: .gate, have: Double(worst.units - worst.unitsDown),
                                     need: Double(worst.units), capacity: r.capacity, capacityPerUnit: 0)
     }
-
-    // MARK: Steps (original `addStep('capacity', ...)`)
 
     static func recompute(_ r: inout CapacityResult) {
         var cap = Double.infinity
@@ -199,11 +172,9 @@ public enum CapacityModel {
 
     static func applySteps(_ r: inout CapacityResult, _ co: Company, _ bd: Trade, _ w: World) {
         let noWork = Pricing.noWorkFamilies.contains(bd.family)
-        // 10: small firms: the owner covers support jobs
         if bd.family == "project" && !bd.hasTrait("dev") { r.capacity *= (w.balance.priceLevelByTrade[bd.id] ?? 1).squareRoot() }
         if bd.standardStaff.count >= 2 && !noWork {
             let minOld = r.parts.map { $0.capacity }.min() ?? 0
-            // When an empty support role held capacity at zero there is no ratio to keep: start from the covered capacity itself.
             let mult: Double? = minOld > 0 ? r.capacity / minOld : 1
             var changed = false
             for (i, s) in bd.standardStaff.enumerated() where i > 0 {
@@ -219,7 +190,6 @@ public enum CapacityModel {
                 r.bottleneck = bot
             }
         }
-        // 50: services sell hours
         if let t = hoursPerUnit[bd.id] {
             let per = 37.5 * t.productiveShare / t.hours
             if let role0 = r.parts.first(where: { $0.kind == .staff }), role0.capacityPerUnit > 0 {
@@ -233,9 +203,6 @@ public enum CapacityModel {
                     switch r.parts[i].kind {
                     case .staff:
                         let p = r.parts[i]
-                        // The owner's or manager's time in the FIRST role is billable hours (ownUnits). Time spent covering a support role (a dispatcher,
-                        // a receptionist) is that role's work at that role's own scale (one dispatcher serves all the guards), not billable hours:
-                        // valuing it in billable hours capped a small firm with a manager at a fraction of what its own team can deliver.
                         let isCore = r.parts.first(where: { $0.kind == .staff })?.key == p.key
                         r.parts[i].capacity = isCore
                             ? max(0, p.have - p.ownerFTE) * p.capacityPerUnit * R + (ownFTE > 0 ? ownUnits * p.ownerFTE / ownFTE : 0)
@@ -255,33 +222,26 @@ public enum CapacityModel {
                 }
             }
         }
-        // 60: a small team covers the support jobs
         smallTeamCoversSupportJobs(&r, co, bd)
-        // 75: your own startup's product, used by this company
         if r.capacity != 0, !w.state.rest["founded"].isNullOrEmpty {
             let k = StartupProducts.effectNow(co, w.state, trade: bd).k
             if k != 0 { r.capacity *= 1 + k }
         }
-        // 60: an operations manager runs the place better (ManagerTeam)
         let opsHead = co.value("tm")["ops"].double
         if opsHead > 0 && r.capacity.isFinite && r.capacity != 0 { r.capacity *= 1 + 0.09 * opsHead }
-        // 70: own premises: shorter trips for mobile trades
         if mobileTrades.contains(co.type) && bd.premisesKind == "home" && co.value("prem")["m2"].double > 0 { r.capacity *= 1.08 }
-        // 80: storms and snow stop outdoor work
         let c = Weather.effect(for: co, trade: bd, week: w.week, seed: w.state.seed, tables: w.balance.weather).capacity
         if r.capacity != 0 && c != 1 { r.capacity *= c }
     }
 
     static let mobileTrades: Set<String> = ["plumber", "electrician", "construction", "cleaning", "handy", "carclean", "event"]
 
-    /// Hours per unit sold, and the productive share of working hours, for trades that sell time. Original: `R34.T`.
     static let hoursPerUnit: [String: (hours: Double, productiveShare: Double)] = [
         "cons": (1, 0.7), "law": (1, 0.7), "acctfirm": (1, 0.75), "mktg": (1, 0.7), "webdev": (1, 0.75), "tutor": (1, 0.8), "cleaning": (1, 0.9),
         "carclean": (1.5, 0.8), "carrepair": (2.5, 0.8), "handy": (3, 0.75), "photo": (6, 0.7), "barber": (0.75, 0.8), "drivsk": (1, 0.85),
         "physio": (0.75, 0.8), "pets": (0.5, 0.85), "estate": (50, 0.6), "dental": (0.75, 0.8), "gamestudio": (1, 0.75), "security": (1, 0.9),
     ]
 
-    /// In a company of up to three people the owner and team also cover the support jobs. Original: R39 step.
     static func smallTeamCoversSupportJobs(_ r: inout CapacityResult, _ co: Company, _ bd: Trade) {
         if co.managerID != nil || !r.capacity.isFinite { return }
         let sp = r.parts.indices.filter { r.parts[$0].kind == .staff }
@@ -315,6 +275,5 @@ public enum CapacityModel {
 }
 
 extension Optional where Wrapped == JSONValue {
-    /// No value, null, or an empty list.
     var isNullOrEmpty: Bool { self == nil || self!.isNull || self!.array.isEmpty }
 }

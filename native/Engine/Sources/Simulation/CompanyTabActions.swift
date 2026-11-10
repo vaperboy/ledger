@@ -5,11 +5,7 @@ import Employees
 import Finance
 import Businesses
 
-/// The smaller company tabs as engine calls: advisers and insurance, expanding abroad, complaints, the staff profile.
-/// Originals: `ACT.provpick`, `ownpick`, `toggleins`, `abrset`/`abrgo`, `complres`, `warnstaff`, `firestaff`, `logo`, `talkstaff`,
-/// `docourse`, `setpay`, `setrate`.
 public extension GameEngine {
-    // MARK: Advisers (accountant, law firm, insurer) and insurance policies
 
     func adviserOffers(companyID: Int, kind: Advisers.Kind) -> [JSONValue] {
         var s = state
@@ -17,7 +13,6 @@ public extension GameEngine {
     }
     func ownAdviserFirms(companyID: Int, kind: Advisers.Kind) -> [Company] { Advisers.ownFirms(state, for: companyID, kind: kind) }
 
-    /// Hire a provider. For a law firm or insurer, providerID 0 removes the current one.
     @discardableResult
     mutating func chooseAdviser(companyID: Int, kind: Advisers.Kind, providerID: Int) -> Advisers.Result {
         var r = Advisers.Result.unknown
@@ -30,7 +25,6 @@ public extension GameEngine {
         update { s, d, _ in r = Advisers.pickOwn(&s, companyID: companyID, kind: kind, firmID: firmID, data: d) }
         return r
     }
-    /// Switch an insurance policy on or off (needs an insurer first).
     @discardableResult
     mutating func toggleInsurancePolicy(companyID: Int, product: String) -> Advisers.Result {
         var r = Advisers.Result.unknown
@@ -38,11 +32,8 @@ public extension GameEngine {
         return r
     }
 
-    // MARK: Abroad
-
     func abroadOptions(companyID: Int) -> [Abroad.Option] { Abroad.options(state, companyID: companyID, data: data) }
 
-    /// Open a subsidiary in another country. Registration fees and share capital come from your personal cash.
     @discardableResult
     mutating func expandAbroad(companyID: Int, countryCode: String, cityID: String? = nil) -> Result<Int, Abroad.Failure> {
         var r: Result<Int, Abroad.Failure> = .failure(.notOpen)
@@ -50,11 +41,8 @@ public extension GameEngine {
         return r
     }
 
-    // MARK: Complaints
-
     func complaints(companyID: Int) -> [Complaints.Item] { Complaints.list(state, companyID: companyID, data: data) }
 
-    /// Refund, apologise or ignore an open complaint. Returns whether the customer is satisfied (nil: no such open complaint).
     @discardableResult
     mutating func answerComplaint(companyID: Int, complaintID: Int, answer: Satisfaction.Answer) -> Bool? {
         var r: Bool?
@@ -62,14 +50,11 @@ public extension GameEngine {
         return r
     }
 
-    // MARK: Staff profile
-
     func staffProfile(companyID: Int, staffID: Int) -> StaffProfile.Profile? { StaffProfile.profile(state, companyID: companyID, staffID: staffID, data: data) }
     func layoffPreview(companyID: Int, count: Int) -> (names: [String], savesPerMonth: Double, severance: Double) {
         StaffProfile.layoffPreview(state, companyID: companyID, count: count, data: data)
     }
 
-    /// Send a team member (staffID nil: yourself) on a course.
     @discardableResult
     mutating func sendOnCourse(companyID: Int, staffID: Int?, courseID: String) -> StaffProfile.CourseResult {
         var r = StaffProfile.CourseResult.none

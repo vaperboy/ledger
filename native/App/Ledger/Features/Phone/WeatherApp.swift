@@ -4,11 +4,6 @@ import Businesses
 import Simulation
 import Countries
 
-/// The Weather phone app: it imitates a real weather app. Current conditions for one city, the day hour by hour, the weeks ahead,
-/// a city switcher for the countries where the player has companies, and what the weather does to each company. Its own warning
-/// (storm, heatwave, flood) is read from the engine (`bigWeatherWarnings`) and also shows as a bubble and a banner on the Phone home.
-/// The engine forecast is weekly: the weeks ahead are
-/// the engine's own forecast. The separate "Typical day" card only illustrates the usual shape of a day around this week's temperature.
 struct WeatherApp: View {
     @EnvironmentObject var store: GameStore
     @State private var chosen: String? = nil
@@ -36,7 +31,6 @@ struct WeatherApp: View {
         }
     }
 
-    /// Home country first, then every other country where a company is open.
     private func countries(_ e: GameEngine) -> [String] {
         var out: [String] = [e.state.homeCountryCode]
         for co in e.state.companies where co.status == .open && !out.contains(co.countryCode) { out.append(co.countryCode) }
@@ -44,7 +38,6 @@ struct WeatherApp: View {
     }
 }
 
-/// The app's own masthead: the round back button, the title and the grey line, in the weather palette.
 struct WeatherHeader: View {
     @Environment(\.outsidePalette) private var P
     var body: some View {
@@ -59,18 +52,13 @@ struct WeatherHeader: View {
     }
 }
 
-/// Helpers shared by the Weather cards.
 enum WeatherText {
     static func word(_ kind: String) -> String { WeatherEvents.kindWords[kind] ?? kind.capitalized }
     static func pct(_ f: Double) -> String { (f >= 1 ? "+" : "−") + "\(Int(saturating: (abs(f - 1) * 100).rounded()))%" }
     static func deg(_ t: Double) -> String { "\(Int(saturating: t.rounded()))°" }
-    /// Temperature at an hour of the day: coolest about 3, warmest about 15.
     static func hourly(mean: Double, hour: Int) -> Double { mean + 2.5 * sin((Double(hour) - 9) / 24 * 2 * Double.pi) }
 }
 
-// MARK: Warnings
-
-/// The big-event warning(s): storm, heatwave, flood, with the companies that can be hit.
 struct WeatherWarningCards: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -103,9 +91,6 @@ struct WeatherWarningCards: View {
     }
 }
 
-// MARK: City switcher
-
-/// The city switcher: one chip per country where the player has a company.
 struct WeatherCityBar: View {
     @Environment(\.outsidePalette) private var P
     var engine: GameEngine
@@ -140,14 +125,11 @@ struct WeatherCityBar: View {
 }
 
 enum WeatherCity {
-    /// The city of the player's first open company in a country, or the player's own city at home.
     static func name(_ e: GameEngine, _ cc: String) -> String {
         let id: String = e.state.companies.first(where: { $0.status == .open && $0.countryCode == cc })?.cityID ?? e.state.player.cityID
         return e.data.countries.city(id, preferring: cc)?.city.name ?? (e.data.countries[cc]?.name ?? cc)
     }
 }
-
-// MARK: Now, hourly, weeks
 
 struct WeatherNowCard: View {
     @Environment(\.outsidePalette) private var P
@@ -227,9 +209,6 @@ struct WeatherWeeksCard: View {
     }
 }
 
-// MARK: Companies
-
-/// How the weather moves each open company in the chosen country this week.
 struct WeatherCompaniesCard: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore

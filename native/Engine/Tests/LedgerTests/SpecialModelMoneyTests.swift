@@ -5,10 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Audit part 3b: the special models' money. One seeded game per model, a year of play: the ledger has no gaps, the weekly reports add up to
-/// the books of every company, and the holding earns no VAT on its own interest.
 final class SpecialModelMoneyTests: XCTestCase {
-    /// Play whole weeks, freezing the books at the end of the last day of the last week (just before it is reported).
     private func play(_ e: inout GameEngine, weeks: Int) -> [Int: [String: Double]] {
         var frozen: [Int: [String: Double]] = [:]
         for _ in 0..<weeks {
@@ -21,7 +18,6 @@ final class SpecialModelMoneyTests: XCTestCase {
     }
     private func answer(_ e: inout GameEngine) { for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
 
-    /// Gaps empty after a year; the last 26 weekly reports add up to the books of each company (all since the start of the game).
     private func check(_ e: inout GameEngine, _ name: String) throws {
         let frozen = play(&e, weeks: 26)
         let weeks = e.reports(.week)

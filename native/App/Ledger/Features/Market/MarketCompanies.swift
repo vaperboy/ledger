@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Companies: each of your businesses against its own market, one row each (share and its trend, place, price and rating against the
-/// market). A row opens the company's market page.
 struct MarketCompaniesPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -56,10 +54,6 @@ struct MarketCompaniesPage: View {
     }
 }
 
-// MARK: One company in its market
-
-/// One of your companies in its market: the share over time, you against your rivals, what wins customers here, the price trend, market
-/// research and the latest events. "Compare with" puts you beside any rival; each rival opens its profile or straight to an offer.
 struct CompanyInMarketPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -95,8 +89,6 @@ struct CompanyInMarketPage: View {
         }
     }
 
-    // MARK: Hero
-
     private func hero(_ e: GameEngine, _ l: MarketUI.CompanyLine) -> some View {
         let series: [Double] = MarketData.shareHistory(e, companyID: companyID)
         var parts: [String] = []
@@ -106,8 +98,6 @@ struct CompanyInMarketPage: View {
         return MarketHero(label: "Your share", value: l.shareText, context: parts.joined(separator: " \u{00B7} "), contextTint: tint,
                           series: series, identifier: "market-company-hero")
     }
-
-    // MARK: You against the field
 
     private func field(_ e: GameEngine, _ co: Company, _ rows: [MarketUI.CompareRow]) -> some View {
         let cur: Currency = e.currency(for: co)
@@ -160,8 +150,6 @@ struct CompanyInMarketPage: View {
         .newMarker(.market, r.rivalID.map { (rid: Int) -> String in "r\(companyID).\(rid)" } ?? "", style: .dot, alignment: .topLeading)
     }
 
-    // MARK: Compare with one rival
-
     @ViewBuilder private func compare(_ rows: [MarketUI.CompareRow]) -> some View {
         let rivals: [MarketUI.CompareRow] = rows.filter { (r: MarketUI.CompareRow) -> Bool in !r.mine }
         if let me = rows.first(where: { (r: MarketUI.CompareRow) -> Bool in r.mine }), !rivals.isEmpty {
@@ -194,8 +182,6 @@ struct CompanyInMarketPage: View {
         }
     }
 
-    // MARK: What wins
-
     private func wins(_ e: GameEngine, _ co: Company) -> some View {
         let lines: [String] = MarketData.whatWins(e, co)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -208,8 +194,6 @@ struct CompanyInMarketPage: View {
             }
         }
     }
-
-    // MARK: Prices
 
     @ViewBuilder private func priceTrend(_ e: GameEngine) -> some View {
         let trend: MarketTrend = e.marketTrend(companyID: companyID)
@@ -228,8 +212,6 @@ struct CompanyInMarketPage: View {
         }
     }
 
-    // MARK: Research and news
-
     private func research(_ e: GameEngine, _ co: Company) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             MarketLabel(title: "Market research")
@@ -244,8 +226,6 @@ struct CompanyInMarketPage: View {
             MarketEventRows(events: events, showsTitle: false)
         }
     }
-
-    // MARK: Menu
 
     @ViewBuilder private func menu(_ e: GameEngine, _ co: Company, _ l: MarketUI.CompanyLine) -> some View {
         if l.level == .marketAnalyst, let key = l.marketKey {

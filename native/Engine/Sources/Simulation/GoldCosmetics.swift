@@ -1,14 +1,10 @@
 import Foundation
 
-/// Cosmetics and comfort that gold buys or that boxes and collections hand out. They reuse `SeasonReward` so the same wardrobe
-/// (owned set, equip) serves the Season Pass and the store. Nothing here touches money or the simulation.
 public struct GoldCosmetic: Equatable, Sendable, Identifiable {
     public enum Source: String, Sendable { case box, store, collection }
     public var item: SeasonReward
     public var rarity: BoxRarity
-    /// `store`: sold for gold and also found in boxes. `box`: prizes only. `collection`: given for a finished collection.
     public var source: Source
-    /// Gold price in the store; nil when it cannot be bought.
     public var price: Int?
     public var id: String { item.id }
 }
@@ -20,7 +16,6 @@ public enum GoldCosmetics {
         return GoldCosmetic(item: SeasonReward(id: id, tier: 0, premium: false, kind: kind, title: title, detail: detail, colors: colors), rarity: rarity, source: source, price: p)
     }
 
-    /// Store price by rarity for items the store sells (legendary items are box and collection prizes only).
     public static func storePrice(_ rarity: BoxRarity) -> Int? {
         switch rarity {
         case .common: return 60
@@ -50,7 +45,6 @@ public enum GoldCosmetics {
         c("gold.coll.harbour", .backdrop, "Harbour Lights backdrop", "Reward for completing the Harbour Trade collection.", [0x2C5A66, 0x1A3238], .epic, .collection),
         c("gold.coll.market", .tradePlate, "Market Square trade plate", "Reward for completing the Market Square collection.", [0xD99AA6, 0x3A2227], .epic, .collection),
         c("gold.coll.archive", .richListFlair, "Archive seal", "Reward for completing the Town Archive collection.", [0xE4DFD3, 0x4A4842], .epic, .collection),
-        // Extra save slots: comfort, bought in order.
         c("gold.slot.1", .saveSlot, "Extra save slot", "Room for one more saved game.", [], .common, .store, price: 400),
         c("gold.slot.2", .saveSlot, "Second extra save slot", "Room for one more saved game.", [], .common, .store, price: 600),
         c("gold.slot.3", .saveSlot, "Third extra save slot", "Room for one more saved game.", [], .common, .store, price: 900)
@@ -58,17 +52,14 @@ public enum GoldCosmetics {
 
     public static func cosmetic(_ id: String) -> GoldCosmetic? { all.first { $0.id == id } }
 
-    /// Prizes a box can hold at a rarity, minus what the player already owns.
     public static func boxPool(_ rarity: BoxRarity, owned: Set<String>) -> [GoldCosmetic] {
         all.filter { $0.rarity == rarity && $0.item.kind != .saveSlot && $0.source != .collection && !owned.contains($0.id) }
     }
 
-    /// What the store sells for gold, in a fixed order.
     public static var storeItems: [GoldCosmetic] { all.filter { $0.price != nil } }
 }
 
 extension SeasonRewards {
-    /// Any season reward or gold cosmetic by id (the wardrobe reads both).
     public static func item(_ id: String) -> SeasonReward? {
         all.first { $0.id == id } ?? GoldCosmetics.cosmetic(id)?.item
     }

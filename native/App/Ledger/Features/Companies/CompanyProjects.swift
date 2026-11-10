@@ -4,9 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The order book of a project company: jobs on the go and waiting, tenders to bid for, and for a real-estate developer
-/// the developments (zoning, building, selling) and the sheet that starts a new one. Everything is read from
-/// `engine.projectBoard` and changed through the engine's project actions; no money is worked out here.
 struct CompanyProjects: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -25,12 +22,9 @@ struct CompanyProjects: View {
     }
 }
 
-/// The projects section's blocks sit on the page: plain cards inside draw flat.
 private struct FlatBlocks: ViewModifier {
     func body(content: Content) -> some View { content.environment(\.insideCard, true) }
 }
-
-// MARK: Jobs, tenders
 
 private struct JobList: View {
     @EnvironmentObject var store: GameStore
@@ -120,7 +114,6 @@ private struct JobList: View {
         return parts.joined(separator: " · ")
     }
 
-    // Tenders: buyers publish work; the best score on price and quality wins.
     @ViewBuilder private var tenders: some View {
         if ProjectTenders.catalog[company.type] != nil {
             MoreBlock(title: "Tenders", card: false, trailing: {
@@ -230,8 +223,6 @@ private struct JobList: View {
         }
     }
 }
-
-// MARK: Developments
 
 private struct DevelopmentList: View {
     @EnvironmentObject var store: GameStore

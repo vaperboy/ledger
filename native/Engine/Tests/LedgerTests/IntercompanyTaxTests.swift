@@ -5,8 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// A sale between two of your companies in the same country is a taxable supply: the supplier owes the VAT, a registered buyer reclaims it
-/// (the group pays nothing net), a buyer below the registration threshold bears it as a cost. Books balance on both sides.
 final class IntercompanyTaxTests: XCTestCase {
     private func setup(buyerRegistered: Bool, country: String = "NO") throws -> (GameEngine, buyer: Int, supplier: Int) {
         var e = try ChainsTests.engine(country)
@@ -20,7 +18,6 @@ final class IntercompanyTaxTests: XCTestCase {
             ChainsTests.play(&e, days: 7)
         }
         e.update { s, _, _ in
-            // the supplier is big enough to charge VAT; the buyer is registered (or not)
             for (id, rev) in [(cleaning, 2_000_000_000.0), (hotel, buyerRegistered ? 2_000_000_000.0 : 1_000.0)] {
                 let i = s.companyIndex(id)!
                 s.companies[i].monthlyHistory = (0..<12).map { MonthRecord(monthIndex: $0, revenue: rev, profit: 0, cash: 0) }

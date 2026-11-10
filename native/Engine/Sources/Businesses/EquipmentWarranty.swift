@@ -2,11 +2,7 @@ import Foundation
 import GameCore
 import Countries
 
-/// A breakdown of an item that is still under warranty needs no decision: the supplier repairs it at no cost, the unit is
-/// out of use for one or two days, and an informational message says so. Out of warranty the breakdown events keep asking the owner.
-/// The warranty data is the `warr` week of each unit (`EquipmentUnits.newUnit`) and of each vehicle (`CompanySetup`); a used unit has none.
 public enum EquipmentWarranty {
-    /// Is the next unit of this item (by name) under warranty now?
     public static func isCovered(_ s: GameState, companyID: Int, itemName: String, data: GameData) -> Bool {
         guard let co = s.company(companyID), let spec = data.catalog[co.type]?.allEquipment.first(where: { $0.name == itemName }) else { return false }
         if spec.vehicleModels != nil {
@@ -17,7 +13,6 @@ public enum EquipmentWarranty {
 
     static func covered(_ u: JSONValue, _ week: Int) -> Bool { u["warr"].double != 0 && Double(week) < u["warr"].double }
 
-    /// If the broken item is under warranty: the supplier repairs it (1-2 days out of use), an info message is posted, and true is returned (no decision).
     @discardableResult
     public static func repairIfCovered(_ s: inout GameState, companyIndex i: Int, itemName: String, data: GameData) -> Bool {
         let co = s.companies[i]

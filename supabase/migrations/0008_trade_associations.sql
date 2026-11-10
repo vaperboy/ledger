@@ -1,14 +1,8 @@
--- Trade associations: clubs of players in one trade and region (or across trades). Mirrors the engine's AssociationCatalogue,
--- AssociationStandards and GroupPurchasing. The server keeps who belongs to which club and applies the club's standards to the facts a
--- member reports; the pooled-buying discount rate comes from the member count held here. The discount itself and the monthly fee are
--- booked in the member's own ledger by the app (nothing moves between players), so neither is a settlement.
-
 create type public.association_standard as enum ('goodName', 'staffPaid', 'outOfTheRed', 'taxCurrent');
 
 create table public.association_clubs (
   id text primary key check (char_length(id) between 1 and 80),
   name text not null,
-  -- The trade in plain words and a country code; null for a club open to every trade or region.
   trade_name text,
   region text check (region ~ '^[A-Z]{2}$'),
   monthly_fee numeric(12, 2) not null check (monthly_fee >= 0),
@@ -24,7 +18,6 @@ create table public.association_members (
   club_id text not null references public.association_clubs (id),
   owner_id uuid not null references public.profiles (id) on delete cascade,
   company_key text not null check (char_length(company_key) between 1 and 64),
-  -- What the company is, for the member list ("Bakery in Leeds").
   trade_name text not null check (char_length(trade_name) between 1 and 40),
   city text not null default '' check (char_length(city) <= 60),
   joined_at timestamptz not null default now(),
@@ -32,7 +25,6 @@ create table public.association_members (
 );
 create index association_members_club on public.association_members (club_id);
 
--- A company removed for breaking a standard cannot rejoin that club until the ban ends.
 create table public.association_bans (
   owner_id uuid not null references public.profiles (id) on delete cascade,
   company_key text not null,
@@ -48,16 +40,11 @@ alter table public.association_bans enable row level security;
 revoke all on public.association_clubs, public.association_members, public.association_bans from anon, authenticated;
 grant select on public.association_clubs, public.association_members, public.association_bans to authenticated;
 create policy association_clubs_read on public.association_clubs for select to authenticated using (true);
--- Other members are listed through club_members(), which applies each player's privacy; directly you see only your own rows.
 create policy association_members_own on public.association_members for select to authenticated using (owner_id = auth.uid());
 create policy association_bans_own on public.association_bans for select to authenticated using (owner_id = auth.uid());
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Rules
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.assoc_slug(s text) returns text language sql immutable as $$ select regexp_replace(lower(s), '[^a-z0-9]', '', 'g'); $$;
 
--- The club of a trade in a region exists for every trade and region: it is created on first use, with the engine's fee, cap and standards.
 create function private.assoc_trade_club(p_trade text, p_region text) returns text language plpgsql security definer set search_path = '' as $$
 declare cid text := 'tr.' || private.assoc_slug(p_trade) || '.' || lower(p_region);
 begin
@@ -66,7 +53,6 @@ begin
   return cid;
 end $$;
 
--- A little more discount with each member, never above the club's cap or the hard cap of 8%.
 create function private.assoc_rate(members int, cap numeric) returns numeric language sql immutable as $$
   select case when members <= 0 then 0 else least(cap, 0.08, 0.01 + 0.001 * members) end;
 $$;
@@ -75,7 +61,6 @@ create function private.assoc_members(cid text) returns int language sql stable 
   select count(*)::int from public.association_members where club_id = cid;
 $$;
 
--- The standards a company breaks, from the facts the app reports.
 create function private.assoc_breaches(standards public.association_standard[], reputation numeric, weeks_negative int, wage_shortfall numeric, tax_due boolean)
 returns public.association_standard[] language sql immutable as $$
   select coalesce(array_agg(s), '{}') from unnest(standards) s
@@ -88,10 +73,6 @@ create function private.assoc_club_json(c public.association_clubs) returns json
     'standards', to_jsonb(c.standards), 'members', private.assoc_members(c.id), 'rate', private.assoc_rate(private.assoc_members(c.id), c.discount_cap));
 $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Functions
--- ---------------------------------------------------------------------------------------------------------------------
--- The clubs a company of this trade in this region may join: its trade club and the clubs across trades.
 create function public.clubs_for_company(p_trade text, p_region text) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); cid text;
 begin
@@ -107,7 +88,6 @@ begin
   if p_region !~ '^[A-Z]{2}$' or char_length(coalesce(p_trade, '')) not between 1 and 40 then raise exception 'invalid_company' using errcode = 'P0001'; end if;
   select * into c from public.association_clubs where id = p_club;
   if not found then raise exception 'not_found' using errcode = 'P0001'; end if;
-  -- A trade club takes only companies of its trade and region.
   if c.trade_name is not null and (private.assoc_slug(c.trade_name) <> private.assoc_slug(p_trade) or c.region <> p_region) then raise exception 'not_eligible' using errcode = 'P0001'; end if;
   select until into ban from public.association_bans where owner_id = uid and company_key = p_company_key and club_id = c.id;
   if ban is not null and ban > now() then raise exception 'removed_until:%', ban using errcode = 'P0001'; end if;
@@ -122,7 +102,6 @@ begin
   delete from public.association_members where owner_id = uid and company_key = p_company_key;
 end $$;
 
--- The member reports how the company stands. A breached standard removes it from the club and bars it for eight weeks.
 create function public.report_association_standing(p_company_key text, p_reputation numeric, p_weeks_negative int, p_wage_shortfall numeric, p_tax_due boolean) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); m public.association_members; c public.association_clubs; b public.association_standard[];
@@ -148,8 +127,6 @@ begin
   return private.assoc_club_json(c);
 end $$;
 
--- The players in a club as the viewer may see them: never Private players, never blocked pairs, and the line of business only where
--- the player's privacy lets this viewer see it (everyone's for Public players, friends' for Friends-level players).
 create function public.club_members(p_club text) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin

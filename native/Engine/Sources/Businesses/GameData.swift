@@ -1,7 +1,6 @@
 import Foundation
 import Countries
 
-/// The game's static data: countries, trades and balance numbers. Loaded once from the bundled JSON files.
 public struct GameData: Sendable {
     public let countries: CountryBook
     public let catalog: TradeCatalog

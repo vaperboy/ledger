@@ -1,12 +1,9 @@
 import SwiftUI
 
-/// The (i) for text that is too long to sit beside a button or switch: the sentence moves here, unchanged, and
-/// opens in a centred popup that is exactly as high as its text.
 struct InfoSheetButton: View {
     @Environment(\.outsidePalette) private var P
     var title: String
     var text: String
-    /// VoiceOver label and UI-test id; the label defaults to "About <title>".
     var label: String = ""
     var identifier: String = ""
     @State private var open = false

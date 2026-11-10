@@ -4,14 +4,9 @@ import Countries
 import Businesses
 import Simulation
 
-// The public exchange inside the Market app: the list of shares with price, band and change, your orders, your positions and the
-// holdings you can take public. Orders are placed on the share's own page (the ticket), see MarketStock.swift.
-
-/// Wording and small helpers shared by the exchange screens.
 enum ExchangeUI {
     static let weekdays: [String] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-    /// A share price: two decimals under a hundred, whole numbers above, in the player's currency.
     static func price(_ v: Double, _ cur: Currency) -> String {
         let local: Double = v / cur.rate
         if abs(local) >= 100 { return cur.tidyDisplay(v) }
@@ -22,7 +17,6 @@ enum ExchangeUI {
         return behind ? sign + digits + "\u{00A0}" + sy : sign + sy + digits
     }
 
-    /// The close that settles an order placed on game day `day` (0 = Monday): the same day's on a trading day, else Monday's.
     static func closeWord(day: Int) -> String { day <= 4 ? "the close on \(weekdays[day])" : "the close on Monday" }
 
     static func daysWord(_ n: Int) -> String { n <= 0 ? "today" : (n == 1 ? "tomorrow" : "in \(n) days") }
@@ -36,13 +30,9 @@ enum ExchangeUI {
         }
     }
 
-    /// The history of one share, oldest first (the row has none).
     static func history(_ e: GameEngine, _ id: String) -> [Double] { ExchangeBook(e.state).instruments[id]?.history ?? [] }
 }
 
-// MARK: Small drawing pieces
-
-/// Where today's close sits in the price band: the band is the track, the day's possible range is shaded, a dot marks the close.
 struct ExchangeBandBar: View {
     var low: Double
     var high: Double
@@ -73,7 +63,6 @@ struct ExchangeBandBar: View {
     }
 }
 
-/// A coloured change figure in a soft rounded tag.
 struct ExchangeChangeTag: View {
     var change: Double
     @Environment(\.outsidePalette) private var P
@@ -86,7 +75,6 @@ struct ExchangeChangeTag: View {
     }
 }
 
-/// A raised surface the exchange screens use for a share or an order.
 struct ExchangeCard<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @ViewBuilder var content: () -> Content
@@ -99,8 +87,6 @@ struct ExchangeCard<Content: View>: View {
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).stroke(P.line, lineWidth: 0.5))
     }
 }
-
-// MARK: The Exchange tab
 
 struct MarketExchangePage: View {
     @EnvironmentObject var store: GameStore
@@ -128,8 +114,6 @@ struct MarketExchangePage: View {
             }
         }
     }
-
-    // MARK: Hero
 
     private func hero(_ e: GameEngine, _ cur: Currency, _ rows: [ExchangeRow]) -> some View {
         let held: Double = PublicExchange.holdingsValue(e.state)
@@ -159,8 +143,6 @@ struct MarketExchangePage: View {
         }
     }
 
-    // MARK: Shares
-
     @ViewBuilder private func shares(_ e: GameEngine, _ cur: Currency, _ rows: [ExchangeRow]) -> some View {
         if rows.isEmpty {
             EmptyState(glyph: Glyph.stats, title: "The exchange opens soon", message: "Shares appear here once the market has its first prices.")
@@ -172,8 +154,6 @@ struct MarketExchangePage: View {
             }
         }
     }
-
-    // MARK: Orders
 
     @ViewBuilder private func openOrders(_ e: GameEngine, _ cur: Currency, _ rows: [ExchangeRow], _ orders: [ExchangeOpenOrder]) -> some View {
         if orders.isEmpty {
@@ -192,8 +172,6 @@ struct MarketExchangePage: View {
             Text("An order fills only if the closing price is at or better than your limit. Cash is taken when it fills.").textStyle(.caption)
         }
     }
-
-    // MARK: Positions
 
     @ViewBuilder private func positions(_ e: GameEngine, _ cur: Currency, _ rows: [ExchangeRow]) -> some View {
         let book: ExchangeBook = ExchangeBook(e.state)
@@ -237,7 +215,6 @@ struct MarketExchangePage: View {
         }
     }
 
-    /// One stacked bar for how the positions share the money.
     private func allocation(_ held: [ExchangePosition], _ book: ExchangeBook, _ total: Double) -> some View {
         GeometryReader { geo in
             HStack(spacing: 2) {
@@ -254,9 +231,6 @@ struct MarketExchangePage: View {
     }
 }
 
-// MARK: Cards
-
-/// One share in the market list: name and kind, price and change, where the close sits in the band, and what you hold.
 struct ExchangeShareCard: View {
     var row: ExchangeRow
     var cur: Currency
@@ -319,7 +293,6 @@ struct ExchangeShareCard: View {
     }
 }
 
-/// One open order with its plain meaning and a Cancel.
 struct ExchangeOrderCard: View {
     var order: ExchangeOpenOrder
     var name: String
@@ -358,7 +331,6 @@ struct ExchangeOrderCard: View {
     }
 }
 
-/// One position: shares, what they cost, what they are worth and the result.
 struct ExchangePositionCard: View {
     var instrument: ExchangeInstrument
     var position: ExchangePosition
@@ -397,9 +369,6 @@ struct ExchangePositionCard: View {
     }
 }
 
-// MARK: Go public (the list)
-
-/// The holdings you could take public, or have: one card each, opening the listing page.
 struct ExchangeListingList: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -447,7 +416,6 @@ extension ExchangeListingList {
     }
 }
 
-/// The listing check in words.
 enum ExchangeListingWords {
     static func short(_ r: ExchangeListOutcome, _ cur: Currency) -> String {
         switch r {

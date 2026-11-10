@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Managers, assistant managers, promotions: they run, the owner steps back, and the books still balance.
 final class ManagementTests: XCTestCase {
     private func gameWithCafe(seed: Int = 5) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -61,14 +60,12 @@ final class ManagementTests: XCTestCase {
         XCTAssertFalse(e.toggleAssistantDuty(companyID: id, duty: "equip"), "two jobs at most")
         for _ in 0..<(8 * 7) { e.nextDay() }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        // promote a worker to run the company
         let roles = e.hireableRoles(companyID: id)
         let c = e.searchWorkers(companyID: id, role: roles[0], mode: .agency)
         let w = c[0]
         XCTAssertEqual(e.hire(personID: w.id, companyID: id, monthlyWage: w.askingMonthlyWage * 1.3), .ok)
         let posts = ManagerModel.promotionPosts(e.state, companyID: id, personID: w.id, data: e.data)
         guard let post = posts.first(where: { $0.kind == "mgr" && $0.companyID == id }) else { return XCTFail("no manager post") }
-        // a low offer is answered with a counter (they ask for more), never with a refusal
         guard case .counter(let ask, _, _) = e.contractPropose(companyID: id, personID: w.id, proposal: .init(.promotion, amount: post.ask * 0.5, choice: post.id)) else { return XCTFail("a low offer gets a counter") }
         XCTAssertGreaterThanOrEqual(ask, post.ask * 0.5)
         guard case .agreed = e.contractPropose(companyID: id, personID: w.id, proposal: .init(.promotion, amount: max(ask, post.ask), choice: post.id)) else { return XCTFail("fair offer should be accepted") }

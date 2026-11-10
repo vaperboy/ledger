@@ -1,10 +1,5 @@
 import SwiftUI
 
-// Drawn artwork for the game's things (trades, artifacts, cosmetics, boxes, pass rewards, player icons): a gradient field, a quiet pattern,
-// one or two SF Symbols and a rarity frame. Everything is vector, so it is sharp at any size. `ItemArt` picks the right emblem by id and
-// swaps in a supplied picture when one exists (see `ArtLibrary.catalogueImage`).
-
-/// The tier of the frame drawn round an emblem. Plain has only a hairline (trades, avatars of no rarity).
 enum EmblemFrame: Int, Comparable {
     case plain, common, rare, epic, legendary
     static func < (a: EmblemFrame, b: EmblemFrame) -> Bool { a.rawValue < b.rawValue }
@@ -12,23 +7,19 @@ enum EmblemFrame: Int, Comparable {
 
 enum EmblemShape: Equatable {
     case round, tile, medal, shield
-    /// A wide plate (name plates, backdrops); drawn as a tile when the caller wants a square slot.
     case plate
 }
 
-/// The pattern behind the symbol.
 enum EmblemMotif: Equatable {
     case none, rays, rings, dots, stripes, waves, grid, hills, stars, plateLines
 }
 
-/// Where the main symbol sits.
 enum EmblemPlacement: Equatable {
     case center, leading, corner
 }
 
 struct EmblemSpec: Equatable {
     var symbol: String
-    /// A small second symbol in a disc at the bottom right.
     var badge: String? = nil
     var top: UInt32
     var bottom: UInt32
@@ -37,8 +28,6 @@ struct EmblemSpec: Equatable {
     var shape: EmblemShape = .tile
     var placement: EmblemPlacement = .center
 }
-
-// MARK: Outlines
 
 struct OctagonShape: Shape {
     func path(in rect: CGRect) -> Path {
@@ -83,8 +72,6 @@ extension EmblemShape {
         }
     }
 }
-
-// MARK: Pattern
 
 private struct EmblemMotifLayer: View {
     var motif: EmblemMotif
@@ -207,15 +194,11 @@ private struct EmblemMotifLayer: View {
     }
 }
 
-// MARK: The emblem
-
-/// One drawn emblem. `size` is the height; a plate is 1.6 times as wide when `wide` is true, otherwise every emblem is `size` square.
 struct EmblemView: View {
     var spec: EmblemSpec
     var frame: EmblemFrame = .plain
     var size: CGFloat = 44
     var wide: Bool = false
-    /// A supplied picture; replaces the drawn field and symbol, the shape and frame stay.
     var picture: Image? = nil
 
     private var isWide: Bool { wide && spec.shape == .plate }

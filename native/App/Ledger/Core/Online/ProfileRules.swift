@@ -1,14 +1,11 @@
 import Foundation
 
-/// Simple display-name rules, applied by the app before sending and by the server on receipt.
 enum ProfileRules {
     static let minLength = 2, maxLength = 20
 
     private static let reserved: [String] = ["admin", "moderator", "ledger", "support", "staff", "official"]
-    /// A short blocklist, matched after lower-casing and undoing common look-alike digits.
     private static let blocked: [String] = ["fuck", "shit", "cunt", "nazi", "bitch", "whore", "rape", "nigg", "fagg"]
 
-    /// nil when the name is acceptable, otherwise one plain sentence saying why not.
     static func problem(with raw: String) -> String? {
         let name: String = clean(raw)
         if name.count < minLength { return "Use at least \(minLength) characters." }
@@ -23,7 +20,6 @@ enum ProfileRules {
         return nil
     }
 
-    /// Trims and collapses runs of spaces.
     static func clean(_ raw: String) -> String {
         raw.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
     }

@@ -1,7 +1,6 @@
 import XCTest
 @testable import Simulation
 
-/// Cosmetics unlock rules and the Home progress maths.
 final class CosmeticsTests: XCTestCase {
     func testDefaultsAreAlwaysFree() {
         XCTAssertTrue(Cosmetics.isBadgeUnlocked(Cosmetics.defaultBadgeID, earned: [], pro: false))

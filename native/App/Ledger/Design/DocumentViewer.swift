@@ -2,8 +2,6 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// A business-report style view of an inbox document: letterhead, serif title, reference and date, sections divided by thin rules,
-/// lines as short paragraphs, figure points as a tiny bar list. Shown inside a `.centerSheet` (which scrolls long content itself).
 struct DocumentView: View {
     private var P: OutsidePalette { .game }
     var doc: InboxDocument
@@ -86,10 +84,4 @@ struct DocumentView: View {
         if v == v.rounded() && abs(v) < 1_000_000 { return String(Int(v)) }
         return String(format: "%.1f", v)
     }
-}
-
-/// An Identifiable wrapper so a document can drive `.centerSheet(item:)` without making an engine type Identifiable.
-struct DocumentItem: Identifiable {
-    let id: Int
-    let doc: InboxDocument
 }

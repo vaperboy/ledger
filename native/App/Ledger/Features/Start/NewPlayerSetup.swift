@@ -5,9 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The new-player setup: three steps, one screen each. Country (largest first), trade (the in-game picker's table: twelve starters, or
-/// all of them), company name.
-/// Nothing is created until `begin` is called from the last step; the start screen decides whether replacing a saved game needs asking first.
 struct NewPlayerSetup: View {
     enum Step { case country, trade, name }
 
@@ -18,17 +15,14 @@ struct NewPlayerSetup: View {
     @State private var countryCode = ""
     @State private var tradeID = ""
     @State private var companyName = ""
-    /// The owner's own name (stored as the player name); empty keeps the engine's default.
     @State private var playerName = ""
     @State private var suggested = ""
-    /// The game mode, chosen on the last step (Classic unless changed); fixed once the game starts.
     @State private var difficulty: Difficulty = .classic
     @State private var allTrades: [StarterTrade] = []
     @State private var loading = false
     @State private var showAll = false
     @State private var picked: StarterTrade?
     @State private var startCash: Double?
-    /// Narrows the long country list by name.
     @State private var countryQuery = ""
     @FocusState private var nameFocused: Bool
     private static let sizeOrder: [Country] = GameEngine.countriesBySize()
@@ -68,8 +62,6 @@ struct NewPlayerSetup: View {
         }
     }
 
-    // MARK: Step 1, country
-
     private var countryStep: some View {
         let q: String = countryQuery.trimmingCharacters(in: .whitespaces).lowercased()
         let shown: [Country] = q.isEmpty ? countries : countries.filter { (c: Country) -> Bool in c.name.lowercased().contains(q) }
@@ -107,8 +99,6 @@ struct NewPlayerSetup: View {
         step = .trade
     }
 
-    // MARK: Step 2, trade
-
     private var tradeStep: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -133,7 +123,6 @@ struct NewPlayerSetup: View {
         loading = false
     }
 
-    /// One row per trade (name, one line about it, start-up cost on the right): the twelve starters first, all trades on request.
     private var tradeTable: some View {
         let rest: [StarterTrade] = allTrades.filter { !GameEngine.starterTradeIDs.contains($0.id) }
         let shown: [StarterTrade] = showAll ? starters + rest : starters
@@ -181,7 +170,6 @@ struct NewPlayerSetup: View {
         picked = t
     }
 
-    /// The popup: what the business costs to open, the money you start with, one button.
     private func tradeSheet(_ t: StarterTrade) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(t.line.tidyMoney).popupText(.body)
@@ -213,8 +201,6 @@ struct NewPlayerSetup: View {
         step = .name
     }
 
-    // MARK: Step 3, name
-
     private var nameStep: some View {
         VStack(alignment: .leading, spacing: 16) {
             TextField("Company name", text: $companyName)
@@ -241,7 +227,6 @@ struct NewPlayerSetup: View {
         .onAppear { nameFocused = true }
     }
 
-    /// Three modes in one row with a sentence about the one picked.
     private var difficultyRow: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text("Difficulty").textStyle(.label, tint: Theme.inkFaint)

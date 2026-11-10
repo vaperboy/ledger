@@ -3,18 +3,11 @@ import GameCore
 import Countries
 import Finance
 
-/// The world around you: how people see you (public image), the people you know (contacts by role, favours owed and promises made),
-/// and the data behind the maps screen (ownership tree, presence by city, circles of influence). Rivals remembering you is in `Rivals`.
-/// Original: features/world/world_around_you.js (sections 6A public image, 7 people you know, 8 maps, 9A a local paper).
-/// Not ported: interviews and giving back (they feed the press group of the image: it stays at its neutral start until they exist),
-/// supplier owners as contacts, a missing permit sorted by a politician (the council only speaks well of you), the week in numbers.
 public enum WorldAround {
-    // MARK: Public image
 
     public struct ImageGroup: Equatable, Identifiable {
         public var id: String
         public var name: String
-        /// 0...100, nil when nobody there knows you yet.
         public var value: Double?
         public var word: String
     }
@@ -43,7 +36,6 @@ public enum WorldAround {
     static func word(_ x: Double, _ words: [String]) -> String { words[x >= 75 ? 4 : x >= 58 ? 3 : x >= 42 ? 2 : x >= 25 ? 1 : 0] }
     static func liveCompanies(_ s: GameState) -> [Company] { s.companies.filter { $0.status.isLive } }
 
-    /// How the press, bankers, staff, rivals, the council and customers see you, and what that opens and risks. Original: `image`.
     public static func image(_ s: GameState, data: GameData) -> Image {
         let pr = s.rest["pr28"]?["img"] ?? .null
         let trust = pr["trust"].isNull ? 50 : pr["trust"].double, bold = pr["bold"].isNull ? 50 : pr["bold"].double, care = pr["care"].isNull ? 50 : pr["care"].double
@@ -84,7 +76,6 @@ public enum WorldAround {
         return Image(label: lab[0], text: lab[1], opens: lab[2], risks: lab[3], groups: groups)
     }
 
-    /// Rivals who have noticed you, across your markets (the groups and the independents).
     static func knownRivals(_ s: GameState) -> [(rival: Rivals.Rival, company: Company)] {
         var out: [(Rivals.Rival, Company)] = [], seen = Set<Int>()
         for co in s.companies where co.status == .open {
@@ -93,17 +84,12 @@ public enum WorldAround {
         return out
     }
 
-    // MARK: A local paper
-
-    /// The business paper is named after your city. Original: `R31.paperName`.
     public static func paperName(_ s: GameState, data: GameData) -> String? {
         let cc = s.homeCountryCode
         let cityID = s.rest["player"]?["city"].string ?? ""
         guard let n = (data.countries.city(cityID, preferring: cc) ?? data.countries[cc]?.cities.first.map { (country: data.countries[cc]!, city: $0) })?.city.name, !n.isEmpty else { return nil }
         return CountryTraits.cityPaperName(cc, city: n) ?? "The " + n + " Ledger"
     }
-
-    // MARK: People you know
 
     public enum Role: String, CaseIterable { case executives = "Executives", investors = "Investors", bankers = "Bankers", lawyers = "Lawyers", journalists = "Journalists",
                                               politicians = "Politicians", suppliers = "Suppliers", rivalOwners = "Rival owners" }
@@ -113,10 +99,9 @@ public enum WorldAround {
         public var name: String
         public var role: Role
         public var organisation: String
-        /// 0...100
         public var relationship: Double
-        public var companyID: Int?                      // a manager of this company
-        public var rivalKey: String?, rivalID: Int?     // the owner of this rival
+        public var companyID: Int?
+        public var rivalKey: String?, rivalID: Int?
         public var word: String { relationshipWord(relationship) }
     }
 
@@ -124,7 +109,6 @@ public enum WorldAround {
 
     static func net(_ s: GameState) -> JSONValue { s.rest["net31"] ?? .object(["g": .object([:]), "f": .array([]), "ask": -99, "n": 0]) }
 
-    /// A contact who is part of the world: made up once, then the same person for the whole game. Original: `gen`.
     static func generated(_ s: inout GameState, data: GameData, key: String, role: Role, org: String) -> JSONValue {
         var N = net(s)
         var c = N["g"][key]
@@ -141,7 +125,6 @@ public enum WorldAround {
         return c
     }
 
-    /// Everyone you know, by role. Original: `roster`.
     public static func contacts(_ s: inout GameState, data: GameData) -> [Contact] {
         var out: [Contact] = []
         let live = liveCompanies(s)
@@ -180,8 +163,6 @@ public enum WorldAround {
             s.companies[i].set("mood", clamp((s.companies[i].value("mood").isNull ? 60 : s.companies[i].num("mood")) + d, 0, 100))
         }
     }
-
-    // MARK: Favours and promises
 
     public enum FavourKind: String { case owed, promise, owe }
     public enum FavourStatus: String { case open, done, used, broken, gone }
@@ -234,7 +215,6 @@ public enum WorldAround {
         body(&list[k]); N["f"] = .array(list); s.rest["net31"] = N
     }
 
-    /// What a favour gets you. Original: `giveWhat`.
     static func giveWhat(_ s: inout GameState, _ c: Contact, data: GameData) -> String {
         let best = liveCompanies(s).filter { $0.status == .open }.max { Valuation.companyValue($0, state: s, trades: data.catalog) < Valuation.companyValue($1, state: s, trades: data.catalog) }
         switch c.role {
@@ -265,7 +245,6 @@ public enum WorldAround {
         }
     }
 
-    /// Some favours pay back at once and say so; the rest are owed and can be called in. Original: `payBack`.
     @discardableResult
     static func payBack(_ s: inout GameState, _ c: Contact, give: String, data: GameData) -> String {
         if [.bankers, .lawyers, .suppliers, .journalists, .investors].contains(c.role) {
@@ -279,9 +258,6 @@ public enum WorldAround {
         return "\(c.name) owes you one: \(give)."
     }
 
-    // MARK: Weekly
-
-    /// Broken promises, owed favours coming due, and now and then someone asks you for something. Original: `netWeek`.
     public static func weekly(_ s: inout GameState, data: GameData) {
         guard !liveCompanies(s).isEmpty else { return }
         var roster: [Contact]? = nil
@@ -320,7 +296,6 @@ public enum WorldAround {
                      expiresWeek: s.week + 2)
     }
 
-    /// The owner answers a request or a call to return a favour. Original: `ACTS.fav31`.
     public static func answerFavour(_ s: inout GameState, message m: Message, option idx: Int, data: GameData) {
         let d = m.value("data")
         if d["k"].string == "back" {
@@ -356,7 +331,6 @@ public enum WorldAround {
 
     public enum ActionResult: Equatable { case ok(String), refused(String) }
 
-    /// Keep a promise: pay what it costs and they owe you one. Original: `ACT.fav31keep`.
     public static func keepPromise(_ s: inout GameState, favourID: Int, data: GameData) -> ActionResult {
         guard let f = favours(s).first(where: { $0.id == favourID }), f.status == .open, f.kind == .promise else { return .refused("Nothing to keep.") }
         if f.cost > 0 && s.cash < f.cost { return .refused("Not enough cash.") }
@@ -368,7 +342,6 @@ public enum WorldAround {
         return .ok("Promise kept. " + (what.isEmpty ? "\(f.name) owes you one." : what))
     }
 
-    /// Call in a favour someone owes you; it is not guaranteed. Original: `ACT.fav31call`.
     public static func callIn(_ s: inout GameState, favourID: Int, data: GameData) -> ActionResult {
         guard let f = favours(s).first(where: { $0.id == favourID }), f.status == .open, f.kind == .owed else { return .refused("Nothing to call in.") }
         let tried = s.rest["net31"]?["f"].array.first { $0["id"].int == favourID }?["tried"] ?? .null
@@ -387,7 +360,6 @@ public enum WorldAround {
         return .refused("\(c.name) could not help this time.")
     }
 
-    /// Ask a close contact for a favour, which you then owe back. Original: `ACT.fav31ask`.
     public static func askFavour(_ s: inout GameState, contactID: String, data: GameData) -> ActionResult {
         guard let c = contacts(&s, data: data).first(where: { $0.id == contactID }) else { return .refused("They are not around.") }
         if c.relationship < 64 { return .refused("You need to be close to ask a favour without one owed.") }
@@ -403,8 +375,6 @@ public enum WorldAround {
         return .refused("\(c.name) said no.")
     }
 
-    // MARK: Maps (read models)
-
     public struct OwnershipNode: Identifiable, Equatable {
         public var id: Int
         public var name: String
@@ -414,7 +384,6 @@ public enum WorldAround {
         public var depth: Int
     }
 
-    /// You, then your holdings with the companies under them, then the rest. Original: `V.map31`, "Ownership".
     public static func ownership(_ s: GameState, data: GameData) -> [OwnershipNode] {
         let cos = liveCompanies(s)
         func node(_ c: Company, _ d: Int) -> OwnershipNode {
@@ -435,7 +404,6 @@ public enum WorldAround {
         public var name: String
         public var companies: Int
         public var trades: [String]
-        /// 0 none, 1 one company, 2 two or three, 3 four or more
         public var level: Int
     }
     public struct CountryPresence: Identifiable, Equatable {
@@ -445,7 +413,6 @@ public enum WorldAround {
         public var cities: [CityTile]
     }
 
-    /// Where your companies are, city by city, the biggest cities first. Original: `V.map31`, "Presence".
     public static func presence(_ s: GameState, data: GameData) -> [CountryPresence] {
         let cos = liveCompanies(s)
         var codes: [String] = []
@@ -463,14 +430,13 @@ public enum WorldAround {
     }
 
     public struct Influence: Equatable {
-        public var inner: [String]       // your companies
-        public var allies: [String]      // contacts you are close to (50 or more)
-        public var others: [String]      // the rest: rivals and the wary
+        public var inner: [String]
+        public var allies: [String]
+        public var others: [String]
         public var seenAs: String
         public init(inner: [String], allies: [String], others: [String], seenAs: String) { self.inner = inner; self.allies = allies; self.others = others; self.seenAs = seenAs }
     }
 
-    /// Circles of influence: your companies inside, allies in the middle ring, rivals and the wary outside. Original: `V.map31`, "Influence".
     public static func influence(_ s: inout GameState, data: GameData) -> Influence {
         let R = contacts(&s, data: data)
         return Influence(inner: liveCompanies(s).map { $0.name }, allies: R.filter { $0.relationship >= 50 }.map { $0.name },

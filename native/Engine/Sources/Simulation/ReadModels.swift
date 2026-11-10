@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Investments
 
-/// Read-only views of the state for screens, so the app never reads raw JSON.
 public struct Quote: Identifiable, Equatable, Sendable {
     public var id: String { "\(kind.rawValue)-\(symbol)" }
     public var kind: Brokerage.Kind
@@ -13,7 +12,6 @@ public struct Quote: Identifiable, Equatable, Sendable {
     public var name: String
     public var sector: String
     public var price: Double
-    /// Change over the last week, as a share (nil when there is no history yet).
     public var weekChange: Double?
     public var history: [Double]
     public var quantity: Double
@@ -27,7 +25,6 @@ public struct NewsItem: Identifiable, Equatable, Sendable {
     public var week: Int
     public var text: String
     public var tone: String
-    /// The company of yours the item is about (0 = none).
     public var companyID: Int = 0
 }
 
@@ -74,20 +71,17 @@ public extension GameEngine {
         }
     }
 
-    /// Text as the player should read it: `{auth:..}` and `{m:..}` tokens resolved for the company's country (or the home country).
     func localized(_ text: String, companyID: Int = 0) -> String {
         let co = state.company(companyID)
         let cur = co.map { currency(for: $0) } ?? homeCurrency
         return TextTokens.resolve(text, country: cur.country, currency: cur)
     }
 
-    /// What a candidate says about their own experience on the CV, in years. Never the real figure (a candidate may be lying; a reference check finds out).
     func claimedExperienceYears(personID: Int) -> Double? {
         guard let p = state.people[personID], !p.value("claimExp").isNull else { return nil }
         return p.num("claimExp")
     }
 
-    /// Group tax across the group's companies: this year so far and last year (what went out to and came in from the group), for the group-tax comparison.
     func groupTaxContribution(companyID: Int) -> (thisYear: (out: Double, in: Double), lastYear: (out: Double, in: Double))? {
         guard let co = state.company(companyID) else { return nil }
         func pair(_ v: JSONValue) -> (out: Double, in: Double) { (v["out"].double, v["in"].double) }
@@ -96,7 +90,6 @@ public extension GameEngine {
         return (pair(now), pair(last))
     }
 
-    /// Display name of a company's trade ("Café"), falling back to the raw id.
     func tradeName(_ co: Company) -> String { data.catalog[co.type]?.name ?? co.type }
     func cityName(_ co: Company) -> String { data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? co.cityID }
     func currency(for co: Company) -> Currency { context.currency(co.countryCode, state) }

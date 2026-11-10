@@ -1,9 +1,6 @@
 import Foundation
 import Businesses
 
-/// The stand-in for the news side of the server: every six hours each sample player may have something to tell, drawn from their own sample
-/// data (their companies, level and trades). The same six-hour slot always gives the same events. Only Public and Friends-level players
-/// produce events, and the Friends-level ones reach friends alone.
 final class MockNewsFeedService: NewsFeedService {
     private static let slotSeconds: TimeInterval = 6 * 3600
     private static let slotsShown = 24
@@ -46,7 +43,6 @@ final class MockNewsFeedService: NewsFeedService {
         case .wentViral: break
         case .supplierMilestone: e.count = (1 + s.next(9)) * 500
         case .acquisition:
-            // The company bought is one a Public player has chosen to show.
             let others: [PlayerProfile] = roster.filter { $0.id != p.id && $0.privacy == .everyone }
             guard !others.isEmpty, let bought = others[s.next(others.count)].companies?.first else { return nil }
             e.otherName = bought.name

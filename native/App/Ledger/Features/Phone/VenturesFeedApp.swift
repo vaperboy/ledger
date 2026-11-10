@@ -1,8 +1,6 @@
 import SwiftUI
 import GameCore
 
-/// The standalone Ventures phone app: its own header and the Ventures palette around `VenturesHome`, the same portfolio that Projects shows
-/// in place. It adds no logic of its own.
 struct VenturesFeedApp: View {
     private var P: OutsidePalette { .ventures }
     @EnvironmentObject var store: GameStore

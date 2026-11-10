@@ -5,9 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Progressive unlocks: the registry, the one-time announcement and the silent seeding of old saves.
 final class UnlocksTests: XCTestCase {
-    /// An open company that opened `weeksAgo` weeks ago.
     static func opened(_ e: inout GameEngine, _ id: Int, weeksAgo: Int) {
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
@@ -45,7 +43,7 @@ final class UnlocksTests: XCTestCase {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cafe")
         Self.opened(&e, id, weeksAgo: 0)
-        ChainsTests.play(&e, days: 14)   // the first sweep seeds the record silently
+        ChainsTests.play(&e, days: 14)
         for u in e.pendingUnlocks() { e.markUnlockShown(id: u.id, companyID: u.companyID) }
         Self.opened(&e, id, weeksAgo: 60)
         ChainsTests.play(&e, days: 7)

@@ -4,9 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Pins the "meet a counterpart" rule: supplier lunch, rival lunch and key-account dinner. Each costs a set
-/// amount (scaled), can be repeated only after four weeks, and warms the relationship. Written against the separate copies and
-/// kept green after they were merged into `CounterpartMeeting`.
 final class CounterpartMeetingTests: XCTestCase {
     private func game(_ country: String = "UK", seed: Int = 7) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed)
@@ -33,8 +30,6 @@ final class CounterpartMeetingTests: XCTestCase {
 
     private func setWeek(_ e: inout GameEngine, _ delta: Int) { e.update { s, _, _ in s.week += delta } }
 
-    // MARK: Supplier lunch
-
     func testSupplierLunch() throws {
         var (e, _) = try game()
         let vid = "V-UK-3"
@@ -46,7 +41,6 @@ final class CounterpartMeetingTests: XCTestCase {
         XCTAssertEqual(rel, 7, "seed 7, week 0: the first draw of 5...9")
         XCTAssertGreaterThanOrEqual(rel, 5); XCTAssertLessThanOrEqual(rel, 9)
         XCTAssertEqual(e.state.rest["vr"]![vid]["meet"].int, e.state.week)
-        // Again at once: wait, nothing paid.
         let cash1 = e.state.cash
         XCTAssertEqual(e.lunchWithSupplier(vendorID: vid), .wait)
         XCTAssertEqual(e.state.cash, cash1)
@@ -65,8 +59,6 @@ final class CounterpartMeetingTests: XCTestCase {
         XCTAssertNil(e.state.rest["vr"]?["V-UK-3"]["meet"].isNull == false ? 1 : nil)
     }
 
-    // MARK: Rival lunch
-
     func testRivalLunch() throws {
         var (e, id) = try game()
         let rid = addRival(&e, id)
@@ -80,7 +72,6 @@ final class CounterpartMeetingTests: XCTestCase {
         var h = HashedRandom("\(e.state.seed):lunch:\(wk):\(rid)")
         let gain = 4 + (h.next() * 6).rounded(.down)
         let after = try XCTUnwrap(Rivals.rivals(e.state, for: co).first { $0.id == rid })
-        // The lunch gain, then the memory entry adds its own +4 (as the game has always done).
         XCTAssertEqual(after.relationship, min(100, min(100, before + gain) + 4))
         XCTAssertEqual(after.memory.first?.text, "Had lunch with you.")
         XCTAssertEqual(after.memory.first?.change, 4)
@@ -99,8 +90,6 @@ final class CounterpartMeetingTests: XCTestCase {
         XCTAssertEqual(e.meetRival(companyID: id, rivalID: rid), .cash)
         XCTAssertEqual(e.state.cash, cash)
     }
-
-    // MARK: Key-account dinner
 
     func testAccountDinner() throws {
         var (e, id) = try game()
@@ -137,7 +126,6 @@ final class CounterpartMeetingTests: XCTestCase {
         XCTAssertEqual(e.state.cash, cash)
     }
 
-    /// A fifth copy of the cool-down must not appear: the meeting files compare the last-meeting week only through `CounterpartMeeting`.
     func testNoHandWrittenMeetingCoolDown() throws {
         let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/Businesses")
         var hits: [String] = []

@@ -6,7 +6,6 @@ import Businesses
 @testable import Events
 import Simulation
 
-/// Abroad: new local rules fine a foreign company without a head-office country desk (original `regulationMonth`).
 final class AbroadComplianceTests: XCTestCase {
     private func abroadEngine() throws -> (GameEngine, Int) {
         var e = try ChainsTests.engine("UK")

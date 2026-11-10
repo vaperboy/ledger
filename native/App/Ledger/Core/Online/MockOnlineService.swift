@@ -286,8 +286,6 @@ actor MockOnlineService: OnlineService {
         save()
     }
 
-    func signedInPlayerID() -> String? { state.account == nil ? nil : state.me?.id }
-
     func visibleDirectory() -> [PlayerProfile] { settle(); return roster.map { view($0) } }
 
     func extensionData(for key: String) -> Data? { state.extra[key] }

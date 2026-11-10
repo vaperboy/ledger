@@ -6,38 +6,27 @@ import Finance
 public struct WealthLine: Equatable, Identifiable, Sendable {
     public var id: String
     public var title: String
-    /// What it adds to (or takes from) the total, after any discount.
     public var amount: Double
-    /// In words: what it is and how it was counted.
     public var words: String
 }
 
-/// Net worth as the rankings read it, with every part named. Public holdings count at the last close; private companies count at a
-/// discount because they cannot be sold in a day.
 public struct WealthStatement: Equatable, Sendable {
     public var lines: [WealthLine]
     public var total: Double
-    /// What the discounts took off the paper value of companies.
     public var discount: Double
-    /// Share (0...1) of the assets that is money or shares you could sell this week.
     public var liquidShare: Double
     public var summary: String
-    /// The plain net worth the rest of the game uses (before discounts), for comparison.
     public var plain: NetWorth
 }
 
 public enum Wealth {
-    /// A private company you run is counted at this much less than its value.
     public static let privateDiscount = 0.25
-    /// A stake in someone else's private company, and a startup stake, is counted at this much less.
     public static let minorityDiscount = 0.35
-    /// Your block of shares in your own listed company is counted at this much less than the close: a whole block cannot sell at once.
     public static let blockDiscount = 0.10
 
     public static func statement(_ s: GameState, trades: any TradeCatalogProviding, currency cur: Currency, forGoals: Bool = false) -> WealthStatement {
         let nw = Valuation.netWorth(s, trades: trades, forGoals: forGoals)
         let book = ExchangeBook(s)
-        // Your listed holdings: your shares at the last close instead of the company's paper value.
         var listedPaper = 0.0, listedMarket = 0.0
         var listedNames: [String] = []
         for co in s.companies where co.status.isLive && co.holdingID == 0 {
@@ -78,11 +67,8 @@ public enum Wealth {
     }
 }
 
-// MARK: Leaderboards
-
 public enum LeaderboardKind: String, CaseIterable, Sendable { case netWorth, tradingResult }
 
-/// What one player sends to the leaderboards. Amounts are in accounting units, which are the same in every country.
 public struct LeaderboardSubmission: Equatable, Sendable {
     public var playerID: String
     public var name: String
@@ -112,7 +98,6 @@ public struct LeaderboardEntry: Equatable, Identifiable, Sendable {
 public struct LeaderboardView: Equatable, Sendable {
     public var kind: LeaderboardKind
     public var top: [LeaderboardEntry]
-    /// The rows round you when you are not in the top list (empty when you are).
     public var around: [LeaderboardEntry]
     public var you: LeaderboardEntry?
     public var count: Int
@@ -123,13 +108,11 @@ public struct LeaderboardView: Equatable, Sendable {
 }
 
 public enum Leaderboards {
-    /// What the server stores for you: net worth as the statement counts it, and the result of your exchange trades.
     public static func submission(_ s: GameState, trades: any TradeCatalogProviding, currency: Currency, playerID: String) -> LeaderboardSubmission {
         LeaderboardSubmission(playerID: playerID, name: s.player.name, week: s.week,
                               netWorth: Wealth.statement(s, trades: trades, currency: currency, forGoals: true).total, tradingResult: PublicExchange.tradingResult(s))
     }
 
-    /// The board for one kind: everybody sorted by value (ties by name), with your own row in it.
     public static func view(_ kind: LeaderboardKind, me: LeaderboardSubmission, others: [LeaderboardSubmission], topCount: Int = 10, around: Int = 3) -> LeaderboardView {
         let all = (others.filter { $0.playerID != me.playerID } + [me]).sorted {
             $0.value(kind) != $1.value(kind) ? $0.value(kind) > $1.value(kind) : $0.name < $1.name

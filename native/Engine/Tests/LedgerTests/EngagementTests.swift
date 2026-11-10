@@ -5,9 +5,7 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Rival stories, the weekly plan and the Desk: when they open, what they do to the books, that they are deterministic and bounded.
 final class EngagementTests: XCTestCase {
-    /// A cafe that has traded a long time, with the first-session ladder done, and the sweep that opens the pages.
     func game(seed: Int = 4242, weeks: Int = 6, open: Bool = true) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         var id = 0
@@ -38,19 +36,15 @@ final class EngagementTests: XCTestCase {
         }
     }
 
-    /// Plays days until the condition holds (staged messages arrive on a random day of the week); fails after `limit` days.
     private func play(_ e: inout GameEngine, until limit: Int, _ what: String, _ cond: (GameEngine) -> Bool) {
         for _ in 0..<limit { if cond(e) { return }; play(&e, days: 1) }
         XCTAssertTrue(cond(e), "never happened: \(what)")
     }
 
-    // MARK: Opening
-
     func testPagesStayClosedInTheFirstSessionAndOpenLater() throws {
         var (e, id) = try game(open: false)
         XCTAssertFalse(e.deskOpen); XCTAssertFalse(e.weeklyPlanOpen); XCTAssertFalse(e.rivalsOpen)
         XCTAssertFalse(e.deskWaiting(realDay: 20_000))
-        // Even a company that has traded long enough waits while the first steps (the ladder) are not done.
         e.update { s, _, ctx in
             if let i = s.companyIndex(id) { s.companies[i].openedWeek = s.week - 40 }
             Unlocks.weekly(&s, context: ctx)
@@ -59,8 +53,6 @@ final class EngagementTests: XCTestCase {
         Self.openPages(&e, id)
         XCTAssertTrue(e.deskOpen); XCTAssertTrue(e.weeklyPlanOpen); XCTAssertTrue(e.rivalsOpen)
     }
-
-    // MARK: Desk data
 
     func testDeskDataIsWellFormedAndVariedByTrade() throws {
         let items = DeskStories.items, chapters = DeskStories.chapters
@@ -86,7 +78,6 @@ final class EngagementTests: XCTestCase {
                 if o.chance != nil { XCTAssertFalse(o.resultBad.isEmpty, "\(it.id) needs a text for the bad branch") }
             }
         }
-        // A gym owner and a bank owner see different, relevant situations, and every chapter can be finished by either.
         func fitting(_ trade: String, _ family: String) -> Set<String> { Set(items.filter { $0.fits.contains("any") || $0.fits.contains(trade) || $0.fits.contains(family) }.map { $0.id }) }
         let gym = fitting("gym", "venue"), bank = fitting("bank", "fin")
         XCTAssertNotEqual(gym, bank)
@@ -97,8 +88,6 @@ final class EngagementTests: XCTestCase {
         }
     }
 
-    // MARK: Desk loop
-
     func testDeskItemIsStablePerDayDeterministicAndOutcomeArrivesNextMorning() throws {
         var (e, id) = try game()
         let day = 20_000
@@ -108,7 +97,6 @@ final class EngagementTests: XCTestCase {
         XCTAssertEqual(t.companyID, id)
         XCTAssertEqual(try XCTUnwrap(e.deskOpenToday(realDay: day)).item.id, t.item.id, "same item all day")
         XCTAssertFalse(t.text.contains("{co}"))
-        // Another game with the same seed and history sees the same item.
         var (e2, _) = try game()
         XCTAssertEqual(try XCTUnwrap(e2.deskOpenToday(realDay: day)).item.id, t.item.id)
 
@@ -126,7 +114,6 @@ final class EngagementTests: XCTestCase {
         XCTAssertTrue(e.deskPlayingOut.isEmpty)
         let story = try XCTUnwrap(e.deskPages().flatMap { $0.stories }.first { $0.id == t.item.id })
         XCTAssertEqual(story.chosen, t.item.options[0].label)
-        // Skipping days costs nothing: the next real day simply has its own item.
         XCTAssertTrue(e.deskWaiting(realDay: day + 5))
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
@@ -164,8 +151,6 @@ final class EngagementTests: XCTestCase {
         }
     }
 
-    // MARK: Weekly plan
-
     func testWeeklyPlanOffersOnePlanAnswerChangesBooksAndOutcomeIsToldNextWeek() throws {
         var (e, id) = try game()
         play(&e, until: 14, "a plan is offered") { $0.openDecisions.contains { $0.actionID == WeeklyFocus.action } }
@@ -176,7 +161,7 @@ final class EngagementTests: XCTestCase {
         XCTAssertEqual(e.weeklyPlan.openMessageID, ask.id)
         var cash0 = 0.0, mods0 = 0
         e.update { s, _, _ in cash0 = s.company(id)!.cash; mods0 = s.company(id)!.value("mods").array.count }
-        XCTAssertTrue(e.answer(messageID: ask.id, option: 0))   // push sales
+        XCTAssertTrue(e.answer(messageID: ask.id, option: 0))
         e.update { s, _, _ in
             XCTAssertLessThan(s.company(id)!.cash, cash0, "the push costs a little marketing")
             let mods = s.company(id)!.value("mods").array
@@ -186,7 +171,6 @@ final class EngagementTests: XCTestCase {
         XCTAssertEqual(e.weeklyPlan.planned, 1)
         play(&e, until: 14, "the outcome is told") { $0.state.inbox.contains { $0.from == "Weekly plan" && $0.title.hasPrefix("Last week's plan") } }
         XCTAssertEqual(e.weeklyPlanResults.count, 1)
-        // A missed week takes nothing away, and a fresh plan is offered again.
         play(&e, until: 14, "the next plan") { $0.openDecisions.contains { $0.actionID == WeeklyFocus.action && $0.id != ask.id } }
         let next = try XCTUnwrap(e.openDecisions.first { $0.actionID == WeeklyFocus.action })
         play(&e, until: 21, "a newer plan after skipping one") { $0.openDecisions.contains { $0.actionID == WeeklyFocus.action && $0.id != next.id } }
@@ -201,8 +185,6 @@ final class EngagementTests: XCTestCase {
         XCTAssertEqual(WeeklyFocus.strength(400), WeeklyFocus.effect * (1 + WeeklyFocus.perkStep * Double(WeeklyFocus.perkTiers)), accuracy: 1e-12)
         XCTAssertLessThanOrEqual(WeeklyFocus.strength(400), 0.06)
     }
-
-    // MARK: Rivals
 
     func testRivalMovesAreDeterministicChangeTheRivalAndShowAsCards() throws {
         var (e, id) = try game()
@@ -223,7 +205,6 @@ final class EngagementTests: XCTestCase {
             }
             XCTAssertTrue(changed, "a move really changes the rival's record")
             tl1 = s.rest["rvs"]?["tl"] ?? .null
-            // The same start and the same weeks tell the same story.
             var t = snapshot
             for _ in 0..<260 { t.week += 1; RivalStories.weekly(&t, data: data) }
             XCTAssertEqual(t.rest["rvs"]?["tl"], tl1)
@@ -277,7 +258,7 @@ final class EngagementTests: XCTestCase {
         }
         let ask = try XCTUnwrap(e.openDecisions.first { $0.actionID == RivalStories.warAction })
         XCTAssertEqual(ask.options.count, 3)
-        XCTAssertTrue(e.answer(messageID: ask.id, option: 0))   // match it
+        XCTAssertTrue(e.answer(messageID: ask.id, option: 0))
         e.update { s, _, _ in
             let camp = s.company(id)!.value("camp16")
             XCTAssertEqual(camp["pct"].int, RivalStories.matchPercent)
@@ -296,8 +277,6 @@ final class EngagementTests: XCTestCase {
             XCTAssertLessThanOrEqual(offers, 104 / RivalStories.decisionGap + 1)
         }
     }
-
-    // MARK: Reminder
 
     func testDeskReminderIsTheExistingIdleReminderAndOnlyOnceTheDeskIsOpen() throws {
         var (e, _) = try game(open: false)

@@ -7,12 +7,6 @@ import Businesses
 import Simulation
 import Finance
 
-/// First screen. The game keeps one save (written after every day, with the previous copy and month-end backups kept by
-/// `SaveStore`), so the screen has three states:
-/// - no save: start a new game;
-/// - a save: continue it, with what it holds (who, where, which week, how many companies, when it was saved);
-/// - a save that could not be opened: why, a retry, and the warning that a new game replaces it.
-/// Starting over an existing save asks first, because it replaces that save.
 struct StartView: View {
     @EnvironmentObject var store: GameStore
     @Environment(AdCoordinator.self) private var ads
@@ -23,20 +17,17 @@ struct StartView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 44
     private let countries: [Country] = (try? CountryBook.bundled().countries) ?? []
 
-    /// What is replaced if the player goes ahead, in one line.
     private var replacedLine: String {
         if let s = summary { return "\(s.playerName)'s game (week \(s.week + 1), \(s.companies) \(s.companies == 1 ? "company" : "companies")) will be replaced." }
         return "The saved game that could not be opened will be replaced."
     }
 
-    /// Runs `body` at once when there is no save, otherwise after the player confirms replacing it.
     private func replacingSave(_ title: String, button: String, _ body: @escaping () -> Void) {
         guard store.hasSavedGame else { body(); return }
         pending = PendingAction(title: title, message: replacedLine + " The copy before it is kept as a backup file, but the game will no longer open it.",
                                 button: button, alwaysAsk: true, tone: .warning, icon: "arrow.counterclockwise", run: body)
     }
 
-    /// The new-player start: the company is created fully set up and open on day 1 (`LifeStory.fresh`).
     private func begin(country: String, trade: String, company: String, player: String, difficulty: Difficulty) {
         replacingSave("Start a new game?", button: "Start new game") {
             store.newGame(name: player, countryCode: country, story: .fresh, tradeID: trade, companyName: company, difficulty: difficulty)
@@ -58,8 +49,6 @@ struct StartView: View {
         .centerSheet(isPresented: $showSettings, title: "Settings", size: .tall, category: .detail, tone: .info) { SettingsView(embedded: true) }
     }
 
-    /// The wordmark as the hero, the saved game (or why it could not be opened) under it, and one pinned primary action: Continue when
-    /// there is a save, else Start. New game is a text button under Continue. The Settings gear sits top right.
     private var home: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xxl) {
@@ -116,9 +105,6 @@ struct StartView: View {
         .background(Theme.page)
     }
 
-    // MARK: States
-
-    /// A first launch: what the game is, in three lines, under the wordmark.
     private var promises: some View {
         let items: [(glyph: String, title: String, line: String)] = [
             (Glyph.group, "Open a business", ""),
@@ -135,7 +121,6 @@ struct StartView: View {
         .padding(.top, Theme.Space.xl)
     }
 
-    /// The saved game, unboxed: who and where, then week, companies and when it was saved.
     private var saveSummary: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text("Your game").textStyle(.label, tint: Theme.inkFaint)
@@ -154,13 +139,11 @@ struct StartView: View {
                 .padding(.top, Theme.Space.m)
                 .overlay(alignment: .top) { Hairline() }
             } else {
-                // The save opens (from the copy kept before the last one) but its summary could not be read.
                 Text("A saved game is waiting.").textStyle(.body, tint: Theme.inkSoft)
             }
         }
     }
 
-    /// Needs attention, so it is the one raised card on the screen.
     private func problemCard(_ problem: String) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(spacing: Theme.Space.s) {

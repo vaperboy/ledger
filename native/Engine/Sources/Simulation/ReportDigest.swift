@@ -3,9 +3,6 @@ import GameCore
 import Countries
 import Businesses
 
-/// What the report sheet shows when a week, a month or a year closes: the figures a player reads at a glance, taken from the
-/// stored report (real books only), plus the risks and decisions that exist right now. Nothing here is invented: a line
-/// appears only when its figure is there, and the sheet links to the Reports app for the detail.
 public struct ReportDigest: Equatable, Sendable {
     public var kind: ReportKind
     public var reportID: Int
@@ -15,26 +12,21 @@ public struct ReportDigest: Equatable, Sendable {
     public var netProfit: Double
     public var cashEnd: Double
     public var cashChange: Double
-    /// Private loans and tax assessed, at the end of the period.
     public var debt: Double
     public var debtChange: Double
     public var payroll: Double
     public var taxes: Double
     public var netWorthEnd: Double
     public var netWorthChange: Double
-    /// Major changes, most important first (hires and leavers, loans, best and worst company, reputation).
     public var changes: [String]
     public var risks: [String]
     public var decisionsAnswered: Int
     public var decisionsOpen: Int
-    /// The shorter periods that closed together with this one (a month ends with its last week): shown here once, not again.
     public var includes: [ReportKind]
-    /// "Decisions this week: 7. Handled by your team: 5. Escalated to you: 2." Empty when no decision was raised in the period.
     public var delegation: String = ""
 }
 
 public extension GameEngine {
-    /// The digest of one stored report. Money is in the home currency's accounting unit; the app formats it.
     func reportDigest(_ r: PeriodReport) -> ReportDigest {
         let cur = homeCurrency
         func amount(_ v: Double) -> String { cur.short(abs(v)).replacingOccurrences(of: "\u{00A0}", with: " ") }
@@ -77,16 +69,13 @@ public extension GameEngine {
         return digest
     }
 
-    /// The report sheet to show now, or nil: the one pending report the player has not yet dismissed (see `pendingReportPrompt`).
-    /// A year covers the month and the week that closed with it, so only one sheet is ever offered for a day.
     func pendingReportDigest() -> ReportDigest? { pendingReportPrompt().map { reportDigest($0) } }
 
-    /// The digest of the day just played. `fresh` is the messages that arrived with it (`DayOutcome.newMessages`).
     func dailyDigest(fresh: [Message]) -> DailyDigest {
         var sales = 0
         var revenue = 0.0
         var best: (name: String, units: Int)?
-        var earlierBest = 0.0   // the best takings of an earlier day this week, all companies together
+        var earlierBest = 0.0
         let live = state.companies.filter { $0.status.isLive }
         for d in 0..<max(state.day, 0) {
             let total: Double = live.reduce(0.0) { acc, co in acc + DailyTrade.soldOn(co, week: state.week, day: d)["r"].double }
@@ -114,30 +103,20 @@ public extension GameEngine {
     }
 }
 
-/// The short popup shown after an ordinary day: what the day's trade did and which messages need a look. Real figures only:
-/// a line appears only when there is something behind it, and a day with nothing to say has `isEmpty == true`.
 public struct DailyDigest: Equatable, Sendable {
     public var dateLabel: String
-    /// Customers served today across all open companies.
     public var sales: Int
     public var revenue: Double
     public var bestCompany: String?
     public var bestSales: Int
-    /// Good news from today's messages.
     public var wentWell: [String]
-    /// Today's messages that need a look (asks and bad news), most important first.
     public var staffMessages: [String]
     public var decisionsOpen: Int
-    /// What the day did to the owner's money: filled by the app from the day history (nil when there is no history yet).
     public var cashChange: Double? = nil
     public var netWorthChange: Double? = nil
-    /// The day's profit over all companies' books (filled by the app from `groupBooksProfit` before and after the day).
     public var profit: Double? = nil
-    /// Decisions a hired rank took for the owner today ("Mia, manager: Replace the oven?").
     public var handled: [String] = []
-    /// Title of the first of today's messages that needs a decision (a new Inbox item), nil when none arrived.
     public var newInboxTitle: String? = nil
-    /// Today's takings beat every earlier day of this week.
     public var bestDayOfWeek: Bool = false
     public var isEmpty: Bool { sales == 0 && wentWell.isEmpty && staffMessages.isEmpty }
 }

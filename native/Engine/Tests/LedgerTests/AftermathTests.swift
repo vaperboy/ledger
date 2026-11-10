@@ -6,8 +6,6 @@ import Countries
 import Finance
 import Simulation
 
-/// Event chains: a lost lawsuit, a patched machine, a resignation, a failed supplier, a cyber attack and a failed inspection
-/// each queue a follow-up that arrives later as an Inbox decision, changes real state, fires once and is written to the report.
 final class AftermathTests: XCTestCase {
     func engineWithCompany(trade: String = "cafe", weeks: Int = 3) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242)
@@ -20,7 +18,6 @@ final class AftermathTests: XCTestCase {
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: false)
         }
         for _ in 0..<(weeks * 7) { e.nextDay() }
-        // The company's own weekday decides when its paperwork clears and it opens: play on until it has.
         var extra = 0
         while e.state.company(id)?.status != .open && extra < 14 { e.nextDay(); extra += 1 }
         return (e, id)
@@ -33,7 +30,6 @@ final class AftermathTests: XCTestCase {
         let c = EventEngine.context(for: s.companies[i], data: data, country: World(state: s, data: data).country(s.companies[i]))
         EventEngine.apply(&s, companyIndex: i, fx, ctx: c, event: ev(event), data: data, context: ctx)
     }
-    /// Move the clock until everything queued is due, then fire it.
     func fireDue(_ s: inout GameState, data: GameData, ctx: FinanceContext) {
         s.week += 20
         Aftermath.weekly(&s, data: data, context: ctx)
@@ -45,7 +41,7 @@ final class AftermathTests: XCTestCase {
 
     func testEveryFollowUpHasThreeCostedOptionsAndKeepsTheBooksBalanced() throws {
         let (base, id) = try engineWithCompany()
-        XCTAssertEqual(Aftermath.templates.count, 11)   // the twelfth chain, the copycat lawsuit, reuses `Lawsuits.begin`
+        XCTAssertEqual(Aftermath.templates.count, 11)
         for kind in Aftermath.templates.keys.sorted() {
             let template = try XCTUnwrap(Aftermath.event(kind), kind)
             XCTAssertEqual(template.options.count, 3, kind)
@@ -75,7 +71,6 @@ final class AftermathTests: XCTestCase {
             XCTAssertLessThan(s.company(id)!.reputation, repBefore)
             XCTAssertTrue(hasMod(s, id, "dem"), "reviews dip")
             XCTAssertEqual(kinds(s, id), ["premium", "copycat"])
-            // Losing a second time while one is queued does not stack follow-ups.
             Lawsuits.lose(&s, id, .object(["claim": 1000, "who": "B", "big": true]), data: data)
             XCTAssertEqual(AftermathQueue.pending(s, companyID: id).count, 2)
             XCTAssertTrue((s.rest["rep"]?["ev"].array ?? []).contains { $0["co"].int == id && $0["t"].string.contains("press") }, "the report mentions it")
@@ -84,7 +79,6 @@ final class AftermathTests: XCTestCase {
             XCTAssertTrue(AftermathQueue.pending(s, companyID: id).isEmpty, "processed once")
             XCTAssertNotNil(openAft(s, id, "premium"))
             XCTAssertTrue(s.inbox.contains { $0.companyID == id && $0.actionID == "sue16" && $0.status == "open" }, "a new claim arrives")
-            // Cooldown: the same chain cannot be queued again straight away.
             XCTAssertFalse(AftermathQueue.schedule(&s, companyID: id, kind: "premium", delay: 1))
         }
         let m = try XCTUnwrap(e.state.inbox.first { $0.str("ev") == "aft_premium" })
@@ -102,7 +96,6 @@ final class AftermathTests: XCTestCase {
             fireDue(&s, data: data, ctx: ctx)
             XCTAssertNotNil(openAft(s, id, "relapse"))
             let repBefore = s.company(id)!.reputation
-            // Ignored: the cheapest answer is to keep running it.
             s.week += 5
             EventEngine.expire(&s, data: data, context: ctx)
             XCTAssertNil(openAft(s, id, "relapse"))

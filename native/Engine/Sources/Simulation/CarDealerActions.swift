@@ -2,20 +2,16 @@ import Foundation
 import GameCore
 import Businesses
 
-/// The new-car dealership (trade `cardealer`): showroom stock, ordering, prices and the brand contract. The rules are in `CarDealer` and `CarBrandContract`.
 public extension GameEngine {
-    /// The cars in the showroom and on order.
     func carDealerRows(companyID: Int) -> [CarDealerRow] {
         state.company(companyID).map { CarDealer.rows($0, week: state.week) } ?? []
     }
 
-    /// Car spaces the premises hold, and how many are taken (cars and orders).
     func carDealerSpaces(companyID: Int) -> (total: Int, used: Int) {
         guard let co = state.company(companyID), let bd = data.catalog[CarDealer.tradeID] else { return (0, 0) }
         return (CarDealer.spaces(co, bd), CarDealer.carsInShowroom(co) + CarDealer.carsOnOrder(co))
     }
 
-    /// What can be ordered now from the current supplier (the distributor, or the contract brand).
     func carDealerOffers(companyID: Int) -> [CarDealerOffer] {
         state.company(companyID).map { CarDealer.offers($0, state, data) } ?? []
     }
@@ -37,9 +33,6 @@ public extension GameEngine {
         return ok ? .applied : .refused("That car cannot be priced like that.")
     }
 
-    // MARK: Brand contract
-
-    /// The brands that sell in the company's country with the terms each would give today.
     func carBrandTerms(companyID: Int) -> [CarBrandContract.Terms] {
         guard let co = state.company(companyID) else { return [] }
         return CarBrands.forCountry(co.countryCode).compactMap { CarBrandContract.terms(brandID: $0.id, co, state, data) }

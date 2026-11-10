@@ -9,15 +9,10 @@ import SaveSystem
 @testable import Events
 @testable import Simulation
 
-/// Tours for the reworked systems: role-aware notices, owner meetings, the CEO replacement vote, every sale route and unlocks.
-/// Every tour plays real days through `GameEngine` and checks, each day and week: ledger gaps, no company or personal cash below zero out of nothing,
-/// no duplicate messages, desk/owner routing is consistent, and the owner's new open decisions per week stay small. LEDGER_PLAYTEST=1 only.
 final class PlaytestReworkTours: XCTestCase {
     var tour = ""
     var cur: Currency!
-    /// Largest number of new owner-addressed open decisions in one week, per tour (reported on flush).
     var maxOwnerNew = 0
-    /// True while a tour holds an account at its overdraft floor on purpose.
     var stress = false
 
     override func setUpWithError() throws { try XCTSkipUnless(PT.enabled, "set LEDGER_PLAYTEST=1") }
@@ -30,9 +25,6 @@ final class PlaytestReworkTours: XCTestCase {
         if !cond() { find(sev, msg, line: line); XCTFail("\(tour): \(msg)", line: line) }
     }
 
-    // MARK: Fixtures
-
-    /// A funded, open, trading company (UK cafe, quick setup) with the weeks given already played.
     func fixture(_ trade: String = "cafe", manager: Bool = false, accountant: Bool = false, weeks: Int = 10, seed: Int = 5) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tour", seed: seed)
         cur = e.homeCurrency
@@ -75,7 +67,6 @@ final class PlaytestReworkTours: XCTestCase {
         return p.id
     }
 
-    /// Give the owner `owner` percent: outside holders take the rest (growth / dividend minded), as the unit tests build co-owned companies.
     func coOwn(_ e: inout GameEngine, _ id: Int, owner pct: Double) {
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
@@ -93,9 +84,6 @@ final class PlaytestReworkTours: XCTestCase {
         }
     }
 
-    // MARK: Daily and weekly invariants
-
-    /// Plays `weeks` weeks. Decisions are answered with option 0 unless `answer` is false. Returns the messages that came in.
     @discardableResult
     func run(_ e: inout GameEngine, weeks: Int, answer: Bool = true, extraDaily: ((GameEngine) -> Void)? = nil) -> [Message] {
         var all: [Message] = []
@@ -116,7 +104,6 @@ final class PlaytestReworkTours: XCTestCase {
         return all
     }
 
-    /// The first option that does not sell, close or dismiss anything (the bot must not start a sale by accident).
     func safeOption(_ m: Message) -> Int {
         let bad = ["sale", "sell", "close", "dismiss", "fire", "replace", "let go", "shut"]
         return m.options.indices.first { i in let l = m.options[i]["l"].string.lowercased(); return !bad.contains { l.contains($0) } } ?? 0
@@ -138,7 +125,6 @@ final class PlaytestReworkTours: XCTestCase {
             if !m.isOwnerAddressed && m.handledBy.isEmpty && m.status == "done" { find(3, "desk notice with nobody shown as handling it: \(normTitle(m.title, names: s.companies.map { $0.name }))") }
             if m.sev > 4 || m.sev < 0 { find(2, "severity out of range \(m.sev)") }
         }
-        // the same decision twice in the inbox at once (same company, title, still open)
         var open = Set<String>()
         for m in s.inbox where m.status == "open" {
             let key = "\(m.companyID)|\(m.title)"
@@ -161,8 +147,6 @@ final class PlaytestReworkTours: XCTestCase {
         } catch { find(1, "save round trip threw \(error): \(what)") }
     }
 
-    // MARK: 1 Owner meetings, each position
-
     func testOwnerMeetings() throws {
         tour = "OwnerMeetings"
         var (e, id) = try fixture(manager: true, accountant: true, weeks: 12)
@@ -172,7 +156,6 @@ final class PlaytestReworkTours: XCTestCase {
         let positions = Set(who.map { $0.position })
         ex(positions.contains("ceo"), "a hired manager shows as the CEO counterpart")
         for k in ["fin", "sales", "hr", "ops"] where !positions.contains(k) { find(2, "hired \(k) head is not a meeting counterpart") }
-        // Only the CEO holds the quarterly review: a direction and a budget, once each a quarter.
         for c in who where c.position != "ceo" { ex(e.ownerTopics(companyID: id, personID: c.id).isEmpty, "\(c.position) holds no talk of their own") }
         guard let ceo = who.first(where: { $0.position == "ceo" }), let sc = e.ownerScene(companyID: id, personID: ceo.id, topic: "review") else { return find(1, "the CEO has no review scene") }
         ex(!sc.lines.isEmpty, "the review has lines")
@@ -189,17 +172,14 @@ final class PlaytestReworkTours: XCTestCase {
             ex(f.state.company(id) != nil, "company still exists after \(ch.id)", sev: 1)
         }
         ex(choicesRun == sc.choices.count && choicesRun >= 7, "every choice of the review plays (\(choicesRun))", sev: 3)
-        // a second pick of the same kind inside the quarter is refused with text, not a state change
         if let ch = sc.choices.first {
             _ = e.ownerChoose(companyID: id, personID: ceo.id, topic: "review", choice: ch.id)
             let h = e.playtestHash
             let again = e.ownerChoose(companyID: id, personID: ceo.id, topic: "review", choice: ch.id)
             ex(again != nil && again!.text.contains("this quarter") && e.playtestHash == h, "a repeated pick inside the quarter changes nothing")
         }
-        // wait out the quarter: allowed again
         run(&e, weeks: OwnerMeetings.cooldownWeeks + 1)
         ex(e.ownerTopics(companyID: id, personID: ceo.id).allSatisfy { $0.waitWeeks == 0 }, "the review opens again after \(OwnerMeetings.cooldownWeeks) weeks")
-        // a stranger changes nothing
         ex(e.ownerChoose(companyID: id, personID: 999_999, topic: "review", choice: "dir:lean") == nil, "a person who is not at the company cannot be met")
         saves(e, "after meetings")
     }
@@ -225,8 +205,6 @@ final class PlaytestReworkTours: XCTestCase {
         ex(e.ceoVote(companyID: id).owners.count == 1, "only the owner is in the owners column for a sole-owner company")
     }
 
-    // MARK: 2 CEO replacement
-
     func testCeoVoteSoleOwner() throws {
         tour = "CeoVoteSolo"
         var (e, id) = try fixture(manager: true, accountant: true, weeks: 10)
@@ -242,7 +220,6 @@ final class PlaytestReworkTours: XCTestCase {
         if case .refused = r2 {} else { ex(false, "a second proposal with nobody to replace is refused (\(r2))") }
         let told = run(&e, weeks: 8)
         ex(!told.contains { $0.title.contains("manager has left") }, "after the owner replaces the CEO on purpose there is no \"manager has left\" emergency")
-        // hire a new one, propose again
         hireManager(&e, id)
         run(&e, weeks: 4)
         ex(e.proposeCEOChange(companyID: id) == .dismissed, "the next CEO can be replaced too")
@@ -268,7 +245,6 @@ final class PlaytestReworkTours: XCTestCase {
 
     func testCeoVoteMinorityFailedAndBlock() throws {
         tour = "CeoVoteMinority"
-        // find a week where the co-owners vote the proposal down, then check the 8-week block exactly
         var (e, id) = try fixture(manager: true, accountant: true, weeks: 10)
         coOwn(&e, id, owner: 25)
         history(&e, id, profit: 6_000)
@@ -287,7 +263,6 @@ final class PlaytestReworkTours: XCTestCase {
                 let m1 = f.state.company(id).map { $0.value("mood").isNull ? 60 : $0.value("mood").double } ?? 60
                 ex(m1 < m0, "a failed vote costs the CEO's mood")
                 failedAt = f.state.week
-                // blocked now, and every week until week+8
                 for w in 0..<8 {
                     let r2 = f.proposeCEOChange(companyID: id)
                     if case .blocked(let wk) = r2 { ex(wk == 8 - w, "block shows \(8 - w) weeks left (got \(wk))") }
@@ -303,16 +278,12 @@ final class PlaytestReworkTours: XCTestCase {
             run(&e, weeks: 1)
         }
         ex(failedAt != nil, "co-owners with a profitable company vote the replacement down within 12 weeks", sev: 3)
-        // losing company: owners agree and the vote passes
         history(&e, id, profit: -6_000)
         var passed = false
         for _ in 0..<8 { if e.ceoVote(companyID: id).passes { let r = e.proposeCEOChange(companyID: id); passed = (r == .dismissed); break }; run(&e, weeks: 1) }
         ex(passed, "co-owners agree to replace the CEO of a company that loses money", sev: 3)
     }
 
-    // MARK: 3 Sale routes
-
-    /// Plays until the listing holds an offer (no answering sale decisions needed). Returns the first offer.
     func waitForOffer(_ e: inout GameEngine, _ id: Int, weeks: Int = 40) -> CompanySale.Offer? {
         for _ in 0..<weeks {
             if let o = e.saleListing(companyID: id)?.offers.first { return o }
@@ -358,7 +329,6 @@ final class PlaytestReworkTours: XCTestCase {
             ex(!e.startSale(companyID: id, route: route), "\(route): a second listing of the same company is refused")
             guard let off = waitForOffer(&e, id) else { find(2, "\(route): no offer in 40 weeks"); continue }
             ex(off.price > 0 && off.expiresWeek > e.state.week - 1, "\(route): offer has a price and a future expiry")
-            // talk: ask, then counter above and at the price
             var f = e
             f.askBuyer(companyID: id, offerID: off.id, question: "staff")
             f.askBuyer(companyID: id, offerID: off.id, question: "payment")
@@ -374,7 +344,6 @@ final class PlaytestReworkTours: XCTestCase {
             ex(open.isEmpty, "\(route): nothing stays open for a sold company (\(open.map { $0.title }.prefix(2)))")
             saves(e, "after \(route) sale")
         }
-        // decline path, and offers lapse after six weeks
         var (e, id) = try fixture(manager: true, accountant: true, weeks: 16)
         _ = e.startSale(companyID: id, route: "private")
         if let off = waitForOffer(&e, id) {
@@ -399,9 +368,7 @@ final class PlaytestReworkTours: XCTestCase {
         ex(l.round == 1 && l.offers.count >= 3, "round 1 brings at least three named bids (\(l.offers.count))")
         ex(Set(l.offers.map { $0.buyer }).count == l.offers.count, "bidders have distinct names")
         ex(l.offers.allSatisfy { $0.price >= l.reserve }, "bids start at the reserve or higher")
-        // hammer in round 1 on a fork
         do { var f = e; let n0 = netBook(f, id); let got = f.hammerSale(companyID: id); ex(got != nil && got! > 0 && netBook(f, id) > n0, "hammer in round 1 sells"); soldClean(f, id, "hammer r1") }
-        // wait: bids rise and bidders drop out; track the best price per round
         var best: [Double] = [l.offers.map { $0.price }.max() ?? 0]
         var counts = [l.offers.count]
         for _ in 0..<2 {
@@ -420,18 +387,15 @@ final class PlaytestReworkTours: XCTestCase {
         ex(fee > 0, "auction proceeds positive")
         run(&e, weeks: 6)
         saves(e, "after auction")
-        // an auction left alone ends by itself, never stuck
         var (g, gid) = try fixture(manager: true, accountant: true, weeks: 16, seed: 8)
         let gv = CompanySale.estimatedValue(g.state, companyID: gid, data: g.data)
         _ = g.startAuction(companyID: gid, reserve: gv * 0.3)
         run(&g, weeks: 12)
         ex(g.saleListing(companyID: gid) == nil, "an unattended auction does not stay listed after 12 weeks")
-        // a reserve nobody meets: hammer returns nil and nothing changes
         var (h, hid) = try fixture(manager: true, accountant: true, weeks: 16, seed: 9)
         _ = h.startAuction(companyID: hid, reserve: gv * 50)
         let hh = h.playtestHash
         ex(h.hammerSale(companyID: hid) == nil && h.playtestHash == hh, "hammer with no bids over the reserve does nothing")
-        // a stake auction
         var (k, kid) = try fixture(manager: true, accountant: true, weeks: 16, seed: 10)
         let own0 = k.state.company(kid)?.ownership ?? 100
         if k.startAuction(companyID: kid, reserve: gv * 0.05, percent: 25) {
@@ -479,7 +443,6 @@ final class PlaytestReworkTours: XCTestCase {
         ex(e.mergeWithRival(companyID: id, rivalID: c.id, percent: 30) != .merged, "the same rival cannot merge twice")
         run(&e, weeks: 10)
         saves(e, "after merger")
-        // a low offer can be turned down, and then retried the next week
         var (f, fid) = try fixture(manager: true, accountant: true, weeks: 20, seed: 11)
         if let c2 = f.mergeCandidates(companyID: fid).first {
             var tries = 0
@@ -508,9 +471,7 @@ final class PlaytestReworkTours: XCTestCase {
             ex(Ledger.gaps(e.state).isEmpty, "stake \(pct)%: ledger after sale", sev: 1)
             ex(e.saleListing(companyID: id) == nil, "stake \(pct)%: listing is closed")
             run(&e, weeks: 6)
-            // after the stake, a co-owned company has a binding board when outside owners exist
             ex(!e.boardIsAdvisory(companyID: id), "stake \(pct)%: with a co-owner the board is no longer advisory")
-            // selling again: tiers re-read what is left
             let t2 = e.stakeTiers(companyID: id)
             ex(t2.allSatisfy { $0.youKeep >= 0 }, "stake \(pct)%: nothing negative is kept after a second look")
             saves(e, "after \(pct)% stake")
@@ -532,7 +493,6 @@ final class PlaytestReworkTours: XCTestCase {
             run(&f, weeks: 8)
             saves(f, "after group sale")
         } else { find(3, "no rival group is active in the UK after 50 weeks (route shut: \(e.saleRoutes(companyID: id).first { $0.id == "group" }?.why ?? ""))") }
-        // a listed company: the group route must not look open and then refuse silently
         do {
             var l = e
             if l.startSale(companyID: id, route: "private"), let b = buyers.first {
@@ -541,7 +501,6 @@ final class PlaytestReworkTours: XCTestCase {
                 if open && r == nil { find(3, "group route shows as available while the company is listed, then sellToGroup silently returns nil") }
             }
         }
-        // master franchise: launch the franchise the real way (papers first), else note it
         let reqs = e.franchiseRequirements(companyID: id)
         ex(!reqs.isEmpty, "franchise requirements are listed", sev: 3)
         ex(e.sellMasterFranchise(companyID: id, country: "DE") == .noFranchise, "master franchise refused before the franchise exists")
@@ -550,7 +509,7 @@ final class PlaytestReworkTours: XCTestCase {
         run(&e, weeks: 16)
         let lr = e.launchFranchise(companyID: id, entryFee: cur.scaledPrice(20_000), royalty: 0.06, support: 1)
         if !e.isFranchisor(companyID: id) {
-            _ = lr   // a young cafe has no profitable quarters yet: the franchise system is injected for the master sale
+            _ = lr
             e.update { s, _, _ in
                 guard let i = s.companyIndex(id) else { return }
                 s.companies[i].set("fr", .object(["on": 1, "fee": .number(cur.scaledPrice(20_000)), "roy": 0.06, "supp": 1, "brand": 15, "units": .array([]), "app": .array([]), "masters": .array([])]))
@@ -595,10 +554,6 @@ final class PlaytestReworkTours: XCTestCase {
         run(&e, weeks: 6)
     }
 
-    // MARK: 4 Payroll-short notices
-
-    /// Holds the account at the bottom of its overdraft room plus `fraction` of the wages owed, so the next payday can pay only that share
-    /// (the overdraft room is spendable on payday). Plays six weeks so a payday falls inside. Returns the pay29s messages seen.
     func payrollShort(_ e: inout GameEngine, _ id: Int, fraction: Double) -> [Message] {
         var seen: [Message] = []
         stress = true; defer { stress = false }
@@ -620,7 +575,6 @@ final class PlaytestReworkTours: XCTestCase {
 
     func testPayrollShortRouting() throws {
         tour = "PayrollShort"
-        // (accountant, manager) -> who gets it. A non-serious shortfall (about 70% of wages in the account) goes to the desk when one exists.
         for (acct, mgr) in [(true, false), (false, true), (true, true), (false, false)] {
             var (e, id) = try fixture(manager: mgr, accountant: acct, weeks: 12, seed: 5 + (acct ? 1 : 0) + (mgr ? 2 : 0))
             let msgs = payrollShort(&e, id, fraction: 0.7)
@@ -630,7 +584,6 @@ final class PlaytestReworkTours: XCTestCase {
             for (w, l) in weekly { ex(l.count <= 1, "at most one payroll-short notice per week (\(l.count) in week \(w), \(tag))") }
             for m in msgs {
                 if acct || mgr {
-                    // serious ones (hardly anything paid) may reach the owner; 70% is not serious unless late for a second month
                     if m.isOwnerAddressed { find(2, "payroll short at 70% reached the owner although a desk exists (\(tag))", "week \(m.week) status \(m.status)") }
                     else { ex(m.status == "done" && !m.handledBy.isEmpty && m.audience == "finance", "desk notice is done, handled by someone and addressed to finance (\(tag): \(m.status)/\(m.handledBy)/\(m.audience))") }
                 } else {
@@ -640,12 +593,10 @@ final class PlaytestReworkTours: XCTestCase {
             }
             saves(e, "payroll short \(tag)")
         }
-        // serious: almost nothing in the account reaches the owner even with an accountant
         var (e, id) = try fixture(manager: false, accountant: true, weeks: 12, seed: 14)
         let msgs = payrollShort(&e, id, fraction: 0.03)
         if msgs.isEmpty { find(3, "no payroll-short notice at 3% of wages with an accountant") }
         else { ex(msgs.contains { $0.isOwnerAddressed && $0.severity >= 3 }, "a serious shortfall (3% of wages) reaches the owner although an accountant exists") }
-        // several short companies in one week: one message for all
         var (m, a) = try fixture(manager: false, accountant: true, weeks: 12, seed: 15)
         m.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(20_000_000), why: "Test capital") }
         guard case .success(let b) = m.startCompany(tradeID: "cafe", cityID: m.state.player.cityID, fundWith: cur.scaledPrice(6_000_000), quickSetup: true) else { return }
@@ -661,8 +612,6 @@ final class PlaytestReworkTours: XCTestCase {
         ex(shared.count == 1, "two short companies in one week share one notice")
     }
 
-    // MARK: 5 Unlocks follow the player
-
     func testUnlocksFollowThePlayer() throws {
         tour = "Unlocks"
         var (e, a) = try fixture(manager: true, accountant: true, weeks: 12)
@@ -672,7 +621,6 @@ final class PlaytestReworkTours: XCTestCase {
         let later = e.unlockState(companyID: a)
         let earnedChain = later.first { $0.id == "chain" }?.unlocked ?? false
         if !earnedChain { find(3, "chain unlock not earned after 72 weeks of trading (reason: \(later.first { $0.id == "chain" }?.reason ?? ""))") }
-        // a second company starts: player-level unlocks are open at once and not announced again
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(20_000_000), why: "Test capital") }
         guard case .success(let b) = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, fundWith: cur.scaledPrice(3_000_000), quickSetup: true) else { return find(3, "second company did not start") }
         let sb = e.unlockState(companyID: b)
@@ -687,10 +635,8 @@ final class PlaytestReworkTours: XCTestCase {
         for _ in 0..<12 { run(&e, weeks: 1) }
         let pend = e.pendingUnlocks().filter { $0.companyID == b }
         for p in pend where ["chain", "franchise", "abroad", "research"].contains(p.id) { find(2, "player-level unlock \(p.id) is announced again for the second company") }
-        // announcements arrive once, in order, and clear when shown
         for p in e.pendingUnlocks() { e.markUnlockShown(id: p.id, companyID: p.companyID) }
         ex(e.pendingUnlocks().isEmpty, "marking every unlock shown clears the list")
-        // the first company is sold: the second keeps what the player earned
         if e.startSale(companyID: a, route: "private"), let off = waitForOffer(&e, a, weeks: 40) {
             _ = e.acceptBuyerOffer(companyID: a, offerID: off.id)
             for id in ["chain", "franchise", "abroad", "research"] {
@@ -698,12 +644,9 @@ final class PlaytestReworkTours: XCTestCase {
                 if mine { ex(e.unlockState(companyID: b).first { $0.id == id }?.unlocked == true, "\(id) stays open after the company that earned it is sold") }
             }
         }
-        // a company that is already using something is never locked out of it
         run(&e, weeks: 4)
         saves(e, "after unlocks")
     }
-
-    // MARK: 6 One long game with the whole rework and the weekly flood count
 
     func testLongPlayFlood() throws {
         tour = "LongPlay"

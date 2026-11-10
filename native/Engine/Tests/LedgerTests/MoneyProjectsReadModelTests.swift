@@ -4,7 +4,6 @@ import Finance
 import Simulation
 @testable import Businesses
 
-/// The read-only figures of the money and projects screens agree with the actions they describe.
 final class MoneyProjectsReadModelTests: XCTestCase {
     private func rich(seed: Int = 4242) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -30,7 +29,6 @@ final class MoneyProjectsReadModelTests: XCTestCase {
             XCTAssertEqual(q.totalInterest, q.totalRepaid - amount, accuracy: 1)
             XCTAssertGreaterThan(q.totalInterest, 0)
         }
-        // A longer term means a smaller instalment but more interest.
         let short = e.loanQuote(kind: "cons", amount: amount, termMonths: 12, companyID: nil)
         let long = e.loanQuote(kind: "cons", amount: amount, termMonths: 120, companyID: nil)
         XCTAssertLessThan(long.monthlyPayment, short.monthlyPayment)
@@ -82,7 +80,6 @@ final class MoneyProjectsReadModelTests: XCTestCase {
         let own = try XCTUnwrap(plan.choices.first { $0.kind == .own })
         XCTAssertEqual(own.extraCost, e.rivalStartupMoney(companyID: id, rivalID: r.id))
 
-        // Leave just too little for buying it as its own company: the plan says so, and the purchase is refused.
         var poor = e
         poor.update { s, _, _ in
             let target = own.cashNeeded - 1000
@@ -92,7 +89,6 @@ final class MoneyProjectsReadModelTests: XCTestCase {
         XCTAssertEqual(poorPlan.choices.first { $0.kind == .own }?.affordable, false)
         XCTAssertEqual(poor.buyRival(companyID: id, rivalID: r.id, price: price), .notEnoughCash)
 
-        // With enough, the plan says yes and the purchase goes through.
         XCTAssertEqual(own.affordable, true)
         guard case .ok = e.buyRival(companyID: id, rivalID: r.id, price: price) else { return XCTFail("the purchase should work") }
     }

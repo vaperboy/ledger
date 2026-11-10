@@ -6,7 +6,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Roadmap A1 and A2: one engine function (`Dismissal`) decides and books a dismissal; every caller delegates to it.
 final class DismissalEngineTests: XCTestCase {
     private func cafe(_ code: String = "UK", seed: Int = 9) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)
@@ -32,8 +31,6 @@ final class DismissalEngineTests: XCTestCase {
     private func cash(_ e: GameEngine, _ id: Int) -> Double { e.state.company(id)?.cash ?? 0 }
     private func labels(_ e: GameEngine, _ id: Int) -> [String] { (e.state.company(id)?.transactions ?? []).map { $0["l"].string } }
 
-    // MARK: Every caller's cash change is the single function's quote
-
     func testEveryStaffCallerMatchesTheQuote() throws {
         enum Way: CaseIterable { case profile, layoff, proposalCut, direct }
         for way in Way.allCases {
@@ -41,7 +38,6 @@ final class DismissalEngineTests: XCTestCase {
             let sid = addStaff(&e, id, years: 5)
             let quote = try XCTUnwrap(Dismissal.quote(e.state, companyID: id, staffID: sid, reason: way == .profile ? nil : .redundancy, data: e.data))
             XCTAssertGreaterThan(quote.severance, 0, "\(way)")
-            // layoff and proposals take the weakest, so make the target the only one
             e.update { s, _, _ in let i = s.companyIndex(id)!; s.companies[i].staff = s.companies[i].staff.filter { $0.id == sid } }
             let before = cash(e, id)
             var extra = 0.0
@@ -77,7 +73,6 @@ final class DismissalEngineTests: XCTestCase {
         let before = cash(e, id)
         e.update { s, d, _ in Dismissal.dismiss(&s, companyID: id, staffID: sid, reason: .resignation, noticeServed: true, data: d) }
         XCTAssertEqual(cash(e, id), before, accuracy: 0.5)
-        // a manager who has worked their notice
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))
         XCTAssertEqual(e.hireManager(personID: cands[1].id, companyID: id, monthlyWage: cands[1].askingMonthlyWage * 1.2), .ok)
         let b2 = cash(e, id)
@@ -87,8 +82,6 @@ final class DismissalEngineTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    // MARK: Rules
-
     func testForCauseWithWarningsPaysNoSeveranceInEveryCountry() throws {
         let book = try CountryBook.bundled()
         for c in book.countries {
@@ -96,7 +89,6 @@ final class DismissalEngineTests: XCTestCase {
             let rules = LabourRules(country: c)
             let t = rules.termination(tenureWeeks: 260, reason: .forCause)
             XCTAssertEqual(t.severanceWeeks, 0, "\(code): for cause owes no severance")
-            // the player-facing reasons agree on what they owe
             XCTAssertEqual(rules.termination(tenureWeeks: 260, reason: .unjustified), rules.termination(tenureWeeks: 260, reason: .redundancy), code)
             XCTAssertEqual(rules.termination(tenureWeeks: 260, reason: .resignation), rules.termination(tenureWeeks: 260, withCause: true), "\(code): resignation = the old for-cause path")
         }
@@ -116,7 +108,7 @@ final class DismissalEngineTests: XCTestCase {
 
     func testProfileShowsTheSumTheDismissalWillCost() throws {
         var (e, id) = try cafe()
-        let cands = try XCTUnwrap(e.searchManagers(companyID: id))   // real people for the profile screen
+        let cands = try XCTUnwrap(e.searchManagers(companyID: id))
         let warned = cands[0].id, plain = cands[1].id
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
@@ -147,7 +139,7 @@ final class DismissalEngineTests: XCTestCase {
     }
 
     func testThreePaymentsStayApartAndNoticeCarriesTheEmployerCharge() throws {
-        var (e, id) = try cafe("BR")   // notice, severance fund fine
+        var (e, id) = try cafe("BR")
         let sid = addStaff(&e, id, years: 4)
         let co = try XCTUnwrap(e.state.company(id))
         let q = try XCTUnwrap(Dismissal.quote(e.state, companyID: id, staffID: sid, reason: .redundancy, data: e.data))
@@ -174,8 +166,6 @@ final class DismissalEngineTests: XCTestCase {
         let sid = addStaff(&e, id, years: 5)
         XCTAssertFalse(try XCTUnwrap(e.dismissStaff(companyID: id, staffID: sid)).claimedUnfairDismissal, "at will: no claim")
     }
-
-    // MARK: One copy only
 
     func testOnlyDismissalPostsTheSeverancePayments() throws {
         let sources = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources")

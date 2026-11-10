@@ -3,8 +3,6 @@ import GameCore
 import Finance
 import Simulation
 
-/// Keeps the engine's trial-run estimates for the start-a-company screens: plays them off the main thread, one at a time, and remembers them
-/// while the game stays in the same week with the same cash.
 @MainActor final class StartEstimator: ObservableObject {
     @Published private(set) var done: [String: StartEstimate] = [:]
     private var running: [String: Task<StartEstimate?, Never>] = [:]
@@ -37,7 +35,6 @@ import Simulation
         return v
     }
 
-    /// Works out every trade the player can pay for, cheapest first, so the lists fill in while the player reads.
     func warm(_ e: GameEngine, cityID: String) {
         let k = "\(cityID)|\(e.state.week)|\(Int(Payments.liquid(e.state)))"
         if k == warmedKey { return }

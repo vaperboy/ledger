@@ -2,19 +2,15 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// Where the player's cosmetic choice is kept (per device, in UserDefaults through @AppStorage). The rules (what may be worn) live in
-/// the engine (`Cosmetics`); a lapsed Pro simply resolves to the default badge and theme until Pro returns.
 enum CosmeticKeys {
     static let badge: String = "cosmetics.badge"
     static let theme: String = "cosmetics.theme"
 }
 
 extension Cosmetics.Palette {
-    /// The accent colour of this palette.
     var accent: Color { Color(red: red, green: green, blue: blue) }
 }
 
-/// A round logo badge: the symbol in the accent colour on a soft disc.
 struct CosmeticBadgeView: View {
     var badge: Cosmetics.Badge
     var tint: Color
@@ -31,7 +27,6 @@ struct CosmeticBadgeView: View {
     }
 }
 
-/// A ring that fills to `progress` (0...1) in the accent colour.
 struct AccentRing: View {
     var progress: Double
     var tint: Color
@@ -51,7 +46,6 @@ struct AccentRing: View {
     }
 }
 
-/// A percentage that counts up when its value is animated.
 struct CountUpPercent: View, Animatable {
     var value: Double
     var animatableData: Double {
@@ -64,10 +58,6 @@ struct CountUpPercent: View, Animatable {
     }
 }
 
-// MARK: Wardrobe
-
-/// The Pro wardrobe: pick a logo badge and an accent colour, with a live preview. Career badges are free once earned; premium
-/// badges and the colour themes need Ledger Pro. Locked items can be previewed, not worn.
 struct WardrobeView: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
@@ -189,12 +179,10 @@ struct WardrobeView: View {
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    /// Pins the unlock bar under the popup's body while the previewed look is locked.
     @ViewBuilder private func withUnlock<V: View>(_ v: V, show: Bool) -> some View {
         if show { v.popupFooter { unlockBar } } else { v }
     }
 
-    /// Shown while the previewed look is locked.
     private var unlockBar: some View {
         let lockedByPro: Bool = (Cosmetics.badge(previewBadge).premium && !ent.isPro) || (Cosmetics.theme(previewTheme).premium && !ent.isPro)
         return VStack(spacing: 6) {

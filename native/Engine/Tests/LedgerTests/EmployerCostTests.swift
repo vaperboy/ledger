@@ -6,7 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// One employer-cost function; the hiring preview equals what payroll books (part-time, seasonal, full-time) in six countries.
 final class EmployerCostTests: XCTestCase {
     func testPreviewEqualsWhatPayrollBooksInSixCountries() throws {
         for code in ["UK", "US", "DE", "PL", "MX", "JP"] {
@@ -23,7 +22,6 @@ final class EmployerCostTests: XCTestCase {
                 let co = try XCTUnwrap(e.state.company(id))
                 let booked = e.employerCost(companyID: id, personID: pid)
                 XCTAssertEqual(booked?.totalMonthly ?? -1, preview.totalMonthly, accuracy: 0.5, "\(code) \(name): preview equals profile")
-                // Payroll's weekly accrual of this one person equals the breakdown (without benefits).
                 var solo = co
                 solo.staff = co.staff.filter { $0.id == pid }
                 solo.managerID = nil

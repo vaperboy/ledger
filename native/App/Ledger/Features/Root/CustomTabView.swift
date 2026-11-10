@@ -3,7 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// Set on the root screen of the Custom tab: the tab root has nothing to go back to, so the round back button of an app header is hidden.
 private struct HidesRootBackKey: EnvironmentKey { static let defaultValue: Bool = false }
 extension EnvironmentValues {
     var hidesRootBack: Bool {
@@ -12,8 +11,6 @@ extension EnvironmentValues {
     }
 }
 
-/// The Custom tab: the chosen destination as the root of its own navigation stack. Phone apps are the very same `PhoneAppScreen` the
-/// Phone tab opens; what they link to (a company, another app) is pushed on this stack, so Back works. Tapping the tab again returns to the root.
 struct CustomTabView: View {
     @EnvironmentObject var store: GameStore
 
@@ -39,8 +36,6 @@ struct CustomTabView: View {
     }
 }
 
-/// The compact popup that changes the Custom tab: a grid of destinations with their icons, and "A company" for a second step that lists
-/// the player's companies.
 struct CustomTabPicker: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -56,7 +51,6 @@ struct CustomTabPicker: View {
         .accessibilityIdentifier("custom-picker")
     }
 
-    /// Every Phone app (Store and Market included), then "A company's page".
     private var appGrid: some View {
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
         return VStack(alignment: .leading, spacing: 12) {

@@ -4,8 +4,6 @@ import Countries
 import Events
 import Simulation
 
-/// The popup that appears on the main screen when a week, a month or a year closes. It is read and dismissed with one tap before the next day
-/// can run: a natural pause, real figures only, one sheet per closing (a year covers its month and week). "Open in Reports" goes to the detail.
 struct ReportDigestSheet: View {
     @EnvironmentObject var store: GameStore
     var digest: ReportDigest
@@ -32,7 +30,6 @@ struct ReportDigestSheet: View {
         }
     }
 
-    /// One plain sentence on how the period went and what moved it, from the digest's own figures (nothing invented).
     private var headline: String {
         let profit: Double = digest.netProfit
         var s: String = profit >= 0 ? "A profit of \(store.short(profit))" : "A loss of \(store.short(abs(profit)))"
@@ -109,20 +106,15 @@ struct ReportDigestSheet: View {
 
 }
 
-/// A reward popup: a trophy, a milestone or a finished ladder goal. One at a time, from the queue the store holds after a day;
-/// it says what the goal changed, arrives with a calm animation (none under Reduce Motion) and a light haptic.
 struct CelebrationPopup: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var item: Celebration
     @State private var shown = false
-    /// Goal complete: the card turns green, the check draws itself, the reward fades in.
     @State private var goalShown = false
     @State private var checkDrawn: CGFloat = 0
-    /// Goal complete: after `celebrate` (1.5 s) the card slides up and out with `move`.
     @State private var leaving = false
 
-    /// A trophy or a net-worth milestone fills the screen; Reduce Motion keeps the card.
     private var fullScreen: Bool { !reduceMotion && (item.kind == "trophy" || (item.kind == "milestone" && item.art == "milestone.networth")) }
 
     var body: some View {
@@ -170,7 +162,6 @@ struct CelebrationPopup: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// The way out once nothing is left to claim here: the pulsing Claim for a trophy or milestone (already paid), else Nice, Next or Done.
     @ViewBuilder private var dismissButton: some View {
         if dismissTitle == "Claim" {
             ClaimButton(title: "Claim", identifier: "celebration-dismiss") { dismiss() }.padding(.top, 4)
@@ -180,10 +171,8 @@ struct CelebrationPopup: View {
         }
     }
 
-    /// A finished goal: the week report tells it in a line instead of this popup.
     static func foldsIntoReport(_ item: Celebration) -> Bool { item.kind == "goal" }
 
-    /// A goal closes with "Nice"; a trophy or milestone (nothing to take) with the pulsing Claim.
     private var dismissTitle: String { item.kind == "goal" ? "Nice" : "Claim" }
 
     private var trophyEntry: Trophies.Entry? {
@@ -191,7 +180,6 @@ struct CelebrationPopup: View {
         return Trophies.entries(e.state).first(where: { $0.name == item.title })
     }
 
-    /// The earned trophy's art in a large gold ring; a drawn gold medal when nothing maps to the title.
     @ViewBuilder private var badge: some View {
         if item.kind == "goal" {
             GoalCheckMark(progress: reduceMotion ? 1 : checkDrawn)
@@ -222,7 +210,6 @@ struct CelebrationPopup: View {
     }
 }
 
-/// A check mark that draws itself as `progress` goes from 0 to 1.
 struct GoalCheckMark: Shape {
     var progress: CGFloat
     var animatableData: CGFloat {

@@ -6,7 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// You are a franchisee: royalties, the brand's quality standard, the contract, and the way out.
 struct FranchiseeCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -46,7 +45,6 @@ struct FranchiseeCard: View {
     }
 }
 
-/// You are the franchisor.
 struct FranchisorCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -88,8 +86,6 @@ struct FranchisorCard: View {
         }
     }
 
-    // MARK: Before launch
-
     @ViewBuilder private func notYet(_ cur: Currency) -> some View {
         let reqs = engine.franchiseRequirements(companyID: company.id)
         Text("Others open units under your name for a fee and royalties, once the chain has proven itself. \(reqs.filter { $0.ok }.count) of \(reqs.count) ready.")
@@ -130,8 +126,6 @@ struct FranchisorCard: View {
         }.padding(.top, Theme.Space.m)
     }
 
-    // MARK: Running
-
     enum FranchiseTab: String, CaseIterable, Identifiable {
         case network, pipeline, countries
         var id: String { rawValue }
@@ -144,7 +138,6 @@ struct FranchisorCard: View {
         }
     }
 
-    /// One franchised unit as the network list shows it.
     private struct UnitRow: Identifiable {
         var id: Int
         var name: String
@@ -155,7 +148,6 @@ struct FranchisorCard: View {
         var end: Int
     }
 
-    /// The units of one city, shown together like a pin on a map.
     private struct CityGroup: Identifiable {
         var id: String { city }
         var city: String
@@ -229,8 +221,6 @@ struct FranchisorCard: View {
         }
     }
 
-    // MARK: Network
-
     private func cityGroups(_ units: [UnitRow]) -> [CityGroup] {
         let grouped: [String: [UnitRow]] = Dictionary(grouping: units, by: { $0.city })
         return grouped.map { (k: String, v: [UnitRow]) in CityGroup(city: k, units: v.sorted { $0.revenue > $1.revenue }) }
@@ -303,8 +293,6 @@ struct FranchisorCard: View {
         }
     }
 
-    // MARK: Pipeline
-
     @ViewBuilder private func pipeline(_ apps: [Franchising.Applicant], _ cur: Currency) -> some View {
         MoreBlock(title: "Applicants", card: false, trailing: {
             Text("\(apps.count) waiting").textStyle(.caption, tint: Theme.inkFaint)
@@ -318,7 +306,6 @@ struct FranchisorCard: View {
         }
     }
 
-    /// How much of the set-up money the applicant brings, against what the standard terms need.
     private func coverage(_ a: Franchising.Applicant) -> (need: Double, fraction: Double)? {
         let terms: Franchising.TalkTerms = engine.standardTalkTerms(companyID: company.id)
         guard let s = engine.talkSums(companyID: company.id, applicantID: a.id, terms: terms), s.need > 0 else { return nil }
@@ -378,7 +365,6 @@ struct FranchisorCard: View {
     }
 }
 
-/// The talk with one applicant: an offer, their answer, until they sign, give up, or you do.
 struct FranchiseTalkView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -459,7 +445,6 @@ struct FranchiseTalkView: View {
         }
     }
 
-    /// One term of the offer as a segmented choice (the option nearest the current value is selected).
     private func choice(_ title: String, _ options: [(Double, String)], current: Double, set: @escaping (Double) -> Void) -> some View {
         let values: [Double] = options.map { (o: (Double, String)) -> Double in o.0 }
         let names: [Double: String] = Dictionary(options.map { (o: (Double, String)) -> (Double, String) in (o.0, o.1) }, uniquingKeysWith: { (a: String, _: String) -> String in a })
@@ -486,7 +471,6 @@ struct FranchiseTalkView: View {
     }
 }
 
-/// What a franchise applicant is like, as a sentence of what you notice (no labels, no figures).
 enum FranchiseApplicantWords {
     static func sentence(_ a: Franchising.Applicant) -> String {
         let years: String = a.experience <= 0 ? "Has not run a business before" : a.experience == 1 ? "Has run a business for a year" : "Has run a business for \(a.experience) years"

@@ -1,8 +1,6 @@
 import XCTest
 @testable import Ledger
 
-/// The account rules on the offline stand-in: no profile without the 18+ confirmation, the link reward once, and no administrator
-/// without the server saying so.
 @MainActor
 final class AccountFlowTests: XCTestCase {
     private func service() -> MockOnlineService {
@@ -88,7 +86,6 @@ final class AccountFlowTests: XCTestCase {
         XCTAssertEqual(book.rules.first { $0.key == "print.single_limit" }?.value, 0.06)
         XCTAssertEqual(book.audit.count, 1)
         XCTAssertEqual(book.audit.first?.action, "rule_change")
-        // A single printing may never exceed the whole window.
         XCTAssertThrowsError(try book.setRule(key: "print.window_limit", value: 0.03, reason: "window below the single limit"))
     }
 }

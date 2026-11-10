@@ -3,15 +3,11 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The headcount order of a company: one row per role with who is in, what is open and the number to hire towards. The manager (or the boss
-/// above a store with none) fills the plan; a number set here is the instruction, so they hire it without asking again. A chain store can
-/// pass a role's number to every store of the chain.
 struct StaffingPlanView: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
     @State private var pending: PendingAction?
 
-    /// The most people one role can be set to (the engine's own cap).
     private static let maxTarget = 30.0
 
     var body: some View {
@@ -104,7 +100,6 @@ struct StaffingPlanView: View {
         if !ok { Haptics.warning(); store.show("That post cannot be set here.", tone: "warn") }
     }
 
-    /// Passing a number to every open store of the chain is a bigger step than one company's setting, so it is asked first.
     private func askChain(_ r: StaffingPlan.Row, _ chainID: Int) {
         let role: String = r.role
         let aim: Int = r.target

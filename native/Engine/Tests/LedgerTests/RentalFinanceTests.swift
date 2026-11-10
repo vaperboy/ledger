@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Property and finance companies in a running game (the bank, insurer and fund are retired from the trade list, so these start them with `allowRetired`, as a saved game that owns one has them): they can be started, keep the books balanced, respond to the player's actions and fail properly.
 final class RentalFinanceTests: XCTestCase {
     static let trades = ["resrent", "comrent", "parking", "insco", "bank", "fund"]
 
@@ -110,7 +109,6 @@ final class RentalFinanceTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, fundWith: 330_000_000, allowRetired: true) else { return XCTFail() }
         for _ in 0..<(70 * 7) { e.nextDay() }
-        // A run: most deposits leave at once, more than the bank holds in cash.
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             var fm = s.companies[i].value("fm")
@@ -132,7 +130,6 @@ final class RentalFinanceTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, fundWith: 330_000_000, allowRetired: true) else { return XCTFail() }
         for _ in 0..<(60 * 7) { e.nextDay() }
         XCTAssertEqual(e.state.company(id)?.status, .open)
-        // The loan book turns out worthless.
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             var fm = s.companies[i].value("fm")
@@ -170,7 +167,6 @@ final class RentalFinanceTests: XCTestCase {
     }
 }
 
-/// Three seeds, three years: do the six trades earn what such businesses earn?
 final class RentalFinanceBalanceTests: XCTestCase {
     func testPropertyYieldsAreRealistic() throws {
         for (t, grossLo, grossHi) in [("resrent", 0.04, 0.075), ("comrent", 0.05, 0.10), ("parking", 0.05, 0.11)] {
@@ -182,7 +178,6 @@ final class RentalFinanceBalanceTests: XCTestCase {
                 XCTAssertGreaterThan(gross, grossLo, "\(t) \(seed) gross yield \(gross)")
                 XCTAssertLessThan(gross, grossHi, "\(t) \(seed) gross yield \(gross)")
                 XCTAssertGreaterThan(r.years[2].profit, -0.02 * r.years[2].revenue, "\(t) \(seed): profit after mortgage interest in year three is at least break-even within a rent-roll rounding margin")
-                // Value follows rents and the housing market; it does not run away.
                 XCTAssertLessThan(r.years[2].value, r.invested * 2, "\(t) \(seed)")
             }
         }
@@ -195,7 +190,6 @@ final class RentalFinanceBalanceTests: XCTestCase {
                 XCTAssertEqual(r.gaps, 0, "\(t) \(seed)")
                 XCTAssertFalse(r.years.contains { $0.profit.isNaN || $0.revenue.isNaN })
                 XCTAssertGreaterThan(r.years[2].revenue, 0, "\(t) \(seed) earns something in year three")
-                // Without marketing a young finance company is small and loses money, as in the original; it must not lose more than it was given.
                 XCTAssertGreaterThan(r.years.reduce(0) { $0 + $1.profit }, -r.invested * 1.5, "\(t) \(seed)")
             }
         }

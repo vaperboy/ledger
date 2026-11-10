@@ -4,19 +4,13 @@ import Simulation
 import Finance
 import Businesses
 
-/// The Home tab (route name `.company`) as one calm screen that fits an iPhone without scrolling: the date, the owner and their rank,
-/// the net worth hero (tap for Insights), the one thing that needs the owner, the top companies (passed in by CompaniesView). Next day
-/// floats over the bottom right (`NextDayDock`). `compact` tightens the spacing for a shorter screen; `trim` drops the lower-priority
-/// blocks one step at a time (1 milestone line, 2 insight strip, 3 balance row) so a short screen never needs a scroll.
 struct HomeSummary<Companies: View>: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
     var engine: GameEngine
     var compact: Bool = false
-    /// True when the page fills a fixed screen height: the free room is shared evenly between the groups instead of pooling at the end.
     var fills: Bool = false
-    /// False drops the net worth line, for the shortest screens.
     var chart: Bool = true
     var trim: Int = 0
     var onNewCompany: () -> Void
@@ -59,7 +53,6 @@ struct HomeSummary<Companies: View>: View {
         .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall, category: .detail, tone: .info) { InsightsView(engine: e) }
     }
 
-    /// Spare height between two groups: the free room is shared evenly by every gap and the one under the companies, so no single void forms.
     private static var gap: some View { Spacer(minLength: 0) }
 
     private var playerName: String {
@@ -67,7 +60,6 @@ struct HomeSummary<Companies: View>: View {
         return n.isEmpty ? "there" : n
     }
 
-    /// New-player start: a bill the account cannot cover yet waits one day; nothing else happens.
     private var cashTightLine: some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
             Circle().fill(Theme.warn).frame(width: 6, height: 6).accessibilityHidden(true)
@@ -108,28 +100,21 @@ struct HomeTopLine: View {
     }
 }
 
-// MARK: Net worth
-
-/// The hero: the label (with the way to Insights at the right), the big serif figure, what it did this week and in 30 days, and a thin
-/// line of the last year, with no box around it. The whole block opens Insights.
 struct NetWorthCard: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
     var engine: GameEngine
     var chartHeight: CGFloat = 40
-    /// False drops the personal account and past-value columns, for the shortest screens.
     var showBalances: Bool = true
     var onInsights: () -> Void
     @State private var snap: NetWorthSnap?
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 42
     private static let days = 365
 
-    /// What the chart and the two change texts showed before the day: kept while the daily report is waiting for its Continue.
     struct NetWorthSnap {
         var series: [Double]
         var week: Double?
         var month: Double?
-        /// Net worth a week and a month ago (nil until that much history exists).
         var weekAgo: Double?
         var monthAgo: Double?
     }
@@ -141,7 +126,6 @@ struct NetWorthCard: View {
                             weekAgo: Self.past(hist.netWorth, days: 7), monthAgo: Self.past(hist.netWorth, days: 30))
     }
 
-    /// The value `days` entries before the latest one (or the oldest); nil with fewer than two entries.
     private static func past(_ series: [Double], days: Int) -> Double? {
         guard series.count >= 2 else { return nil }
         return series[max(0, series.count - 1 - days)]
@@ -177,9 +161,7 @@ struct NetWorthCard: View {
                 changeLine(today: store.dayChip?.profit, week: week, month: month)
                 if showBalances { balanceRow(personal: nw.personal, total: nw.total, weekAgo: weekAgo, monthAgo: monthAgo) }
                 if series.count >= 2 && chartHeight > 0 {
-                    // Scaled to the series' own range, so a year's real shape shows instead of a flat line on a band.
                     let rising: Bool = (series.last ?? 0) >= (series.first ?? 0)
-                    // Drawn left to right once; each new day only extends the line (see LiveSparkline).
                     LiveSparkline(values: series, tint: rising ? Theme.gain : Theme.loss, filled: true)
                         .frame(height: chartHeight)
                         .drawsItself()
@@ -201,7 +183,6 @@ struct NetWorthCard: View {
         .onChange(of: blocked) { _, now in if !now { snap = takeSnap() } }
     }
 
-    /// "▲ 1.2k profit today · ▲ 12.3k this week" (30 days instead of today until a day has been played), on one line or two.
     @ViewBuilder private func changeLine(today: Double?, week: Double?, month: Double?) -> some View {
         let first: (Double?, String) = today != nil ? (today, "profit today") : (month, "in 30 days")
         ViewThatFits(in: .horizontal) {
@@ -218,7 +199,6 @@ struct NetWorthCard: View {
         .accessibilityIdentifier("home-today")
     }
 
-    /// Three columns under the figure: the personal account (cash and savings) and net worth a week and a month ago, each past one with its change.
     private func balanceRow(personal: Double, total: Double, weekAgo: Double?, monthAgo: Double?) -> some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
@@ -242,7 +222,6 @@ struct NetWorthCard: View {
             if let then {
                 let d: Double = now - then
                 Text(store.short(then)).textStyle(.body, numeric: true, weight: .medium).lineLimit(1)
-                // Nothing under the figure when it has not moved (a "0 kr" line reads like a bug).
                 if abs(d) > 0.5 {
                     Text((d > 0 ? "▲ " : "▼ ") + store.short(abs(d))).textStyle(.caption, tint: Theme.change(d), numeric: true).lineLimit(1)
                 }
@@ -266,10 +245,8 @@ struct NetWorthCard: View {
     }
 }
 
-/// A group label in small caps (faint ink) with an optional action on the right; no rule, no box.
 struct HomeGroupLabel<Trailing: View>: View {
     var title: String
-    /// Set: the label is a button (with a small chevron) that runs this.
     var onTap: (() -> Void)? = nil
     @ViewBuilder var trailing: () -> Trailing
     var body: some View {
@@ -300,8 +277,6 @@ extension HomeGroupLabel where Trailing == EmptyView {
 }
 
 extension GameStore {
-    /// Hire: the Team section of the first company with an open post (posts that are needed now first), else the Team of the first live company,
-    /// pushed on the open tab.
     func openHiring() {
         let posts = (engine?.teamOverview().vacancies ?? []).filter { $0.companyID != nil && $0.scope != "chain" }
         if let id = (posts.first(where: { $0.needed }) ?? posts.first)?.companyID {
@@ -312,11 +287,6 @@ extension GameStore {
     }
 }
 
-// MARK: Needs you
-
-/// "Needs you", right under net worth: the one most important thing as a raised card (what it is, why, and the action); the rest wait
-/// in the Inbox ("Inbox · 3" beside the label). It opens the exact object (a decision opens in a popup right here). Decisions a manager
-/// already handled never reach this list (the engine settles them), and neutral information is not a priority.
 struct TopPriorities: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -325,7 +295,6 @@ struct TopPriorities: View {
 
     @State private var daily: PlayerGoals.DailyGoal?
 
-    /// With nothing to answer, the player's next goal fills the slot: the ladder goal, else today's goal while it is open.
     private struct Goal {
         var title: String
         var line: String
@@ -379,7 +348,6 @@ struct TopPriorities: View {
         .onChange(of: tick) { _, _ in daily = store.dailyGoal() }
     }
 
-    /// The goal as a raised card: title, one line of how, and the action that opens where it is done (none when it has no screen).
     private func goalCard(_ g: Goal) -> some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
         let opens: Bool = !g.link.isEmpty && !g.action.isEmpty
@@ -413,7 +381,6 @@ struct TopPriorities: View {
         .accessibilityIdentifier("home-goal")
     }
 
-    /// "Inbox · 3": every open decision, with the count, beside the label.
     @ViewBuilder private func inboxLink(_ waiting: Int) -> some View {
         if waiting > 0 {
             Button { Haptics.tap(); store.openApp(.inbox) } label: { Text("Inbox · \(waiting)") }
@@ -428,14 +395,12 @@ struct TopPriorities: View {
         if case .openCompany = item.action { return "suggestion-open-company" } else { return "suggestion-row" }
     }
 
-    /// The open two-answer decision a card stands for, which Home answers in place; nil for every other card.
     private func inlineDecision(_ item: Suggestion) -> Message? {
         guard case .openMessage(let id) = item.action, let m = engine.state.inbox.first(where: { (x: Message) -> Bool in x.id == id }),
               HomeDecisionButtons.fits(engine, m) else { return nil }
         return m
     }
 
-    /// The raised card: a tone mark, the title, one line of why, and the action in accent. A two-answer decision shows its answers as buttons.
     private func lead(_ item: Suggestion) -> some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
         let detail: String = item.detail.tidyMoney

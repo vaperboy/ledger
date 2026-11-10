@@ -3,21 +3,15 @@ import GameCore
 import Countries
 import Finance
 
-/// Buying a rival: the owner's reply to an offer, then the purchase itself. The rival becomes a company of yours (a limited company in the
-/// same city, set up with the standard choices) with the customers' goodwill; the group behind it, if any, gets the money, and a rival that
-/// was in trouble can hide bills. Original: `proposeBuy`, `acquireRival` (engine/world/rivals.js) and the group steps in rival_groups.js
-/// ('proposeBuy.terms', 'acquireRival.before', 'acquireRival.after'). Not ported: buying a rival abroad, branches and franchise units.
 extension Rivals {
     public enum AcquireResult: Equatable { case ok(companyID: Int), notEnoughCash, failed(String) }
 
-    /// What buying costs besides the price: the new company's own start-up money. Original: `setupEstimate(...).total * 1.15`.
     public static func startupMoney(_ s: GameState, _ co: Company, rival r: Rival, data: GameData) -> Double {
         guard let bd = data.catalog[co.type] else { return 0 }
         let size = clamp(r.size * 0.8, bd.minSize, bd.maxSize)
         return jsRound((CompanySetup.estimate(tradeID: co.type, cityID: co.cityID, size: size, countryCode: co.countryCode, state: s, data: data)?.total ?? 0) * 1.15)
     }
 
-    /// Share of the price spent on integration, and the dip in demand while the rival's customers decide whether to stay.
     public static let integrationShare = 0.04
     public static let loyaltyDip = 0.12
     public static let loyaltyDipWeeks = 10
@@ -37,18 +31,15 @@ extension Rivals {
         }
         Payments.playerPays(&s, price, label: "Acquisition of \(r.name)", companyID: id)
         _ = Payments.injectCash(&s, companyID: id, amount: startup)
-        // The rival's equipment and people come with the business; set-up only does the paperwork and the premises.
         let movedEquipment = CompanySetup.transferEquipment(&s, companyID: id, data: data)
         let transfer = CompanySetup.transferStaff(&s, companyID: id, data: data)
         _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(equipmentInPlace: true, teamInPlace: true))
-        // Integration costs: a retention bonus of a month's pay each so they stay, and the cost of merging systems, suppliers and paperwork.
         let retention = jsRound(transfer.retention)
         let integration = jsRound(price * integrationShare)
         if retention + integration > 0 { _ = Payments.companyPays(&s, companyID: id, amount: retention + integration, category: "oth", label: "Integration of \(r.name): retention bonuses and merging systems") }
         if let i = s.companyIndex(id) {
             var f0 = s.companies[i].value("flags"); f0["integ"] = .number(Double(s.week)); f0["integCost"] = .number(retention + integration)
             f0["integPeople"] = .number(Double(transfer.people)); f0["integKit"] = .number(Double(movedEquipment)); s.companies[i].set("flags", f0)
-            // Customers are uneasy about the new owner: a dip in demand while they decide whether to stay.
             PriceMoves.addModifier(&s, i, key: "dem", multiplier: 1 - loyaltyDip, weeks: Double(loyaltyDipWeeks))
         }
         if let i = s.companyIndex(id) {

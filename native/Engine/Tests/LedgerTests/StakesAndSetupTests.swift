@@ -5,7 +5,6 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// Old startup blobs become companies, the club purchase plan shows the money, the explicit quick set-up stays inside the cash.
 final class StakesAndSetupTests: XCTestCase {
     func testLegacyStartupBlobBecomesARealCompanyWithoutLosingMoneyOrShare() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 4)

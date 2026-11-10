@@ -2,41 +2,26 @@ import Foundation
 import GameCore
 import Countries
 
-/// The one global electricity price. Demand is the electricity use of every company (a big world baseline plus what the
-/// player's companies really use, scaled by how busy they are); supply is the world's baseline plants plus the capacity of the
-/// player's power plants. The price index (`Economy.power`, 1 = normal) drifts toward a target set by the demand/supply ratio, once a
-/// week. A power plant sells at this price; every other company buys at it (the "power" overhead line, `SupplyCatalogue`).
-/// The world baseline and the slow drift keep one player from steering it: a 30 MW plant moves the price by well under 1 %.
 public enum EnergyMarket {
-    /// Weekly MWh the rest of the world uses (and, at a ratio of 1, produces). Scaled by the economy's demand.
     public static let worldDemand = 400_000.0
-    /// The baseline plants always on the grid; equal to demand at a normal economy, so the opening price is neutral.
     public static let worldSupply = 400_000.0
-    /// Price per MWh at index 1 before inflation, as the plants price it (`EnergyModel.powerWeek`).
     public static let basePrice = 650.0
-    /// Index band the price stays in, how fast it follows its target each week, and the weekly noise.
     public static let band: ClosedRange<Double> = 0.6...1.8
     public static let followRate = 0.08
     public static let noise = 0.01
-    /// Price response to the ratio of demand to supply (1 = proportional).
     public static let sensitivity = 1.6
-    /// The most the player's plants can add to supply, as a share of the world's baseline.
     public static let playerSupplyCap = 0.25
-    /// The move over twelve weeks (as a share of the price) that is worth a news item.
     public static let alertMove = 0.15
 
-    /// The index the market is heading for at this demand and supply.
     public static func target(demand: Double, supply: Double, band: ClosedRange<Double> = EnergyMarket.band) -> Double {
         guard demand > 0, supply > 0 else { return 1 }
         return clamp(pow(demand / supply, sensitivity), band.lowerBound, band.upperBound)
     }
 
-    /// One week's step toward the target (`noise` is a standard normal draw).
     public static func step(index: Double, target: Double, noise z: Double, band: ClosedRange<Double> = EnergyMarket.band) -> Double {
         clamp(index + (target - index) * followRate + z * noise, band.lowerBound, band.upperBound)
     }
 
-    /// What a company really uses in a week, in MWh: its power line of the overhead, at today's activity, priced at the base rate.
     static func weeklyUse(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         guard co.status == .open, let line = SupplyCatalogue.lines(co, bd).first(where: { $0.id == "power" }) else { return 0 }
         let lastUtil = co.value("lastW")["util"]
@@ -45,7 +30,6 @@ public enum EnergyMarket {
         return max(0, spend / basePrice)
     }
 
-    /// Capacity of the power plants that are built and open, in MWh a week.
     static func plantCapacity(_ co: Company, _ bd: Trade) -> Double {
         guard co.status == .open, bd.hasTrait("power") else { return 0 }
         return max(0, co.value("lastW")["cap"].double)
@@ -55,7 +39,6 @@ public enum EnergyMarket {
         public var demand: Double, supply: Double, playerUse: Double, playerPlants: Double
     }
 
-    /// Demand and supply now, in MWh a week.
     public static func totals(_ s: GameState, data: GameData) -> Totals {
         let w = World(state: s, data: data)
         var use = 0.0, plants = 0.0
@@ -68,7 +51,6 @@ public enum EnergyMarket {
         return Totals(demand: worldDemand * s.economy.demand + use, supply: worldSupply + plants, playerUse: use, playerPlants: plants)
     }
 
-    /// The index the world's weekly step should head for; also keeps the totals for the snapshot. Called by `WorldWeek.economy`.
     public static func prepare(_ s: inout GameState, data: GameData) -> Double {
         let t = totals(s, data: data)
         var m = s.rest["emkt"] ?? .object([:])
@@ -77,14 +59,12 @@ public enum EnergyMarket {
         return target(demand: t.demand, supply: t.supply, band: s.worldRules.powerBand)
     }
 
-    /// Records the week's price so the market can say how it moved over 12 weeks.
     public static func record(_ s: inout GameState) {
         var m = s.rest["emkt"] ?? .object([:])
         var h = m["h"].array
         h.append(.number(s.economy.power))
         if h.count > 13 { h.removeFirst(h.count - 13) }
         m["h"] = .array(h)
-        // A big move over twelve weeks goes in the news (at most once a quarter), so a rising or falling power bill is never a surprise.
         if h.count > 12, let then = h.first?.double, then > 0 {
             let change = s.economy.power / then - 1
             let lastAlert = m["al"].isNull ? -1_000 : m["al"].int
@@ -106,25 +86,18 @@ public enum EnergyMarket {
         s.rest["emkt"] = m
     }
 
-    /// The other global goods the economy prices (index, 1 = normal).
     static func goods(_ e: Economy) -> [(String, Double)] { [("oil", e.oil), ("fuel", e.fuel), ("materials", e.materials), ("freight", e.freight)] }
 
     public enum Direction: String, Sendable { case up, down, flat }
 
-    /// The market as the app shows it.
     public struct Snapshot: Equatable, Sendable {
-        /// 1 = normal.
         public var priceIndex: Double
-        /// The index 12 weeks ago (the oldest known if the game is younger).
         public var priceThen: Double
-        /// Fractional change over those weeks.
         public var change: Double
         public var direction: Direction
-        /// Price of a MWh now, in base money (before the country's price level).
         public var pricePerMWh: Double
         public var demandWord: String
         public var supplyWord: String
-        /// "Tight", "Balanced" or "Plentiful".
         public var balanceWord: String
         public var summary: String
     }
@@ -156,14 +129,11 @@ public enum EnergyMarket {
     public struct PriceRow: Equatable, Identifiable, Sendable {
         public var id: String
         public var name: String
-        /// 1 = normal.
         public var index: Double
-        /// Fractional change over 12 weeks.
         public var change: Double
         public var direction: Direction
     }
 
-    /// The global goods card: electricity first, then every commodity the economy prices, each against 12 weeks ago.
     public static func worldPrices(_ s: GameState) -> [PriceRow] {
         let e = snapshot(s)
         var rows = [PriceRow(id: "power", name: "Electricity", index: e.priceIndex, change: e.change, direction: e.direction)]
@@ -178,6 +148,5 @@ public enum EnergyMarket {
         return rows
     }
 
-    /// What a company's electricity line costs against normal: the factor the utility overhead is multiplied by.
     public static func costFactor(_ s: GameState) -> Double { s.economy.power }
 }

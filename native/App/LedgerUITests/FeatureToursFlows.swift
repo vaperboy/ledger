@@ -1,12 +1,7 @@
 import XCTest
 
-/// Feature tours: day and week reports, rewards, the Inbox decision, the shopping and insurance apps, the Bank loan, Settings and Luxury.
-/// The rule behind most steps: a popup must never change navigation. Cancel paths must leave exactly the same screen; confirm paths may
-/// move on (a receipt) but must never pop the player back to a root screen.
 extension FeatureToursTests {
 
-    /// Reads and closes every popup that follows an action (the reports, a reward, notices), one after the other.
-    /// Returns what was seen, the faults found, and the result of a reward claim when one appeared.
     private func drainPopups(firstWait: TimeInterval, limit: Int = 8) -> (seen: [String], problems: [String], reward: R?) {
         var seen: [String] = []
         var problems: [String] = []
@@ -21,7 +16,6 @@ extension FeatureToursTests {
             seen.append(kind)
             problems.append(contentsOf: rawProblems("popup \(kind)"))
             if kind == "report-continue" {
-                // The report: leave with Continue (Full report and the suggested action navigate away on purpose).
                 closePopup(prefer: ["report-continue"])
             } else if kind == "celebration-claim" {
                 let before: TourSig = signature()
@@ -40,8 +34,6 @@ extension FeatureToursTests {
         return (seen, problems, reward)
     }
 
-    // MARK: T20 Next day, week report, reward
-
     func testT20_DayAndReports() {
         var reward: R = .skip("no reward popup appeared in the days played")
         for day in 1...3 {
@@ -54,7 +46,6 @@ extension FeatureToursTests {
                 _ = homeVisible(3)
                 let after: TourSig = signature()
                 var problems: [String] = d.problems
-                // The day label changes, so only the structure (tab, no Back button) is compared.
                 if !before.same(after, strictText: false) { problems.append("screen changed: \(before.text) -> \(after.text)") }
                 return problems.isEmpty ? .pass(d.seen.isEmpty ? "no popup that day" : "popups: " + d.seen.joined(separator: ",")) : .fail(problems.prefix(3).joined(separator: "; "))
             }
@@ -91,13 +82,10 @@ extension FeatureToursTests {
         step("home: health after the days played") { health("Home after days", title: false) }
     }
 
-    // MARK: T21 Inbox
-
     private func inboxSegment(_ seg: String) -> Bool {
         tapWhere(wait: 3) { $0.type == .button && ($0.id == "segment-\(seg)" || $0.label == seg || $0.label.hasPrefix(seg + ",") || $0.label.hasPrefix(seg + " ")) }
     }
 
-    /// Opens the Inbox with at least one decision waiting, playing up to `days` days for one to arrive.
     private func inboxWithDecision(days: Int = 4) -> Int? {
         if openPhoneApp("Inbox"), let n = waitingNumber(), n > 0 { return n }
         _ = advanceDays(days) { openPhoneApp("Inbox") && (waitingNumber() ?? 0) > 0 }
@@ -182,23 +170,18 @@ extension FeatureToursTests {
         }
     }
 
-    // MARK: T22 Shopping, insurance, second-hand market
-
     func testT22_ShopsAndInsurance() {
-        // Marketplace
         let buy: [String] = ["mk-buy"]
         roundTrip("marketplace: Buy -> confirm, Cancel keeps the listing", closeWith: ["confirm-cancel"], prepare: { openPhoneApp("Marketplace") && tapPrefix("mk-listing-", wait: 5) }) {
             driveUntilPopup(buy)
         }
         roundTrip("marketplace: Buy -> confirm, Buy never pops to a root", closeWith: ["confirm-go"], leavesScreen: true,
                   prepare: { openPhoneApp("Marketplace") && tapPrefix("mk-listing-", wait: 5) }) { driveUntilPopup(buy) }
-        // AirStay
         roundTrip("airstay: Rent -> confirm, Cancel keeps the listing", closeWith: ["confirm-cancel"], prepare: { openPhoneApp("AirStay") && tapPrefix("stay-listing-", wait: 5) }) {
             driveUntilPopup(["stay-rent", "stay-continue"])
         }
         roundTrip("airstay: Rent -> confirm, Rent it never pops to a root", closeWith: ["confirm-go"], leavesScreen: true,
                   prepare: { openPhoneApp("AirStay") && tapPrefix("stay-listing-", wait: 5) }) { driveUntilPopup(["stay-rent", "stay-continue"]) }
-        // TechPro: basket, checkout, then the pay question
         let checkout: [String] = ["tp-view-basket", "tp-checkout", "tp-continue", "tp-pay"]
         func fillBasket() -> Bool {
             guard openPhoneApp("TechPro Store") else { return false }
@@ -208,7 +191,6 @@ extension FeatureToursTests {
         }
         roundTrip("techpro: checkout Pay -> confirm, Cancel keeps checkout", closeWith: ["confirm-cancel"], prepare: { fillBasket() }) { driveUntilPopup(checkout) }
         roundTrip("techpro: checkout Pay -> confirm, Pay never pops to a root", closeWith: ["confirm-go"], leavesScreen: true, prepare: { fillBasket() }) { driveUntilPopup(checkout) }
-        // Atlas: cancel a policy (the quote flow has its own confirm)
         roundTrip("atlas: cancel a policy -> confirm, Cancel keeps Atlas", closeWith: ["confirm-cancel"], prepare: { openPhoneApp("Atlas Insurance") }) {
             driveUntilPopup(["prefix:atlas-cancel-"])
         }
@@ -219,8 +201,6 @@ extension FeatureToursTests {
             driveUntilPopup(["atlas-get-quote", "atlas-confirm"])
         }
     }
-
-    // MARK: T23 Bank: chooser, account tabs, move money, trade, loan
 
     private func openBankAccount(_ acc: String) -> Bool {
         guard openPhoneApp("Bank") else { return false }
@@ -261,7 +241,6 @@ extension FeatureToursTests {
             let h: R = health("bank company account")
             return missing.isEmpty ? h : .fail("missing tabs: " + missing.joined(separator: ","))
         }
-        // Moving money: Transfer, Deposit and Withdraw open a popup whose button is in view; Half then the button moves money.
         for tile in ["Transfer", "Deposit", "Withdraw"] {
             roundTrip("bank: \(tile) popup closes and keeps the account", prepare: { openBankAccount("personal") }) { tapLabel(tile) }
         }
@@ -318,12 +297,9 @@ extension FeatureToursTests {
         }
     }
 
-    // MARK: T26 New company: trade, company, review
-
     func testT26_NewCompany() {
         func toStep2() -> Bool {
             guard goTab("Home"), tapLabel("New company", wait: 4) else { return false }
-            // Step 1: pick the first trade that can be chosen, then Continue.
             guard tapWhere(wait: 4, { $0.type == .button && $0.enabled && $0.frame.minY > self.win().minY + 200 && $0.label.contains("\u{00A3}") }) else { return false }
             return tapWhere(wait: 2) { $0.type == .button && $0.id.hasPrefix("Continue") && $0.enabled }
         }
@@ -370,8 +346,6 @@ extension FeatureToursTests {
         }
     }
 
-    // MARK: T24 Settings, Luxury, Ventures popups
-
     func testT24_OtherPopups() {
         step("store: the plans open from the Store and close back to it") {
             guard openPhoneApp("Store") else { return .skip("Store not opened") }
@@ -386,28 +360,6 @@ extension FeatureToursTests {
             } else { return .fail("the tap opened neither a popup nor a page (\(signature().text))") }
             if !before.same(signature(), strictText: false) { return .fail("closing changed the screen: \(before.text) -> \(signature().text)") }
             return raw.isEmpty ? .pass() : .fail(raw.joined(separator: "; "))
-        }
-        step("settings: Redeem a code with an invalid code shows the refusal") {
-            guard openPhoneApp("Settings") else { return .skip("Settings not opened") }
-            guard tapID("settings-redeem", wait: 4) else { return .skip("no Redeem a code row") }
-            guard popupUp(3) else { return .fail("Redeem a code did not open a popup") }
-            guard let fh = find(wait: 3, { $0.id == "redeem-code" && $0.type == .textField }) else { closePopup(); return .fail("no field redeem-code in the popup") }
-            touch(fh)
-            let field: XCUIElement = app.textFields["redeem-code"].firstMatch
-            guard field.waitForExistence(timeout: 3) else { closePopup(); return .fail("the field cannot be typed in") }
-            field.typeText("ZZZZ-0000-0000-0000")
-            pause(0.4)
-            var problems: [String] = []
-            if case .fail(let m) = primaryInView("redeem-code-action", wait: 1) { problems.append("with the keyboard up: " + m) }
-            if !tapEnabled("redeem-code-action", wait: 1) { field.typeText("\n") }
-            pause(0.8)
-            let seen: Bool = allTexts().contains { $0.text.localizedCaseInsensitiveContains("not valid") }
-            let raw: [String] = rawProblems("redeem popup")
-            closePopup()
-            _ = waitPopupGone(3)
-            if !seen { return .fail("typed an invalid code but no 'not valid' refusal appeared") }
-            problems.append(contentsOf: raw)
-            return problems.isEmpty ? .pass() : .fail(problems.joined(separator: "; "))
         }
         roundTrip("luxury: item sheet closes and keeps the showroom", prepare: { openPhoneApp("Luxury") }) { tapPrefix("luxury-inspect-", wait: 4) || tapID("luxury-hero", wait: 2) }
         roundTrip("market: open a listing -> deal popup closes and keeps the listing", prepare: { openPhoneApp("Marketplace") && tapPrefix("mk-listing-", wait: 5) }) { tapID("mk-discuss", wait: 3) }

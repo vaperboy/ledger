@@ -4,10 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// Events with their own logic rather than plain effects. Original: `SPEC` (engine/events/engine.js).
-/// Insurance, banking and energy events (f_*, e_*) belong to families not yet in the native engine.
 enum SpecialEvents {
-    /// Returns true if the event was handled here.
     static func handle(_ s: inout GameState, companyIndex i: Int, _ e: GameEvent, ctx c: EventEngine.Context, data: GameData, context fc: FinanceContext) -> Bool {
         let co = s.companies[i]
         let cur = fc.currency(co.countryCode, s)
@@ -25,7 +22,6 @@ enum SpecialEvents {
             s.note("\(co.name) wins a local business award.", tone: "good", companyID: co.id)
             s.addMessage(from: co.name, title: "Award won", body: "Your reputation rises.", companyID: co.id, tone: "good")
         case "g_audit":
-            // Hidden takings or flattering accounts are looked for first. Original events have no such cases, so this only fires after misconduct.
             if Misconduct.hasCases(co, kinds: ["tax", "bank"]), s.random.chance(min(0.9, 0.4 * Misconduct.enforcement(co.countryCode))) {
                 Misconduct.investigate(&s, i, data: data, context: fc, cause: "A tax audit found irregularities", kinds: ["tax", "bank"])
                 return true
@@ -98,8 +94,6 @@ enum SpecialEvents {
         case "f_storm", "f_run", "f_default":
             return FinanceModel.specialEvent(e.id, &s, i, data: data)
         default:
-            // e_price, e_geo (energy): their family is not simulated natively yet.
-            // Data events with effects or options (newer f_ / e_ events) run through the normal path.
             return (e.id.hasPrefix("f_") || e.id.hasPrefix("e_")) && e.automaticEffects.isNull && e.options.isEmpty
         }
         return true

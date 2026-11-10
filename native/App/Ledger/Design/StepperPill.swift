@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Minus and plus on one inset track (no outline), each a 44 pt target.
 struct StepperPill: View {
     @Binding var value: Double
     var range: ClosedRange<Double>

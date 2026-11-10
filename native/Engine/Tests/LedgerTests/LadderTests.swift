@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The ladder M1 to M10, its past-tense lines and rewards, and a scripted game that reaches M7 within 20 weeks on every country.
 final class LadderTests: XCTestCase {
     func testTenGoalsInOrderWithExactTitlesAndPastTense() throws {
         let e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 1)
@@ -24,7 +23,6 @@ final class LadderTests: XCTestCase {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cafe")
         let cur = e.homeCurrency
-        // Work done out of order does not skip ahead: M3 (staff) and M5 are met, M1 is not.
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].set("mkt", .object(["x": .object(["b": .number(1)])]))
@@ -39,16 +37,14 @@ final class LadderTests: XCTestCase {
         XCTAssertEqual(input.completedGoalPastTense, "You got through your first week.")
     }
 
-    /// Plays a cafe from day one, doing what each goal asks as soon as it is open (the engine does not enforce gates, the app hides them).
-    /// Once a goal is met its cost goes again: campaigns stop, the owner stops taking pay, and the owner works the counter alone.
     func playCafe(country: String, seed: Int = 7, price: Double = 0) throws -> (reachedM7Week: Int?, done: Int) {
         var e = try ChainsTests.engine(country, seed: seed)
         let id = ChainsTests.start(&e, "cafe")
         let cur = e.homeCurrency
         let channels = ["google", "meta", "seo"].filter { e.marketing.channels[$0] != nil }
-        _ = e.setPriceLevel(companyID: id, level: price)                                       // M2: a price set
-        for k in channels { if let ch = e.marketing.channels[k], ch.budgetOptions.count > 1 { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions[1]) } }   // M5
-        e.payYourself(companyID: id, monthly: cur.scaledPrice(2000))                // M6, any company form
+        _ = e.setPriceLevel(companyID: id, level: price)
+        for k in channels { if let ch = e.marketing.channels[k], ch.budgetOptions.count > 1 { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions[1]) } }
+        e.payYourself(companyID: id, monthly: cur.scaledPrice(2000))
         var answered = false
         var stoppedAds = false, stoppedPay = false, alone = false
         for day in 0..<(20 * 7) {
@@ -73,7 +69,6 @@ final class LadderTests: XCTestCase {
         XCTAssertGreaterThan(codes.count, 10)
         var failures: [String] = []
         for code in codes {
-            // A player who sees no profit tries another price: the going price first, then cheaper, then dearer.
             var best: (reachedM7Week: Int?, done: Int) = (nil, 0)
             for price in [0.0, -1.0, 1.0] {
                 best = try playCafe(country: code, price: price)

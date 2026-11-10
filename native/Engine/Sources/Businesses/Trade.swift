@@ -1,41 +1,28 @@
 import Foundation
 import GameCore
 
-/// A piece of equipment or a vehicle type a business uses. Original: `bd.eq` entries.
 public struct EquipmentSpec: Equatable, Sendable {
     public var id: String
     public var name: String
-    /// Price new, at the reference cost level
     public var cost: Double
     public var lifeYears: Double
-    /// Standard number needed at size 1
     public var standardCount: Double
-    /// Flags: r = required to open, c = sets capacity, q = affects quality, u = can be bought used, o = a person may use their own car
-    /// instead (mileage is paid, `PersonalEquipment`)
     public var flags: String
-    /// Vehicle model ids this equipment is bought as, if it is a vehicle: [model]
     public var vehicleModels: [String]?
-    /// Who needs one of this and how much work goes on without it, written in the data (`pe`): see `PersonalEquipment.rule`.
     public var personalRule: PersonalEquipment.Rule? = nil
 
     public var isRequired: Bool { flags.contains("r") }
     public var limitsCapacity: Bool { flags.contains("c") }
-    /// Needed to open and trade: required to open, or the thing that sets how many customers can be served (without it capacity is zero).
-    /// Everything else (quality extras, wellness, spare units) is bought later.
     public var opensTheTrade: Bool { isRequired || limitsCapacity }
     public var affectsQuality: Bool { flags.contains("q") }
     public var allowsOwnCar: Bool { flags.contains("o") }
 }
 
-/// One option of a business choice ("knob"). Original: knob options with `fx`.
 public struct KnobOption: Equatable, Sendable {
     public var id: String
     public var name: String
     public var detail: String
-    /// Effects: t = ticket (price) multiplier, d = demand multiplier, k = capacity multiplier, c = cost-of-sales
-    /// change (added), q = quality (added), w = extra weekly fixed cost (added), ota = commission share ...
     public var effects: [String: Double]
-    /// Documents that must be held for the option to work
     public var requiredDocs: [String]
 }
 
@@ -45,43 +32,29 @@ public struct Knob: Equatable, Sendable {
     public var detail: String
     public var options: [KnobOption]
     public var defaultIndex: Int
-    /// A group of add-ons: several options can be on at once (bit mask).
     public var isMulti: Bool
 }
 
-/// A type of business: the data that makes a café different from a gym. Loaded from `trades.json`.
-/// Original: `BD[id]`. To add or tune a business, edit the JSON.
 public struct Trade: TradeFacts, Equatable, Identifiable {
     public var id: String
     public var name: String
     public var family: String
     public var category: String
-    /// VAT category: "std", "food", "low" or "zero"
     public var vatCategory: String
-    /// What one sale is called ("order", "billable hour", "room-night" ...)
     public var unit: String
-    /// Typical price of one sale at the reference price level
     public var ticket: Double
-    /// Cost of sales as a share of revenue
     public var costOfSales: Double
     public var margin: Double
-    /// Explicit weekly demand, 0 = derived from costs. Original: `D`.
     public var explicitDemand: Double
-    /// Price elasticity of demand
     public var elasticity: Double
     public var seasonKey: String
-    /// Share of sales to business customers who pay later
     public var businessShare: Double
     public var paymentTermsWeeks: Int
     public var premisesKind: String?
     public var premisesM2: Double
     public var standardStaff: [(role: String, count: Double)]
-    /// How many full-time equivalents the owner can supply at size 1
     public var ownerFTE: Double
     public var equipment: [EquipmentSpec]
-    /// Items of other trades that the TechPro Store also sells to this business. They do nothing for the business itself
-    /// (no capacity, quality or requirement), so `equipment` stays what the trade really uses; lookups by id for buying, owning, selling and wear
-    /// use `allEquipment`.
     public var foreignItems: [EquipmentSpec] = []
     public var allEquipment: [EquipmentSpec] { foreignItems.isEmpty ? equipment : equipment + foreignItems }
     public var documents: [String]
@@ -93,24 +66,17 @@ public struct Trade: TradeFacts, Equatable, Identifiable {
     public var blurb: String
     public var minSize: Double
     public var maxSize: Double
-    /// 0 = consumers, 1 = business customers
     public var audience: Double
     public var skillName: String
-    /// Price multiplier applied to the ticket. Original: `rm` (default 1).
     public var ticketMultiplier: Double
-    /// Trade-specific parameters (stock weeks, perishables, fuel ...). Original: `tw`.
     public var traits: [String: Double]
     public var traitText: [String: String]
     public var documentQuantities: [String: JSONValue]
-    /// Everything in the data file, kept whole.
     public var raw: JSONValue
 
-    // Derived by `TradeCatalog` (calibration). Original: `calib(bd)`.
     public var weeklyFixedCosts: Double = 0
     public var variableCostShare: Double = 0
-    /// Customers per week at a normal level. Original: `Dc`.
     public var normalDemand: Double = 0
-    /// Customers per week a normally staffed business can serve. Original: `capD`.
     public var normalCapacity: Double = 0
     var hasStoredCalibration = false
 
@@ -170,8 +136,6 @@ public struct Trade: TradeFacts, Equatable, Identifiable {
         traits = j["tw"].object.compactMapValues { $0.isNumber ? $0.double : nil }
         traitText = j["tw"].object.compactMapValues { if case .string(let s) = $0 { return s } else { return nil } }
         documentQuantities = j["dq"].object
-        // Derived numbers are stored with the data: they were fixed when the original game last calibrated the trade
-        // (some predate later wage-table changes), and the game's balance depends on them.
         weeklyFixedCosts = j["F"].double
         variableCostShare = j["vc"].double
         normalDemand = j["Dc"].double

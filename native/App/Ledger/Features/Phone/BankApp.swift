@@ -3,20 +3,16 @@ import GameCore
 import Countries
 import Simulation
 
-/// The tabs of one Bank account (BankAccount.dc.html).
 enum BankTab: String, CaseIterable, Hashable {
     case account = "Account", loans = "Loans", deposits = "Deposits", bills = "Bills", statements = "Statements"
 }
 
-/// Where a link into the Bank app lands: an account, and optionally one of its tabs. `applyLoan` opens the loan application on that
-/// account's Loans tab with the amount chosen (the shortfall a "cash is tight" card names).
 struct BankRequest: Equatable {
     var account: BankAccountID
     var tab: BankTab = .account
     var applyLoan: Double? = nil
 }
 
-/// Money in an account's own currency, through the store formatter (a company's in its own currency, the others in the home currency).
 @MainActor
 struct BankFmt {
     var store: GameStore
@@ -29,7 +25,6 @@ struct BankFmt {
     }
 }
 
-/// Icons of the Bank app that the shared set does not have.
 enum BankGlyph {
     static let transfer = "M4 8 H19 M15 4 L19 8 L15 12 M20 16 H5 M9 12 L5 16 L9 20"
     static let deposit = "M12 4 V16 M7 11 L12 16 L17 11 M5 20 H19"
@@ -38,16 +33,12 @@ enum BankGlyph {
     static let company = "M4 20 V8 L12 4 L20 8 V20 M9 20 V13 H15 V20"
 }
 
-/// The Bank app: pick an account, then manage it. It shows both screens itself so the header's round back button can go from an account
-/// to the list before it leaves the app; links from elsewhere (a company's "Open in Bank", an Inbox warning) arrive as `store.appRequest`.
-/// The first visit opens on the account chooser; after that the full list is open, with every account reachable (no log-out to swap).
 struct BankApp: View {
     private var P: OutsidePalette { store.engine?.playerMainBankIsOwn == true ? .game : .bank }
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
-    /// The first account opened; nil shows the chooser (the first page). `account` is nil on the all-accounts overview.
     @State private var session: BankAccountID?
     @State private var account: BankAccountID?
     @State private var tab: BankTab = .account
@@ -67,7 +58,6 @@ struct BankApp: View {
         .toolbar(.hidden, for: .navigationBar)
         .ledgerBackground()
         .safeAreaInset(edge: .top, spacing: 0) {
-            // On the ivory Bank the header is a forest-green band with ivory text; with the player's own bank as the main bank it stays the game's own.
             VStack(spacing: 0) {
                 ReturnLine(tab: .company)
                 header
@@ -78,7 +68,6 @@ struct BankApp: View {
         }
         .onAppear { take() }
         .onChange(of: store.appRequest) { _, _ in take() }
-        // Someone else's bank app, in its own navy and teal, unless the player's own bank is the main bank: then the game's colours.
         .environment(\.outsidePalette, P)
     }
 
@@ -109,7 +98,6 @@ struct BankApp: View {
     }
 }
 
-/// A caps label over a group: the system `CardSection` under the Bank's older name.
 struct BankCard<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     var title: String = ""

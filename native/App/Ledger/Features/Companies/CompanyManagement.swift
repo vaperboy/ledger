@@ -6,19 +6,13 @@ import Finance
 import Businesses
 import Simulation
 
-/// Who runs the company, as one management list at the top of Company > Team: the store manager, the assistant manager and the
-/// management posts above the manager (managing director, department heads, regional manager), each a row with a role + scope badge.
-/// A row opens its sheet, where hiring, the budget, pay and letting go happen. Original: the Manager, Assistant and Team pages
-/// of the company headquarters (ui/company/people.js, headquarters.js, features/people/owner_hours_clients_assistants.js, manager_duties.js).
 struct CompanyManagement: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    /// Group > entity > Management: every post is listed (open ones too) and the people above the manager (chain, region, group) show.
     var showAll: Bool = false
     @State private var sheet: Sheet?
     @State private var showVacant = false
-    // Shortlists live here, not in the sheets, so a paid search survives closing a sheet.
     @State private var managerCands: [Int] = []
     @State private var assistantCands: [Int] = []
     @State private var slotCands: [String: [Int]] = [:]
@@ -28,7 +22,6 @@ struct CompanyManagement: View {
         var id: String { switch self { case .manager: return "m"; case .assistant: return "a"; case .slot(let s): return "s:" + s } }
     }
 
-    /// This list includes the posts above the manager; `CompanyTeamRoster` shows them on its own only where this list is not shown (a holding).
     static func showsRoster(_ co: Company) -> Bool { co.type != "hold" && co.type != "club" }
 
     static func scoreWord(_ s: Int) -> String { s >= 80 ? "excellent" : s >= 65 ? "good" : s >= 50 ? "acceptable" : s >= 35 ? "weak" : "poor" }
@@ -47,11 +40,8 @@ struct CompanyManagement: View {
         }
     }
 
-    // MARK: The thin list of the Team tab
-
     private func isOpenPost(_ n: OrgNode) -> Bool { n.row.name == nil && n.sheet != nil }
 
-    /// The owner, the manager (always, open or not) and the filled posts; open assistant and team posts wait behind "Other posts".
     private func thinNodes(_ cur: Currency) -> (shown: [OrgNode], hidden: [OrgNode]) {
         var shown: [OrgNode] = []
         var hidden: [OrgNode] = []
@@ -114,9 +104,6 @@ struct CompanyManagement: View {
         .accessibilityLabel(works ? "You work here. Tap to step out." : "You do not work here. Tap to step in.")
     }
 
-    // MARK: The strip, top (the owner) to bottom (the posts under the manager)
-
-    /// One step of the strip: who stands there, what they may decide, and the sheet it opens (none for the owner and for posts above the company).
     fileprivate struct OrgNode: Identifiable {
         var id: String
         var glyph: String
@@ -124,12 +111,10 @@ struct CompanyManagement: View {
         var level: Int?
         var sheet: Sheet?
         var isOwner = false
-        /// The owner's card only: whether the player works here (nil where a manager runs the place), and the switch.
         var works: Bool? = nil
         var toggleWorks: (() -> Void)? = nil
     }
 
-    /// Who stands above this company's own management (chain, region, group), nearest the manager first.
     private var chainAbove: [ManagerModel.Boss] {
         engine.decisionChain(companyID: company.id).filter { $0.kind != "mgr" && $0.kind != "mdir" || ($0.kind == "mdir" && company.holdingID != 0) }
     }
@@ -204,8 +189,6 @@ struct CompanyManagement: View {
     }
 }
 
-/// What a manager candidate says about themselves, in words, the paid trial week and the reference check (the engine's interview model).
-/// No skill figure or band is shown: a trial week gives observations from a simulated week, a reference check says whether the CV holds.
 struct ManagerCandidateChecks: View {
     @EnvironmentObject var store: GameStore
     var person: Person
@@ -214,7 +197,6 @@ struct ManagerCandidateChecks: View {
     @State private var trialSeen: [String] = []
     @State private var said: [String: Double] = [:]
 
-    /// How a checked skill compares with what the CV claimed, in words.
     private func comparison(_ key: String) -> String {
         let claimed: Double = person.value("q")[key].double
         let real: Double = person.value("stats")[key].double
@@ -223,14 +205,12 @@ struct ManagerCandidateChecks: View {
         return "as the CV says"
     }
 
-    /// What the candidate said when asked about a skill (this session's answer, else the one on record); nil when not asked yet.
     private func answer(_ key: String) -> Double? {
         if let v = said[key] { return v }
         let recorded = person.value("q")[key]
         return recorded.isNull ? nil : recorded.double
     }
 
-    /// Three questions per candidate.
     private var questionsLeft: Int { max(0, 3 - ManagerModel.skillKeys.filter { answer($0.key) != nil }.count) }
 
     private func words(_ v: Double) -> String { v >= 80 ? "very strong" : v >= 65 ? "strong" : v >= 50 ? "solid" : v >= 35 ? "modest" : "weak" }
@@ -285,9 +265,6 @@ struct ManagerCandidateChecks: View {
     }
 }
 
-// MARK: - The assistant manager
-
-/// The assistant manager's sheet: their two jobs and letting them go; or the job ad and the shortlist.
 struct AssistantSheet: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -328,7 +305,6 @@ struct AssistantSheet: View {
         letGo(co, a, n, cur)
     }
 
-    /// One of the assistant's possible jobs as a tappable card: the lit ring means they look after it.
     private func jobCard(_ co: Company, _ n: Person, _ d: (key: String, title: String, text: String), on: Bool) -> some View {
         Button {
             let ok = store.act { $0.toggleAssistantDuty(companyID: co.id, duty: d.key) } ?? false
@@ -403,7 +379,6 @@ struct AssistantSheet: View {
         }
     }
 
-    /// A candidate when the hire needs the level above: Appoint sends a proposal there (an inbox decision) instead of hiring.
     private func proposeRow(_ e: GameEngine, _ co: Company, _ cur: Currency, _ p: Person, _ above: Delegation.Rank) -> some View {
         let wage: Double = e.goingRate(for: .assistant, companyID: co.id)
         let pid: Int = p.id

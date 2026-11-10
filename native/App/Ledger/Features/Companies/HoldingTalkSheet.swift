@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The quarterly review with the CEO of a company whose board the holding sits on: the same report, direction and budget as the owner's
-/// review; the engine refuses it when the holding has no seat.
 struct HoldingTalkSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.popupClose) private var popupClose

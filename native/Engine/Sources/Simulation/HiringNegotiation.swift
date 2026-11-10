@@ -5,15 +5,6 @@ import Employees
 import Finance
 import Businesses
 
-// The two-page hiring negotiation.
-//  PAGE 1, contract terms: `hireDraftOptions` says what can be chosen for this post (contract type, working percentage, seasonal or temporary duration,
-//  benefits, vehicle, promises, career and responsibility expectations); the draft itself is `Hiring.Terms`. `hireTermsProblem` says in words why a draft
-//  cannot be agreed.
-//  PAGE 2, salary talk: `hireSalaryTalk` returns your offer, their ask (nil until the candidate has actually named one: after `hearTheirAsk` or after a
-//  counter-offer), the market pay (the option is labelled "Offer market pay"), the actual hourly wage and the total annual employer cost of the offer.
-//  Every figure is computed by the same code that books the hire (`EmployerCosts.hire`), so what is shown is what is applied.
-//  `hireOffer` is the one action: it routes to the existing hire door of the post (all of them answer through `Hiring.answer`).
-
 public struct HireOption: Equatable, Sendable, Identifiable {
     public var id: String
     public var title: String
@@ -22,13 +13,10 @@ public struct HireOption: Equatable, Sendable, Identifiable {
 
 public struct HireDraftOptions: Equatable, Sendable {
     public var post: HirePost
-    /// Which parts of page 1 apply to this post: "contractType", "percent", "duration", "benefits", "vehicle", "promises", "expectations".
     public var fields: [String]
     public var contractKinds: [HireOption]
-    /// The usual working percentages (20, 50, 80, 100) and the range the engine accepts.
     public var percents: [Double]
     public var percentRange: ClosedRange<Double>
-    /// The most hours a week this person can work, when something limits it (said, not silently applied).
     public var hoursLimit: Double?
     public var temporaryWeekChoices: [Int]
     public var temporaryWeekRange: ClosedRange<Int>
@@ -37,7 +25,6 @@ public struct HireDraftOptions: Equatable, Sendable {
     public var payBases: [HireOption]
     public var bonusPlans: [HireOption]
     public var expenses: [HireOption]
-    /// Perks the company already gives to people in this job (read-only here).
     public var companyPerks: [String]
     public var canUseOwnCar: Bool
     public var promiseKinds: [HireOption]
@@ -48,45 +35,34 @@ public struct HireSalaryTalk: Equatable, Sendable {
     public var post: HirePost
     public var personID: Int
     public var name: String
-    /// Your offer, as a monthly wage for a full week (the unit every hire is offered in), lifted to the minimum wage where that applies.
     public var yourOffer: Double
     public var liftedToMinimum: Bool
-    /// What they ask, in the same unit; nil until they have named it (after `hearTheirAsk`, or in a counter-offer).
     public var theirAsk: Double?
-    /// The going rate for the post, same unit. The page's button is labelled `marketPayLabel`.
     public var marketPay: Double
     public var marketPayLabel: String
-    /// The wage that will be booked per month for the contracted hours, and per hour.
     public var appliedMonthlyWage: Double
     public var hourlyWage: Double
     public var workingPercent: Double
     public var hoursPerWeek: Double
     public var monthlyEmployerCost: Double
     public var annualEmployerCost: Double
-    /// The full breakdown for your offer, and for their ask when they have named one.
     public var employerCost: EmployerCost.Breakdown
     public var askEmployerCost: EmployerCost.Breakdown?
     public var marketHourlyWage: Double
     public var marketEmployerCost: EmployerCost.Breakdown
-    /// "Offer what they ask" may be shown.
     public var canOfferTheirAsk: Bool
-    /// Why their ask is a little higher or lower for this company and this package. Words, never figures.
     public var reasons: [String]
-    /// Offers answered so far, and how they feel about the talk in words.
     public var rounds: Int
     public var mood: String
-    /// Why the terms cannot be agreed, if they cannot.
     public var termsProblem: String?
 }
 
 public enum HireOutcome: Equatable, Sendable {
     case hired
-    /// They name their own figure (a full-week monthly wage). `isFinal`: the next offer that falls short ends the talk.
     case countered(amount: Double, isFinal: Bool)
     case refused
     case walkedAway
     case taken
-    /// They will not take the job on these terms (or the terms cannot be agreed): the reason, in words.
     case termsRefused(String)
     case blocked(String)
 }
@@ -122,13 +98,11 @@ public extension GameEngine {
         }
     }
 
-    /// The factor the answer uses for this person, post and draft: the pay-basis value over the company-and-package reading of the ask.
     internal func hireTalkFactor(_ post: HirePost, person n: Person, terms: Hiring.Terms, ctx: PostContext) -> Double {
         if case .worker = post { return Hiring.talkFactor(person: n, terms: terms, company: ctx.company, state: state, data: data) }
         return 1 / Hiring.askReading(person: n, terms: terms, company: ctx.company, state: state, data: data).factor
     }
 
-    /// The employer cost of an offer at the post, in the unit of a full week offered.
     internal func hireCostBreakdown(_ post: HirePost, companyID: Int?, personID: Int, offer: Double, terms: Hiring.Terms, ctx: PostContext) -> EmployerCost.Breakdown? {
         if case .worker = post, let id = companyID { return EmployerCosts.hire(companyID: id, personID: personID, offered: offer, terms: terms, state: state, data: data) }
         let wage = ctx.company.map { max(offer, World(state: state, data: data).minimumWage($0)) } ?? offer
@@ -143,7 +117,6 @@ public extension GameEngine {
         }
     }
 
-    /// PAGE 1: what can be chosen for this post and person.
     func hireDraftOptions(post: HirePost, companyID: Int?, personID: Int) -> HireDraftOptions? {
         guard let ctx = postContext(post, companyID: companyID), state.people[personID] != nil else { return nil }
         let co = ctx.company
@@ -179,7 +152,6 @@ public extension GameEngine {
                                 canUseOwnCar: ownCar, promiseKinds: promiseKinds, expectations: expectations)
     }
 
-    /// Why the draft cannot be agreed with this person (in words), nil when it can.
     func hireTermsProblem(post: HirePost, companyID: Int?, personID: Int, terms: Hiring.Terms) -> String? {
         guard let n = state.people[personID], let ctx = postContext(post, companyID: companyID) else { return "This candidate is no longer on the market." }
         if case .worker = post { return Hiring.termsProblem(person: n, terms: terms, company: ctx.company, state: state, data: data) }
@@ -194,7 +166,6 @@ public extension GameEngine {
         return left >= 2 ? "Still open to talking." : left == 1 ? "Patience is wearing thin." : "This is their last word."
     }
 
-    /// PAGE 2: the salary talk as it stands. `offer` is your draft figure (a full-week monthly wage); without one the market pay is shown as your offer.
     func hireSalaryTalk(post: HirePost, companyID: Int?, chainID: Int? = nil, personID: Int, terms: Hiring.Terms, offer: Double? = nil) -> HireSalaryTalk? {
         guard let n = state.people[personID], n.employerID == 0, let ctx = postContext(post, companyID: companyID, chainID: chainID) else { return nil }
         let market = goingRate(for: post, companyID: companyID)
@@ -225,8 +196,6 @@ public extension GameEngine {
         return step > 0 ? (v / step).rounded(.up) * step : v
     }
 
-    /// The candidate opens the talk by naming what they expect, before any offer from you. Returns the figure (a full-week monthly wage). The talk keeps it
-    /// (`theirAsk` is then non-nil); asking again returns the same figure for the same terms.
     @discardableResult
     mutating func hearTheirAsk(post: HirePost, companyID: Int?, chainID: Int? = nil, personID: Int, terms: Hiring.Terms = Hiring.Terms()) -> Double? {
         guard let n = state.people[personID], n.employerID == 0, let ctx = postContext(post, companyID: companyID, chainID: chainID) else { return nil }
@@ -243,7 +212,6 @@ public extension GameEngine {
         return amount
     }
 
-    /// Make the offer: the one action of page 2. Routes to the hire door of the post; all of them answer through `Hiring.answer`.
     @discardableResult
     mutating func hireOffer(post: HirePost, companyID: Int?, chainID: Int? = nil, city: String? = nil, personID: Int, monthlyWage: Double, terms: Hiring.Terms = Hiring.Terms(),
                             profitBonus: Double = 0) -> HireOutcome {
@@ -268,7 +236,6 @@ public extension GameEngine {
                 case .planRefused: outcome = .termsRefused("\((n0.name.split(separator: " ").first.map(String.init) ?? n0.name)) will not take the job on these terms.")
                 }
             } else {
-                // The post's own door, with the company-and-package reading of the ask carried on the person for the duration of the call.
                 if var p = s.people[personID] { p.set("tf", tf); s.people[personID] = p }
                 switch post {
                 case .manager:
@@ -286,7 +253,6 @@ public extension GameEngine {
                     case .assistant: r = ManagerModel.hireAssistant(&s, personID: personID, companyID: companyID ?? 0, monthlyWage: monthlyWage, data: d)
                     case .team(let key): r = ManagerModel.hireTeam(&s, companyID: companyID ?? 0, key: key, personID: personID, monthlyWage: monthlyWage, data: d)
                     case .executive(let level): r = ManagerModel.hireExecutive(&s, level: level, personID: personID, monthlyWage: monthlyWage, chainID: chainID, city: city, data: d)
-                        // A chain CEO or chain manager appoints the managers of the locations that have none.
                         if r == .ok, level == .ceo56 || level == .chainmgr, let cid = chainID { ChainLocations.fillManagers(&s, chainID: cid, data: d) }
                     default: r = .refused
                     }
@@ -327,7 +293,6 @@ public extension GameEngine {
                     for dr in terms.promises { StaffPromises.make(&s, companyID: companyID ?? 0, personID: personID, draft: dr) }
                 }
             case .countered:
-                // the standing figure belongs to these terms
                 var t = Negotiation.State.resume(p, party: ctx.employer, week: s.week)
                 t.terms = sig; t.store(in: &p); s.people[personID] = p
             default: break

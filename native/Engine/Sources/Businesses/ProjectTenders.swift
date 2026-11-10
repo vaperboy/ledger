@@ -3,22 +3,9 @@ import GameCore
 import Countries
 import Finance
 
-/// Tenders for building and design work: a market of its own. Original: features/sales/public_tenders.js ("Round 56").
-///
-/// A buyer (the municipality, the county, the road authority) puts work out to tender. A tender has a scope (one big job), how the
-/// bids are scored (price against quality), requirements (a minimum rating, a year in business), a deadline and an award date.
-/// The company bids a price against its list price and a quality commitment, and pays for writing the bid whether it wins or not.
-/// Scoring: price points = the lowest price / your price; quality points from the company's rating, reputation, earlier public work
-/// and the commitment; the buyer's weights decide; the rivals' bids are drawn around the market price from a seed, so the result does
-/// not depend on the order of play. A won tender becomes a job on the order book. A manager bids at list price when the company has
-/// room and the bid is within its limits (switch it off to be asked).
-///
-/// The trades below win jobs; services, shops and carriers tender for volume contracts (`VolumeTenders`, which become contracts
-/// under `VolumeContracts`).
 public enum ProjectTenders {
     public struct Offer { public let title: String; public let buyer: String; public let local: Bool; public var volume = false }
 
-    /// What each trade can win: title, kind of buyer, whether the work is local. Original: `W`.
     static let jobCatalog: [String: [Offer]] = [
         "construction": [Offer(title: "A school extension", buyer: "muni", local: true), Offer(title: "A new fire station", buyer: "muni", local: true),
                          Offer(title: "Upgrading a county road", buyer: "road", local: false)],
@@ -29,14 +16,12 @@ public enum ProjectTenders {
         "event": [Offer(title: "The county’s annual conference", buyer: "county", local: false)],
     ]
 
-    /// Job tenders and the volume tenders of services, shops and carriers (`VolumeTenders.offers`).
     public static let catalog: [String: [Offer]] = jobCatalog.merging(VolumeTenders.offers) { $0 + $1 }
 
     public struct Bid: JSONRecord {
         public var raw: [String: JSONValue]
         public init(raw: [String: JSONValue]) { self.raw = raw }
         public var companyID: Int { int("co") }
-        /// Price as a share of the list price.
         public var priceFactor: Double { num("pf", 1) }
         public var higherQuality: Bool { flag("q") }
     }
@@ -51,19 +36,15 @@ public enum ProjectTenders {
         public var title: String { str("title") }
         public var buyerKind: String { str("bk") }
         public var buyer: String { str("buyer") }
-        /// Weight of price in the score; 1 = price alone.
         public var priceWeight: Double { num("wP", 1) }
         public var minimumRating: Double { num("minR") }
         public var minimumYears: Double { num("minY") }
         public var openedWeek: Int { int("w0") }
         public var closesWeek: Int { int("due") }
         public var awardWeek: Int { int("award") }
-        /// How many rivals will bid. The UI shows it only as a word scale (`rivalScale`).
         public var rivals: Int { int("rivals") }
         public var worth: Double { num("val") }
-        /// What writing the bid costs.
         public var bidCost: Double { num("cost") }
-        /// nil = open; "won", "lost" or "gone" (nobody bid).
         public var outcome: String? { value("st").isNull ? nil : str("st") }
         public var winnerCompanyID: Int { int("win") }
         public var isPublicBuyer: Bool { buyerKind != "priv" }
@@ -71,21 +52,16 @@ public enum ProjectTenders {
         public func bid(of companyID: Int) -> Bid? { bids.first { $0.companyID == companyID } }
     }
 
-    /// What the job would cost this company to deliver if it bid at list price: the client's value times the trade's materials and
-    /// subcontractor share (the same share `startJob` uses, without the random overrun). Labour is in the wages. nil for volume tenders.
     public static func costEstimate(_ t: Tender, _ co: Company, data: GameData) -> Double? {
         guard !t.isVolume, let bd = data.catalog[co.type] else { return nil }
         let share = (bd.traits["mat"] ?? 0.5) + (bd.traits["sub"] ?? 0)
         return jsRound(t.worth * max(0.05, share))
     }
 
-    /// The number of rival bidders as a word: None / A few / Several / Many.
     public static func rivalScale(_ t: Tender) -> String { rivalWord(t.rivals) }
     static func rivalWord(_ n: Int) -> String { n <= 0 ? "None" : n <= 2 ? "A few" : n <= 4 ? "Several" : "Many" }
 
     public struct Qualification: Equatable { public var ok: Bool; public var reason: String? }
-
-    // MARK: State
 
     struct Store {
         var list: [Tender]
@@ -103,21 +79,16 @@ public enum ProjectTenders {
 
     public static func isEligible(_ co: Company) -> Bool { co.status == .open && catalog[co.type] != nil }
 
-    /// Tenders still open for bids that suit this company (its trade, country and, for local ones, city). Original: `open`.
     public static func openTenders(_ s: GameState, for co: Company) -> [Tender] {
         load(s).list.filter { $0.outcome == nil && s.week < $0.closesWeek && $0.trade == co.type && $0.countryCode == co.countryCode && ($0.cityID == nil || $0.cityID == co.cityID) }
     }
-    /// Every tender this company bid for, newest first.
     public static func tenders(_ s: GameState, bidBy co: Company) -> [Tender] {
         load(s).list.filter { $0.bid(of: co.id) != nil }
     }
-    /// Does the manager bid by himself? Original: `auto`.
     public static func managerBids(_ s: GameState, companyID: Int) -> Bool { load(s).auto[String(companyID)]?.double != 0 }
     public static func setManagerBids(_ s: inout GameState, companyID: Int, on: Bool) {
         var st = load(s); st.auto[String(companyID)] = on ? 1 : 0; save(&s, st)
     }
-
-    // MARK: Requirements and scoring
 
     public static func qualification(_ t: Tender, _ co: Company, week: Int) -> Qualification {
         let years = Double(week - co.foundedWeek) / 52
@@ -127,14 +98,11 @@ public enum ProjectTenders {
         return Qualification(ok: true, reason: nil)
     }
 
-    /// Quality points: rating, reputation, how the company delivered for public buyers before, and what it promises. Original: `qScore`.
     public static func qualityScore(_ co: Company, higher q: Bool, history: [String: JSONValue]) -> Double {
         let h = history[String(co.id)] ?? .object([:])
         let r = co.int("rvN") >= 5 ? (Pricing.rating(co) - 2.5) / 2.5 : 0.35
         return clamp(0.15 + r * 0.4 + (co.reputation - 50) / 200 + min(0.15, h["ok"].double * 0.05) - h["bad"].double * 0.12 + (q ? 0.12 : 0), 0.05, 1)
     }
-
-    // MARK: Making tenders
 
     static func buyerName(_ kind: String, _ co: Company, _ w: World) -> String {
         switch kind {
@@ -148,7 +116,6 @@ public enum ProjectTenders {
         }
     }
 
-    /// A new tender for what this company's trade can win. Original: `make`.
     static func make(_ s: inout GameState, _ co: Company, data: GameData, home: Currency) -> Tender {
         let w = World(state: s, data: data)
         let bd = data.catalog[co.type]!
@@ -174,11 +141,8 @@ public enum ProjectTenders {
         return t
     }
 
-    // MARK: Bidding
-
     public enum BidResult: Equatable { case sent, notEnoughCash, closed, notQualified(String) }
 
-    /// Write and send a bid (a second bid replaces the first; writing it again costs again). Original: `bid`.
     @discardableResult
     public static func placeBid(_ s: inout GameState, companyID: Int, tenderID: Int, priceFactor: Double, higherQuality: Bool, data: GameData) -> BidResult {
         var st = load(s)
@@ -196,7 +160,6 @@ public enum ProjectTenders {
         return .sent
     }
 
-    /// Take the bid back (until the deadline); the writing cost is gone. Original: `tnd56re`.
     public static func withdrawBid(_ s: inout GameState, companyID: Int, tenderID: Int) {
         var st = load(s)
         guard let ti = st.list.firstIndex(where: { $0.id == tenderID }), st.list[ti].outcome == nil, s.week < st.list[ti].closesWeek else { return }
@@ -204,14 +167,10 @@ public enum ProjectTenders {
         save(&s, st)
     }
 
-    // MARK: The week
-
-    /// New tenders, managers' bids and the awards. Original: week.after 'tenders: new ones, awards, contracts' (prio 57).
     public static func weekly(_ s: inout GameState, data: GameData, context: FinanceContext) {
         guard s.companies.contains(where: { isEligible($0) }) || !load(s).list.isEmpty else { return }
         var st = load(s)
         let home = context.homeCurrency(s)
-        // Each trade you run sees about one relevant tender every two months in its country.
         var seen = Set<String>()
         for co in s.companies where isEligible(co) {
             let local = catalog[co.type]?.contains { $0.local } ?? false
@@ -222,7 +181,6 @@ public enum ProjectTenders {
                 st.list.append(make(&s, co, data: data, home: home))
             }
         }
-        // Managers bid at list price when the company has the money and meets the requirements.
         for ti in st.list.indices where st.list[ti].outcome == nil && s.week < st.list[ti].closesWeek {
             let t = st.list[ti]
             for c in s.companies where isEligible(c) && c.type == t.trade && c.countryCode == t.countryCode && (t.cityID == nil || c.cityID == t.cityID)
@@ -241,8 +199,6 @@ public enum ProjectTenders {
         save(&s, st)
     }
 
-    /// The award. The rivals' bids come from a seed made of the tender, so the result is the same whatever else happened.
-    /// Original: `award`.
     static func award(_ s: inout GameState, _ st: inout Store, _ ti: Int, data: GameData) {
         let t = st.list[ti]
         var R = HashedRandom("\(s.seed):tnd:\(t.id)")
@@ -262,7 +218,6 @@ public enum ProjectTenders {
         all += mine
         let low = all.map { $0.pf }.min() ?? 1
         for k in all.indices { all[k].score = t.priceWeight * (low / all[k].pf) + (1 - t.priceWeight) * all[k].qv }
-        // A stable ordering: best score first, the earlier entry wins a tie.
         let order = all.indices.sorted { (all[$0].score, -$0) > (all[$1].score, -$1) }
         let win = all[order[0]]
         st.list[ti].set("st", win.me != nil ? "won" : "lost")
@@ -289,7 +244,6 @@ public enum ProjectTenders {
 
     static func ordinal(_ n: Int) -> String { "\(n)" + (n == 1 ? "st" : n == 2 ? "nd" : n == 3 ? "rd" : "th") }
 
-    /// The won tender becomes a job on the order book. Original: `start`.
     static func startJob(_ s: inout GameState, _ t: Tender, _ co: Company, priceFactor pf: Double, higherQuality: Bool = false, data: GameData) {
         if t.isVolume { VolumeTenders.startContract(&s, t, co, priceFactor: pf, higherQuality: higherQuality); return }
         guard let i = s.companyIndex(co.id), let bd = data.catalog[co.type] else { return }

@@ -3,8 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The biggest companies, by sales, profit, value or growth: you, the rival groups and the rivals you face, among everyone in the
-/// business register. Part of Market > World > Rankings. Original: R27.rankings (features/world/rival_groups.js).
 struct CompanyRankingSection: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -38,7 +36,6 @@ struct CompanyRankingSection: View {
         switch sc { case .industries: return "Your trades"; case .country: return e.homeCountry.name; case .world: return "World" }
     }
 
-    /// The firm key a logo is drawn for: the rival group, the named rival you face, or the entry itself; you get none (initials).
     private func logoKey(_ en: CompanyRanking.Entry) -> String {
         if en.isYou { return "" }
         if let g = en.groupID { return "group|\(g)" }
@@ -72,11 +69,8 @@ struct CompanyRankingSection: View {
     }
 }
 
-/// How people see you, the people you know with favours and promises, what you own and where (Market > World > People and reputation).
-/// Original: features/world/world_around_you.js.
 struct WorldAroundView: View {
     @EnvironmentObject var store: GameStore
-    /// Tells the player what the engine answered; a nil result (no game) says so rather than staying silent.
     private func report(_ r: WorldAround.ActionResult?) {
         switch r {
         case .ok(let msg)?: Haptics.success(); store.show(msg, tone: "good")
@@ -203,7 +197,6 @@ struct WorldAroundView: View {
     }
 }
 
-/// The head office's data analyst: with one, market shares and forecasts come as ranges instead of a feeling.
 struct DataAnalystCard: View {
     @EnvironmentObject var store: GameStore
     @State private var candidates: [Person] = []

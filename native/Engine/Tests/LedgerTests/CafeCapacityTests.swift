@@ -4,13 +4,12 @@ import Finance
 import Businesses
 import Simulation
 
-/// A café with one barista trades from its first weeks; a machine out for repair cuts only what depends on it, and the reason is kept.
 final class CafeCapacityTests: XCTestCase {
     private func newCafe() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 2026)
         e.update { s, _, _ in Ledger.move(&s, .me, 20_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 4_000_000, quickSetup: false) else { throw XCTSkip("could not start a company") }
-        e.update { s, d, _ in _ = CompanySetup.quickSetupReport(&s, companyID: id, data: d, options: CompanySetup.SetupOptions(optionalEquipment: true)) }   // the usual full kit
+        e.update { s, d, _ in _ = CompanySetup.quickSetupReport(&s, companyID: id, data: d, options: CompanySetup.SetupOptions(optionalEquipment: true)) }
         return (e, id)
     }
 
@@ -55,7 +54,6 @@ final class CafeCapacityTests: XCTestCase {
         XCTAssertGreaterThan(base, 0)
         breakDown(&e, id, ["disp"])
         let r = try capacity(e, id)
-        // Cakes and lunch plates are off sale; coffee, tea and beans keep selling: about a third of the customers is lost.
         let lost = 1 - r.capacity / base
         XCTAssertEqual(lost, 4.5 / 12.5, accuracy: 0.01)
         XCTAssertEqual(1 - (try demand(e, id)) / baseD, 4.5 / 12.5, accuracy: 0.01)
@@ -74,9 +72,7 @@ final class CafeCapacityTests: XCTestCase {
         let c1 = try capacity(one, id).capacity, c2 = try capacity(e, id).capacity
         XCTAssertLessThan(c2, c1)
         XCTAssertGreaterThan(c2, 0)
-        // The dishwasher has no product link: a required machine without one costs 40%; the two combine.
         XCTAssertEqual(c2 / base, (1 - 4.5 / 12.5) * (1 - EquipmentOutage.otherRequiredShare), accuracy: 0.01)
-        // Every required machine in the café down at once still leaves some trade.
         breakDown(&e, id, ["esp", "oven", "pos"])
         XCTAssertGreaterThan(try capacity(e, id).capacity, 0)
     }
@@ -93,7 +89,6 @@ final class CafeCapacityTests: XCTestCase {
         var (e, id) = try newCafe()
         for _ in 0..<60 { e.nextDay() }
         var broken = e
-        // In repair for the whole of the next full week (the current week has already traded some days).
         breakDown(&broken, id, ["disp"], days: 21)
         for _ in 0..<14 { e.nextDay(); broken.nextDay() }
         let ok = try XCTUnwrap(e.state.company(id)).value("lastW"), lw = try XCTUnwrap(broken.state.company(id)).value("lastW")
@@ -123,7 +118,6 @@ final class CafeCapacityTests: XCTestCase {
     func testWeekThatServedNoOneKeepsItsReason() throws {
         var (e, id) = try newCafe()
         for _ in 0..<60 { e.nextDay() }
-        // The company's health keeps what stopped a week even after it is fixed.
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].set("lastW", .object(["units": 0, "rev": 0, "D": 250, "cap": 0, "util": 0, "bot": "Space (0 m2)"])) } }
         let h = e.companyHealth(try XCTUnwrap(e.state.company(id)))
         XCTAssertEqual(h.servedLastWeek, 0)
@@ -153,7 +147,6 @@ final class CafeCapacityTests: XCTestCase {
             s.companies[i].set("veh", .array(vs))
         }
         let r = try capacity(e, id)
-        // The van goes with the handyman (no work without it): the most one machine can take, never all.
         XCTAssertEqual(r.capacity / base, 1 - EquipmentOutage.maxLoss, accuracy: 0.01)
         XCTAssertTrue(r.bottleneck?.label.hasSuffix("(broken, in repair)") ?? false)
     }

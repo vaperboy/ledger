@@ -4,11 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// The big meeting (late game): once your net worth is large, every quarter or so someone offers you a minority stake (25 to 49%) in a group. You pay
-/// part yourself and borrow up to 60% over ten years; the stake pays a yearly profit share every month end and moves with the market.
-/// Original: `bigWeek`, `V.bigmeet`, `ACT.bigacc`, `bigctr`, `bigwalk`, `stakesWeek` (features/player/selling_startups_and_crisis.js).
-///
-/// State: `rest["bigOff"]` = the offer on the table, `rest["stakes"]` = the stakes you hold { id, name, pct, val, yld, w0 }.
 public enum BigMeeting {
     public struct Offer: Equatable {
         public var id: Int
@@ -19,7 +14,6 @@ public enum BigMeeting {
         public var expiresWeek: Int
         public var countered: Bool
         public var yearlyProfitShare: Double { price * yield }
-        /// What the bank would lend: 60% of the price.
         public var bankMaximum: Double { (price * 0.6).rounded() }
     }
     public struct Stake: Identifiable, Equatable {
@@ -39,15 +33,11 @@ public enum BigMeeting {
     public static func stakes(_ s: GameState) -> [Stake] {
         (s.rest["stakes"]?.array ?? []).map { Stake(id: $0["id"].int, name: $0["name"].string, pct: $0["pct"].double, value: $0["val"].double, yield: $0["yld"].double) }
     }
-    /// What you must put in yourself and what you would borrow. Original: `ACT.bigacc`.
     public static func financing(_ s: GameState, price: Double, context fc: FinanceContext) -> (own: Double, borrow: Double) {
         let borrow = min((price * 0.6).rounded(), max(0, (price - max(0, Payments.liquid(s) - fc.homeCurrency(s).scaledPrice(100_000))).rounded()))
         return (price - borrow, borrow)
     }
-    /// A warning shown on the screen when a 2-point rise in rates would make the interest cost more than the profit share.
     public static func ratesWarning(_ s: GameState, _ o: Offer) -> Bool { (s.economy.policyRate + 0.045) * o.bankMaximum > o.price * o.yield }
-
-    // MARK: Actions
 
     public enum AcceptResult: Equatable { case ok, needsOwnMoney(Double), noOffer }
 
@@ -72,7 +62,6 @@ public enum BigMeeting {
         return .ok
     }
 
-    /// Ask for 10% off, once. They accept (45%) or walk away. Original: `ACT.bigctr`.
     @discardableResult
     public static func counter(_ s: inout GameState) -> Bool? {
         guard var o = s.rest["bigOff"], !o.isNull, !o["ctr"].bool else { return nil }
@@ -88,11 +77,8 @@ public enum BigMeeting {
     }
     public static func walkAway(_ s: inout GameState) { s.rest["bigOff"] = .null }
 
-    // MARK: The week
-
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         if let o = s.rest["bigOff"], !o.isNull, s.week >= o["exp"].int { s.rest["bigOff"] = .null }
-        // a new offer
         if (s.rest["bigOff"] ?? .null).isNull, s.week % 13 == 7 {
             let nw = Valuation.netWorth(s, trades: data.catalog).total
             if nw >= fc.homeCurrency(s).scaledPrice(40e6), s.random.chance(0.35) {
@@ -107,7 +93,6 @@ public enum BigMeeting {
                 s.addMessage(from: o["seller"].string, title: "Big meeting: \(pct)% of \(o["tgt"].string)", body: "An offer is on the table for 3 weeks.", tone: "good")
             }
         }
-        // stakes drift and pay out at month end
         guard var list = s.rest["stakes"]?.array, !list.isEmpty else { return }
         for k in list.indices {
             list[k]["val"] = .number(max(0, list[k]["val"].double * (1 + 0.003 + s.random.gauss() * 0.015)))

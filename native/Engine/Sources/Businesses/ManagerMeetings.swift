@@ -4,14 +4,9 @@ import Countries
 import Employees
 import Finance
 
-/// Emergency board meetings, the right hand's briefing, meetings with your managers, the data analyst's report, and a manager nobody meets slipping.
-/// What the board decides in ordinary times is the decision list (`ManagerAgenda`).
 extension ManagerModel {
-    // MARK: Reading meetings
-
     public struct MeetingRow: Equatable, Sendable { public var companyID: Int; public var name: String; public var revenue: Double; public var profit: Double; public var previous: Double; public var cash: Double }
     public struct EmergencyVote: Equatable, Sendable { public var personID: Int?; public var name: String; public var title: String; public var pick: Int; public var isRightHand: Bool }
-    /// An emergency meeting: trouble at a company that nobody below the board could settle, with how each seat would vote.
     public struct BoardMeeting: Identifiable, Equatable, Sendable {
         public var id: Int
         public var week: Int
@@ -22,20 +17,17 @@ extension ManagerModel {
         public var options: [String]
         public var votes: [EmergencyVote]
         public var rightHandPick: Int?
-        public var status: String        // "", "you", "lh", "late"
+        public var status: String
         public var picked: Int?
         public var companyID: Int
         public var kind: String
-        /// The week it closed (answered); nil while open.
         public var closedWeek: Int? = nil
         public var isOpen: Bool { status.isEmpty }
-        /// The minutes: what was decided.
         public var minutes: [String] {
             guard let p = picked, options.indices.contains(p) else { return [] }
             return ["Decision: \(options[p])" + (status == "lh" ? " (your right hand decided)" : "")]
         }
     }
-    /// The emergency meetings of a board, newest first.
     public static func meetings(_ s: GameState, key: String) -> [BoardMeeting] {
         board(s, key: key)["mts"].array.filter { $0["emg"].bool }.map { meetingFrom($0) }
     }
@@ -52,8 +44,6 @@ extension ManagerModel {
 
     static func dismissForBoard(_ s: inout GameState, companyID: Int, data: GameData) { fire(&s, companyID: companyID, data: data) }
 
-    // MARK: Emergencies
-
     public struct EmergencyKind: Sendable { public var title: String; public var options: [(String, String)] }
     public static let emergencyKinds: [String: EmergencyKind] = [
         "drop": EmergencyKind(title: "Revenue fell sharply", options: [("Cut prices one step", "price-"), ("Marketing push, +50%", "mkt+"), ("Wait and watch", "wait")]),
@@ -64,7 +54,6 @@ extension ManagerModel {
         "rating": EmergencyKind(title: "Reviews are falling fast", options: [("Train the staff", "course"), ("Raise pay 5%", "raise"), ("Wait and watch", "wait")]),
     ]
 
-    /// Carry out one emergency answer. Original: `doEmg`. Returns "hire" when the player now has to pick a manager.
     @discardableResult
     static func doEmergency(_ s: inout GameState, companyID: Int, code: String, data: GameData) -> String {
         guard let i = s.companyIndex(companyID) else { return "" }
@@ -102,7 +91,6 @@ extension ManagerModel {
         return ""
     }
 
-    /// What your right hand would pick. Original: `lhPick`.
     static func rightHandPick(_ s: GameState, kind: String, co: Company, lh: Person?) -> Int {
         var best = 0
         let hist = co.monthlyHistory
@@ -119,8 +107,6 @@ extension ManagerModel {
         return best
     }
 
-    /// A problem at a company. Someone above the store deals with it first; otherwise the board meets (or, without a board, you are asked).
-    /// Original: `emergency`.
     static func emergency(_ s: inout GameState, companyID: Int, kind: String, why: String, data: GameData) {
         guard let ci = s.companyIndex(companyID), let E = emergencyKinds[kind] else { return }
         var co = s.companies[ci]
@@ -165,7 +151,6 @@ extension ManagerModel {
                      options: E.options.map { .option($0.0) }, action: "emg12", data: .object(["k": .string(key), "id": .number(Double(id))]), expiresWeek: s.week + 2)
     }
 
-    /// The player (or the inbox) answers an emergency. Returns "hire" when a new manager is needed.
     @discardableResult
     public static func pickEmergency(_ s: inout GameState, key: String, meetingID: Int, option idx: Int, by who: String = "you", data: GameData) -> String? {
         var b = board(s, key: key)
@@ -175,14 +160,12 @@ extension ManagerModel {
         mts[k]["st"] = .string(who); mts[k]["pickI"] = .number(Double(idx))
         b["mts"] = .array(mts)
         writeBoard(&s, key: key, b)
-        // the inbox message for it is done
         if let mi = s.inbox.firstIndex(where: { $0.actionID == "emg12" && $0.value("data")["id"].int == meetingID && $0.status == "open" }) {
             s.inbox[mi].set("status", "done"); s.inbox[mi].set("pick", idx); s.inbox[mi].isRead = true
         }
         return doEmergency(&s, companyID: mts[k]["co"].int, code: E.options[idx].1, data: data)
     }
 
-    /// Answers to the messages "emg12" (a board meeting), "emg37" (a manager without a board asks you), "org56" and "cpx56" and "mfind11".
     public static func handlesAnswer(_ action: String) -> Bool { ["emg12", "emg37", "org56", "cpx56", "mfind11", "mprop"].contains(action) }
     public static func answerGroup(_ s: inout GameState, message m: Message, option idx: Int, data: GameData, context fc: FinanceContext, marketing: MarketingTables) {
         let d = m.value("data")
@@ -202,11 +185,7 @@ extension ManagerModel {
         }
     }
 
-    // MARK: Weekly: emergencies, co-owner directors, your right hand
-
-    /// The week of every board: signs of trouble become emergencies, unanswered ones lapse, your right hand answers what you left waiting.
     static func boardsWeekly(_ s: inout GameState, data: GameData) {
-        // revenue history, cash change and the signs of trouble
         for i in s.companies.indices {
             let co0 = s.companies[i]
             guard co0.status == .open, co0.type != "hold", !co0.value("lastW").isNull else { continue }
@@ -249,7 +228,6 @@ extension ManagerModel {
             }
         }
         sweepBoards(&s)
-        // meetings nobody answered; right hand answers what you left waiting
         for key in boardKeys(s) {
             var b = board(s, key: key)
             var mts = b["mts"].array, changed = false
@@ -268,7 +246,6 @@ extension ManagerModel {
         briefing(&s, data: data)
     }
 
-    /// The right hand's briefing. Original: `briefing`.
     static func briefing(_ s: inout GameState, data: GameData) {
         guard let lh = Headquarters.rightHand(s), lh.briefing != "off", let n = s.people[lh.personID] else { return }
         if lh.briefing == "month" && !GameCalendar.isMonthEnd(week: s.week) { return }
@@ -283,7 +260,6 @@ extension ManagerModel {
         s.addMessage(kind: "info", from: n.name, title: "\(lh.briefing == "week" ? "Weekly" : "Monthly") briefing", body: lines.joined(separator: "\n"), tone: "n", status: "done")
     }
 
-    /// Big owners take a board seat as director. Original: `ownersWeek`.
     static func ownersWeek(_ s: inout GameState) {
         for key in boardKeys(s) where boardActive(s, key: key) {
             for x in holders(s, key: key) where x.h["pct"].double >= 20 && x.h["dir15"].isNull {
@@ -308,61 +284,8 @@ extension ManagerModel {
         }
     }
 
-    // MARK: Meetings with managers
-
-    /// Carry out the manager's proposal `key` and drop the message it would leave in the owner's inbox.
-    static func quietAsk(_ s: inout GameState, _ id: Int, _ key: String, data: GameData, marketing: MarketingTables) {
-        let n0 = s.inbox.count
-        if let i = s.companyIndex(id) { s.companies[i].set("askW", .null) }
-        _ = ask(&s, companyID: id, key: key, data: data, marketing: marketing)
-        if s.inbox.count > n0 { s.inbox.removeFirst(s.inbox.count - n0) }
-    }
-
-    /// A short talk with the manager about one goal (`morale`, `review`, ...) in a tone (`casual`, `serious`, `final`).
-    static func meetOne(_ s: inout GameState, companyID: Int, goal: String, tone: String, data: GameData, marketing: MarketingTables) {
-        guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID, let n = s.people[mid] else { return }
-        let t = tone == "casual" ? 0 : tone == "serious" ? 1 : 2
-        let steps = t > 0 ? 2 : 1
-        let co = s.companies[ci]
-        let cur = World(state: s, data: data).currency(co)
-        s.companies[ci].set("mood", mood(co)); s.companies[ci].set("meetW", s.week)
-        func run(_ k: String) { for _ in 0..<steps { quietAsk(&s, companyID, k, data: data, marketing: marketing) } }
-        var say = ""
-        switch goal {
-        case "review":
-            let m = co.monthlyHistory.last
-            let rev = m?.revenue ?? 0, pr = m?.profit ?? 0
-            let u = co.value("lastW")["util"]
-            say = "Last month we took in \(cur.short(rev)) and \(pr >= 0 ? "made \(cur.short(pr))" : "lost \(cur.short(-pr))"). " + (u.isNull ? "" : "We are running at about \(Int(saturating: jsRound(u.double * 100)))% of what we can deliver. ") + (pr < 0 ? "I know it needs to turn around." : "I will keep it on track.")
-        case "growth":
-            run("mkt_more"); say = "Understood. I will push harder for customers" + (t > 0 ? " and I know you expect results" : "") + ". It will cost more in marketing first."
-            if t == 2 { s.companies[ci].priceLevel = max(-2, s.companies[ci].priceLevel - 1) }
-        case "costs":
-            run("save"); if t > 0 { run("mkt_less") }; if t == 2 { quietAsk(&s, companyID, "cut", data: data, marketing: marketing) }
-            say = t == 2 ? "I will cut where I can, including staff. Quality may suffer." : "I will look for savings without hurting the service."
-        case "quality": run("quality"); say = "I will spend more on upkeep and standards. Costs go up a little, complaints should go down."
-        case "morale":
-            s.companies[ci].set("mood", min(100, mood(s.companies[ci]) + (t == 0 ? 10 : 4)))
-            say = t == 2 ? "I would rather hear that in a different way, but I will try." : "Thank you. It means something to the team to hear that."
-        case "pay":
-            s.companies[ci].managerMonthlyWage = t == 2 ? jsRound(co.managerMonthlyWage * 0.95) : jsRound(co.managerMonthlyWage * (t == 1 ? 1.03 : 1.05))
-            say = t == 2 ? "A pay cut. I will remember that." : "Thank you, that is fair."
-            s.companies[ci].set("mood", min(100, mood(s.companies[ci]) + (t == 2 ? -15 : 8)))
-        default: break
-        }
-        if t == 1 { s.companies[ci].set("mood", mood(s.companies[ci]) - 3) }
-        if t == 2 { s.companies[ci].set("mood", mood(s.companies[ci]) - 10) }
-        var quit = false
-        if t == 2 && mood(s.companies[ci]) < 30 && s.random.chance(0.3) { quit = true; resign(&s, companyIndex: ci, why: "after the final warning I do not see a future here") }
-        s.addMessage(kind: "info", from: n.name, title: quit ? "I resign" : "After the meeting: \(co.name)", body: quit ? "After that meeting I cannot continue. I am handing in my notice." : "\(firstName(n.name)): \(say)",
-                     companyID: co.id, tone: quit ? "bad" : "n", status: "done")
-    }
-
-    // MARK: The data analyst's report
-
     public struct AnalystLine: Equatable, Sendable { public var companyID: Int; public var name: String; public var lines: [String]; public var history: [Double] }
 
-    /// A report from your data analyst on one company or all (nil). Needs a data analyst at the main office. Original: `analystReport`.
     @discardableResult
     public static func analystReport(_ s: inout GameState, companyID: Int?, data: GameData) -> [AnalystLine]? {
         guard Headquarters.has(s, "ana") else { return nil }
@@ -398,9 +321,6 @@ extension ManagerModel {
         return out
     }
 
-    // MARK: A manager nobody meets slips
-
-    /// How much worse a left-alone manager works, 0 to 0.12. A boss above the manager halves the pace. Original: `OA59.drift`.
     public static func attentionDrift(_ co: Company, week: Int) -> Double {
         guard co.managerID != nil, co.status == .open, co.type != "hold" else { return 0 }
         let lastMeeting = co.value("meetW").isNull ? -1e9 : co.num("meetW")
@@ -413,6 +333,5 @@ extension ManagerModel {
         let started = co.value("mgrW0").isNull ? Double(co.openedWeek ?? 0) : co.num("mgrW0")
         return week - Int(max(lastMeeting, started))
     }
-    /// Companies whose manager is due a meeting.
     public static func managersDueMeeting(_ s: GameState) -> [Company] { s.companies.filter { attentionDrift($0, week: s.week) > 0 || ($0.managerID != nil && $0.status == .open && weeksSinceMeeting($0, week: s.week) >= 8) } }
 }

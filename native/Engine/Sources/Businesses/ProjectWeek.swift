@@ -3,13 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// The days and the week of a trade that sells jobs in hours (plumber, electrician, construction, engineering office,
-/// event agency). Originals: `projDay` and the `FAM.project.custom.around` step of features/sales/trades_in_hours.js,
-/// the bookings of the event agency (tidier_screens_and_monthly_bills.js, section 10), and the awareness step of the same
-/// file ("people who used you tell others").
-///
-/// Every day (after the shops and services have traded) each open project company works its day: requests come in, the
-/// hours go to the oldest job first, finished jobs are paid. The week close books exactly what happened on the days.
 public enum ProjectWeek {
     static let eventNames: [[String]] = [
         ["summer party", "Christmas party", "conference", "product launch", "staff kick-off", "anniversary dinner", "customer seminar"],
@@ -17,12 +10,11 @@ public enum ProjectWeek {
         ["wedding", "wedding", "wedding", "silver wedding"],
     ]
 
-    /// Every open project company works the day. Original: `day.after` step 'trades log their hours' (prio 90).
     public static func runDay(_ s: inout GameState, day d: Int, data: GameData) {
         for i in s.companies.indices {
             guard s.companies[i].status == .open, let bd = data.catalog[s.companies[i].type], ProjectModel.sellsHours(bd) else { continue }
             let fm0 = s.companies[i].value("fm")
-            let cycle = GameCalendar.cycle(companyID: s.companies[i].id, week: s.week, day: d)   // the log belongs to the company's own seven-day cycle
+            let cycle = GameCalendar.cycle(companyID: s.companies[i].id, week: s.week, day: d)
             var log = (!fm0["d41"].isNull && fm0["d41"]["w"].int == cycle) ? ProjectModel.DayLog(json: fm0["d41"]) : ProjectModel.DayLog(week: cycle)
             workDay(&s, i, bd, &log, week: s.week, day: d, data: data)
             var fm = s.companies[i].value("fm")
@@ -31,14 +23,11 @@ public enum ProjectWeek {
         }
     }
 
-    // MARK: One day of work
-
     static func workDay(_ s: inout GameState, _ i: Int, _ bd: Trade, _ L: inout ProjectModel.DayLog, week wk: Int, day d: Int, data: GameData) {
         if L.days.contains(d) { return }
         let spec = ProjectModel.specs[bd.id]!
         let isEvent = spec.isEvent
         let id = s.companies[i].id
-        // Read-only view for the calculations; dropped before the state changes.
         let (dm, cp, hvl, vat, country, currency, tKnob, ttKnob): (DemandResult, CapacityResult, Double, Double, Country, Currency, Double, Double) = {
             let w = World(state: s, data: data)
             let co = s.companies[i]
@@ -63,7 +52,6 @@ public enum ProjectWeek {
         var won = fm["won"].double, doneCount = fm["done"].double
         for k in jobs.indices { ProjectModel.normalise(&jobs[k], bd, hourValue: hvl, week: s.week, random: &s.random) }
         let nowD = wk * 7 + d
-        // The event agency's bookings: the month's counts and the clients who come back.
         var eventState = fm["ev30"].isNull ? JSONValue.object(["due": .array([]), "m": -1, "bm": 0, "dm": 0, "tot": 0]) : fm["ev30"]
         if isEvent {
             let mi = GameCalendar.monthIndex(week: wk)
@@ -74,8 +62,6 @@ public enum ProjectWeek {
 
         func backlogHours() -> Double { jobs.reduce(0) { $0 + ($1.inHours ? $1.remainingHours : 0) } }
 
-        /// A payment from the client. A milestone payment (`retain`) has the trade's retention held back: it is revenue now, but the client keeps
-        /// that share until the job is complete and the defect period is over (it waits as a receivable, see `CompanyWeek.book`).
         func payJob(_ j: inout ProjectModel.Job, _ amount: Double, retain: Bool = false) -> Double {
             let amt = jsRound(min(amount, j.contractValue - j.paid))
             if amt <= 0 { return 0 }
@@ -94,7 +80,6 @@ public enum ProjectWeek {
             j.source == "rep" ? "\(j.client)’s \(j.what) again" : j.client + (j.what.contains("wedding") ? "’s " : " ") + j.what
         }
 
-        /// Original: `EV.dress` — who books, what for, and the date.
         func dress(_ j: inout ProjectModel.Job, source src: String, from: String?) {
             j.source = src
             j.from = from ?? ""
@@ -120,7 +105,6 @@ public enum ProjectWeek {
             var j = j0
             L.requests += 1
             if isEvent {
-                // An event has a date: take it only if the team can prepare it, and everything due before it, in time.
                 j.weeks = j.sizeClass == 2 ? s.random.int(6, 14) : j.sizeClass == 1 ? s.random.int(3, 8) : s.random.int(1, 4)
                 dress(&j, source: source ?? "mkt", from: from)
                 if j.sizeClass == 2 && source != "rep" {
@@ -148,16 +132,14 @@ public enum ProjectWeek {
                              body: "\(cur.short(j.contractValue)), to deliver around \(GameCalendar.dateString(week: j.dueWeek)). \(how) 30% deposit now, the rest after the event.",
                              companyID: id, tone: "good", status: "done")
             } else {
-                j.dueWeek = j.startWeek + j.weeks   // planned finish, recorded when the job is taken on (events carry their own date)
+                j.dueWeek = j.startWeek + j.weeks
                 jobs.append(j)
             }
             return true
         }
 
-        // New requests
         let n = s.random.poisson(Dh * reqShare / max(1, avgH))
         for _ in 0..<n { let j = ProjectModel.newJob(&s, s.companies[i], bd, hourValue: hvl, country: country); _ = take(j) }
-        // Happy clients recommend you and book again
         if isEvent {
             var keep: [JSONValue] = []
             for x in eventState["due"].array {
@@ -170,7 +152,6 @@ public enum ProjectWeek {
             eventState["due"] = .array(keep)
         }
 
-        // The day's work: the oldest job first; for events the nearest date first
         var left = Hw * workShare
         let order: [Int] = isEvent ? jobs.indices.sorted { (jobs[$0].dueDay ?? 0, $0) < (jobs[$1].dueDay ?? 0, $1) } : Array(jobs.indices)
         for k in order {
@@ -197,14 +178,13 @@ public enum ProjectWeek {
             }
         }
 
-        // Finished jobs; events happen on their day, ready or not
         let fin: [Int] = isEvent ? jobs.indices.filter { nowD >= (jobs[$0].dueDay ?? Int.max) } : jobs.indices.filter { jobs[$0].hoursDone >= jobs[$0].hours - 1e-6 }
         var finished3 = fm["fin41"].array.isEmpty ? [0.0, 0.0, 0.0] : (0..<3).map { fm["fin41"][$0].double }
         for k in fin {
             var j = jobs[k]
             let prep = min(1, j.hoursDone / j.hours)
             let last = payJob(&j, j.contractValue - j.paid)
-            if j.retained > 0 { L.released.append(j.id) }   // complete: the defect period of the retention starts
+            if j.retained > 0 { L.released.append(j.id) }
             jobs[k] = j
             doneCount += 1
             L.units += 1
@@ -220,7 +200,6 @@ public enum ProjectWeek {
                 eventState["dm"] = .number(eventState["dm"].double + 1)
                 eventState["tot"] = .number(eventState["tot"].double + 1)
                 if prep >= 0.9 {
-                    // Delivered: a happy client tells others and may book again.
                     let happy = s.random.chance(clamp(0.45 + (q - 55) / 80, 0.15, 0.92))
                     if happy {
                         let r1 = focus == 2 ? 0.6 : 0.45, r2 = focus == 2 ? 0.25 : 0.15, rep = focus == 0 ? 0.55 : focus == 1 ? 0.45 : 0.03
@@ -242,7 +221,6 @@ public enum ProjectWeek {
             } else if j.sizeClass == 2 {
                 s.note("\(j.what.prefix(1).uppercased() + j.what.dropFirst()) for \(j.client) finished. Final payment \(cur.short(last)) (the whole job \(cur.short(j.contractValue))).", tone: "good", companyID: id)
             }
-            // A finished job may get a review
             let pr = min(0.7, ProjectModel.reviewRate(bd) * [1, 1.4, 2][j.sizeClass])
             if s.random.next() < pr { ProjectModel.addReview(&s, i, bias: (j.hours > j.quotedHours * 1.25 ? -0.4 : 0) + (prep < 0.9 ? -1 : 0)) }
         }
@@ -263,16 +241,11 @@ public enum ProjectWeek {
         L.days.insert(d)
     }
 
-    // MARK: The week close
-
-    /// The figures the week's books take from the days that happened. Original: 'the week’s books take what happened on its days'.
     static func closeWeek(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) -> CompanyWeek.WeekContext {
         let wk = s.week - 1
-        let cycle = GameCalendar.cycle(companyID: s.companies[i].id, week: s.week, day: s.day) - 1   // the cycle that ended on the company's slot day
+        let cycle = GameCalendar.cycle(companyID: s.companies[i].id, week: s.week, day: s.day) - 1
         let fm0 = s.companies[i].value("fm")
         var L = (!fm0["d41"].isNull && fm0["d41"]["w"].int == cycle) ? ProjectModel.DayLog(json: fm0["d41"]) : ProjectModel.DayLog(week: cycle)
-        // A week played without the days (or a company that opened during it): the missing days are worked now. Not in the first week of
-        // the game, where the cycle that closes is only the days before the company's slot.
         if s.week > 0 { for d in 0..<7 where !L.days.contains(d) { workDay(&s, i, bd, &L, week: wk, day: d, data: data) } }
         var fm = s.companies[i].value("fm")
         let spec = ProjectModel.specs[bd.id]!
@@ -293,14 +266,10 @@ public enum ProjectWeek {
         return ctx
     }
 
-    // MARK: Being known
-
-    /// People who used you tell others: a busy team becomes known in its area, not famous. Original: week.after 'trades_in_hours weekly'.
     static func afterWeek(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         guard s.companies[i].status == .open else { return }
         var co = s.companies[i]
         let fm = co.value("fm")
-        // The developer has no hours: what it sells is compared with what a normal one sells.
         let x = ProjectModel.sellsHours(bd) ? fm["wk41"]["used"].double / 30 : (bd.normalCapacity > 0 ? co.lastWeekUnits / (bd.normalCapacity * 0.6) : 0)
         var cu = co.value("cu41").array.map { $0.double }
         cu.append(min(4, x))

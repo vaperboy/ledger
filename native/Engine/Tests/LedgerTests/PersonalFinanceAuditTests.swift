@@ -5,7 +5,6 @@ import Finance
 import Investments
 @testable import Simulation
 
-/// Audit part 2: loans and early repayment, investments (fees, tax at year end), personal year-end tax in all 23 countries.
 final class PersonalFinanceAuditTests: XCTestCase {
     private func game(_ code: String = "UK", seed: Int = 5) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: seed)
@@ -19,7 +18,7 @@ final class PersonalFinanceAuditTests: XCTestCase {
         var cash0 = 0.0
         var amt = 0.0
         e.update { s, _, ctx in
-            s.loans.removeAll()   // the starting loan would blur the totals
+            s.loans.removeAll()
             cash0 = s.cash
             amt = Banking.offer(kind: "cons", amount: 0, company: nil, state: s, netWorth: 50_000_000, context: ctx).maximum
             XCTAssertGreaterThan(amt, 50_000, "the bank offers something")
@@ -33,7 +32,7 @@ final class PersonalFinanceAuditTests: XCTestCase {
                 let before = s.cash
                 Banking.collectMonthlyInstalments(state: &s, context: ctx)
                 paid += before - s.cash
-                s.week += (s.week % 2 == 0 ? 5 : 4)   // about 4.5 weeks a month, a little over the loan's 4.33
+                s.week += (s.week % 2 == 0 ? 5 : 4)
             }
             if e.state.loans.isEmpty { break }
         }
@@ -42,7 +41,6 @@ final class PersonalFinanceAuditTests: XCTestCase {
         XCTAssertLessThan(paid, amt * 1.25, "but not an absurd amount")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
 
-        // Early repayment: half, then the rest.
         e.update { s, _, ctx in
             if case .ok(let l) = Banking.take(kind: "cons", amount: amt, termMonths: 24, company: nil, state: &s, netWorth: 50_000_000, context: ctx) { id = l.id }
             XCTAssertNotEqual(id, 0)
@@ -71,7 +69,6 @@ final class PersonalFinanceAuditTests: XCTestCase {
             XCTAssertEqual(s.cash - c1, v - max(29, v * 0.001), accuracy: 1)
             XCTAssertEqual(s.tax.gains - g0, v - max(29, v * 0.001) - 1_001_000, accuracy: 1, "gain = proceeds less fee less cost (the buy fee is in the cost)")
             XCTAssertGreaterThan(s.tax.gains - g0, 80_000)
-            // Crypto: spread and fee both ways, so an instant round trip loses about 1.6 % plus 0.8 % fees.
             let c2 = s.cash, g1 = s.tax.gains
             XCTAssertEqual(Brokerage.buy(&s, .crypto, "BTC", amount: 1_000_000), .ok)
             _ = Brokerage.sell(&s, .crypto, "BTC", fraction: 1)

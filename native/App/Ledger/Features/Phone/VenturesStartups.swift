@@ -6,8 +6,6 @@ import Finance
 import Events
 import Simulation
 
-/// Your startups: one row per live startup (stake, cash and the next thing it needs); a row opens its actions in place. Past startups
-/// are listed under a toggle. Founding runs in `FoundStartupSheet`.
 struct VenturesStartupsSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -68,7 +66,6 @@ struct VenturesStartupsSection: View {
         }
     }
 
-    /// The one word that says what the startup needs next.
     private func statusPill(_ f: Startups.Founded) -> (String, AcctPill.Tone) {
         if !f.offers.isEmpty { return (f.offers.count == 1 ? "1 offer" : "\(f.offers.count) offers", .good) }
         if f.runwayWeeks < 8 { return ("\(f.runwayWeeks) wk runway", .bad) }
@@ -78,7 +75,6 @@ struct VenturesStartupsSection: View {
     }
 }
 
-/// The open row of a startup: figures, offers to answer, the main action first, then team, product, use in your companies and shutting down.
 private struct StartupPanel: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -127,8 +123,6 @@ private struct StartupPanel: View {
         }
     }
 
-    // MARK: Offers and rounds
-
     private func offerView(_ o: Funding.FundOffer, _ cur: Currency) -> some View {
         let terms: CapTable.DealTerms? = engine.fundingOfferTerms(companyID: f.id, offerIndex: o.id)
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -176,8 +170,6 @@ private struct StartupPanel: View {
             store.show(back.map { "Shut down. \(cur.tidyShort($0)) comes back to you." } ?? "It was already closed.", tone: "n")
         }
     }
-
-    // MARK: Team and product
 
     @ViewBuilder private func team(_ p: Startups.Product) -> some View {
         Text("Team and product").capsLabel(Theme.inkFaint).padding(.top, Theme.Space.xs)
@@ -265,10 +257,6 @@ private struct StartupPanel: View {
     }
 }
 
-// MARK: Found a startup
-
-/// Found a startup: sector, product, how customers pay, who builds it and how much seed money, then the cost summary (what leaves your cash,
-/// what is left, runway and time to a product) before the one confirmation.
 struct FoundStartupSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -318,7 +306,6 @@ struct FoundStartupSheet: View {
         }
     }
 
-    /// The cost summary: what leaves the cash now, what is left, and what the money buys.
     @ViewBuilder private func summary(_ e: GameEngine, _ sec: StartupProducts.Sector, _ productID: String, _ modelID: String, _ whoNow: String,
                                       _ p: Startups.Plan, _ cur: Currency) -> some View {
         let cash: Double = Payments.liquid(e.state)
@@ -353,10 +340,6 @@ struct FoundStartupSheet: View {
     }
 }
 
-// MARK: Launch and price
-
-/// The launch decision (and, after launch, the price): the price per customer, a weekly marketing budget, and what to expect. Read from
-/// `startupLaunchPreview`; nothing is decided until "Launch". Hiring and firing are in the company's own team screens.
 struct StartupLaunchSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss

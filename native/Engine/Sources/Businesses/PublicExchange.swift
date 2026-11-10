@@ -37,7 +37,6 @@ public enum ExchangeDividendResult: Equatable, Sendable {
     case ok(perShare: Double), notListed, tooSoon(daysLeft: Int), nothingToPay, tooMuch(maximum: Double), refused(String)
 }
 
-/// One line of the market screen.
 public struct ExchangeRow: Identifiable, Equatable, Sendable {
     public var id: String
     public var name: String
@@ -51,18 +50,11 @@ public struct ExchangeRow: Identifiable, Equatable, Sendable {
     public var mine: Int
     public var openOrders: Int
     public var value: Double
-    /// Why you cannot sell your own shares today (nil: you can).
     public var blocked: String?
     public var halted: Bool
     public var note: String
 }
 
-/// The public exchange: one closing auction a trading day (Monday to Friday), the World Bank and the World Index as server stocks, and the
-/// holdings you take public. Rules are in `ExchangeRules`; everything that moves money goes through `Ledger`, so the books stay balanced.
-///
-/// How a share trades: you leave limit orders during the day; when the day closes, your orders meet the market. A server stock trades at its
-/// close price (a small daily wobble round the server's market price). A holding of yours trades in a call auction against the market's own
-/// flow, whose mood follows the stock market. Shares you sell come out of your stake in the cap table, never below 51%.
 public enum PublicExchange {
     public static let worldBank = "srv:wb"
     public static let worldIndex = "srv:wi"
@@ -72,9 +64,6 @@ public enum PublicExchange {
 
     public static func today(_ s: GameState) -> Int { s.week * 7 + s.day }
 
-    // MARK: Server stocks
-
-    /// The server's market price of a server stock (nil before the market exists).
     public static func fair(_ s: GameState, _ id: String) -> Double? {
         let p: Double
         switch id {
@@ -96,9 +85,6 @@ public enum PublicExchange {
         }
     }
 
-    // MARK: Listing
-
-    /// Register a holding that has gone public. The value is what the holding is worth now; the first price is that value per share.
     @discardableResult
     public static func register(_ s: inout GameState, holdingID: Int, value: Double) -> Bool {
         guard let co = s.company(holdingID), value > 0 else { return false }
@@ -115,7 +101,6 @@ public enum PublicExchange {
 
     public static func isRegistered(_ s: GameState, holdingID: Int) -> Bool { ExchangeBook(s).instruments["co:\(holdingID)"] != nil }
 
-    /// Another player's listing, mirrored from the server so a position in it counts in net worth at the last close.
     public static func mirror(_ s: inout GameState, listingID: String, name: String, shares: Int, nav: Double, close: Double, held: Int, cost: Double) {
         var book = ExchangeBook(s)
         let id = "ext:\(listingID)"
@@ -126,8 +111,6 @@ public enum PublicExchange {
         if held > 0 { book.positions[id] = ExchangePosition(instrument: id, shares: held, cost: cost, since: book.positions[id]?.since ?? today(s)) } else { book.positions[id] = nil }
         book.write(to: &s)
     }
-
-    // MARK: Orders
 
     public static func placeOrder(_ s: inout GameState, instrument id: String, side: ExchangeSide, shares: Int, limit: Double, currency: Currency?) -> OrderResult {
         var book = ExchangeBook(s)
@@ -177,10 +160,6 @@ public enum PublicExchange {
         return true
     }
 
-    // MARK: Dividends of a listed company
-
-    /// The listed holding pays `amount` in all to its shareholders (you by your stake, the market by the rest). Once a quarter at most, and
-    /// only out of retained profit, like any dividend.
     public static func declareDividend(_ s: inout GameState, holdingID: Int, amount: Double, context: FinanceContext) -> ExchangeDividendResult {
         var book = ExchangeBook(s)
         guard var inst = book.instruments["co:\(holdingID)"], !inst.halted, let co = s.company(holdingID) else { return .notListed }
@@ -199,16 +178,12 @@ public enum PublicExchange {
         let dps = amount / Double(max(1, inst.shares))
         inst.dividendDay = now
         inst.dividendPerShare = dps
-        inst.close = max(0.0001, ExchangeRules.round4(inst.close - dps))   // ex-dividend: the price starts the day lower by what was paid
+        inst.close = max(0.0001, ExchangeRules.round4(inst.close - dps))
         book.instruments[inst.id] = inst
         book.write(to: &s)
         return .ok(perShare: dps)
     }
 
-    // MARK: The day
-
-    /// Runs once a day. On a trading day's close (Monday to Friday, worked out on the morning after) every share clears; dividends of the
-    /// World Bank are paid in the first days of each quarter. `holdingValue` gives what a listed holding is worth now (nil: gone).
     public static func runDay(_ s: inout GameState, context: FinanceContext, holdingValue: (Int) -> Double?) {
         let now = today(s)
         var book = ExchangeBook(s)
@@ -236,7 +211,6 @@ public enum PublicExchange {
                     let target = ExchangeRules.round4(v / Double(inst.shares))
                     inst.nav = ExchangeRules.round4(clamp(target, inst.nav * (1 - ExchangeRules.valueStepShare), inst.nav * (1 + ExchangeRules.valueStepShare)))
                 }
-                // Orders that the new value per share has left outside the band are cancelled.
                 for o in book.orders where o.instrument == id && !ExchangeRules.inBand(price: o.limit, nav: inst.nav, rules: s.worldRules) {
                     book.orders.removeAll { $0.id == o.id }
                     s.note("Your order for \(inst.name) was cancelled: the price is outside the band after the value report.", tone: "n")
@@ -286,7 +260,6 @@ public enum PublicExchange {
                 book.instruments[id] = inst
             }
         }
-        // World Bank dividend: a quarter's share of its yield to everyone who held it the day before.
         if s.week % 13 == 0, s.day == 3, let inst = book.instruments[worldBank], let pos = book.positions[worldBank], pos.shares > 0, pos.since < now {
             let dy = s.rest["stocks"]?["BANK"]["dy"].double ?? 0
             let d = jsRound(Double(pos.shares) * inst.close * dy / 4)
@@ -301,7 +274,6 @@ public enum PublicExchange {
         if withhold { PersonalFinance.withholdNow(&s, context: context) }
     }
 
-    /// Fills a server stock order at the close. Returns false (and tells the player) when it could not be settled.
     private static func settleServer(_ s: inout GameState, _ book: inout ExchangeBook, _ inst: ExchangeInstrument, _ o: ExchangeOpenOrder, price: Double, today now: Int, currency cur: Currency) -> Bool {
         let gross = jsRound(Double(o.shares) * price)
         let fee = ExchangeRules.fee(gross, currency: cur)
@@ -328,7 +300,6 @@ public enum PublicExchange {
         }
     }
 
-    /// The owner's shares leave the cap table for the market, and the money (less the fee) is the owner's; the whole of it counts as gain.
     private static func settleOwnSale(_ s: inout GameState, _ inst: ExchangeInstrument, shares: Int, price: Double, currency cur: Currency) -> Int {
         guard let i = s.companyIndex(inst.holdingID) else { return 0 }
         let gross = jsRound(Double(shares) * price)
@@ -341,7 +312,6 @@ public enum PublicExchange {
         return moved
     }
 
-    /// The market's own orders for one auction: five levels each side round the previous close, shifted by the stock market's mood.
     static func crowd(_ s: GameState, _ inst: ExchangeInstrument, outside: Int, bounds: (low: Double, high: Double), today now: Int) -> [ExchangeOrder] {
         let moods: [String: Double] = ["bull": 0.01, "recovery": 0.005, "correction": -0.01, "bear": -0.02, "crash": -0.05]
         let mood = moods[s.rest["mkt"]?["regime"].string ?? "bull"] ?? 0
@@ -359,9 +329,6 @@ public enum PublicExchange {
         return out
     }
 
-    // MARK: Reading
-
-    /// What the shares you hold on the exchange are worth at the last close (your own listed holdings are in your companies, not here).
     public static func holdingsValue(_ s: GameState) -> Double {
         guard let j = s.rest["xch"], !j.isNull else { return 0 }
         var total = 0.0
@@ -369,7 +336,6 @@ public enum PublicExchange {
         return total
     }
 
-    /// Gains on shares you bought: sold (realised) and still held (at the last close).
     public static func tradingResult(_ s: GameState) -> Double {
         let book = ExchangeBook(s)
         var open = 0.0

@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Staff perks, hosting a deal on what you own and lending a piece to a manager: they cost real money, change real numbers, books balance.
 final class PerkTests: XCTestCase {
     private func openCafe(_ e: inout GameEngine) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 800_000_000, why: "Test funds") }
@@ -57,7 +56,6 @@ final class PerkTests: XCTestCase {
         XCTAssertGreaterThan(StaffPerks.hosted(e.state, "inv"), 0)
         XCTAssertEqual(e.hostDeal(pieceID: island.id, guest: .investors), .wait, "an evening a month at most")
 
-        // lend the car to the manager of the cafe
         e.update { s, _, _ in
             s.people[9100] = Person(raw: ["id": 9100, "name": "Anna Berg", "age": 40, "role": "mgr", "skill": 80])
             s.companies[s.companyIndex(id)!].managerID = 9100

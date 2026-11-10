@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// The Admin screen: the world rules (each inside limits fixed on the server), the confirmations queue of the government engine and the
-/// audit log. Only the server says who is an administrator; every call here is checked there again, and every change leaves an audit row.
 struct AdminScreen: View {
     @Environment(OnlineSession.self) private var online
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -62,8 +60,6 @@ struct AdminScreen: View {
         .task { if online.isAdmin { await load() } }
         .accessibilityIdentifier("admin-screen")
     }
-
-    // MARK: Frame
 
     private var header: some View {
         HStack(alignment: .center, spacing: Theme.Space.s) {
@@ -149,8 +145,6 @@ struct AdminScreen: View {
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(tint.opacity(0.12)))
             .accessibilityAddTraits(.updatesFrequently)
     }
-
-    // MARK: Rules
 
     private var rulesTab: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
@@ -268,13 +262,10 @@ struct AdminScreen: View {
         .accessibilityLabel(label)
     }
 
-    /// Clamped into the rule's fixed limits and rounded to four places (what the server stores).
     private func quantised(_ v: Double, _ r: WorldRule) -> Double {
         let clamped: Double = min(max(v, r.minimum), r.maximum)
         return (clamped * 10_000).rounded() / 10_000
     }
-
-    // MARK: Queue
 
     private var queueTab: some View {
         let items: [PendingConfirmation] = snap?.confirmations ?? []
@@ -343,8 +334,6 @@ struct AdminScreen: View {
         }
     }
 
-    // MARK: Log
-
     private var logTab: some View {
         let rows: [AuditEntry] = snap?.audit ?? []
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -393,8 +382,6 @@ struct AdminScreen: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
-
-    // MARK: Calls
 
     private func load() async {
         guard online.isAdmin else { return }

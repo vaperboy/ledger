@@ -1,44 +1,29 @@
 import SwiftUI
 import UIKit
 
-// Colour   Theme roles page, surface, surfaceRaised, inset, line, lineStrong, ink, inkSoft, inkFaint, accent, accentInk, gain, loss,
-//          warn, alert, focus, scrim; views read them from `@Environment(\.outsidePalette)` so outside apps recolour themselves.
-// Type     `.textStyle(.display / .title / .figure / .headline / .body / .caption / .label)`: scales with Dynamic Type, sets the ink role.
-// Space    Theme.Space xxs 2, xs 4, s 8, m 12, l 16, xl 24, xxl 32 and one page margin `Theme.Space.page` (20). Radius small 8 (controls),
-//          medium 12 (groups, tiles), large 16 (popups). Elevation: flat in a page; `.elevation(.raised)` only for what floats.
-// Groups   `CardSection` / `LedgerSection` titled groups, `LedgerRow` for every row, `Hairline` between rows; a Card inside a group is flat.
-// Numbers  `Figure`, `FigureRow`; charts in `ChartFrame` with `ChartPalette`; states `EmptyState`, `LoadingState`; bars `ProgressLine`.
-// Buttons  `PrimaryButtonStyle` (one per screen), `SecondaryButtonStyle`, `TertiaryButtonStyle`, `.regular` or `.compact` (44 pt hit area);
-//          `PrimaryAction` says why it is blocked. Choice `SegmentedPill`, navigation `SectionTabs`, input `LedgerField`, `LedgerSlider`.
-// Never    gradients, glows or shimmer on content, a border around everything or a box inside a box: tone and hairlines carry the structure.
-//          The page backdrop alone has a soft gradient and a faint corner glow (`LedgerBackdrop`); cards float on it as `glassSurface()`.
 enum Theme {
-    // MARK: Colour roles
-    static let page = Color(hex: 0x0F1011)                                    // the page
-    static let pageLift = Color(hex: 0x1A1813)                                // the warmer, lifted tone the page backdrop fades to at the bottom
-    static let surface = Color(hex: 0x151617)                                 // a group or tile on the page
-    static let surfaceRaised = Color(hex: 0x1A1B1D)                           // what floats: popup, tab bar, toast, menu
-    static let inset = Color(hex: 0xF1EBDD, opacity: 0.05)                    // segment track, field, pressed row
-    static let line = Color(red: 0.937, green: 0.914, blue: 0.875).opacity(0.09) // every separator, 0.5 pt
-    static let lineStrong = Color(hex: 0x3A3B3D)                              // control outlines only
-    static let ink = Color(hex: 0xF1EBDD)                                     // main text
-    static let inkSoft = Color(hex: 0xA19B8F)                                 // secondary text
-    static let inkFaint = Color(hex: 0x8A857C)                                // tertiary text, chevrons (4.5:1 on page)
-    static let accent = Color(hex: 0xD6B889)                                  // champagne: labels, links, the one action
-    static let accentInk = Color(red: 0.09, green: 0.075, blue: 0.055)       // text and icons on a filled accent
-    static let accentWash = Color(hex: 0xD6B889, opacity: 0.14)               // a selected option
+    static let page = Color(hex: 0x0F1011)
+    static let pageLift = Color(hex: 0x1A1813)
+    static let surface = Color(hex: 0x151617)
+    static let surfaceRaised = Color(hex: 0x1A1B1D)
+    static let inset = Color(hex: 0xF1EBDD, opacity: 0.05)
+    static let line = Color(red: 0.937, green: 0.914, blue: 0.875).opacity(0.09)
+    static let lineStrong = Color(hex: 0x3A3B3D)
+    static let ink = Color(hex: 0xF1EBDD)
+    static let inkSoft = Color(hex: 0xA19B8F)
+    static let inkFaint = Color(hex: 0x8A857C)
+    static let accent = Color(hex: 0xD6B889)
+    static let accentInk = Color(red: 0.09, green: 0.075, blue: 0.055)
+    static let accentWash = Color(hex: 0xD6B889, opacity: 0.14)
     static let gain = Color(hex: 0x7FC79B)
     static let loss = Color(hex: 0xE58B78)
     static let warn = Color(hex: 0xE0B064)
-    /// The red notification bubble (counts on app icons and tabs). Not a loss colour: it only ever carries a number.
     static let alert = Color(hex: 0xE5584B)
-    static let focus = Color(hex: 0xD6B889)                                   // focused field, keyboard focus
-    static let scrim = Color.black.opacity(0.55)                              // behind a popup
-    /// Chart-only second hue.
+    static let focus = Color(hex: 0xD6B889)
+    static let scrim = Color.black.opacity(0.55)
     static let slateBlue = Color(red: 0.322, green: 0.451, blue: 0.682)
     static let roseGold = Color(red: 0.851, green: 0.682, blue: 0.384)
 
-    // MARK: Older names: each is an alias of a role above so every screen keeps compiling.
     static let walnut = page
     static let leather = page
     static let walnutRaised = surfaceRaised
@@ -57,7 +42,6 @@ enum Theme {
     static let ivoryFaint = inkFaint
     static let ivoryDim = inkFaint
     static let gold = accent
-    /// Chart-only hues now (no gradients use them); new charts take `ChartPalette`.
     static let goldDeep = Color(red: 0.722, green: 0.600, blue: 0.427)
     static let goldLight = Color(red: 0.863, green: 0.753, blue: 0.592)
     static let onGold = accentInk
@@ -67,30 +51,22 @@ enum Theme {
     static let goldGradient = LinearGradient(colors: [accent, accent], startPoint: .top, endPoint: .bottom)
     static let background = LinearGradient(colors: [page, page], startPoint: .top, endPoint: .bottom)
 
-    // MARK: Metrics
     enum Space {
         static let xxs: CGFloat = 2, xs: CGFloat = 4, s: CGFloat = 8, m: CGFloat = 12, l: CGFloat = 16, xl: CGFloat = 24, xxl: CGFloat = 32
-        /// The one horizontal page margin.
         static let page: CGFloat = 20
         static let margin: CGFloat = 20
     }
     enum Radius {
-        /// Controls (buttons, fields, segments, tables), groups and tiles, popups and sheets.
         static let small: CGFloat = 9, medium: CGFloat = 13, large: CGFloat = 17
-        // Older names mapped onto the three steps.
         static let s: CGFloat = 9, m: CGFloat = 9, l: CGFloat = 13
         static let hero: CGFloat = 17, card: CGFloat = 14, row: CGFloat = 13, table: CGFloat = 9, appIcon: CGFloat = 15
     }
-    /// Icon sizes of rows and controls, drawn at one stroke weight.
     enum Icon {
         static let small: CGFloat = 16, medium: CGFloat = 20, large: CGFloat = 28
-        /// Rendered stroke width in points, whatever the icon size.
         static let stroke: CGFloat = 1.5
     }
 
-    /// Two levels: flat (everything in a page) and raised (only what floats over it).
     enum Elevation { case flat, raised }
-    /// The raised shadow: soft, low, black (no glow).
     enum Shadow { static let color = Color.black.opacity(0.32); static let radius: CGFloat = 16; static let y: CGFloat = 8 }
 
     static func tone(_ name: String) -> Color {
@@ -98,8 +74,6 @@ enum Theme {
     }
     static func change(_ v: Double) -> Color { v > 0.0000001 ? gain : v < -0.0000001 ? loss : inkSoft }
 
-    /// The device's real safe-area insets (status bar or Dynamic Island on top, home indicator at the bottom), read from the key window;
-    /// zero before a window exists.
     static var windowInsets: UIEdgeInsets {
         let scenes: [UIWindowScene] = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let scene: UIWindowScene? = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
@@ -108,9 +82,6 @@ enum Theme {
 }
 
 extension Color {
-    /// The same colour in an outside app's palette: the game's own text, accent, line and meaning colours become the palette's, anything else stays.
-    /// Under `.game` every mapping is the identity, so Company screens look exactly as before; inside the ivory Bank and Accounting it keeps shared
-    /// pieces (`Stat`, `Chip`, `ListRow`, `TableRow`...) readable when a caller passes `Theme.ivory` or `Theme.loss`.
     func inPalette(_ p: OutsidePalette) -> Color {
         if self == Theme.ivory { return p.ink }
         if self == Theme.ivoryMuted { return p.inkSoft }
@@ -125,7 +96,6 @@ extension Color {
         return self
     }
 
-    /// `Color(hex: 0xD6B889)`: the mockups' hex values, used by the Theme tokens.
     init(hex: UInt32, opacity: Double = 1) {
         let r = Double((hex >> 16) & 0xFF) / 255
         let g = Double((hex >> 8) & 0xFF) / 255
@@ -134,22 +104,13 @@ extension Color {
     }
 }
 
-/// The type scale: seven steps. Serif for what is read as a figure or a title, sans for reading, caps for labels.
-/// Sizes are at the default text size; `.textStyle` scales them with Dynamic Type (never below 11 pt).
 enum TextStep {
-    /// The one big number or name of a screen: serif 34 medium, tabular.
     case display
-    /// A screen or sheet title: serif 24 medium.
     case title
-    /// A key amount: serif 20 medium, tabular.
     case figure
-    /// Row titles, button labels, a block's lead line: sans 15 medium.
     case headline
-    /// Running text and row values: sans 14.
     case body
-    /// Notes, sublines, explanations: sans 12, soft ink.
     case caption
-    /// Section and figure labels: sans 11 semibold, capitals, tracked, accent.
     case label
 
     var size: CGFloat {
@@ -191,11 +152,9 @@ enum TextStep {
         }
     }
 
-    /// Steps that always use tabular digits.
     var isNumeric: Bool { self == .display || self == .figure }
     var tracking: CGFloat { self == .label ? 1.2 : 0 }
 
-    /// The default ink of the step in a palette.
     func ink(_ p: OutsidePalette) -> Color {
         switch self {
         case .caption: return p.inkSoft
@@ -204,7 +163,6 @@ enum TextStep {
         }
     }
 
-    /// The step at its default size, for an API that needs a `Font` value. Prefer `.textStyle`, which scales.
     var fixedFont: Font { font(size: size, numeric: isNumeric, weight: nil) }
 
     func font(size s: CGFloat, numeric: Bool, weight w: Font.Weight?) -> Font {
@@ -214,7 +172,6 @@ enum TextStep {
 }
 
 extension TextStep {
-    /// The UIKit text style the step scales with (the same curve as `relativeTo`).
     var uiTextStyle: UIFont.TextStyle {
         switch self {
         case .display: return .largeTitle
@@ -227,7 +184,6 @@ extension TextStep {
         }
     }
 
-    /// The step's point size at a Dynamic Type size (nil: the system's current size).
     func scaledSize(_ dynamicType: DynamicTypeSize? = nil) -> CGFloat {
         let metrics = UIFontMetrics(forTextStyle: uiTextStyle)
         guard let dynamicType else { return metrics.scaledValue(for: size) }
@@ -235,23 +191,17 @@ extension TextStep {
         return metrics.scaledValue(for: size, compatibleWith: traits)
     }
 
-    /// The step as a scaled `Font` for places `.textStyle` cannot reach (`Text + Text` joins, `TextField`, `Font` parameters).
-    /// Font only: ink, tracking and capitals stay with the caller. Pass `@Environment(\.dynamicTypeSize)` so the view redraws on a change.
     func scaledFont(_ dynamicType: DynamicTypeSize? = nil, numeric: Bool = false, weight: Font.Weight? = nil) -> Font {
         font(size: scaledSize(dynamicType), numeric: numeric, weight: weight)
     }
 }
 
 extension Font {
-    /// `Font.step(.caption)`: one step of the type scale as a Dynamic Type scaled `Font` (see `TextStep.scaledFont`).
     static func step(_ step: TextStep, dynamicType: DynamicTypeSize? = nil, numeric: Bool = false, weight: Font.Weight? = nil) -> Font {
         step.scaledFont(dynamicType, numeric: numeric, weight: weight)
     }
 }
 
-/// Applies a `TextStep`: font (scaled with Dynamic Type), tracking, capitals and the step's ink from the palette.
-/// Ink order: the container's ink (`containerInk`, set by a filled button, chip or badge), then `tint`, then the step's own ink.
-/// The size comes from a table per Dynamic Type size, not a `@ScaledMetric` per Text (thousands of them re-read UIFontMetrics on every render).
 struct TextStepStyle: ViewModifier {
     var step: TextStep
     var tint: Color?
@@ -278,7 +228,6 @@ struct TextStepStyle: ViewModifier {
     }
 }
 
-/// Scaled point sizes of the type scale, computed once per (step, Dynamic Type size) with the same curve `@ScaledMetric` uses.
 enum TextStepSizes {
     private struct Key: Hashable { var step: TextStep; var size: DynamicTypeSize }
     private static var table: [Key: CGFloat] = [:]
@@ -294,8 +243,6 @@ enum TextStepSizes {
 
 private struct ContainerInkKey: EnvironmentKey { static let defaultValue: Color? = nil }
 extension EnvironmentValues {
-    /// The ink of a filled container (primary button, selected chip, badge): `.textStyle` inside uses it over its own ink and tint,
-    /// so a label never keeps the page ink (ivory) on an accent or light fill.
     var containerInk: Color? {
         get { self[ContainerInkKey.self] }
         set { self[ContainerInkKey.self] = newValue }
@@ -303,18 +250,14 @@ extension EnvironmentValues {
 }
 
 extension View {
-    /// Sets font, ink and tracking from one step of the type scale. `tint` overrides the ink (mapped into the outside palette),
-    /// `numeric` gives tabular digits, `weight` is for the rare emphasis inside a step.
     func textStyle(_ step: TextStep, tint: Color? = nil, numeric: Bool = false, weight: Font.Weight? = nil) -> some View {
         modifier(TextStepStyle(step: step, tint: tint, numeric: numeric, weight: weight))
     }
 
-    /// Text inside follows `ink` (a filled container): `.textStyle` children take it, plain Text and symbols get it as foreground.
     func containerInk(_ ink: Color) -> some View {
         environment(\.containerInk, ink).foregroundStyle(ink)
     }
 
-    /// Flat (nothing) or raised (the one soft shadow) elevation. Raised is only for what floats over the page.
     @ViewBuilder func elevation(_ level: Theme.Elevation) -> some View {
         switch level {
         case .flat: self
@@ -323,10 +266,8 @@ extension View {
     }
 }
 
-/// Older size-taking helpers. New code uses `.textStyle`; these stay so existing screens compile.
 extension Font {
     static func figure(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font { .system(size: size, weight: weight, design: .default).monospacedDigit() }
-    /// The hero figure of a screen (net worth, group value, a company's profit).
     static func hero(_ size: CGFloat) -> Font { .system(size: size, weight: .medium, design: .serif).monospacedDigit() }
     static func serifTitle(_ size: CGFloat) -> Font { .system(size: size, weight: .medium, design: .serif) }
     static let heading = TextStep.headline.fixedFont
@@ -336,13 +277,11 @@ extension Font {
 }
 
 extension View {
-    /// A section label: the `.label` step (small caps, tracked, champagne unless tinted).
     func capsLabel(_ tint: Color? = nil) -> some View {
         modifier(CapsLabelStyle(tint: tint))
     }
 }
 
-/// `capsLabel` as a modifier so the default colour follows the outside app's palette (champagne in the game's own screens).
 struct CapsLabelStyle: ViewModifier {
     var tint: Color?
     func body(content: Content) -> some View {
@@ -350,7 +289,6 @@ struct CapsLabelStyle: ViewModifier {
     }
 }
 
-/// A 0.5 pt line.
 struct Hairline: View {
     @Environment(\.outsidePalette) private var palette
     var body: some View { Rectangle().fill(palette.hairline).frame(height: 0.5) }

@@ -3,8 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The bottom sheet for one item: picture, specs, the cost breakdown, the choice of settlement (cash or financed with 20% down), what is
-/// due at closing, and one confirm button. Everything comes from the engine: the price list, `luxuryFinanceQuote`, `buyLuxury`.
 struct LuxuryItemSheet: View {
     enum Settlement: Hashable { case cash, financed }
 
@@ -42,8 +40,6 @@ struct LuxuryItemSheet: View {
         .accessibilityIdentifier("luxury-item-sheet")
     }
 
-    // MARK: Settlement
-
     private func settlementChoice(_ e: GameEngine, _ it: Luxury.Item) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Settlement").textStyle(.label)
@@ -69,8 +65,6 @@ struct LuxuryItemSheet: View {
             if let r = q.refusal { Text(r).popupText(.risk) }
         }
     }
-
-    // MARK: Footer
 
     private func due(_ e: GameEngine, _ it: Luxury.Item) -> Double {
         settlement == .cash ? it.price : (e.luxuryFinanceQuote(itemID: it.id)?.dueAtClosing ?? it.price)
@@ -176,7 +170,6 @@ struct LuxuryBreakdown: View {
     }
 }
 
-/// One label and a tabular figure, with a hairline under it unless it is the last.
 struct LuxuryLine: View {
     var label: String
     var value: String

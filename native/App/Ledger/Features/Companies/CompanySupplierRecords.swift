@@ -3,10 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-// Supplier records in the company's stats: who the company has dealt with, the agreement and terms, what it bought and what is open. This only
-// reads. Choosing or switching a supplier stays in the company's purchasing (Manage), and nothing here buys anything.
-
-/// The supplier records of one company, as a section of its Finances summary: the first few, with a search and the full profile one tap away.
 struct CompanySupplierRecords: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -60,7 +56,6 @@ struct CompanySupplierRecords: View {
     }
 }
 
-/// One supplier record: the agreement and terms, and the purchases booked against it (each opens its transaction).
 struct CompanySupplierRecordPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

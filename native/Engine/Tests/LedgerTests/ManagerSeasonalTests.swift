@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// A manager's seasonal help (hired like the owner would, paid only in season) and the factory / furniture volume tenders.
 final class ManagerSeasonalTests: XCTestCase {
     func testSeasonalCrewIsHiredPartTimeForTheSeasonAndTheBooksBalance() throws {
         var e = try ChainsTests.engine()

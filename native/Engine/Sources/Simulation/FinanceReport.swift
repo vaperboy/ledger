@@ -5,27 +5,22 @@ import Employees
 import Finance
 import Businesses
 
-/// A line in a money summary.
 public struct FinanceLine: Identifiable, Equatable, Sendable {
     public var id: String
     public var label: String
     public var amount: Double
     public var detail: String = ""
-    /// Share of the group total, 0...1, when the line is part of a breakdown.
     public var share: Double = 0
 }
 
-/// One rule of the country a company works in, as a label and a value ("Corporate tax", "25%").
 public struct RuleLine: Identifiable, Equatable, Sendable {
     public var id: String { label }
     public var label: String
     public var value: String
 }
 
-/// What a coming payment is for.
 public enum ObligationKind: String, Equatable, Sendable { case payroll, bills, invoice, tax, loan }
 
-/// A payment that is coming. `essential` ones (wages, tax, loans, rent) cannot be skipped without consequences.
 public struct Obligation: Identifiable, Equatable, Sendable {
     public var id: String
     public var title: String
@@ -39,27 +34,21 @@ public struct Obligation: Identifiable, Equatable, Sendable {
     public var kind: ObligationKind = .bills
 }
 
-/// Everything the Finance & Taxes screen shows, derived from the books, payables, loans and calendar. Nothing here is stored.
 public struct FinanceOverview: Equatable, Sendable {
     public var monthRevenue = 0.0, monthProfit = 0.0, yearRevenue = 0.0, yearProfit = 0.0, lastYearProfit = 0.0
-    /// What is owed in tax and VAT now, and what has been set aside this year.
     public var taxes: [FinanceLine] = []
     public var taxesOwed = 0.0
     public var upcoming: [Obligation] = []
-    /// Cash in all companies and the personal account, against what falls due in the next 30 days.
     public var cashAvailable = 0.0
     public var dueWithin30Days = 0.0
     public var costsThisMonth: [FinanceLine] = []
     public var costTotalThisMonth = 0.0
     public var costsThisYear: [FinanceLine] = []
     public var costTotalThisYear = 0.0
-    /// The tax rules of the country (the company's, or the home country's), and how far to trust them.
     public var countryName = ""
     public var rules: [RuleLine] = []
     public var basis = ""
-    /// Licences, registrations and permits the companies need, with the fee for each (amount) and what keeping it costs (detail).
     public var licences: [FinanceLine] = []
-    /// Plain-language findings about how the books look.
     public var notes: [String] = []
     public var shortfall: Double { max(0, dueWithin30Days - cashAvailable) }
 }
@@ -87,12 +76,11 @@ public extension GameEngine {
         return (lines, total)
     }
 
-    /// Money overview for the whole group, or for one company.
     func financeOverview(companyID: Int? = nil) -> FinanceOverview {
         var o = FinanceOverview()
         let s = state
         let today = Payday.dayNumber(week: s.week, day: s.day)
-        let cos = s.liveCompanies.filter { companyID == nil || $0.id == companyID }   // holding companies too: net worth counts their cash and taxes
+        let cos = s.liveCompanies.filter { companyID == nil || $0.id == companyID }
         for co in cos {
             let b = co.books
             o.monthRevenue += b.month["rev"] ?? 0; o.monthProfit += Books.profit(b.month)
@@ -104,7 +92,6 @@ public extension GameEngine {
         (o.costsThisMonth, o.costTotalThisMonth) = breakdown(cos.map { $0.books.month })
         (o.costsThisYear, o.costTotalThisYear) = breakdown(cos.map { $0.books.year })
 
-        // Taxes and VAT
         for co in cos {
             let country = context.country(of: co, s)
             let bd = data.catalog[co.type]
@@ -128,10 +115,9 @@ public extension GameEngine {
             }
         }
 
-        // What falls due
         func add(_ id: String, _ title: String, _ detail: String, _ amount: Double, _ day: Int, kind: ObligationKind, essential: Bool, company: Int) {
             guard amount > 1 else { return }
-            let day = max(day, today)   // anything already due is shown as due today
+            let day = max(day, today)
             o.upcoming.append(Obligation(id: id, title: title, detail: detail, amount: amount, dayNumber: day, dateText: dateText(day), daysAway: day - today, essential: essential, companyID: company, kind: kind))
         }
         let c = GameCalendar.civilFromDays(today)
@@ -146,7 +132,6 @@ public extension GameEngine {
             }
             let bills = (co.payables["rent"] ?? 0) + (co.payables["other"] ?? 0)
             add("bills\(co.id)", "Rent and supplier bills · \(co.name)", "Paid on the last day of the month", bills, monthEnd, kind: .bills, essential: true, company: co.id)
-            // Supplier invoices on terms (`SupplyTerms`): one line for each week something falls due and each supplier; overdue ones are due today.
             let weekStart = Payday.dayNumber(week: s.week, day: 0)
             var groups: [String: (name: String, day: Int, amount: Double, late: Bool)] = [:]
             for inv in SupplyTerms.invoices(s, buyer: co.id) {
@@ -171,7 +156,6 @@ public extension GameEngine {
                 add("vat\(co.id)", "VAT return · \(co.name)", "Filed every \(freq) months", co.vatBalance, Payday.billDate(year: y, month: mo), kind: .tax, essential: true, company: co.id)
             }
         }
-        // A loan instalment is listed once, for the month it is still to be collected: paid early (or already collected) this month, the next month's is shown.
         func loanRow(_ l: Loan, id: String) {
             let settled = Banking.instalmentSettled(l, state: s)
             let inst = Banking.instalment(of: l, state: s, context: context)
@@ -184,7 +168,6 @@ public extension GameEngine {
         o.upcoming.sort { $0.dayNumber < $1.dayNumber }
         o.dueWithin30Days = o.upcoming.filter { $0.daysAway <= 30 }.reduce(0) { $0 + $1.amount }
 
-        // Plain-language notes
         if o.shortfall > 0 { o.notes.append("The next 30 days of payments are larger than the cash in your companies and accounts. Move money in, borrow, or delay what can wait.") }
         if o.costTotalThisMonth > 0, let top = o.costsThisMonth.first, top.share > 0.5 { o.notes.append("\(top.label) is \(Int(saturating: (top.share * 100).rounded()))% of this month's costs.") }
         if o.monthRevenue > 0, o.monthProfit < 0 { o.notes.append("This month costs more than the company earns so far.") }

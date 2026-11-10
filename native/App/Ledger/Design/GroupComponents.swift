@@ -1,7 +1,6 @@
 import SwiftUI
 import Countries
 
-/// A row of the Group tab that leads somewhere: a title, one line of detail, a figure or chevron on the right.
 struct GroupLinkRow: View {
     var title: String
     var sub: String
@@ -9,7 +8,6 @@ struct GroupLinkRow: View {
     var tint: Color = Theme.ivory
     var subTint: Color = Theme.ivoryFaint
 
-    /// The `LedgerRow` look (its texts stay separate accessibility elements, as before).
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {

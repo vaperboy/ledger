@@ -1,12 +1,9 @@
 import Foundation
 
-/// One reward on the pass. Cosmetic or comfort only: nothing here touches money or the simulation.
 public struct SeasonReward: Equatable, Sendable, Identifiable {
     public enum Kind: String, Sendable {
         case badge, theme, namePlate, backdrop, saveSlot, advisorLine, richListFlair, tradePlate
-        /// A free box (opened in the store) or a little gold; both are only ever spent on cosmetics and comfort.
         case box, gold
-        /// Kinds the player picks one of (a badge or an advisor line is simply collected).
         public var isEquippable: Bool { self == .theme || self == .namePlate || self == .backdrop || self == .richListFlair || self == .tradePlate }
         public var label: String {
             switch self {
@@ -28,15 +25,11 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
     public var premium: Bool
     public var kind: Kind
     public var title: String
-    /// What it is, in words.
     public var detail: String
-    /// Hex colours the app draws a theme, backdrop, plate or flair with (tint first); empty for the rest.
     public var colors: [UInt32] = []
-    /// Boxes (kind `.box`) or gold (kind `.gold`) the reward hands out.
     public var amount: Int = 0
 }
 
-/// The fixed reward table of the season (data, not logic). Every tier up to 30 is reachable on both tracks; rewards sit on the tiers listed.
 public enum SeasonRewards {
     public static let all: [SeasonReward] = free + premium
 

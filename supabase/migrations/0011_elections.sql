@@ -1,7 +1,3 @@
--- Elections: players living in a country elect its president (see 0010 for what the office may do). A cycle has a nomination week and a
--- voting week and fills a twelve-week term. The ballot is secret: who voted is kept apart from what was cast, with no timestamp on a
--- cast ballot. One vote per person, counted by owner (linked accounts share one vote), and the count is shown only once voting closes.
-
 create type public.election_status as enum ('nomination', 'voting', 'closed');
 
 create table public.elections (
@@ -25,7 +21,6 @@ create table public.election_candidates (
   primary key (election_id, candidate_id)
 );
 
--- Who has voted (one row per owner). The choice is not here.
 create table public.election_voters (
   election_id uuid not null references public.elections (id) on delete cascade,
   voter_id uuid not null references public.profiles (id) on delete cascade,
@@ -34,7 +29,6 @@ create table public.election_voters (
   unique (election_id, link_key)
 );
 
--- What was cast. No voter, no timestamp: nothing here ties a ballot to a person.
 create table public.election_ballots (
   id uuid primary key default gen_random_uuid(),
   election_id uuid not null references public.elections (id) on delete cascade,
@@ -52,12 +46,7 @@ grant select on public.elections, public.election_candidates, public.election_vo
 create policy elections_read on public.elections for select to authenticated using (true);
 create policy election_candidates_read on public.election_candidates for select to authenticated using (true);
 create policy election_voters_own on public.election_voters for select to authenticated using (voter_id = auth.uid());
--- election_ballots has no policy and no grant: nobody reads raw ballots; counts come from election_state() after the vote closes.
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Rules
--- ---------------------------------------------------------------------------------------------------------------------
--- Residents of the country, old enough, not barred, real players (not simulated stand-ins).
 create function private.may_vote(uid uuid, cc text) returns boolean language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.profiles where id = uid and deleted_at is null and not is_simulated and country_code = cc and created_at < now() - private.weeks(4))
      and not private.is_barred(uid, 'vote');
@@ -67,12 +56,9 @@ create function private.may_stand(uid uuid, cc text) returns boolean language sq
      and not private.is_barred(uid, 'stand');
 $$;
 
--- Starts a cycle for a country when none is running and the office is vacant or its term has ended (platform schedule; also advances
--- running cycles and counts finished ones). Ties go to whoever was nominated first; a cycle with no ballots leaves the office vacant.
 create function private.run_election_cycle() returns int language plpgsql security definer set search_path = '' as $$
 declare e public.elections; cc record; n int := 0; win uuid;
 begin
-  -- Move running cycles forward.
   for e in select * from public.elections where status <> 'closed' for update loop
     if e.status = 'nomination' and now() >= e.nominate_until then
       if (select count(*) from public.election_candidates where election_id = e.id) = 0 then
@@ -94,7 +80,6 @@ begin
       n := n + 1;
     end if;
   end loop;
-  -- Open a cycle for each country with real players and no running cycle whose office is open.
   for cc in select distinct p.country_code from public.profiles p where p.deleted_at is null and not p.is_simulated loop
     continue when exists (select 1 from public.elections where country_code = cc.country_code and status <> 'closed');
     continue when exists (select 1 from public.country_offices where country_code = cc.country_code and term_end > now() and holder_id is not null);
@@ -105,10 +90,6 @@ begin
   return n;
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Player functions
--- ---------------------------------------------------------------------------------------------------------------------
--- The running (or latest) election of the caller's country, with candidates; the count only once it is closed.
 create function public.election_state(p_country text default null) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); cc text := coalesce(p_country, (select country_code from public.profiles where id = uid)); e public.elections;
 begin
@@ -143,7 +124,6 @@ begin
   delete from public.election_candidates where election_id = p_election and candidate_id = uid;
 end $$;
 
--- One ballot per owner. Voter and ballot are written together but kept in separate tables with no link between them.
 create function public.cast_ballot(p_election uuid, p_candidate uuid) returns void language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); e public.elections;
 begin

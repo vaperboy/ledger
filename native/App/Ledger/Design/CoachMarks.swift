@@ -1,20 +1,16 @@
 import SwiftUI
 import Simulation
 
-/// The one-time "seen" flags of first-run help (tutorial, tab tip, phone app sheets), kept per install in UserDefaults.
 enum FirstRunFlags {
-    /// Set when the new-player tutorial ends (its step itself lives in the save).
     static let tour = "firstRun.tour"
     static let customTabTip = "firstRun.customTabTip"
     static func appHelp(_ appID: String) -> String { "firstRun.appHelp." + appID }
-    /// The seen flag of one tour of `CoachTours` (the first-session tour keeps its original key).
     static func tourFlag(_ id: String) -> String { "firstRun.tour." + id }
 
     static func seen(_ key: String) -> Bool { UserDefaults.standard.bool(forKey: key) }
     static func mark(_ key: String) { UserDefaults.standard.set(true, forKey: key) }
 }
 
-/// A place on screen a coach mark can point at.
 enum CoachStop: Hashable {
     case nextDay, happened, needsYou, homeCompany
     case firstPick, firstItemRow, itemPrice, itemSupplier, goalCard, inboxGuided
@@ -26,7 +22,6 @@ enum CoachStop: Hashable {
     case appHeader
 }
 
-/// Collects the bounds of every view tagged with `coachAnchor`, so one overlay higher up can cut a hole around any of them.
 struct CoachAnchorKey: PreferenceKey {
     static let defaultValue: [CoachStop: Anchor<CGRect>] = [:]
     static func reduce(value: inout [CoachStop: Anchor<CGRect>], nextValue: () -> [CoachStop: Anchor<CGRect>]) {
@@ -35,31 +30,24 @@ struct CoachAnchorKey: PreferenceKey {
 }
 
 extension View {
-    /// Marks this view's bounds as the place `stop` points at (no effect when `enabled` is false).
     func coachAnchor(_ stop: CoachStop, enabled: Bool = true) -> some View {
         anchorPreference(key: CoachAnchorKey.self, value: .bounds) { (a: Anchor<CGRect>) -> [CoachStop: Anchor<CGRect>] in
             enabled ? [stop: a] : [:]
         }
     }
 
-    /// Marks a strip of `height` at the top of this view as the place `stop` points at: for a long block whose first lines are what to show.
     func coachTopStrip(_ stop: CoachStop, height: CGFloat) -> some View {
         overlay(alignment: .top) { Color.clear.frame(height: height).allowsHitTesting(false).coachAnchor(stop) }
     }
 }
 
-/// One mark of a tour: where it points, its sentence, whether a tap on the highlighted view reaches it (the step is done by using it)
-/// and the label of the button that moves on (empty: the step ends by itself).
 struct CoachMark: Equatable {
     var stop: CoachStop
     var text: String
     var passThrough: Bool = false
     var button: String = "Next"
-    /// Where to point when `stop` is not on screen (a screen that has no hook for it yet).
     var fallback: CoachStop? = nil
-    /// False hides Skip: the step cannot be left until it is done.
     var skippable: Bool = true
-    /// False lets every tap through the dimmed screen: the card only points, it does not hold the player in place.
     var blocking: Bool = true
 
     func anchor(in anchors: [CoachStop: Anchor<CGRect>]) -> Anchor<CGRect>? {
@@ -69,15 +57,12 @@ struct CoachMark: Equatable {
     }
 }
 
-/// A dimmed screen with a cut-out around the view the current mark points at, and a small card with one sentence, the step count and Skip.
-/// The host owns the step and decides when to show it (`visible`); under Reduce Motion nothing moves or fades.
 struct CoachMarks: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var marks: [CoachMark]
     var anchors: [CoachStop: Anchor<CGRect>]
     var step: Int
     var visible: Bool
-    /// "n of m" shown on the card; nil: the step number and the count of `marks`.
     var position: Int? = nil
     var total: Int? = nil
     var onNext: () -> Void
@@ -87,7 +72,6 @@ struct CoachMarks: View {
         GeometryReader { (geo: GeometryProxy) in
             if visible, step < marks.count, let anchor = anchors[marks[step].stop] {
                 let mark: CoachMark = marks[step]
-                // A block taller than the screen is cut to what is on screen.
                 let hole: CGRect = geo[anchor].intersection(CGRect(origin: .zero, size: geo.size)).insetBy(dx: -6, dy: -6)
                 ZStack {
                     dim(size: geo.size, hole: hole, passThrough: mark.passThrough, blocking: mark.blocking)
@@ -104,7 +88,6 @@ struct CoachMarks: View {
     private func dim(size: CGSize, hole: CGRect, passThrough: Bool, blocking: Bool) -> some View {
         var path = Path(CGRect(origin: .zero, size: size))
         path.addRoundedRect(in: hole, cornerSize: CGSize(width: Theme.Radius.card, height: Theme.Radius.card))
-        // The hole lets taps through only when the step is done by using the highlighted view.
         let hit: Path = passThrough ? path : Path(CGRect(origin: .zero, size: size))
         return path.fill(Color.black.opacity(blocking ? 0.62 : 0.3), style: FillStyle(eoFill: true))
             .contentShape(hit, eoFill: true)
@@ -151,8 +134,6 @@ struct CoachMarks: View {
     }
 }
 
-/// Where a tour starts. `tab`: the tab is showing at its root. `unlock`: the feature is open (the player has earned it) and its tab is
-/// showing. `route`: that page is the one on top of the tab being shown.
 enum CoachTrigger: Equatable {
     case tab(AppTab)
     case unlock(String, AppTab)
@@ -164,25 +145,17 @@ enum CoachRoute: Equatable {
     case app(PhoneApp)
 }
 
-/// One guided tour: shown once (its flag is kept per install), when its trigger holds and its first mark is on screen. A mark whose
-/// view is not on screen is skipped.
 struct CoachTour {
     var id: String
     var trigger: CoachTrigger
     var marks: [CoachMark]
-    /// The seen flag when it is not the tour's own (the app tours share the flag of the old help sheet).
     var flag: String? = nil
-    /// Seconds the trigger must hold before the tour appears (an app's opening splash plays first).
     var delay: Double = 0.6
 
     var key: String { flag ?? FirstRunFlags.tourFlag(id) }
 }
 
-/// Every tour of the game, in priority order: adding a tour is adding one entry here (and a `.coachAnchor` on each view it points at).
 enum CoachTours {
-    /// The new player's guided steps, one entry per `TutorialStep`: the marks are the places that step can point at, most specific first, and
-    /// the first one on screen is shown, so the card also leads the player back to the right screen. Each step is done by using the
-    /// highlighted control; every card can be skipped.
     static func tutorial(_ step: TutorialStep) -> [CoachMark] {
         switch step {
         case .openCompany:
@@ -258,14 +231,12 @@ enum CoachTours {
         appTour(.atlas),
     ]
 
-    /// A first-open tour of a phone app: its help text pointing at the app's header. It replaces that app's one-time help sheet.
     private static func appTour(_ app: PhoneApp) -> CoachTour {
         CoachTour(id: "app." + app.rawValue, trigger: .route(.app(app)),
                   marks: [CoachMark(stop: .appHeader, text: app.helpText ?? "", button: "Got it")],
                   flag: FirstRunFlags.appHelp(app.rawValue), delay: 1.2)
     }
 
-    /// True when a tour introduces this app, so its help sheet stays away.
     static func coversApp(_ app: PhoneApp) -> Bool {
         all.contains { (t: CoachTour) -> Bool in
             if case .route(.app(let a)) = t.trigger { return a == app }
@@ -275,7 +246,6 @@ enum CoachTours {
 }
 
 extension GameStore {
-    /// True when `app` is the screen on top of the tab being shown: pushed on it, or the Custom tab's own root.
     func showsApp(_ app: PhoneApp) -> Bool {
         if path(for: tab).last == .app(app) { return true }
         return tab == .custom && customPath.isEmpty && customTarget == .app(app)

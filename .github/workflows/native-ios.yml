@@ -1,6 +1,5 @@
 name: Native iOS (SwiftUI) build and test
 
-# Separate from the web/Capacitor workflows. Runs only when the native project changes.
 on:
   workflow_dispatch:
     inputs:
@@ -12,9 +11,9 @@ on:
         default: ''
   push:
     branches: [ native-swiftui ]
-    paths: [ 'native/**', '!native/design/**' ]
+    paths: [ 'native/**' ]
   pull_request:
-    paths: [ 'native/**', '!native/design/**', '.github/workflows/native-ios.yml' ]
+    paths: [ 'native/**', '.github/workflows/native-ios.yml' ]
 
 permissions:
   contents: write
@@ -22,11 +21,9 @@ permissions:
 jobs:
   engine-tests:
     if: github.event_name != 'workflow_dispatch'
-    # A newer push replaces an unfinished older run of this job, so the Mac queue never builds old commits.
     concurrency:
       group: native-engine-tests-${{ github.ref }}
       cancel-in-progress: true
-    # Same runner and Xcode as app-build, so the engine is tested with the toolchain that builds the app.
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -43,15 +40,12 @@ jobs:
           LEDGER_DEBUG_TOOLS: "1"
         run: |
           set -o pipefail
-          # Release build with testing enabled: the same tests, several times faster (the long balance probes ran past what the
-          # macOS runner allows a silent test process in a debug build).
           if ! swift test -c release -Xswiftc -enable-testing > test.log 2>&1; then
             { grep -E "error:" test.log | grep -v "error: -\[" | sed -E "s#.*/native/##" | sort -u | head -n 60; } || true
             { grep -E "error: -\[" test.log | sed -E "s#.*Tests/LedgerTests/##" | head -n 80; } || true
             { grep -nE "Fatal error|fatalError|Exited with|signal|crash" test.log | tail -n 10; } || true
             { grep -n "PROGRESS" test.log | tail -n 8; } || true
             tail -n 40 test.log
-            # A crashed test process leaves no XCTest output: print the macOS crash report's faulting thread.
             R=$(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -n 1)
             if [ -n "$R" ]; then echo "== crash report $R"; python3 -c "
           import json,sys
@@ -78,7 +72,6 @@ jobs:
           LEDGER_PROGRESS=1 lldb --batch -o "process handle SIGILL SIGTRAP SIGSEGV SIGBUS SIGABRT -s true -n true" -o run -o "bt 60" -o "thread list" \
             -- "$X" -XCTest LedgerTests.BalanceGuardTests/testCapitalHeavyTradesEarnModestReturns "$B" 2>&1 | grep -vE "^PROGRESS" | tail -n 90
 
-  # Runs in parallel with engine-tests (both must pass): a compile error in the app shows up without waiting for the long engine tests.
   app-build:
     if: github.event_name != 'workflow_dispatch'
     concurrency:
@@ -100,7 +93,6 @@ jobs:
       - name: Build for the iOS simulator (iPhone and iPad)
         working-directory: native/App
         run: |
-          # Only the compiler's own messages are printed: the full log is mostly very long command lines.
           if ! xcodebuild build -project Ledger.xcodeproj -scheme Ledger \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO > build.log 2>&1; then
@@ -112,9 +104,6 @@ jobs:
           grep -E "warning:" build.log | grep "/native/App/" | sort -u | head -30 || true
           tail -n 3 build.log
 
-  # When the app compiles on a push to native-swiftui, publish it straight to AltStore: unsigned IPA as a GitHub Release
-  # and a new entry in apps.json (AltStore source). Engine tests run beside it and are evidence, not a gate.
-  # Version = latest version in apps.json + 1, so it always rises. Notes come from RELEASE_NOTES.md.
   launch-smoke:
     if: github.event_name == 'workflow_dispatch' && inputs.which == 'launch'
     runs-on: macos-15
@@ -150,8 +139,6 @@ jobs:
           for f in $(find ~/Library/Logs/DiagnosticReports -name "Ledger*.ips" 2>/dev/null | head -2); do echo "== $f"; head -c 6000 "$f"; done || true
           test ! -f notrunning
 
-  # Manual only: screenshots of every popup site on a small and a large phone, as an artifact (shots/<device>/). Independent of
-  # app-build and release.
   popup-shots:
     if: github.event_name == 'workflow_dispatch' && inputs.which == 'popup'
     concurrency:
@@ -179,7 +166,6 @@ jobs:
           for WANT in "iPhone SE (3rd generation)" "iPhone 16 Pro Max"; do
             DEV="$WANT"
             if ! xcrun simctl list devices available | grep -qF "    $WANT ("; then
-              # nearest available: SE-like (smallest) or Pro Max-like (largest)
               case "$WANT" in
                 *SE*) DEV=$(xcrun simctl list devices available | grep -oE "iPhone SE[^(]*\([0-9a-z ]*\)" | head -n 1 | sed -E 's/ +$//') ;;
                 *) DEV=$(xcrun simctl list devices available | grep -oE "iPhone [0-9]+ Pro Max" | sort -V | tail -n 1) ;;
@@ -195,7 +181,6 @@ jobs:
               -resultBundlePath "$RUNNER_TEMP/$SAFE.xcresult" \
               CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/$SAFE.log" 2>&1 || { echo "tests failed on $DEV"; grep -E "error:" "$RUNNER_TEMP/$SAFE.log" | sort -u | head -20; }
             mkdir -p "$GITHUB_WORKSPACE/shots/$SAFE"
-            # Xcode 16: `xcresulttool export attachments` writes the files and a manifest.json; fall back to the old JSON export.
             if ! xcrun xcresulttool export attachments --path "$RUNNER_TEMP/$SAFE.xcresult" --output-path "$GITHUB_WORKSPACE/shots/$SAFE"; then
               echo "export attachments failed; trying legacy get"
               xcrun xcresulttool get --legacy --path "$RUNNER_TEMP/$SAFE.xcresult" --format json > "$GITHUB_WORKSPACE/shots/$SAFE/result.json" || true
@@ -320,7 +305,7 @@ jobs:
                    "minOSVersion": "17.0", "localizedDescription": notes[:1200]}
           versions = [v for v in app.get("versions", []) if v.get("version") != version]
           app["versions"] = ([entry] + versions)[:20]
-          # fields older AltStore versions read
+
           app.update({"version": version, "versionDate": now, "downloadURL": url, "size": size})
           json.dump(src, open(p, "w"), indent=2)
           open(p, "a").write("\n")

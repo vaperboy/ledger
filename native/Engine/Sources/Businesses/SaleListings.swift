@@ -1,20 +1,14 @@
 import Foundation
 import GameCore
 
-/// The one place a company is put on the market. `CompanySale` (Events) runs the offers; the board's "put it up for sale" point and the
-/// owner's sale routes both list through here, so there is a single listing per company in `rest["sales"]`.
-/// A listing is {co, m (route), w0, pct, offers[]}; routes: "private" (handshake), "broker", "auction" (adds res, rnd, bd) and "mbo".
 public enum SaleListings {
     public static func canSell(_ s: GameState, companyID: Int) -> Bool {
         guard let co = s.company(companyID) else { return false }
         return (co.status == .open || co.status == .closed) && co.type != "hold" && s.companies.filter { $0.status.isLive }.count > 0
     }
-    /// A branch is not a company of its own: it has no shares, and it is sold as a business (`ChainBranches.sell`) or closed.
     public static let branchNote = "A branch has no shares of its own: sell it as a going concern or close it from the chain."
     public static func isListed(_ s: GameState, companyID: Int) -> Bool { (s.rest["sales"]?.array ?? []).contains { $0["co"].int == companyID } }
 
-    /// A company with partners (a joint venture) is sold only when a board meeting votes for it. Nil when nothing stands in the way:
-    /// no partners, or the board's own sale is running (`jvgo` marks it while it does).
     public static func boardBlock(_ s: GameState, companyID: Int) -> String? {
         guard let co = s.company(companyID) else { return nil }
         let members = co.value("jv")["members"].array
@@ -22,12 +16,10 @@ public enum SaleListings {
         if (s.rest["jvgo"]?.int ?? 0) == companyID { return nil }
         return "\(co.name) has partners. It is sold only when a board meeting votes for it."
     }
-    /// True for a listing the board voted for (its offers may be accepted).
     public static func isBoardListing(_ s: GameState, companyID: Int) -> Bool {
         (s.rest["sales"]?.array ?? []).contains { $0["co"].int == companyID && $0["jv"].int == 1 }
     }
 
-    /// Why a route cannot be used for this company (nil when it can). `board` is true for the board's own sale of a joint venture.
     public static func routeProblem(_ s: GameState, companyID: Int, route: String, pct: Int, board: Bool = false) -> String? {
         if let co = s.company(companyID), s.isBranch(co) { return branchNote }
         if pct >= 100, !board, let why = boardBlock(s, companyID: companyID) { return why }

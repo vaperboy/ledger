@@ -3,7 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-/// A full screen of reports (used from a company's Finances). The Bank app Statements tab links here.
 struct ReportsScreen: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int? = nil
@@ -16,8 +15,6 @@ struct ReportsScreen: View {
     }
 }
 
-/// Weekly, monthly and yearly reports for the whole group, or for one company: the kind row stays fixed, the kinds slide sideways in a
-/// `SegmentPager`, each kind page scrolls on its own.
 struct ReportsContent: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -52,7 +49,6 @@ struct ReportsContent: View {
     }
 }
 
-/// One report kind's page (summary, chart, tables), scoped to `kind`.
 struct ReportsPage: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -95,7 +91,6 @@ struct ReportsPage: View {
         }
     }
 
-    /// Only the visible kind page can push a detail, so the three pages never push it together.
     private var openedBinding: Binding<ReportDest?> {
         Binding<ReportDest?>(get: { active ? opened : nil }, set: { opened = $0 })
     }
@@ -124,9 +119,6 @@ struct ReportsPage: View {
         }
     }
 
-    // MARK: Period picker
-
-    /// The period as a title between two plain arrows: earlier on the left, later on the right.
     private func picker(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
         let i = all.firstIndex(where: { $0.id == r.id }) ?? 0
         return HStack(spacing: Theme.Space.s) {
@@ -149,9 +141,6 @@ struct ReportsPage: View {
         .buttonStyle(PressableStyle()).disabled(!enabled).accessibilityLabel(label)
     }
 
-    // MARK: Hero, story and tables
-
-    /// The one big number: profit after tax, with its change against the period before; net worth follows as one quiet line.
     private func hero(_ r: PeriodReport) -> some View {
         let f = format
         let net = r.group.pnl.netProfit
@@ -181,7 +170,6 @@ struct ReportsPage: View {
     }
 
     private func story(_ r: PeriodReport) -> some View {
-        // A company's own report is written on the spot from its figures, in its currency.
         let lines: [String]
         if let id = companyID, let co = engine.state.company(id) {
             lines = ReportSummary.sentences(r, currency: engine.currency(for: co))
@@ -243,8 +231,6 @@ struct ReportsPage: View {
         return OverviewTable(title: "Behind the figures", rows: rows)
     }
 
-    // MARK: Companies
-
     private func companies(_ r: PeriodReport) -> some View {
         let f = format
         let order = r.ranking + r.companies.map { $0.id }.filter { !r.ranking.contains($0) }
@@ -283,8 +269,6 @@ struct ReportsPage: View {
             }
         }
     }
-
-    // MARK: Net worth and cash
 
     private func worth(_ r: PeriodReport) -> some View {
         let f = format
@@ -344,8 +328,6 @@ struct ReportsPage: View {
         }
     }
 
-    // MARK: People, year, events
-
     private func people(_ r: PeriodReport) -> some View {
         let f = format
         let g = r.group
@@ -374,7 +356,6 @@ struct ReportsPage: View {
         }
     }
 
-    /// What only a company's own report has: its quality, staff at the end and the change in the value of your share.
     @ViewBuilder private func companyPeople(_ r: PeriodReport) -> some View {
         if let id = companyID, let c = r.company(id) {
             let f = format
@@ -389,7 +370,6 @@ struct ReportsPage: View {
         }
     }
 
-    /// Tax passed between this company and the rest of the group (group relief): this year so far and last year.
     @ViewBuilder private func groupTaxRows(_ f: ReportFormat) -> some View {
         if let id = companyID, let gt = engine.groupTaxContribution(companyID: id) {
             VStack(spacing: 0) {
@@ -448,7 +428,6 @@ struct ReportsPage: View {
     }
 }
 
-/// Where a row of the Reports overview opens.
 enum ReportDest: Hashable {
     case movements, bills, worth, cash, people, tax, companies, happened
     case line(ReportLineKey)

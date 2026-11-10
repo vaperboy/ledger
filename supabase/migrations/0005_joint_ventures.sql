@@ -1,8 +1,3 @@
--- Joint ventures: a company several players own by shares. Mirrors the engine's JVRules: partners are friends, invited privately at a
--- price inside a band around the fair price, locked in for a while, and decisions go by shares among the votes cast (quorum, deadline,
--- chair breaks a tie). The company itself lives in its chair's single-player books; the server keeps the cap table, the votes and the
--- outcomes, and turns every payout into settlements.
-
 create type public.venture_kind as enum ('dividend', 'price', 'hire', 'sell', 'partner', 'capital', 'dissolve');
 create type public.venture_choice as enum ('yes', 'no', 'abstain');
 create type public.venture_outcome as enum ('passed', 'failed', 'noQuorum', 'chairPassed', 'chairFailed', 'statusQuo');
@@ -14,7 +9,6 @@ create table public.ventures (
   company_key text not null check (char_length(company_key) between 1 and 64),
   name text not null check (char_length(name) between 1 and 40),
   currency text not null check (currency ~ '^[A-Z]{3}$'),
-  -- The company's real value as its chair last reported it; fair prices and payouts are worked from it.
   value numeric(18, 2) not null default 0 check (value >= 0),
   total_shares int not null default 10000 check (total_shares > 0),
   created_at timestamptz not null default now(),
@@ -53,13 +47,11 @@ create table public.venture_meetings (
   opened_at timestamptz not null default now(),
   deadline timestamptz not null,
   closed_at timestamptz,
-  -- Profitable / tight cash as the chair reported when it opened; a partner's vote leans on them.
   profitable boolean not null default true,
   cash_tight boolean not null default false
 );
 create index venture_meetings_venture on public.venture_meetings (venture_id, opened_at desc);
 
--- Who held how many shares when the meeting opened: votes count by this, so joining mid-meeting changes nothing.
 create table public.venture_meeting_shares (
   meeting_id uuid not null references public.venture_meetings (id) on delete cascade,
   member_id uuid not null references public.profiles (id) on delete cascade,
@@ -100,8 +92,6 @@ create function private.is_partner(vid uuid, uid uuid) returns boolean language 
   select exists (select 1 from public.venture_partners where venture_id = vid and member_id = uid);
 $$;
 
--- Partners see the venture, its cap table, meetings and agenda; an invitee sees only their own private offer; votes stay private to the voter
--- until the meeting is counted (the functions below show results afterwards).
 create policy ventures_partner on public.ventures for select to authenticated using (private.is_partner(id, auth.uid()));
 create policy venture_partners_partner on public.venture_partners for select to authenticated using (private.is_partner(venture_id, auth.uid()));
 create policy venture_invites_party on public.venture_invites for select to authenticated
@@ -117,10 +107,6 @@ create or replace function private.ventures_open(uid uuid) returns boolean langu
   select exists (select 1 from public.venture_partners p join public.ventures v on v.id = p.venture_id where p.member_id = uid and v.dissolved_at is null);
 $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Rules
--- ---------------------------------------------------------------------------------------------------------------------
--- What a share of pct percent (of the company after the issue) is worth at value.
 create function private.jv_fair_price(value numeric, pct numeric) returns numeric language sql immutable as $$
   select case when pct > 0 and pct < 100 then greatest(0, value) * pct / (100 - pct) else 0 end;
 $$;
@@ -142,9 +128,6 @@ create function private.jv_json(v public.ventures, viewer uuid) returns jsonb la
        from public.venture_partners p where p.venture_id = v.id), '[]'::jsonb));
 $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Chair functions
--- ---------------------------------------------------------------------------------------------------------------------
 create function public.create_venture(p_company_key text, p_name text, p_value numeric, p_currency text) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); v public.ventures;
 begin
@@ -163,7 +146,6 @@ begin
   if not found then raise exception 'not_found' using errcode = 'P0001'; end if;
 end $$;
 
--- Every check the engine makes before an invitation (also run again when a partner vote adds a partner).
 create function private.jv_invite_check(v public.ventures, inviter uuid, invitee uuid, pct numeric, price numeric) returns numeric language plpgsql stable security definer set search_path = '' as $$
 declare fair numeric; partners int; chair_after numeric;
 begin
@@ -194,10 +176,6 @@ begin
   return jsonb_build_object('id', inv.id, 'fair', inv.fair, 'expiresAt', inv.expires_at);
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Invitee functions
--- ---------------------------------------------------------------------------------------------------------------------
--- The offers made to the caller, and only the caller's own price.
 create function public.my_venture_offers() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin
@@ -207,7 +185,6 @@ begin
    where i.invitee_id = uid and i.status = 'pending' and i.expires_at >= now() and v.dissolved_at is null), '[]'::jsonb);
 end $$;
 
--- Accepting issues new shares so the invitee ends with pct percent of the enlarged company; the price goes into the company (the chair's books).
 create function private.jv_join(v public.ventures, invitee uuid, pct numeric, price numeric) returns void language plpgsql security definer set search_path = '' as $$
 declare total int := private.jv_total_shares(v.id); new_shares int := greatest(1, round(total * pct / (100 - pct))::int);
 begin
@@ -230,15 +207,11 @@ begin
   if not p_accept then update public.venture_invites set status = 'declined' where id = i.id; return; end if;
   perform private.require_free(uid, 'trade');
   if p_currency <> v.currency then raise exception 'currency_mismatch' using errcode = 'P0001'; end if;
-  -- The checks are made again: value, friendship and partner count may have changed since the offer was sent.
   perform private.jv_invite_check(v, v.chair_id, uid, i.pct, i.price) where not private.is_partner(v.id, uid);
   perform private.jv_join(v, uid, i.pct, i.price);
   update public.venture_invites set status = 'accepted' where id = i.id;
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Meetings and votes
--- ---------------------------------------------------------------------------------------------------------------------
 create function private.jv_open_meeting(v public.ventures, caller uuid, planned boolean, items jsonb, profitable boolean, cash_tight boolean) returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare mid uuid; it jsonb; k public.venture_kind; amt numeric;
@@ -262,7 +235,6 @@ begin
   return mid;
 end $$;
 
--- The chair's quarterly meeting: at least 13 weeks after the previous planned one, announced two weeks ahead (the voting window).
 create function public.open_venture_meeting(p_venture uuid, p_items jsonb, p_profitable boolean default true, p_cash_tight boolean default false) returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); v public.ventures; last_planned timestamptz;
@@ -274,7 +246,6 @@ begin
   return private.jv_open_meeting(v, uid, true, p_items, p_profitable, p_cash_tight);
 end $$;
 
--- Any partner may call an emergency meeting about one item, when nothing else is open; it runs one week.
 create function public.call_venture_emergency(p_venture uuid, p_kind public.venture_kind, p_params jsonb default '{}'::jsonb) returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); v public.ventures;
@@ -284,7 +255,6 @@ begin
   return private.jv_open_meeting(v, uid, false, jsonb_build_array(jsonb_build_object('kind', p_kind, 'params', p_params)), true, false);
 end $$;
 
--- A vote cast before the deadline counts; later ones are refused and the share abstains.
 create function public.cast_venture_vote(p_item uuid, p_choice public.venture_choice) returns void language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); m public.venture_meetings;
 begin
@@ -297,7 +267,6 @@ begin
     on conflict (item_id, member_id) do update set choice = excluded.choice, cast_at = now();
 end $$;
 
--- The agenda of a meeting the caller sits in; before the count only the caller's own vote shows.
 create function public.venture_meeting(p_meeting uuid) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); m public.venture_meetings;
 begin
@@ -319,8 +288,6 @@ begin
     from public.ventures v where private.is_partner(v.id, uid) and v.dissolved_at is null), '[]'::jsonb);
 end $$;
 
--- Counts a meeting once its deadline has passed (any partner may ask; the platform also runs it). Returns the outcomes.
--- Quorum is half of all shares casting a yes or no; a tie is decided by the chair's own vote, else nothing changes.
 create function public.close_venture_meeting(p_meeting uuid) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := coalesce(auth.uid(), '00000000-0000-0000-0000-000000000000'::uuid); m public.venture_meetings; v public.ventures; it public.venture_items;
         yes_s numeric; no_s numeric; tot numeric; cast_share numeric; chair_choice public.venture_choice; res public.venture_outcome; outs jsonb := '[]'::jsonb;
@@ -347,7 +314,6 @@ begin
     continue when res not in ('passed', 'chairPassed');
 
     if it.kind = 'dividend' then
-      -- Paid out by shares; the chair's company pays what the partners receive (the chair's own part stays theirs).
       amt := (it.params->>'amount')::numeric; paid := 0;
       for r in select member_id, shares from public.venture_partners where venture_id = v.id and member_id <> v.chair_id loop
         perform private.settle(r.member_id, round(amt * r.shares / private.jv_total_shares(v.id), 2), v.currency, 'venture_dividend', v.id::text, 'Dividend: ' || v.name, jsonb_build_object('ventureID', v.id));
@@ -355,7 +321,6 @@ begin
       end loop;
       perform private.settle(v.chair_id, -paid, v.currency, 'venture_company_payout', v.id::text, 'Dividend paid to partners', jsonb_build_object('ventureID', v.id, 'companyKey', v.company_key));
     elsif it.kind = 'capital' then
-      -- Each partner puts in their share of the call; the chair's company receives it.
       amt := (it.params->>'amount')::numeric; paid := 0;
       for r in select member_id, shares from public.venture_partners where venture_id = v.id and member_id <> v.chair_id loop
         perform private.settle(r.member_id, -round(amt * r.shares / private.jv_total_shares(v.id), 2), v.currency, 'venture_capital_call', v.id::text, 'Capital call: ' || v.name, jsonb_build_object('ventureID', v.id));
@@ -363,7 +328,6 @@ begin
       end loop;
       perform private.settle(v.chair_id, paid, v.currency, 'venture_capital', v.id::text, 'Capital called from partners', jsonb_build_object('ventureID', v.id, 'companyKey', v.company_key));
     elsif it.kind = 'dissolve' then
-      -- Paid by shares from the real value, nothing more. The last cent goes to the biggest holder (the chair on ties).
       val := v.value; paid := 0;
       for r in select member_id, shares from public.venture_partners where venture_id = v.id and member_id <> v.chair_id loop
         perform private.settle(r.member_id, floor(val * r.shares / private.jv_total_shares(v.id) * 100) / 100, v.currency, 'venture_dissolved', v.id::text, 'Joint venture closed: ' || v.name, jsonb_build_object('ventureID', v.id));
@@ -372,13 +336,12 @@ begin
       perform private.settle(v.chair_id, -paid, v.currency, 'venture_company_payout', v.id::text, 'Closing payout to partners', jsonb_build_object('ventureID', v.id, 'companyKey', v.company_key));
       update public.ventures set dissolved_at = now() where id = v.id;
     elsif it.kind = 'partner' then
-      -- The vote only opens the door: the usual checks run, and the private offer goes out like any other.
       pid := (it.params->>'invitee')::uuid;
       begin
         perform private.jv_invite_check(v, v.chair_id, pid, (it.params->>'pct')::numeric, (it.params->>'price')::numeric);
         insert into public.venture_invites (venture_id, invitee_id, pct, price, fair)
           values (v.id, pid, (it.params->>'pct')::numeric, round((it.params->>'price')::numeric, 2), round(private.jv_fair_price(v.value, (it.params->>'pct')::numeric), 2));
-      exception when others then null;   -- an offer that no longer passes the checks simply does not go out
+      exception when others then null;
       end;
     end if;
   end loop;
@@ -386,8 +349,6 @@ begin
   return outs;
 end $$;
 
--- A partner leaves once their lock-up is over and is paid the fair value of the shares; the chair takes the shares back.
--- The chair cannot leave (dissolve instead).
 create function public.leave_venture(p_venture uuid) returns numeric language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); v public.ventures; p public.venture_partners; pay numeric;
 begin
@@ -404,7 +365,6 @@ begin
   return pay;
 end $$;
 
--- Scheduled by the platform: counts meetings past their deadline, expires old offers.
 create function private.run_venture_housekeeping() returns int language plpgsql security definer set search_path = '' as $$
 declare m record; n int := 0;
 begin

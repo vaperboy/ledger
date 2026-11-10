@@ -6,7 +6,6 @@ import Businesses
 import Simulation
 import Employees
 
-/// End-to-end: a whole game, started natively, played for months. Nothing may break the books.
 final class SimulationSmokeTests: XCTestCase {
     func newEngine(_ country: String = "UK", seed: Int = 4242) throws -> GameEngine {
         try GameEngine.newGame(countryCode: country, playerName: "Tester", seed: seed)
@@ -18,7 +17,6 @@ final class SimulationSmokeTests: XCTestCase {
             Ledger.move(&s, .me, 50_000_000, why: "Test funds")
             let r = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx)
             if case .success(let i) = r { id = i }
-            // The reference script (tools/ref/snippets/stats_run.js) asks for the estimate at size 1, whatever size the company has.
             let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6 + fund)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
@@ -32,7 +30,6 @@ final class SimulationSmokeTests: XCTestCase {
         XCTAssertEqual(e.state.week, 0)
         XCTAssertEqual(e.state.loans.count, 1)
         XCTAssertEqual(e.state.cash, e.state.loans[0].balance, accuracy: 1)
-        // Net worth is cash minus the start-up loan: exactly zero, and explainable from its parts.
         let nw = e.netWorth
         XCTAssertEqual(nw.personal, nw.debt, accuracy: 1)
         XCTAssertEqual(nw.total, 0, accuracy: 1)
@@ -74,8 +71,6 @@ final class SimulationSmokeTests: XCTestCase {
 }
 
 extension SimulationSmokeTests {
-    /// Not a pass/fail test: prints average results over several seeds so they can be compared with the original game
-    /// (tools/ref/snippets/stats_run.js).
     func testPrintStatisticsForComparison() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         let base = Int(ProcessInfo.processInfo.environment["LEDGER_SEED0"] ?? "1000")!, step = Int(ProcessInfo.processInfo.environment["LEDGER_STEP"] ?? "37")!
@@ -169,7 +164,6 @@ extension SimulationSmokeTests {
 }
 
 extension SimulationSmokeTests {
-    /// Prints the books after 26 weeks, for comparison with tools/ref/snippets/books_cafe.js.
     func testPrintBooks() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         for trade in ["cafe", "gym", "restaurant"] {
@@ -220,7 +214,6 @@ extension SimulationSmokeTests {
 }
 
 extension SimulationSmokeTests {
-    /// Averages of demand, capacity, units, staff and mood over weeks 13-26, for tools/ref/snippets/stats_parts.js.
     func testPrintParts() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         let seeds = (0..<12).map { 1000 + $0 * 37 }
@@ -380,8 +373,6 @@ extension SimulationSmokeTests {
 }
 
 extension SimulationSmokeTests {
-    /// How fast can a well-run company grow? Prints revenue per month at month 6, 12, 24 and the company value, for a normal and an
-    /// aggressive strategy (every marketing channel at its top budget, owner at the limit). Used to check growth realism.
     func testPrintGrowthProfiles() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         for trade in ["cafe", "barber", "gym", "restaurant", "webdev", "boutique", "bakery", "cleaning", "courier"] {

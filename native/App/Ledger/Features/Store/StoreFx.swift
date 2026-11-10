@@ -1,10 +1,6 @@
 import SwiftUI
 import Simulation
 
-// Motion and surface pieces of the Store. Every loop here is slower than one cycle per second (nothing flashes), and each one has a
-// still version under Reduce Motion.
-
-/// Rises into place with a spring, one after the other. Still under Reduce Motion.
 struct StoreAppear: ViewModifier {
     var index: Int
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -22,7 +18,6 @@ struct StoreAppear: ViewModifier {
     }
 }
 
-/// A slow float up and down (one cycle every few seconds). Still under Reduce Motion.
 struct StoreFloat: ViewModifier {
     var amplitude: CGFloat = 3
     var period: Double = 4.2
@@ -41,7 +36,6 @@ struct StoreFloat: ViewModifier {
     }
 }
 
-/// A band of light that crosses the shape once every few seconds and then rests. Nothing under Reduce Motion.
 struct StoreSheen: ViewModifier {
     var radius: CGFloat
     var enabled = true
@@ -83,7 +77,6 @@ extension View {
     }
 }
 
-/// The surface of an offer: a lifted card with a thin outline in its colour. With `glow` it breathes slowly (still, and a little dimmer, under Reduce Motion).
 struct StoreSurface: View {
     var tint: Color = Theme.gold
     var glow = false
@@ -109,7 +102,6 @@ struct StoreSurface: View {
     }
 }
 
-/// A small filled tag such as "Best value". Always a word, never only a colour.
 struct StoreTag: View {
     var text: String
     var tint: Color = Theme.gold
@@ -124,7 +116,6 @@ struct StoreTag: View {
     }
 }
 
-/// A coin: gold fill, a ring and a highlight.
 struct StoreCoin: View {
     var size: CGFloat = 22
 
@@ -139,7 +130,6 @@ struct StoreCoin: View {
     }
 }
 
-/// A heap of coins that grows with the size of the pack (1 to 5 coins).
 struct StoreCoinHeap: View {
     var tier: Int
 
@@ -155,7 +145,6 @@ struct StoreCoinHeap: View {
     }
 }
 
-/// A number the animation system can count: it redraws once per step of the value.
 struct CountingNumber: View, Animatable {
     var value: Double
     var animatableData: Double {
@@ -165,7 +154,6 @@ struct CountingNumber: View, Animatable {
     var body: some View { Text(Int(value.rounded()).formatted()) }
 }
 
-/// A closed box drawn from shapes, in the colours of its kind.
 struct BoxArt: View {
     var kind: BoxKind
     var size: CGFloat = 84
@@ -199,27 +187,6 @@ struct BoxArt: View {
     }
 }
 
-/// A bar split by rarity, sized by each rarity's exact chance. The percentages are always written out beside it.
-struct BoxOddsBar: View {
-    var kind: BoxKind
-
-    var body: some View {
-        let rows: [(rarity: BoxRarity, percent: Double)] = BoxOdds.rarityPercent(kind).filter { $0.percent > 0 }
-        GeometryReader { (g: GeometryProxy) in
-            HStack(spacing: 2) {
-                ForEach(0..<rows.count, id: \.self) { (i: Int) in
-                    RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(rows[i].rarity.tint)
-                        .frame(width: max(3, (g.size.width - CGFloat(rows.count - 1) * 2) * rows[i].percent / 100))
-                }
-            }
-        }
-        .frame(height: 6)
-        .accessibilityHidden(true)
-    }
-}
-
-/// Light rays behind a reward, turning slowly. Still under Reduce Motion.
 struct StoreRays: View {
     var tint: Color
     var size: CGFloat

@@ -5,12 +5,9 @@ import Finance
 import Businesses
 import Simulation
 
-/// The holding buys shares of other companies, in whole or in part: pick one, choose the percent, read the quote and the tier it reaches,
-/// make sure the holding has the cash, then confirm. Own companies and other businesses are listed together.
 struct HoldingBuyStakes: View {
     @EnvironmentObject var store: GameStore
     var holdingID: Int
-    /// An offer to open straight on ("c:<companyID>"), for "Buy more" on a stake row.
     var startOfferID: String? = nil
     @State private var offerID: String?
     @State private var percent = 5.0
@@ -48,8 +45,6 @@ struct HoldingBuyStakes: View {
         }
     }
 
-    // MARK: The list
-
     private func list(_ offers: [HoldingStakes.Offer], _ h: Company, _ cur: Currency) -> some View {
         let own: [HoldingStakes.Offer] = offers.filter { (o: HoldingStakes.Offer) -> Bool in o.isOwn }
         let others: [HoldingStakes.Offer] = offers.filter { (o: HoldingStakes.Offer) -> Bool in !o.isOwn }
@@ -78,8 +73,6 @@ struct HoldingBuyStakes: View {
             offerID = o.id
         }
     }
-
-    // MARK: One offer
 
     private func quoteFor(_ e: GameEngine, _ o: HoldingStakes.Offer) -> Result<HoldingStakes.Quote, HoldingStakes.Failure> {
         if let cid = o.companyID { return e.holdingStakeQuote(holdingID: holdingID, companyID: cid, percent: percent) }
@@ -143,7 +136,6 @@ struct HoldingBuyStakes: View {
         }
     }
 
-    /// When cash is short: the lender's terms for the missing part, or the reason it would refuse.
     @ViewBuilder private func loanOffer(_ e: GameEngine, _ h: Company, _ name: String, _ cid: Int, _ q: HoldingStakes.Quote, _ cur: Currency) -> some View {
         if case .success(let t) = e.holdingBuyLoanQuote(holdingID: holdingID, companyID: cid, percent: q.percent), t.amount > 0 {
             VStack(alignment: .leading, spacing: Theme.Space.s) {

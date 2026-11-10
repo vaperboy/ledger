@@ -6,7 +6,6 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// Startups funded by other players: price rule, caps, escrow, resale band, taxes, viral, and the exploits that must not pay.
 final class CrowdStartupTests: XCTestCase {
     typealias R = CrowdStartupRules
 
@@ -51,9 +50,7 @@ final class CrowdStartupTests: XCTestCase {
 
     func testCapsAndNewAccounts() {
         var st = startup()
-        // Investor cap: 20% of 600k = 120k.
         XCTAssertEqual(R.investCheck(st, investorID: "i1", linkKeys: ["i1"], accountWeeks: 10, amount: 130_000, today: 0), .refused(.investorCap(room: 120_000)))
-        // Stage 0 raise is 240k: two investors at 110k leave room for 20k.
         for k in 0..<2 { st.investments.append(.init(id: "a\(k)", investorID: "p\(k)", linkKey: "p\(k)", stage: 0, amount: 110_000, percent: 4, day: 0)) }
         XCTAssertEqual(R.investCheck(st, investorID: "i3", linkKeys: ["i3"], accountWeeks: 10, amount: 30_000, today: 0), .refused(.stageFull(room: 20_000)))
         XCTAssertEqual(R.investCheck(st, investorID: "i3", linkKeys: ["i3"], accountWeeks: 2, amount: 10_000, today: 0), .refused(.newAccount(weeksLeft: 2)))
@@ -114,7 +111,6 @@ final class CrowdStartupTests: XCTestCase {
     }
 
     func testRoundTripSalesLoseMoney() {
-        // Two cooperating accounts pass the same shares back and forth at the top of the band: every leg costs taxes, and the lock slows each leg.
         let st = liveStartup()
         var a = R.Holding(startupID: "S1", ownerID: "a", linkKey: "a", percent: 5, paid: 50_000, boughtDay: 0)
         var cashA = 0.0, cashB = 0.0
@@ -150,7 +146,6 @@ final class CrowdStartupTests: XCTestCase {
         XCTAssertLessThanOrEqual(cash0 - e.state.cash, quote.total + 1)
         XCTAssertGreaterThanOrEqual(cash0 - e.state.cash, quote.entryCost)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        // A mock investor funds stage 0; the milestone releases it to the real company and the cap table gains the investors.
         st.investments.append(.init(id: "m", investorID: "mock", linkKey: "mock", stage: 0, amount: 100_000, percent: R.percent(for: 100_000, plan: st.plan, stage: 0), day: 3))
         let cid = try XCTUnwrap(st.companyID)
         let before = try XCTUnwrap(e.state.company(cid)).cash
@@ -182,7 +177,6 @@ final class CrowdStartupTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(b.entryCost, b.plan.cost * R.entryCostPlanShare - 1)
         XCTAssertGreaterThan(b.entryCost, a.entryCost)
         XCTAssertGreaterThanOrEqual(c.entryCost, c.plan.cost * R.entryCostPlanShare - 1, "the biggest plans pay the most")
-        // What the investors can send is at most twice the founder's own money; the fee always costs more than a quarter of the raise it unlocks.
         XCTAssertGreaterThan(c.entryCost, c.plan.investorTarget * 0.25)
     }
 
@@ -199,13 +193,11 @@ final class CrowdStartupTests: XCTestCase {
         XCTAssertEqual(cash0 - e.state.cash, 50_000, accuracy: 1)
         XCTAssertEqual(st.escrowHeld, 50_000)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        // The startup fails before the milestone: the escrow comes back whole.
         let back = R.fail(&st)
         let name = st.name
         e.update { s, _, _ in CrowdStartups.settleRefunds(&s, back, startupName: name) }
         XCTAssertEqual(cash0, e.state.cash, accuracy: 1)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        // A startup linked to the player and a new account are refused, and nothing moves.
         var linked = startup(linkKey: "me")
         var other = startup()
         let c1 = e.state.cash
@@ -227,7 +219,6 @@ final class CrowdStartupTests: XCTestCase {
         let q = try XCTUnwrap(res).get()
         XCTAssertEqual(e.state.cash - cash0, q.sellerReceives, accuracy: 1)
         XCTAssertEqual(mine.percent, 0, accuracy: 1e-9)
-        // Buying the same shares back costs the price plus the transfer tax: the cycle is a loss.
         let seller = R.Holding(startupID: "S1", ownerID: "mock", linkKey: "mock", percent: 5, paid: fair, boughtDay: 0)
         var buy: Result<(R.SaleQuote, R.Holding), CrowdStartups.SaleFailure>?
         e.update { s, _, _ in buy = CrowdStartups.buy(&s, startup: st, from: seller, percent: 5, price: fair, accountWeeks: 20, linkKeys: ["me"], gainsRate: 0.2, today: 200) }

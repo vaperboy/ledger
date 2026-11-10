@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// A first company is affordable: the picker prices the size the money carries, the minimum includes what the trade cannot open without,
-/// and the checklist states its cost and can always be finished from the owner's money or a loan.
 final class SetupAffordabilityTests: XCTestCase {
     private func game(seed: Int = 11) throws -> GameEngine { try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed) }
 
@@ -17,7 +15,6 @@ final class SetupAffordabilityTests: XCTestCase {
         XCTAssertGreaterThan(est.requiredEquipment + est.requiredVehicles, 0)
         XCTAssertEqual(est.minimumToOpen, est.documents + est.premisesLeast + est.property + est.wait + est.registration + est.shareCapital + est.abroad + est.requiredEquipmentUpfront + est.requiredVehicles, accuracy: 0.01)
         XCTAssertGreaterThan(est.minimumToOpen, est.documents)
-        // equipment that can be financed takes a down payment, and the cheapest place is no dearer than the standard one
         XCTAssertLessThan(est.requiredEquipmentUpfront, est.requiredEquipment)
         let cafe = try XCTUnwrap(CompanySetup.estimate(tradeID: "cafe", cityID: e.state.player.cityID, size: 1, state: rich, data: e.data))
         XCTAssertGreaterThan(cafe.premises, 0)
@@ -35,11 +32,9 @@ final class SetupAffordabilityTests: XCTestCase {
             XCTAssertLessThanOrEqual(r.size, r.recommendedSize + 0.001)
             if r.isFunded { XCTAssertLessThanOrEqual(r.minimum ?? 0, r.available + 0.5) }
         }
-        // with plenty of money every trade starts at its natural size
         var rich = e
         rich.update { s, _, _ in Ledger.move(&s, .me, 1e11, why: "Test funds") }
         for r in rich.tradeAffordability() where r.blocked == nil { XCTAssertFalse(r.isScaledDown, r.tradeID) }
-        // the picker row and the start size agree
         let row = try XCTUnwrap(e.tradePickerRows().first { $0.isFunded })
         XCTAssertEqual(e.affordableStartSize(tradeID: row.tradeID, cityID: e.state.player.cityID), rows.first { $0.tradeID == row.tradeID }?.size)
     }

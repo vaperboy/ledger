@@ -3,51 +3,26 @@ import GameCore
 import Countries
 import Finance
 
-/// The middle-man trades that earn commission on what others make: the travel agency (`travel`), the insurance broker
-/// (`insbroker`) and the finance and mortgage broker (`finbroker`). They hold no stock. A sale is a deal placed with a supplier (an operator, an airline,
-/// a hotel, an insurer, a lender), and the money comes from that supplier, later, as commission. All figures are in `Resources/brokers.json`.
-///
-/// * Travel: customers book weeks ahead (deposit, then balance); the agency passes the money on and the supplier pays the commission after the trip
-///   (8 to 12 percent on packages, 5 to 9 on flights and hotels). A booking can be cancelled before the trip: no commission, only a small handling fee.
-///   Flights and hotels are placed with the player's own airline or hotel company when there is one in the country (that company pays the commission,
-///   a real transfer through `Payments`), else with generic operators.
-/// * Insurance: the broker earns first-year commission when the policy starts and renewal commission each year it is kept. A policy that is cancelled in
-///   the first year is clawed back by the insurer (the unearned part). Each yearly renewal keeps only part of the book (retention).
-/// * Finance: an application can be declined or fall through. A completed loan pays a procuration commission (a share of the loan) and the lender and
-///   client fees, then a trail commission on the balance each quarter. A loan repaid early in its first two years is clawed back.
-///
-/// State on the company: `brk` = { deals: [...], cohorts: [...], st: {...} } (a save without it starts empty).
 public enum Brokers {
     public static let tradeIDs: Set<String> = ["travel", "insbroker", "finbroker"]
     public static func handles(_ bd: Trade) -> Bool { tradeIDs.contains(bd.id) }
 
-    /// The data file (`brokers.json`), read once.
     static let config: JSONValue = {
         guard let url = Bundle.module.url(forResource: "brokers", withExtension: "json", subdirectory: "Resources"),
               let data = try? Data(contentsOf: url), let json = try? JSONDecoder().decode(JSONValue.self, from: data) else { return .null }
         return json
     }()
 
-    // MARK: Records
-
-    /// A deal waiting to pay: a booking before the trip, or a loan application before completion.
     struct Deal: Equatable {
         var id: Int
         var line: String
         var due: Int
-        /// Week a booking is cancelled (0 = it is not)
         var cancelWeek: Int
-        /// What the customer buys: the trip, the loan
         var value: Double
-        /// Commission to come
         var commission: Double
-        /// Fees that come with a completed loan (lender fee and client fee)
         var fee: Double
-        /// The company that pays the commission, when it is one of the player's own (0 = a generic supplier)
         var supplier: Int
-        /// The part of the commission that is clawed back on early repayment
         var procuration: Double
-        /// Trail commission rate a year
         var trail: Double
         var sold: Int
 
@@ -65,9 +40,6 @@ public enum Brokers {
         }
     }
 
-    /// Everything placed in one week on one line, kept together: policies in force, or loans on the books. For a policy `premium` is the yearly
-    /// premium, `first` the first-year commission and `recurring` the renewal commission at that premium. For a loan `premium` is the balance,
-    /// `first` the procuration commission already paid and `recurring` the trail commission a year.
     struct Cohort: Equatable {
         var line: String
         var start: Int
@@ -110,19 +82,11 @@ public enum Brokers {
         co.set("brk", .object(["deals": .array(b.deals.map { $0.json }), "cohorts": .array(b.cohorts.map { $0.json }), "st": .object(st)]))
     }
 
-    // MARK: What the owner sees
-
-    /// The book of business at a glance (for the company screens).
     public struct Summary: Equatable, Sendable {
-        /// Policies in force, or loans on the books
         public var inForce: Double
-        /// Yearly premium of the policies, or balance of the loans
         public var bookValue: Double
-        /// What the book pays a year with no new business: renewal commission, or trail commission
         public var recurringYearly: Double
-        /// Commission still to come on deals placed (bookings before the trip, applications before completion)
         public var pendingCommission: Double
-        /// Customers' money for trips not yet taken, passed on to suppliers (what the travel bond protects)
         public var customerMoneyHeld: Double
         public var placed: Double
         public var cancelled: Double
@@ -146,8 +110,6 @@ public enum Brokers {
                        commissionEarned: b.stat["paid"] ?? 0, clawedBack: b.stat["claw"] ?? 0)
     }
 
-    // MARK: Helpers
-
     static func lines(_ bd: Trade) -> [JSONValue] { config["trades"][bd.id]["lines"].array }
 
     static func gauss(_ r: inout HashedRandom) -> Double {
@@ -159,14 +121,12 @@ public enum Brokers {
         range[0].double + (range[1].double - range[0].double) * p
     }
 
-    /// The ids of the options switched on in the company's choices.
     static func activeOptionIDs(_ co: Company, _ bd: Trade) -> Set<String> {
         var out = Set<String>()
         for k in bd.knobs { for o in Knobs.activeOptions(co, k) { out.insert(o.id) } }
         return out
     }
 
-    /// New business by line: the trade's mix times what the chosen focus does to each line.
     static func lineWeights(_ bd: Trade, active: Set<String>) -> [Double] {
         let cfg = config["trades"][bd.id]
         let ls = lines(bd)
@@ -189,10 +149,8 @@ public enum Brokers {
         return max(0, weights.count - 1)
     }
 
-    /// How good the company is at the work, 0 to 1 (service quality), which moves the commission terms it gets and how many customers it keeps.
     static func skill(_ co: Company) -> Double { co.quality / 100 }
 
-    /// Commission from add-ons switched on (travel insurance sold with the trip, protection cover with the mortgage).
     static func addOnCommission(_ cfg: JSONValue, line: String, active: Set<String>, scale: Double, _ rnd: inout HashedRandom) -> Double {
         var extra = 0.0
         for a in cfg["addons"].array where active.contains(a["option"].string) && a["lines"].array.contains(where: { $0.string == line }) {
@@ -201,16 +159,10 @@ public enum Brokers {
         return extra
     }
 
-    /// One of the player's own companies of this trade in the same country, which can pay the commission.
     static func ownSupplier(_ s: GameState, buyer co: Company, trade: String) -> Int {
         s.companies.first { $0.id != co.id && $0.type == trade && $0.status == .open && $0.countryCode == co.countryCode }?.id ?? 0
     }
 
-    // MARK: Week
-
-    /// The week of a broker: money from deals placed earlier arrives, the book earns and lapses, and new deals are placed. Returns the usual
-    /// week figures for `CompanyWeek.book`: revenue is the commission and fees earned from generic suppliers (a commission paid by the player's own
-    /// company moves between the two companies at once and is already booked).
     static func week(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) -> CompanyWeek.WeekContext {
         let w = World(state: s, data: data)
         let co0 = s.companies[i]
@@ -228,7 +180,6 @@ public enum Brokers {
 
         rev += settle(&s, i, bd, cfg, &book, scale: scale, quality: q, active: active)
 
-        // New business.
         var units = max(0, min(D, cap) * (1 + gauss(&rnd) * 0.045))
         var n = Int(saturating: units.rounded(.down))
         if rnd.next() < units - Double(n) { n += 1 }
@@ -249,7 +200,6 @@ public enum Brokers {
         return CompanyWeek.WeekContext(units: units, rev: rev, cogs: rev * bd.costOfSales, D: D, cap: cap, util: util, price: units > 0 ? rev / units : 0, paidDuringWeek: 0)
     }
 
-    /// Deals that fall due and the book of earlier business. Returns the revenue that goes through the week's books.
     static func settle(_ s: inout GameState, _ i: Int, _ bd: Trade, _ cfg: JSONValue, _ book: inout Book, scale: Double, quality q: Double, active: Set<String>) -> Double {
         let id = s.companies[i].id
         let week = s.week
@@ -268,7 +218,6 @@ public enum Brokers {
                 book.count("completed")
                 continue
             }
-            // A booking whose trip has been taken: the supplier pays.
             if d.supplier != 0, let si = s.companyIndex(d.supplier), s.companies[si].status.isLive {
                 let amount = jsRound(d.commission)
                 let agency = s.companies[i].name, supplier = s.companies[si].name
@@ -285,7 +234,6 @@ public enum Brokers {
         return rev
     }
 
-    /// Policies in force: first-year cancellations are clawed back, and each year the book renews with part of it kept.
     static func settleInsurance(_ s: inout GameState, _ i: Int, _ cfg: JSONValue, _ book: inout Book, quality q: Double, active: Set<String>) -> Double {
         let week = s.week
         let ix = s.economy.inflationIndex
@@ -316,7 +264,6 @@ public enum Brokers {
         return rev
     }
 
-    /// Loans on the books: they amortise, some are repaid early (clawback in the first two years), and trail commission is paid each quarter.
     static func settleLoans(_ s: inout GameState, _ i: Int, _ cfg: JSONValue, _ book: inout Book) -> Double {
         let week = s.week
         var rev = 0.0, claw = 0.0
@@ -345,7 +292,6 @@ public enum Brokers {
         book.count("claw", a)
     }
 
-    /// Place one new deal. Returns revenue that comes at once (the first-year commission of a policy).
     static func place(_ s: inout GameState, _ co: Company, _ bd: Trade, _ cfg: JSONValue, _ line: JSONValue, _ book: inout Book, scale: Double, quality q: Double,
                       active: Set<String>, _ rnd: inout HashedRandom) -> Double {
         let week = s.week

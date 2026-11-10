@@ -6,8 +6,6 @@ import Events
 import Finance
 import Countries
 
-/// LEDGER_P2=trade1,trade2: the standard two-year probe (UK, seed LEDGER_SEED or 11, BalanceProbeTests.play owner).
-/// Prints money in, profit year 1 and 2, value, cash, status, staff.
 final class BalanceCausesProbe: XCTestCase {
     func testTwoYearProbe() throws {
         guard let list = ProcessInfo.processInfo.environment["LEDGER_P2"] else { return }
@@ -20,8 +18,6 @@ final class BalanceCausesProbe: XCTestCase {
 }
 
 extension BalanceCausesProbe {
-    /// LEDGER_STARTUP=sector,product,model,who,seedMultiple: a startup founded the way the game does it (Startups.found), launched when the product is ready
-    /// at the sector's reference price, otherwise hands-off. The trade-menu route has no product and is not a startup (see SpecialFamilies.isStartable).
     func testFoundedStartupProbe() throws {
         guard let spec = ProcessInfo.processInfo.environment["LEDGER_STARTUP"] else { return }
         let a = spec.split(separator: ",").map(String.init)

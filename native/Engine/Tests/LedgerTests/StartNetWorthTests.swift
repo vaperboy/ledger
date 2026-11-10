@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 @testable import Simulation
 
-/// Starting a company moves the owner's money into it at cost; it does not raise net worth, and no net-worth trophy or milestone is queued by the start.
 final class StartNetWorthTests: XCTestCase {
     static let trades = ["cafe", "gym", "kiosk", "hotel", "grocery", "carrental", "factory", "boutique"]
 
@@ -35,7 +34,7 @@ final class StartNetWorthTests: XCTestCase {
     func testAYoungCompanyCountsAtWhatWasPutInForGoals() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5, story: .fresh, tradeID: "kiosk")
         let paid = e.state.companies[0].ownerNetFlow
-        e.update { s, _, _ in s.companies[0].cash += paid * 5 }   // a windfall that only a valuation would see
+        e.update { s, _, _ in s.companies[0].cash += paid * 5 }
         let plain = Valuation.netWorth(e.state, trades: e.data.catalog).companies
         let goals = Valuation.netWorth(e.state, trades: e.data.catalog, forGoals: true).companies
         XCTAssertGreaterThan(plain, paid * 4)
@@ -44,7 +43,6 @@ final class StartNetWorthTests: XCTestCase {
         XCTAssertEqual(Valuation.netWorth(e.state, trades: e.data.catalog, forGoals: true).companies, Valuation.netWorth(e.state, trades: e.data.catalog).companies, accuracy: 1)
     }
 
-    /// Opening a company buys only what it needs to open and trade; the optional kit is left for later.
     func testAFreshStartBuysOnlyWhatTheTradeNeedsToOpen() throws {
         for trade in ["gym", "cafe", "hotel"] {
             let e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5, story: .fresh, tradeID: trade)

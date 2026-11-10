@@ -1,11 +1,8 @@
 import XCTest
 
-/// Feature tours: the company screens (every section of every company), the Team, Manage (Operations > Suppliers) and Sales flows.
 extension FeatureToursTests {
 
     private var sections: [String] { ["overview", "team", "manage", "sales", "stats"] }
-
-    // MARK: T10 every section of every company
 
     func testT10_CompanySections() {
         for (part, label) in [("Caf", "Cafe"), ("Gym", "Gym")] {
@@ -40,20 +37,16 @@ extension FeatureToursTests {
         }
     }
 
-    // MARK: T11 Team: hire flow and staff
-
     private func openHiring() -> Bool {
         guard openCompany("Caf"), tapID("company-tab-people") else { return false }
         return tapID("team-hire-workers", wait: 4) && has("back-button", wait: 3)
     }
 
-    /// Picks the first role chip under "Which role" (Post the ad waits for a role).
     private func pickFirstRole() -> Bool {
         guard let head = find(wait: 3, { $0.label.localizedCaseInsensitiveCompare("Which role") == .orderedSame }) else { return false }
         return tapWhere(wait: 1) { $0.type == .button && $0.frame.minY > head.frame.maxY && $0.frame.minY < head.frame.maxY + 160 && !$0.label.isEmpty }
     }
 
-    /// Plays days from Home (closing each report) until `until` holds or `days` are played.
     func advanceDays(_ days: Int, until: () -> Bool = { false }) -> Int {
         var played = 0
         while played < days {
@@ -122,7 +115,6 @@ extension FeatureToursTests {
         }
         step("team: a worker profile opens from the roster and Back returns to Team") {
             guard openCompany("Caf"), tapID("company-tab-people") else { return .skip("no company / Team section") }
-            // The roster groups people by role ("Barista, 2 people"): open a group, then its first person.
             guard let group = bringIn({ $0.type == .button && ($0.label.contains(" people") || $0.label.contains(" person")) && !$0.label.hasPrefix("Staff") }, wait: 4) else { return .skip("no role group in the roster") }
             touch(group)
             guard tapWhere(wait: 2, { $0.type == .button && $0.frame.minY >= group.frame.maxY - 2 && $0.frame.minY < group.frame.maxY + 90 && !$0.label.contains(" people") }) else { return .fail("the role group did not list anyone") }
@@ -130,16 +122,6 @@ extension FeatureToursTests {
             let h: R = health("worker profile")
             guard tapBack() else { return .fail("no Back on the profile") }
             return isSelected("company-tab-people") ? h : .fail("Back did not return to the Team section: \(signature().text)")
-        }
-        step("team: Managers and executives pushes the entity's Management page on Home, and Back returns to Team") {
-            guard openCompany("Caf"), tapID("company-tab-people") else { return .skip("no company / Team section") }
-            guard tapID("team-open-management", wait: 4) else { return .skip("no management link") }
-            pause(0.8)
-            guard isSelected("tab-Home") else { return .fail("the link changed tab: \(tabState())") }
-            guard isSelected("group-tab-Management") else { return .fail("the entity's Management page is not showing: \(signature().text)") }
-            let h: R = health("team management", title: false)
-            guard tapBack() else { return .fail("no Back on the entity page") }
-            return isSelected("company-tab-people") ? h : .fail("Back did not return to Team: \(signature().text)")
         }
         roundTrip("team: Perks popup closes and keeps Team", prepare: { openCompany("Caf") && tapID("company-tab-people") }) { tapLabel("Perks") }
         step("team: Goals page opens and Back returns") {
@@ -158,8 +140,6 @@ extension FeatureToursTests {
         }
     }
 
-    // MARK: T12 Manage > Operations > Suppliers (the owner's bug class)
-
     private func openSuppliers() -> Bool {
         guard openCompany("Caf"), tapID("company-tab-overview") else { return false }
         return tapLabel("Suppliers") && has("back-button", wait: 3)
@@ -176,7 +156,6 @@ extension FeatureToursTests {
         roundTrip("suppliers: tap a supplier -> detail popup closes and keeps Suppliers", prepare: { openSuppliers() }) {
             tapID("supplier-option", wait: 4)
         }
-        // A switchable provider: the row is not the one 'In use'; the popup has 'Use <name>', which asks first.
         func openSwitchConfirm() -> Bool {
             guard tapWhere(wait: 4, { $0.id == "supplier-option" && $0.type == .button && !$0.label.contains("In use") && $0.enabled }) else { return false }
             guard popupUp(2), tapLabel("Use ", wait: 2) else { if popupUp() { closePopup() }; return false }
@@ -199,14 +178,10 @@ extension FeatureToursTests {
         }
     }
 
-    // MARK: T13 Sales: item page, price slider, Marketing
-
-    /// The numbers and money on screen, to see that a slider moved the readout.
     private func readout() -> String {
         allTexts().map { $0.text }.filter { (t: String) -> Bool in t.rangeOfCharacter(from: .decimalDigits) != nil }.sorted().joined(separator: "|")
     }
 
-    /// Opens the first item of the Sales list (the rows between the Items heading and Add item).
     private func openFirstItem() -> Bool {
         guard let add = bringIn({ $0.id == "sales-add-item" }, wait: 4) else { return false }
         let head: CGFloat = find({ $0.type == .staticText && ($0.label == "Items" || $0.label == "ITEMS") })?.frame.maxY ?? (add.frame.minY - 400)
@@ -242,7 +217,6 @@ extension FeatureToursTests {
             var problems: [String] = []
             if !moved { problems.append("the price readout did not change when the slider was dragged") }
             if popupUp() { problems.append("the price change raised a popup"); closePopup() }
-            // Put the price back so later steps see the same game.
             if let sl2 = hit("sales-item-price") {
                 o.withOffset(CGVector(dx: sl2.frame.minX + sl2.frame.width * 0.7, dy: sl2.frame.midY)).press(forDuration: 0.2, thenDragTo: o.withOffset(CGVector(dx: sl2.frame.minX + sl2.frame.width * 0.45, dy: sl2.frame.midY)))
                 pause(0.8)
@@ -296,8 +270,6 @@ extension FeatureToursTests {
             return before.same(signature(), strictText: false) ? h : .fail("Back did not return to Sales: \(signature().text)")
         }
     }
-
-    // MARK: T14 Company popups
 
     func testT14_CompanyPopups() {
         roundTrip("home: 'About' info popup closes and keeps Home", prepare: { goTab("Home") }) { tapLabel("About ") }

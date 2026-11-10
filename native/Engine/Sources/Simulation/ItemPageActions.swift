@@ -4,26 +4,20 @@ import Countries
 import Finance
 import Businesses
 
-/// Everything the item page shows, in one read (`ItemModels`). Money is in accounting units.
 public struct ItemPageData: Equatable, Sendable {
     public var item: SalesItem
-    /// nil for an old titles-only item: the page then shows what exists and no stock blocks.
     public var record: ItemModels.Record?
     public var modelLabel: String
-    /// Cost of one unit now (a record's own, or the trade's cost-of-sales share for an old item).
     public var unitCost: Double
     public var live: ItemModels.LiveProfit
     public var fairValue: Double
-    /// Weekly chance one interested customer buys at the price shown.
     public var saleProbability: Double
     public var supply: ItemModels.SupplyLine?
     public var offers: [ItemModels.SupplyLine]
-    /// One word for the list: "In stock 12", "Being fixed", "Reserved", "Selling", "Sold out".
     public var statusWord: String
 }
 
 public extension GameEngine {
-    /// The page of one item at a proposed price (nil price = the item's own price, after no discount).
     func itemPage(companyID: Int, itemID: String, price: Double? = nil) -> ItemPageData? {
         guard let it = salesItems(companyID: companyID).first(where: { $0.id == itemID }), let co = state.company(companyID) else { return nil }
         let p = price ?? it.price
@@ -37,7 +31,6 @@ public extension GameEngine {
                             offers: ItemModels.offers(state, companyID: companyID, itemID: itemID, data: data), statusWord: word)
     }
 
-    /// Choose which supplier supplies one item; an item with no record yet gets one.
     @discardableResult
     mutating func setItemSupplier(companyID: Int, itemID: String, vendorID: String?) -> SettingResult {
         let data = self.data

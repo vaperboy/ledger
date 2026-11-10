@@ -5,13 +5,11 @@ import Finance
 import Businesses
 import Simulation
 
-/// The project family: plumber, electrician, construction, engineering office, event agency, real-estate developer.
 final class ProjectTradeTests: XCTestCase {
     static let trades = ["construction", "electrician", "plumber", "engcons", "event", "realdev"]
 
     struct Result { var revenue = 0.0, profit = 0.0, invested = 0.0, value = 0.0, cash = 0.0, status = "", done = 0.0, won = 0.0, y3rev = 0.0, y3profit = 0.0, util = 0.0, demandRatio = 0.0, cogsShare = 0.0, wageShare = 0.0 }
 
-    /// Play one company for `years`. A developer has a manager who starts projects (as the player's manager would).
     static func play(_ trade: String, seed: Int, years: Int = 3, country: String = "UK") throws -> (Result, GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed)
         var id = 0
@@ -27,7 +25,6 @@ final class ProjectTradeTests: XCTestCase {
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
         XCTAssertNotEqual(id, 0, trade)
-        // A sensible marketing plan: search ads and social ads at their second-lowest budget, website and SEO at the lowest.
         if trade != "realdev" {
             for (k, n) in [("google", 1), ("meta", 1), ("seo", 1)] {
                 if let ch = e.marketing.channels[k], ch.budgetOptions.count > n { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions[n]) }
@@ -41,7 +38,6 @@ final class ProjectTradeTests: XCTestCase {
                 let lw = c.value("lastW"); utilSum += lw["util"].double; dSum += lw["D"].double; capSum += lw["cap"].double; nW += 1
             }
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-            // a buy-out offer is declined: the run is about the trade, not an exit
             for m in e.openDecisions where m.companyID == id && !m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: m.actionID == "g27bid" ? m.options.count - 1 : 0) }
             if let co = e.state.company(id), co.status == .open {
                 if trade == "realdev", !started || e.state.week % 10 == 0 {
@@ -100,7 +96,6 @@ final class ProjectTradeTests: XCTestCase {
         }
     }
 
-    /// Tenders appear for the trades that can win them, a bid costs money, and a won tender becomes a job on the order book.
     func testTendersAreBidAndAwarded() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 31)
         var id = 0
@@ -128,7 +123,6 @@ final class ProjectTradeTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    /// A project company that runs out of money is declared bankrupt like any other; the books still balance.
     func testStarvedProjectCompanyGoesBankrupt() throws {
         for t in ["plumber", "realdev"] {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
@@ -146,19 +140,16 @@ final class ProjectTradeTests: XCTestCase {
                 e.nextDay()
                 for m in e.openDecisions { e.answer(messageID: m.id, option: 0) }
                 if t == "realdev", !started, e.state.company(id)?.status == .open { started = e.startDevelopment(companyID: id, size: 1, financed: false) == .started }
-                // the owner never adds money; drain what is left so the company cannot survive
                 if let co = e.state.company(id), co.status == .open, co.cash > 0, e.state.week >= 40 {
                     e.update { s, _, _ in Ledger.moveRaw(&s, .company(id), -co.cash) }
                 }
             }
-            // A company that pays its way from sales alone (rivals now move the market price) may rightly survive.
             let paysItsWay = (e.state.company(id)?.monthlyHistory.suffix(6).map { $0.profit }.reduce(0, +) ?? 0) > 0
             XCTAssertTrue(e.state.company(id)?.status == .bust || paysItsWay, t)
             XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(t): \(Ledger.gaps(e.state))")
         }
     }
 
-    /// LEDGER_PROJECTS=1: 3 seeds x 3 years of every project trade.
     func testPrintProjectBalance() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_PROJECTS"] != nil else { return }
         print("PRJ trade | invested k | y3 revenue k | y3 profit k | y3 margin | y3 ROI | value/invested | jobs done | util | D/cap | cogs% | wages% | status")

@@ -1,36 +1,19 @@
 import SwiftUI
 import UIKit
 
-// The popup rules in one place. Every popup is exactly one category and carries one event tone; the frame
-// (`CenterSheetFrame`) draws all three categories with the same glass surface and only their size differs.
-// Sizing is content-driven: there is no minimum height anywhere, and nothing stretches a card to a fixed share of the screen
-// except a detail panel whose content scrolls by itself.
-
-/// The three popup sizes.
 enum PopupCategory: Equatable, CaseIterable {
-    /// A confirmation, short warning, quick decision or small purchase: exactly as high as its content.
     case compact
-    /// Several options, a person, a negotiation or a moderate breakdown: as high as its content, scrolling past 70% of the screen.
     case medium
-    /// An acquisition, company decision, report or multi-step task: as high as its content up to 92% of the screen, footer pinned.
     case detail
 }
 
-/// The accent of a popup's event: ambient light, icon ring, primary button, selected states. Never the whole card.
 enum PopupTone: Equatable, CaseIterable {
-    /// No particular event (a plain choice).
     case neutral
-    /// Success, profit.
     case success
-    /// Danger, loss, destructive actions.
     case danger
-    /// Warnings, financial pressure, deadlines.
     case warning
-    /// Information, administration.
     case info
-    /// Acquisitions, investments, milestones.
     case investment
-    /// Prestige, rare opportunities.
     case prestige
 
     var color: Color {
@@ -45,10 +28,8 @@ enum PopupTone: Equatable, CaseIterable {
         }
     }
 
-    /// How strong the ambient light at the top of the card is.
     var glow: Double { self == .neutral ? 0.10 : 0.30 }
 
-    /// The tone an older variant stands for (call sites that only set a variant still get a fitting accent).
     init(variant: PopupVariant) {
         switch variant {
         case .alert, .destructive: self = .danger
@@ -59,16 +40,11 @@ enum PopupTone: Equatable, CaseIterable {
     }
 }
 
-/// The pure size and shape rules (no view state).
 enum PopupLayout {
-    /// Corner radius of every card.
     static let radius: CGFloat = 28
-    /// Inner padding of the card body.
     static let inset: CGFloat = 20
-    /// The smallest gap between a card and the screen edges.
     static let screenMargin: CGFloat = 16
 
-    /// The tallest a card of the category may be; compact gets a safety cap only so text can never be cut off.
     static func maxHeight(_ c: PopupCategory, screenHeight: CGFloat) -> CGFloat {
         switch c {
         case .compact: return screenHeight * 0.6
@@ -77,7 +53,6 @@ enum PopupLayout {
         }
     }
 
-    /// The widest a card of the category gets: a compact card stays narrow, a detail panel uses the room it is given.
     static func maxCardWidth(_ c: PopupCategory) -> CGFloat {
         switch c {
         case .compact: return 340
@@ -86,12 +61,10 @@ enum PopupLayout {
         }
     }
 
-    /// The card's width on a screen: the category's width, never closer than the margin to the screen edges.
     static func cardWidth(_ c: PopupCategory, screenWidth: CGFloat) -> CGFloat {
         min(maxCardWidth(c), screenWidth - 2 * screenMargin)
     }
 
-    /// The category a size request stands for when a call site has not chosen one.
     static func category(for size: CenterSheetSize) -> PopupCategory {
         size == .tall ? .detail : .medium
     }
@@ -101,20 +74,16 @@ private struct PopupToneKey: EnvironmentKey { static let defaultValue: PopupTone
 private struct PopupCategoryKey: EnvironmentKey { static let defaultValue: PopupCategory? = nil }
 
 extension EnvironmentValues {
-    /// The tone of the popup this view sits in (buttons and selected states read it).
     var popupTone: PopupTone {
         get { self[PopupToneKey.self] }
         set { self[PopupToneKey.self] = newValue }
     }
-    /// The category of the popup this view sits in (nil outside a popup).
     var popupCategory: PopupCategory? {
         get { self[PopupCategoryKey.self] }
         set { self[PopupCategoryKey.self] = newValue }
     }
 }
 
-/// The shared glass surface: Liquid Glass on iOS 26, otherwise blurred material, a dark (or light, in light outside apps) tint, the tone's ambient light from the top,
-/// a hairline edge that is brighter at the top, and one soft shadow.
 struct PopupGlass: ViewModifier {
     var tone: PopupTone
     var light: Bool
@@ -130,7 +99,6 @@ struct PopupGlass: ViewModifier {
         }
     }
 
-    /// Reduce Transparency: an opaque card with the tone's glow and a clear edge, no blur and no glass.
     private func solid(_ content: Content) -> some View {
         let shape: RoundedRectangle = RoundedRectangle(cornerRadius: radius, style: .continuous)
         let base: Color = light ? Color(white: 0.97) : Color(red: 0.11, green: 0.115, blue: 0.125)
@@ -160,7 +128,6 @@ struct PopupGlass: ViewModifier {
     }
 
     #if compiler(>=6.2)
-    /// iOS 26: one real glass layer for the card, tinted dark (or light) for contrast, with the tone's ambient light behind it.
     @available(iOS 26.0, *)
     private func real(_ content: Content) -> some View {
         let shape: RoundedRectangle = RoundedRectangle(cornerRadius: radius, style: .continuous)
@@ -171,8 +138,6 @@ struct PopupGlass: ViewModifier {
                 shape.fill(RadialGradient(colors: [tone.color.opacity(light ? tone.glow * 0.6 : tone.glow), Color.clear],
                                           center: .top, startRadius: 0, endRadius: 340))
             }
-            // The glass is clear enough to show the glow behind it, but not to carry it: the same glow is laid over the glass too, added
-            // as light so it reads through the surface without greying the text.
             .overlay {
                 shape.fill(RadialGradient(colors: [tone.color.opacity(light ? 0.0 : tone.glow * 0.5), Color.clear],
                                           center: .top, startRadius: 0, endRadius: 300))
@@ -203,7 +168,6 @@ struct PopupGlass: ViewModifier {
     }
 }
 
-/// The ringed icon at the top of a compact popup, in the event's tone.
 struct PopupIconRing: View {
     var systemName: String
     var tone: PopupTone
@@ -222,7 +186,6 @@ struct PopupIconRing: View {
 }
 
 extension PopupTone {
-    /// The icon a compact popup of this tone shows when the call site names none.
     var defaultSymbol: String {
         switch self {
         case .neutral: return "questionmark"
@@ -236,7 +199,6 @@ extension PopupTone {
     }
 }
 
-/// The primary capsule of a popup: white on dark glass for a neutral event, the tone's colour otherwise.
 struct PopupPrimaryCapsuleStyle: ButtonStyle {
     var tone: PopupTone
     var light = false
@@ -261,7 +223,6 @@ struct PopupPrimaryCapsuleStyle: ButtonStyle {
     }
 }
 
-/// The quiet second action under a primary capsule: a text button with a full 44pt target.
 struct PopupTextActionStyle: ButtonStyle {
     var tint: Color
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -278,8 +239,6 @@ struct PopupTextActionStyle: ButtonStyle {
     }
 }
 
-/// Press and hold to confirm a genuinely destructive or irreversible decision. The fill grows while the finger stays down,
-/// letting go early cancels at once, it runs at most once, and VoiceOver users confirm with the button's default action.
 struct HoldToConfirmButton: View {
     var title: String
     var tint: Color = PopupTone.danger.color

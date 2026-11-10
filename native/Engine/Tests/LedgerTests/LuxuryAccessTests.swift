@@ -18,7 +18,6 @@ final class LuxuryAccessTests: XCTestCase {
         let th = e.luxuryGateThreshold
         e.update { s, _, _ in Ledger.move(&s, .me, th * 2, why: "Test funds") }
         XCTAssertEqual(e.applyForLuxuryAccess(), .accepted)
-        // Accepted stays accepted even if the money goes.
         e.update { s, _, _ in Ledger.move(&s, .me, -th * 2, why: "Test spend") }
         XCTAssertEqual(e.applyForLuxuryAccess(), .accepted)
         XCTAssertEqual(e.luxuryGate, .accepted)
@@ -34,7 +33,6 @@ final class LuxuryAccessTests: XCTestCase {
         let cash0 = e.state.cash
         let r = e.buyLuxuryFinanced(itemID: id)
         if case .refused = r {
-            // The bank's own limits apply; a refusal moves nothing.
             XCTAssertEqual(e.state.loans.count, loans0)
             XCTAssertEqual(e.state.cash, cash0)
             XCTAssertEqual(e.luxuryPieces.count, 0)

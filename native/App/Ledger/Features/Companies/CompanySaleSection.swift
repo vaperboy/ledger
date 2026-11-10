@@ -4,13 +4,10 @@ import Countries
 import Events
 import Simulation
 
-/// Selling the company: pick a route (`SaleRoutePicker`), then take, talk to, hammer or decline the offers that come.
-/// Original: V.sale in features/player/selling_startups_and_crisis.js. Shown in Group > Ownership > Sell.
 struct CompanySaleSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    /// Where "Go public" points (the Raise page).
     var onGoRaise: () -> Void = {}
     @State private var pending: PendingAction?
     @State private var talking: Int?
@@ -20,7 +17,6 @@ struct CompanySaleSection: View {
             let cur = engine.currency(for: company)
             let value = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
             let listing = CompanySale.listing(engine.state, companyID: company.id)
-            // What your part would fetch leads; the routes (or the listing in progress) follow.
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("Your part is worth about").textStyle(.label, tint: Theme.inkFaint)
@@ -42,12 +38,10 @@ struct CompanySaleSection: View {
         }
     }
 
-    /// The talk sheet hands the offer over: the question is a confirm popup, which the host shows above any panel.
     private func laterAsk(_ o: CompanySale.Offer) {
         askToSell(o)
     }
 
-    /// True when the listing sells part of your shares: the offer is then the price of that stake, not of the company.
     private var stake: Bool { (CompanySale.listing(engine.state, companyID: company.id)?.pct ?? 100) < 100 }
 
     private func askToSell(_ o: CompanySale.Offer) {
@@ -72,7 +66,6 @@ struct CompanySaleSection: View {
 
     private struct TalkID: Identifiable { var id: Int }
 
-    /// What the sale does: what you are paid, which loans are settled, who loses a job, what the buyer does with it.
     private func consequences(_ o: CompanySale.Offer, _ cur: Currency) -> String {
         let loans = engine.state.loans.filter { $0.companyID == company.id }.reduce(0) { $0 + $1.balance }
         var t = "The company's staff (\(company.staff.count.peopleText)) leave your payroll"
@@ -93,7 +86,6 @@ struct CompanySaleSection: View {
         return part + " is on the market since " + GameCalendar.dateString(week: l.since) + how + " \u{00B7} \(l.offers.count) \(l.offers.count == 1 ? "offer" : "offers")"
     }
 
-    /// The auction's progress: the round, your reserve, and the hammer.
     @ViewBuilder private func auctionStrip(_ l: CompanySale.Listing, _ cur: Currency) -> some View {
         let top: CompanySale.Offer? = l.offers.max { (a: CompanySale.Offer, b: CompanySale.Offer) -> Bool in a.price < b.price }
         let mine: Double = l.pct < 100 ? 1 : company.ownership / 100
@@ -139,8 +131,6 @@ struct CompanySaleSection: View {
     }
 }
 
-
-/// The talk with one buyer: ask about the staff and how they would pay, name a price (they agree, stretch, or lose patience), then sign.
 struct BuyerTalkSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss

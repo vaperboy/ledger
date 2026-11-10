@@ -4,43 +4,27 @@ import Countries
 import Employees
 import Finance
 
-/// One kind of insurance a company can sell. Original: `INS_PRODS` entries (engine/company/sales_insurance.js).
 public struct InsuranceProduct: Identifiable, Equatable, Sendable {
     public var id: String
     public var name: String
-    /// How much business the product brings, relative to the average.
     public var volume: Double
-    /// Premium level against the standard premium.
     public var premium: Double
-    /// Claims against premiums (loss ratio factor).
     public var lossFactor: Double
-    /// The approval the regulator requires.
     public var documentID: String
-    /// What it costs to verify one salesperson for this product.
     public var verificationCost: Double
 }
 
-/// A finance company's own book, with the numbers the screen shows. Original: `co.fm` of `FAM.fin`.
 public struct FinanceBook: Equatable, Sendable {
     public enum Kind: String, Sendable { case insurer, bank, fund }
     public var kind: Kind
-    // Insurer
     public var policies = 0.0, weeklyPremium = 0.0, lossRatio = 0.0, solvency = 0.0, claimsPaidByStorms = 0.0
-    // Bank
     public var deposits = 0.0, loans = 0.0, groupLoans = 0.0, capitalRatio = 0.0, requiredRatio = 0.0, equity = 0.0, centralBankLoan = 0.0
-    // Fund
     public var assetsUnderManagement = 0.0, unitValue = 1.0, highWaterMark = 1.0, managementFee = 0.0, performanceFee = 0.0
-    /// The regulator is restricting the company.
     public var underRegulator = false
 }
 
-/// Insurance company, bank and investment fund. Original: `FAM.fin` (engine/company/family_finance.js), the insurance
-/// products (sales_insurance.js), the finance events `f_storm`, `f_run`, `f_default` (events/engine.js, people/before_hiring.js)
-/// and the central bank's liquidity facility (world/bank_liquidity.js).
 public enum FinanceModel {
-    /// The order the original lists them in (sums are taken in this order).
     public static let productOrder = ["life", "property", "motor", "home", "travel", "business"]
-    /// What `autoIns` switches on and verifies: the original's car, home and property products.
     public static let starterProducts = ["motor", "home", "property"]
 
     public static func products(_ tables: TradeTables) -> [InsuranceProduct] {
@@ -54,9 +38,6 @@ public enum FinanceModel {
         }
     }
 
-    // MARK: Staff
-
-    /// How fully the standard team is in place: the average of each role's cover. Original: `finStaffCover`.
     static func staffCover(_ co: Company, _ bd: Trade, _ w: World, people: [Int: Person]) -> Double {
         if bd.standardStaff.isEmpty { return 1 }
         var q = 0.0
@@ -71,7 +52,6 @@ public enum FinanceModel {
         StaffModel.fullTimeEquivalents(role: role, staff: co.staff, people: people, week: w.week, salesRoles: w.catalog.tables.salesRoles)
     }
 
-    /// Verified salespeople for a product. Original: `verAgents`.
     public static func verifiedAgents(_ co: Company, product k: String, week: Int, people: [Int: Person], salesRoles: Set<String>) -> Double {
         var t = 0.0
         for s in co.staff where s.role == "agent" {
@@ -83,9 +63,6 @@ public enum FinanceModel {
 
     public static func isOffered(_ co: Company, _ k: String) -> Bool { co.value("fm")["prods"][k].bool }
 
-    // MARK: Weekly
-
-    /// The week of an insurance company, bank or fund. Original: `FAM.fin.custom`.
     static func weekly(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) -> CompanyWeek.WeekContext {
         if bd.hasTrait("bank") { bankLiquidity(&s, i) }
         if bd.hasTrait("ins") { return insurance(&s, i, bd, data: data) }
@@ -105,7 +82,6 @@ public enum FinanceModel {
         let uw = fte(co, "underw", w, people) / max(0.5, 3 * co.size)
         var W = 0.0, Wp = 0.0, Wl = 0.0
         for p in products(tables) {
-            // A product counts once it is switched on and approved.
             guard fm["prods"][p.id].bool, Knobs.documentOK(co, p.documentID) else { continue }
             let cv = clamp(verifiedAgents(co, product: p.id, week: w.week, people: people, salesRoles: tables.salesRoles) / max(0.8, 1.2 * co.size), 0, 1)
             let wt = p.volume * (0.15 + 0.85 * cv)
@@ -129,7 +105,6 @@ public enum FinanceModel {
         let lr = lossBase * lmx * Knobs.effect(co, bd, "r", w) * (1.12 - 0.3 * clamp(uw, 0, 1.2))
             * (1 + (1 - min(1, claimsStaff / max(0.5, 5 * co.size))) * 0.12) * noise * (catW > 0 ? 1.5 : 1)
         let claims = prem * (lr + 0.12 * (0.8 + 0.2 * min(1, cover)))
-        // Only the float (reserves and solvency capital) earns investment income; idle owner cash does not.
         let invInc = min(max(0, co.cash), prem * 52 * 2.5) * max(0, s.economy.policyRate - 0.008) / 52
         fm["pol"] = .number(pol)
         fm["premW"] = .number(prem)
@@ -167,9 +142,7 @@ public enum FinanceModel {
         let wholesale = co.value("knob")["liq"].int == 1
         let depT = capital * 5 * co.size * DemandModel.awarenessFactor(co) * (0.6 + 0.8 * co.reputation / 100) * (wholesale ? 0.7 : 1)
             * Competition.rivalFactor(co, w) * DemandModel.modifier(co, "dem")
-        // A bank only pays for the deposits it can lend out (plus a liquidity reserve); beyond that it lowers its deposit rate and the money goes elsewhere.
         let depNeed = max(0, equity) / capReq * 0.85 / 0.9 + max(0, equity) * 0.3
-        // Wholesale money comes faster, but is only raised for loans actually made.
         let depTarget = min(min(depT * (wholesale ? 1.3 : 1), depNeed), wholesale ? book * 1.15 + max(0, equity) * 0.25 + 1e7 : Double.infinity)
         dep += (depTarget - dep) * (wholesale ? 0.05 : 0.02)
         let room = min(min(equity / capReq * 0.85 - book - gb, max(0, dep * 0.9 - book - gb + equity * 0.5)), (co.cash > 0 ? co.cash : 0) * 0.9)
@@ -187,10 +160,8 @@ public enum FinanceModel {
         co.set("fm", fm)
         s.companies[i] = co
         Ledger.moveRaw(&s, .company(id), -max(0, add))
-        // Liquidity reserves earn interest; surplus owner cash does not.
         let cashInt = min(max(0, s.companies[i].cash), dep * 0.35) * max(0, policy - 0.004) / 52
         Payments.book(&s, companyID: id, category: "loss", amount: loss)
-        // Deposits flow in as cash: the change in deposits.
         let dd = dep - fm["depPrev"].double
         Ledger.moveRaw(&s, .company(id), dd)
         co = s.companies[i]
@@ -239,7 +210,6 @@ public enum FinanceModel {
         aum += (target - aum) * 0.055
         aum = max(0, aum)
         if w.week % 52 == 0 { fm["nav52"] = .number(nav) }
-        // The fee level (the fees knob).
         let fee = aum * mgmt / 52 * Knobs.effect(co, bd, "t", w)
         fm["aum"] = .number(aum); fm["nav"] = .number(nav); fm["hwm"] = .number(hwm); fm["aq"] = .number(aq)
         var performanceFee = 0.0
@@ -261,10 +231,6 @@ public enum FinanceModel {
         return CompanyWeek.WeekContext(units: aum / 1e6, rev: fee, cogs: 0, D: target, cap: target, util: 0.7, price: 0, paidDuringWeek: 0)
     }
 
-    // MARK: Central bank liquidity facility
-
-    /// A solvent bank hit by a run borrows from the central bank against its loans, and repays as deposits come back.
-    /// Original: `R24.bankLiquidity` (world/bank_liquidity.js).
     static func bankLiquidity(_ s: inout GameState, _ i: Int) {
         let co = s.companies[i]
         guard co.status == .open || co.status == .closed else { return }
@@ -307,11 +273,8 @@ public enum FinanceModel {
         }
     }
 
-    // MARK: Products
-
     public enum ProductResult: Equatable { case ok, notEnoughCash, unknown }
 
-    /// Start or stop selling a product; starting applies for the regulator's approval. Original: `setProd`.
     @discardableResult
     public static func setProduct(_ s: inout GameState, companyID: Int, product k: String, on: Bool, data: GameData) -> ProductResult {
         guard let i = s.companyIndex(companyID), let p = products(data.catalog.tables).first(where: { $0.id == k }) else { return .unknown }
@@ -334,7 +297,6 @@ public enum FinanceModel {
         return .ok
     }
 
-    /// Verify one salesperson for one product (a few weeks). Original: `verifyAgent`.
     @discardableResult
     public static func verifyAgent(_ s: inout GameState, companyID: Int, staffID: Int, product k: String, data: GameData) -> ProductResult {
         guard let i = s.companyIndex(companyID), let p = products(data.catalog.tables).first(where: { $0.id == k }),
@@ -349,7 +311,6 @@ public enum FinanceModel {
         return .ok
     }
 
-    /// Switch on the starter products and verify every salesperson for them. Original: `autoIns`.
     static func startInsurer(_ s: inout GameState, companyID: Int, data: GameData) {
         for k in starterProducts { setProduct(&s, companyID: companyID, product: k, on: true, data: data) }
         guard let i = s.companyIndex(companyID) else { return }
@@ -361,9 +322,6 @@ public enum FinanceModel {
         }
     }
 
-    // MARK: Events
-
-    /// Events with their own logic. Returns true if handled. Original: `SPEC.f_storm`, `SPEC.f_run`, `SPEC.f_default`.
     public static func specialEvent(_ id: String, _ s: inout GameState, _ i: Int, data: GameData) -> Bool {
         guard let bd = data.catalog[s.companies[i].type] else { return false }
         let co = s.companies[i]
@@ -398,7 +356,6 @@ public enum FinanceModel {
         return true
     }
 
-    /// Effects of events that only a fund understands (`aum`). Original: `FAM.fin.fx`.
     public static func applyEffects(_ s: inout GameState, _ i: Int, fx: JSONValue) {
         let f = fx["aum"].double
         var fm = s.companies[i].value("fm")
@@ -408,11 +365,6 @@ public enum FinanceModel {
         }
     }
 
-    // MARK: Insolvency (not in the original)
-
-    /// A bank whose capital is gone, or an insurer far below its solvency limit, for eight weeks in a row is closed by the
-    /// regulator. The original had no such rule (a bank or insurer could only fail by running out of cash).
-    /// Returns the companies to be wound up.
     public static func insolventCompanies(_ s: inout GameState, data: GameData) -> [Int] {
         var out: [Int] = []
         for i in s.companies.indices {
@@ -430,8 +382,6 @@ public enum FinanceModel {
         }
         return out
     }
-
-    // MARK: Reading
 
     public static func book(_ co: Company, _ bd: Trade, state s: GameState) -> FinanceBook? {
         guard bd.family == "fin" else { return nil }

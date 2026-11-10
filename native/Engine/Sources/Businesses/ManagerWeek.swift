@@ -4,11 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// What a manager does in a week, what they ask the owner, and what the owner can ask of them.
-/// Originals: `managerWeek`, `decideProposal`, `execProposal`, `askManager` (engine/management/managers.js), `mgrStaffWork` (engine/people/staff_extras.js).
-/// The store work (prices, stock, marketing) is `ManagerStore`, the department heads' decisions are `ManagerHeads`.
 extension ManagerModel {
-    /// Called once a week for every company, after the staff routine.
     public static func weekly(_ s: inout GameState, companyIndex ci: Int, _ bd: Trade, data: GameData, revenue rev: Double, utilisation util: Double, demand D: Double, capacity cap: Double) {
         noticeWeek(&s, companyIndex: ci, data: data)
         assistantWeek(&s, companyIndex: ci, data: data)
@@ -20,7 +16,6 @@ extension ManagerModel {
         var fl = co.value("flags")
         fl["mgrCool"] = .number(max(0, fl["mgrCool"].double - 1))
         s.companies[ci].set("flags", fl)
-        // Honesty problems
         let ethic = n.value("stats")["ethic"].double
         if ethic < 45 && s.random.chance(0.004 * (1 - ethic / 100)) {
             let steal = jsRound(rev * s.random.range(0.01, 0.04))
@@ -30,9 +25,7 @@ extension ManagerModel {
         }
         let started = co.value("mgrW0").isNull ? 0 : co.int("mgrW0")
         let cur = World(state: s, data: data).currency(co)
-        // A year in the role: a raise is asked for
         if (s.week - started) % 52 == 51 && s.random.chance(0.7) {
-            // Salary follows results: a strong year asks for more, a poor one for less.
             let pct = q > 0.7 ? 0.08 : q < 0.4 ? 0.04 : 0.06
             let ask = cur.roundedStep(co.managerMonthlyWage * pct, about: 100)
             var request = ContractTalk.Talk(opener: .employee, proposal: ContractTalk.Proposal(.payRise, amount: pct), week: s.week)
@@ -44,13 +37,12 @@ extension ManagerModel {
                          options: [.option("Grant the raise", "+\(cur.display(ask))/month"), .option("Delay \(ContractTalk.delayWeeks) weeks", "If you do not answer, they feel turned down."), .option("Decline", "They may leave")],
                          action: "mgrraise", data: .object(["ask": .number(ask), "npc": .number(Double(mid))]), expiresWeek: s.week + 3)
         }
-        // Unhappy managers and rival offers
         if s.companies[ci].value("mgrNotice").isNull && mood(s.companies[ci]) < 25 && s.random.chance(0.02) {
             resign(&s, companyIndex: ci, why: "I have not felt valued here for a long time")
         }
         rivalOffer(&s, companyIndex: ci, data: data)
         staffWork(&s, ci, bd, n, q, data: data, revenue: rev)
-        PremisesProposals.managerWeek(&s, ci, n, data: data)   // demand-limited by the premises: propose a bigger place (PremisesProposals.swift)
+        PremisesProposals.managerWeek(&s, ci, n, data: data)
         ManagerStore.week(&s, ci, manager: n, quality: q, bd, utilisation: util, data: data)
         ManagerHeads.week(&s, ci, bd, manager: n, quality: q, utilisation: util, demand: D, capacity: cap, data: data)
         ManagerVoice.digestWeek(&s, companyIndex: ci, manager: n, bd: bd, utilisation: util)
@@ -68,12 +60,10 @@ extension ManagerModel {
         return Wages.market(baseMonthlyWage: base, country: w.country(co), city: city, economy: s.economy, rates: w.rates)
     }
 
-    /// Mistakes of the inexperienced, and the monthly pay review. Original: `mgrStaffWork`.
     static func staffWork(_ s: inout GameState, _ ci: Int, _ bd: Trade, _ n: Person, _ q: Double, data: GameData, revenue: Double) {
         var co = s.companies[ci]
         let actsAlone = budget(of: co).actsAlone
         let cur = World(state: s, data: data).currency(co)
-        // Inexperience: costly mistakes
         let expF = clamp(1 - n.num("exp") / 8, 0, 1)
         if s.random.chance(0.0025 + 0.011 * expF) {
             let r = co.value("lastW")["rev"].isNull ? 3000 : max(1, co.value("lastW")["rev"].double)
@@ -86,7 +76,6 @@ extension ManagerModel {
                 s.note("\(n.name) mis-set prices at \(co.name).", tone: "bad", companyID: co.id)
             }
         }
-        // Monthly pay review: the manager (or the HR head) closes the pay talks the owner would otherwise hold (staff do not ask the owner while a manager is in charge)
         guard s.week % 4 == 0 else { return }
         let rv = ManagerHeads.reviewer(s, co, manager: n)
         let rq = ManagerHeads.reviewQuality(s, co, manager: q)
@@ -104,7 +93,7 @@ extension ManagerModel {
                 if let k = s.companies[ci].staff.firstIndex(where: { $0.id == m.id }) { var st = s.companies[ci].staff; st[k].happyUntilWeek = max(st[k].happyUntilWeek, s.week + 26); s.companies[ci].staff = st }
                 s.note("\(rv.name) moved \(nn.name) to a fixed salary at \(co.name).", tone: "n", companyID: co.id)
             }
-            let paid = m.monthlyWage + StaffPerks.worthMonthly(co, m, currency: cur)   // perks that cover them count as pay
+            let paid = m.monthlyWage + StaffPerks.worthMonthly(co, m, currency: cur)
             let why: String? = m.noticeWeeks > 0 ? "has handed in notice" : (mk0 > paid * 1.25 ? "is paid far below market and may leave"
                 : (lrW >= 52 && ten >= 52 ? "has had no raise for \(lrW >= 104 ? "\(lrW / 52) years" : "a year")"
                    : (sk >= 68 && ten >= 26 && mk0 > paid * 1.04 ? "is one of your best and paid below market" : nil)))
@@ -132,18 +121,13 @@ extension ManagerModel {
         }
     }
 
-    // MARK: Proposals
-
     struct Proposal { var kind: String; var role: String = ""; var cost: Double = 0; var id: String = "" }
 
-    /// What the manager would like to do about the state of the business. Original: `decideProposal` (cutting, advertising, cash, equipment, vehicles and
-    /// space; see `bottleneckProposal`). Headcount is the staffing plan's, not a proposal.
     static func decideProposal(_ s: GameState, _ ci: Int, _ bd: Trade, data: GameData, quality q: Double, utilisation util: Double, demand D: Double, capacity cap: Double) -> Proposal? {
         let co = s.companies[ci]
         guard cap > 0, util > 0 else { return nil }
         let sense = 1 + (HashedRandom.first("sense:\(co.id):\(s.week)") - 0.5) * 0.5 * (1 - q)
         let cur = World(state: s, data: data).currency(co)
-        // with an operations head, capacity is theirs to raise (ManagerHeads.operations)
         if D * sense > cap * 1.12 && util > 0.9, ManagerHeads.head(s, co, "ops") == nil, let p = bottleneckProposal(s, co, bd, data: data) { return p }
         if util < 0.5 && co.staff.count > 2 && co.cash > 0 && D < cap * 0.62 { return Proposal(kind: "cut") }
         let wk = weekCost(s, co, data: data)
@@ -152,7 +136,6 @@ extension ManagerModel {
         return nil
     }
 
-    /// Money missing before a hire costing `cost` a year is safe (the staffing plan's growth rule). Original: `hireShort`.
     static func hireShort(_ s: GameState, _ co: Company, cost: Double, data: GameData) -> Double {
         let wk = cost / 52
         let wkProfit = (co.monthlyHistory.last?.profit ?? 0) / 4.33
@@ -171,18 +154,14 @@ extension ManagerModel {
         let cur = World(state: s, data: data).currency(co)
         let bd = data.catalog[co.type]
         let utilText = "\(Int(max(0, min(1.5, co.value("lastW")["util"].double)) * 100))"
-        // A manager promoted with only some duties leaves the other decisions to you.
         let mayDecide = dutyAllows(n, dp.kind)
-        // Within the budget the owner gave, a manager buys what the business is short of without waiting for an answer.
         let affordable = co.cash > dp.cost * 0.5 + weekCost(s, co, data: data) * 6
-        // A quarter more space in the same premises is routine: within the manager's budget like a vehicle. A cautious manager uses less of it.
         let amount = dp.cost / ManagerVoice.budgetUse(n)
         if ["eq", "veh", "space"].contains(dp.kind), mayDecide, affordable, withinBudget(co, amount: amount, s, data: data) {
             exec(&s, ci, dp, n, q, data: data)
             ManagerVoice.record(&s, companyIndex: ci, "\(dp.kind == "veh" ? "Added a vehicle" : dp.kind == "space" ? "Took more space" : "Bought equipment") within the budget because customers were being turned away.")
             return
         }
-        // Someone above the manager judges it first and only passes on what is above their budget or a close call.
         var view = ""
         if hierarchyDecide(&s, ci, dp, n, affordable: affordable, view: &view, data: data) { return }
         let title: String, body: String, opts: [JSONValue]
@@ -207,7 +186,6 @@ extension ManagerModel {
                      data: .object(["t": .string(dp.kind), "role": .string(dp.role), "cost": .number(dp.cost), "id": .string(dp.id)]), expiresWeek: s.week + 3)
     }
 
-    /// Carry out a proposal. Original: `execProposal`.
     static func exec(_ s: inout GameState, _ ci: Int, _ dp: Proposal, _ n: Person, _ q: Double, data: GameData) {
         let co = s.companies[ci]
         switch dp.kind {
@@ -228,7 +206,6 @@ extension ManagerModel {
         }
     }
 
-    /// The player answers a message from a manager: "prop" (a proposal), "mgrraise" (the yearly raise), "mgrpoach" (a rival's offer).
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData) {
         guard let ci = s.companyIndex(m.companyID) else { return }
         let co = s.companies[ci]
@@ -240,7 +217,7 @@ extension ManagerModel {
                 s.companies[ci].managerMonthlyWage = co.managerMonthlyWage + d["ask"].double
                 s.companies[ci].set("mood", min(100, mood(co) + 8))
                 if let mid = co.managerID { ContractTalk.close(&s, personID: mid) }
-            } else if idx == 1 {   // delay: an answer is due; the weekly contract pass counts a missed one as a decline
+            } else if idx == 1 {
                 if let mid = co.managerID, var talk = ContractTalk.openTalk(s, personID: mid) { talk.delayUntil = s.week + ContractTalk.delayWeeks; ContractTalk.store(talk, &s, personID: mid) }
             } else {
                 declineManagerRaise(&s, companyIndex: ci)
@@ -248,12 +225,12 @@ extension ManagerModel {
             }
         case "mgrpoach":
             if idx == 0 {
-                s.companies[ci].managerMonthlyWage = co.managerMonthlyWage + d["up"].double   // matching the offer: they stay (nobody turns down more pay for the same job)
+                s.companies[ci].managerMonthlyWage = co.managerMonthlyWage + d["up"].double
                 s.companies[ci].set("mood", min(100, mood(co) + 6))
             } else { resign(&s, companyIndex: ci, why: "a rival made me an offer", to: "a rival group") }
         default:
             let kind = d["t"].string
-            if legacyProposalKinds.contains(kind) { return }   // asked before the staffing plan took over hiring: nothing to carry out
+            if legacyProposalKinds.contains(kind) { return }
             if kind == "cash" {
                 if idx == 0 { Payments.injectCash(&s, companyID: co.id, amount: cur.scaledPrice(100000)) }
                 else if idx == 1 { Payments.injectCash(&s, companyID: co.id, amount: cur.scaledPrice(30000)) }
@@ -266,15 +243,11 @@ extension ManagerModel {
         }
     }
 
-    /// The old consequence of turning a manager's raise down: the mood drops and they may resign.
     static func declineManagerRaise(_ s: inout GameState, companyIndex ci: Int) {
         s.companies[ci].set("mood", max(0, mood(s.companies[ci]) - 10))
         if s.random.chance(0.55) { resign(&s, companyIndex: ci, why: "without the raise I have to look elsewhere") }
     }
 
-    // MARK: Asking the manager
-
-    /// The owner asks the manager for a change; the answer arrives in the inbox. Original: `askManager`.
     public static func ask(_ s: inout GameState, companyID: Int, key: String, data: GameData, marketing: MarketingTables) -> String? {
         guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID, let n = s.people[mid], let bd = data.catalog[s.companies[ci].type] else { return nil }
         let co = s.companies[ci]

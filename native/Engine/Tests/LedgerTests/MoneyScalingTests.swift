@@ -5,14 +5,9 @@ import Finance
 import Businesses
 import Simulation
 
-/// Money limits must make sense in every country's own currency. A fixed number of accounting units
-/// is a handful of coins in one country and a month's rent in another, so every limit that a player meets is derived from
-/// the country's median wage (`medianMonthlyWage`) or price level (`Currency.scaledPrice`).
 final class MoneyScalingTests: XCTestCase {
     func newGame(_ code: String) throws -> GameEngine { try GameEngine.newGame(countryCode: code, playerName: "T", seed: 7) }
 
-    /// Loan offers, the overdraft, the start-up loan and the group threshold are a sensible number of months of an ordinary wage
-    /// in each of the 23 countries (not tens of years in poor countries or a few days in rich ones).
     func testLimitsAreSensibleMultiplesOfTheLocalWageInEveryCountry() throws {
         let book = try CountryBook.bundled()
         XCTAssertEqual(book.countries.count, 23)
@@ -20,56 +15,43 @@ final class MoneyScalingTests: XCTestCase {
             var e = try newGame(c.code)
             let wage = c.medianMonthlyWage
             XCTAssertGreaterThan(wage, 0, c.code)
-            // The start-up loan buys a similar business everywhere: it follows the price level (companies' costs do), not the wage level
             let loanPerPriceLevel = c.startLoan / c.costIndex
             XCTAssertTrue((100_000...260_000).contains(loanPerPriceLevel), "\(c.code): start-up loan is \(loanPerPriceLevel) at the reference price level")
-            // The consumer-loan offer for a player without other debts (fair credit): a few months of wages, never absurd
             e.update { s, _, _ in s.loans.removeAll() }
             let offer = e.loanOffer(kind: "cons", amount: 0, companyID: nil)
             let months = offer.maximum / wage
             XCTAssertTrue((0.3...8).contains(months), "\(c.code): consumer loan offer is \(months) median wages (\(e.homeCurrency.display(offer.maximum)))")
-            // The overdraft allowance: a fraction of a year's wage
             let od = e.state.overdraftLimit / wage
             XCTAssertTrue((0.2...6).contains(od), "\(c.code): overdraft limit is \(od) median wages")
-            // The group-size threshold of the original (5 M at the reference economy) follows the price level
             let big = e.state.rest["group"]?["big"].double ?? 0
             let ref = 5_000_000.0
             XCTAssertEqual(big / ref, c.costIndex, accuracy: 0.05 * c.costIndex, "\(c.code): group threshold \(big)")
         }
     }
 
-    /// The bank's assumed minimum income is derived from the country's median wage: 380 000 at the reference economy (a wage level
-    /// of 1), so a country with half the wage level assumes half. (The original used one country's level for everybody.)
     func testLoanIncomeFloorFollowsTheMedianWage() throws {
         let book = try CountryBook.bundled()
         for c in book.countries {
             XCTAssertEqual(Banking.assumedIncomeMonths * c.medianMonthlyWage, 380_000 * c.wageLevel, accuracy: 1e-6, c.code)
             XCTAssertEqual(c.medianMonthlyWage, ReferenceEconomy.medianWage * c.wageLevel, accuracy: 1e-9)
         }
-        // A new player with no income still gets a loan offer worth a few months of the local wage
         let poor = try newGame("PL"), rich = try newGame("CH")
         let a = poor.loanOffer(kind: "cons", amount: 0, companyID: nil).maximum / (try CountryBook.bundled()["PL"]!.medianMonthlyWage)
         let b = rich.loanOffer(kind: "cons", amount: 0, companyID: nil).maximum / (try CountryBook.bundled()["CH"]!.medianMonthlyWage)
         XCTAssertEqual(a, b, accuracy: 0.6 * max(a, b), "offers should be comparable in months of wages: PL \(a), CH \(b)")
     }
 
-    /// Fines and thresholds written at the reference price level become the country's price level.
     func testFinesAndThresholdsScaleWithThePriceLevel() throws {
         let book = try CountryBook.bundled()
         let ch = book["CH"]!, br = book["BR"]!
         XCTAssertGreaterThan(ch.costIndex, br.costIndex)
         let curCH = Currency(country: ch, rates: ExchangeRates()), curBR = Currency(country: br, rates: ExchangeRates())
         XCTAssertGreaterThan(curCH.scaledPrice(6000), curBR.scaledPrice(6000))
-        // In its own currency a Swiss fine is of the same order as a Brazilian one only after dividing by the exchange rate
         XCTAssertEqual(curCH.scaledPrice(6000) / ch.costIndex, 6000, accuracy: 6000 * 0.05)
     }
 }
 
-/// A lint that keeps new unscaled money constants out of the engine: every number of 1000 or more in the engine's sources must
-/// either sit in a call that scales it (`scaledPrice`, `medianMonthlyWage`, a rounding step ...) or be listed below with the reason
-/// it is a design constant rather than an amount the player sees.
 final class MoneyLiteralLintTests: XCTestCase {
-    /// file name -> literals that are allowed without scaling, with the reason
     static let allowed: [String: [String: String]] = [
         "Country.swift": ["56000": "ReferenceEconomy: the reference economy's own numbers", "2500": "ReferenceEconomy", "330000": "ReferenceEconomy"],
         "Currency.swift": ["1000": "rounding steps of nicePrice", "5000": "rounding steps", "10000": "rounding steps", "50000": "rounding steps", "100000": "rounding steps"],
@@ -97,10 +79,6 @@ final class MoneyLiteralLintTests: XCTestCase {
         "Balance.swift": ["1000": "rounding to three decimals"], "Demand.swift": ["1000": "rounding to three decimals"],
         "Satisfaction.swift": ["9999": "sentinel week number"], "GameEngine.swift": ["2147483647": "random seed range", "1000": "first id of the id counter"],
         "WorldWeek.swift": ["10000": "rounding of a rate to basis points"], "Demo.swift#seed": ["2026": "demo seed"],
-        // Models ported from the original after the first scaling pass. Counts, physical quantities, ids and hashes are not money; the
-        // amounts below are the original's reference-level design numbers (the differential tests against the original pass with
-        // them) and are scaled per country now (bank/insurer capital, insurer premium base, developer land price, default rental unit price, rental loss
-        // bookings, caretaker wage).
         "SalmonModel.swift": ["1000": "kilograms per tonne / price per tonne in the market's own unit", "3500": "tonnes of a farm (quantity)"],
         "EnergyModel.swift": ["1000": "barrels per thousand barrels; per-barrel prices follow the global oil price", "10000": "stake size in thousand barrels (quantity)", "5000": "stake size (quantity)", "2000": "stake size (quantity)"],
         "FootballModel.swift": ["4294967296": "hash arithmetic", "2654435761": "hash arithmetic", "100000": "rounding step", "2000": "club value threshold in USD millions (converted by rate)", "1000": "hash buckets (the caretaker wage is scaled by the wage level)"],
@@ -108,7 +86,6 @@ final class MoneyLiteralLintTests: XCTestCase {
         "FinanceModel.swift": ["30000": "policies (count)", "1000": "policies per noise step (count)"],
         "ProjectModel.swift": ["1500": "hour value at the reference level, multiplied by the wage level in use (differential-tested)", "1650": "hour value (same)", "1700": "hour value (same)", "2000": "job size class / hour value (hours, same)", "5000": "job size class (hours)", "1000": "job size class (hours) / default hour value"],
         "MiscActions.swift": ["86400": "seconds in a day"],
-        // Career ranks and goals are reference-level targets; every read scales them (rankIndex via scaledPrice, goals via money()/text).
         "Career.swift": ["25_000": "reference-level target, scaled with scaledPrice where read", "100_000": "reference-level target, scaled where read", "400_000": "reference-level target, scaled where read",
                          "1_000_000": "reference-level target, scaled where read", "5_000_000": "reference-level target, scaled where read", "25_000_000": "reference-level target, scaled where read",
                          "100_000_000": "reference-level target, scaled where read", "1_000_000_000": "reference-level target, scaled where read", "200_000": "goal target, scaled by money()",
@@ -116,8 +93,6 @@ final class MoneyLiteralLintTests: XCTestCase {
         "MonetisationCosmetics.swift": ["9999": "upper clamp of a parsed count, not money"],
         "OpeningChecklist.swift": ["300000": "fallback vehicle price at the reference level, multiplied by the inflation index"],
         "SetupFunding.swift": ["1000": "rounding step of a loan amount already in the company's currency"],
-        // Models ported after the second scaling pass (lint triage): each literal is a rounding step, hash, count, or a reference-level amount that
-        // is scaled where it is used; the reason says which.
         "Advisers.swift": ["1400": "adviser fee at the reference level, multiplied by the market wage level (wage) and rounded in the currency", "3500": "adviser fee at the reference level, multiplied by the market wage level (wage) and rounded in the currency"],
         "StartupProducts.swift": ["250_000": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "1200": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "1_500_000": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "1800": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "400_000": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "800_000": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "1500": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "3_000_000": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "2500": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "300_000": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "600_000": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "2000": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "15_000_000": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift", "6000": "sector seed / revenue per user at the reference level; scaled with scaledPrice in Startups.swift"],
         "MoneyProjectsReadModels.swift": ["1000": "rounding step of an amount already computed in the company's own currency (price, loan room), not a price"],
@@ -194,7 +169,6 @@ final class MoneyLiteralLintTests: XCTestCase {
         "GoalClaims.swift": ["1_000": "goal cash at the reference level; scaled with scaledPrice where it is paid", "3_000": "goal cash at the reference level; scaled with scaledPrice where it is paid", "10_000": "goal cash at the reference level; scaled with scaledPrice where it is paid"],
         "Banking.swift#annuity": ["100000": "ratio: instalment per 100 000 borrowed, any currency"],
     ]
-    /// Files with technical number tables only (calendar arithmetic, hashing, encoding)
     static let skipFiles: Set<String> = ["GameCalendar.swift", "LZString.swift", "JSONValue.swift", "HashedRandom.swift", "DeterministicRandom.swift", "FaceCatalog.swift", "FaceTraits.swift"]
     static let scalingMarkers = ["scaledPrice(", "medianMonthlyWage", "roundedStep(", "step:", ".tidy(", "wageLevel", "costIndex", "ReferenceEconomy", "Balance"]
 

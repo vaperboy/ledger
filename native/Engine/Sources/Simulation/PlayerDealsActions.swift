@@ -5,12 +5,8 @@ import Finance
 import Businesses
 import Events
 
-/// Deals between players, as the screens call them: franchising to players for a chosen number of days, taking up another player's franchise, putting a
-/// company on sale to players and buying one that another player has put up. The rules are `PlayerDeals`; the other players come from the app's service.
 public extension GameEngine {
-    // MARK: Franchising to players
 
-    /// The last day the company's franchise takes players; nil when it is not open to them.
     func franchiseOpenUntil(companyID: Int) -> Int? { state.company(companyID).flatMap { PlayerDeals.franchiseOpenUntil($0) } }
 
     @discardableResult
@@ -29,13 +25,10 @@ public extension GameEngine {
         return ok
     }
 
-    /// The franchise offer of one of the player's companies as other players see it; nil while it is not open to players.
     func franchiseListing(companyID: Int, ownerID: String, ownerName: String, profileCode: String, linkKey: String) -> PlayerDeals.FranchiseListing? {
         PlayerDeals.franchiseListing(state, companyID: companyID, ownerID: ownerID, ownerName: ownerName, profileCode: profileCode, linkKey: linkKey, data: data)
     }
 
-    /// Take another player's franchise offer into the game as a brand: apply, talk and open the unit as with any brand.
-    /// Returns the brand's id, or nil when the offer has ended or the trade cannot be franchised.
     @discardableResult
     mutating func importPlayerFranchise(_ l: PlayerDeals.FranchiseListing) -> String? {
         guard FranchiseBrands.isFranchisable(l.tradeID), l.isOpen(today: PlayerDeals.today(state)) else { return nil }
@@ -43,12 +36,8 @@ public extension GameEngine {
         return "P:" + l.id
     }
 
-    // MARK: Selling a company to players
-
-    /// The last day the company's sale listing is shown to other players; nil when it is not.
     func playerSaleUntil(companyID: Int) -> Int? { PlayerDeals.playerListingUntil(state, companyID: companyID) }
 
-    /// Put the company on the market and show it to other players for `days` days.
     @discardableResult
     mutating func startSaleToPlayers(companyID: Int, days: Int) -> Bool {
         var ok = false
@@ -58,12 +47,10 @@ public extension GameEngine {
 
     mutating func stopSaleToPlayers(companyID: Int) { update { s, _, _ in PlayerDeals.hideFromPlayers(&s, companyID: companyID) } }
 
-    /// The company as a listing other players see, at the price the player asks.
     func companyListing(companyID: Int, ownerID: String, ownerName: String, profileCode: String, linkKey: String, askPrice: Double) -> PlayerDeals.CompanyListing? {
         PlayerDeals.listing(state, companyID: companyID, ownerID: ownerID, ownerName: ownerName, profileCode: profileCode, linkKey: linkKey, askPrice: askPrice, data: data)
     }
 
-    /// What the company is worth to a buyer, to suggest an asking price.
     func companyAskingValue(companyID: Int) -> Double {
         guard let l = unlistedSnapshot(companyID: companyID) else { return 0 }
         return PlayerDeals.value(l)
@@ -77,15 +64,12 @@ public extension GameEngine {
                                           reputation: co.reputation, weeksTrading: 0, askPrice: 0, expiresDay: 0)
     }
 
-    /// An offer from a player on the company that is shown to players.
     @discardableResult
     mutating func addPlayerSaleOffer(companyID: Int, buyer: CompanySale.PlayerBuyer, price: Double) -> Bool {
         var ok = false
         update { s, _, ctx in ok = CompanySale.addPlayerOffer(&s, companyID: companyID, buyer: buyer, price: price, context: ctx) }
         return ok
     }
-
-    // MARK: Buying another player's company
 
     func playerCompanyBuyPlan(_ l: PlayerDeals.CompanyListing, price: Double) -> PlayerDeals.BuyPlan? { PlayerDeals.buyPlan(state, listing: l, price: price, data: data) }
 

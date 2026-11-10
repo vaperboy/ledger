@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The card every TechPro grid shares: the shop product card with the "from <price>" line (red with its discount on a sale) and a
-/// small label (Upgrade, Buy, Owned, or a rating). The caller wraps it in a button.
 struct TechTile: View {
     @Environment(\.outsidePalette) private var P
     var photo: String = ""
@@ -15,7 +13,6 @@ struct TechTile: View {
     var deal: Int
     var label: String
     var tint: Color
-    /// A cell key of the items sheet (see ArtLibrary.itemKey); empty keeps the photo or glyph.
     var item: String = ""
 
     var body: some View {
@@ -24,8 +21,6 @@ struct TechTile: View {
     }
 }
 
-/// All suppliers of one product group, each as its own box: brands (or providers, makes and models), the used listings and your own companies'
-/// software. Choosing a box opens that supplier's product page (`TechProProduct`) with the key the box carries.
 struct TechProSuppliers: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -49,9 +44,7 @@ struct TechProSuppliers: View {
         var deal: Int
         var sub: String
         var rating: Double
-        /// How many reviews the supplier has (0 when it has none).
         var reviews: Int = 0
-        /// Breakdown tendency, lower is better; 99 when the supplier does not publish one.
         var breakdown: Double = 99
         var item: String = ""
         var id: String { key }
@@ -105,7 +98,6 @@ struct TechProSuppliers: View {
         .accessibilityLabel("Sort: \(order.rawValue)")
     }
 
-    /// One supplier: its picture, name and rating, the price on the right.
     private func box(_ r: Row) -> some View {
         Button {
             Haptics.tap()

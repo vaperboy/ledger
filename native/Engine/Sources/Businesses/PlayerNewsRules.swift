@@ -1,14 +1,9 @@
 import Foundation
 
-/// News about real players, from public events only. Every sentence is a template filled from the event's own fields: a field the event does
-/// not carry is never guessed, and an event missing a field the template needs gives no sentence. Who may see an event follows the player's
-/// privacy level: Public players' events are open to everyone, Friends-level players' events only to their friends, Private players publish none.
-
 public enum PlayerEventKind: String, Codable, CaseIterable, Sendable {
     case branchMilestone, wentViral, supplierMilestone, acquisition, newAssociation, seasonMilestone
 }
 
-/// Who the player allowed to see their events.
 public enum PlayerEventAudience: String, Codable, Sendable {
     case everyone, friends
 }
@@ -20,12 +15,10 @@ public struct PlayerEvent: Codable, Identifiable, Equatable, Sendable {
     public var playerName: String
     public var countryCode: String
     public var audience: PlayerEventAudience
-    /// The game-independent day the event happened (days since the epoch).
     public var day: Int
     public var trade: String?
     public var city: String?
     public var company: String?
-    /// Branches opened, units delivered or the season reached, as the kind needs.
     public var count: Int?
     public var otherName: String?
     public var club: String?
@@ -50,7 +43,6 @@ public enum PlayerNewsFilter: String, CaseIterable, Sendable {
 }
 
 public enum PlayerNewsRules {
-    /// Whether the viewer may see the event at all (privacy), before any filter.
     public static func canSee(_ e: PlayerEvent, viewerIsFriend: Bool, viewerIsOwner: Bool = false) -> Bool {
         if viewerIsOwner { return true }
         switch e.audience {
@@ -59,7 +51,6 @@ public enum PlayerNewsRules {
         }
     }
 
-    /// Whether a visible event passes the chosen filter. "My trade" compares trade names ignoring case; an event with no trade never matches it.
     public static func matches(_ e: PlayerEvent, filter: PlayerNewsFilter, viewerIsFriend: Bool, viewerTrades: Set<String>, viewerCountry: String) -> Bool {
         switch filter {
         case .everyone: return true
@@ -82,7 +73,6 @@ public enum PlayerNewsRules {
         return "\(n)\(suffix)"
     }
 
-    /// The company as the viewer may name it: its name for a friend, otherwise "a <trade> in <city>" from what the event carries.
     static func companyPhrase(_ e: PlayerEvent, namesVisible: Bool) -> String? {
         if namesVisible, let c = e.company { return c }
         switch (e.trade, e.city) {
@@ -92,7 +82,6 @@ public enum PlayerNewsRules {
         }
     }
 
-    /// The headline for one event; nil when the event lacks what its template needs. `namesVisible` is true for the owner and their friends.
     public static func sentence(_ e: PlayerEvent, namesVisible: Bool) -> String? {
         let who = e.playerName
         switch e.kind {
@@ -117,7 +106,6 @@ public enum PlayerNewsRules {
         }
     }
 
-    /// Numbers a sentence may contain: only the event's own count.
     public static func numbersIn(_ text: String) -> [Int] {
         text.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
     }

@@ -2,7 +2,6 @@ import SwiftUI
 import GameCore
 import Businesses
 
-/// A budget preset (Tight, Normal, Free) as one chip, the same on every manager, executive and team post.
 struct BudgetChip: View {
     var budget: Budget
 
@@ -11,7 +10,6 @@ struct BudgetChip: View {
     var body: some View { Chip(text: "Budget \u{00B7} " + budget.title, tint: Self.tint(budget)) }
 }
 
-/// The budget chip as a menu: a tap lists the three presets with what each means, and the pick is passed to `set`.
 struct BudgetMenu: View {
     var budget: Budget
     var name: String
@@ -34,8 +32,6 @@ struct BudgetMenu: View {
     }
 }
 
-/// The three budget presets as a segmented switch with what the chosen one means under it. `detail` replaces the plain meaning when a screen
-/// can say more (the money limit).
 struct BudgetPicker: View {
     var budget: Budget
     var name: String

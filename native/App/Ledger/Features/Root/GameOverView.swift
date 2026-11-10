@@ -4,14 +4,11 @@ import Events
 import Businesses
 import Simulation
 
-/// Shown when the bank has taken everything. The save is kept. The hero is the final net worth with why the run ended; under it, unboxed,
-/// how long it lasted, what became of every company and the lifetime totals in `stats`. One action, pinned: back to the start screen.
 struct GameOverView: View {
     @EnvironmentObject var store: GameStore
     @Environment(AdCoordinator.self) private var ads
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var engine: GameEngine
-    /// Entrance progress: the gold rule and the company bar grow to 1; `rowsShown` counts how many total rows and trophies have appeared.
     @State private var ruleGrown: CGFloat = 0
     @State private var barGrown: CGFloat = 0
     @State private var rowsShown = 0
@@ -85,7 +82,6 @@ struct GameOverView: View {
         }
     }
 
-    /// What became of every company: one stacked bar, then the counts.
     private func companiesGroup(_ s: GameState) -> some View {
         let businesses = s.companies.filter { $0.type != "hold" }
         let standing = businesses.filter { $0.status.isLive }.count
@@ -119,7 +115,6 @@ struct GameOverView: View {
         .accessibilityHidden(true)
     }
 
-    /// Lifetime totals as plain rows, and the trophies reached.
     private func totalsGroup(_ s: GameState) -> some View {
         let trophies = Trophies.entries(s)
         let reached = trophies.filter { $0.reachedWeek != nil }.count
@@ -143,7 +138,6 @@ struct GameOverView: View {
         }
     }
 
-    /// The trophies reached, each landing a beat after the one before (the first few only, so the row stays one line).
     @ViewBuilder private func trophyStrip(_ reached: [Trophies.Entry], firstIndex: Int) -> some View {
         let shown: [Trophies.Entry] = Array(reached.prefix(6))
         if !shown.isEmpty {
@@ -160,7 +154,6 @@ struct GameOverView: View {
         }
     }
 
-    /// The closing sequence: the rule is drawn, the bar grows, then the rows and trophies appear one by one. All of it is instant under Reduce Motion.
     private func playEntrance() async {
         if reduceMotion { ruleGrown = 1; barGrown = 1; rowsShown = 99; return }
         Motion.animate(.easeOut(duration: 0.9)) { ruleGrown = 1 }
@@ -173,7 +166,6 @@ struct GameOverView: View {
         }
     }
 
-    /// "1 year 3 months", "14 weeks": from the week count, at 52 weeks a year.
     private func duration(weeks: Int) -> String {
         if weeks < 13 { return "\(weeks) week\(weeks == 1 ? "" : "s")" }
         let years = weeks / 52, months = (weeks % 52) * 12 / 52

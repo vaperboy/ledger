@@ -5,8 +5,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// The engine behind the AirStay, TechPro Store and Atlas Insurance Phone apps: real delivery days, the basket paid at checkout and handed over
-/// on the day, receipts filed with the chosen company, places rented and reassigned, policies with a recorded number, the bank details for autofill.
 final class PhoneAppsTests: XCTestCase {
     private func game(seed: Int = 7) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
@@ -24,8 +22,6 @@ final class PhoneAppsTests: XCTestCase {
         let offer = try XCTUnwrap(e.equipmentOffers(companyID: id, equipmentID: item.equipmentID).first { $0.cls == cls })
         return (StoreOrders.Line(kind: .new, equipmentID: item.equipmentID, quantity: 1, offerIndex: offer.index, payment: .cash), item.equipmentID)
     }
-
-    // MARK: TechPro Store
 
     func testOrderIsPaidAtCheckoutAndArrivesOnTheDeliveryDay() throws {
         var e = try game()
@@ -78,7 +74,6 @@ final class PhoneAppsTests: XCTestCase {
     func testDigitalGoodsArriveAtOnceAndTheReceiptIsFiledWithTheChosenCompany() throws {
         var e = try game(seed: 9)
         let books = try cafe(&e)
-        // The first trade of the catalogue whose equipment list has a licence that is bought outright.
         var found: (id: Int, equipmentID: String, offer: EquipmentMarket.Offer)?
         for trade in e.data.catalog.all.prefix(40) where found == nil {
             guard case .success(let tid) = e.startCompany(tradeID: trade.id, cityID: e.state.player.cityID, fundWith: 3_000_000) else { continue }
@@ -142,8 +137,6 @@ final class PhoneAppsTests: XCTestCase {
         XCTAssertNil(e.bankPaymentDetails(companyID: 999_999))
     }
 
-    // MARK: AirStay
-
     func testPlaceFeedHasListingsAndCandidatesAreSameKindAndCity() throws {
         var e = try game()
         let id = try cafe(&e)
@@ -205,8 +198,6 @@ final class PhoneAppsTests: XCTestCase {
         XCTAssertEqual(PlaceMarket.category(kind: "warehouse", squareMetres: 100), .retail)
     }
 
-    // MARK: Atlas Insurance
-
     func testPolicyGetsANumberWhenSwitchedOnAndReceiptsGoToTheChosenCompany() throws {
         var e = try game(seed: 21)
         let id = try cafe(&e)
@@ -221,11 +212,9 @@ final class PhoneAppsTests: XCTestCase {
         XCTAssertGreaterThan(out.yearlyCost, 0)
         XCTAssertEqual(e.policyRecord(companyID: id, product: policy.id)?.number, out.number, "the number is a stored record")
         XCTAssertTrue(e.receipts(companyID: id).contains { $0.number == out.number && $0.kind == "policy" })
-        // Buying again changes nothing; switching off forgets the number.
         XCTAssertEqual(e.buyInsurance(companyID: id, product: policy.id, receiptCompanyID: id).result, .unknown)
         XCTAssertEqual(e.toggleInsurancePolicy(companyID: id, product: policy.id), .done)
         XCTAssertNil(e.policyRecord(companyID: id, product: policy.id))
-        // Atlas takes the policy without an insurer chosen first.
         let other = try cafe(&e)
         XCTAssertEqual(e.buyInsurance(companyID: other, product: policy.id, receiptCompanyID: other).result, .done)
         XCTAssertEqual(e.state.company(other)?.value("insr")["name"].string, "Atlas Insurance")

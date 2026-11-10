@@ -1,14 +1,8 @@
 import SwiftUI
 
-// Shared pieces for the pages inside one company's More menu (Customers, Market, Chain, Franchise, Club, Holding, Plant, Projects ...).
-// Built on the new-look pieces in NewLook.swift: a header strip per page, labelled blocks in bordered cards, entity cards, stat strips,
-// tiny outlined buttons and a chevron on every row that opens something.
-
-/// The intro of a More page: an unoutlined icon (or a picture), the title and one line saying what the page is. No box.
 struct MoreHeader: View {
     var glyph: String
     var title: String
-    /// A picture in place of the icon (a rival's logo); same 38 pt.
     var thumb: ThumbSpec? = nil
     var blurb: String
 
@@ -28,8 +22,6 @@ struct MoreHeader: View {
     }
 }
 
-/// A labelled block: caps label (and a note or control at the right), then the content on one surface group (cards inside draw flat).
-/// Pass `card: false` when the content is made of its own `EntityCard`s.
 struct MoreBlock<Content: View, Trailing: View>: View {
     var title: String
     var card = true
@@ -60,7 +52,6 @@ extension MoreBlock where Trailing == EmptyView {
     }
 }
 
-/// A surface tile for one independent entity (flat inside a group) (a chain store, a rival, a key account, a stadium, a field).
 struct EntityCard<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
@@ -69,12 +60,10 @@ struct EntityCard<Content: View>: View {
     }
 }
 
-/// The cue at the right of a row that opens something.
 struct MoreChevron: View {
     var body: some View { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint) }
 }
 
-/// Figures in a strip separated by hairlines, up to `columns` to a line, centred: `FigureRow`.
 struct FigureStrip: View {
     var items: [KeyFigures.Item]
     var columns = 3
@@ -84,7 +73,6 @@ struct FigureStrip: View {
     }
 }
 
-/// The compact secondary button: text in `tint` (accent by default), 32 pt drawn, 44 pt hit area.
 struct TinyButtonStyle: ButtonStyle {
     var tint: Color = Theme.accent
 

@@ -9,7 +9,6 @@ private extension GameEngine {
     mutating func w6week() { for _ in 0..<7 { _ = nextDay() } }
 }
 
-/// Barber, driving school, physio, dental, car cleaning, cleaning company (SVC appointment and crew model).
 final class AppointmentServicesTests: XCTestCase {
     let trades = ["barber", "drivsk", "physio", "dental", "carclean", "cleaning"]
 
@@ -66,7 +65,6 @@ final class AppointmentServicesTests: XCTestCase {
             XCTAssertEqual(SalesItems.demandFactor(co), 1, accuracy: 1e-12, t)
             XCTAssertEqual(SalesItems.ticketFactor(co), 1, accuracy: 1e-12, t)
             XCTAssertEqual(list.reduce(0.0) { $0 + $1.unitShare * $1.ratio }, 1, accuracy: 1e-9, t)
-            // The weighted cost of the whole menu is the trade's cost-of-sales share of the going ticket: the books do not move.
             let mt = SalesItems.marketTicket(co, bd, World(state: e.state, data: e.data))
             var weighted = 0.0
             for it in list {
@@ -94,7 +92,6 @@ final class AppointmentServicesTests: XCTestCase {
         XCTAssertEqual(try rec("Dental products").model, .stk)
         XCTAssertGreaterThan(try rec("Dental products").stock, 0)
         XCTAssertEqual(try rec("Crown").model, .svc)
-        // A crown carries the lab fee, a check-up only a little consumable: per-item margins differ.
         let crown = try rec("Crown"), check = try rec("Check-up and scale")
         let list = SalesItems.items(co, bd)
         let rCrown = try XCTUnwrap(list.first { $0.name == "Crown" }).ratio, rCheck = try XCTUnwrap(list.first { $0.name == "Check-up and scale" }).ratio
@@ -176,7 +173,7 @@ final class AppointmentServicesTests: XCTestCase {
         var sawOrder = false, sawArrival = false
         var last: Int?
         for _ in 0..<40 {
-            e.w6week()   // the company is open: the engine's own weekly hook (ItemHooks) ticks it, no manual tick
+            e.w6week()
             let co = try XCTUnwrap(e.state.company(id)), bd = try XCTUnwrap(e.data.catalog["carclean"])
             let it = try XCTUnwrap(SalesItems.items(co, bd).first { $0.name == "Car care products" })
             let r = try XCTUnwrap(ItemModels.record(co, itemID: it.id))
@@ -199,8 +196,6 @@ final class AppointmentServicesTests: XCTestCase {
         let back = try JSONDecoder().decode(JSONValue.self, from: json)
         XCTAssertTrue(back == co.value("itemsv2"))
     }
-
-    // MARK: Two-year survival probe (LEDGER_APPOINTMENT_PROBE=1; slow)
 
     struct Result { var y1: Double; var y2: Double; var status: String }
 

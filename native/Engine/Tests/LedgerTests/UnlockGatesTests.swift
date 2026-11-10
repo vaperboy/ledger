@@ -5,12 +5,9 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Every row of the gate table is hidden before its gate and open after it; the `firstYear` keys are read where each
-/// behaviour lives.
 final class UnlockGatesTests: XCTestCase {
     static func fresh() throws -> GameEngine { try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 5) }
 
-    /// Mark ladder goals M1 to Mn as finished (and none after).
     static func doneUpTo(_ e: inout GameEngine, _ n: Int) {
         e.update { s, _, _ in
             var d = JSONValue.object([:])
@@ -57,7 +54,6 @@ final class UnlockGatesTests: XCTestCase {
         }
     }
 
-    /// A company whose books show `rev` of sales and the given closed months.
     private func trade(_ e: inout GameEngine, rev: Double = 0, months: [Double] = [], week: Int) throws {
         if e.state.companies.isEmpty { _ = ChainsTests.start(&e, "cafe") }
         e.update { s, _, _ in
@@ -119,7 +115,6 @@ final class UnlockGatesTests: XCTestCase {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cafe")
         Self.doneUpTo(&e, 2)
-        // The test purse is far above fifty median wages, which would open the luxury gate: bring net worth to half the limit.
         e.update { s, d, _ in
             let nw = Valuation.netWorth(s, trades: d.catalog).total
             Ledger.move(&s, .me, Gates.netWorthLimit(s, data: d) * 0.5 - nw, why: "Test funds")
@@ -139,10 +134,8 @@ final class UnlockGatesTests: XCTestCase {
         XCTAssertEqual(road.first { $0.id == "gate.group" }?.detail, "Goal 2 of 7")
         XCTAssertEqual(road.first { $0.id == "unlock.chain" }?.companyID, id)
         XCTAssertEqual(road.map { $0.progress }, road.map { $0.progress }.sorted(by: >), "closest first")
-        // Opening something removes it from the list.
         try trade(&e, rev: 5_000, week: 1)
         XCTAssertFalse(e.unlockRoadmap().contains { $0.id == "gate.suppliers" })
-        // An old save without a ladder has no locked app surface.
         e.update { s, _, _ in s.rest["ldr"] = nil }
         XCTAssertFalse(e.unlockRoadmap().contains { $0.id.hasPrefix("gate.") })
     }
@@ -223,8 +216,6 @@ final class UnlockGatesTests: XCTestCase {
         XCTAssertEqual(vis(e, .luxury), .open)
     }
 
-    // MARK: First year (5.2)
-
     func testFirstYearKeysAreInBalanceJson() throws {
         let f = try Balance.bundled().firstYear
         XCTAssertEqual(f.demandMult, [1.25, 1.15, 1.05, 1.0])
@@ -272,7 +263,6 @@ final class UnlockGatesTests: XCTestCase {
         XCTAssertEqual(items.first?.body, "The bank has frozen the account until the balance is back above zero.")
         XCTAssertEqual(items.first?.options.count, 1)
         XCTAssertTrue(e.answer(messageID: try XCTUnwrap(items.first).id, option: 0))
-        // The weekly loop does not bust it before week 27.
         e.update { s, _, _ in s.week = 10; if let i = s.companyIndex(id) { s.companies[i].weeksNegative = 30; s.companies[i].cash = -5_000_000_000 } }
         for _ in 0..<7 { e.nextDay() }
         XCTAssertNotEqual(e.state.company(id)?.status, .bust)

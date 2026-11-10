@@ -5,13 +5,6 @@ import Employees
 import Businesses
 import Simulation
 
-// The ONE hiring flow of the game: every hire (workers, managers, assistants, team heads, executives, office staff, the analyst)
-// goes through `HireOnePage`: page 1 (the going rate, one button) and page 2 (pay and terms). This file holds what both pages
-// share: the request, the draft of the terms, the model that keeps the draft when the player goes back from page 2 to page 1, and a few formatters.
-// No game rule lives here: the engine (`hireDraftOptions`, `hireTermsProblem`, `hireSalaryTalk`, `hearTheirAsk`, `hireOffer`) decides and prices.
-
-/// Who is being hired into which post. `onHired` lets the list the player came from refresh itself. The flow is shown in a sheet owned by the list
-/// (`CandidateHireList`, or the Hiring screen), which stays on screen when a row disappears because the person was hired.
 struct HireRequest: Identifiable {
     let id = UUID()
     var post: HirePost
@@ -19,16 +12,13 @@ struct HireRequest: Identifiable {
     var chainID: Int? = nil
     var city: String? = nil
     var personID: Int
-    /// The post in words for messages ("Assistant manager", "Barista").
     var roleTitle: String
     var onHired: () -> Void = {}
 }
 
-/// The terms of page 1, as the player has set them. `terms(...)` turns them into the engine's `Hiring.Terms`.
 struct HireDraft: Equatable {
     enum Kind: String, Hashable { case permanent, seasonal, temporary }
     enum Pay: String, Hashable { case usual, hour, fix }
-    /// The pay plan of a seller (salary, salary and commission, commission only).
     enum Plan: String, Hashable, CaseIterable {
         case salary = "Salary", mix = "Salary and commission", com = "Commission only"
         var id: String? { self == .salary ? nil : self == .mix ? "mix" : "com" }
@@ -38,7 +28,6 @@ struct HireDraft: Equatable {
     var percent = 100.0
     var weeks = 26
     var seasonIDs: Set<String> = []
-    /// 0 = the job returns every year, 1 or 2 = it ends after that many seasons.
     var seasonCount = 0
     var pay = Pay.usual
     var plan = Plan.salary
@@ -55,7 +44,6 @@ struct HireDraft: Equatable {
         return busy.isEmpty ? [6, 7, 8] : busy
     }
 
-    /// The engine's terms for this draft. `worker` posts carry the working percentage, contract kind and pay basis; the others are full-time posts.
     func terms(worker: Bool, sells: Bool, busy: [Int]) -> Hiring.Terms {
         var t = Hiring.Terms()
         if worker {
@@ -76,14 +64,12 @@ struct HireDraft: Equatable {
     func isCommissionOnly(sells: Bool) -> Bool { sells && plan == .com }
 }
 
-/// One line of the salary talk, as a speech bubble.
 struct HireLine: Identifiable, Equatable {
     let id = UUID()
     var mine: Bool
     var text: String
 }
 
-/// Kept by page 1 and read by page 2, so going back from the salary page keeps every term and the talk so far.
 final class HireFlowModel: ObservableObject {
     @Published var draft = HireDraft()
     @Published var offer = 0.0
@@ -95,9 +81,7 @@ final class HireFlowModel: ObservableObject {
     @Published var closing = ""
 }
 
-/// Money and words the two pages share.
 enum HireWords {
-    /// An hourly wage with pence where the currency has small units ("£14.20"), a whole amount otherwise.
     static func hourly(_ v: Double, _ cur: Currency) -> String {
         let local: Double = v / cur.rate
         if local >= 100 { return cur.tidyDisplay(v) }
@@ -109,7 +93,6 @@ enum HireWords {
 
     static func first(_ name: String) -> String { name.split(separator: " ").first.map(String.init) ?? name }
 
-    /// "37.5 hours a week" / "7.5 hours a week".
     static func hours(_ h: Double) -> String { String(format: "%g", (h * 10).rounded() / 10) + " hours a week" }
 
     static func percentText(_ p: Double) -> String { String(format: "%g", (p * 10).rounded() / 10) + " percent" }
@@ -117,7 +100,6 @@ enum HireWords {
     static func weeksText(_ w: Int) -> String { w == 1 ? "1 week" : "\(w) weeks" }
 }
 
-/// What the engine says in words about a hire's outcome, the same on every screen.
 enum HireOutcomeWords {
     static func line(_ o: HireOutcome, name: String, cur: Currency, hourFactor: Double) -> (text: String, tone: String) {
         let first: String = HireWords.first(name)
@@ -135,7 +117,6 @@ enum HireOutcomeWords {
     }
 }
 
-/// One line of a talk, as a speech bubble: theirs on the left, yours on the right (champagne).
 struct SpeechBubble: View {
     @Environment(\.outsidePalette) private var P
     var text: String
@@ -155,14 +136,12 @@ struct SpeechBubble: View {
     }
 }
 
-/// A small-caps label, a serif figure and a note under it, in a bordered card (the contract discussion uses it for a request).
 struct AskOfferCard: View {
     @Environment(\.outsidePalette) private var P
     var label: String
     var figure: String
     var note: String
     var noteTint: Color = Theme.inkSoft
-    /// Marks the figure as the one to answer (accent wash instead of the surface tone).
     var outlined = false
 
     var body: some View {
@@ -177,15 +156,12 @@ struct AskOfferCard: View {
     }
 }
 
-/// One candidate of any shortlist: who they are, what they claim in words, the going rate for the post, optional checks (`extra`), and one way on:
-/// "Talk terms", which opens the two-page flow. Their own ask is never shown here; they name it in the salary talk.
 struct CandidateHireRow<Extra: View>: View {
     @Environment(\.openHire) private var openHire
     @Environment(\.outsidePalette) private var P
     var person: Person
     var currency: Currency
     var subtitle: String
-    /// The going rate for the post, a month for a full week.
     var market: Double
     var request: HireRequest
     var roleKey: String = "candidate"
@@ -217,7 +193,6 @@ extension CandidateHireRow where Extra == EmptyView {
     }
 }
 
-/// How a row asks its list to open the hiring flow.
 private struct OpenHireKey: EnvironmentKey {
     static let defaultValue: (HireRequest) -> Void = { _ in }
 }
@@ -229,8 +204,6 @@ extension EnvironmentValues {
     }
 }
 
-/// The hiring flow in its popup: no navigation stack. `HireOnePage` switches between its two steps itself and the popup's `FitScroll`
-/// hugs the height of each step (up to 80 percent of the screen).
 struct HireFlowSheet: View {
     var request: HireRequest
     var body: some View {
@@ -238,7 +211,6 @@ struct HireFlowSheet: View {
     }
 }
 
-/// A shortlist of candidates with a heading and a real empty state. It owns the sheet of the hiring flow for its rows.
 struct CandidateHireList<Row: View>: View {
     @EnvironmentObject var store: GameStore
     @State private var open: HireRequest?
@@ -267,7 +239,6 @@ struct CandidateHireList<Row: View>: View {
     }
 }
 
-/// What a candidate says about themselves on the CV, in words only: age, the years claimed and how the CV reads.
 enum CandidateClaims {
     static func line(_ engine: GameEngine, _ p: Person, extra: String = "") -> String {
         var parts: [String] = ["Age \(p.age)"]
@@ -278,7 +249,6 @@ enum CandidateClaims {
     }
 }
 
-/// A filter or choice chip of the hiring screens: drawn 34 pt high inside a 44 pt hit area, the selected one on the accent wash.
 struct HireChip: View {
     @Environment(\.outsidePalette) private var P
     var title: String

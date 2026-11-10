@@ -3,30 +3,20 @@ import GameCore
 import Countries
 import Finance
 
-/// Business customers (key accounts): a few bigger buyers who place regular orders, get to know you, expect better terms and
-/// leave if you let them down. Originals: `acctOk`, `acctMax`, `acctVol`, `acctRev`, `acctWeek`, `acctOffer`, `ACTS.acct`,
-/// `acctMeet`, `acctDrop` (engine/company/key_accounts.js) and `acctPm`, the discount a key account gets and the weekly warming
-/// (features/company/small_team_and_rewards.js).
-///
-/// A full shop is shared: the accounts' orders are added to the walk-ins' demand and everyone gets the same share of what the
-/// capacity allows (`orders`), as in the original. The day-by-day trade has no account volume: accounts are added to the week's
-/// total. Each account has a trade profile (what it sells; once you know them you can buy from them: `profile`, `Profile.canBuy`).
 public enum KeyAccounts {
     static let families: Set<String> = ["svc", "venue", "retail", "prod"]
     public static let discounts = [0, 5, 10, 15, 20, 30, 40]
 
-    /// Can this company have business customers? Original: `acctOk`.
     public static func allowed(_ co: Company, _ bd: Trade) -> Bool {
         families.contains(bd.family) && bd.businessShare <= 0.8 && co.status == .open
     }
 
-    /// How many accounts the company's name can support. Original: `acctMax`.
     public static func maximum(_ co: Company) -> Int { 1 + Int(saturating: (min(4, (co.reputation - 25) / 18)).rounded(.down)) }
 
     public struct Account: Identifiable, Equatable {
         public var id: Int
         public var name: String
-        public var share: Double       // of the private demand the account buys
+        public var share: Double
         public var relationship: Double
         public var sinceWeek: Int
         public var discount: Int
@@ -34,18 +24,14 @@ public enum KeyAccounts {
         public var lastUnits: Double
         public var totalUnits: Double
         public var totalPaid: Double
-        /// The trade it runs (a cleaner, a bakery, a web agency ...). Original: `acc39`, `a.t`.
         public var tradeID: String
-        /// What they still owe you on invoices, and how many of their last invoices in a row came in late (`SupplyTerms`).
         public var owed = 0.0
         public var lateRun = 0
     }
 
-    /// What the account sells, and whether you know them well enough to buy from them in your supply chain.
     public struct Profile: Equatable {
         public var tradeID: String
         public var tradeName: String
-        /// The supply-chain input their trade provides (`IntercompanySupply.kinds`), if any.
         public var inputName: String?
         public var canBuy: Bool
     }
@@ -53,7 +39,6 @@ public enum KeyAccounts {
     static let supplierTrades = ["cleaning", "hardware", "trucking", "courier", "bakery", "brewery", "farm", "furniture", "webdev", "mktg", "staffing"]
     static let otherTrades = ["law", "acctfirm", "engcons", "hotel", "factory", "construction", "realdev", "gym", "insco", "shipping"]
 
-    /// The same trade for the same account every time: six in ten run a trade that supplies others, the rest anything. Original: `acc39`.
     static func tradeFor(id: Int, known: (String) -> Bool) -> String {
         var h = 7
         for u in "\(id):t".unicodeScalars { h = (h &* 31 &+ Int(u.value)) & 0x7fffffff }
@@ -61,7 +46,6 @@ public enum KeyAccounts {
         return list.isEmpty ? "cleaning" : list[h % list.count]
     }
 
-    /// Original: `relIdx(rel) >= 2` (Familiar and better).
     public static func profile(_ a: Account, data: GameData) -> Profile {
         let kind = IntercompanySupply.kinds.first { $0.suppliers.contains(a.tradeID) }
         return Profile(tradeID: a.tradeID, tradeName: data.catalog[a.tradeID]?.name ?? "Business", inputName: kind?.name, canBuy: a.relationship >= 22)
@@ -78,24 +62,19 @@ public enum KeyAccounts {
         }
     }
 
-    /// What they pay as a share of your price: the better of a small loyalty rise and the discount you give. Original: `acctPm`.
     static func priceFactor(_ a: JSONValue, costRate cr: Double) -> Double { max(max(0.2, cr * 1.015), 1 - a["disc"].double / 100) }
 
-    /// Units an account buys from a given private demand; a discount makes them buy more. Original: `acctVol`.
     static func volume(_ a: JSONValue, privateDemand dp: Double) -> Double {
         dp * a["f"].double * (1 + a["rel"].double / 150) * (1 + a["disc"].double / 100 * 0.8)
     }
 
-    /// `walkInUnits` is what the walk-ins get after sharing a full shop with the accounts.
     struct Orders { var demand = 0.0, units = 0.0, revenue = 0.0, walkInUnits = 0.0, perAccount: [(id: Int, units: Double, pm: Double)] = [] }
 
-    /// The orders for the week: what the accounts want, and what the capacity left by walk-ins lets them have. Original: `acctDemand`, `acctRev`.
     static func orders(_ co: Company, _ bd: Trade, privateDemand dp: Double, capacity cap: Double, units: Double, price: Double, costRate cr: Double) -> Orders {
         let list = co.value("accts").array
         guard !list.isEmpty, allowed(co, bd) else { return Orders() }
         var o = Orders()
         o.demand = list.reduce(0) { $0 + volume($1, privateDemand: dp) }
-        // Accounts and walk-ins want more than the shop can serve: everyone gets the same share of the capacity (acctRevCore: f = units / D).
         var f = 1.0
         o.walkInUnits = units
         if units + o.demand > cap, dp + o.demand > 0 {
@@ -112,7 +91,6 @@ public enum KeyAccounts {
         return o
     }
 
-    /// Remember what each account bought this week.
     static func record(_ s: inout GameState, _ i: Int, _ o: Orders, price: Double) {
         guard !o.perAccount.isEmpty else { return }
         var list = s.companies[i].value("accts").array
@@ -125,9 +103,6 @@ public enum KeyAccounts {
         s.companies[i].set("accts", .array(list))
     }
 
-    // MARK: Weekly
-
-    /// Relationships warm when you serve them and cool when you do not; unhappy accounts leave; new ones ask. Original: `acctWeek`.
     static func weekly(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         let co = s.companies[i]
         guard allowed(co, bd) else { return }
@@ -143,7 +118,6 @@ public enum KeyAccounts {
             let rel = a["rel"].double
             if fr >= 0.1 { a["rel"] = .number(min(100, rel + 0.5 * clamp(fr / 0.6, 0.35, 1) * (1 - pow(rel / 100, 1.6)) * (proc ? 1.2 : 1))) }
             else { a["rel"] = .number(max(0, rel - 0.4)) }
-            // A discount warms the relationship; full price for a long time cools it a little.
             let disc = a["disc"].double, r2 = a["rel"].double
             if disc > 0 { a["rel"] = .number(min(100, r2 + 0.05 * disc * (1 - pow(r2 / 100, 1.6)))) }
             else if r2 > 40, s.week - a["w0"].int > 26 { a["rel"] = .number(max(36, r2 - 0.15)) }
@@ -160,8 +134,6 @@ public enum KeyAccounts {
         }
     }
 
-    /// A rival bids for the account that buys most (accounts under eight weeks old are left alone). It stays when the relationship, any
-    /// discount, a manager's attention and the quality of the work outweigh the offer; either way the owner is told. Called by `Threat`.
     static func rivalApproach(_ s: inout GameState, _ i: Int, rival: String, _ h: inout HashedRandom) {
         var list = s.companies[i].value("accts").array
         let co = s.companies[i]
@@ -180,7 +152,6 @@ public enum KeyAccounts {
         }
     }
 
-    /// A bigger business asks to buy regularly. A manager signs it; otherwise it waits in the inbox. Original: `acctOffer`.
     static func offer(_ s: inout GameState, _ i: Int, _ h: inout HashedRandom, data: GameData) {
         let co = s.companies[i]
         let share = jsRound((0.08 + 0.2 * h.next()) * 100) / 100
@@ -203,18 +174,14 @@ public enum KeyAccounts {
                      options: [.option("Take them on", "Extra orders every week"), .option("Decline")], action: "acct", data: .object(["a": acct]), expiresWeek: s.week + 3)
     }
 
-    /// The owner answers the offer. Original: `ACTS.acct`.
     public static func answer(_ s: inout GameState, message m: Message, option: Int) {
         guard option == 0, let i = s.companyIndex(m.companyID) else { return }
         var list = s.companies[i].value("accts").array
         if list.count < maximum(s.companies[i]) + 1 { list.append(m.value("data")["a"]); s.companies[i].set("accts", .array(list)) }
     }
 
-    // MARK: Player actions
-
     public enum MeetResult: Equatable { case ok, wait, cash, missing }
 
-    /// Dinner with an account. Original: `acctMeet`.
     public static func meet(_ s: inout GameState, companyID: Int, accountID: Int, data: GameData) -> MeetResult {
         guard let i = s.companyIndex(companyID) else { return .missing }
         var list = s.companies[i].value("accts").array

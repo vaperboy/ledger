@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Property and finance companies played for three years on three seeds: do they open, keep the books balanced, and earn
-/// what such a business realistically earns? The printed table is shown with LEDGER_RF=1.
 final class RentalFinanceProbeTests: XCTestCase {
     struct Year { var revenue = 0.0, profit = 0.0, value = 0.0, cash = 0.0 }
     struct Run {
@@ -21,7 +19,6 @@ final class RentalFinanceProbeTests: XCTestCase {
         var loanBalance = 0.0
     }
 
-    /// `well`: a company run properly (the standard team is hired and kept; for finance, the owner puts in the capital the regulator expects).
     static func play(_ trade: String, seed: Int, years: Int = 3, country: String = "UK", fundFactor: Double = 1.6, tweak: ((inout GameEngine, Int) -> Void)? = nil) throws -> Run {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed)
         var run = Run(trade: trade, seed: seed)
@@ -77,8 +74,6 @@ final class RentalFinanceProbeTests: XCTestCase {
         }
     }
 
-    /// A finance company that has already grown: what a year of it earns. The ramp-up takes years (awareness, trust, staff), so the
-    /// steady state is set up directly and played for one year.
     static func mature(_ trade: String, seed: Int, setup: (inout Company) -> Void) throws -> (revenue: Double, expenses: Double, profit: Double, equity0: Double, equity1: Double, company: Company) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
         var id = 0
@@ -90,7 +85,7 @@ final class RentalFinanceProbeTests: XCTestCase {
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
-        for _ in 0..<(60 * 7) { e.nextDay() }   // open, staff settled
+        for _ in 0..<(60 * 7) { e.nextDay() }
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             var co = s.companies[i]
@@ -98,7 +93,7 @@ final class RentalFinanceProbeTests: XCTestCase {
             s.companies[i] = co
         }
         let eq0: Double = { let co = e.state.company(id)!; return CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: e.state.loans) }()
-        for _ in 0..<(26 * 7) { e.nextDay() }   // settle
+        for _ in 0..<(26 * 7) { e.nextDay() }
         let eqMid: Double = { let co = e.state.company(id)!; return CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: e.state.loans) }()
         for _ in 0..<(52 * 7) { e.nextDay() }
         let co = e.state.company(id)!

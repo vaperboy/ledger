@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// One entity of the Group picker (a company, a holding or a whole chain): a header with its value, the in-page tabs, and the tab's content,
-/// everything scoped to exactly this entity.
 struct GroupEntityPage: View {
     @EnvironmentObject var store: GameStore
     var entity: GroupEntity
@@ -31,12 +29,10 @@ struct GroupEntityPage: View {
     }
 
     @ViewBuilder private func screen(_ e: GameEngine, _ s: GroupSection) -> some View {
-        // Content sits on the page: plain cards inside the tabs draw flat (only tiles with their own fill keep a surface).
         ScrollScreen(spacing: Theme.Space.xl, top: Theme.Space.l) { content(e, s) }
             .environment(\.insideCard, true)
     }
 
-    /// Every tab. The Boardroom is always there: with no co-owner it is an advisory board of your managers.
     private func visibleSections(_ e: GameEngine) -> [GroupSection] { GroupSection.allCases }
 
     private func badges(_ e: GameEngine) -> [GroupSection: Int] {
@@ -45,7 +41,6 @@ struct GroupEntityPage: View {
         return n > 0 ? [.board: n] : [:]
     }
 
-    /// Back with the name and kind on one line, then the entity's value as the hero with its 30-day change and trend line.
     private var header: some View {
         let ch = GroupFmt.change(entity, store)
         let trend: [Double] = Array(entity.trend.suffix(90))
@@ -108,10 +103,6 @@ struct GroupEntityPage: View {
     }
 }
 
-// MARK: - Overview
-
-/// The entity's own overview: stores open, franchised out, employees, revenue and profit this month, brand and the rest of its key figures,
-/// plus the way into its staff (managers and executives are in the Management tab).
 struct GroupEntityOverview: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -122,7 +113,6 @@ struct GroupEntityOverview: View {
         var label: String
         var value: String
         var tint: Color = Theme.ivory
-        /// The three money figures, shown as one strip above the facts.
         static let moneyLabels: Set<String> = ["Profit", "Revenue", "Cash"]
     }
 
@@ -191,7 +181,6 @@ struct GroupEntityOverview: View {
         return v?.name ?? "None"
     }
 
-    /// A holding's companies, each opening its own page through the picker rows above; here they are listed with their value.
     @ViewBuilder private var subsidiaries: some View {
         let subs: [Company] = entity.members.dropFirst().compactMap { (id: Int) -> Company? in engine.state.company(id) }
         if !subs.isEmpty {

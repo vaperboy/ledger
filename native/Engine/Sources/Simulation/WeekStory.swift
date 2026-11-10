@@ -2,32 +2,20 @@ import Foundation
 import GameCore
 import Countries
 
-/// The facts the week report's one story sentence is chosen from. Pure data: `WeekStory.sentence(_:)` picks the first
-/// rule that applies. Built from the stored reports by `GameEngine.weekStoryInput(for:)`.
 public struct WeekStoryInput: Equatable, Sendable {
-    /// "week", "month" or "year": the word the sentences use.
     public var noun: String
-    /// Rule 1: a company whose cash ended the period below zero.
     public var cashBelowZeroCompany: String?
-    /// Rule 2: the headline of a bad event of the period and what the period's fines and losses were as a share of its sales.
     public var badEventHeadline: String?
     public var badEventCostShare: Double
-    /// Rule 3: the period's profit, the one before (nil in the first period), how many profitable periods ran just before this one,
-    /// and whether any earlier period was profitable.
     public var profit: Double
     public var lastWeekProfit: Double?
     public var profitableRunBefore: Int
     public var hadProfitBefore: Bool
-    /// Rule 4: the past tense of a goal finished in the period ("You hired your first worker."). nil until the ladder exists.
     public var completedGoalPastTense: String?
-    /// Rule 5: the best or the worst period of the last 12 (needs enough history to mean something).
     public var bestOfLast12: Bool
     public var worstOfLast12: Bool
-    /// Rule 6: the name of the top seller when it changed since the period before.
     public var topSellerChange: String?
-    /// Rule 7: the briefing sentence (what the morning briefing would say about the period).
     public var briefing: String
-    /// With several companies: the one that drove the change (named by rules 3, 5 and 7).
     public var drivenBy: String?
 
     public init(noun: String = "week", cashBelowZeroCompany: String? = nil, badEventHeadline: String? = nil, badEventCostShare: Double = 0,
@@ -47,7 +35,6 @@ public struct WeekStoryInput: Equatable, Sendable {
 public enum WeekStory {
     public static let maxLength = 110
 
-    /// The one sentence, by priority order; never longer than 110 characters.
     public static func sentence(_ i: WeekStoryInput) -> String {
         cap(pick(i))
     }
@@ -81,14 +68,12 @@ public enum WeekStory {
         }
     }
 
-    /// Adds the company that drove the result when it fits.
     private static func named(_ text: String, _ i: WeekStoryInput) -> String {
         guard let who = i.drivenBy, !who.isEmpty, !text.isEmpty else { return text }
         let both: String = text + " " + who + " drove it."
         return both.count <= maxLength ? both : text
     }
 
-    /// The first sentence of an event headline, ending in a full stop.
     static func oneSentence(_ text: String) -> String {
         let t: String = text.trimmingCharacters(in: .whitespacesAndNewlines)
         var end: String.Index = t.endIndex
@@ -108,54 +93,40 @@ public enum WeekStory {
     }
 }
 
-/// The one thing the report asks the player to do next: a decision waiting, or the best suggestion.
 public struct WeekNextStep: Equatable, Sendable {
     public var title: String
     public var detail: String
     public var buttonTitle: String
     public var action: Suggestion.Action
-    /// An Inbox item with an expiry: the cliffhanger (the notification step keys off this).
     public var expiresInWeeks: Int?
 }
 
-/// One line of the movers list: a sales or cost line and how much it changed against the period before.
 public struct WeekMover: Equatable, Sendable {
     public var label: String
     public var change: Double
-    /// A cost line: a rise is bad news (red), a fall good.
     public var isCost: Bool
 }
 
-/// One entry of the best / slowest line of a report: a heading, the period it names and that period's profit.
 public struct WeekExtreme: Equatable, Sendable {
     public var heading: String
     public var title: String
     public var profit: Double
 }
 
-/// Everything the week, month or year report shell shows, from the real reports.
 public struct WeekRecap: Equatable, Sendable {
     public var kind: ReportKind
     public var sales: Double
-    /// Everything that left the books, tax included, so that sales minus costs is the profit.
     public var costs: Double
     public var profit: Double
-    /// nil in the first period: the delta line is left out.
     public var previousProfit: Double?
     public var story: String
-    /// "Best week so far", "Best month so far", "Net worth passed ..." or nil.
     public var record: String?
     public var next: WeekNextStep?
     public var companyCount: Int
-    /// Month and year only: the biggest income and cost changes against the period before (at most 2 + 2).
     public var movers: [WeekMover] = []
-    /// Month: the best and the slowest week of the month in one line. Year: the best month in one line.
     public var extremes: String? = nil
-    /// The same facts as `extremes`, split so the screen can draw the profit with an arrow: "Best" / "Slowest" / "Best month", the period and its profit.
     public var extremeItems: [WeekExtreme] = []
-    /// Year only: the profit of each month of the year, oldest first (at most 12).
     public var monthStrip: [Double] = []
-    /// Year only: tax paid in cash and the change in net worth over the year.
     public var taxPaid: Double = 0
     public var netWorthChange: Double = 0
 
@@ -163,7 +134,6 @@ public struct WeekRecap: Equatable, Sendable {
 }
 
 public extension GameEngine {
-    /// The facts for the story sentence of one stored report (the week, month or year that just closed).
     func weekStoryInput(for r: PeriodReport) -> WeekStoryInput {
         let cur = homeCurrency
         func amount(_ v: Double) -> String { cur.short(abs(v)).replacingOccurrences(of: "\u{00A0}", with: " ") }
@@ -181,7 +151,6 @@ public extension GameEngine {
         input.hadProfitBefore = profits.contains { $0 > 0 }
         input.completedGoalPastTense = PlayerGoals.ladderPastTense(state, firstWeek: r.firstWeek, lastWeek: r.lastWeek)
         input.cashBelowZeroCompany = r.companies.first { $0.status == "open" && $0.cashEnd < 0 }?.name
-        // BRIEF: an event's own cost is not stored; fines plus refunds and losses of the period stand for what the bad events cost.
         if let bad = g.events.first(where: { $0.tone == "bad" }) {
             let hit: Double = g.pnl.fines + g.pnl.losses
             input.badEventHeadline = bad.text
@@ -200,7 +169,6 @@ public extension GameEngine {
         return input
     }
 
-    /// The company whose profit moved the most against the period before (or the best or worst company when there is no earlier period).
     private func driver(of r: PeriodReport) -> String? {
         if let prev = r.previous {
             var bestMove: (name: String, move: Double)?
@@ -214,7 +182,6 @@ public extension GameEngine {
         return (r.group.pnl.netProfit >= 0 ? r.best : r.worst)?.name
     }
 
-    /// The shell of the week, month or year report. `kind` and `id` name the stored report (the digest's `kind` and `reportID`).
     func weekRecap(kind: ReportKind, id: Int) -> WeekRecap? {
         guard let r = reports(kind).first(where: { $0.id == id }) else { return nil }
         let g = r.group
@@ -234,7 +201,6 @@ public extension GameEngine {
         return recap
     }
 
-    /// Income movers (each company's sales, or the group's sales) and cost movers (cost lines), by size of change against the period before.
     private func movers(of r: PeriodReport) -> [WeekMover] {
         guard let prev = r.previous else { return [] }
         var income: [WeekMover] = []
@@ -261,7 +227,6 @@ public extension GameEngine {
         return (v < 0 ? "-" : "+") + t
     }
 
-    /// Month: best and slowest week (the books keep no per-day profit). Year: the best month.
     private func extremesLine(for r: PeriodReport) -> String? {
         if r.kind == .month {
             let weeks: [PeriodReport] = reports(.week).filter { $0.id >= r.firstWeek && $0.id <= r.lastWeek }
@@ -303,8 +268,6 @@ public extension GameEngine {
         return nil
     }
 
-    /// One thing to do: a blocking Inbox item, one expiring within two weeks, any item with an expiry (the cliffhanger rule makes the
-    /// card mandatory then), otherwise the strongest suggestion. The open ladder goal comes first once the ladder exists (not yet).
     func weekNextStep() -> WeekNextStep? {
         let open: [Message] = openDecisions
         if let m = open.first(where: { $0.isAlert }) { return step(for: m) }
@@ -329,7 +292,6 @@ public extension GameEngine {
 }
 
 public extension GameEngine {
-    /// Profit of all companies' books so far (revenue less costs, all time). The app takes its difference across a day for "Profit today".
     var groupBooksProfit: Double {
         state.companies.reduce(0) { $0 + Books.profit($1.books.total) }
     }

@@ -4,7 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// A light side-to-side shake: `count` goes up by one per shake (two swings). Animatable, so it runs inside an animation of `count`.
 struct ShakeEffect: GeometryEffect {
     var count: CGFloat
     var travel: CGFloat = 7
@@ -13,14 +12,8 @@ struct ShakeEffect: GeometryEffect {
         get { count }
         set { count = newValue }
     }
-
-    func effectValue(size: CGSize) -> ProjectionTransform {
-        let dx: CGFloat = travel * sin(count * CGFloat.pi * 4)
-        return ProjectionTransform(CGAffineTransform(translationX: dx, y: 0))
-    }
 }
 
-/// Shakes the view for 0.4 s whenever `count` changes. Reduce Motion: no shake.
 struct ShakeOnChange: ViewModifier {
     var count: Int
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -37,18 +30,15 @@ struct ShakeOnChange: ViewModifier {
 }
 
 extension View {
-    /// A quick light shake each time `trigger` changes (see `ShakeOnChange`).
     func shake(_ trigger: Int) -> some View { modifier(ShakeOnChange(count: trigger)) }
 }
 
-/// The two buttons of the price popup look the same (none filled or preselected): the secondary button at full width.
 struct MarketEqualButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         SecondaryButtonStyle(fullWidth: true).makeBody(configuration: configuration)
     }
 }
 
-/// The product page of one listing: picture, title, blurb, seller, city and the posted price, with ONE button, "Message seller".
 struct MarketplaceListingPage: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -105,7 +95,6 @@ struct MarketplaceListingPage: View {
         String(name.split(separator: " ").prefix(2).compactMap { (w: Substring) -> Character? in w.first })
     }
 
-    /// A used car dealer can only buy a car or van when a lot space is free: the lot is shown on the listing.
     private var yardLot: UsedCarLot? {
         guard let e = store.engine, let co = e.state.company(companyID), co.type == UsedCarDealer.tradeID else { return nil }
         let cat: MarketplaceApp.Filter = MarketplaceApp.category(listing.family)
@@ -123,7 +112,6 @@ struct MarketplaceListingPage: View {
         }
     }
 
-    /// The one action, Message seller; when the seller will not sell or the lot is full it stays visible, disabled, with the reason under it.
     @ViewBuilder private func action(_ notSelling: Bool) -> some View {
         let lotFull: Bool = (yardLot?.free ?? 1) == 0
         let reason: String? = lotFull
@@ -145,8 +133,6 @@ struct MarketplaceListingPage: View {
     }
 }
 
-/// The price popup: the posted price large, the seller's line under it and two equal buttons. Discuss pushes the price down (the number
-/// counts down and flashes green); when the seller will not talk any more the number shakes and "Discuss price" turns into "Don't buy".
 struct MarketplaceDealView: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -212,7 +198,6 @@ struct MarketplaceDealView: View {
         .onAppear { begin() }
     }
 
-    /// A thin bar of the seller's patience left; no numbers.
     private var patienceBar: some View {
         let left: Int = neg?.patienceLeft ?? 0
         let ratio: Double = min(1, max(0, Double(left) / Double(max(topPatience, 1))))

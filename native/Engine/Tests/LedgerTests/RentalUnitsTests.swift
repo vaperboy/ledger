@@ -5,13 +5,11 @@ import Finance
 import Businesses
 import Simulation
 
-/// RENT trades: units as items, their economics from the books, the rate slider, old saves, and a two-year probe of a competent owner per trade.
 final class RentalUnitsTests: XCTestCase {
     static let all = ["resrent", "comrent", "parking", "carrental", "hotel", "pcbang"]
 
     struct Run { var e: GameEngine; var id: Int; var invested: Double }
 
-    /// A started company with the standard set-up; a rental company also buys the best of its four listings with a 60% mortgage.
     static func start(_ trade: String, seed: Int = 11) throws -> Run {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
         var id = 0, invested = 0.0
@@ -31,9 +29,7 @@ final class RentalUnitsTests: XCTestCase {
             }
         }
         var r = Run(e: e, id: id, invested: invested)
-        // Paperwork takes a few weeks: the company is played (no withItems) until it opens.
         for _ in 0..<40 where r.e.state.company(id)?.status != .open { week(&r, withItems: false) }
-        // A rental company that set up without a building buys the best of its four listings with a 60% mortgage.
         let rid = r.id
         r.e.update { s, data, _ in
             if let co = s.company(rid), let bd = data.catalog[co.type], bd.family == "rent", co.properties.isEmpty,
@@ -56,7 +52,6 @@ final class RentalUnitsTests: XCTestCase {
             r.e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
             r.invested += top
         }
-        // The hook the lead adds beside `ItemModels.weeklyTick` in `PriceMoves.weekly`, run here by hand.
         if withItems { r.e.update { s, d, _ in for i in s.companies.indices { RentalUnits.weekly(&s, i, data: d) } } }
     }
 
@@ -82,7 +77,6 @@ final class RentalUnitsTests: XCTestCase {
                 XCTAssertGreaterThan(u.fixedWeekly, 0, "\(t) \(u.name)")
                 XCTAssertGreaterThan(u.costPerPeriod, 0, "\(t) \(u.name)")
                 XCTAssertEqual(rec!.cost, u.costPerPeriod, accuracy: 1e-6 * max(1, u.costPerPeriod), "\(t) record cost follows the books")
-                // The live slider: a rate above the break-even rate is a profit, below it a loss, and the break-even rate has no profit or loss.
                 XCTAssertEqual(ItemModels.liveProfit(price: u.breakEvenRate * 1.2, cost: u.costPerPeriod).outcome, .profit, "\(t) \(u.name)")
                 XCTAssertEqual(ItemModels.liveProfit(price: u.breakEvenRate * 0.8, cost: u.costPerPeriod).outcome, .loss, "\(t) \(u.name)")
                 XCTAssertFalse(rec!.history.isEmpty, "\(t) \(u.name) occupancy history")
@@ -134,7 +128,7 @@ final class RentalUnitsTests: XCTestCase {
 
     func testOldSavesAndOtherTradesAreUntouched() throws {
         var r = try Self.start("hotel")
-        for _ in 0..<3 { Self.week(&r, withItems: false) }   // the weekly hook runs inside the company week (ItemHooks)
+        for _ in 0..<3 { Self.week(&r, withItems: false) }
         let co = r.e.state.company(r.id)!
         XCTAssertEqual(RentalUnits.rateMultiplier(co, r.e.data.catalog["hotel"]!, propertyID: 1), 1, "at the default rate nothing changes")
         var other = try Self.start("bakery")
@@ -156,7 +150,6 @@ final class RentalUnitsTests: XCTestCase {
         XCTAssertEqual(SalesItems.items(r.e.state.company(r.id)!, r.e.data.catalog["pcbang"]!).first { $0.id == item }!.priceMultiplier, 1.2, accuracy: 1e-9)
     }
 
-    /// Two years of a competent owner per trade, with and without the withItems: no trade becomes unprofitable by design. Prints profit per year.
     func testTwoYearProbePerTrade() throws {
         for t in Self.all {
             var base = try Self.start(t), withItems = try Self.start(t)

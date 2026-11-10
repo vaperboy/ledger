@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Record: a court docket on cool grey. Case cards with a number, the offence, the fine and the bans, stamped when quashed; and the public
-/// watchlist, where only grave cases are named.
 struct RecordScreen: View {
     var e: GameEngine
     var r: CountryRead
@@ -52,8 +50,6 @@ struct RecordScreen: View {
         .accessibilityAddTraits(tab == i ? .isSelected : [])
     }
 
-    // MARK: My record
-
     private var mine: some View {
         let list: [PlayerConviction] = justice.own(r.account)
         let standing: Int = justice.count(r.account)
@@ -80,7 +76,6 @@ struct RecordScreen: View {
         }
     }
 
-    /// What the player is barred from right now, with the week each bar ends.
     private var bans: some View {
         let rows: [(String, Justice.Scope)] = [("Trading", .trade), ("Standing for office", .office), ("Voting", .vote)]
         return VStack(alignment: .leading, spacing: 0) {
@@ -155,8 +150,6 @@ struct RecordScreen: View {
             Text(value).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(P.ink).multilineTextAlignment(.trailing)
         }
     }
-
-    // MARK: Watchlist
 
     private var watch: some View {
         let list: [WatchlistEntry] = justice.watchlist

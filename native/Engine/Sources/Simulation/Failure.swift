@@ -4,18 +4,11 @@ import Countries
 import Finance
 import Businesses
 
-/// When things go wrong: company bankruptcy, forced sales, the bank closing in, game over.
-/// Original: `bankruptcyCore`, `forcedSale`, `checkOver` (engine/core/week.js).
-///
-/// A company fails when it cannot pay: cash below its overdraft room for many weeks, or bills unpaid for months.
-/// Every company is a limited company: its owner loses what was put in, and answers personally only for loans they guaranteed.
 public enum Failure {
-    /// `announce` false: one store of a chain that fails as a whole (`chainBankrupt` sends the one message, counts it once and hits credit once).
-    /// Returns what lands on the owner personally.
     @discardableResult
     public static func bankrupt(_ s: inout GameState, companyIndex i: Int, reason: String, data: GameData, context: FinanceContext, announce: Bool = true) -> Double {
         guard s.companies[i].status.isLive else { return 0 }
-        HeldMoney.settle(&s, companyID: s.companies[i].id)   // the rest of this week's money is the company's to settle with
+        HeldMoney.settle(&s, companyID: s.companies[i].id)
         let co = s.companies[i]
         let cur = context.homeCurrency(s)
         let assets = max(0, CompanyFigures.assets(co) - co.cash) * 0.45
@@ -25,9 +18,6 @@ public enum Failure {
         var debts: Double = loanBalance + CompanyFigures.billsOwed(co)
         debts -= min(0, co.cash)
         var personalHit = 0.0
-        // Lenders come first from what the company owns: its things (sold at a discount), then, once the bills are paid, its cash. The owner
-        // gets something only when every lender is paid in full, so borrowed money cannot be walked away with. Only what is left of a
-        // loan the owner guaranteed lands on the owner.
         var pool = assets
         var unpaid: [Int: Double] = [:]
         for l in ownLoans {
@@ -57,12 +47,11 @@ public enum Failure {
         }
         let rest = assets + cashPart - billsDue - repaidToLoans
         if rest > 0 && co.ownership > 0 { Payments.playerReceives(&s, rest * co.ownership / 100 * 0.2, label: "Remaining value from \(co.name)") }
-        // Staff are released.
         for m in s.companies[i].staff { if var person = s.people[m.id] { person.employerID = 0; s.people[m.id] = person } }
         if let mid = s.companies[i].managerID, var mgr = s.people[mid] { mgr.employerID = 0; s.people[mid] = mgr }
         s.companies[i].staff = []
         s.companies[i].managerID = nil
-        EquipmentMarket.endAllLeases(&s, companyIndex: i)   // the lessors take their things back
+        EquipmentMarket.endAllLeases(&s, companyIndex: i)
         s.companies[i].status = .bust
         Ledger.set(&s, .company(co.id), to: 0)
         HoldingModel.holdingFailed(&s, holdingID: co.id)
@@ -83,11 +72,6 @@ public enum Failure {
             : "As a limited company, your loss is limited to what you put in. "
     }
 
-    // MARK: A chain fails as one company
-
-    /// A branch never fails alone. The chain does, by the same rules as any company, judged on all its branches together: the combined account
-    /// overdrawn past twice its limit for more than 12 weeks, a called loan not caught up, bills unpaid for months while the chain has no cash,
-    /// or (a financial chain) its capital gone.
     public static func chainChecks(_ s: inout GameState, data: GameData, context: FinanceContext, insolvent: Set<Int>) {
         for ch in Chains.all(s) {
             let L = Chains.stores(s, ch)
@@ -105,7 +89,6 @@ public enum Failure {
         }
     }
 
-    /// Every branch of the chain goes down together under the company failure rules, with one message, one count and one credit hit.
     public static func chainBankrupt(_ s: inout GameState, chainID: Int, reason: String, data: GameData, context: FinanceContext) {
         guard let ch = Chains.chain(s, id: chainID) else { return }
         let L = Chains.stores(s, ch)
@@ -120,8 +103,6 @@ public enum Failure {
         s.news("\(name) files for bankruptcy and closes its \(L.count) branches.", tone: "bad", companyID: head.id)
     }
 
-    /// The bank sells a company at a discount to cover an overdraft. Original: `forcedSale`.
-    /// A branch is not sold alone: the bank sells your chain, every branch of it, as the one company it is.
     static func forcedSale(_ s: inout GameState, companyIndex i: Int, data: GameData, context: FinanceContext) {
         let br = s.chainStores(of: s.companies[i])
         if br.count >= 2, let chainID = Optional(s.companies[i].value("chain").int) {
@@ -149,7 +130,6 @@ public enum Failure {
                      body: "You could not cover your overdraft. The bank forced a sale at a discount: \(context.homeCurrency(s).display(v)).",
                      companyID: co.id, tone: "bad")
     }
-    /// The company leaves your hands: loans settled from the price, staff released.
     static func sellToCreditors(_ s: inout GameState, companyIndex i: Int) {
         for l in s.loans.filter({ $0.companyID == s.companies[i].id }) { Banking.close(loanID: l.id, repaid: l.balance, state: &s) }
         for m in s.companies[i].staff { if var person = s.people[m.id] { person.employerID = 0; s.people[m.id] = person } }
@@ -157,17 +137,14 @@ public enum Failure {
         s.companies[i].status = .sold
     }
 
-    /// The end-of-week check: overdraft limit, bank warnings, forced sales, game over. Original: `checkOver`.
     public static func checkOver(_ s: inout GameState, data: GameData, context: FinanceContext, liquidate: (inout GameState, Double) -> Void) {
-        PersonalFinance.withholdNow(&s, context: context)   // sweep: gains, dividends and interest that had no call of their own
+        PersonalFinance.withholdNow(&s, context: context)
         TaxSettlement.collectIfRefused(&s, context: context)
         TaxSettlement.refresh(&s, data: data, context: context)
-        CreditorPressure.weekly(&s, data: data)   // very large groups: lenders lose confidence and ask for cash back (CreditorPressure.swift)
+        CreditorPressure.weekly(&s, data: data)
         var od = s.rest["flags"]?["od"].int ?? 0
-        // While the player is choosing how to pay a tax bill, the bank's clock waits.
         let choosingTaxPayment = s.inbox.contains { $0.status == "open" && $0.actionID == PersonalFinance.dueAction }
         if s.cash < -s.overdraftLimit && choosingTaxPayment {
-            // no weeks counted until the answer or its deadline
         } else if s.cash < -s.overdraftLimit {
             od += 1
             if od == 1 {
@@ -201,7 +178,6 @@ public enum Failure {
         if s.cash < -s.overdraftLimit * 3 && live.isEmpty {
             s.gameOver = .object(["reason": "insolvent", "week": .number(Double(s.week)), "nw": .number(nw)]); return
         }
-        // Broke means no company and no money to start another: someone still holding cash for a first company (a trade the country bans, a name not yet chosen) is not out of the game.
         let floor = context.homeCurrency(s).scaledPrice(10000)
         if live.isEmpty && nw < floor && Payments.liquid(s) < floor && s.week > 2 {
             s.gameOver = .object(["reason": "broke", "week": .number(Double(s.week)), "nw": .number(nw)])

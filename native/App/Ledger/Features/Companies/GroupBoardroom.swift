@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The Boardroom tab of an entity: who sits on the board, the one list of what it puts to you, and the quarterly review with each CEO.
-/// With co-owners the votes bind and go by shares; when you own it alone the board only advises and you decide.
 struct GroupBoardroom: View {
     var engine: GameEngine
     var entity: GroupEntity
@@ -14,7 +12,6 @@ struct GroupBoardroom: View {
         entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
     }
 
-    /// Every board the entity's companies sit on, once each.
     private var keys: [String] {
         var out: [String] = []
         for c in companies {
@@ -35,14 +32,10 @@ struct GroupBoardroom: View {
     }
 }
 
-/// What a board shows, shared by an entity's Boardroom tab and a chain's board page: the table, the decision list and the CEO reviews.
 struct BoardroomContent: View {
     var engine: GameEngine
-    /// The board whose table is shown.
     var key: String
-    /// Every board whose decisions are listed.
     var keys: [String]
-    /// The companies whose CEO you review with (a chain: its head store).
     var companies: [Company]
 
     var body: some View {
@@ -54,9 +47,6 @@ struct BoardroomContent: View {
     }
 }
 
-// MARK: - The quarterly review
-
-/// One row per CEO: the review is held with them once a quarter and sets the direction and the budget.
 struct BoardReviews: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -138,8 +128,6 @@ struct BoardReviews: View {
     }
 }
 
-/// The review with the CEO: they report, then you pick a direction and a budget. The pick already in force is marked; only changed picks
-/// are made, and the result is told once.
 struct ReviewForm: View {
     var scene: OwnerMeetings.Scene
     var settle: ([OwnerMeetings.Choice]) -> Void
@@ -153,7 +141,6 @@ struct ReviewForm: View {
         _budget = State(initialValue: ReviewForm.current(scene, "budget"))
     }
 
-    /// The engine marks the choice in force with "Current." at the start of its preview.
     private static func current(_ scene: OwnerMeetings.Scene, _ group: String) -> String? {
         scene.choices.first { (c: OwnerMeetings.Choice) -> Bool in c.group == group && c.preview.hasPrefix("Current.") }?.id
     }
@@ -208,7 +195,6 @@ struct ReviewForm: View {
     }
 }
 
-/// The review held from the owner's seat.
 struct OwnerReviewSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -242,13 +228,11 @@ struct OwnerReviewSheet: View {
         }
         guard !lines.isEmpty else { return }
         if bad { Haptics.warning() } else { Haptics.success() }
-        // The review ends with one outcome popup: what you settled and what came of it.
         dismiss()
         store.outcome(chosen: picks.map { (x: OwnerMeetings.Choice) -> String in x.label }.joined(separator: ", "), result: lines.joined(separator: "\n"))
     }
 }
 
-/// The lines of one vote: each adviser, board member and owner with a yes or no and the reason; then whether it passes.
 struct BoardVoteLines: View {
     var vote: ManagerModel.BoardVote
     var kind: String
@@ -277,7 +261,6 @@ struct BoardVoteLines: View {
     }
 }
 
-/// What someone says in a meeting: their name once, then each line as a quote beside a thin accent rule.
 struct DialogueQuote: View {
     var speaker: String
     var lines: [String]
@@ -297,7 +280,6 @@ struct DialogueQuote: View {
     }
 }
 
-/// One option of a popup that leads on (a topic, an answer, a question to the board): a plain row with a chevron and a hairline above.
 struct PopupChoiceRow: View {
     var title: String
     var subtitle: String = ""

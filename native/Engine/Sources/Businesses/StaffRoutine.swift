@@ -4,11 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// A company's people in a week: tiredness and sickness, quitting, problems, and learning on the job.
-/// Original: `staffWeek` and `handleStaffEvent` (engine/people/people.js, engine/company/model.js).
 public enum StaffRoutine {
-    /// Hours actually worked, by calendar month, from the weekly simulation (`StaffWeek.hoursWorked`; 0 for a week off sick or laid off for the season).
-    /// Kept on the staff record as `hrsAct` {month index: [hours worked, overtime hours, weeks recorded]}, the last 14 months.
     static func recordHours(_ m: inout StaffMember, week: Int, hours: Double, contracted: Double) {
         let key = String(GameCalendar.monthIndex(week: week))
         var all = m.value("hrsAct")
@@ -24,7 +20,6 @@ public enum StaffRoutine {
         m.set("hrsAct", .object(o))
     }
 
-    /// Test hook: called with (pay gap, quit odds, tiredness, fit) for every person every week.
     nonisolated(unsafe) public static var probe: ((Double, Double, Double, Double, Double) -> Void)? = nil
 
     public static func weekly(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData, utilisation util: Double) {
@@ -74,12 +69,9 @@ public enum StaffRoutine {
             }
             if m.isOffSeason { staff[idx] = m; continue }
             let paidByWage = m.commissionMode == nil || m.commissionMode == "fix"
-            // Hours over the standard week cost the country's overtime premium (people on fixed salaries or commission are not paid by the hour).
             if m.payBasis != "fix", paidByWage, !StaffModel.isSick(m, week: s.week) {
                 overtimePay += labour.overtimePay(monthlyWage: m.monthlyWage, contracted: contracted, worked: worked) * (1 + country.employerOnCost(monthlyWage: m.monthlyWage))
             }
-            // The minimum wage moves with inflation: base pay that has fallen under it is lifted (commission comes on top of the base of "mix").
-            // Commission only has no base and is never lifted.
             if m.commissionMode != "com" {
                 let floor = w.minimumWage(co, hours: m.weeklyHours ?? StaffModel.fullWeekHours)
                 if m.monthlyWage < floor { m.monthlyWage = floor.rounded(.up); lifted += 1 }
@@ -93,7 +85,6 @@ public enum StaffRoutine {
                                           week: s.week, hasHRManager: s.hasHeadOffice("hr"), hasTeamLead: hasLead)
             let perkShare = market > 0 ? StaffPerks.worthMonthly(co, m, currency: w.currency(co)) / market : 0
             if let u = StaffBehaviour.update(&m, person: n, gap: gap, week: s.week) { behaviour.append((m.id, u)) }
-            // someone who has gone quiet no longer raises anything with you
             if !StaffBehaviour.isSilent(m), let talk = StaffTalks.nextTalk(m, n, company: co, gap: gap, perkShare: perkShare, tenure: tenure, week: s.week, salesRoles: tables.salesRoles) { events.append(talk) }
             probe?(gap, odds, m.tiredness, StaffWeek.fit(staff: m, tradeID: co.type), tenure)
             if s.random.chance(quitChance(odds: odds, company: co, member: m)) && !co.value("flags")["noquit"].bool { events.append(.quit(staffID: m.id)) }
@@ -119,24 +110,20 @@ public enum StaffRoutine {
         growSkills(&s, companyIndex: i)
     }
 
-    /// How far a person's pay (base plus the commission they really earn) is under what the job pays for their skill: -0.2 to 0.4. The one formula of the
-    /// weekly pass and of the contract talk's quit-risk preview.
     static func payGap(market: Double, person n: Person, member m: StaffMember) -> Double {
         let effectivePay = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0) + m.num("bnEma")
         return clamp((market * (0.7 + n.skill / 160) - effectivePay) / market, -0.2, 0.4)
     }
 
-    /// The weekly chance that this person hands in notice: the odds of `StaffWeek.quitOdds`, eased by the company's perks and by an HR manager (ManagerTeam).
     static func quitChance(odds: Double, company co: Company, member m: StaffMember) -> Double {
         odds * StaffPerks.quitFactor(co, m) * (1 - 0.13 * co.value("tm")["hr"].double)
     }
 
-    /// Book what the commission checks found: fines, lost reputation, and the notes.
     static func applyExtras(_ s: inout GameState, companyIndex i: Int, _ list: [StaffExtras.Outcome], currency cur: Currency) {
         for x in list {
             let co = s.companies[i]
             for f in x.fines {
-                let fine = cur.scaledPrice(f.amount)   // fines are written at the reference price level
+                let fine = cur.scaledPrice(f.amount)
                 Payments.companyPays(&s, companyID: co.id, amount: fine, category: "fine", label: "Mis-selling complaint")
                 s.note(f.note.replacingOccurrences(of: "{co}", with: co.name).replacingOccurrences(of: "{fine}", with: cur.display(fine)), tone: "bad", companyID: co.id)
             }
@@ -152,7 +139,7 @@ public enum StaffRoutine {
         switch e {
         case .quit(let id):
             guard var m = co.staff.first(where: { $0.id == id }), m.noticeWeeks == 0 else { return }
-            let standard = (m.hiredWeek < s.week - 52 ? 8 : 4) + m.int("nx")   // plus the extra notice agreed in a contract talk
+            let standard = (m.hiredWeek < s.week - 52 ? 8 : 4) + m.int("nx")
             let quit = s.people[id].map { StaffBehaviour.resignationNotice(m, person: $0, week: s.week, standardNotice: standard) } ?? (weeks: standard, abrupt: false)
             m.noticeWeeks = quit.weeks
             co.staff = co.staff.map { $0.id == id ? m : $0 }
@@ -162,7 +149,6 @@ public enum StaffRoutine {
             s.note("\(name(id)) is off sick this week at \(co.name).", tone: "bad", companyID: co.id)
         case .leave(let id):
             s.note("\(name(id)) has left \(co.name).", tone: "bad", companyID: co.id)
-            // The notice has been worked: nothing is owed (a resignation).
             Dismissal.dismiss(&s, companyID: co.id, staffID: id, reason: .resignation, noticeServed: true, data: data)
         case .problem(let id, let trait):
             let labels = ["late": "is often late", "lazy": "is under-performing", "conflict": "is causing conflict in the team",
@@ -173,7 +159,7 @@ public enum StaffRoutine {
                 co.set("flags", flags); s.companies[i] = co
             }
         case .payAsk(let id):
-            guard StaffTalks.askedThisWeek(s, companyID: co.id) < StaffTalks.maxAsksPerWeek else { return }   // the rest ask next week
+            guard StaffTalks.askedThisWeek(s, companyID: co.id) < StaffTalks.maxAsksPerWeek else { return }
             StaffTalks.ask(&s, companyIndex: i, staffID: id, fixed: false, data: data)
         case .fixedSalaryAsk(let id):
             guard StaffTalks.askedThisWeek(s, companyID: co.id) < StaffTalks.maxAsksPerWeek else { return }
@@ -185,7 +171,6 @@ public enum StaffRoutine {
         }
     }
 
-    /// People learn on the job towards their potential, quickly when young. Original: part of `weekEnd`.
     static func growSkills(_ s: inout GameState, companyIndex i: Int) {
         var co = s.companies[i]
         var staff = co.staff

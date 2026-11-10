@@ -3,20 +3,14 @@ import GameCore
 import Countries
 import Employees
 
-/// Seasonal help ahead of a busy season is part of the staffing plan (`StaffingPlan.weekly`): the plan looks three weeks ahead, and the crew is hired the way
-/// the owner would hire it (`Hiring.hire` with seasonal terms: part time, the busy months, off and unpaid outside them), so the wages go through the
-/// ordinary payroll and the books balance. This file holds what the crew is and costs. Original: `mgrSeason`, `hireSeasonal`, `helpRole`, `monthF`, `busyMonths`
-/// (features/people/seasons_and_hours.js).
 extension ManagerModel {
     public struct SeasonalPlan: Equatable, Sendable {
         public var role: String
         public var months: [Int]
         public var count: Int
-        /// What the whole crew costs a month while it works.
         public var monthlyCost: Double
     }
 
-    /// Demand in a month (1-12) against an average month: the trade's seasons and its own peak. Original: `monthF`.
     static func monthFactor(_ co: Company, _ bd: Trade, month m: Int, data: GameData) -> Double {
         var f = 1.0
         if let t = data.catalog.tables.seasons[bd.seasonKey], t.count == 12 { f = t[m - 1] }
@@ -24,27 +18,23 @@ extension ManagerModel {
         return f
     }
 
-    /// The busy months (1-12) of a trade, its own peak included: the ones a seasonal worker is for. Original: `busyMonths`.
     public static func seasonalBusyMonths(_ co: Company, data: GameData) -> [Int] {
         guard let bd = data.catalog[co.type] else { return [] }
         return (1...12).filter { monthFactor(co, bd, month: $0, data: data) >= 1.08 }
     }
 
-    /// The people job that holds the business back, nil when something else (equipment, space) is the limit.
     static func bottleneckRole(_ s: GameState, _ co: Company, _ bd: Trade, data: GameData) -> String? {
         guard let bot = CapacityModel.compute(co, bd, World(state: s, data: data)).bottleneck, bot.kind == .staff else { return nil }
         let key = bot.key.split(separator: ":").last.map(String.init) ?? ""
         return data.catalog.tables.roles[key] != nil ? key : nil
     }
 
-    /// The job seasonal help does: the people job that holds the business back, else the first job of the trade. Original: `helpRole`.
     static func seasonalRole(_ s: GameState, _ co: Company, _ bd: Trade, data: GameData) -> String? {
         if let key = bottleneckRole(s, co, bd, data: data) { return key }
         guard let first = CompanySetup.standardStaff(bd, size: co.size).first, data.catalog.tables.roles[first.role] != nil else { return nil }
         return first.role
     }
 
-    /// Who a manager would hire three weeks before a busy season starts, if anyone. Original: the first half of `mgrSeason`.
     public static func seasonalPlan(_ s: GameState, companyID: Int, capacity cap: Double, data: GameData) -> SeasonalPlan? {
         guard let co = s.company(companyID), co.status == .open, co.managerID != nil, cap > 0, let bd = data.catalog[co.type] else { return nil }
         let ms = seasonalBusyMonths(co, data: data)
@@ -60,8 +50,6 @@ extension ManagerModel {
         return SeasonalPlan(role: role, months: ms, count: n, monthlyCost: marketWage(s, co, role: role, data: data) * 0.67 * Double(n))
     }
 
-    /// Hire seasonal workers from the people the manager knows, weighed and bargained with by `AutoHire`.
-    /// Returns how many said yes. Original: `hireSeasonal`.
     @discardableResult
     public static func hireSeasonalCrew(_ s: inout GameState, companyID: Int, role: String, months: [Int], count: Int, hours: Double = 25, data: GameData) -> Int {
         guard let ci = s.companyIndex(companyID) else { return 0 }

@@ -2,12 +2,7 @@ import Foundation
 import GameCore
 import Countries
 
-/// Names for the places AirStay lists: a street address and a district in the style of the country ("14 Hansen Street, Fjordvik", "Müllerstraße 9,
-/// Lindenau", "Calle García 22, Costavera"), built from the country's own surnames and name endings. Deterministic per listing (the same listing
-/// always has the same name and the same picture slot), different for every listing. The listing's tier name ("Back street unit") stays as it was:
-/// other rules read it.
 enum PlaceNames {
-    /// How a country writes its streets (data: `street_styles.json`); anything not listed uses the English style.
     private static let styles: JSONValue = {
         guard let url = Bundle.module.url(forResource: "street_styles", withExtension: "json", subdirectory: "Resources"),
               let data = try? Data(contentsOf: url), let json = try? JSONDecoder().decode(JSONValue.self, from: data) else { return .null }
@@ -20,7 +15,6 @@ enum PlaceNames {
         a.isEmpty ? "" : a[min(a.count - 1, Int(r.next() * Double(a.count)))]
     }
 
-    /// A district: a local root plus a local ending ("Fjordvik", "Skogholm").
     static func district(_ country: Country, _ r: inout HashedRandom) -> String {
         let starts = country.companyNameStarts.isEmpty ? ["Nova"] : country.companyNameStarts
         let ends = country.pack["names"]["coinEnd"].array.map { $0.string }
@@ -31,7 +25,6 @@ enum PlaceNames {
         return root + tail
     }
 
-    /// A street with a house number, written the way the country writes it.
     static func street(_ style: String, last rawLast: String, number n: Int, _ r: inout HashedRandom) -> String {
         let last = rawLast.isEmpty ? "Nova" : rawLast
         let compact = last.replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "de", with: "", options: .anchored)
@@ -57,7 +50,6 @@ enum PlaceNames {
         }
     }
 
-    /// The name shown for a listing: street and district, or an estate on the edge of town, or the city centre.
     static func title(seed: Int, country: Country, cityID: String, cityName: String, tier: Int, group: String, week: Int, kind: String) -> String {
         var r = HashedRandom("\(seed):pname:\(country.code):\(cityID):\(group):\(week / 26):\(tier)")
         let lasts = country.pack["names"]["last"].array.map { $0.string }
@@ -77,7 +69,6 @@ enum PlaceNames {
         }
     }
 
-    /// Which of the three pictures of a kind of place this listing shows: fixed by the listing, varied by its index in the feed.
     static func photoSlot(seed: Int, group: String, index: Int) -> Int {
         var r = HashedRandom("\(seed):pslot:\(group)")
         return (Int(r.next() * 3) + index) % 3

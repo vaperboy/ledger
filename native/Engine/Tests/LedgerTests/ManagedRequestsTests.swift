@@ -6,8 +6,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Staff in a company with a manager still make hours and promotion requests; they go to the manager, who decides inside their authority, and
-/// reach the owner (the same Inbox flow) only beyond it. Pay and fixed-salary talks stay with the manager's monthly pay review.
 final class ManagedRequestsTests: XCTestCase {
     private func managedShop(level: Int, pay: Double = 0, seed: Int = 5) throws -> (GameEngine, Int, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -60,7 +58,6 @@ final class ManagedRequestsTests: XCTestCase {
         let mgr = e.state.people[e.state.company(id)!.managerID!]!.name
         XCTAssertTrue(msg.str("body").contains(mgr), msg.str("body"))
         XCTAssertNotNil(e.contractTalk(personID: pid))
-        // the owner then answers through the same flow
         XCTAssertTrue(e.answer(messageID: msg.id, option: 0))
         XCTAssertNotNil(e.state.company(id)!.staff.first { $0.id == pid }!.weeklyHours)
     }

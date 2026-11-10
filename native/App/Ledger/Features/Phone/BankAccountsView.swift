@@ -4,8 +4,6 @@ import GameCore
 import Countries
 import Simulation
 
-/// Bank, pick an account (BankAccounts.dc.html): the cash total of every account with what is due in 30 days, then YOU (personal) and
-/// YOUR COMPANIES. Loans are not an account: a row only says how many loans the account carries. Investing is in the Market app.
 struct BankAccountsScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -55,7 +53,6 @@ struct BankAccountsScreen: View {
         .accessibilityIdentifier("bank-round-actions")
     }
 
-    /// Gifts, sponsorships and the foundation are paid from your account, so they live in the Bank (they used to sit in Group).
     private func givingLink(_ e: GameEngine) -> some View {
         let n: Int = e.givingMarks.count
         let sub: String = "\(n) \(n == 1 ? "mark" : "marks")" + (e.foundation != nil ? " \u{00B7} foundation running" : "")
@@ -79,8 +76,6 @@ struct BankAccountsScreen: View {
         .accessibilityIdentifier("bank-all-bills")
     }
 
-    /// The balance on warm ivory, as in the Banking mockup: the cash of every account (investments are in the Market app), what falls due
-    /// in 30 days and whether it is covered.
     private func totalCard(_ all: BankAccounts) -> some View {
         let invested: Double = all.rows.filter { (r: BankAccountRow) -> Bool in r.kind == .investments }.reduce(0) { (a: Double, r: BankAccountRow) -> Double in a + r.balance }
         let cash: Double = all.total - invested
@@ -117,8 +112,6 @@ struct BankAccountsScreen: View {
     }
 }
 
-/// Where the money is: a ring over the accounts that hold some (your account, each company), the five
-/// biggest named and the rest together. Only drawn when at least two places hold money; one place is not an allocation.
 struct BankHomeRing: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -150,7 +143,6 @@ struct BankHomeRing: View {
     }
 }
 
-/// The ring of where the money is: a donut of the parts with the total in the middle, and the shares beside it.
 struct PortfolioRingCard: View {
     @Environment(\.outsidePalette) private var P
     struct Slice: Identifiable { var id: String; var name: String; var value: Double; var tint: Color }

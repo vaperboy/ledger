@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The properties section of a rental company: what it owns, what is for sale, tenants and buyers.
-/// Residential rentals, commercial property and parking/self-storage share it. Flat rows between hairlines, no boxes.
 struct CompanyProperties: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -27,8 +25,6 @@ struct CompanyProperties: View {
             .moneyTravel($burst)
         }
     }
-
-    // MARK: Figures
 
     private func figures(_ pf: PropertyPortfolio, _ cur: Currency) -> some View {
         let count: String = "\(pf.rows.count) \(pf.rows.count == 1 ? "property" : "properties")"
@@ -56,8 +52,6 @@ struct CompanyProperties: View {
             }
         }
     }
-
-    // MARK: Owned
 
     private func owned(_ pf: PropertyPortfolio, _ cur: Currency) -> some View {
         LedgerSection("Properties") {
@@ -97,7 +91,6 @@ struct CompanyProperties: View {
                                 button: "Buy for " + cur.tidyShort(L.price), amount: L.price, currency: cur, tone: .investment, icon: "house") { buy(L) }
     }
 
-    /// One property in a sheet: its figures and its actions. Renovate and Sell close the sheet and ask on the page.
     @ViewBuilder private func propertySheet(_ cur: Currency) -> some View {
         let pf: PropertyPortfolio? = engine.propertyPortfolio(companyID: company.id)
         if let pf, let p = pf.rows.first(where: { $0.id == detailID }) {
@@ -188,8 +181,6 @@ struct CompanyProperties: View {
         .overlay(alignment: .leading) { Rectangle().fill(Theme.hairline).frame(width: 0.5) }
     }
 
-    // MARK: For sale
-
     private func forSale(_ pf: PropertyPortfolio, _ cur: Currency) -> some View {
         let listings = engine.propertyListings(companyID: company.id)
         return LedgerSection(title: "For sale in \(engine.cityName(company))", trailing: { Text("new list every month").font(.caption2).foregroundStyle(Theme.ivoryFaint) }) {
@@ -206,8 +197,6 @@ struct CompanyProperties: View {
         }
     }
 
-    // MARK: Actions
-
     private func buy(_ L: PropertyListing) {
         switch store.act({ $0.buyProperty(companyID: company.id, listingIndex: L.index, loanToValue: loanToValue) }) {
         case .ok?: Haptics.success(); store.show("Property bought.", tone: "good")
@@ -220,7 +209,6 @@ struct CompanyProperties: View {
     private func sell(_ p: PropertyRow) {
         if let net = store.act({ $0.sellProperty(companyID: company.id, propertyID: p.id) }), net > 0 {
             Haptics.success(); store.show("Sold for \(engine.currency(for: company).tidyShort(net)) after costs.", tone: "good")
-            // Only a large sale is worth a chip.
             if net >= engine.currency(for: company).scaledPrice(50_000) { burst = MoneyBurst(label: "Sold", amount: net, text: engine.currency(for: company).tidyShort(net)) }
         }
         else { Haptics.warning(); store.show("The property could not be sold.", tone: "warn") }

@@ -5,9 +5,6 @@ import Businesses
 import Finance
 import Simulation
 
-/// New company, step 1 of 3: choose the trade (step 2 is the company, step 3 the review and payment). A sharp table (trade, start-up, demand, staff) under sector tabs; the engine's
-/// `tradePickerRows` supply every figure and the reason a trade cannot be started. Holding, franchise, abroad and club moved to
-/// Group (Add to group, and Expansion on a company's page).
 struct NewCompanyView: View {
     @EnvironmentObject var store: GameStore
     @State private var sector = "All"
@@ -59,8 +56,6 @@ struct NewCompanyView: View {
         return seen
     }
 
-    // MARK: Pieces
-
     @ViewBuilder private func cityLine(_ e: GameEngine, _ city: String) -> some View {
         let cities: [Country.City] = e.homeCountry.cities
         let name: String = cities.first { $0.id == city }?.name ?? "Home city"
@@ -107,7 +102,6 @@ struct NewCompanyView: View {
             .opacity(opacity)
     }
 
-    /// Why a trade cannot be picked: the engine's own refusal, or how much more money it needs.
     private func reason(_ e: GameEngine, _ r: TradePickerRow) -> String? {
         if let b = r.blocked { return b }
         guard let c = r.startUpCost else { return "Cannot be priced here." }
@@ -128,7 +122,6 @@ struct NewCompanyView: View {
         }
     }
 
-    /// Step 1's one action; it says why it waits until a trade is picked.
     private func bottomBar(_ picked: TradePickerRow?) -> some View {
         NewCompanyStepBar(title: picked.map { "Continue · \($0.name)" } ?? "Continue", blockedReason: picked == nil ? "Pick a trade above." : nil) { goNext = true }
     }

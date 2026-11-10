@@ -4,9 +4,6 @@ import Countries
 import Finance
 import Simulation
 
-/// A list of coming payments, each with Pay now: payroll is paid automatically on pay day; a loan
-/// instalment is paid now with `payLoanInstalmentNow`; rent, supplier bills, invoices, corporate tax and VAT are settled by the engine's
-/// `payObligationNow`, the same payment the due date makes, so nothing is charged again on the date.
 struct BankBillsList: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -58,8 +55,6 @@ struct BankBillsList: View {
     }
 }
 
-/// Bills: what is due in 30 days and whether it is covered, every coming payment, tax and VAT owed, the tax rules and licences, and (for a
-/// company) the payroll that is coming. The old Group > Money Overview, Taxes and Costs, in one place.
 struct BankBillsTab: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -82,7 +77,6 @@ struct BankBillsTab: View {
         }
     }
 
-    /// The one figure of the tab: what falls due in 30 days, with whether the account covers it.
     private func dueCard(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
         let due: Double = d.upcoming.filter { $0.daysAway <= 30 }.reduce(0) { $0 + $1.amount }
         let short: Double = max(0, due - max(0, d.available))

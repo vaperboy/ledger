@@ -4,18 +4,9 @@ import Countries
 import Finance
 import Businesses
 
-/// The 'strategic' decisions of the original (round 27e, features/world/business_events.js): about one a quarter for a small
-/// business, rare big opportunities, crises weighted by debt, corporate events for groups, and events that belong to one
-/// country. They sit beside the data-driven weekly events of `EventEngine` and use the same inbox, deadlines and defaults.
-/// A decision is an inbox message with action "e27"; its answers run code here, because their effects depend on the company.
-///
-/// The 13 that need rivals, listings, private equity, groups or new sites (s_acqoffer, g_location, g_franinq, e_merger, e_distress, t_ipo, t_pe,
-/// t_hostile, t_antitrust, t_activist, t_auction, c_JP_succ, c_US_vc) are in `StrategicDecisionsCorporate.swift`. They work on the rivals and groups
-/// in `rest["mk"]` and `rest["g27"]` (the Competition port's data), so those that need a rival or a group wait for them.
 public enum StrategicDecisions {
     public static let action = "e27"
 
-    /// What an answer can use. `i` is the company's index, `d` the numbers drawn when the decision was made.
     struct X {
         var i: Int
         var d: JSONValue
@@ -43,21 +34,16 @@ public enum StrategicDecisions {
         var from: String? = nil
         var exp = 3
         var def = 0
-        /// Not about one company (the credit rating, inflation); the first live company only lends its currency.
         var global = false
         var cond: (GameState, Company, GameData) -> Bool = { _, _, _ in true }
-        /// Numbers drawn when the event fires; nil = it does not apply right now.
         var make: ((inout GameState, Int, GameData, FinanceContext) -> JSONValue?)? = nil
         var pre: Run? = nil
-        /// The event happens at once and sends no message (the original's `handle`): `make` does the work.
         var silent = false
         let title: Txt
         var body: Txt = { _, _, _ in "" }
         var opts: [Opt] = []
         var auto: Run? = nil
     }
-
-    // MARK: Helpers
 
     static func r1000(_ v: Double) -> Double { (v / 1000).rounded() * 1000 }
     static func num(_ n: Double) -> JSONValue { .number(n) }
@@ -91,7 +77,6 @@ public enum StrategicDecisions {
     static func value(_ co: Company, _ s: GameState, _ data: GameData) -> Double { Valuation.companyValue(co, state: s, trades: data.catalog) }
     static func hasGoods(_ bd: Trade) -> Bool { bd.costOfSales > 0.08 }
 
-    /// Company stage: start (young or tiny), grow, est (established). Original: `stage`.
     static func stage(_ s: GameState, _ co: Company, _ data: GameData, _ fc: FinanceContext) -> String {
         let n = co.staff.count, age = s.week - (co.openedWeek ?? co.foundedWeek)
         if age < 52 || (n <= 3 && co.managerID == nil) { return "start" }
@@ -101,15 +86,12 @@ public enum StrategicDecisions {
         return "grow"
     }
 
-    // MARK: The decisions
-
     static let definitions: [Def] = build()
     static let byID: [String: Def] = Dictionary(definitions.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
 
     static func build() -> [Def] {
         var L: [Def] = []
 
-        // Startup stage
         L.append(Def(id: "s_bigcust", cls: "strat", stages: ["start", "grow"], w: 3, def: 2,
                      cond: { s, co, data in (data.catalog[co.type]?.businessShare ?? 0) > 0.15 && co.value("lastW")["util"].double < 0.85 },
                      make: { s, i, data, fc in
@@ -132,7 +114,6 @@ public enum StrategicDecisions {
                          let k = fc.country(of: s.companies[i], s)
                          let wk = EventEngine.context(for: s.companies[i], data: data, country: k).wk
                          let item = EventEngine.pickEquipmentName(&s, companyIndex: i, data: data)
-                         // Under warranty the supplier repairs it at no cost: an info message, no decision.
                          if EquipmentWarranty.repairIfCovered(&s, companyIndex: i, itemName: item, data: data) {
                              var st = s.rest["e27"] ?? .object([:]); var last = st["last"].object; last["s_breakdown"] = num(Double(s.week)); st["last"] = .object(last); s.rest["e27"] = st
                              return nil
@@ -208,7 +189,6 @@ public enum StrategicDecisions {
                         Opt(label: "Agree a payment plan", detail: "You get it, slowly.") { s, x in let bad = s.random.chance(0.04); chaseInvoice(&s, x, due: 10, bad: bad) },
                         Opt(label: "Wait", detail: "Free, but they may never pay.") { s, x in let bad = s.random.chance(0.25); chaseInvoice(&s, x, due: 6, bad: bad, keepBad: true) }]))
 
-        // Growth stage
         L.append(Def(id: "g_overcap", cls: "strat", stages: ["grow", "est"], w: 3, def: 3,
                      cond: { _, co, _ in let w = co.value("lastW"); return w["cap"].double > 0 && w["D"].double > w["cap"].double * 1.12 },
                      title: { co, _, _ in "More orders than \(co.name) can handle" },
@@ -238,7 +218,6 @@ public enum StrategicDecisions {
                      make: { s, i, _, fc in
                          let co = s.companies[i]
                          let y = co.books.year["cogs"] ?? 0, m = co.books.month["cogs"] ?? 0
-                         // The year book runs from 1 January (the game starts in October), and a company that opened later has fewer weeks in it.
                          let weeksIn = Double(max(1, min(GameCalendar.weeksIntoYear(week: s.week), Unlocks.weeksTraded(s, co))))
                          return .object(["c": num(r1000(max(fc.currency(co.countryCode, s).scaledPrice(20000), (y > 0 ? y : m * 4) / weeksIn * 8)))]) },
                      title: { co, _, _ in "A volume discount for \(co.name)" },
@@ -299,7 +278,6 @@ public enum StrategicDecisions {
                             dem(&s, x, 0.85, 20); pay(&s, x, x.wk(s) * 0.6, "mkt", "Sales push"); s.companies[x.i].awareness = min(100, s.companies[x.i].awareness + 6) },
                         Opt(label: "Cut costs and accept the loss", detail: "") { s, x in dem(&s, x, 0.78, 40) }]))
 
-        // Established
         L.append(Def(id: "e_execleave", cls: "strat", stages: ["est"], w: 2, def: 0,
                      cond: { s, co, _ in co.managerID != nil && s.people[co.managerID!] != nil },
                      make: { s, i, _, _ in s.companies[i].managerID.flatMap { s.people[$0] }.map { .object(["n": .string($0.name)]) } },
@@ -377,7 +355,6 @@ public enum StrategicDecisions {
                             mood(&s, x.i, -12)
                             if s.random.chance(0.4) { cap(&s, x, 0.4, 2); rep(&s, x, -2); s.note("Staff at \(s.companies[x.i].name) went on strike for two weeks.", tone: "bad", companyID: s.companies[x.i].id) } }]))
 
-        // Groups
         L.append(Def(id: "t_restructure", cls: "corp", w: 2, def: 2, global: true,
                      cond: { s, _, _ in losers(s).count >= 2 },
                      make: { s, _, _, _ in .object(["L": .array(losers(s).map { num(Double($0)) })]) },
@@ -402,7 +379,6 @@ public enum StrategicDecisions {
                      body: { _, _, _ in "With this much debt against what you own, lenders see more risk. New loans will cost more until the debt comes down or profits go up. Selling assets or paying down debt helps." },
                      auto: { s, _ in s.credit = clamp(s.credit - 10, 0, 100) }))
 
-        // Any company
         L.append(Def(id: "x_infl", cls: "gen", w: 2, tone: "bad", from: "Economy", global: true,
                      cond: { s, _, _ in s.economy.inflation > 0.03 },
                      title: { _, _, _ in "Prices are rising faster than expected" },
@@ -441,9 +417,6 @@ public enum StrategicDecisions {
         return L
     }
 
-    // MARK: Pieces used by several answers
-
-    /// Cash tied up for some weeks (goods bought up front, invoices to wait for): paid now, handed back later. Original: `wc`.
     static func tiedUp(_ s: inout GameState, _ x: X, _ amount: Double, weeks: Int) {
         let a = jsRound(amount)
         if a <= 0 { return }
@@ -488,13 +461,9 @@ public enum StrategicDecisions {
         s.addMessage(from: name, title: "\(name) resigns from \(s.companies[i].name)", body: "I \(why), so I am taking another job.", companyID: s.companies[i].id, tone: "bad")
     }
 
-    /// Companies that lost money for six months. Original: `t_restructure` condition.
     static func losers(_ s: GameState) -> [Int] {
         s.companies.filter { $0.status == .open && $0.type != "hold" && $0.monthlyHistory.suffix(6).count >= 6 && $0.monthlyHistory.suffix(6).reduce(0, { $0 + $1.profit }) < 0 }.map { $0.id }
     }
-
-    // MARK: Country events
-
 
     static func countryEvents() -> [Def] {
         var L: [Def] = []
@@ -593,8 +562,6 @@ public enum StrategicDecisions {
         return L
     }
 
-    // MARK: Follow-ups and the scheduler
-
     static func later(_ s: inout GameState, _ weeks: Int, _ id: String, _ i: Int, _ d: JSONValue) {
         var st = s.rest["e27"] ?? .object([:])
         var q = st["q"].array
@@ -639,7 +606,6 @@ public enum StrategicDecisions {
 
     static func lastFired(_ st: JSONValue, _ id: String) -> Int { st["last"][id].isNull ? -999 : st["last"][id].int }
 
-    /// The weekly turn: follow-ups that are due, and once a month the rolls for each class of event. Original: 'business_events weekly'.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         var st = s.rest["e27"] ?? .object([:])
         let due = st["q"].array.filter { s.week >= $0["w"].int }
@@ -676,7 +642,6 @@ public enum StrategicDecisions {
         if tycoon && s.week - get("lastT") >= 26 && s.random.chance(0.12) {
             if attempt("corp", s.random.pick(cos)) { set("lastT", s.week) }
         }
-        // Misconduct and political offers: gated by hashed rolls, so a game that never sees one draws nothing extra.
         for cls in ["mis", "pol"] where s.week - get("last_" + cls) >= 20 && Misconduct.gate(s, cls, 0.08) {
             let who = cos[Int(HashedRandom.first("misco:\(cls):\(s.week)") * Double(cos.count)) % cos.count]
             if attempt(cls, who) { set("last_" + cls, s.week) }
@@ -690,7 +655,6 @@ public enum StrategicDecisions {
         }
     }
 
-    /// Pick one of the definitions that fits this company (stage, country, cooldown, condition), weighted. Original: `pickDef` + `tryFire`.
     static func fireOne(_ s: inout GameState, from list: [Def], companyIndex i: Int?, data: GameData, context fc: FinanceContext) -> Bool {
         guard let i = i else { return false }
         let co = s.companies[i]
@@ -733,8 +697,6 @@ public enum StrategicDecisions {
         return true
     }
 
-    // MARK: Answers
-
     static func run(_ s: inout GameState, message m: Message, option idx: Int, data: GameData, context fc: FinanceContext) {
         let payload = m.value("data")
         guard let def = byID[payload["id"].string], def.opts.indices.contains(idx), let i = s.companyIndex(payload["co"].int), s.companies[i].status.isLive else { return }
@@ -742,12 +704,10 @@ public enum StrategicDecisions {
         def.opts[idx].run(&s, x)
     }
 
-    /// The player picked an answer. Called from `GameEngine.answer`.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData, context fc: FinanceContext) {
         run(&s, message: m, option: idx, data: data, context: fc)
     }
 
-    /// Nobody answered in time: the decision's default happens. Returns the option used.
     @discardableResult
     public static func expired(_ s: inout GameState, message m: Message, data: GameData, context fc: FinanceContext) -> Int {
         let def = byID[m.value("data")["id"].string]

@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The Suppliers section's read model and its one switching action. They only read and call the existing rules.
 final class SupplierDealsTests: XCTestCase {
     func testNextTierMatchesTheDiscountTable() {
         XCTAssertEqual(Suppliers.nextDiscountTier(0)?.discount, 0.01)
@@ -57,7 +56,6 @@ final class SupplierDealsTests: XCTestCase {
         XCTAssertEqual(e.switchSupplier(companyID: hotel, input: "clean", to: .outside), .ok)
         XCTAssertNil(e.supplyLink(buyer: hotel, kind: "clean"))
         XCTAssertEqual(try XCTUnwrap(e.supplierInputs(companyID: hotel).first { $0.id == "clean" }).current?.kind, .outside)
-        // an input that is not a supply kind cannot be switched to an own company
         XCTAssertEqual(e.switchSupplier(companyID: hotel, input: "goods", to: .ownCompany(cleaning, mode: "mkt")), .notAllowed)
     }
 
@@ -75,7 +73,6 @@ final class SupplierDealsTests: XCTestCase {
         XCTAssertEqual(e.switchSupplier(companyID: cafe, input: "goods", to: .goodsVendor(pick.vendorID!)), .ok)
         XCTAssertEqual(e.currentGoodsSupplier(companyID: cafe)?.id, pick.vendorID)
 
-        // a better relationship is a better price, through the existing discount
         e.update { s, _, _ in Suppliers.bumpPublic(&s, pick.vendorID!, by: 60) }
         let after = try XCTUnwrap(e.supplierInputs(companyID: cafe).first { $0.id == "goods" }?.options.first { $0.vendorID == pick.vendorID })
         XCTAssertTrue(after.isCurrent)

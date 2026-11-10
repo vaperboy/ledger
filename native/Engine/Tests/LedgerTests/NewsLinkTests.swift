@@ -2,7 +2,6 @@ import XCTest
 import GameCore
 import Simulation
 
-/// News items can carry the company of yours they are about, so the news app can link to it.
 final class NewsLinkTests: XCTestCase {
     func testNewsKeepsTheCompanyItIsAbout() throws {
         var e = try GameEngine.newGame(countryCode: "DE", playerName: "T", seed: 21)

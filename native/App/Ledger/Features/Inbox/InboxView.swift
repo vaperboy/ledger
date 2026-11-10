@@ -11,7 +11,6 @@ struct InboxView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var query = ""
-    /// nil = every company; 0 = messages about the group or you personally
     @State private var companyFilter: Int? = nil
     @State private var limit = InboxView.page
     @State private var pending: PendingAction?
@@ -22,7 +21,6 @@ struct InboxView: View {
 
     static let page = 40
 
-    /// A titled block of messages (an urgency band or a company).
     struct Block: Identifiable {
         var id: String
         var title: String
@@ -44,8 +42,6 @@ struct InboxView: View {
         }
     }
 
-    // MARK: Blocks
-
     private func blocks(_ e: GameEngine, _ list: [Message]) -> [Block] {
         InboxLayout.sections(list, week: e.state.week, infoFirst: store.tutorialActive).map { (p: InboxSection) -> Block in
             Block(id: p.id, title: p.title, messages: p.messages)
@@ -54,7 +50,6 @@ struct InboxView: View {
 
     private func isQuestion(_ m: Message) -> Bool { m.status == "open" && m.isOwnerAddressed }
 
-    /// The blocks cut to the first `limit` messages, so a long inbox stays quick.
     private func limited(_ blocks: [Block]) -> (blocks: [Block], hidden: Int) {
         var left = limit, out: [Block] = [], hidden = 0
         for b in blocks {
@@ -67,18 +62,11 @@ struct InboxView: View {
         return (out, hidden)
     }
 
-    // MARK: Answering
-
-    /// A routine answer is sent at once, and the sheet closes. Only a consequential one is confirmed, in the in-game popup: one that cannot be
-    /// undone, or a spend at or above the player's own "Ask before spending" size (the engine decides which, see `DecisionConfirm`). A small
-    /// spend under that size is sent at once too, and the "Answered" message says what it was.
-    /// `inline`: answered from the list row itself, so the player stays in the Inbox for the next one.
     private func ask(_ message: Message, _ index: Int, inline: Bool = false) {
         guard let e = store.engine, message.options.indices.contains(index) else { return }
         let opt = message.options[index]
         let label = e.displayText(opt["l"].string, companyID: message.companyID)
         if message.actionID == PersonalFinance.dueAction {
-            // Every way of settling the tax commits money or a loan: always say what it does first.
             pending = PendingAction(title: label, message: e.displayText(opt["d"].string, companyID: message.companyID), button: label, alwaysAsk: true) {
                 answer(message, index, label, inline: inline)
             }
@@ -98,20 +86,16 @@ struct InboxView: View {
         let body: String = lines.isEmpty ? fallback : lines.joined(separator: "\n")
         var action = MessageCard.answerConfirm(title: title, message: body, button: label, need: need) { answer(message, index, label, inline: inline) }
         if !need.irreversible, let amount = need.amount {
-            // A message about the group or you personally has no company: its money is in the home currency.
             action.amount = amount
             action.currency = company.map { e.currency(for: $0) } ?? e.homeCurrency
         }
-        // Under the player's size: no question at all, so nothing can hold the answer back.
         if ConfirmThreshold.skips(action) { answer(message, index, label, inline: inline); return }
         pending = action
     }
 
-    /// Sends the answer. The detail sheet closes at once: the answer is on record and the list shows it as answered.
     private func answer(_ message: Message, _ index: Int, _ label: String, inline: Bool = false) {
         var effects: [String] = []
         if let e = store.engine, message.options.indices.contains(index) { effects = MessageCard.preview(e, message, message.options[index]) }
-        // An option with no preview lines is told by its own description.
         if effects.isEmpty, let e = store.engine, message.options.indices.contains(index) {
             let d: String = e.displayText(message.options[index]["d"].string, companyID: message.companyID)
             if !d.isEmpty { effects = [d] }
@@ -120,10 +104,8 @@ struct InboxView: View {
         if ok { Haptics.option() }
         detailID = nil
         if ok {
-            // What was chosen and what it does: one outcome popup (the tax decision names the payment route it took).
             store.announceAnswer(label: label, effects: effects, ok: true, messageTitle: message.title, companyID: message.companyID)
         } else if message.actionID == PersonalFinance.dueAction {
-            // The tax decision stays open when a route cannot cover the bill: say so and let the player choose another.
             Haptics.warning()
             store.tell("Not applied", "That way of paying could not cover the bill, so it is still open. Choose another way.", tone: "warn")
         } else {
@@ -131,7 +113,6 @@ struct InboxView: View {
         }
     }
 
-    /// With nothing to read the first-steps guide's reading step is over.
     private func openOnInformation() {
         guard store.tutorialActive, detailID == nil else { return }
         if store.tutorialStep == .readInbox, (store.engine?.tutorialInboxGuide ?? []).isEmpty { store.tutorialAdvance(from: .readInbox) }
@@ -145,24 +126,16 @@ struct InboxView: View {
         scrollTarget = id
     }
 
-    /// Scrolls to a requested message (the request is cleared once it has).
     private func scrollToTarget(_ proxy: ScrollViewProxy) {
         guard let id = scrollTarget else { return }
         scrollTarget = nil
         DispatchQueue.main.async { Motion.animate(Motion.move(reduceMotion)) { proxy.scrollTo(id, anchor: .top) } }
     }
 
-    /// The confirmation belongs to the screen that asked: the list while the detail sheet is closed, the sheet while it is open.
-    /// One presenter at a time, so an answer is never confirmed twice.
     private var listPending: Binding<PendingAction?> {
         Binding<PendingAction?>(get: { detailID == nil ? pending : nil }, set: { newValue in if detailID == nil { pending = newValue } })
     }
 
-    // MARK: Body
-
-    /// The Inbox app, mail style: one row per message (sender icon circle, subject, preview, time, unread dot), swipe actions, and a
-    /// detail sheet that keeps every decision and the company link. It is pushed on the Phone tab's stack (which owns the company
-    /// destinations and the deep-link requests), so it has no stack of its own; its options menu sits in the app header.
     var body: some View {
         Group {
             if let e = store.engine {
@@ -175,7 +148,6 @@ struct InboxView: View {
         }
         .onChange(of: store.appRequest) { _, _ in takeRequest() }
         .onChange(of: query) { _, _ in limit = Self.page }
-        // A company link tapped anywhere closes the detail first, so Back from the company lands on the Inbox list.
         .onChange(of: store.depth(store.tab)) { _, _ in detailID = nil }
         .centerSheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } }), category: .medium, tone: detailTone) { detailSheet }
         .confirmAction(listPending)
@@ -252,15 +224,11 @@ struct InboxView: View {
             }
     }
 
-    // MARK: Payroll
-
-    /// Wages the company could not cover, shown above the list.
     private func payrollAlerts(_ e: GameEngine) -> [PayrollAlert] {
         guard query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         return e.payrollAlerts().filter { companyFilter == nil || $0.companyID == companyFilter }
     }
 
-    /// A notice only: payroll runs by itself on the 15th, so there is nothing to approve here.
     private func payrollRow(_ a: PayrollAlert) -> some View {
         let fmt = BankFmt(store: store, company: store.engine?.state.company(a.companyID))
         let text: String = "Payroll \(fmt.short(a.amount)) is late. \(a.reason) It is paid on the 15th once the company has the cash."
@@ -271,8 +239,6 @@ struct InboxView: View {
         .padding(.vertical, Theme.Space.s)
     }
 
-    // MARK: Pinning (a view preference kept on the device, not game state)
-
     private var pinned: Set<Int> { Set(pinnedText.split(separator: ",").compactMap { Int($0) }) }
 
     private func togglePin(_ id: Int) {
@@ -281,8 +247,6 @@ struct InboxView: View {
         pinnedText = set.sorted().map(String.init).joined(separator: ",")
         Haptics.tap()
     }
-
-    // MARK: Detail
 
     @ViewBuilder private var detailSheet: some View {
         if let e = store.engine, let id = detailID, let m = e.state.inbox.first(where: { $0.id == id }), let d = m.doc {
@@ -297,7 +261,6 @@ struct InboxView: View {
         }
     }
 
-    /// The top of the list: how many things wait for you, in words, and one line that matters (the first expiry, or what is unread).
     private func hero(_ e: GameEngine, _ list: [Message], extra: Int = 0) -> some View {
         let waiting: [Message] = list.filter { isQuestion($0) }
         let n: Int = waiting.count + extra
@@ -323,13 +286,11 @@ struct InboxView: View {
         .accessibilityIdentifier("inbox-hero")
     }
 
-    /// An open decision reads as a warning; anything else in the Inbox is information.
     private var detailTone: PopupTone {
         guard let id = detailID, let m = store.engine?.state.inbox.first(where: { $0.id == id }) else { return .info }
         return m.status == "open" ? .warning : .info
     }
 
-    /// The search box (the system search field needs a navigation bar, which the app header replaces).
     private var searchField: some View {
         HStack(spacing: Theme.Space.s) {
             LedgerGlyph(glyph: Glyph.search, size: Theme.Icon.small, tint: P.inkFaint)
@@ -391,22 +352,17 @@ struct MessageCard: View {
     @EnvironmentObject var store: GameStore
     var message: Message
     var week: Int
-    /// The whole card (decisions, outcome, company link) even for an answered, read message: the detail sheet.
     var full = false
-    /// Asks to answer with an option (the Inbox confirms it first).
     var ask: (Message, Int) -> Void
 
     private func text(_ s: String) -> String { (store.engine?.displayText(s, companyID: message.companyID) ?? s).tidyMoney }
 
-    /// The effects of an option, in the currency of the company it concerns.
     static func preview(_ e: GameEngine, _ message: Message, _ option: JSONValue) -> [String] {
         let cur = message.companyID != 0 ? (e.state.company(message.companyID).map { e.currency(for: $0) } ?? e.homeCurrency) : e.homeCurrency
         return EffectPreview.lines(option["fx"], currency: cur)
     }
     private func preview(_ option: JSONValue) -> [String] { store.engine.map { Self.preview($0, message, option) } ?? [] }
 
-    /// The question before an answer: an irreversible sale or dismissal is held to confirm (red), any other irreversible answer is
-    /// always asked in the warning tone, and a spend is asked by its size (the caller sets the amount).
     static func answerConfirm(title: String, message: String, button: String, need: DecisionConfirmation, run: @escaping () -> Void) -> PendingAction {
         let words: String = button.lowercased()
         let hold: Bool = need.irreversible && ["sell", "fire", "dismiss", "sack", "let go", "wind up", "terminate"].contains { words.contains($0) }
@@ -477,7 +433,6 @@ struct MessageCard: View {
         }
     }
 
-    /// The opened message: who sent it and when, the subject as the title, the text, what came of it, the company link, then the choices.
     private func detail(open: Bool) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             HStack(spacing: Theme.Space.m) {
@@ -505,7 +460,6 @@ struct MessageCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The message as a chat bubble: sender and age on top, the subject, the text, what it means, and what it means.
     private func bubble(open: Bool) -> some View {
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         return VStack(alignment: .leading, spacing: 4) {
@@ -552,10 +506,8 @@ struct MessageCard: View {
         }
     }
 
-    /// A full-width option: its label, and under it one grey line of what it does (`EffectPreview`); no line when the preview is empty.
     private func optionButton(_ idx: Int, _ opt: JSONValue) -> some View {
         let effect: String = preview(opt).joined(separator: ". ")
-        // An option that carries its own sentence (the tax payment choices) shows it when it has no computed effect.
         let detail: String = effect.isEmpty ? text(opt["d"].string) : effect + "."
         return Button { ask(message, idx) } label: {
             VStack(alignment: .leading, spacing: 2) {

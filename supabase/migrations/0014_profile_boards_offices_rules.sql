@@ -1,32 +1,5 @@
--- Profile icon, leaderboards, accountant offices run by players, and the exchange rules brought closer to the engine's.
---
---  1. profiles.avatar_icon (the icon a player wears) is added and carried by the profile read and by a new update function.
---     profiles.is_simulated is dropped: the seed no longer marks its stand-ins, so every use of the column is rewritten below
---     (name check, profile_json, voting, standing for office, the election cycle). The election cycle now counts only profiles with the
---     18+ confirmation, which the seed's placeholder players never have, so they still never trigger an election.
---  2. Leaderboards: one row per account (net worth and trading result, self-reported, bounded), written only by publish_leaderboard and
---     read only by read_leaderboards. Players whose privacy is not public are left off the boards other players read.
---  3. Accountant offices: a player opens an office, other players hire it for a company and pay a one-time hiring fee that moves
---     through settlements (client pays, owner receives). The rating is the average of the stars real clients gave after at least one game
---     week of hire (seven game days); with fewer than three ratings it is null, never invented.
---  4. Exchange rules of 0006 re-issued from their own definitions (nothing else in them changes) to match ExchangeRules.swift:
---       - closing price: an order stays within 10% of the previous close (last trade before the current game day), inside the value band
---       - holder cap: an outsider holds, with open buy orders, at most 20% of the shares
---       - the owner cannot sell during the 28-day lock-up after listing, nor in the 7 game days before a quarter's results (every 91 days)
---         nor the first game day after them; resting owner sell orders do not trade inside those windows either
---       - the owner's value report moves at most 10% and at most once a game day (it was 25% an hour)
---     A game day is private.weeks(1) / 7, so these windows follow the one definition of a game week in 0002.
---     STILL DIFFERENT from the engine (the server is looser, the engine stays the stricter side): no dividend blackout (the server has no
---     dividends), no minimum company age of 26 weeks to list, no cap of 20 open orders per trader, no minimum order size, no 200,000,000
---     position cap, no broker fee, and the server matches continuously against the book while the engine clears one closing auction.
---     The "previous close" is the last trade before the current game day, or the value per share when nothing has traded yet.
---  5. world_rules_read(): every rule plus the exchange constants above, for the clients (the existing world_rules_snapshot() stays).
---
--- Applied migrations 0001-0013 are not edited; everything here is ALTER, create or replace, or new.
-
 create extension if not exists pgcrypto with schema extensions;
 
--- A function re-issued from its own definition with text swapped; it stops the migration when a piece of text is not found.
 create function private.rewire14(fn regprocedure, pairs text[]) returns void language plpgsql as $$
 declare d text := pg_get_functiondef(fn); n text; i int;
 begin
@@ -38,12 +11,8 @@ begin
   execute d;
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- 1. Profile icon; no more is_simulated
--- ---------------------------------------------------------------------------------------------------------------------
 alter table public.profiles add column avatar_icon text
   constraint avatar_icon_shape check (avatar_icon is null or avatar_icon ~ '^[a-z][a-z0-9._-]{0,39}$');
--- Not in the client column grants: the only write path is update_my_profile below.
 
 select private.rewire14('private.check_name()'::regprocedure, array[
   $a$new.is_simulated or new.display_name = 'Deleted player'$a$, $a$new.display_name = 'Deleted player'$a$]);
@@ -56,7 +25,6 @@ select private.rewire14('private.run_election_cycle()'::regprocedure, array[$a$a
 
 alter table public.profiles drop column is_simulated;
 
--- Every editable profile field in one validated call; null leaves a field as it is, an empty icon takes the icon off.
 create function public.update_my_profile(p_display_name text default null, p_avatar_colour int default null, p_country_code text default null,
                                          p_privacy public.privacy_level default null, p_avatar_icon text default null)
 returns jsonb language plpgsql security definer set search_path = '' as $$
@@ -73,10 +41,6 @@ begin
   return private.profile_json(uid, uid);
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- 2. Leaderboards
--- ---------------------------------------------------------------------------------------------------------------------
--- Amounts are in accounting units (the same in every country). The bounds keep a forged figure from topping a board by orders of magnitude.
 create table public.leaderboard_entries (
   user_id uuid primary key references public.profiles (id) on delete cascade,
   net_worth numeric(20, 2) not null check (net_worth between -1000000000000 and 10000000000000),
@@ -87,9 +51,8 @@ create table public.leaderboard_entries (
 create index leaderboard_net_worth on public.leaderboard_entries (net_worth desc);
 create index leaderboard_trading on public.leaderboard_entries (trading_result desc);
 alter table public.leaderboard_entries enable row level security;
-revoke all on public.leaderboard_entries from anon, authenticated;   -- no policy, no grant: clients neither read nor write the table
+revoke all on public.leaderboard_entries from anon, authenticated;
 
--- Stores the caller's own figures (name and country come from the profile, never from the call). Faster than every 30 seconds is ignored.
 create function public.publish_leaderboard(p_net_worth numeric, p_trading_result numeric, p_game_week int) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); last timestamptz;
@@ -107,8 +70,6 @@ begin
   return jsonb_build_object('accepted', true);
 end $$;
 
--- The other players on the boards: the best p_limit by net worth together with the best p_limit by trading result (at most 500 each),
--- never the caller, nobody blocked in either direction, and only players whose profile is public.
 create function public.read_leaderboards(p_limit int default 300) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); n int := least(greatest(coalesce(p_limit, 300), 10), 500);
 begin
@@ -125,9 +86,6 @@ begin
       from (select * from a union select * from b) x), '[]'::jsonb);
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- 3. Accountant offices run by players
--- ---------------------------------------------------------------------------------------------------------------------
 create table public.accountant_offices (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null unique references public.profiles (id) on delete cascade,
@@ -135,14 +93,12 @@ create table public.accountant_offices (
   city text not null default '' check (char_length(city) <= 60),
   country text not null check (country ~ '^[A-Z]{2}$'),
   currency text not null check (currency ~ '^[A-Z]{3}$'),
-  -- One-time fee for each hire, in the office's currency (reference economy 0 to 5,000, scaled to the currency).
   hire_fee numeric(18, 2) not null check (hire_fee >= 0),
   active boolean not null default true,
   opened_at timestamptz not null default now()
 );
 create index accountant_offices_listing on public.accountant_offices (country) where active;
 
--- One row per hire. `stars` is the client's own rating of that hire and the only source of an office's rating.
 create table public.accountant_hires (
   id uuid primary key default gen_random_uuid(),
   office_id uuid not null references public.accountant_offices (id) on delete cascade,
@@ -161,9 +117,8 @@ create index accountant_hires_client on public.accountant_hires (client_id);
 
 alter table public.accountant_offices enable row level security;
 alter table public.accountant_hires enable row level security;
-revoke all on public.accountant_offices, public.accountant_hires from anon, authenticated;   -- reached only through the functions below
+revoke all on public.accountant_offices, public.accountant_hires from anon, authenticated;
 
--- The office and its record as everyone may see it. rating is null until three clients have rated.
 create function private.office_json(o public.accountant_offices, uid uuid) returns jsonb language sql stable security definer set search_path = '' as $$
   select jsonb_build_object('id', o.id, 'officeName', o.name, 'ownerID', o.owner_id, 'ownerName', private.display_name(o.owner_id), 'city', o.city,
       'countryCode', o.country, 'currency', o.currency, 'hireFee', o.hire_fee, 'isMine', o.owner_id = uid,
@@ -172,7 +127,6 @@ create function private.office_json(o public.accountant_offices, uid uuid) retur
             from public.accountant_hires h where h.office_id = o.id) s;
 $$;
 
--- Opens (or reopens) the caller's one office. The name follows the display-name word rules; the fee is bounded to 5,000 reference units.
 create function public.open_accountant_office(p_name text, p_city text, p_currency text, p_hire_fee numeric) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); o public.accountant_offices; why text; cc text; nm text := trim(coalesce(p_name, ''));
@@ -192,7 +146,6 @@ begin
   return private.office_json(o, uid);
 end $$;
 
--- Takes the office off the list. Clients already hired keep their hire until they end it.
 create function public.close_accountant_office() returns void language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin
@@ -200,7 +153,6 @@ begin
   if not found then raise exception 'not_found' using errcode = 'P0001'; end if;
 end $$;
 
--- Open offices (best rated first, then most hired), optionally of one country; nobody blocked in either direction. At most 50 rows.
 create function public.list_accountant_offices(p_country text default null) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player();
 begin
@@ -210,8 +162,6 @@ begin
        order by o.opened_at limit 200) x), '[]'::jsonb);
 end $$;
 
--- The caller hires an office for one of their companies. The hiring fee moves through settlements: the client's ledger books the cost,
--- the owner's books the income. Hiring another office for the same company ends the earlier hire. Not your own or a linked account's office.
 create function public.hire_accountant_office(p_office uuid, p_company_key text, p_currency text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); o public.accountant_offices; h public.accountant_hires; cur public.accountant_hires;
@@ -245,7 +195,6 @@ begin
   if not found then raise exception 'not_found' using errcode = 'P0001'; end if;
 end $$;
 
--- A client rates one of their own hires once, after the hire has run for a game week. That is the only way an office gets a rating.
 create function public.rate_accountant_hire(p_hire uuid, p_stars int) returns void language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); h public.accountant_hires;
 begin
@@ -257,7 +206,6 @@ begin
   update public.accountant_hires set stars = p_stars, rated_at = now() where id = h.id;
 end $$;
 
--- The caller's own hires (newest first) so the app can end or rate them, and their own office if they run one.
 create function public.my_accountant_hires() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); o public.accountant_offices;
 begin
@@ -269,19 +217,13 @@ begin
     'office', case when o.id is null then null else private.office_json(o, uid) end);
 end $$;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- 4. Exchange rules aligned with the engine
--- ---------------------------------------------------------------------------------------------------------------------
--- A game day in real time (a game week is private.weeks(1), seven game days).
 create function private.game_days(n int) returns interval language sql immutable as $$ select private.weeks(1) * n / 7; $$;
 
--- The exchange constants the engine (ExchangeRules.swift) also holds. Fixed here: moving them is a migration, not an admin change.
 create function private.exchange_const(k text) returns numeric language sql immutable as $$
   select case k when 'day_move' then 0.10 when 'value_step' then 0.10 when 'holder_cap' then 0.20 when 'owner_floor' then 0.51
                 when 'lockup_days' then 28 when 'quarter_days' then 91 when 'blackout_before' then 7 when 'blackout_after' then 1 end;
 $$;
 
--- The previous close: the last trade before the current game day; null when nothing has traded before it.
 create function private.exchange_close_ref(lid uuid) returns numeric language sql stable security definer set search_path = '' as $$
   select price from public.exchange_trades
    where listing_id = lid
@@ -289,7 +231,6 @@ create function private.exchange_close_ref(lid uuid) returns numeric language sq
    order by id desc limit 1;
 $$;
 
--- Where a price may sit now: within a tenth of the previous close (the value per share when there is none) and inside the value band.
 create function private.exchange_close_bounds(l public.exchange_listings) returns numeric[] language plpgsql stable security definer set search_path = '' as $$
 declare nav numeric := private.exchange_nav(l); blo numeric := round(nav * private.rule_num('band.exchange_low'), 4); bhi numeric := round(nav * private.rule_num('band.exchange_high'), 4);
         pc numeric := coalesce(private.exchange_close_ref(l.id), nav); dm numeric := private.exchange_const('day_move'); lo numeric; hi numeric;
@@ -299,14 +240,12 @@ begin
   return array[lo, hi];
 end $$;
 
--- Shares an outsider may still buy before the holder cap (holdings and open buy orders count). The owner has no cap.
 create function private.exchange_buyable(l public.exchange_listings, uid uuid) returns bigint language sql stable security definer set search_path = '' as $$
   select greatest(0, floor(l.total_shares * private.exchange_const('holder_cap'))::bigint
        - coalesce((select shares from public.exchange_holdings where listing_id = l.id and owner_id = uid), 0)
        - coalesce((select sum(remaining) from public.exchange_orders where listing_id = l.id and trader_id = uid and side = 'buy' and status = 'open'), 0));
 $$;
 
--- Why the owner may not sell now: 'lock_up', 'blackout', or null when the window is open (same days as ExchangeRules.insiderBlock, without dividends).
 create function private.exchange_insider_block(l public.exchange_listings) returns text language plpgsql stable security definer set search_path = '' as $$
 declare n int := floor(extract(epoch from now() - l.listed_at) / extract(epoch from private.game_days(1)))::int;
         q int := private.exchange_const('quarter_days')::int; r int;
@@ -342,11 +281,6 @@ select private.rewire14('public.exchange_market()'::regprocedure, array[
   $a$'priceLow', round(private.exchange_nav(l) * private.rule_num('band.exchange_low'), 4), 'priceHigh', round(private.exchange_nav(l) * private.rule_num('band.exchange_high'), 4),$a$,
   $a$'priceLow', (private.exchange_close_bounds(l))[1], 'priceHigh', (private.exchange_close_bounds(l))[2],$a$]);
 
--- ---------------------------------------------------------------------------------------------------------------------
--- 5. World rules for the clients
--- ---------------------------------------------------------------------------------------------------------------------
--- The admin-set rules and the fixed exchange constants in one object, with the time of the last change, so a client can rebuild the
--- engine's rules from it and know when it is stale.
 create function public.world_rules_read() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user();
 begin
@@ -363,9 +297,6 @@ end $$;
 
 drop function private.rewire14(regprocedure, text[]);
 
--- ---------------------------------------------------------------------------------------------------------------------
--- Execute rights
--- ---------------------------------------------------------------------------------------------------------------------
 revoke execute on all functions in schema public from public, anon;
 grant execute on function public.update_my_profile(text, int, text, public.privacy_level, text), public.publish_leaderboard(numeric, numeric, int),
   public.read_leaderboards(int), public.open_accountant_office(text, text, text, numeric), public.close_accountant_office(),

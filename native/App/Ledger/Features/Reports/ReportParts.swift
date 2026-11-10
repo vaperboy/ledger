@@ -2,13 +2,11 @@ import SwiftUI
 import Countries
 import Simulation
 
-/// Which report to open.
 struct ReportRef: Hashable {
     var kind: ReportKind
     var id: Int
 }
 
-/// Number formatting shared by the report screens. `short` and `money` come from the store (home currency or a company's).
 struct ReportFormat {
     var short: (Double) -> String
     var money: (Double) -> String
@@ -27,7 +25,6 @@ struct ReportFormat {
     func share(_ v: Double?) -> String { v.map { String(format: "%.0f%%", $0 * 100) } ?? "–" }
 }
 
-/// One row of a report table: a label and three right-aligned columns.
 struct ReportTableRow: View {
     var label: String
     var first: String
@@ -35,10 +32,8 @@ struct ReportTableRow: View {
     var third: String
     var thirdTint: Color = Theme.ivoryMuted
     var strong = false
-    /// The numbers behind the three columns (start, end, change) and their format: when given they count up instead of showing at once.
     var nums: [Double] = []
     var fmt: ReportFormat? = nil
-    /// The change column as an arrow and amount: positive is good news (green up), negative bad (red down). Needs `nums` and `fmt`.
     var gain: Double? = nil
 
     @ViewBuilder private func cell(_ index: Int, _ text: String, tint: Color) -> some View {
@@ -52,7 +47,6 @@ struct ReportTableRow: View {
         }
     }
 
-    /// Column widths grow with Dynamic Type (from 66 and 52 pt), so figures keep their size; the label wraps to a second line instead.
     @ScaledMetric(relativeTo: .body) private var wide: CGFloat = 66
     @ScaledMetric(relativeTo: .body) private var narrow: CGFloat = 52
 
@@ -75,7 +69,6 @@ struct ReportTableRow: View {
     }
 }
 
-/// The header of a report table, in small caps, over the same scaled columns as `ReportTableRow`.
 struct ReportTableHeader: View {
     var first: String
     var second: String
@@ -95,16 +88,13 @@ struct ReportTableHeader: View {
     }
 }
 
-/// A label and a figure on one line.
 struct ReportLine: View {
     var label: String
     var value: String
     var tint: Color = Theme.ivory
     var strong = false
-    /// The number behind `value` and its text: the figure counts up to it (see `CountedFigure`).
     var live: Double? = nil
     var liveText: ((Double) -> String)? = nil
-    /// Show `live` as an arrow and amount (green up for money in, red down for money out); `liveText` then formats the positive size.
     var arrow: Bool = false
 
     @ViewBuilder private var figure: some View {

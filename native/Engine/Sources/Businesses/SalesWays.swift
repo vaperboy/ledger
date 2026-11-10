@@ -3,26 +3,9 @@ import GameCore
 import Countries
 import Finance
 
-/// The other ways to sell: platforms, memberships, referrals, on-call service, add-ons and peak seasons. Original: `weekly`,
-/// `ACT.sw33t` and the 'Ways to sell' card in features/sales/trade_sales_mechanics.js. (Contracts and one-off orders are
-/// `VolumeContracts`; the demand side of all of them is `DemandModel.applyWaysToSell`, which reads the state kept here.)
-///
-/// State: the original's `co.sw33` (`on` switches, `mem` members, `ref` referrals, `paidUp`, `peakY`/`peakM`), shared with the
-/// volume contracts, so old saves load as they are.
-///
-/// What each does, every week, from last week's till (the money moves through `Payments`, so the books balance):
-///  * platform (on): more customers (demand), and a commission on the part of last week's revenue that the platform brought;
-///  * members (on): the member count follows sales and rating, steadier demand; perks cost 2 % of sales. Off: members drift away;
-///  * referral: happy customers bring others, in proportion to the rating, while sales last (demand);
-///  * emergency (on): a weekly on-call fee, 7 % more customers, and urgent jobs at a premium;
-///  * upsell (on): a one-off set-up cost, then extra revenue on every sale, which costs 35 % of itself;
-///  * peak: three weeks before the season starts you are told, with how much busier it gets (the extra customers are in the demand).
-///
-/// The seasonal help a manager brings in ahead of a peak is `ManagerSeasonal.swift`. Not ported: the shortcut to Find workers.
 public enum SalesWays {
     public enum Switch: Equatable, Sendable { case changed, notAWay, notSwitchable, notEnoughCash(Double), noCompany }
 
-    /// The ways a player can switch on and off.
     static let switchable: Set<String> = ["platform", "members", "emergency", "upsell"]
 
     public struct Row: Equatable, Sendable {
@@ -31,15 +14,11 @@ public enum SalesWays {
         public var isOn: Bool
         public var canSwitch: Bool
         public var detail: String
-        /// What it costs, and nothing else (a commission, a perk bill, a weekly retainer, a set-up fee); empty for a way that costs nothing of its own.
         public var cost: String = ""
     }
 
     static func ways(_ co: Company, _ w: World) -> [Balance.SalesWay] { w.balance.salesWays[co.type] ?? [] }
 
-    // MARK: Reading
-
-    /// The ways this company has, with their state (the 'Ways to sell' card). Contracts and orders are in `VolumeContracts`.
     public static func rows(_ s: GameState, companyID: Int, data: GameData) -> [Row] {
         guard let co = s.company(companyID) else { return [] }
         let w = World(state: s, data: data)
@@ -80,9 +59,6 @@ public enum SalesWays {
         }
     }
 
-    // MARK: Switching
-
-    /// Start or stop a way to sell. The add-ons cost a set-up fee the first time. Original: `ACT.sw33t`.
     @discardableResult
     public static func setOn(_ s: inout GameState, companyID: Int, kind: String, on: Bool, data: GameData) -> Switch {
         guard let i = s.companyIndex(companyID) else { return .noCompany }
@@ -106,9 +82,6 @@ public enum SalesWays {
         return .changed
     }
 
-    // MARK: The week
-
-    /// Called for every open company after its week (the till has booked last week's sales). Original: `weekly` (the part before offers).
     static func weekly(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         let co = s.companies[i]
         guard co.status == .open else { return }
@@ -130,8 +103,6 @@ public enum SalesWays {
             var fee = pl.options["fee"] ?? 0.2
             var delivery = 0.0
             if let dk = IntercompanySupply.deliveryKind, (pl.options["deliv"] ?? 0) > 0 {
-                // A delivery app's fee covers the marketplace and the courier. The courier is now an input of the business (`IntercompanySupply`):
-                // the customers it brings follow how much of the delivery is supplied, and its cost is booked as that input.
                 lift *= IntercompanySupply.deliveryFill(s, buyer: co, way: pl)
                 delivery = dk.buyers[co.type] ?? 0
                 fee = max(0, fee - delivery)
@@ -141,7 +112,6 @@ public enum SalesWays {
             if delivery > 0, let dk = IntercompanySupply.deliveryKind {
                 Payments.companyPays(&s, companyID: id, amount: brought * delivery, category: dk.category)
                 s.companies[i].set("dlvRev", brought)
-                // With its own courier the company runs the delivery itself, so the fee the customer pays for it is its revenue.
                 let fee = brought * (pl.options["dfee"] ?? 0)
                 if fee > 0, IntercompanySupply.hasOwnDelivery(s, buyer: id) {
                     Payments.companyReceives(&s, companyID: id, amount: fee, category: "rev", label: "Delivery fees from customers")
@@ -170,12 +140,10 @@ public enum SalesWays {
             if units > 0 { Payments.companyReceives(&s, companyID: id, amount: jsRound(units * 0.07 * tk * 0.5), category: "rev", label: nil) }
         }
         if let up = way("upsell"), on["upsell"].bool, rev > 0 {
-            // Customers only add to the bill when they are happy with the service: the extra follows how well the shop is rated, it is not a given.
             let x = jsRound(rev * (up.options["u"] ?? 0.08) * rating)
             Payments.companyReceives(&s, companyID: id, amount: x, category: "rev", label: nil)
             Payments.companyPays(&s, companyID: id, amount: x * 0.35, category: "cogs")
         }
-        // A season of your own: told three weeks ahead, once a year.
         if let pk = way("peak") {
             let ahead = GameCalendar.month(week: s.week + 3) + 1, now = GameCalendar.month(week: s.week) + 1
             let year = GameCalendar.year(week: s.week)
@@ -189,7 +157,6 @@ public enum SalesWays {
                 changed = true
             }
         }
-        // Nothing is written for a company that never used any of this (saves stay as they were).
         if changed || !co.value("sw33").isNull { s.companies[i].set("sw33", sw) }
     }
 

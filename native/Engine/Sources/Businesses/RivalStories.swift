@@ -3,57 +3,39 @@ import GameCore
 import Countries
 import Finance
 
-/// Rival stories: the named rivals of your markets (`Rivals`) told slowly. Each week a rival now and then makes one small move (opens a
-/// branch, cuts or raises prices, starts a campaign, loses staff, has a bad quarter ...), drawn from the seed so the same game tells the same
-/// story. Every move really changes that rival's record (size, price, marketing, fortune), which `Rivals` already turns into your demand.
-/// Now and then a move leads to a decision of yours: a struggling rival for sale, or a price cut by a bigger rival.
-/// State `rest["rvs"]`: `tl` the timeline, newest first { w, rid, rn, co, t, e } (e: +1 good for you, -1 bad for you); `last` the week of the
-/// last decision offered; `br` { "<rivalID>": branches opened }.
 public enum RivalStories {
     public static let buyAction = "rvsbuy", warAction = "rvswar"
     public static func handlesAnswer(_ action: String) -> Bool { action == buyAction || action == warAction }
 
-    /// The chance in a week that a given rival does something worth telling (about one move a rival every five months).
     public static let moveChance = 0.045
-    /// Weeks between two decisions of this kind, so they stay rare.
     public static let decisionGap = 20
-    /// A rival this far down is "in trouble" and may be offered for sale; its price is this share of what it is worth.
     public static let troubleFortune = 0.35, distressedPriceShare = 0.6
-    /// A price-war answer: the discount matched for this many weeks, and the demand lost by ignoring a cut.
     public static let matchPercent = 10, matchWeeks = 2, ignoreLoss = 0.03, advertShare = 0.03
     static let timelineKept = 60
 
     public struct Move: Identifiable, Equatable, Sendable {
         public var id: String { "\(week)-\(rivalID)-\(text)" }
         public var week: Int, rivalID: Int, text: String
-        /// +1 good for you, -1 bad for you.
         public var effect: Int
     }
 
     public struct Card: Identifiable, Equatable, Sendable {
         public var id: Int
         public var name: String, owner: String, trade: String, city: String
-        /// How it stands against you, in words ("A little ahead of you").
         public var standing: String
-        /// How it is doing by itself ("Steady", "Under pressure").
         public var health: String
         public var mood: String
-        /// What the recent moves mean for you: 1 they favour you (green up), -1 they work against you (red down), 0 nothing clear.
         public var trend: Int
         public var forSale: Bool
         public var moves: [Move]
     }
 
-    // MARK: Reading
-
-    /// The timeline of one company's market, newest first.
     public static func timeline(_ s: GameState, companyID: Int? = nil, rivalID: Int? = nil, limit: Int = 12) -> [Move] {
         (s.rest["rvs"]?["tl"].array ?? []).filter {
             (companyID == nil || $0["co"].int == companyID) && (rivalID == nil || $0["rid"].int == rivalID)
         }.prefix(limit).map { Move(week: $0["w"].int, rivalID: $0["rid"].int, text: $0["rn"].string + " " + $0["t"].string, effect: $0["e"].int) }
     }
 
-    /// Cards for the rivals of one company's market, strongest first.
     public static func cards(_ s: GameState, companyID: Int, data: GameData) -> [Card] {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return [] }
         let w = World(state: s, data: data)
@@ -70,7 +52,6 @@ public enum RivalStories {
         fortune > 1.5 ? "Thriving" : fortune > 0.8 ? "Steady" : fortune > troubleFortune ? "Under pressure" : "Struggling"
     }
 
-    /// In words: how big this rival is against you, from yearly takings.
     static func standing(_ s: GameState, _ co: Company, _ r: Rivals.Rival, _ bd: Trade, _ w: World) -> String {
         let theirs = Rivals.yearlyRevenue(bd, r, w, co)
         let months = co.monthlyHistory.suffix(12)
@@ -80,8 +61,6 @@ public enum RivalStories {
         return ratio > 1.5 ? "Well ahead of you" : ratio > 1.1 ? "A little ahead of you" : ratio > 0.9 ? "About level with you"
             : ratio > 0.6 ? "A little behind you" : "Well behind you"
     }
-
-    // MARK: Every week
 
     public static func weekly(_ s: inout GameState, data: GameData) {
         guard Unlocks.isOpen(s, "rivals") else { return }
@@ -94,7 +73,6 @@ public enum RivalStories {
         offerSale(&s, data: data)
     }
 
-    /// The rival's own price relative to the market (1 when an old record has none yet).
     static func priceOf(_ r: JSONValue) -> Double { r["pm16"].isNull ? 1 : r["pm16"].double }
 
     enum Kind: String, CaseIterable { case branch, cut, raise, campaign, staff, award, weak, recover }
@@ -163,8 +141,6 @@ public enum RivalStories {
         if kind == .cut { offerWar(&s, co: co, rival: r, data: data) }
     }
 
-    // MARK: Decisions
-
     static func decisionReady(_ s: GameState) -> Bool {
         let last = s.rest["rvs"]?["last"].int ?? -99
         return s.week - last >= decisionGap && !s.inbox.contains { $0.status == "open" && handlesAnswer($0.actionID) }
@@ -176,7 +152,6 @@ public enum RivalStories {
         s.rest["rvs"] = st
     }
 
-    /// A bigger rival cuts its prices: match it for a short while, hold your price and advertise, or sit it out.
     static func offerWar(_ s: inout GameState, co: Company, rival r: Rivals.Rival, data: GameData) {
         guard decisionReady(s), r.size >= 1, HashedRandom.first("\(s.seed):rvswar:\(s.week):\(r.id)") < 0.5 else { return }
         let advert = Engagement.spend(s, co, share: advertShare, data: data)
@@ -194,7 +169,6 @@ public enum RivalStories {
         markDecision(&s)
     }
 
-    /// A rival in real trouble, or already for sale, is offered to you at a reduced price.
     static func offerSale(_ s: inout GameState, data: GameData) {
         guard decisionReady(s) else { return }
         for co in s.companies where co.status == .open && co.type != "hold" && co.type != "club" {
@@ -233,12 +207,12 @@ public enum RivalStories {
             return
         }
         let canMatch = d["match"].bool
-        let pick = canMatch ? idx : idx + 1   // without a discount to match, the answers are advertise, sit it out
+        let pick = canMatch ? idx : idx + 1
         let co = s.companies[ci]
         switch pick {
         case 0:
             if PriceMoves.startCampaign(&s, companyID: cid, percent: matchPercent, weeks: matchWeeks, data: data) != nil {
-                Engagement.addModifier(&s, ci, key: "dem", multiplier: 1 - ignoreLoss, weeks: 4)   // a discount is already running: the cut still bites
+                Engagement.addModifier(&s, ci, key: "dem", multiplier: 1 - ignoreLoss, weeks: 4)
             }
         case 1:
             _ = Payments.companyPays(&s, companyID: cid, amount: Engagement.spend(s, co, share: advertShare, data: data), category: "mkt", label: "Local advertising against a rival price cut")

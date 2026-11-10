@@ -5,8 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Selling extras at the till is an operating decision with an uncertain result: the extra follows how happy customers are with
-/// the shop, it is not a fixed share of sales.
 final class UpsellOutcomeTests: XCTestCase {
     private func extra(seed: Int, quality: Double, reputation: Double) throws -> Double {
         var e = try ChainsTests.engine(seed: seed)

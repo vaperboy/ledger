@@ -18,7 +18,6 @@ struct Job {
     var scenario: Scenario = .single
     var years: Int = PT.years
     var name: String { "\(scenario.rawValue)/\(country)/\(trade)/\(seed)/\(policy.rawValue)" }
-    /// One-line repro (see Playtest/README.md).
     var repro: String {
         "LEDGER_PLAYTEST=1 LEDGER_PT_COUNTRY=\(country) LEDGER_PT_TRADE=\(trade) LEDGER_PT_SEED=\(seed) LEDGER_PT_POLICY=\(policy.rawValue) LEDGER_PT_SCENARIO=\(scenario.rawValue) swift test --filter PlaytestSweepTests/testRepro"
     }
@@ -26,7 +25,6 @@ struct Job {
 
 struct RunResult { var hash = ""; var gameOver = false; var nw = 0.0; var note = ""; var weeks = 0 }
 
-/// The bot: plays through the same public GameEngine calls the app's GameStore makes, and watches for things a human would hit.
 final class PlayBot {
     var e: GameEngine
     let job: Job
@@ -45,7 +43,7 @@ final class PlayBot {
     var searchEmpty: [String: Int] = [:]
     var vacancyTries: [String: Int] = [:]
     var managerHired: [Int: Int] = [:]
-    var recentBuy: [Int] = []   // days (absolute) on which the bot did something a "you bought" message could be about
+    var recentBuy: [Int] = []
     var lastStructuralWeek = -99
     var lastNW = 0.0
     var weekMsgs = 0, weekBad = 0, weekWarn = 0
@@ -74,14 +72,11 @@ final class PlayBot {
     func bought() { recentBuy.append(absDay) }
     func structural() { lastStructuralWeek = e.state.week }
 
-    // MARK: Setup
-
     func estimate(_ trade: String) -> Double? {
         var rich = e.state; rich.cash += 1e12
         return CompanySetup.estimate(tradeID: trade, cityID: e.state.player.cityID, size: 1, state: rich, data: e.data)?.total
     }
 
-    /// Opens a company the way the Company tab "+" does. Tops personal funds up (and says so) when the trade costs more than the start loan.
     @discardableResult
     func openCompany(trade: String, fund: Double? = nil, topUp: Bool = true) -> Int {
         let city = e.state.player.cityID
@@ -91,7 +86,6 @@ final class PlayBot {
             e.update { s, _, _ in Ledger.move(&s, .me, need * 1.5, why: "Test capital") }
         }
         let want = fund ?? max(0, liquid * 0.9)
-        // Competent and reckless players take the app's route (one-page start, then the Setup screen); the passive one takes the quick-setup shortcut.
         func start() -> Result<Int, CompanySetup.StartError> {
             if job.policy == .passive { return e.startCompany(tradeID: trade, cityID: city, fundWith: want) }
             switch e.startCompanyChoosingPremises(tradeID: trade, cityID: city, size: nil, name: nil, pick: nil, fundWith: want) {
@@ -113,8 +107,6 @@ final class PlayBot {
         }
     }
 
-    // MARK: Decisions
-
     func pick(_ m: Message) -> Int {
         let opts = m.options
         guard !opts.isEmpty else { return 0 }
@@ -133,7 +125,6 @@ final class PlayBot {
                 let label = o["l"].string.lowercased()
                 if i == 0 { score += 1 }
                 if decline.contains(where: { label.hasPrefix($0) }) && opts.count > 1 { score -= 0.5 }
-                // The rework scenario starts its own sale; the bot must not list the company by accident.
                 if job.scenario == .rework, ["sale", "sell", "close", "dismiss", "replace"].contains(where: { label.contains($0) }) { score -= 100 }
                 if score > bestScore { bestScore = score; best = i }
             }
@@ -148,7 +139,6 @@ final class PlayBot {
                 continue
             }
             if job.policy == .passive { continue }
-            // An earlier answer of this loop may have closed this one (the list was read once): not a rejected answer.
             guard e.state.inbox.first(where: { $0.id == m.id })?.status == "open" else { continue }
             let opt = pick(m)
             let ok = e.answer(messageID: m.id, option: opt)
@@ -162,8 +152,6 @@ final class PlayBot {
         }
     }
     var names: [String] { e.state.companies.map { $0.name } }
-
-    // MARK: Hiring
 
     @discardableResult
     func hireWorker(_ id: Int, role: String) -> Bool {
@@ -188,8 +176,6 @@ final class PlayBot {
 
     func staffCounts(_ co: Company) -> [String: Int] { Dictionary(co.staff.map { ($0.role, 1) }, uniquingKeysWith: +) }
 
-    // MARK: The week the bot plays
-
     func tend() {
         guard job.policy != .passive else { return }
         let reckless = job.policy == .reckless
@@ -212,7 +198,6 @@ final class PlayBot {
                     if reckless, let ch = e.marketing.channels["google"], ch.budgetOptions.count > 1 { _ = e.setCampaign(companyID: id, channel: "google", weeklyBudget: ch.budgetOptions[1]) }
                     if reckless { for lv in [0.4, 3.0] { _ = e.setPriceLevel(companyID: id, level: lv) } }
                 }
-                // cash safety
                 let wages = max(co.lastWages, cur.scaledPrice(3000))
                 let buffer = wages * (reckless ? 0.2 : 2)
                 if co.cash < buffer {
@@ -227,21 +212,18 @@ final class PlayBot {
                     let r = e.setCampaign(companyID: id, channel: "google", weeklyBudget: ch.budgetOptions[1])
                     if r != .done { find(3, "campaign-refused", "setCampaign refused for a profitable company: \(r)", "CompanyTabActions.setCampaign", "co=\(id)") }
                 }
-                // rehire lost roles
                 if let base = baseline[id] {
                     let now = staffCounts(co)
                     for (role, n) in base { for _ in 0..<min(3, max(0, n - (now[role] ?? 0))) where hireFails[role, default: 0] < 12 { hireWorker(id, role: role) } }
                     if staffedWeek[id] == nil, base.allSatisfy({ staffCounts(e.state.company(id)!)[$0.key, default: 0] >= $0.value }) { staffedWeek[id] = e.state.week }
                     if reckless, e.state.week % 8 == 0, let role = e.hireableRoles(companyID: id).first { hireWorker(id, role: role) }
                 }
-                // vacancies needing the owner (managers, team posts)
                 if e.state.week % 4 == 0 { fillVacancies(id) }
                 if reckless && liquid > cur.scaledPrice(50_000) { _ = e.buyInvestment(.stock, symbol: e.quotes(.stock).first?.symbol ?? "", amount: liquid * 0.8) }
             }
         }
     }
 
-    /// The bank counter as the app's loan form drives it.
     func applyLoan(_ companyID: Int, _ amount: Double) {
         let docs = LoanDocuments(fullName: e.state.player.name, incomeProof: .payslips, companyPapers: (e.state.company(companyID)?.monthlyHistory.count ?? 0) >= 3 ? .accounts : .registration)
         switch e.applyForLoan(kind: "biz", amount: amount, termMonths: 36, companyID: companyID, documents: docs, agreed: true) {
@@ -251,7 +233,6 @@ final class PlayBot {
         }
     }
 
-    /// The Setup screen as a player works it: sign documents, choose premises (AirStay), buy equipment (TechPro), add stock cash, then open.
     func driveSetup(_ id: Int, since: Int) {
         guard e.state.company(id)?.status == .setup else { return }
         var stuck: [String] = []
@@ -298,7 +279,6 @@ final class PlayBot {
         noteLog.append("open \(id): \(r) undone=\(e.openingChecklist(companyID: id).filter { !$0.isDone }.map { $0.id }.joined(separator: ","))")
     }
 
-    /// Buy what the equipment list says is missing (limits capacity), cheapest offer, if the company can pay three times over.
     func buyNeededEquipment(_ id: Int) {
         var bought = 0
         guard let co0 = e.state.company(id), let bd0 = e.data.catalog[co0.type] else { return }
@@ -339,8 +319,6 @@ final class PlayBot {
         }
     }
 
-    // MARK: Checks
-
     func checkDay(_ out: GameEngine.DayOutcome) {
         let s = e.state
         let g = Ledger.gaps(s)
@@ -348,13 +326,11 @@ final class PlayBot {
         if !s.cash.isFinite { find(1, "nan-personal", "Personal cash not finite", "Finance/Payments.swift", "") }
         for m in out.newMessages { checkMessage(m) }
         checkRouting(out)
-        // blocking/open pile
         let open = e.openDecisions.count
         if open >= 8 { find(2, "decision-pile", "\(open) decisions open at once", "Events/EventEngine.swift (offer volume)", "") }
         if s.day == 0 { statusTransitions() }
     }
 
-    /// Notices and decisions of the role-aware inbox: no duplicates, a desk notice names who handled it, and the owner's new decisions are counted per week.
     func checkRouting(_ out: GameEngine.DayOutcome) {
         var seen = Set<String>()
         for m in out.newMessages {
@@ -404,14 +380,12 @@ final class PlayBot {
         if PT.env["LEDGER_PT_DEBUG"] != nil {
             for co in s.companies where co.type != "hold" { print("DBG w\(w) \(co.type) \(co.status.rawValue) cash=\(Int(co.cash)) rev=\(Int(co.lastWeekRevenue)) units=\(Int(co.lastWeekUnits)) staff=\(co.staff.count) inv=\(Int(co.inventory)) price=\(co.priceLevel) setup=\(co.status == .setup ? e.openingChecklist(companyID: co.id).filter { !$0.isDone }.map { $0.id }.joined(separator: ",") : "") notes=\(noteLog.suffix(1))") }
         }
-        // spam
         if weekMsgs >= 30 { find(2, "spam-total", "\(weekMsgs) new messages in a single week", "Events / Simulation weekly message sources (see titles file)", "") }
         if weekBad >= 8 { find(2, "spam-bad", "\(weekBad) warn/bad-tone messages in a single week (notice/popup load)", "see titles file for the sources", "") }
         for (t, n) in weekTitles where n >= 3 { find(2, "dup:\(t)", "Same message \"\(t)\" \(n)x in one week", "message source of that title", "") }
         if weekOwnerNew >= 6 { find(2, "owner-flood", "\(weekOwnerNew) new owner-addressed decisions in one week", "see titles file", "") }
         weekOwnerNew = 0
         weekMsgs = 0; weekBad = 0; weekTitles = [:]
-        // NaN scan every 4 weeks; negative-impossible every week
         for co in s.companies where co.status.isLive {
             if w % 4 == 0, let p = badNumber(.object(co.raw)) { find(1, "nan-company:\(p.split(separator: ".").first ?? "")", "Non-finite number in company record at \(p)", "Businesses/* writer of that field", "co=\(co.id) \(co.type)") }
             if !co.cash.isFinite { find(1, "nan-cash", "Company cash not finite", "CompanyWeek", "co=\(co.id) \(co.type)") }
@@ -439,7 +413,6 @@ final class PlayBot {
             }
         }
         for l in s.loans where l.balance < -0.5 { find(1, "neg-loan", "Loan balance negative", "Finance/Loans", "loan=\(l.id)") }
-        // net worth jump
         let nw = e.netWorth.total
         if !nw.isFinite { find(1, "nan-nw", "Net worth not finite", "Finance/Valuation", "") }
         else {
@@ -452,14 +425,11 @@ final class PlayBot {
             let sev = job.policy == .competent ? 1 : 3
             find(sev, "gameover-\(job.policy.rawValue)", "Game over reached by \(job.policy.rawValue) bot: \(s.gameOver["reason"].string)", "GameOver / Failure.swift / bank checks", "")
         }
-        // stuck setup beyond what tend() sees (passive)
         if job.policy == .passive {
             for co in s.companies where co.status == .setup && w - (setupSince[co.id] ?? w) >= 12 { find(3, "passive-setup:\(co.type)", "Company left in setup is never nudged or auto-opened (12 weeks)", "CompanySetup / OpeningChecklist", "co=\(co.id)"); setupSince[co.id] = w }
         }
         recentBuy.removeAll { absDay - $0 > 14 }
     }
-
-    // MARK: Save/load fork check
 
     func roundTrip() {
         let before = e.playtestHash
@@ -476,8 +446,6 @@ final class PlayBot {
             if a.playtestHash != b.playtestHash { find(1, "save-roundtrip-diverge", "Game played on after save+load diverges from the original within 4 weeks", "state held outside GameState (caches, transient) or not saved", "") }
         } catch { find(1, "save-roundtrip-error", "Save/load threw: \(error)", "SaveSystem/SaveStore", "") }
     }
-
-    // MARK: Run
 
     func scenarioSetup() {
         switch job.scenario {
@@ -554,7 +522,6 @@ final class PlayBot {
         }
     }
 
-    /// The reworked systems inside an ordinary game: a manager, owner meetings with everyone at the table, a CEO replacement, then a sale by the route the seed picks.
     func reworkWeek(_ w: Int) {
         guard let co = e.state.company(mainID), co.status == .open else { return }
         let routes = ["private", "broker", "auction", "mbo", "stake"]
@@ -589,7 +556,6 @@ final class PlayBot {
         }
     }
 
-    /// Weekly while a sale is listed: take what the route offers and check the books afterwards.
     func saleWeek() {
         guard job.scenario == .rework, saleStartWeek > 0, soldWeek == 0, let l = e.saleListing(companyID: mainID) else {
             if job.scenario == .rework, soldWeek > 0, e.state.week == soldWeek + 4 { checkAfterSale() }

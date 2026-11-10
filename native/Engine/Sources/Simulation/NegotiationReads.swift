@@ -3,12 +3,10 @@ import GameCore
 import Countries
 import Businesses
 
-/// A post someone can be hired into, for the one read that tells a screen the going rate. Every hiring screen shows it the same way.
 public enum HirePost: Equatable, Sendable {
     case worker(role: String)
     case manager
     case assistant
-    /// A post on the company's management team: "ceo" (managing director), "reg" (regional manager) or a department head ("sales", "ops", "fin", "hr", "mkt").
     case team(key: String)
     case executive(ManagerModel.ExecLevel)
     case office(role: String)
@@ -16,8 +14,6 @@ public enum HirePost: Equatable, Sendable {
 }
 
 public extension GameEngine {
-    /// What the post normally pays a month in this economy: the employer's opening offer in a pay discussion, the same for everyone in the post.
-    /// The person's own ask stays hidden. Posts tied to a company need its id.
     func goingRate(for post: HirePost, companyID: Int? = nil) -> Double {
         let co = companyID.flatMap { state.company($0) }
         switch post {

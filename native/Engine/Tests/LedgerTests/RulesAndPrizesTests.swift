@@ -4,13 +4,10 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Box cash prizes, startup gate, supplier ending, auction wash-trading, government penalties, world rules, and previews.
 final class RulesAndPrizesTests: XCTestCase {
     private func game() throws -> GameEngine {
         try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test")
     }
-
-    // MARK: Gold boxes
 
     func testBoxMoneyIsRareCappedAndDisclosed() {
         for kind in BoxKind.allCases {
@@ -50,8 +47,6 @@ final class RulesAndPrizesTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    // MARK: Startup gate
-
     func testStartupGateNeedsAgeAndLevel() {
         XCTAssertFalse(CrowdStartupRules.foundGate(accountWeeks: 0, level: 5).allowed)
         XCTAssertFalse(CrowdStartupRules.foundGate(accountWeeks: 50, level: 1).allowed)
@@ -60,8 +55,6 @@ final class RulesAndPrizesTests: XCTestCase {
         XCTAssertTrue(ok.reasons.isEmpty)
         XCTAssertTrue(ok.lines.contains { $0.hasPrefix("If you open it") })
     }
-
-    // MARK: Auctions
 
     func testLinkedAccountCannotBidOnItsOwnSale() throws {
         var a = Auction(id: "A1", item: ArtifactItem(defID: "abacus", serial: 1), seller: "s", startPrice: 100, reserve: nil,
@@ -73,8 +66,6 @@ final class RulesAndPrizesTests: XCTestCase {
         XCTAssertThrowsError(try b.place("A1", bidder: "me", amount: 100, now: 10, cash: 1_000))
         XCTAssertEqual(b.held, 0)
     }
-
-    // MARK: Government penalties
 
     func testPenaltyConstantsArePublic() {
         XCTAssertGreaterThan(DirtyTrick.fineMultiple, 1)
@@ -88,8 +79,6 @@ final class RulesAndPrizesTests: XCTestCase {
         let e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test", admins: ["boss"])
         XCTAssertNotNil(e.state.rest["gov"])
     }
-
-    // MARK: World rules
 
     func testWorldRulesDefaultsClampAndIgnoreUnknown() {
         XCTAssertEqual(WorldRules().printSingleLimit, WorldRules.defaults.printSingleLimit)
@@ -105,8 +94,6 @@ final class RulesAndPrizesTests: XCTestCase {
         XCTAssertNotEqual(e.state.worldRules, WorldRules.defaults)
         XCTAssertEqual(e.state.worldRules.exchangeBand.lowerBound, 0.9, accuracy: 0.0001)
     }
-
-    // MARK: Previews change nothing
 
     func testPreviewsLeaveTheGameAlone() throws {
         let e = try game()
@@ -126,4 +113,3 @@ final class RulesAndPrizesTests: XCTestCase {
         XCTAssertTrue(en.isYou)
     }
 }
-

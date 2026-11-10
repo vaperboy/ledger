@@ -3,8 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// Read-only records of the world around you: your rival, the Top 50, monthly results per company, the crisis centre and the
-/// retirement hall. Nothing is decided here; the crisis centre links to the Inbox, where each decision is answered.
 struct WorldRecordsView: View {
     enum Page: String, CaseIterable, Hashable, Identifiable {
         var id: String { rawValue }
@@ -20,11 +18,9 @@ struct WorldRecordsView: View {
         }
     }
     @EnvironmentObject var store: GameStore
-    /// The record to show on its own; without one the screen is the table of all records, each row opening its page.
     var page: Page?
     @State private var opened: Page?
     @State private var companyID: Int?
-
 
     private func monthName(_ index: Int) -> String { GameCalendar.monthNames[index % 12] + " " + String(index / 12) }
 
@@ -56,7 +52,6 @@ struct WorldRecordsView: View {
         }
     }
 
-    /// Five records in one table: the rival, the Top 50, monthly results, the crisis centre and the retirement hall.
     private func recordsTable(_ e: GameEngine) -> some View {
         OverviewSettingsCard(heading: "Records") {
             ForEach(Page.allCases) { (p: Page) in

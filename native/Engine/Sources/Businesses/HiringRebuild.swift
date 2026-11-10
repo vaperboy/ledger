@@ -4,31 +4,19 @@ import Countries
 import Employees
 import Finance
 
-// Hiring rebuild (engine side): workplaces, per-worker promises with patience, the role catalog with real effects, the worker profile.
-
-// MARK: Workplaces
-
-/// How many people can work at a company's premises. `capacity` nil = no limit (shops, workshops, trade floors); `used` includes the owner when the owner
-/// works there (no manager and owner hours above zero); `free` nil when unlimited.
 public struct WorkplaceInfo: Equatable, Sendable {
     public var capacity: Int?
     public var used: Int
     public var free: Int?
     public var placeKind: String
-    /// Words for the screen: "6 office places, 4 in use", or "No limit on people here".
     public var note: String
 }
 
 public enum Workplaces {
-    /// Square metres per desk in an office (matches `PremisesExtras.wantedSquareMetres`, which sizes a place at 9 m² a head).
     public static let squareMetresPerPlace = 9.0
-    /// A smallest rented office has this many places.
     public static let smallestOffice = 2
-    /// Working from home: the kitchen table seats this many (a team of four has outgrown it, see `PremisesExtras.hasOutgrownHome`).
     public static let homePlaces = 3
 
-    /// Where a role does its work. On-site roles sit at a desk or bench in the premises; mobile roles work at customers' sites, in vehicles or on the road;
-    /// remote roles work from their own home. Only on-site roles take a place.
     public enum WorkMode: String, Sendable { case onSite, mobile, remote }
 
     static let mobileRoles: Set<String> = ["cleaner", "plumb", "elec", "labour", "carp", "foreman", "handy", "estate", "instr", "tutor", "event", "av", "engineer",
@@ -38,7 +26,6 @@ public enum Workplaces {
     public static func mode(role: String) -> WorkMode { mobileRoles.contains(role) ? .mobile : remoteRoles.contains(role) ? .remote : .onSite }
     public static func needsPlace(role: String) -> Bool { mode(role: role) == .onSite }
 
-    /// The places a premises of this kind and size holds: offices by area, home by the table, everything else unlimited (nil).
     public static func places(kind: String, squareMetres m2: Double) -> Int? {
         switch kind {
         case "office": return max(smallestOffice, Int(saturating: (m2 / squareMetresPerPlace).rounded(.down)))
@@ -47,10 +34,9 @@ public enum Workplaces {
         }
     }
 
-    /// The kind of premises the company has now: its stored place, else the trade's own kind.
     static func kind(_ co: Company, _ bd: Trade?) -> String {
         let k = co.value("prem")["kind"]
-        if let bd, PremisesExtras.isHomeTrade(bd) { return PremisesExtras.isAtHome(co, bd) ? "home" : PremisesExtras.placeKind(bd) }   // a home trade works at home until it rents a place
+        if let bd, PremisesExtras.isHomeTrade(bd) { return PremisesExtras.isAtHome(co, bd) ? "home" : PremisesExtras.placeKind(bd) }
         if !k.isNull { return k.string }
         return bd?.premisesKind ?? "none"
     }
@@ -73,8 +59,6 @@ public enum Workplaces {
         return WorkplaceInfo(capacity: cap, used: used, free: max(0, cap - used), placeKind: k, note: "\(cap) \(word), \(used) in use.")
     }
 
-    /// Why one more person cannot be hired here (nil when there is room).
-    /// A role that works at customers' sites or remotely is never blocked by a full office.
     public static func hireBlock(_ co: Company, role: String? = nil, data: GameData) -> String? {
         if let role, !needsPlace(role: role) { return nil }
         let i = info(co, data: data)
@@ -83,7 +67,6 @@ public enum Workplaces {
         return "No free desk: \(at) seats \(i.capacity ?? 0) and all are taken. Move to bigger premises, or hire for a role that works at customers' sites or remotely."
     }
 
-    /// The cheapest listing that seats everyone on site plus one more; nil when the company owns its place or no listing is big enough.
     public static func roomListing(_ s: GameState, companyID: Int, data: GameData) -> CompanySetup.Listing? {
         guard let co = s.company(companyID), let bd = data.catalog[co.type], !co.value("prem")["owned"].bool else { return nil }
         let after = PremisesExtras.isHomeTrade(bd) ? PremisesExtras.placeKind(bd) : kind(co, bd)
@@ -96,8 +79,6 @@ public enum Workplaces {
     }
 }
 
-// MARK: Promises per worker, with patience
-
 public struct WorkerPromise: Equatable, Sendable, Identifiable {
     public var id: Int
     public var personID: Int
@@ -106,24 +87,17 @@ public struct WorkerPromise: Equatable, Sendable, Identifiable {
     public var text: String
     public var dueWeek: Int
     public var dueDate: GameCalendar.Date
-    /// How many times they have agreed to wait.
     public var waits: Int
-    /// How many more times they will agree to wait (0: the next delay is not accepted and patience is gone).
     public var patienceLeft: Int
-    /// "Pending", "Due", "Fulfilled", "Broken" or "Renegotiated".
     public var status: String
     public var isOpen: Bool
 }
 
-/// A worker brings up a promise within two weeks of its date. With a manager the question is the manager's (`Delegation.level` puts it at the manager's rank,
-/// `GameEngine.routeFreshDecisions` answers it); otherwise it lands in the owner's inbox. "Keep it now" does the thing; "Ask to wait" moves the date by
-/// `waitWeeks` and costs patience: after `maxWaits` waits the worker is out of patience (mood mark, and a deterministic chance they hand in notice).
 public enum PromiseReminders {
     public static let action = "prmr"
     public static let reminderWeeks = 2
     public static let waitWeeks = 3
     public static let maxWaits = 2
-    /// Chance (deterministic per promise) that a worker whose patience has run out hands in notice.
     public static let quitChance = 0.3
 
     static func worker(_ p: StaffPromises.Promise) -> WorkerPromise {
@@ -135,7 +109,6 @@ public enum PromiseReminders {
         StaffPromises.promises(s, personID: personID).filter { $0.companyID == companyID }.map(worker)
     }
 
-    /// Weekly: remind about every open promise that falls due within `reminderWeeks`, once per date.
     public static func weekly(_ s: inout GameState, data: GameData) {
         let ids = s.people.values.filter { $0.raw[StaffPromises.key] != nil }.map { $0.id }.sorted()
         for id in ids {
@@ -169,7 +142,6 @@ public enum PromiseReminders {
         }
     }
 
-    /// The inbox answer: option 0 keeps it, option 1 asks to wait (or lets it slide when patience is gone).
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData) {
         let d = m.value("data")
         let pid = d["pid"].int, prid = d["prid"].int
@@ -178,8 +150,6 @@ public enum PromiseReminders {
 
     public enum Outcome: Equatable, Sendable { case kept, waited(newDueWeek: Int, patienceLeft: Int), letSlide, notPossible(String) }
 
-    /// Do what was promised, as far as the engine can do it by itself (a raise, a course); promises about a new post or conditions are marked kept with a
-    /// modest pay step standing for the new duties. Returns `.kept`.
     @discardableResult
     public static func keepNow(_ s: inout GameState, personID: Int, promiseID: Int, data: GameData) -> Outcome {
         guard let n = s.people[personID], let rec = StaffPromises.records(n).first(where: { $0.0.id == promiseID && $0.0.isOpen }) else { return .notPossible("That promise is not open.") }
@@ -207,7 +177,6 @@ public enum PromiseReminders {
         return .kept
     }
 
-    /// Ask the worker to wait. Allowed `maxWaits` times; each costs their cheer, and the last one leaves them out of patience.
     @discardableResult
     public static func askToWait(_ s: inout GameState, personID: Int, promiseID: Int, data: GameData) -> Outcome {
         guard let n = s.people[personID] else { return .notPossible("This person is gone.") }
@@ -224,8 +193,8 @@ public enum PromiseReminders {
         let left = maxWaits - p.renegotiations
         if let ci = s.companyIndex(p.companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == personID }) {
             var st = s.companies[ci].staff
-            st[k].happyUntilWeek = min(st[k].happyUntilWeek, s.week)   // a delay ends any cheer
-            if left == 0 { st[k].set("denied", s.week) }               // patience is gone: the existing mood mark and quit risk
+            st[k].happyUntilWeek = min(st[k].happyUntilWeek, s.week)
+            if left == 0 { st[k].set("denied", s.week) }
             s.companies[ci].staff = st
             if left == 0 {
                 s.note("\(n.name) has run out of patience with the promise made to them.", tone: "bad", companyID: p.companyID)
@@ -235,7 +204,6 @@ public enum PromiseReminders {
         return .waited(newDueWeek: p.dueWeek, patienceLeft: left)
     }
 
-    /// Patience was already gone and the answer is still "not now": the promise is broken now.
     @discardableResult
     static func letSlide(_ s: inout GameState, personID: Int, promiseID: Int, data: GameData) -> Outcome {
         guard let n = s.people[personID] else { return .notPossible("This person is gone.") }
@@ -256,31 +224,22 @@ public enum PromiseReminders {
     }
 }
 
-// MARK: Role catalog with real effects
-
-/// One role a company can fill: the core jobs of the trade and the recommended extras. `effect` says in words what a filled extra does.
 public struct RoleOption: Equatable, Sendable, Identifiable {
     public var id: String
     public var name: String
     public var isCore: Bool
-    /// What it does when someone fills it ("Cuts losses from theft by 30 percent"); empty for core roles.
     public var effect: String
     public var filled: Bool
 }
 
 public enum RoleEffects {
-    /// Security guard: shop and venue losses (the trade's shrink) are this share of what they would be; staff theft grows half as fast.
     public static let guardLossFactor = 0.55
-    /// Marketing responsible: campaigns gain this much more awareness; more while the owner works somewhere else (fewer than `ownerAwayHours` here).
     public static let marketingGain = 0.15
     public static let marketingGainOwnerAway = 0.30
     public static let ownerAwayHours = 20.0
-    /// Developer: development projects take this share of the weeks (rounded up).
     public static let developerWeeksFactor = 0.75
-    /// Accountant and cleaner: less chance an inspection finds something (probability points).
     public static let accountantInspection = 0.10
     public static let cleanerInspection = 0.08
-    /// Receptionist: more awareness from the front door.
     public static let receptionistGain = 0.08
 
     struct Extra { var id: String; var effect: String }
@@ -294,7 +253,6 @@ public enum RoleEffects {
         "recept": Extra(id: "recept", effect: "The front door brings 8 percent more awareness."),
     ]
 
-    /// Recommended extra roles per kind of trade (by trade family; a developer only where there is something to develop).
     public static func extraIDs(forTrade bd: Trade) -> [String] {
         var out: [String]
         switch bd.family {
@@ -310,7 +268,6 @@ public enum RoleEffects {
         return out
     }
 
-    /// Someone is filling the role: hired for it, or given it as their duty. People on notice do not count.
     public static func filled(_ co: Company, _ roleID: String) -> Bool {
         co.staff.contains { $0.noticeWeeks == 0 && ($0.role == roleID || $0.str("duty") == roleID) }
     }
@@ -329,7 +286,6 @@ public enum RoleEffects {
         return out
     }
 
-    // The hooks (each is one multiplication or subtraction at the place the effect already lives).
     public static func shrinkFactor(_ co: Company) -> Double { filled(co, "guard") ? guardLossFactor : 1 }
     public static func awarenessFactor(_ co: Company) -> Double {
         var f = 1.0
@@ -341,7 +297,6 @@ public enum RoleEffects {
     public static func inspectionRelief(_ co: Company) -> Double { (filled(co, "acct") ? accountantInspection : 0) + (filled(co, "cleaner") ? cleanerInspection : 0) }
     public static func theftGrowthFactor(_ co: Company) -> Double { filled(co, "guard") ? 0.5 : 1 }
 
-    /// Give a hired person a duty (a role from the company's catalog; nil or empty clears it). "Seat him in my office while he does marketing."
     @discardableResult
     public static func setDuty(_ s: inout GameState, companyID: Int, employeeID: Int, duty: String?, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == employeeID }) else { return false }
@@ -357,8 +312,6 @@ public enum RoleEffects {
     }
 }
 
-// MARK: Worker profile
-
 public struct WorkerProfile: Equatable, Sendable {
     public var employeeID: Int
     public var name: String
@@ -369,15 +322,12 @@ public struct WorkerProfile: Equatable, Sendable {
     public var payBasis: String
     public var contract: EmploymentContract.Summary?
     public var hoursPerWeek: Double
-    /// Contracted hours since they started (absences are not deducted).
     public var hoursWorked: Double
     public var weeksEmployed: Int
     public var promises: [WorkerPromise]
-    /// "Leaving", "Unhappy", "Happy", "Mixed" or "Content", and the reasons.
     public var mood: String
     public var moodGood: [String]
     public var moodBad: [String]
-    /// What the work is worth now (their skill with what they have learned, 0 to 100), what the pay leads you to expect, and whether it is met.
     public var performance: Double
     public var expectedPerformance: Double
     public var meetsExpectation: Bool
@@ -385,7 +335,6 @@ public struct WorkerProfile: Equatable, Sendable {
 }
 
 public enum WorkerProfiles {
-    /// The skill the pay should buy: what the person earns against the going pay for the role, on a scale where the going pay buys 55.
     public static func expected(wage: Double, market: Double) -> Double { clamp(55 * wage / max(1, market), 20, 90) }
 
     public static func profile(_ s: GameState, companyID: Int, employeeID: Int, data: GameData) -> WorkerProfile? {

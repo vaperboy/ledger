@@ -1,10 +1,7 @@
 import Foundation
 import GameCore
 
-/// Business choices ("knobs"): concept, menu, staffing model ... Each option changes prices (t), demand (d),
-/// capacity (k), costs (c, w), quality (q) and so on. Original: `knobFx`, `knobOpts` in engine/company/company.js.
 public enum Knobs {
-    /// The options that are switched on for a knob.
     public static func activeOptions(_ co: Company, _ knob: Knob) -> [KnobOption] {
         let selected = co.value("knob")[knob.id].int
         if knob.isMulti {
@@ -13,7 +10,6 @@ public enum Knobs {
         return knob.options.indices.contains(selected) ? [knob.options[selected]] : []
     }
 
-    /// A multi-choice knob is stored as a bit mask (bit n = option n is on). The new mask with one option switched on or off.
     public static func mask(_ mask: Int, option: Int, on: Bool) -> Int {
         guard option >= 0, option < 62 else { return mask }
         return on ? mask | (1 << option) : mask & ~(1 << option)
@@ -23,9 +19,6 @@ public enum Knobs {
         co.value("docs")[id]["st"].string == "ok"
     }
 
-    /// Combined effect of the company's choices on one measure. `sum` adds the effects, otherwise they multiply.
-    /// For customer demand ("d") the pull of an option drifts with the seasons. Original: `knobFx` + the
-    /// 'business choices: their pull on customers drifts with the season' step.
     public static func effect(_ co: Company, _ bd: Trade, _ key: String, _ w: World, sum: Bool = false) -> Double {
         var v: Double = sum ? 0 : 1
         for knob in bd.knobs {

@@ -4,7 +4,6 @@ import Finance
 import Simulation
 @testable import Businesses
 
-/// Trade associations (discount cap, fee booked balanced, standards check) and the player news rules (templates, privacy, filters).
 final class TradeAssociationTests: XCTestCase {
     private let club = AssociationCatalogue.tradeClub(tradeName: "Bakery", region: "UK")
     private let good = AssociationStanding(reputation: 60, weeksNegative: 0, wageShortfall: 0, taxDue: false)
@@ -81,14 +80,12 @@ final class TradeAssociationTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
         e.update { s, _, _ in result = TradeAssociations.join(&s, companyID: id, club: c, members: 20, tradeName: trade) }
         XCTAssertEqual(result, .refused("This company already belongs to a club. Leave it first."))
-        // a club of another trade is refused
         e.update { s, _, _ in
             TradeAssociations.leave(&s, companyID: id)
             result = TradeAssociations.join(&s, companyID: id, club: AssociationCatalogue.tradeClub(tradeName: "Dental clinic", region: region), members: 5, tradeName: trade)
         }
         XCTAssertEqual(result, .refused("This club is for Dental clinic."))
 
-        // spend on supply lines earns the pooled saving; the fee and the standards check come every fourth week
         e.update { s, _, _ in _ = TradeAssociations.join(&s, companyID: id, club: c, members: 20, tradeName: trade) }
         let joined = e.state.week
         e.update { s, _, _ in
@@ -144,8 +141,6 @@ final class TradeAssociationTests: XCTestCase {
         XCTAssertNil(TradeAssociations.membership(e.state, companyID: id), "no ghost member is left in the club")
     }
 
-    // MARK: News
-
     private func ev(_ kind: PlayerEventKind, audience: PlayerEventAudience = .everyone, count: Int? = nil, other: String? = nil, club: String? = nil,
                     company: String? = "Lund Bakery", trade: String? = "Bakery", city: String? = "Leeds") -> PlayerEvent {
         PlayerEvent(id: "e", kind: kind, playerID: "p1", playerName: "Sofie Lund", countryCode: "NO", audience: audience, day: 100, trade: trade, city: city,
@@ -163,7 +158,6 @@ final class TradeAssociationTests: XCTestCase {
         XCTAssertNil(PlayerNewsRules.sentence(ev(.acquisition), namesVisible: true))
         XCTAssertEqual(PlayerNewsRules.sentence(ev(.newAssociation, club: "NO Bakery Association"), namesVisible: false), "Sofie Lund joined NO Bakery Association.")
         XCTAssertEqual(PlayerNewsRules.sentence(ev(.seasonMilestone, count: 3), namesVisible: false), "Sofie Lund finished season 3.")
-        // every digit in a sentence is the event's own count (a small branch count is spelled as a word)
         for n in [3, 12, 5000] {
             for k in [PlayerEventKind.supplierMilestone, .seasonMilestone] {
                 XCTAssertEqual(PlayerNewsRules.numbersIn(PlayerNewsRules.sentence(ev(k, count: n), namesVisible: false) ?? ""), [n])

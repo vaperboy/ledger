@@ -1,15 +1,11 @@
 import SwiftUI
 
 extension GameStore {
-    /// True while Home must keep showing the figures of the day before: a day is running, or a report, the daily report
-    /// or a queued reward is still waiting for its Continue. It is derived from the store, so it can never be left on.
     var holdsHomeFigures: Bool {
         isAdvancing || reportSheet != nil || dailySheet != nil || !celebrationQueue.isEmpty || !unlockQueue.isEmpty
     }
 }
 
-/// Shows the previous value while `store.holdsHomeFigures`, and the live value otherwise. When the hold ends the shown value changes
-/// from the old to the new one, so `moneyFlash` inside `content` counts and flashes then (not under the report).
 struct HeldValue<Content: View>: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.scenePhase) private var scenePhase
@@ -33,14 +29,10 @@ struct HeldValue<Content: View>: View {
     }
 }
 
-/// Text of a money figure whose digits roll when it changes: only the digits that differ scroll, upward and tinted green for a rise, downward
-/// and red for a fall, and the tint fades back to the surrounding colour while the old digits leave. Reduce Motion skips the roll and keeps
-/// the colour flash only. Used inside `HeldValue`, so the roll starts when the report closes, not under it.
 struct RollingMoney: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var value: Double
     var format: (Double) -> String
-    /// False for a figure that is a cost or loss shown without its sign: a rise is then bad news (red).
     var betterWhenHigher: Bool = true
     @State private var shown: Double
     @State private var falling: Bool = false
@@ -75,7 +67,6 @@ struct RollingMoney: View {
 }
 
 extension View {
-    /// Draws the view in from the left whenever `trigger` changes (not on the first appearance); Reduce Motion shows it at once.
     func revealOnChange<T: Equatable>(of trigger: T) -> some View { modifier(RevealOnChange(trigger: trigger)) }
 }
 

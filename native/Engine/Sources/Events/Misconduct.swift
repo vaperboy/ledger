@@ -4,29 +4,10 @@ import Countries
 import Finance
 import Businesses
 
-/// Misconduct and political influence as optional, high-risk decisions. They use the strategic-decision engine
-/// (`StrategicDecisions`: inbox message, defaults, `later` follow-ups); nothing runs beside it.
-///
-/// Misconduct (class "mis") pays now and bills later. Every act is a "case" kept on the company (`mis.cases`). Each week a case
-/// can be found: the chance grows with the size of the business, with every repeat, and with how strict the country is
-/// (`CountryTraits.politics`). The tax audit and inspection events (`g_audit`, `g_inspect`) also look for open cases.
-/// When found: back taxes (if the tax year is closed), interest, a fine scaled to the gain, lost reputation and reviews,
-/// worse loan terms, sometimes a stop to trading, and part of the fine falls on the owner personally.
-///
-/// Political influence (class "pol") costs real money up front, may do nothing, shifts one regulation-related cost by a few
-/// percent for a set time at best, and can end in a scandal and a fine. It never guarantees a law.
-///
-/// All money moves through `Payments` (so the `Ledger` stays balanced). Concealed profit is kept in `evade` and read by
-/// `MonthEnd.accrueTax`, which is the only place tax is worked out; the tax is therefore never paid twice.
 public enum Misconduct {
-    // MARK: Country strictness
 
-    /// How strict enforcement is here (1 = average). Data: `country_traits.json` -> `politics`.
     static func enforcement(_ cc: String) -> Double { CountryTraits.politics(cc, "enforcement") }
-    /// How open the country is to influence (1 = average).
     static func openness(_ cc: String) -> Double { CountryTraits.politics(cc, "openness") }
-
-    // MARK: State on the company
 
     static func state(_ co: Company) -> JSONValue { co.value("mis").isNull ? .object([:]) : co.value("mis") }
     static func cases(_ co: Company) -> [JSONValue] { state(co)["cases"].array }
@@ -37,7 +18,6 @@ public enum Misconduct {
 
     static func setState(_ s: inout GameState, _ i: Int, _ st: JSONValue) { s.companies[i].set("mis", st) }
 
-    /// Register an act. `gain` is what the company kept (tax saved, cost cut, interest saved, business won).
     static func register(_ s: inout GameState, _ i: Int, kind: String, gain: Double, extra: [String: JSONValue] = [:]) {
         var st = state(s.companies[i])
         var list = st["cases"].array
@@ -50,7 +30,6 @@ public enum Misconduct {
         setState(&s, i, st)
     }
 
-    /// Profit kept out of this year's tax base (illegal `c` plus legal `l`). Read by `MonthEnd.accrueTax`.
     static func addConcealed(_ s: inout GameState, _ i: Int, legal: Bool, amount: Double) {
         let year = Double(GameCalendar.year(week: s.week))
         var ev = s.companies[i].value("evade").isNull ? JSONValue.object([:]) : s.companies[i].value("evade")
@@ -60,14 +39,11 @@ public enum Misconduct {
         s.companies[i].set("evade", ev)
     }
 
-    // MARK: Risk
-
     static func yearRevenue(_ s: GameState, _ i: Int, data: GameData, context fc: FinanceContext) -> Double {
         let co = s.companies[i], k = fc.country(of: co, s)
         return EventEngine.context(for: co, data: data, country: k).wk * 52
     }
 
-    /// Chance per week that open cases are found. Grows with size, with each repeat and with the country's strictness.
     static func weeklyRisk(_ s: GameState, _ i: Int, data: GameData, context fc: FinanceContext, extraActs: Int = 0) -> Double {
         let co = s.companies[i]
         let cur = fc.currency(co.countryCode, s)
@@ -85,14 +61,10 @@ public enum Misconduct {
 
     static func pct(_ p: Double) -> String { "\(Int(saturating: (p * 100).rounded()))%" }
 
-    // MARK: The weekly turn
-
-    /// Called every week from `StrategicDecisions.weekly`. Uses `HashedRandom`, so a game with no open case draws nothing.
     static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         for i in s.companies.indices where s.companies[i].status == .open {
             var st = state(s.companies[i])
             guard !st["cases"].array.isEmpty else { continue }
-            // Cases that nobody found in three years are closed.
             let live = st["cases"].array.filter { s.week - $0["w"].int < 156 }
             if live.count != st["cases"].array.count { st["cases"] = .array(live); setState(&s, i, st) }
             guard !live.isEmpty else { continue }
@@ -103,9 +75,6 @@ public enum Misconduct {
         }
     }
 
-    // MARK: Being found out
-
-    /// Settle every open case of the company at once. Returns the total paid by the company.
     @discardableResult
     static func investigate(_ s: inout GameState, _ i: Int, data: GameData, context fc: FinanceContext, cause: String, kinds: [String]? = nil) -> Double {
         let co0 = s.companies[i]
@@ -124,7 +93,6 @@ public enum Misconduct {
             case "tax":
                 let same = c["y"].int == year
                 if same {
-                    // This year's tax has not been paid yet: the concealment is removed and the ordinary accrual picks it up.
                     var ev = s.companies[i].value("evade")
                     if !ev.isNull { ev["c"] = .number(max(0, ev["c"].double - c["c"].double)); s.companies[i].set("evade", ev) }
                 } else {
@@ -161,7 +129,6 @@ public enum Misconduct {
         if back > 0 { _ = Payments.companyPays(&s, companyID: id, amount: back, category: "tax", label: "Back taxes") }
         if interest > 0 { _ = Payments.companyPays(&s, companyID: id, amount: interest, category: "int", label: "Interest on back taxes") }
         if fine > 0 { _ = Payments.companyPays(&s, companyID: id, amount: fine, category: "fine", label: "Penalty: misconduct") }
-        // A good lawyer or a legal team can cut the penalty (`Payments.companyPays`): what was really paid is what is reported.
         let paidNow = max(0, cash0 - s.companies[i].cash)
         fine = max(0, paidNow - back - interest)
         s.companies[i].reputation = clamp(s.companies[i].reputation - repLoss, 0, 100)
@@ -169,9 +136,7 @@ public enum Misconduct {
             for l in s.loans.indices where s.loans[l].companyID == id && s.loans[l].kind != "start" && s.loans[l].balance > 0 { s.loans[l].margin += 0.02 }
             s.credit = clamp(s.credit - 12, 0, 100)
         }
-        // A repeat offender, or a bribe, can lose the licence to trade for a while.
         if closed || st["n"].int >= 3 { addMod(&s, i, "cap", closed ? 0.5 : 0.3, 6); closed = true }
-        // The owner answers personally for part of the penalty.
         var personal = 0.0
         if fine > 0 {
             personal = jsRound(fine * 0.2)
@@ -196,15 +161,11 @@ public enum Misconduct {
 
     static func addMod(_ s: inout GameState, _ i: Int, _ k: String, _ m: Double, _ w: Double) { EventEngine.addModifier(&s, i, key: k, multiplier: m, weeks: w) }
 
-    // MARK: Follow-ups (delayed outcomes)
-
-    /// Runs the follow-ups queued with `StrategicDecisions.later`. Called from `followUpCorporate`'s default branch.
     static func followUp(_ s: inout GameState, id: String, index k: Int, d: JSONValue, data: GameData, context fc: FinanceContext) {
         let name = s.companies[k].name, cid = s.companies[k].id
         let cur = fc.currency(s.companies[k].countryCode, s)
         switch id {
         case "mis_bank_end":
-            // The flattering accounts no longer count: the old margins come back.
             for v in d["ids"].array { if let l = s.loans.firstIndex(where: { $0.id == v.int }) { s.loans[l].margin += d["cut"].double } }
         case "mis_quality_leak":
             guard hasCases(s.companies[k], kinds: ["quality"]) else { return }
@@ -219,13 +180,11 @@ public enum Misconduct {
         }
     }
 
-    /// The outcome of a donation or lobbying effort, some weeks after the money was spent. Never guaranteed.
     static func politicalResult(_ s: inout GameState, _ k: Int, d: JSONValue, cur: Currency, data: GameData, context fc: FinanceContext) {
         let co = s.companies[k], cc = co.countryCode, cid = co.id
         let tag = "pol:\(d["kind"].string):\(s.week):\(cid)"
         var r = HashedRandom(tag)
         let heat = state(co)["heat"].double
-        // The scandal is rolled first: money in politics is news in every country, and more so where enforcement is strict.
         if r.next() < d["ps"].double {
             let fine = jsRound(d["spent"].double * d["fineMult"].double)
             _ = Payments.companyPays(&s, companyID: cid, amount: fine, category: "fine", label: "Penalty: political funding")
@@ -247,9 +206,6 @@ public enum Misconduct {
         }
     }
 
-    // MARK: Gate for the monthly turn
-
-    /// A hashed gate so that offering these decisions draws nothing from the main random stream. `chance` per attempt.
     static func gate(_ s: GameState, _ tag: String, _ chance: Double) -> Bool {
         HashedRandom.first("misgate:\(tag):\(s.week)") < chance
     }
@@ -261,7 +217,6 @@ extension StrategicDecisions {
         func scaledC(_ s: GameState, _ i: Int, _ fc: FinanceContext, _ v: Double) -> Double { fc.currency(s.companies[i].countryCode, s).scaledPrice(v) }
         func risk(_ s: GameState, _ i: Int, _ data: GameData, _ fc: FinanceContext) -> Double { Misconduct.yearlyRisk(s, i, data: data, context: fc, extraActs: 1) }
 
-        // MARK: Tax: hidden takings (and the legal route)
         L.append(Def(id: "m_tax", cls: "mis", stages: ["grow", "est"], w: 2, tone: "n", from: "Your accountant", exp: 4, def: 2,
                      cond: { s, co, _ in ebit12(co, s) > 0 },
                      make: { s, i, data, fc in
@@ -290,7 +245,6 @@ extension StrategicDecisions {
                             s.note("Legal deductions cut the tax of \(s.companies[x.i].name) by about \(x.cur.display(x.d["lsave"].double)).", tone: "good", companyID: s.companies[x.i].id) },
                         Opt(label: "Keep the books as they are", detail: "No gain, no risk.") { _, _ in }]))
 
-        // MARK: Quality shortcut
         L.append(Def(id: "m_quality", cls: "mis", stages: ["start", "grow", "est"], w: 2, from: "A supplier", exp: 4, def: 2,
                      cond: { _, co, data in (data.catalog[co.type].map(hasGoods) ?? false) && co.quality > 25 },
                      make: { s, i, data, fc in
@@ -322,7 +276,6 @@ extension StrategicDecisions {
                             else { s.note("The supplier would not move on price.", tone: "n", companyID: s.companies[x.i].id) } },
                         Opt(label: "Keep the quality", detail: "No saving, no risk.") { _, _ in }]))
 
-        // MARK: Flattering accounts for the bank
         L.append(Def(id: "m_bank", cls: "mis", stages: ["grow", "est"], w: 2, from: "The bank", exp: 4, def: 2,
                      cond: { s, co, data in
                          let floor = Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values)).scaledPrice(150_000)
@@ -358,7 +311,6 @@ extension StrategicDecisions {
                             later(&s, 52, "mis_bank_end", x.i, .object(["ids": .array(ids), "cut": num(cut)])) },
                         Opt(label: "Show the accounts as they are", detail: "No gain, no risk.") { _, _ in }]))
 
-        // MARK: A bribe
         L.append(Def(id: "m_bribe", cls: "mis", stages: ["grow", "est"], w: 1, from: "An official", exp: 3, def: 2,
                      cond: { _, co, data in (data.catalog[co.type]?.businessShare ?? 0) > 0.1 || co.staff.count >= 5 },
                      make: { s, i, data, fc in
@@ -384,7 +336,6 @@ extension StrategicDecisions {
                         Opt(label: "Report it", detail: "No gain; a small boost to your name.") { s, x in rep(&s, x, 2) },
                         Opt(label: "Decline quietly", detail: "Nothing happens.") { _, _ in }]))
 
-        // MARK: Political donation and lobbying
         func politics(_ id: String, title: String, from: String, what: String, kind: String, spendPct: Double, floor: Double, p: Double, m: Double, weeks: Double, scandal: Double, fineMult: Double, w: Double) -> Def {
             Def(id: id, cls: "pol", stages: ["grow", "est"], w: w, from: from, exp: 4, def: 1,
                 cond: { s, co, _ in ebit12(co, s) > 0 },
@@ -415,7 +366,6 @@ extension StrategicDecisions {
                               spendPct: 0.004, floor: 20_000, p: 0.4, m: 0.985, weeks: 78, scandal: 0.10, fineMult: 2, w: 1)
         let lobby = politics("m_pol_lobby", title: "Join an industry lobbying group?", from: "Industry association", what: "lobbying fee", kind: "lobby",
                              spendPct: 0.006, floor: 30_000, p: 0.35, m: 0.99, weeks: 104, scandal: 0.05, fineMult: 1, w: 1)
-        // "Stay out" is the last answer and the default when nobody answers in time.
         L.append(donate); L.append(lobby)
         return L
     }

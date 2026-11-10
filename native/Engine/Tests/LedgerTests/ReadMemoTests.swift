@@ -4,7 +4,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// The New company list is kept between redraws; it must always equal a fresh calculation, after a day, a purchase and any other change.
 final class ReadMemoTests: XCTestCase {
     private func same(_ e: GameEngine, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertEqual(e.tradePickerRows(), e.tradePickerRowsFresh(), what, file: file, line: line)
@@ -20,9 +19,9 @@ final class ReadMemoTests: XCTestCase {
         same(e, "after a day")
         let afterDay = e.tradePickerRows()
         XCTAssertEqual(before.count, afterDay.count)
-        _ = e.startCompany(tradeID: "bakery", cityID: e.state.player.cityID, fundWith: 3_000_000)   // a purchase
+        _ = e.startCompany(tradeID: "bakery", cityID: e.state.player.cityID, fundWith: 3_000_000)
         same(e, "after starting a company")
-        e.update { s, _, _ in Ledger.move(&s, .me, -30_000_000, why: "Test spend") }   // an action that only changes money
+        e.update { s, _, _ in Ledger.move(&s, .me, -30_000_000, why: "Test spend") }
         same(e, "after money moved")
         XCTAssertNotEqual(afterDay.map(\.isFunded), e.tradePickerRows().map(\.isFunded), "less money must show in the list")
     }

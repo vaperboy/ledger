@@ -4,26 +4,9 @@ import Countries
 import Finance
 import Businesses
 
-/// Event chains: what happens some weeks after a lawsuit, a breakdown, a resignation, a supplier failure, a cyber attack,
-/// a failed inspection or a lucky break. No new systems: a trigger queues a follow-up (`AftermathQueue`), and when it falls due
-/// the follow-up is fired as an ordinary event (`EventEngine.fire`), so it reaches the Inbox with costs, deadline and default,
-/// is decided by a manager if one has authority, takes the cheapest answer when ignored, and changes state through `EventEngine.apply`.
-/// Every queued follow-up and every outcome is also written to the week's report with `s.note(..., companyID:)`.
-///
-/// Chains (trigger -> follow-up, delay):
-///  1 lawsuit lost -> reviews dip (now), insurer reprices `premium` (2 wk)        2 big lawsuit lost -> `copycat` claim (7 wk)
-///  3 quick fix of kit -> `relapse` (4-6 wk)      4 worker leaves -> capacity drop (now) and `hire` (2 wk)   5 worker leaves -> `headhunt` (4 wk)
-///  6 supplier bankrupt/dearer -> `negotiate` (6-8 wk)      7 supplier bankrupt, waited -> `shortage` (2 wk)
-///  8 cyber attack -> `secreview` (3 wk)      9 failed inspection -> `reinspect` (4 wk)
-/// 10 new rival -> `distressed` rival for sale (8 wk)   11 big order taken -> `bulk` standing deal (6 wk)   12 roadworks over -> `premises` offer (8 wk)
-///
-/// Longer chains (steps in events.json as `chain<kind>`; an answer's `next` effect decides which step follows):
-///  A cyber breach left open -> `breachclaim` (4 wk) -> `breachpress`      B late supplier invoices -> `suppnotice` -> `suppcash` -> `suppstop`
-///  C failed re-inspection -> `licwarn` -> `licreview`                     D a price cut -> `pwreply` -> `pwlong` -> `pwtruce`
 public enum Aftermath {
     static let prefix = "aft_"
 
-    /// The follow-up events, as data in the same shape as events.json.
     static let templates: [String: String] = [
         "premium": #"{"t":"The insurer reprices {n} after the lost court case.","cat":"none","tone":"bad","exp":3,"opts":[{"l":"Accept the new terms","d":"Free today. Insurance bill +20% for 26 weeks.","fx":{"premUp":0.2,"premWeeks":26}},{"l":"Shop around with a broker","d":"Small broker fee now, bill only +8% for 26 weeks. Slow but safe.","fx":{"cash":-4000,"premUp":0.08,"premWeeks":26}},{"l":"Put a risk-control plan in place","d":"Training and signage cost a fifth of a week's sales; bill +5% for 26 weeks and quality +2.","fx":{"cash":{"expr":"-wk * 0.2"},"premUp":0.05,"premWeeks":26,"q":2}}]}"#,
         "relapse": #"{"t":"{eq} at {n} is acting up again after the quick fix.","cat":"prop","tone":"bad","exp":3,"opts":[{"l":"Overhaul or replace it","d":"Costs most now, back to like-new. Ends the problem.","fx":{"cash":{"expr":"-max(6000, eqv * 0.12)"},"fixeq":2}},{"l":"Patch it again","d":"Cheap, but it will only hold to the usual condition. Risk of another failure later.","fx":{"cash":{"expr":"-max(2000, eqv * 0.03)"},"fixeq":1}},{"l":"Keep running it as it is","d":"Free now. Capacity -25% for 4 weeks, and customers drift away for about 8 weeks (demand -7%, reputation down).","fx":{"cap":[0.75,4],"dem":[0.93,8],"rep":-1}}]}"#,
@@ -38,8 +21,6 @@ public enum Aftermath {
         "premises": #"{"t":"The landlord of {n} makes an offer now the roadworks are over.","cat":"none","tone":"good","exp":3,"opts":[{"l":"Decline","d":"Free. Nothing changes.","fx":{}},{"l":"Negotiate a rent break","d":"60%: a rebate of most of a week's sales. 40%: the landlord stands firm.","fx":{"gamble":{"p":0.6,"ok":{"cash":{"expr":"wk * 0.8"}},"bad":{}}}},{"l":"Renovate and relaunch","d":"A week and a half of sales, landlord pays half. Quality +3, awareness +6, demand +8% for 26 weeks.","fx":{"cash":{"expr":"-wk * 1.5"},"q":3,"aware":6,"dem":[1.08,26]}}]}"#,
     ]
 
-
-    /// Chain steps that live in events.json (ids `chain<kind>`, weight 0: they are only ever fired from here).
     static let chainLibrary: EventLibrary? = try? EventLibrary.bundled()
 
     static func event(_ kind: String) -> GameEvent? {
@@ -56,8 +37,6 @@ public enum Aftermath {
         return min(n - 1, Int(h.next() * Double(n)))
     }
 
-    // MARK: Triggers
-
     static func queue(_ s: inout GameState, _ i: Int, _ kind: String, delay: Int, why: String) {
         let co = s.companies[i]
         if AftermathQueue.schedule(&s, companyID: co.id, kind: kind, delay: delay) {
@@ -65,11 +44,9 @@ public enum Aftermath {
         }
     }
 
-    /// Called after any event's effects are applied (answered, taken by default, or chosen by a manager).
     static func afterEffects(_ s: inout GameState, _ i: Int, event e: GameEvent, fx: JSONValue, data: GameData) {
         extras(&s, i, fx: fx, data: data)
         let co = s.companies[i]
-        // A deliberate price move is not itself a reason for a rival to reply: note the new level so the weekly scan only reacts to other cuts.
         if fx["pr"].double != 0 { EventEngine.setFlag(&s, i, "plSeen", Double(s.companies[i].priceLevel)) }
         switch e.id {
         case "g_break", "pr_machine", "l_break":
@@ -95,7 +72,6 @@ public enum Aftermath {
         }
     }
 
-    /// Effects of the follow-ups that no existing effect covers: dearer insurance and cyber protection.
     static func extras(_ s: inout GameState, _ i: Int, fx: JSONValue, data: GameData) {
         let co = s.companies[i]
         if fx["premUp"].double != 0 {
@@ -104,7 +80,6 @@ public enum Aftermath {
             s.companies[i].set("flags", f)
             s.note("\(co.name): insurance premiums +\(Int(saturating: (fx["premUp"].double * 100).rounded()))% for \(fx["premWeeks"].int) weeks.", tone: "bad", companyID: co.id)
         }
-        // A step of a chain can queue the next one, so the answer decides what comes next (`next`: {k, d, why}).
         if !fx["next"].isNull {
             let n = fx["next"]
             queue(&s, i, n["k"].string, delay: max(1, n["d"].int), why: n["why"].string.isEmpty ? "The story is not over." : n["why"].string)
@@ -121,9 +96,6 @@ public enum Aftermath {
         }
     }
 
-    // MARK: Weekly
-
-    /// Fire what has fallen due. Called every week before decisions expire.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         scanTriggers(&s)
         for item in AftermathQueue.takeDue(&s) {

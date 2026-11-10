@@ -1,15 +1,10 @@
 import SwiftUI
 
-/// Set while a horizontal control (a slider) is being touched: the tab pager never starts a page swipe then.
 final class PageSwipeGate {
     static let shared = PageSwipeGate()
     var touching = false
 }
 
-/// The tabs stacked: tapping a tab bar item slides the old page a short way out (toward the side the new tab lies on) while it fades,
-/// and the new page slides in from that side over the same short distance (a spring of about 0.3 s, no scale). There is NO page swipe: tabs change only by tapping the tab bar; horizontal swipes belong to the
-/// segment rows inside a page (`SegmentPager`). All pages stay alive (each keeps its own stack and scroll place). Only the settled page
-/// takes touches. Under Reduce Motion the pages fade.
 struct TabPager<Content: View>: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -20,7 +15,6 @@ struct TabPager<Content: View>: View {
 
     private let tabs: [AppTab] = AppTab.allCases
     private let spring: Animation = Motion.moveAnimation
-    /// How far a page travels while it changes places: a short panel slide, not a full screen width.
     private static var slide: CGFloat { 44 }
 
     init(@ViewBuilder content: @escaping (AppTab) -> Content) { self.content = content }
@@ -39,7 +33,6 @@ struct TabPager<Content: View>: View {
                 .onAppear { width = g.size.width }
                 .onChange(of: g.size.width) { _, w in width = w }
         })
-        // The mask reaches under the status bar, so the page colour is never cut off at the top safe area.
         .mask(Rectangle().ignoresSafeArea())
         .background(Theme.page.ignoresSafeArea())
         .animation(reduceMotion ? Motion.quickAnimation : spring, value: store.tab)
@@ -54,7 +47,6 @@ struct TabPager<Content: View>: View {
 
     private func page(_ t: AppTab, cur: Int) -> some View {
         let active: Bool = t == store.tab
-        // Only the side matters: every page left of the open one waits at -44, every page right of it at +44.
         let side: CGFloat = CGFloat(max(-1, min(1, index(t) - cur)))
         return content(t)
             .frame(maxWidth: .infinity, maxHeight: .infinity)

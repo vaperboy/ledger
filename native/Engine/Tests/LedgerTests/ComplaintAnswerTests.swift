@@ -4,7 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Pins `Complaints.answer`, the one place a complaint is answered (the dead copy `Satisfaction.answerComplaint` is gone).
 final class ComplaintAnswerTests: XCTestCase {
     private func run(_ answer: Satisfaction.Answer) throws -> (result: Bool?, again: Bool?, open: Int, gaps: Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)

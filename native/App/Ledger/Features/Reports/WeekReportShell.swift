@@ -3,11 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-/// The reveal shown when a week, month or year closes: title and period, one big profit number that
-/// counts up, one story sentence, three bars on one scale, one thing to do, a record line, then "Full report" and "Continue".
-/// Month and year add a movers list and one extreme line (the year also a 12-bar strip, tax and net worth) and keep their existing
-/// detail below a "More" divider. Finished goals that need no claim are listed inside the report (and leave the reward queue with it),
-/// so a week close is one popup, not a chain. Real figures only; Reduce Motion shows everything at once. Continue works from the first frame.
 struct WeekReportShell<More: View>: View {
     @EnvironmentObject var store: GameStore
     @Environment(AdCoordinator.self) private var ads
@@ -24,8 +19,6 @@ struct WeekReportShell<More: View>: View {
     @State private var cardShown = false
     @State private var trophyShown = false
     @State private var burst = 0
-
-    // MARK: Body
 
     var body: some View {
         GamePopup(title: digest.title, showsClose: false, dismissOnBackdrop: false, footer: AnyView(footer), category: .detail, tone: .info, onClose: { }) {
@@ -74,9 +67,6 @@ struct WeekReportShell<More: View>: View {
         })
     }
 
-    // MARK: Goals reached this week
-
-    /// The finished goals waiting behind this report, in queue order, that need no claim of their own.
     private var foldedGoals: [Celebration] {
         Array(store.celebrationQueue.prefix(while: { (c: Celebration) -> Bool in CelebrationPopup.foldsIntoReport(c) }))
     }
@@ -103,7 +93,6 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    /// The goals shown here have been seen: they leave the reward queue so no popup repeats them.
     private func dismissFolded() {
         let ids: Set<Int> = Set(foldedGoals.map { (c: Celebration) -> Int in c.id })
         while let first = store.celebrationQueue.first, ids.contains(first.id) { store.dismissCelebration() }
@@ -118,7 +107,6 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    /// Closes the report; a week report then offers the interstitial the ad rules allow (placement 1). Never blocks the player.
     private func continueTapped() {
         let isWeek: Bool = digest.kind == .week
         let week: Int = store.engine?.state.week ?? 0
@@ -128,8 +116,6 @@ struct WeekReportShell<More: View>: View {
         store.dismissReportSheet()
         if isWeek { Task { await ads.weekReportContinued(reportWeek: week, m4Done: m4, blockingInboxOpen: blocking) } }
     }
-
-    // MARK: Parts
 
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -199,8 +185,6 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    // MARK: Month and year depth
-
     @inline(never) @ViewBuilder private func extras(_ r: WeekRecap) -> some View {
         if r.kind != .week {
             VStack(alignment: .leading, spacing: 10) {
@@ -266,8 +250,6 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    // MARK: One thing to do, record, More
-
     @inline(never) @ViewBuilder private func nextCard(_ r: WeekRecap) -> some View {
         if let n = r.next {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -302,7 +284,6 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    /// One small burst of 12 dots in the accent colour, falling out of view in 0.9 s. Never shown under Reduce Motion.
     @ViewBuilder private var confetti: some View {
         if !reduceMotion {
             ZStack {
@@ -329,9 +310,6 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    // MARK: Helpers and timing
-
-    /// Sets the recap, then plays the reveal: title 0.2 s, number and bars 0.6 s (bars staggered 0.08 s), story, card, record.
     private func start() async {
         let made: WeekRecap? = store.engine?.weekRecap(kind: digest.kind, id: digest.reportID)
         recap = made
@@ -346,7 +324,7 @@ struct WeekReportShell<More: View>: View {
         Motion.animate(Motion.quickAnimation) { titleShown = true }
         Motion.animate(Motion.reveal(false)) { numberShown = true }
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 600_000_000)   // the number has finished counting
+            try? await Task.sleep(nanoseconds: 600_000_000)
             Haptics.countDone()
         }
         for i in 0..<3 {

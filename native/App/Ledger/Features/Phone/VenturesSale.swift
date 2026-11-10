@@ -3,8 +3,6 @@ import GameCore
 import Countries
 import Events
 
-/// The owner's asking price on a venture sale: a slider over the engine's allowed range (a multiple of the quoted proceeds) and what the ask
-/// means in money. At or under the quote the buyer pays the ask; above it the buyer may counter or walk away, which only the sale itself reveals.
 struct VenturesAskControl: View {
     var quote: VentureSale.Quote
     var cur: Currency
@@ -29,7 +27,6 @@ struct VenturesAskControl: View {
     }
 }
 
-/// The buyer's reply to an ask that did not sell: a counter-offer to take, or why it was declined.
 struct VenturesSaleReply: View {
     var reply: VentureSale.Outcome?
     var cur: Currency

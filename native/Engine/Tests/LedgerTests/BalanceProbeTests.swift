@@ -6,12 +6,9 @@ import Businesses
 import Simulation
 import Investments
 
-/// How fast does each trade make its owner rich? Plays every supported trade for three years with the standard set-up and
-/// prints return on the money put in. Run with LEDGER_BALANCE=1 (slow); the regular suite only checks the ceiling below.
 final class BalanceProbeTests: XCTestCase {
     struct Outcome { var trade: String; var invested: Double; var profitY1: Double; var profitY3: Double; var value: Double; var cash: Double; var status: String; var staff: Int }
 
-    /// Runs `body` in its own autorelease pool where there is one (Apple platforms); plain call elsewhere.
     static func drained(_ body: () -> Void) {
         #if canImport(ObjectiveC)
         autoreleasepool(invoking: body)
@@ -30,12 +27,9 @@ final class BalanceProbeTests: XCTestCase {
             let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             invested = (est?.total ?? 1_000_000) * (Double(ProcessInfo.processInfo.environment["LEDGER_CASHX"] ?? "") ?? 1.3)
             Payments.injectCash(&s, companyID: id, amount: invested)
-            // An owner who does not work in the business: the standard team does everything (how an empire scales)
             if ProcessInfo.processInfo.environment["LEDGER_NOOWNER"] != nil { s.companies[s.companyIndex(id)!].ownerHours = 0 }
             if ProcessInfo.processInfo.environment["LEDGER_FIXEDHOURS"] != nil { s.rest["ownHrsFixed"] = true }
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
-            // Only a hired manager hires. A trade the owner cannot work in at all (ownerFTE 0: airline, shipping...) loses its leavers
-            // for good without one, so the owner of such a company, or of any business with a team of four or more, appoints a manager at the start, as a player would.
             if let co = s.company(id), let bd = data.catalog[co.type], (bd.ownerFTE == 0 || bd.standardStaff.reduce(0, { $0 + $1.count }) >= 4), !bd.hasTrait("noStaff"), co.managerID == nil, ProcessInfo.processInfo.environment["LEDGER_NOMGR"] == nil {
                 for _ in 0..<6 {
                     let c = ManagerModel.generateCandidate(company: s.company(id), type: bd.managerType, state: &s, data: data)
@@ -44,7 +38,6 @@ final class BalanceProbeTests: XCTestCase {
             }
         }
         guard id != 0 else { return nil }
-        // A sensible marketing plan: search ads and social ads at their second-lowest budget, website and SEO at the lowest
         if ProcessInfo.processInfo.environment["LEDGER_MKT"] != nil {
             for (k, n) in [("google", 1), ("meta", 1), ("seo", 1)] {
                 if let ch = e.marketing.channels[k], ch.budgetOptions.count > n { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions[n]) }
@@ -55,7 +48,6 @@ final class BalanceProbeTests: XCTestCase {
                 _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions.last ?? 0)
             }
         }
-        // LEDGER_PROGRESS: unbuffered progress on stderr, so a run that dies (CI) shows the trade, seed and day it reached.
         let progress = ProcessInfo.processInfo.environment["LEDGER_PROGRESS"] != nil
         for day in 0..<(years * 52 * 7) {
             if progress && day % 28 == 0 {
@@ -67,16 +59,12 @@ final class BalanceProbeTests: XCTestCase {
                 #endif
                 FileHandle.standardError.write("PROGRESS \(trade) seed \(seed) day \(day) maxrss \(ru.ru_maxrss) inbox \(e.state.inbox.count) people \(e.state.people.count)\n".data(using: .utf8)!)
             }
-            // One simulated day per autorelease pool: on Apple platforms Foundation objects made inside a long loop are otherwise only
-            // freed when the test method returns, and the runner kills a test process that grows for minutes (SIGKILL, no message).
             BalanceProbeTests.drained {
                 e.nextDay()
                 for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-                // LEDGER_APPROVE=1: an owner who also approves his manager's proposals to hire, buy equipment or vehicles and move to bigger premises (the standard probe leaves them unanswered)
                 if ProcessInfo.processInfo.environment["LEDGER_APPROVE"] != nil {
                     for m in e.openDecisions where m.actionID == "prop" && ["hire", "eq", "veh", "space", "prem"].contains(m.value("data")["t"].string) { e.answer(messageID: m.id, option: 0) }
                 }
-                // LEDGER_PLAYTRACE=1: every 8 weeks the staff, wages, revenue and cash of the played company
                 if ProcessInfo.processInfo.environment["LEDGER_PLAYTRACE"] != nil, day % 56 == 55, let co = e.state.company(id) {
                     let lw = co.value("lastW")
                     print("PT \(trade) w\(day / 7 + 1) \(co.status.rawValue) staff=\(co.staff.map { $0.role }) mgr=\(co.managerID != nil) wages/mo=\(Int(co.staff.reduce(0) { $0 + $1.monthlyWage } / 1000))k mgrwage=\(Int(co.managerMonthlyWage / 1000))k size=\(co.size) cash=\(Int(co.cash / 1000))k rev/wk=\(Int(co.lastWeekRevenue / 1000))k units=\(Int(co.lastWeekUnits)) cap=\(Int(lw["cap"].double)) D=\(Int(lw["D"].double)) rep=\(Int(co.reputation)) q=\(Int(co.quality))")
@@ -85,8 +73,6 @@ final class BalanceProbeTests: XCTestCase {
                         print("PT   parts: \(r.parts.map { "\($0.key) have=\(String(format: "%.2f", $0.have)) cap=\(Int($0.capacity.isFinite ? $0.capacity : -1))" })")
                     }
                 }
-                // A car dealership sells only what was ordered. With a buyer or a manager the dealership orders itself; an owner whose manager left
-                // orders by hand as a player does (the same rule as the buyer: stock for the demand, two cars a week at most).
                 if trade == "cardealer", day % 7 == 0, !e.carDealerHasBuyer(companyID: id), let co = e.state.company(id), co.status == .open {
                     let offers = e.carDealerOffers(companyID: id)
                     var have = e.carDealerSpaces(companyID: id).used
@@ -95,7 +81,6 @@ final class BalanceProbeTests: XCTestCase {
                         if e.carDealerOrder(companyID: id, brandID: pick.brandID, modelID: pick.modelID) == .applied { have += 1 }
                     }
                 }
-                // Money the owner adds to keep a company alive counts as invested
                 if let co = e.state.company(id), co.status.isLive, co.cash < -50_000 {
                     let top = -co.cash + 100_000
                     e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
@@ -138,7 +123,6 @@ final class BalanceProbeTests: XCTestCase {
 }
 
 extension BalanceProbeTests {
-    /// LEDGER_TRACE=<trade>: what holds a company back, week by week.
     func testPrintTrace() throws {
         guard let trade = ProcessInfo.processInfo.environment["LEDGER_TRACE"] else { return }
         var e = try GameEngine.newGame(countryCode: ProcessInfo.processInfo.environment["LEDGER_COUNTRY"] ?? "UK", playerName: "T", seed: Int(ProcessInfo.processInfo.environment["LEDGER_SEED"] ?? "11")!)
@@ -184,9 +168,7 @@ extension BalanceProbeTests {
     }
 }
 
-/// Regular checks that run in every test pass.
 final class BalanceGuardTests: XCTestCase {
-    /// Nothing turns a stake into a fortune in two years: even the best trades return their money a few times at most.
     func testNoTradeMakesYouRichQuickly() throws {
         for t in ["cons", "foodtruck", "acctfirm", "photo", "law"] {
             guard let o = try BalanceProbeTests.play(trade: t, seed: 21, years: 2) else { return XCTFail("\(t) did not start") }
@@ -195,16 +177,11 @@ final class BalanceGuardTests: XCTestCase {
         }
     }
 
-    /// Capital-heavy trades earn a realistic, modest return on the money put in:
-    /// a competently run shop, workshop, hotel or plant makes a few percent to the low teens a year after the first year. Not a
-    /// get-rich path (nothing above ~75% averaged over six seeds, where single seeds of one trade span 20-100%), not a certain loss (the median is positive and the best-run set stays in a 2-20% band).
     func testCapitalHeavyTradesEarnModestReturns() throws {
         let trades = ["grocery", "hardware", "cardealer", "carrepair", "hotel", "factory", "vineyard", "wh3pl", "courier", "brewery", "casino", "skires", "farm", "kiosk", "boutique", "furniture"]
         var rois: [Double] = []
         for t in trades {
             var roi = 0.0, ratio = 0.0
-            // Mean over six seeds: one seed swings a trade by +-50 points of yearly return (8-seed probe), so with two seeds
-            // whichever trade drew an outlier failed. Six keeps the standard error of the mean near 10-15 points.
             let seeds = [11, 12, 13, 14, 15, 16]
             for seed in seeds {
                 guard let o = try BalanceProbeTests.play(trade: t, seed: seed, years: 3) else { return XCTFail("\(t) did not start") }
@@ -223,7 +200,6 @@ final class BalanceGuardTests: XCTestCase {
         XCTAssertLessThanOrEqual(rois.filter { $0 < 0 }.count, 7, "too many capital-heavy trades lose money: \(rois)")
     }
 
-    /// The airline and the shipping company are lumpy (two aircraft or ships) but must survive three years with the standard set-up.
     func testAirlineAndShippingSurvive() throws {
         for t in ["airline", "shipping"] {
             guard let o = try BalanceProbeTests.play(trade: t, seed: 12, years: 3) else { return XCTFail("\(t) did not start") }
@@ -232,7 +208,6 @@ final class BalanceGuardTests: XCTestCase {
         }
     }
 
-    /// Trades that need a vehicle open with the standard set-up: the van is financed or leased when cash is short.
     func testVehicleTradesOpen() throws {
         for t in ["carclean", "handy", "foodtruck", "carrental"] {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
@@ -251,7 +226,6 @@ final class BalanceGuardTests: XCTestCase {
         }
     }
 
-    /// A café run by a hired barista alone still serves customers: the team covers the empty support jobs.
     func testHiredTeamWithoutOwnerHasCapacity() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 6)
         var id = 0
@@ -271,7 +245,6 @@ final class BalanceGuardTests: XCTestCase {
 }
 
 extension BalanceProbeTests {
-    /// LEDGER_INVEST=1: what each share, coin and fund does to money left in it for three years.
     func testPrintInvestmentOutcomes() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_INVEST"] != nil else { return }
         for kind in [Brokerage.Kind.stock, .crypto, .fund] {

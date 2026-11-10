@@ -6,7 +6,6 @@ import Countries
 import Finance
 import Businesses
 
-/// Misconduct and political influence as decisions: real gain now, delayed and bounded consequences, books that balance.
 final class MisconductTests: XCTestCase {
     func engine(weeks: Int = 6) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242)
@@ -37,15 +36,11 @@ final class MisconductTests: XCTestCase {
         .object(["conc": 300_000, "save": 66_000, "rate": 0.22, "legal": 120_000, "lsave": 26_400, "fee": 9_240, "risk": 0.1, "fine": 60_000])
     }
 
-    // MARK: Country strictness comes from data
-
     func testStrictnessIsDataAndDiffersByCountry() {
         XCTAssertGreaterThan(Misconduct.enforcement("NO"), Misconduct.enforcement("MX"))
         XCTAssertGreaterThan(Misconduct.openness("US"), Misconduct.openness("SG"))
         XCTAssertEqual(Misconduct.enforcement("ZZ"), 1, "a country without an entry is average")
     }
-
-    // MARK: Tax
 
     func testHiddenTakingsLowerTheTaxAccrualAndAreRecordedAsACase() throws {
         var (e, id) = try engine()
@@ -53,7 +48,6 @@ final class MisconductTests: XCTestCase {
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(Misconduct.cases(co).count, 1)
         XCTAssertEqual(Misconduct.cases(co)[0]["k"].string, "tax")
-        // The same year's accrual: concealed profit is out of the base, the tax is lower, and it is booked through MonthEnd.
         e.update { s, data, _ in
             let i = s.companyIndex(id)!
             let bd = data.catalog[s.companies[i].type]!
@@ -99,7 +93,6 @@ final class MisconductTests: XCTestCase {
         var paid = 0.0, cashBefore = 0.0, repBefore = 0.0, personalBefore = 0.0
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
-            // The tax year has closed: the case is from last year, so back taxes are due as well.
             var st = s.companies[i].value("mis")
             var list = st["cases"].array; list[0]["y"] = .number(Double(GameCalendar.year(week: s.week) - 1)); list[0]["w"] = .number(Double(s.week - 40))
             st["cases"] = .array(list); s.companies[i].set("mis", st)
@@ -127,13 +120,10 @@ final class MisconductTests: XCTestCase {
             Misconduct.investigate(&s, i, data: data, context: ctx, cause: "Test")
             XCTAssertEqual(s.companies[i].value("evade")["c"].double, 0, "the ordinary accrual now covers that profit")
         }
-        // Back taxes are only charged for closed years: the fine rows here are interest and penalty.
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertFalse(e.state.inbox.contains { $0.title.hasPrefix("Investigation at") && $0.body.contains("Back taxes") })
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
-
-    // MARK: Risk
 
     func testRiskRisesWithRepeatsAndSizeAndIsBounded() throws {
         var (e, id) = try engine()
@@ -153,8 +143,6 @@ final class MisconductTests: XCTestCase {
             XCTAssertGreaterThan(big, r0, "a bigger business is looked at harder")
         }
     }
-
-    // MARK: Quality shortcut and the bank
 
     func testQualityShortcutSavesCostNowAndCostsReputationWhenFound() throws {
         var (e, id) = try engine()
@@ -193,8 +181,6 @@ final class MisconductTests: XCTestCase {
         XCTAssertEqual(Misconduct.cases(co)[0]["k"].string, "bribe")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
-
-    // MARK: Political influence
 
     func politicalDecision(ps: Double, pw: Double) -> JSONValue {
         .object(["spent": 40_000, "p": 0.4, "pw": .number(pw), "ps": .number(ps), "m": 0.985, "weeks": 78, "scandal": 0.1, "fineMult": 2,
@@ -249,8 +235,6 @@ final class MisconductTests: XCTestCase {
         XCTAssertFalse(co.value("mods").array.contains { $0["k"].string == "cogsup" }, "a scandal gains nothing")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
-
-    // MARK: The decisions state cost, benefit, risk and timing
 
     func testMessagesShowCostBenefitRiskAndTiming() throws {
         var (e, id) = try engine()

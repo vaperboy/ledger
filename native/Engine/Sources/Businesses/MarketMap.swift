@@ -4,18 +4,11 @@ import Countries
 import Employees
 import Finance
 
-/// The market map: your share of each market you are in, worked out from sales against what each rival sells there (banks, insurers
-/// and funds against the whole country). What you SEE depends on who is looking: nobody (only a feeling, in words), a head-office
-/// data analyst (ranges, sharper with experience) or a market analyst in the company (close numbers, a report every month).
-/// Original: features/world/market_map_and_reviews.js (`markets`, `truthOf`, `know`, `est`, `snap`, `reportLines`).
-/// The analyst roles: a market analyst is hired into a company like any worker (role `mktan`; `analystHireVerdict` says what the hire
-/// gives), a data analyst (`ana`) into the head office (`hireDataAnalyst`, paid monthly from `weekly` until the head-office branch
-/// pays its staff itself). `weight` is the "weight in the economy" block (share of business loans, jobs, regulator attention).
 public enum MarketMap {
     public enum Kind: String { case local, national }
 
     public struct Market: Identifiable, Equatable {
-        public var id: String            // the market key
+        public var id: String
         public var kind: Kind
         public var type: String
         public var cityID: String
@@ -28,7 +21,7 @@ public enum MarketMap {
         public var name: String
         public var revenue: Double
         public var share: Double
-        public var rivalID: Int?         // nil for national players, who are only names
+        public var rivalID: Int?
     }
 
     public struct Truth: Equatable {
@@ -39,8 +32,6 @@ public enum MarketMap {
     static let national: [String: (label: String, noun: String, base: Double, word: String)] = [
         "bank": ("Bank deposits", "deposits", 450_000, "Bank"), "insco": ("Insurance", "premiums", 14_000, "Insurance"), "fund": ("Fund assets", "fund assets", 300_000, "Asset Management"),
     ]
-
-    // MARK: Which markets
 
     public static func markets(_ s: GameState, data: GameData) -> [Market] {
         var by: [String: Market] = [:], order: [String] = []
@@ -64,9 +55,6 @@ public enum MarketMap {
         return (data.catalog[m.type]?.name ?? m.type) + (withCity ? " · " + city : "")
     }
 
-    // MARK: Sales
-
-    /// A company's sales in a year, from the last weeks. Original: `annRev`.
     public static func annualRevenue(_ co: Company) -> Double {
         let L = co.value("rv26").array
         if L.count >= 2 { return L.reduce(0) { $0 + $1.double } / Double(L.count) * 52 }
@@ -85,7 +73,6 @@ public enum MarketMap {
         return co.type == "bank" ? fm["dep"].double : co.type == "fund" ? fm["aum"].double : annualRevenue(co)
     }
 
-    /// The true picture of one market. Original: `truthOf`.
     public static func truth(_ s: GameState, _ m: Market, data: GameData) -> Truth {
         let cos = m.companyIDs.compactMap { s.company($0) }
         guard let co = cos.first else { return Truth(mine: 0, total: 1, share: 0, players: []) }
@@ -112,7 +99,6 @@ public enum MarketMap {
         return Truth(mine: my, total: tot, share: my / tot, players: players)
     }
 
-    /// Has a big player noticed you? A newcomer is invisible until it takes a real share. Original: `noticed`, `coShare`.
     static func noticed(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World) -> Bool {
         guard co.status == .open else { return false }
         let mine = annualRevenue(co)
@@ -122,8 +108,6 @@ public enum MarketMap {
         return (age >= 26 && sh >= 0.12) || sh >= 0.22 || !co.value("flags")["pw"].isNull
     }
 
-    // MARK: Who is looking
-
     public struct Knowledge: Equatable {
         public enum Level: Int { case feeling = 0, dataAnalyst = 1, marketAnalyst = 2 }
         public var level: Level
@@ -131,11 +115,9 @@ public enum MarketMap {
         public var name: String
         public var id: String
         public init(level: Level, skill: Double, name: String, id: String) { self.level = level; self.skill = skill; self.name = name; self.id = id }
-        /// Nobody is measuring: only a feeling.
         public static let nobody = Knowledge(level: .feeling, skill: 0, name: "", id: "me")
     }
 
-    /// A market analyst in one of the companies, else the head office's data analyst, else only a feeling. Original: `know`, `mktanOf`.
     public static func knowledge(_ s: GameState, _ m: Market) -> Knowledge {
         for id in m.companyIDs {
             if let co = s.company(id), let st = co.staff.first(where: { $0.role == "mktan" }) {
@@ -146,7 +128,6 @@ public enum MarketMap {
         return dataAnalyst(s) ?? .nobody
     }
 
-    /// The head office's data analyst, if there is one. Original: `anaInfo`.
     public static func dataAnalyst(_ s: GameState) -> Knowledge? {
         guard let st = (s.rest["office"]?["staff"].array ?? []).first(where: { $0["role"].string == "ana" }) else { return nil }
         let p = s.people[st["id"].int]
@@ -158,7 +139,6 @@ public enum MarketMap {
         public var center: Double, low: Double, high: Double
     }
 
-    /// A share (0...1) as the person looking sees it this month. Original: `est`.
     public static func estimate(_ v: Double, key: String, _ k: Knowledge, seed: Int, week: Int) -> Estimate {
         let mi = week / 4
         let a = HashedRandom.first("\(seed):26:\(key):\(mi):\(k.id)"), b = HashedRandom.first("\(seed):26:\(key)b:\(mi):\(k.id)")
@@ -183,7 +163,6 @@ public enum MarketMap {
         x < 0.001 ? "under 0.1%" : x < 0.1 ? String(format: "%.1f%%", (x * 1000).rounded() / 10) : "\(Int(saturating: jsRound(x * 100)))%"
     }
 
-    /// An estimate in words or numbers, by who is looking. Original: `shTxt`, `guessW`.
     public static func text(_ e: Estimate) -> String {
         switch e.level {
         case .marketAnalyst: return percent(e.center)
@@ -200,13 +179,10 @@ public enum MarketMap {
         mine <= 0 ? "Bigger than you" : rev > mine * 1.3 ? "Bigger than you" : rev < mine * 0.75 ? "Smaller than you" : "About your size"
     }
 
-    // MARK: History and reports
-
     public static func history(_ s: GameState, key: String) -> [(month: Int, share: Double, total: Double)] {
         (s.rest["ms26"]?[key].array ?? []).map { ($0["m"].int, $0["s"].double, $0["tot"].double) }
     }
 
-    /// One point a month per market, weekly sales per company, and a monthly report where a market analyst works. Original: `snap`, `sendReport`.
     public static func weekly(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status == .open {
             var L = s.companies[i].value("rv26").array
@@ -234,7 +210,6 @@ public enum MarketMap {
         }
     }
 
-    /// The lines of a market report. Original: `reportLines`.
     public static func report(_ s: GameState, _ m: Market, _ k: Knowledge, data: GameData) -> [String] {
         let t = truth(s, m, data: data), L = history(s, key: m.id)
         let e = estimate(t.share, key: "my" + m.id, k, seed: s.seed, week: s.week)
@@ -258,11 +233,8 @@ public enum MarketMap {
         return out
     }
 
-    // MARK: Hiring the analysts
-
     public struct HireVerdict: Equatable { public var ok: Bool, title: String, text: String }
 
-    /// What a market analyst in this company gives instead of a capacity forecast. Original: `R26.mktanHire`.
     public static func analystHireVerdict(_ s: GameState, companyID: Int, data: GameData) -> HireVerdict {
         guard let co = s.company(companyID) else { return HireVerdict(ok: false, title: "Nothing to measure here", text: "") }
         let m = market(of: co, s, data: data)
@@ -274,7 +246,6 @@ public enum MarketMap {
     }
 
     public static let dataAnalystRole = "ana"
-    /// Monthly pay a data analyst in the head office starts from (before skill and the country). Original: `HQ_ROLES.ana`.
     static func dataAnalystBase(_ data: GameData) -> Double {
         let v = data.catalog.tables.raw["HQ_ROLES"]["ana"][1].double
         return v == 0 ? 64000 : v
@@ -282,7 +253,6 @@ public enum MarketMap {
 
     public static func hasDataAnalyst(_ s: GameState) -> Bool { s.hasHeadOffice(dataAnalystRole) }
 
-    /// Candidates for the head office's data analyst. Original: the head-office hiring screen for `ana`.
     public static func dataAnalystCandidates(_ s: inout GameState, count: Int = 4, data: GameData) -> [Person] {
         (0..<count).map { _ in
             var p = Hiring.generateCandidate(role: dataAnalystRole, company: nil, faces: false, state: &s, data: data)
@@ -292,21 +262,16 @@ public enum MarketMap {
         }
     }
 
-    /// `refused` is an insult with no figure named, `countered` names their own figure, `walkedAway` means the person took another job.
     public enum HQHire: Equatable { case ok, refused, taken, have, countered(Negotiation.Counter), walkedAway }
 
-    /// The going monthly rate of a data analyst: the role's base pay in this economy, before anything about the person.
     public static func dataAnalystGoingRate(state s: GameState, data: GameData) -> Double {
         analystPay(state: s, data: data, skillFactor: 1)
     }
 
-    /// The analyst's pay: the role's base times a skill factor (1 = the going rate), in this economy, to the hundred.
     static func analystPay(state s: GameState, data: GameData, skillFactor: Double) -> Double {
         (dataAnalystBase(data) * skillFactor * World(state: s, data: data).inflationIndex / 100).rounded() * 100
     }
 
-    /// Hire the data analyst into the head office. At or above what they would settle for they accept; below it they counter, refuse or walk away.
-    /// Original: `hireHQnpc`.
     public static func hireDataAnalyst(_ s: inout GameState, personID: Int, monthlyWage wage: Double, data: GameData) -> HQHire {
         if hasDataAnalyst(s) { return .have }
         guard let n0 = s.people[personID] else { return .refused }
@@ -340,7 +305,6 @@ public enum MarketMap {
         return true
     }
 
-    /// Pay head-office analysts hired here once a month. Original: `officeMonth` (staff part).
     static func payAnalysts(_ s: inout GameState, data: GameData) {
         let home = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
         for st in s.rest["office"]?["staff"].array ?? [] where st["by"].string == "mm" {
@@ -348,9 +312,6 @@ public enum MarketMap {
         }
     }
 
-    // MARK: Reports on request
-
-    /// Ask the market analyst for this month's report now; one every two weeks at most. Returns the reason it did not happen. Original: `ACT.mkt26rep`.
     public static func orderMarketReport(_ s: inout GameState, marketKey: String, data: GameData) -> String? {
         guard let m = markets(s, data: data).first(where: { $0.id == marketKey }) else { return "You are no longer in this market." }
         let k = knowledge(s, m)
@@ -362,8 +323,6 @@ public enum MarketMap {
         return nil
     }
 
-    /// A report from the head-office data analyst on one company or all of them, sent as a message. Original: `analystReport` (meetings.js);
-    /// without the brand-lift estimate and the two-month forecast, which need the marketing outlook.
     public static func dataAnalystReport(_ s: inout GameState, companyID: Int?, data: GameData) -> String? {
         guard hasDataAnalyst(s) else { return "You need a data analyst in the head office." }
         let cos = s.companies.filter { $0.status == .open && (companyID == nil || $0.id == companyID) }
@@ -389,19 +348,15 @@ public enum MarketMap {
         return nil
     }
 
-    // MARK: Weight in the economy
-
     public struct Weight: Equatable {
         public var jobs: Int
         public var debt: Double
         public var loanShare: Double
         public var biggestShare: Double
-        /// "Low", "Watching", "Rising" or "High": how closely the competition authority looks, with a tone (pos, amb, neg or empty).
         public var attention: String
         public var tone: String
     }
 
-    /// Share of all business loans, jobs you provide and how closely the regulator watches. Original: `weight`, `attention`.
     public static func weight(_ s: GameState, data: GameData) -> Weight {
         let live = s.companies.filter { $0.status == .open || $0.status == .closed }
         let jobs = live.reduce(0) { $0 + $1.staff.count + ($1.managerID != nil ? 1 : 0) + ($1.value("asst")["npc"].int != 0 ? 1 : 0) } + (s.rest["office"]?["staff"].array.count ?? 0)

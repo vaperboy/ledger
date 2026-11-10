@@ -1,17 +1,10 @@
 import SwiftUI
 
-// The page containers every screen uses:
-//   FixedScreen      A  fixed, never scrolls; compacts to fit (scales down to `minScale`), clipped
-//   ScrollScreen     B  vertical scroll only when the content is taller than the screen, never sideways, no blank space
-// Class C (intentional horizontal chip rows, e.g. TechPro) is a horizontal ScrollView inside one of these.
-
 private struct FixedHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
-/// A vertical scroll page: bounces only when the content is taller, cannot be dragged sideways, content pinned to the screen width.
-/// The tab bar clearance comes from `ledgerBackground()` (a bottom safe-area inset), so the last row always clears the bar.
 struct ScrollScreen<Content: View>: View {
     var spacing: CGFloat = Theme.Space.m
     var top: CGFloat = 6
@@ -32,9 +25,6 @@ struct ScrollScreen<Content: View>: View {
     }
 }
 
-/// A page that never scrolls. It fills the height it is given; when the content is taller it is compacted (laid out at a wider width
-/// and scaled down, never below `minScale`) and clipped. With `overflowScrolls`, a page whose content would need less than `minScale`
-/// (a long list on a small phone) falls back to a `ScrollScreen` instead of becoming unreadable.
 struct FixedScreen<Content: View>: View {
     var spacing: CGFloat = Theme.Space.m
     var top: CGFloat = 6
@@ -44,8 +34,6 @@ struct FixedScreen<Content: View>: View {
     @ViewBuilder var content: () -> Content
     @State private var scale: CGFloat = 1
     @State private var scrolling = false
-    /// The largest scale still allowed: a scale that overflowed once is never tried again for the same height. Without it, text that
-    /// rewraps at the wider layout made the scale flip between two values for ever (a layout pass every frame).
     @State private var ceiling: CGFloat = 1
     @State private var lastAvail: CGFloat = 0
 
@@ -95,9 +83,6 @@ struct FixedScreen<Content: View>: View {
 }
 
 extension GameStore {
-    /// The one definition of "a store-level popup is on screen" (report, daily, decision, notice, outcome, red alert, error, reward):
-    /// the page under it must not scroll or take taps, and the paywall waits. Popups opened with
-    /// `.centerSheet` are drawn by the popup host as an overlay whose backdrop blocks the page by itself.
     var popupOpen: Bool {
         reportSheet != nil || dailySheet != nil || decisionPopup != nil || toast != nil || !outcomes.isEmpty || !redAlerts.isEmpty || errorText != nil
             || !celebrationQueue.isEmpty

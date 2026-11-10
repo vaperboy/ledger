@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Donate: a pledge card on cream paper with burgundy ink. One amount, one plain statement of what it does not buy, a second tap to give,
-/// and the public roll of donors under it.
 struct DonateScreen: View {
     var e: GameEngine
     var r: CountryRead
@@ -39,8 +37,6 @@ struct DonateScreen: View {
         .outsideScreen(.pledge)
         .accessibilityIdentifier("country-donate")
     }
-
-    // MARK: The card
 
     private var pledge: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -121,8 +117,6 @@ struct DonateScreen: View {
         Haptics.success()
         store.outcome(chosen: "Donated \(r.cur.tidyDisplay(a))", result: "The gift is in the treasury and on the public roll.")
     }
-
-    // MARK: Roll of donors
 
     private var roll: some View {
         let list: [GovDonation] = Array(r.gov.donations.prefix(30))

@@ -4,9 +4,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// The board's one decision list: what is on it and why, the adviser's recommendation, the vote by shares, and what approving does.
 final class BoardDecisionTests: XCTestCase {
-    /// `count` limited cafes, each with a co-owner holding 15% (so a board exists).
     private func makeBoards(seed: Int, count: Int) throws -> (engine: GameEngine, ids: [Int], keys: [String]) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 300_000_000, why: "Test funds") }
@@ -73,14 +71,13 @@ final class BoardDecisionTests: XCTestCase {
         XCTAssertEqual(e.decideBoardItem(id: "sell:\(ids[0])", approve: false), .declined)
         XCTAssertFalse((e.state.rest["sales"]?.array ?? []).contains { $0["co"].int == ids[0] })
         XCTAssertTrue(e.boardDecisionList().isEmpty)
-        e.update { s, _, _ in s.week += 13 }   // a declined item rests for twelve weeks
+        e.update { s, _, _ in s.week += 13 }
         XCTAssertEqual(e.boardDecisionList().map { $0.kind }, ["sell"], "the numbers still call for it")
     }
 
     func testCoOwnersCanVoteASaleDown() throws {
         var (e, ids, _) = try makeBoards(seed: 35, count: 1)
         history(&e, ids[0], profit: -6_000)
-        // You hold 40% and a co-owner 60%: the shares decide. A rare change of heart is a hash of name and week, so look for a week they dissent.
         e.update { s, _, _ in
             guard let i = s.companyIndex(ids[0]) else { return }
             s.companies[i].ownership = 40
@@ -149,13 +146,12 @@ final class BoardDecisionTests: XCTestCase {
 
     func testRecommendedItemsComeFirstAcrossBoards() throws {
         var (e, ids, _) = try makeBoards(seed: 40, count: 2)
-        history(&e, ids[0], profit: -500)      // mild loss: raised, not recommended
-        history(&e, ids[1], profit: -6_000)    // deep loss: recommended
+        history(&e, ids[0], profit: -500)
+        history(&e, ids[1], profit: -6_000)
         let list = e.boardDecisionList()
         XCTAssertEqual(list.map { $0.companyID }, [ids[1], ids[0]])
     }
 
-    /// A chain's CEO or chain manager proposes closing a location; it waits on the chain's board and the owner decides from the list.
     func testClosingALocationIsAProposalOnTheChainsBoard() throws {
         var e = try ChainsTests.engine("NO")
         let a = ChainsTests.start(&e, "cafe")
@@ -201,7 +197,6 @@ final class BoardDecisionTests: XCTestCase {
         XCTAssertFalse(e.state.company(b).map { ChainBranches.ending($0) != nil } ?? true)
     }
 
-    /// Opening a location is the owner's proposal voted at once; with nobody else owning the chain it opens as asked.
     func testOpeningALocationGoesThroughTheBoardsVote() throws {
         var e = try ChainsTests.engine("NO")
         let a = ChainsTests.start(&e, "cafe")
@@ -210,7 +205,6 @@ final class BoardDecisionTests: XCTestCase {
         let n0 = Chains.stores(e.state, try XCTUnwrap(Chains.chain(e.state, id: id))).count
         guard case .success = e.openLocation(chainID: id, cityID: e.state.player.cityID) else { throw XCTSkip("location not opened") }
         XCTAssertEqual(Chains.stores(e.state, try XCTUnwrap(Chains.chain(e.state, id: id))).count, n0 + 1)
-        // a proposal from the chain's lead waits on the list until it is decided
         var pid: Int?
         e.update { s, d, _ in pid = ChainLocations.proposeOpen(&s, chainID: id, cityID: s.player.cityID, by: "Ann Lee, CEO", why: "Every store makes money.", data: d) }
         let p = try XCTUnwrap(pid)
@@ -237,7 +231,6 @@ final class BoardDecisionTests: XCTestCase {
         XCTAssertEqual(try run(), try run())
     }
 
-    /// Three boards over two years: the badge stays small (one item of each kind per company at most) and the books balance.
     func testTwoYearsOfThreeBoardsKeepTheListSmall() throws {
         for seed in [51, 52, 53] {
             var (e, ids, _) = try makeBoards(seed: seed, count: 3)

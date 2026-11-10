@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// The one-time link reward, shown once at the top of the screen after the server has paid it. It closes by itself after a few seconds
-/// (or when tapped) and does not animate when Reduce Motion is on.
 struct LinkRewardBanner: View {
     @Environment(OnlineSession.self) private var online
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

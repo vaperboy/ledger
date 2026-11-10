@@ -5,8 +5,6 @@ import Businesses
 import Events
 import Simulation
 
-/// The small orange fire of a startup that many players invested in within a short time. Static on purpose: it only says "more people see this",
-/// it adds no money and no value.
 struct ViralFlame: View {
     var body: some View {
         Image(systemName: "flame.fill")
@@ -16,7 +14,6 @@ struct ViralFlame: View {
     }
 }
 
-/// Words and figures every startup screen shares.
 enum StartupText {
     static func stageName(_ st: CrowdStartup) -> String {
         switch st.status {
@@ -28,7 +25,6 @@ enum StartupText {
         }
     }
 
-    /// How far the open stage is filled, in words (the bar shows the same).
     static func raiseWords(_ st: CrowdStartup) -> String {
         guard let s = st.openStage else { return st.status == .failed || st.status == .closed ? "No longer raising" : "All three stages are funded" }
         let f: Double = fraction(st)
@@ -64,7 +60,6 @@ enum StartupText {
     static func lockWords(_ weeks: Int) -> String { "\(weeks) game weeks" }
 }
 
-/// The popups of the startup screens: one at a time.
 enum StartupSheet: Identifiable, Equatable {
     case found, invest(String), buy(String), sell(String)
     var id: String {
@@ -77,7 +72,6 @@ enum StartupSheet: Identifiable, Equatable {
     }
 }
 
-/// The entry in the venture portfolio: opens the market.
 struct StartupMarketEntry: View {
     @ObservedObject private var market = StartupMarketStore.shared
 
@@ -97,7 +91,6 @@ struct StartupMarketEntry: View {
     }
 }
 
-/// Browse the startups other players are raising money for. Filters: trade, stage, going viral. A row opens the startup's page.
 struct StartupMarketView: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market = StartupMarketStore.shared
@@ -216,8 +209,6 @@ struct StartupMarketView: View {
     }
 }
 
-/// One startup: the plan, where it stands, how much is raised (in words and a bar), the founder's record, the escrow milestones and the
-/// player's own holding. Investing, buying second-hand and selling open from here.
 struct StartupPageView: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market = StartupMarketStore.shared
@@ -342,7 +333,6 @@ struct StartupPageView: View {
     }
 }
 
-/// Plan cost, the founder's part, what investors are asked for, and what the price is built from.
 struct PlanRows: View {
     var startup: CrowdStartup
     var cur: Currency

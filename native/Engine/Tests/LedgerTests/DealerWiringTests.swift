@@ -6,8 +6,6 @@ import Businesses
 @testable import Simulation
 @testable import Businesses
 
-/// The dealers call the add-ons: at a customer sale (`DealerAddons.apply`) and once a week (`weekly`); the warranty reserve is a debt, never paid as a bill;
-/// the own garage's bill carries VAT. LEDGER_PROBE=1 runs the two-year dealer probe.
 final class DealerWiringTests: XCTestCase {
     private func game(trade: String, seed: Int = 7, cash: Double = 900_000_000) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -82,7 +80,6 @@ final class DealerWiringTests: XCTestCase {
         XCTAssertEqual(c.repairSupplierID, rid)
         let vat0 = e.state.company(rid)!.vatBalance
         let dealerVat0 = e.state.company(id)!.vatBalance
-        // Bill the job directly: in a played week a reserved car is sold in the same step, and that sale's VAT is not the reclaim.
         var billed = false
         e.update { s, d, _ in
             let i = s.companyIndex(id)!
@@ -116,7 +113,6 @@ final class DealerWiringTests: XCTestCase {
         XCTAssertEqual(d.catalog["cardealer"]?.equipment.map { $0.id }.sorted(), ["clean", "crm"])
     }
 
-    /// LEDGER_PROBE=1: two years for a competent owner with a manager and a buyer, add-ons off and on. Prints profit and money in.
     func testTwoYearProbe() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_PROBE"] != nil else { throw XCTSkip("probe: set LEDGER_PROBE=1") }
         var report = ""

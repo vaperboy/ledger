@@ -4,18 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// Owners who have a say. Outside investors (those who bought shares in a company of yours) have a profile (want dividends, want growth, want a
-/// sale, or stay quiet) and a mood that moves with results. Unhappy owners make demands. What happens when you say no depends on how many shares
-/// they hold: over half and they outvote you; over a third and they block big moves; less and they may sell their stake, sometimes to a rival
-/// group. Each limited company has a dividend policy paid every quarter. Original: features/company/owner_investors.js (round 27d).
-///
-/// State on the company: `holders` = [{ name, pct, in, k27 (profile), sat (mood), w0, g27? }], `dp27` (dividend policy: none, low, mid, high), `block27`
-/// (week until which the other owners block big moves), `dm27` (next demand not before), `dq27` = { w, paid, pr } (the last quarter).
-/// The inbox action of a demand is "own27" (data: { co, kind, amt, hn }).
-///
-/// A holder who backs growth or dividends and sees three losing months asks you to replace the manager (kind "mgr"): agreeing runs the
-/// co-owners' vote (`ManagerModel.proposeCEOChange`); refusing against a controlling outside owner means the manager goes anyway.
-/// Not ported: the yearly review of the manager.
 public enum Shareholders {
     public static let action = "own27"
     public static let policies = ["none", "low", "mid", "high"]
@@ -34,10 +22,7 @@ public enum Shareholders {
     }
     public enum Power: String { case control, block, voice, none }
 
-    // MARK: Reading
-
     public static func outside(_ co: Company) -> Double { max(0, 100 - co.ownership) }
-    /// What the other owners can do, by their share. Original: `power`.
     public static func power(_ co: Company) -> (kind: Power, text: String) {
         let o = outside(co)
         if o > 50 { return (.control, "They can outvote you: dividends, the manager, accepting a takeover bid.") }
@@ -60,7 +45,6 @@ public enum Shareholders {
         guard let co = s.company(companyID) else { return [] }
         return co.value("holders").array.filter { $0["pct"].double > 0 && $0["hid"].int == 0 }.map { var h = $0; let p = profile(&h, seed: s.seed, week: s.week); return Holder(name: h["name"].string, pct: h["pct"].double, profile: p, mood: h["sat"].double) }
     }
-    /// The average mood of the other owners, weighted by their share. Original: `holderSat`.
     public static func averageMood(_ s: GameState, companyID: Int) -> Double {
         let hs = holders(s, companyID: companyID)
         if hs.isEmpty { return 60 }
@@ -68,25 +52,19 @@ public enum Shareholders {
     }
     public static func policy(_ co: Company) -> String { co.str("dp27", "none") }
     public static func blockedUntil(_ co: Company) -> Int? { co.value("block27").isNull ? nil : co.int("block27") }
-    /// True while the other owners block share sales and the sale of the company.
     public static func isBlocked(_ s: GameState, companyID: Int) -> Bool { (s.company(companyID).flatMap { blockedUntil($0) } ?? 0) > s.week }
-    /// What a buy-back of one holder's stake would cost: at value from an unhappy owner, 12% more otherwise.
     public static func buyBackPrice(_ s: GameState, companyID: Int, holder name: String, data: GameData) -> Double? {
         guard let co = s.company(companyID), let h = holders(s, companyID: companyID).first(where: { $0.name == name }) else { return nil }
         let v0 = max(0, Valuation.companyValue(co, state: s, trades: data.catalog))
         return (v0 * h.pct / 100 * (h.mood < 40 ? 1.0 : 1.12) / 1000).rounded() * 1000
     }
 
-    // MARK: Actions
-
     public static func setPolicy(_ s: inout GameState, companyID: Int, policy p: String) {
         guard let i = s.companyIndex(companyID), policies.contains(p) else { return }
         s.companies[i].set("dp27", p)
-        // A chain has one dividend policy: every branch carries it.
         for c in s.chainStores(of: s.companies[i]) { if let k = s.companyIndex(c.id) { s.companies[k].set("dp27", p) } }
     }
 
-    /// Buy one owner's stake back from your own account. Original: `ACT.own27buy`.
     @discardableResult
     public static func buyBack(_ s: inout GameState, companyID: Int, holder name: String, data: GameData) -> Bool {
         guard let i = s.companyIndex(companyID), let price = buyBackPrice(s, companyID: companyID, holder: name, data: data), Payments.liquid(s) >= price else { return false }
@@ -102,8 +80,6 @@ public enum Shareholders {
         return true
     }
 
-    // MARK: The quarter
-
     static func quarterProfit(_ co: Company) -> Double { co.monthlyHistory.suffix(3).reduce(0) { $0 + $1.profit } }
     static func yearOnYear(_ co: Company) -> Double? {
         let h = co.monthlyHistory
@@ -117,18 +93,14 @@ public enum Shareholders {
         s.companies[i].set("holders", .array(list))
     }
 
-    /// Dividend by policy, then the owners' mood. Original: `quarter`.
     static func quarter(_ s: inout GameState, _ i: Int, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         guard co.status == .open, co.type != "hold" else { return }
-        // A chain's quarter is decided once, at its head office, on the profit of all its branches.
         let br = s.chainStores(of: co)
         if br.count >= 2 && br[0].id != co.id { return }
         let pol = policy(co), pr = br.count >= 2 ? br.reduce(0) { $0 + quarterProfit($1) } : quarterProfit(co)
         var paid = 0.0
         if (payout[pol] ?? 0) > 0 && pr > 0 {
-            // Dividends are never automatic: the policy only proposes this quarter's dividend, and the owner (or whoever
-            // holds the authority) answers. No answer in four weeks means no dividend.
             let amt = (pr * payout[pol]! / 1000).rounded() * 1000
             if amt > 0 {
                 s.addMessage(kind: "ask", from: "Shareholders of \(co.name)", title: "Dividend for \(co.name) this quarter?",
@@ -142,7 +114,7 @@ public enum Shareholders {
         let idx = list.indices.filter { list[$0]["pct"].double > 0 && list[$0]["hid"].int == 0 }
         if idx.isEmpty { return }
         let g = yearOnYear(s.companies[i])
-        let below = 0   // owners also mind your own supply companies selling below cost; not ported
+        let below = 0
         for k in idx {
             let kind = profile(&list[k], seed: s.seed, week: s.week)
             var d = (60 - list[k]["sat"].double) * 0.05
@@ -202,20 +174,16 @@ public enum Shareholders {
                      options: opts.map { .option($0) }, action: action, data: .object(["co": .number(Double(co.id)), "kind": .string(kind), "amt": .number(amt), "hn": .string(name)]), expiresWeek: s.week + 3)
     }
 
-    // MARK: Answers
-
-    /// The player's answer to an owners' demand. Original: `ACTS.own27`, `resolveDemand`.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData, context fc: FinanceContext) {
         let d = m.value("data")
         guard let i = s.companyIndex(d["co"].int), s.companies[i].status == .open else { return }
         resolve(&s, i, d, idx, data: data, context: fc)
     }
-    /// Nobody answered in time: you refused. Original: the 'auto' loop in the weekly step.
     public static func expired(_ s: inout GameState, message m: Message, data: GameData, context fc: FinanceContext) {
         let d = m.value("data")
         guard let i = s.companyIndex(d["co"].int), s.companies[i].status == .open else { return }
         if d["kind"].string == "rofr" { completeHolderSale(&s, i, d, data: data); return }
-        if d["kind"].string == "divq" { return }   // an unanswered quarterly proposal is simply not paid
+        if d["kind"].string == "divq" { return }
         refused(&s, i, d, data: data, context: fc)
     }
 
@@ -309,7 +277,6 @@ public enum Shareholders {
             s.note("The other owners of \(co.name) will block share sales, a sale of the company and mergers for half a year.", tone: "bad", companyID: co.id)
             return
         }
-        // a small, unhappy owner wants to sell: you are asked first (right of first refusal); no answer lets them sell
         let list = s.companies[i].value("holders").array
         guard let k = list.indices.filter({ list[$0]["sat"].double < 40 && list[$0]["hid"].int == 0 }).max(by: { list[$0]["pct"].double < list[$1]["pct"].double }), s.random.chance(0.5) else { return }
         let old = list[k]["name"].string
@@ -332,7 +299,6 @@ public enum Shareholders {
                      data: .object(["co": .number(Double(co.id)), "kind": "rofr", "amt": .number(price), "hn": .string(old), "buyer": .string(buyer), "g": gid, "gn": .string(gname)]), expiresWeek: s.week + 3)
     }
 
-    /// The holder's stake goes to the other buyer: shares move one for one, nobody of yours is paid.
     static func completeHolderSale(_ s: inout GameState, _ i: Int, _ d: JSONValue, data: GameData) {
         let co = s.companies[i]
         let old = d["hn"].string, buyer = d["buyer"].string
@@ -349,7 +315,6 @@ public enum Shareholders {
         else { s.addMessage(from: "Shareholders of \(co.name)", title: "\(buyer) now owns a stake in \(co.name)", body: "\(old) sold its stake to \(buyer), a competitor. They will want a say, and may try to buy the rest.", companyID: co.id, tone: "bad") }
     }
 
-    /// The whole company is sold to the best buyer who pays now. Original: `sellOut`.
     static func sellOut(_ s: inout GameState, _ i: Int, why: String, data: GameData, context fc: FinanceContext) {
         guard s.companies[i].status == .open else { return }
         let co = s.companies[i], v = max(0, Valuation.companyValue(co, state: s, trades: data.catalog))
@@ -360,11 +325,8 @@ public enum Shareholders {
         }
     }
 
-    // MARK: The week
-
-    /// Every third month, each limited company runs its quarter.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
-        CapTable.normaliseAll(&s)   // counts and percentages agree, and the table never adds up to more than 100
+        CapTable.normaliseAll(&s)
         let mi = GameCalendar.monthIndex(week: s.week)
         let last = s.rest["m27d"]?.int ?? mi
         if s.rest["m27d"] == nil { s.rest["m27d"] = .number(Double(mi)) }

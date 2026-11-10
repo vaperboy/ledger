@@ -5,13 +5,11 @@ import Finance
 import Businesses
 import Simulation
 
-/// Volume tenders of services (they become volume contracts) and the other ways to sell (platform, memberships ...).
 final class VolumeTendersTests: XCTestCase {
     func testServiceCompanyGetsVolumeTenderBidsAndWinsAContract() throws {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cleaning")
         var bidOn: Int?
-        // A tender for the trade turns up about every nine weeks; bid for the first volume one (lowest price, higher quality).
         for _ in 0..<80 where bidOn == nil {
             ChainsTests.play(&e, days: 7)
             let co = try XCTUnwrap(e.state.company(id))

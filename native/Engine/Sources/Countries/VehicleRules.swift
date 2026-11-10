@@ -1,22 +1,12 @@
 import Foundation
 import GameCore
 
-/// What a country's data says about running vehicles. Every field is optional: a country that has no sourced figure leaves it out and
-/// the mechanism stays inactive (neutral) there. Amounts are written in the country's own currency in `countries.json` (block
-/// `vehicles`) and converted to accounting units here.
 public struct VehicleRules: Equatable, Sendable {
-    /// Price of a litre of fuel (or the energy equivalent), accounting units.
     public var fuelPerLitre: Double?
-    /// What an employer may pay a person for a business kilometre in their own car, accounting units.
     public var mileagePerKm: Double?
-    /// Motor insurance a year as a share of the vehicle's value.
     public var motorInsuranceShare: Double?
-    /// Motor insurance a year for each vehicle, accounting units (used when no share is given).
     public var motorInsurancePerVehicle: Double?
-    /// Annual vehicle tax by class of vehicle (`car`, `van`, `truck`, `bus`, `bike`), accounting units a year.
     public var roadTaxPerYear: [String: Double] = [:]
-    /// Taxable benefit of a company car that a person also uses privately: share of the vehicle's list price a year, and the same for
-    /// electric models. Feeds the employer's payroll charges.
     public var benefitInKindShare: Double?
     public var benefitInKindEVShare: Double?
 

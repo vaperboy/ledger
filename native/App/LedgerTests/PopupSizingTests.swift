@@ -2,7 +2,6 @@ import XCTest
 import SwiftUI
 @testable import Ledger
 
-/// The popup rules: three categories, content-driven heights with no minimum, one tone per event, swipe-to-close, confetti.
 final class PopupSizingTests: XCTestCase {
     private let phone: CGFloat = 852
 

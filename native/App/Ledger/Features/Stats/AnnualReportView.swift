@@ -4,10 +4,6 @@ import GameCore
 import Businesses
 import Simulation
 
-// The annual report and shareholder letter (engine: Simulation/AnnualReport.swift) as a full page under Stats, with the archive of past
-// years, the quarterly targets and grades, and a share action that renders the page to an image or a PDF.
-
-/// A grade in words, coloured: Beat green, Missed red, Met plain.
 struct GradeWord: View {
     var grade: ReviewGrade?
     var body: some View {
@@ -16,7 +12,6 @@ struct GradeWord: View {
     }
 }
 
-/// The page itself. It reads nothing from the environment but the theme, so the same view is drawn on screen and rendered for sharing.
 struct AnnualReportPage: View {
     var report: AnnualReport
     var short: (Double) -> String
@@ -131,7 +126,6 @@ struct AnnualReportPage: View {
     }
 }
 
-/// Renders the page for the share sheet: a PDF and a PNG in the temporary folder.
 @MainActor
 enum AnnualReportExport {
     static func files(_ report: AnnualReport, short: @escaping (Double) -> String) -> (pdf: URL?, image: URL?) {
@@ -172,8 +166,6 @@ struct ActivityShare: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
-/// Stats, then Reviews and annual reports: the standing with the board and lenders, the targets running, the grades so far, and the archive
-/// of annual reports (newest first, one page each).
 struct AnnualReportsScreen: View {
     @EnvironmentObject var store: GameStore
     @State private var year: Int?
@@ -203,8 +195,6 @@ struct AnnualReportsScreen: View {
             }
         }
     }
-
-    // MARK: Quarterly reviews
 
     private func reviewsSection(_ e: GameEngine) -> some View {
         let targets: [ReviewTarget] = e.reviewTargets
@@ -247,8 +237,6 @@ struct AnnualReportsScreen: View {
         }
     }
 
-    // MARK: Archive
-
     private func yearPicker(_ reports: [AnnualReport], _ shown: AnnualReport) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Theme.Space.s) {
@@ -286,7 +274,6 @@ struct AnnualReportsScreen: View {
     }
 }
 
-/// The row under Reports: opens once the review and report are unlocked (the second company or a first year), never before.
 struct AnnualReportsLink: View {
     @EnvironmentObject var store: GameStore
 

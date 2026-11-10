@@ -4,7 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// One board as a row: whose board and what waits for a decision (a red count).
 struct BoardLinkRow: View {
     var engine: GameEngine
     var key: String
@@ -18,7 +17,6 @@ struct BoardLinkRow: View {
     }
 }
 
-/// A chain's board page: the same table, decision list and CEO review as an entity's Boardroom tab.
 struct BoardView: View {
     @EnvironmentObject var store: GameStore
     var key: String
@@ -42,11 +40,6 @@ struct BoardView: View {
     }
 }
 
-// MARK: - The decision list
-
-/// The one list of what the board puts to you: sell, close, dividend, replace the CEO, put in capital, open or close a location. Each item
-/// shows who recommends what and why, the effect of approving, what it costs now and what could go wrong. Emergencies and follow-up jobs
-/// sit under it.
 struct BoardDecisions: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -83,12 +76,9 @@ struct BoardDecisions: View {
         .confirmAction($pending)
     }
 
-    /// The board an emergency belongs to (the first listed board that holds it).
     private func keyOf(_ m: ManagerModel.BoardMeeting) -> String {
         keys.first { (k: String) -> Bool in engine.boardMeetings(key: k).contains { (x: ManagerModel.BoardMeeting) -> Bool in x.id == m.id } } ?? (keys.first ?? "")
     }
-
-    // MARK: A decision
 
     private func decisionCard(_ d: ManagerModel.BoardDecision) -> some View {
         let co: Company? = engine.state.company(d.companyID)
@@ -127,7 +117,6 @@ struct BoardDecisions: View {
         }
     }
 
-    /// Moves that cannot be undone, or that cost money, are confirmed first; the rest are decided at once.
     private func askApprove(_ d: ManagerModel.BoardDecision, _ co: Company?) {
         let irreversible: Bool = ["sell", "close", "shut", "ceo"].contains(d.kind)
         if !irreversible && d.cost <= 0 { decide(d, approve: true); return }
@@ -136,7 +125,6 @@ struct BoardDecisions: View {
                                 amount: d.cost > 0 ? d.cost : nil, currency: cur, risk: d.risk) { decide(d, approve: true) }
     }
 
-    /// Put the item to the board and tell the result once, in plain words.
     private func decide(_ d: ManagerModel.BoardDecision, approve: Bool) {
         let id: String = d.id
         let label: String = (approve ? "Approved: " : "Declined: ") + d.title.tidyMoney
@@ -150,8 +138,6 @@ struct BoardDecisions: View {
         case nil: break
         }
     }
-
-    // MARK: Emergencies
 
     private func emergency(_ m: ManagerModel.BoardMeeting, key: String) -> some View {
         Card(padding: Theme.Space.l, radius: Theme.Radius.hero, fill: Theme.surface) {
@@ -178,8 +164,6 @@ struct BoardDecisions: View {
             }
         }
     }
-
-    // MARK: Follow-up jobs
 
     private func followUps(_ jobs: [KeyedJob]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {

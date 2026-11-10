@@ -4,12 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// A chain runs itself: when someone sits above a store manager, requests go to them first. They judge on the numbers, move money between sister
-/// stores as group loans, replace a missing store manager, answer a store manager's request to leave the chain price, and grow the chain (new stores,
-/// new cities). Stores wait three weeks before they open. Original: features/company/chain_hierarchy.js (CHN56), features/company/chain_price_requests.js
-/// (CPX56), features/company/org_chart.js (ORG56 `approve`, `openStore`, the weekly growth step), features/company/chain_registration_and_boards.js (`open13`).
 extension ManagerModel {
-    // MARK: Judging a request
 
     static func sisters(_ s: GameState, _ co: Company) -> [Company] {
         guard let ch = Chains.chain(s, of: co) else { return [] }
@@ -19,7 +14,6 @@ extension ManagerModel {
         max(0, c.cash - weekCost(s, c, data: data) * 8 - World(state: s, data: data).currency(c).scaledPrice(20000))
     }
 
-    /// Move money from the sister store that can spare the most, as a group loan the store pays back when it can. Original: `sisterCash`.
     public static func sisterCash(_ s: inout GameState, to co: Company, need: Double, data: GameData) -> Company? {
         let cur = World(state: s, data: data).currency(co)
         guard let from = sisters(s, co).max(by: { spareCash(s, $0, data: data) < spareCash(s, $1, data: data) }), spareCash(s, from, data: data) >= need else { return nil }
@@ -34,7 +28,6 @@ extension ManagerModel {
         return from
     }
 
-    /// Group loans inside a chain are paid back once the store has a cushion of its own. Original: step 'group loans inside a chain are paid back'.
     static func groupLoansRepay(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status == .open && !s.companies[i].value("gl56").array.isEmpty {
             var gl = s.companies[i].value("gl56").array
@@ -52,15 +45,11 @@ extension ManagerModel {
             if let k = s.companyIndex(co.id) { s.companies[k].set("gl56", .array(gl)) }
         }
     }
-    /// What a company owes its sister stores.
     public static func groupLoanBalance(_ s: GameState, companyID: Int) -> Double { s.company(companyID)?.value("gl56").array.reduce(0) { $0 + $1["amt"].double } ?? 0 }
 
-    /// A store without a manager gets one from the boss. Original: `fillManager`.
     @discardableResult
     static func fillManager(_ s: inout GameState, companyID: Int, by: String, why: String, boss: Person? = nil, data: GameData) -> Person? {
         guard let ci = s.companyIndex(companyID), s.companies[ci].managerID == nil, s.companies[ci].status == .open || s.companies[ci].status == .setup, let bd = data.catalog[s.companies[ci].type] else { return nil }
-        // The boss looks at what an executive search turns up (three of the trade's own kind, one general), bargains with each, and takes the best value
-        // (AutoHire); if nobody comes to terms they look again, up to three times.
         for _ in 0..<3 {
             var found = (0..<3).map { _ in generateCandidate(company: s.companies[ci], type: bd.managerType, faces: false, state: &s, data: data) }
             found.append(generateCandidate(company: s.companies[ci], type: "gen", faces: false, state: &s, data: data))
@@ -72,7 +61,6 @@ extension ManagerModel {
         return nil
     }
 
-    /// How a request looks to the boss: 1 yes, -1 no, 0 a close call. Original: `merit`.
     static func merit(_ s: GameState, _ co: Company, _ dp: Proposal) -> Int {
         let w = co.value("lastW")
         let over = w["cap"].double > 0 ? w["D"].double / w["cap"].double : 0, u = w["util"].double
@@ -90,8 +78,6 @@ extension ManagerModel {
     static let proposalNo: [String: String] = ["eq": "what we have is not full yet", "veh": "the vehicles are not all busy",
                                                "space": "there is room in the place we have", "cut": "the team is busy enough", "ad": "the money is better kept for now"]
 
-    /// The boss above the manager judges a request first. True when they dealt with it; false when it comes to you (with their view in `view`).
-    /// Original: `CHN56.decide`.
     static func hierarchyDecide(_ s: inout GameState, _ ci: Int, _ dp: Proposal, _ n: Person, affordable: Bool, view: inout String, data: GameData) -> Bool {
         let co = s.companies[ci]
         let L = decisionChain(s, co, data: data).filter { $0.kind != "mgr" }
@@ -121,7 +107,6 @@ extension ManagerModel {
         return false
     }
 
-    /// Trouble at a store: the boss above it deals with it. True when they did. Original: `CHN56.handle`.
     static func handleBelow(_ s: inout GameState, companyID: Int, kind: String, why: String, pick: Int, data: GameData) -> Bool {
         guard let co = s.company(companyID) else { return false }
         let L = decisionChain(s, co, data: data).filter { $0.kind != "mgr" }
@@ -144,11 +129,8 @@ extension ManagerModel {
         return true
     }
 
-    // MARK: A store manager asks to leave the chain price
-
     static func stepWord(_ v: Double) -> String { v == 0 ? "the chain price" : "\(Int(abs(v))) step\(abs(v) > 1 ? "s" : "") \(v > 0 ? "above" : "below") the chain price" }
 
-    /// What the last four weeks say: (+1 too busy, -1 too quiet, 0 back to normal) with a reason, or nil. Original: `CPX56.want`.
     static func priceWish(_ co: Company) -> (value: Double, dir: String, why: String)? {
         let H = co.value("wh56").array.suffix(4)
         guard H.count == 4 else { return nil }
@@ -160,7 +142,6 @@ extension ManagerModel {
         return nil
     }
 
-    /// Weekly: remember how busy each store is, and let a store manager ask. Original: step 'chain store managers ask to leave the chain price'.
     static func priceRequestsWeekly(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status == .open {
             let lw = s.companies[i].value("lastW")
@@ -190,9 +171,6 @@ extension ManagerModel {
         }
     }
 
-    // MARK: Every level grows the chain in its own way
-
-    /// Ask the first boss above `from` with the authority and budget; if none, ask you. Original: `ORG56 approve`.
     static func approveUp(_ s: inout GameState, _ co: Company, from: String, cost: Double, title: String, why: String, action: [String: JSONValue], data: GameData, context fc: FinanceContext) {
         let L = decisionChain(s, co, data: data)
         let i = L.firstIndex { $0.kind == from } ?? 0
@@ -210,7 +188,6 @@ extension ManagerModel {
                      options: [.option("Approve", cost > 0 ? cur.short(cost) : ""), .option("Not now")], action: "org56", data: .object(d), expiresWeek: s.week + 3)
     }
 
-    /// Carry out what a level decided: a new store, or a course for a team. Original: `ORG56.run`.
     static func runOrganisation(_ s: inout GameState, _ d: JSONValue, data: GameData, context fc: FinanceContext) {
         if d["a"].string == "store" { _ = openFundedStore(&s, chainID: d["ch"].int, cityID: d["city"].string, data: data, context: fc) }
         else if d["a"].string == "course", let i = s.companyIndex(d["co"].int), s.companies[i].cash > d["cost"].double {
@@ -219,7 +196,6 @@ extension ManagerModel {
         }
     }
 
-    /// A chain opens a store paid from its stores' spare cash. Original: `ORG56 openStore`.
     @discardableResult
     static func openFundedStore(_ s: inout GameState, chainID: Int, cityID: String, data: GameData, context fc: FinanceContext) -> Int? {
         guard let ch = Chains.chain(s, id: chainID), let cost = Chains.newStoreCost(s, chainID: chainID, cityID: cityID, size: 1, data: data) else { return nil }
@@ -237,8 +213,6 @@ extension ManagerModel {
         return nil
     }
 
-    /// Once a month: assistants book training, the chain manager opens stores where they are full, the CEO takes the chain to a new city.
-    /// Original: the weekly step 'every level of the organisation grows the business in its own way' (`week % 4 === 1`).
     static func organisationWeekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         guard s.week % 4 == 1 else { return }
         for co in s.companies where co.status == .open && co.value("asst")["npc"].int != 0 && s.people[co.value("asst")["npc"].int] != nil && co.quality < 60 && Double(s.week) - (co.value("org56c").isNull ? -99 : co.num("org56c")) >= 26 {
@@ -284,9 +258,6 @@ extension ManagerModel {
     }
     public static func cityName(_ s: GameState, _ id: String, _ data: GameData) -> String { data.countries[s.homeCountryCode]?.city(id)?.name ?? id }
 
-    // MARK: A new store waits three weeks
-
-    /// A store due to open opens when it can; otherwise it tries again every week. Original: the `open13` step.
     static func openingWait(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where !s.companies[i].value("open13").isNull && s.companies[i].status == .setup && s.week >= s.companies[i].value("open13").int {
             let r = OpeningChecklist.open(&s, companyIndex: i, data: data)
@@ -302,9 +273,6 @@ extension ManagerModel {
         }
     }
 
-    // MARK: Everything above the stores, once a week
-
-    /// Called from `Chains.weekly`. Teams, boards, chain levels, requests and the monthly items.
     static func groupWeekly(_ s: inout GameState, data: GameData, context fc: FinanceContext, marketing: MarketingTables) {
         for i in s.companies.indices where s.companies[i].status.isLive {
             guard let bd = data.catalog[s.companies[i].type] else { continue }

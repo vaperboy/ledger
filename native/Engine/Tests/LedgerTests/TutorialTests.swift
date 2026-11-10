@@ -4,7 +4,6 @@ import Countries
 @testable import Businesses
 import Simulation
 
-/// The new-player tutorial: it is in the save, moves on only when the player does the step, and holds back the quick set-up until it is done.
 final class TutorialTests: XCTestCase {
     private func fresh() throws -> GameEngine {
         try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 11, story: .fresh, tradeID: "cafe", chooseFirstItem: true)
@@ -29,7 +28,6 @@ final class TutorialTests: XCTestCase {
         XCTAssertFalse(e.chooseFirstItem(companyID: id, itemID: choice.id).isRefused)
         XCTAssertEqual(e.tutorialStep, .pickSupplier)
         let item = try XCTUnwrap(e.salesItems(companyID: id).first)
-        // A price set early does not skip the supplier step.
         XCTAssertFalse(e.setItemPrice(companyID: id, itemID: item.id, price: item.price).isRefused)
         XCTAssertEqual(e.tutorialStep, .pickSupplier)
         e.tutorialAdvance(from: .pickSupplier)

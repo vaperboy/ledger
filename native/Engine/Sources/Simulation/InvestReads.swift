@@ -4,25 +4,18 @@ import Countries
 import Finance
 import Investments
 
-/// What a purchase or a sale would do, read from the same rules `Brokerage.buy` and `Brokerage.sell` apply (fee, smallest order, the price
-/// the crypto trade really gets). Nothing here changes the game.
 public struct TradeQuote: Equatable, Sendable {
     public var amount: Double
     public var fee: Double
-    /// Buying: units received at the price the trade really gets. Selling: units sold.
     public var units: Double
-    /// Selling: what reaches the account after the fee. Buying: what leaves it (amount plus fee).
     public var cashChange: Double
     public var minimumPurchase: Double
-    /// Buying: the account's balance, what the broker can draw on.
     public var available: Double
     public var cashAfter: Double
-    /// Why it would not go through, in words (nil when it would).
     public var refusal: String?
 }
 
 public extension GameEngine {
-    /// Buying `amount` of a name.
     func buyQuote(_ kind: Brokerage.Kind, symbol: String, amount: Double) -> TradeQuote {
         let cur = homeCurrency
         let amt = amount.rounded()
@@ -39,7 +32,6 @@ public extension GameEngine {
                           cashAfter: state.cash - (amt + fee), refusal: refusal)
     }
 
-    /// Selling `fraction` (0...1) of what is held.
     func sellQuote(_ kind: Brokerage.Kind, symbol: String, fraction: Double) -> TradeQuote {
         let cur = homeCurrency
         let f = min(max(fraction, 0), 1)

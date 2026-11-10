@@ -3,7 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// One report the company can buy.
 public struct ResearchOption: Identifiable, Equatable, Sendable {
     public var id: String
     public var title: String
@@ -12,24 +11,17 @@ public struct ResearchOption: Identifiable, Equatable, Sendable {
     public var weeks: Int
 }
 
-/// A delivered report: a few short lines worked out from the market as it was on the day it arrived.
 public struct ResearchReport: Identifiable, Equatable, Sendable {
     public var id: Int
     public var optionID: String
     public var title: String
-    public var day: Int            // week * 7 + day
+    public var day: Int
     public var findings: [String]
 }
 
-/// Market research: four reports a company can buy (demand forecast, competitor scan, price benchmark, best next product). The cost is paid
-/// when it is ordered; the report arrives after its weeks and is kept (newest 12) in `co.res27`; an inbox message tells you. A market advisor
-/// (`NewItemOptions.hasAdvisor`) halves the cost and the weeks (rounded up, at least 1). The findings use real data only and draw no random numbers.
-/// Cost = scaledPrice(base) x max(1, sqrt(size)): forecast 2400, competitor scan 1600, price benchmark 1000, next product 3200.
-/// Weeks: 3, 2, 1, 4..
 public enum MarketResearch {
     static let key = "res27"
     static let keep = 12
-    /// (id, title, detail, base cost in hundreds before scaling, weeks)
     static let catalog: [(String, String, String, Double, Int)] = [
         ("forecast", "Demand forecast", "Where demand is heading over the next 8 weeks: season, the economy and fading rival pressure.", 24, 3),
         ("rivals", "Competitor scan", "Who you compete with here, what they charge and what they are doing.", 16, 2),
@@ -52,7 +44,6 @@ public enum MarketResearch {
         co.value(key)["r"].array.map { ResearchReport(id: $0["i"].int, optionID: $0["o"].string, title: $0["t"].string, day: $0["d"].int, findings: $0["f"].array.map { $0.string }) }
     }
 
-    /// Ordered and not yet delivered: (option id, week it arrives).
     public static func pending(_ co: Company) -> [(optionID: String, dueWeek: Int)] {
         co.value(key)["o"].array.map { ($0["o"].string, $0["due"].int) }
     }
@@ -77,7 +68,6 @@ public enum MarketResearch {
         s.note("\(s.companies[i].name) ordered a \(o.title.lowercased()); it arrives in \(o.weeks) week\(o.weeks == 1 ? "" : "s").", tone: "n", companyID: companyID)
     }
 
-    /// Delivers what is due. Called at the end of the week.
     public static func weekly(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices {
             let orders = s.companies[i].value(key)["o"].array
@@ -102,9 +92,6 @@ public enum MarketResearch {
         }
     }
 
-    // MARK: The report as an inbox document
-
-    /// The findings grouped into sections: Summary (the headline), the topic of the report, and a Recommendation.
     static func document(optionID: String, title: String, company co: Company, reportID: Int, lines: [String], state s: GameState) -> InboxDocument {
         let topic = ["forecast": "Demand", "rivals": "Competitors", "benchmark": "Prices", "product": "Products"][optionID] ?? "Findings"
         let advice = [
@@ -120,8 +107,6 @@ public enum MarketResearch {
                              reference: "LMR-\(String(format: "%05d", reportID))", sections: sections)
     }
 
-    // MARK: Findings
-
     static func pct(_ x: Double) -> String { String(format: "%+.1f%%", x * 100) }
 
     static func findings(_ s: GameState, _ co: Company, optionID: String, data: GameData) -> [String] {
@@ -135,14 +120,13 @@ public enum MarketResearch {
         }
     }
 
-    /// Expected change of demand 8 weeks ahead, split in its parts.
     static func forecast(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, _ data: GameData) -> [String] {
         var later = w
         later.state.week += 8
         let seasonNow = DemandModel.season(bd, w, for: co), seasonLater = DemandModel.season(bd, later, for: co)
         let season = seasonNow > 0 ? seasonLater / seasonNow - 1 : 0
         let pressure = MarketPressure.demandMultiplier(co, week: s.week + 8) / max(0.01, MarketPressure.demandMultiplier(co, week: s.week)) - 1
-        let econ = (1 - s.economy.demand) * 0.4 * 0.5        // the economy drifts halfway back towards normal, and moves demand by 40 percent of its gap
+        let econ = (1 - s.economy.demand) * 0.4 * 0.5
         let total = (1 + season) * (1 + pressure) * (1 + econ) - 1
         var out = ["Expected demand over the next 8 weeks: \(pct(total)) against now."]
         out.append("Season: \(pct(season)). Economy: \(pct(econ)).")

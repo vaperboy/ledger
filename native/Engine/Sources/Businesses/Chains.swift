@@ -4,15 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// Chains: several stores of one trade under one name, with shared rules, a known brand and cheaper buying. A chain is
-/// registered first (a lawyer writes the operations manual), then you open or add stores. Original:
-/// features/company/chain_registration_and_boards.js (registration, new stores), features/company/shelf_stock_chains_boards.js
-/// (`makeChain`, `joinChain`, `applyRules`, `chainWeek`, the rules tab), engine/company/chain.js (`reachOf`, `chainWeek`, `rebate`),
-/// engine/suppliers/own_group.js (`ownSupply`) and features/company/branches_and_addresses.js (stores under one name).
-/// The chains are saved in `rest["chains"]`; a store carries `chain` (the chain's id) and `off` (its own rules).
-/// Boards, chiefs, group loans and price requests are in `ManagerBoards`, `ManagerTeam`, `ChainHierarchy`.
 public enum Chains {
-    // MARK: Registry
 
     static func list(_ s: GameState) -> [JSONValue] { s.rest["chains"]?.array ?? [] }
     public static func all(_ s: GameState) -> [JSONValue] { list(s) }
@@ -21,7 +13,6 @@ public enum Chains {
         let id = co.value("chain")
         return id.isNull ? nil : chain(s, id: id.int)
     }
-    /// The live stores of a chain, oldest first.
     public static func stores(_ s: GameState, _ ch: JSONValue) -> [Company] {
         s.companies.filter { $0.status.isLive && !$0.value("chain").isNull && $0.value("chain").int == ch["id"].int }
     }
@@ -31,7 +22,6 @@ public enum Chains {
         s.rest["chains"] = .array(L)
     }
 
-    /// Someone who looks after the chain above the store managers: a chain chief, a managing director, a group CEO, or (here) a manager in every store of a chain of three. Original: `chiefs`, `S.org56.md`, `ch.ceo56`.
     static func hasChainBoss(_ s: GameState, _ ch: JSONValue, stores L: [Company]) -> Bool {
         let key = "chain:\(ch["id"].int)"
         if (s.rest["group"]?["regional"].array ?? []).contains(where: { $0["scope"].string.hasPrefix(key) }) { return true }
@@ -42,10 +32,6 @@ public enum Chains {
         return open.count >= 3 && open.allSatisfy { $0.managerID != nil }
     }
 
-    // MARK: Documents the chain and franchise features add
-
-    /// Original: `DOCS.chain`, `DOCS.fran`, `DOCS.fran_op`; the trademark and the operations manual are the real-life papers a chain and a franchisor need
-    /// . Fields: name, issuer, base fee, weeks of review or writing, renewal, note.
     static let extraDocuments: [String: JSONValue] = [
         "trademark": .array(["Trademark registration", "Intellectual property office", 4200, 6, 0, "Registers the brand name so nobody else can use it. The office reviews it for 4 to 8 weeks."]),
         "ops_manual": .array(["Operations manual", "Written by your own team", 900, 3, 0, "How every store is run, written by you or your manager over a few weeks. No authority reviews it."]),
@@ -53,8 +39,6 @@ public enum Chains {
         "fran": .array(["Franchise disclosure document", "Franchise lawyer", 25000, 6, 0, "Prepared with a lawyer: describes the concept, fees, support and obligations. It must be signed and reviewed."]),
         "fran_op": .array(["Franchise operating agreement", "Franchisor", 0, 0, 0, "Your signed agreement with the brand."]),
     ]
-
-    // MARK: Registration
 
     public enum RequirementStatus: String, Equatable, Sendable { case done, waiting, missing }
 
@@ -64,7 +48,6 @@ public enum Chains {
         public var title: String
         public var ok: Bool
         public var detail: String
-        /// done / waiting for review / missing. `ok` is true only for done.
         public var status: RequirementStatus
         public init(title: String, ok: Bool, detail: String, key: String? = nil, status: RequirementStatus? = nil) {
             self.title = title; self.ok = ok; self.detail = detail; self.key = key ?? title
@@ -72,7 +55,6 @@ public enum Chains {
         }
     }
 
-    /// A requirement that is a document: approved is done, applied is waiting for review (with the weeks left), otherwise missing.
     static func documentRequirement(_ s: GameState, _ co: Company, doc: String, title: String, missing: String) -> Requirement {
         let d = co.value("docs")[doc]
         switch d["st"].string {
@@ -83,8 +65,6 @@ public enum Chains {
         }
     }
 
-    /// What really applies to put stores under one name: the brand is a registered trademark, and one operations manual says how every store is run.
-    /// (A chain of company-owned stores needs no track record or cash balance by law.)
     public static func requirements(_ s: GameState, _ co: Company) -> [Requirement] {
         [documentRequirement(s, co, doc: "trademark", title: "Registered trademark", missing: "Apply to register the brand name (fee, 4 to 8 weeks)"),
          documentRequirement(s, co, doc: "ops_manual", title: "Operations manual", missing: "Write it with your manager (a few weeks, a small cost)")]
@@ -92,9 +72,6 @@ public enum Chains {
 
     public enum ChainDocResult: Equatable, Sendable { case ok, notYet(String), alreadyHeld, notEnoughCash, notFound }
 
-    /// Apply for a paper of the chain and franchise path: "trademark" (signed, reviewed), "ops_manual" (written by the company), "chain" (the registration)
-    /// or "fran" (the disclosure document, prepared with a lawyer, signed and reviewed). The papers it rests on must be done first.
-    /// Original: `applyDoc` with the `applyDoc.check` steps of chain_registration_and_boards.js and deals.js.
     public static func applyDocument(_ s: inout GameState, companyID: Int, doc: String, data: GameData) -> ChainDocResult {
         guard let i = s.companyIndex(companyID), ["chain", "fran", "trademark", "ops_manual"].contains(doc) else { return .notFound }
         let co = s.companies[i]
@@ -113,7 +90,6 @@ public enum Chains {
         }
     }
 
-    /// Name the chain: every store carries it. Original: `makeChain` (`ACT.ch12make`).
     @discardableResult
     public static func make(_ s: inout GameState, companyID: Int, name: String, data: GameData? = nil) -> Int? {
         guard let i = s.companyIndex(companyID) else { return nil }
@@ -126,18 +102,15 @@ public enum Chains {
         let ch: JSONValue = .object(["id": .number(Double(id)), "name": .string(nm), "type": .string(co.type), "w0": .number(Double(s.week)), "rules": rules, "hq": .object(["w0": .number(Double(s.week))])])
         save(&s, ch)
         join(&s, chainID: id, companyID: companyID, rename: false)
-        // The brand belongs to the chain's head office, not to its first store: that store becomes one location like the rest.
         if let d = data, let i = s.companyIndex(companyID) { s.companies[i].name = storeName(s, chain: ch, s.companies[i], data: d) }
         return id
     }
 
-    /// The name of a location: the brand and the place (the city for the first one there, then districts), never a number.
     public static func storeName(_ s: GameState, chain ch: JSONValue, _ co: Company, data: GameData) -> String {
         let city = data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? ""
         return LocationNames.locationName(s, brand: ch["name"].string, countryCode: co.countryCode, cityID: co.cityID, cityName: city, excluding: co.id, data: data)
     }
 
-    /// A store joins a chain and follows its rules. Original: `joinChain`.
     public static func join(_ s: inout GameState, chainID: Int, companyID: Int, rename: Bool, data: GameData? = nil) {
         guard let ch = chain(s, id: chainID), let i = s.companyIndex(companyID) else { return }
         s.companies[i].set("chain", chainID)
@@ -146,7 +119,6 @@ public enum Chains {
             s.companies[i].name = storeName(s, chain: ch, s.companies[i], data: d)
         }
         applyRules(&s, chain: ch, companyIndex: i)
-        // An open store joining a chain changes over to its standards like any other change; one that cannot keeps its choice.
         if let d = data, s.companies[i].status == .open {
             for (k, v) in ch["rules"]["knob"].object.sorted(by: { $0.key < $1.key }) where s.companies[i].value("knob")[k].int != v.int {
                 if case .refused(let why) = KnobChange.apply(&s, d, companyID: companyID, knob: k, value: v.int, byChain: true) {
@@ -154,32 +126,26 @@ public enum Chains {
                 }
             }
         }
-        // The supplier rule binds a store that is still being set up too: it has no changeover cost and nothing re-applies it at opening.
         if let d = data { SupplyDeals.applyChainRules(&s, d, storeID: companyID) }
     }
 
-    /// One store's line in a chain-wide change of a standard.
     public struct KnobStandardLine: Equatable, Sendable {
         public var storeID: Int
         public var storeName: String
-        /// False when the store already follows the standard
         public var changes: Bool
         public var cost: Double
         public var weeks: Int
-        /// Why this store cannot take the standard (it keeps its current choice)
         public var reason: String?
     }
 
     public struct KnobStandardPlan: Equatable, Sendable {
         public var lines: [KnobStandardLine]
         public init(lines: [KnobStandardLine]) { self.lines = lines }
-        /// What the stores that can change will pay in all
         public var totalCost: Double { lines.filter { $0.changes && $0.reason == nil }.reduce(0) { $0 + $1.cost } }
         public var exceptions: Int { lines.filter { $0.changes && $0.reason != nil }.count }
         public var changing: Int { lines.filter { $0.changes && $0.reason == nil }.count }
     }
 
-    /// What making `value` the chain's standard for a knob would cost each store. Nothing is changed.
     public static func knobStandardPlan(_ s: GameState, chainID: Int, knob: String, value: Int, data: GameData) -> KnobStandardPlan? {
         guard let ch = chain(s, id: chainID), data.catalog[ch["type"].string]?.knobs.contains(where: { $0.id == knob }) == true else { return nil }
         var lines: [KnobStandardLine] = []
@@ -191,9 +157,6 @@ public enum Chains {
         return KnobStandardPlan(lines: lines)
     }
 
-    /// Make `value` the chain's mandatory standard for a knob and have every store it governs change over to it. A store that
-    /// cannot (no cash, licence refused, still changing over) keeps its choice and is reported, never silently overridden.
-    /// Running it again later retries the stores that still differ.
     @discardableResult
     public static func setKnobStandard(_ s: inout GameState, chainID: Int, knob: String, value: Int, data: GameData) -> KnobStandardPlan {
         guard var ch = chain(s, id: chainID), let plan0 = knobStandardPlan(s, chainID: chainID, knob: knob, value: value, data: data) else { return KnobStandardPlan(lines: []) }
@@ -216,13 +179,11 @@ public enum Chains {
         return KnobStandardPlan(lines: lines)
     }
 
-    /// The chain's standard for a knob (an option index, or the bit mask of a multi-choice knob), nil when each store decides.
     public static func knobStandard(_ s: GameState, chainID: Int, knob: String) -> Int? {
         guard let ch = chain(s, id: chainID), !ch["rules"]["knob"][knob].isNull else { return nil }
         return ch["rules"]["knob"][knob].int
     }
 
-    /// Stores that do not follow the chain's standard for a knob right now (they could not change over). Empty when there is no standard.
     public static func knobExceptions(_ s: GameState, chainID: Int, knob: String, data: GameData) -> [(storeID: Int, storeName: String, value: Int)] {
         guard let std = knobStandard(s, chainID: chainID, knob: knob), let ch = chain(s, id: chainID),
               let k = data.catalog[ch["type"].string]?.knobs.first(where: { $0.id == knob }) else { return [] }
@@ -232,7 +193,6 @@ public enum Chains {
         }
     }
 
-    /// Give the choice back to the stores: the chain no longer fixes this knob.
     public static func releaseKnobStandard(_ s: inout GameState, chainID: Int, knob: String) {
         guard var ch = chain(s, id: chainID) else { return }
         var k = ch["rules"]["knob"].object
@@ -241,7 +201,6 @@ public enum Chains {
         save(&s, ch)
     }
 
-    /// A place in a chain that is short of a role, and a sister store that has one more than it needs. Original: the "Short of staff" list.
     public struct Shortage: Equatable, Sendable { public var storeID: Int; public var role: String; public var spareAtStoreID: Int? }
 
     public static func staffShortages(_ s: GameState, chainID: Int, data: GameData) -> [Shortage] {
@@ -262,13 +221,12 @@ public enum Chains {
         return out
     }
 
-    /// Lend the least skilled person of a role from one store of a chain to another. Original: `ACT.ch12lend`.
     @discardableResult
     public static func lendWorker(_ s: inout GameState, from fromID: Int, to toID: Int, role: String, staffID: Int? = nil, data: GameData) -> Bool {
         guard let a = s.companyIndex(fromID), let b = s.companyIndex(toID), a != b,
               let ca = chain(s, of: s.companies[a]), let cb = chain(s, of: s.companies[b]), ca["id"].int == cb["id"].int else { return false }
         let tables = data.catalog.tables
-        let pick = s.companies[a].staff.filter { staffID == nil ? $0.role == role : $0.id == staffID }   // a named person (the contract talk), else the least skilled of the role
+        let pick = s.companies[a].staff.filter { staffID == nil ? $0.role == role : $0.id == staffID }
             .min { StaffModel.skill($0, person: s.people[$0.id], salesRoles: tables.salesRoles) < StaffModel.skill($1, person: s.people[$1.id], salesRoles: tables.salesRoles) }
         guard let m = pick else { return false }
         s.companies[a].staff = s.companies[a].staff.filter { $0.id != m.id }
@@ -278,31 +236,21 @@ public enum Chains {
         return true
     }
 
-    // MARK: Standards the stores follow
-
-    /// What every store of a chain follows, kept on the chain (`std`; the ordering policy is the chain's `rules.stockPol`). A store's own price step
-    /// stays inside the band (`applyRules`); the headcount floor is read by whoever cuts or hires in a store (`chainStandards`).
     public struct StoreStandards: Equatable, Sendable {
-        /// The lowest and highest price step a store may keep of its own, on top of the chain's price (steps, -3 to 3).
         public var priceLow: Double
         public var priceHigh: Double
-        /// The fewest people a store keeps: a manager does not cut below it.
         public var headcountFloor: Int
-        /// How stores order stock: 0 lean, 1 normal, 2 plenty.
         public var ordering: Int
         public init(priceLow: Double, priceHigh: Double, headcountFloor: Int, ordering: Int) {
             self.priceLow = priceLow; self.priceHigh = priceHigh; self.headcountFloor = headcountFloor; self.ordering = ordering
         }
-        /// The price step a store may take given the step it wants.
         public func price(_ wanted: Double) -> Double { min(priceHigh, max(priceLow, wanted)) }
     }
 
-    /// The standards of a chain; nil when there is no such chain. A chain that never set any has the widest band, no floor and normal ordering.
     public static func chainStandards(_ s: GameState, chainID: Int) -> StoreStandards? {
         guard let ch = chain(s, id: chainID) else { return nil }
         return standards(of: ch)
     }
-    /// The standards the chain of a store sets for it; nil for a company outside any chain.
     public static func chainStandards(_ s: GameState, of co: Company) -> StoreStandards? { chain(s, of: co).map { standards(of: $0) } }
 
     static func standards(of ch: JSONValue) -> StoreStandards {
@@ -312,7 +260,6 @@ public enum Chains {
                               ordering: ch["rules"]["stockPol"].isNull ? 1 : min(2, max(0, ch["rules"]["stockPol"].int)))
     }
 
-    /// Set what is given; the rest stays. The stores take the new price band and ordering policy at once.
     public static func setStandards(_ s: inout GameState, chainID: Int, priceLow: Double? = nil, priceHigh: Double? = nil, headcountFloor: Int? = nil, ordering: Int? = nil) {
         guard var ch = chain(s, id: chainID) else { return }
         var st = ch["std"].isNull ? JSONValue.object([:]) : ch["std"]
@@ -324,12 +271,9 @@ public enum Chains {
         if let o = ordering { setRule(&s, chainID: chainID, rule: .stockPolicy(o)) } else { applyAll(&s, chain: ch) }
     }
 
-    /// The chain's rules on a store: price (plus its own step, within the chain's band), the business choices, ordering. Original: `applyRules`.
     static func applyRules(_ s: inout GameState, chain ch: JSONValue, companyIndex i: Int) {
         let R = ch["rules"], o = s.companies[i].value("off")
         s.companies[i].priceLevel = clamp(R["price"].double + standards(of: ch).price(o["price"].double), -3, 3)
-        // A store that is not open yet takes the chain's standard as it opens. An open store changes over (cost, weeks, licences)
-        // when the standard changes (`setKnobStandard`), so the weekly turn never rewrites its choices silently.
         if s.companies[i].status != .open {
             var knob = s.companies[i].value("knob")
             for (k, v) in R["knob"].object { knob[k] = v }
@@ -344,7 +288,6 @@ public enum Chains {
 
     public enum Rule: Equatable, Sendable { case price(Double), knob(id: String, option: Int), stockPolicy(Int), pay(Double), marketing(String) }
 
-    /// Set one chain rule for every store. Original: `ACT.ch12rule`.
     public static func setRule(_ s: inout GameState, chainID: Int, rule: Rule) {
         guard var ch = chain(s, id: chainID) else { return }
         switch rule {
@@ -360,7 +303,6 @@ public enum Chains {
 
     public enum StoreRule: Equatable, Sendable { case priceSteps(Double), marketing(Double), pay(Double), ordering(Int?) }
 
-    /// One store's own rule on top of the chain's. Original: `ACT.ch12off`.
     public static func setStoreRule(_ s: inout GameState, companyID: Int, rule: StoreRule) {
         guard let i = s.companyIndex(companyID), let ch = chain(s, of: s.companies[i]) else { return }
         var o = s.companies[i].value("off")
@@ -375,18 +317,12 @@ public enum Chains {
         applyRules(&s, chain: ch, companyIndex: i)
     }
 
-    // MARK: Opening another store
-
-    /// What a new store costs: the start-up estimate plus 15%. Original: `nsEst`.
     public static func newStoreCost(_ s: GameState, chainID: Int, cityID: String, size: Double, data: GameData) -> Double? {
         guard let ch = chain(s, id: chainID), let first = stores(s, ch).first,
               let est = CompanySetup.estimate(tradeID: ch["type"].string, cityID: cityID, size: size, countryCode: first.countryCode, state: s, data: data) else { return nil }
         return (est.total * 1.15 / 1000).rounded() * 1000
     }
 
-    /// Open a new store: premises, equipment and people to the chain's standard, running on the chain's rules from day one.
-    /// Original: `ACT.ns13go`.
-    /// `fundedBy` (store id: amount): a chain that pays for the store from its own stores' spare cash instead of you. The store opens three weeks later.
     public static func openStore(_ s: inout GameState, chainID: Int, cityID: String, size: Double, data: GameData, context fc: FinanceContext, fundedBy parts: [Int: Double]? = nil) -> Result<Int, CompanySetup.StartError> {
         guard let ch = chain(s, id: chainID), let first = stores(s, ch).first, let cost = newStoreCost(s, chainID: chainID, cityID: cityID, size: size, data: data) else { return .failure(.notAllowedHere) }
         if parts == nil && Payments.liquid(s) < cost { return .failure(.notEnoughCash) }
@@ -398,23 +334,19 @@ public enum Chains {
                 Payments.companyReceives(&s, companyID: id, amount: x, category: nil, label: "Funding from sister stores")
             }
         } else { Payments.injectCash(&s, companyID: id, amount: cost) }
-        // The paperwork the first store already has is the chain's: copy what is approved.
         var docs = s.companies[i].value("docs")
         for (k, d) in first.value("docs").object where d["st"].string == "ok" && k != "chain" && k != "accountant_agreement" && docs[k].isNull { docs[k] = d }
         s.companies[i].set("docs", docs)
         s.companies[i].ownerHours = 0
         _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         join(&s, chainID: chainID, companyID: id, rename: true, data: data)
-        // A store of a known brand opens with a head start (instead of the usual 10): `BrandValues.openingAwareness`.
         if let k = s.companyIndex(id) {
             s.companies[k].awareness = max(s.companies[k].awareness, BrandValues.openingAwareness(flagshipAwareness: first.awareness, score: BrandValues.company(s, first).score))
         }
-        if let k = s.companyIndex(id) { s.companies[k].set("open13", s.week + 3) }   // a new store opens three weeks after it is set up (ManagerModel.openingWait)
+        if let k = s.companyIndex(id) { s.companies[k].set("open13", s.week + 3) }
         s.note("\(s.company(id)?.name ?? "A new store") is being set up for \(ch["name"].string).", tone: "good", companyID: id)
         return .success(id)
     }
-
-    // MARK: Stores under one name, not yet a chain
 
     public struct LooseGroup: Equatable, Identifiable, Sendable {
         public var id: String
@@ -432,7 +364,6 @@ public enum Chains {
         return n.lowercased()
     }
 
-    /// Two or more companies of one trade under the same name that are not a registered chain. Original: `BR56.groupOf`.
     public static func looseGroups(_ s: GameState, data: GameData) -> [LooseGroup] {
         var by: [String: [Company]] = [:]
         for c in s.companies where c.status.isLive && c.value("chain").isNull && c.type != "hold" { by["\(c.type)|\(c.countryCode)|\(baseName(c, data: data))", default: []].append(c) }
@@ -443,21 +374,16 @@ public enum Chains {
         }
     }
 
-    // MARK: Reach
-
     public struct Reach: Equatable, Sendable {
         public var outlets: Int
         public var countries: Int
         public var label: String
-        /// Most people who can know the name: one shop is a local name
         public var awarenessCap: Double
-        /// Outlets needed for the next step, 0 at the top
         public var nextAt: Int
         public var demandFactor: Double
         public var rebate: Double
     }
 
-    /// One shop is a local name; many outlets build a known brand. Original: `reachOf`.
     public static func reach(_ s: GameState, _ co: Company, data: GameData) -> Reach {
         let w = World(state: s, data: data)
         let n = Competition.chainOutlets(co, w)
@@ -470,8 +396,6 @@ public enum Chains {
         let l2 = log2(Double(n))
         return Reach(outlets: n, countries: k, label: label, awarenessCap: clamp(36 + 17 * l2, 36, 100), nextAt: next, demandFactor: 1 + 0.03 * l2, rebate: n > 1 ? min(0.035, 0.008 * l2) : 0)
     }
-
-    // MARK: Read models for the screens
 
     public struct StoreLine: Equatable, Identifiable, Sendable {
         public var id: Int
@@ -518,8 +442,6 @@ public enum Chains {
         }
     }
 
-    // MARK: The week
-
     static func rebate(_ s: inout GameState, _ id: Int, _ amount: Double) {
         let a = amount.rounded()
         if a <= 0 { return }
@@ -527,7 +449,6 @@ public enum Chains {
         Payments.book(&s, companyID: id, category: "cogs", amount: -a)
     }
 
-    /// Brand marketing, volume discounts, shared awareness and pay for every chain. Original: `chainWeek` (shelf_stock_chains_boards.js).
     static func chainsWeek(_ s: inout GameState, data: GameData, marketing: MarketingTables) {
         let share: [String: Double] = ["own": 0, "light": 0.015, "normal": 0.03, "heavy": 0.05]
         for ch in list(s) {
@@ -551,7 +472,6 @@ public enum Chains {
                         guard let c = marketing.channels[k] else { return 0 }
                         return Marketing.channelAffinity(bd, k, marketing.affinityByFamily, marketing.affinityByTrade) * ((1 - bd.audience) * c.localShare + bd.audience * c.businessShare) * c.efficiency
                     }
-                    // A store that is also a franchise unit may only get channels its franchise agreement allows locally.
                     let ks = marketing.channels.keys.filter { k in let c = marketing.channels[k]!; return !c.isPrimeTime && !c.isNational && !c.isHighVariance && FranchiseStandards.campaignRefusal(co, channel: k) == nil }
                         .sorted { fit($0) != fit($1) ? fit($0) > fit($1) : $0 < $1 }.prefix(2)
                     let b = (max(rev * sh, sh > 0 ? Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values)).scaledPrice(300) : 0) / Double(max(1, ks.count))).rounded()
@@ -572,7 +492,6 @@ public enum Chains {
                     Payments.book(&s, companyID: co.id, category: "acc", amount: -x)
                 }
             }
-            // one brand: the name is as well known in a city as its best-known store
             var byCity: [String: Double] = [:]
             for c in stores(s, ch) { byCity[c.cityID] = max(byCity[c.cityID] ?? 0, c.awareness) }
             for c in stores(s, ch) { if let i = s.companyIndex(c.id) { s.companies[i].awareness = max(s.companies[i].awareness, (byCity[c.cityID] ?? 0) * 0.85) } }
@@ -580,7 +499,6 @@ public enum Chains {
         }
     }
 
-    /// Anyone paid below the chain's level gets a raise at month end.
     static func chainPay(_ s: inout GameState, _ ch: JSONValue, data: GameData) {
         for c in stores(s, ch) {
             guard let i = s.companyIndex(c.id), let country = data.countries[c.countryCode], let city = country.city(c.cityID) ?? country.cities.first else { continue }
@@ -597,7 +515,6 @@ public enum Chains {
         }
     }
 
-    /// Reach discounts for every open company, and the car dealer's own vehicle plant. Original: `chainWeek(co)` in chain.js, `ownSupply`.
     static func reachWeek(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices {
             let co = s.companies[i]
@@ -605,7 +522,6 @@ public enum Chains {
             let lw = co.value("lastW")
             if co.type == "cardealer", lw["rev"].double > 0, let pl = s.companies.first(where: { $0.type == "factory" && $0.status == .open && $0.id != co.id && $0.countryCode == co.countryCode && $0.value("knob")["line"].int >= 1 }) {
                 let rev = lw["rev"].double
-                // The dealer's saving and the plant's wholesale revenue are the same amount (same country, as in IntercompanySupply).
                 let discount = min(rev * 0.06, lw["cogs"].double * 0.12).rounded()
                 rebate(&s, co.id, discount)
                 if discount > 0 { Payments.companyReceives(&s, companyID: pl.id, amount: discount, category: "rev", label: "Wholesale to \(co.name)") }
@@ -620,15 +536,14 @@ public enum Chains {
         }
     }
 
-    /// Chains, reach and franchising, once a week after the companies' own weeks.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext, marketing: MarketingTables) {
         chainsWeek(&s, data: data, marketing: marketing)
         reachWeek(&s, data: data)
         Franchising.weekly(&s, data: data, context: fc)
         IntercompanySupply.weekly(&s, data: data)
-        SupplyTerms.weekly(&s, data: data, context: fc)   // invoices fall due: paid, or late with interest and consequences
-        AccountSupply.weekly(&s)   // inputs bought from your business customers
-        RivalAbsorb.weekly(&s)     // a matched price ends, a site beside a rival takes its customers
-        ManagerModel.groupWeekly(&s, data: data, context: fc, marketing: marketing)   // management team, boards, chain bosses, group loans, the office
+        SupplyTerms.weekly(&s, data: data, context: fc)
+        AccountSupply.weekly(&s)
+        RivalAbsorb.weekly(&s)
+        ManagerModel.groupWeekly(&s, data: data, context: fc, marketing: marketing)
     }
 }

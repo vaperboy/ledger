@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Text whose number is `shown`: SwiftUI feeds it every step of an animation, so the figure counts instead of jumping.
 struct CountingText: View, Animatable {
     var shown: Double
     var format: (Double) -> String
@@ -15,17 +14,11 @@ struct CountingText: View, Animatable {
     }
 }
 
-/// What restarts a `CountedFigure`'s counting: a new value, or the order to finish at once.
 private struct CountKey: Hashable {
     var value: Double
     var instant: Bool
 }
 
-/// A real figure that counts up from 0 (about 400 ms, ease-out) the first time it appears, and counts from the shown to the new value
-/// when `value` changes (another period picked). The counting is driven by a task that sets the shown number every frame, so it does
-/// not depend on SwiftUI interpolating a view's data (which did not run on screen). `delay` waits before the count starts (a staggered
-/// briefing); `instant` finishes it at once. Reduce Motion: the value is simply shown. `tint` colours it; nil keeps the surrounding
-/// colour. Font and line limits come from the caller.
 struct CountedFigure: View {
     var value: Double
     var format: (Double) -> String

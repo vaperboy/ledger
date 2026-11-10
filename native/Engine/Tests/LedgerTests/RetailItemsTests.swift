@@ -54,7 +54,6 @@ final class RetailItemsTests: XCTestCase {
             var cost = 0.0, rev = 0.0
             for r in recs {
                 guard let row = rows.first(where: { $0.id == r.id }) else { XCTFail("no row \(r.id)"); continue }
-                // revenue weights: the default list has unit share x price ratio = row.revenueWeight
                 cost += row.revenueWeight * (r.cost + r.prep) / row.marketPrice
                 rev += row.revenueWeight
             }
@@ -149,8 +148,6 @@ final class RetailItemsTests: XCTestCase {
         guard e.state.company(dealer)?.status == .open else { throw XCTSkip("dealer did not open") }
         var gBefore = e.state.company(garage)!, dBefore = e.state.company(dealer)!
         XCTAssertEqual(e.carRepairGarages(for: dealer), [garage])
-        // a garage that is full with its own customers has no spare capacity, so no job order and no money moves. Whether a young garage is
-        // full on the day depends on its weekday and first cycle, so the test makes it full rather than relying on that.
         e.update { s, _, _ in
             if let i = s.companyIndex(garage) { var lw = s.companies[i].value("lastW"); lw["units"] = lw["cap"]; s.companies[i].set("lastW", lw) }
         }
@@ -158,7 +155,6 @@ final class RetailItemsTests: XCTestCase {
         XCTAssertNil(e.carRepairQuote(garageID: garage, kind: "mechanical"))
         if case .ordered = e.orderCarRepair(garageID: garage, dealerID: dealer, kind: "mechanical") { XCTFail("fully booked") }
         XCTAssertEqual(e.state.company(garage)!.cash, gBefore.cash, accuracy: 1e-9)
-        // with room (more mechanics and lifts are modelled by `lastW.cap`) the job is quoted and booked
         e.update { s, _, _ in
             if let i = s.companyIndex(garage) { var lw = s.companies[i].value("lastW"); lw["cap"] = .number(60); s.companies[i].set("lastW", lw) }
         }
@@ -177,15 +173,12 @@ final class RetailItemsTests: XCTestCase {
         XCTAssertGreaterThan((d.books.total["cogs", default: 0]) - (dBefore.books.total["cogs", default: 0]), o.price - 1.5)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
         XCTAssertEqual(CarRepairJobs.open(e.state, garageID: garage).count, 1)
-        // the job takes capacity: the next quote is not faster
         let q2 = try XCTUnwrap(e.carRepairQuote(garageID: garage, kind: "mechanical"))
         XCTAssertGreaterThanOrEqual(q2.weeks, q.weeks)
-        // done when due
         for _ in 0..<(o.weeks + 1) { e.retailWeek(garage) }
         XCTAssertTrue(CarRepairJobs.orders(e.state, garageID: garage).first!.done)
         XCTAssertTrue(CarRepairJobs.open(e.state, garageID: garage).isEmpty)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        // not enough cash, wrong kind
         if case .ordered = e.orderCarRepair(garageID: garage, dealerID: dealer, kind: "nonsense") { XCTFail("unknown job") }
         XCTAssertNil(e.carRepairQuote(garageID: dealer, kind: "service"))
     }
@@ -199,7 +192,6 @@ final class RetailItemsTests: XCTestCase {
         XCTAssertTrue(e.state.company(id)!.value("w2").isNull)
     }
 
-    /// Two years of a competent owner with the real items installed and the weekly hook running: report, no clamps.
     func testTwoYearProbePerTrade() throws {
         for t in Self.all {
             var (e, id) = try engine(t, weeks: 0, fund: 40_000_000)

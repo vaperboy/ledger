@@ -3,12 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Losses that insurance can cover, shared by lawsuits and cyber attacks. Original: `applyFx(co, { loss }, null, { cat })`.
 enum Incidents {
-    /// A loss with a deductible: insurance for this category pays most of it (now and then it pays only part).
-    ///
-    /// `wagesFirst`: a court judgment is a liability, not a bill that may leave the staff unpaid. The company pays at once only what it
-    /// can spare after the wages it already owes; the rest is recorded as a legal liability (`LegalDebts`) and settled from later cash.
     static func loss(_ s: inout GameState, companyID: Int, amount amt: Double, category cat: String, label: String, data: GameData, wagesFirst: Bool = false) {
         guard let i = s.companyIndex(companyID), amt > 0 else { return }
         if cat != "none", s.companies[i].value("ins")[cat].bool {
@@ -37,19 +32,13 @@ enum Incidents {
     }
 }
 
-/// Court judgments the company could not pay at once. A real liability on the balance sheet (`payables["legal"]`, counted in
-/// `CompanyFigures.billsOwed`), settled from cash left over once the wages it owes are covered, so a lost case can no longer push
-/// the account negative and leave the staff unpaid. Payday calls `settle` every day.
 public enum LegalDebts {
     public static let key = "legal"
 
-    /// What is still owed on judgments.
     public static func owed(_ co: Company) -> Double { co.payables[key] ?? 0 }
 
-    /// Cash the company can spend on a judgment without leaving wages unpaid.
     static func spare(_ co: Company) -> Double { max(0, co.cash - (co.payables["wages"] ?? 0)) }
 
-    /// Pays what the cash left after wages allows. Returns the amount paid.
     @discardableResult
     public static func settle(_ s: inout GameState, companyIndex i: Int) -> Double {
         let co = s.companies[i]
@@ -66,10 +55,7 @@ public enum LegalDebts {
     }
 }
 
-/// Customer lawsuits: a reason, a claim, a choice between settling and going to court, and for big cases a court date weeks away.
-/// Originals: `SUE`, `SPEC.g_lawsuit`, `sue`, `ACTS.sue16`, `courtWeek` (features/sales/price_moves_and_lawsuits.js).
 public enum Lawsuits {
-    // (reason, chance of winning, size of the claim relative to a week's revenue)
     static let reasons: [String: [(String, Double, Double)]] = [
         "svc": [("says your work damaged their property", 0.55, 1), ("claims they were billed for hours nobody worked", 0.6, 0.5), ("says your advice cost them money", 0.5, 1.6)],
         "venue": [("slipped on a wet floor and broke a wrist", 0.45, 1.4), ("got food poisoning after a visit", 0.5, 1), ("says a member of staff hurt them during an argument", 0.4, 1.8)],
@@ -82,7 +68,6 @@ public enum Lawsuits {
 
     public static func chanceWord(_ p: Double) -> String { p >= 0.65 ? "good" : p >= 0.5 ? "fair" : p >= 0.35 ? "weak" : "poor" }
 
-    /// A customer sues. The manager decides if there is one; otherwise the owner gets three weeks. Original: `SPEC.g_lawsuit`.
     public static func begin(_ s: inout GameState, companyIndex i: Int, weeklyRevenue wk0: Double, data: GameData) {
         let co = s.companies[i]
         guard let bd = data.catalog[co.type] else { return }
@@ -115,7 +100,6 @@ public enum Lawsuits {
                      action: "sue16", data: d, expiresWeek: s.week + 3)
     }
 
-    /// Settle or go to court. Returns what happened in words. Original: `sue`.
     @discardableResult
     static func resolve(_ s: inout GameState, companyIndex i: Int, d: JSONValue, choice: Int, data: GameData) -> (text: String, done: Bool) {
         if d["done"].bool { return ("", true) }
@@ -147,7 +131,6 @@ public enum Lawsuits {
         Incidents.loss(&s, companyID: id, amount: d["claim"].double + extra, category: "liab", label: "Court: \(d["who"].string)", data: data, wagesFirst: true)
         if let i = s.companyIndex(id) {
             s.companies[i].reputation = clamp(s.companies[i].reputation - (d["big"].bool ? 4.5 : 3), 0, 100)
-            // The ruling is public: reviews and local press hurt for a while, the insurer reprices, and a big loss invites copycat claims.
             PriceMoves.addModifier(&s, i, key: "dem", multiplier: d["big"].bool ? 0.94 : 0.97, weeks: 6)
             s.note("The lost case against \(s.companies[i].name) is in the local press and the reviews: demand dips for six weeks.", tone: "bad", companyID: id)
             AftermathQueue.schedule(&s, companyID: id, kind: "premium", delay: 2)
@@ -155,7 +138,6 @@ public enum Lawsuits {
         }
     }
 
-    /// The owner answers the lawsuit message. Original: `ACTS.sue16`.
     public static func answer(_ s: inout GameState, message m: Message, option: Int, data: GameData) {
         guard let i = s.companyIndex(m.companyID) else { return }
         let r = resolve(&s, companyIndex: i, d: m.value("data"), choice: option, data: data)
@@ -172,7 +154,6 @@ public enum Lawsuits {
         var d = s.inbox[k].value("data"); d["done"] = true; s.inbox[k].set("data", d)
     }
 
-    /// Unanswered lawsuits are lost by default; cases with a court date are decided on the day. Original: `courtWeek`.
     public static func weekly(_ s: inout GameState, data: GameData) {
         for k in s.inbox.indices {
             let m = s.inbox[k]

@@ -4,29 +4,19 @@ import Countries
 import Finance
 import Businesses
 
-/// Exact numbers behind the venture actions, so screens show what the engine will use: investing in a startup, selling a startup stake or a fund
-/// stake (optionally at the owner's own asking price), committing to a fund, buying into a group. The actions call these same functions.
 public enum VentureSale {
-    /// The owner may ask for between half and 1.4 times the quoted proceeds.
     public static let askLowest = 0.5, askHighest = 1.4
 
-    /// What a sale brings at the default price, and what the owner may ask.
     public struct Quote: Equatable, Sendable {
         public var ok: Bool
         public var reason: String
-        /// Share of the holding sold (1 for a whole fund stake).
         public var fraction: Double
-        /// What that share is worth at full value.
         public var fairValue: Double
-        /// Share of full value a buyer pays by default.
         public var factor: Double
-        /// Cash received at the default price.
         public var proceeds: Double
         public var costBasis: Double
         public var taxableGain: Double
-        /// Lowest and highest asking price (absolute amounts).
         public var askLowest: Double, askHighest: Double
-        /// Percent of the startup still held afterwards (0 for a fund).
         public var remainingPercent: Double
         public var closesStake: Bool
         public var keepsBoardSeat: Bool
@@ -36,7 +26,6 @@ public enum VentureSale {
         }
     }
 
-    /// The buyer's answer to an asking price. A counter-offer is the most the buyer will pay this week: asking exactly that is accepted.
     public enum Outcome: Equatable, Sendable {
         case sold(Double)
         case counter(Double)
@@ -46,8 +35,6 @@ public enum VentureSale {
         public var proceeds: Double { if case .sold(let p) = self { return p }; return 0 }
     }
 
-    /// Lower or equal asks always sell at the ask. A higher ask sells when the buyer's reservation covers it, draws a counter-offer when it is
-    /// within 12% of the reservation, and otherwise ends the talks for the week (`coolingDown`).
     static func resolve(quoted: Double, askMultiplier: Double?, reservation: Double, coolingDown: Bool) -> Outcome {
         guard let a = askMultiplier, abs(a - 1) > 1e-9 else { return .sold(quoted) }
         let m = clamp(a, askLowest, askHighest)
@@ -61,20 +48,15 @@ public enum VentureSale {
     }
 }
 
-// MARK: Startups of others
-
 public extension Startups {
-    /// What putting money into a pitch would do, with the verdict `invest` will give.
     struct InvestQuote: Equatable {
         public var pitchID: Int
         public var name: String
-        /// Rounded to 10,000 and capped at the round size.
         public var amount: Double
         public var minimum: Double
         public var postMoney: Double
         public var ownershipPercent: Double
         public var boardSeat: Bool
-        /// Money the buyer can pay with (your account, or the holding's account).
         public var available: Double
         public var result: InvestResult
     }
@@ -92,17 +74,14 @@ public extension Startups {
         return InvestQuote(pitchID: pitchID, name: d["name"].string, amount: amt, minimum: minimum, postMoney: d["post"].double, ownershipPercent: pct, boardSeat: pct >= 20, available: available, result: result)
     }
 
-    /// Sale of a share of your own stake at the market price (72% of fair value).
     static let stakeSellFactor = 0.72
 
     static func stakeRecord(_ s: GameState, _ id: Int) -> JSONValue? { (s.rest["startups"]?.array ?? []).first { $0["id"].int == id } }
 
-    /// Factor on fair value the market pays: flat for your own shares, by tier for a holding's (a bigger stake is easier to sell whole).
     static func sellFactor(for f: JSONValue) -> Double {
         f["hid"].int == 0 ? stakeSellFactor : stakeSellFactor * HoldingStakes.sellFactor(beforePercent: f["pct"].double) / 0.8
     }
 
-    /// The most a buyer would pay this week, as a multiple of the quoted proceeds: better, later-stage startups in a good economy draw more.
     static func buyerReservation(_ s: GameState, _ f: JSONValue) -> Double {
         var r = HashedRandom("\(s.seed):su:\(f["id"].int):\(s.week)")
         let head = clamp(0.02 + (f["q"].double - 0.4) * 0.4 + Double(f["stage"].int) * 0.03 + (s.economy.demand - 1) * 0.5, 0, 0.3)
@@ -123,13 +102,11 @@ public extension Startups {
                                  closesStake: left < 0.05, keepsBoardSeat: left >= 20)
     }
 
-    /// What selling `fraction` (0...1) of one of your startup stakes brings at the default price.
     static func sellQuote(_ s: GameState, stakeID: Int, fraction: Double) -> VentureSale.Quote {
         guard let f = stakeRecord(s, stakeID), f["hid"].int == 0 else { return .unavailable("You hold no such stake.") }
         return saleQuote(s, f, fraction: fraction)
     }
 
-    /// Sell part of a stake you or your holding (`holdingID`) own, at the default price or at an asking price (a multiple of the quoted proceeds).
     @discardableResult
     static func sellAsking(_ s: inout GameState, stakeID: Int, fraction: Double, askMultiplier: Double?, holdingID: Int = 0) -> VentureSale.Outcome {
         guard let f = stakeRecord(s, stakeID), f["hid"].int == holdingID else { return .unavailable("You hold no such stake.") }
@@ -152,7 +129,6 @@ public extension Startups {
         return outcome
     }
 
-    /// Money a stake's owner can spend: the holding's account for a holding's stake, otherwise your account.
     static func available(_ s: GameState, _ f: JSONValue) -> Double {
         f["hid"].int == 0 ? Payments.liquid(s) : (s.company(f["hid"].int)?.cash ?? 0)
     }
@@ -178,18 +154,13 @@ public extension Startups {
     }
 }
 
-// MARK: Private equity funds
-
 public extension PrivateEquity {
-    /// Whether a commitment is allowed, with the numbers behind the verdict `commit` will give.
     struct CommitCheck: Equatable {
         public var offerID: String
         public var name: String
-        /// Rounded to a whole unit.
         public var amount: Double
         public var minimum: Double
         public var netWorth: Double
-        /// Funds take money only from investors worth at least 1.5 times the commitment.
         public var requiredNetWorth: Double
         public var largestCommitment: Double
         public var result: CommitResult
@@ -202,20 +173,17 @@ public extension PrivateEquity {
         }
         let amt = jsRound(amount)
         let nw = Valuation.netWorth(s, trades: data.catalog).total
-        // The amount is whole money, so compare it with the whole-money minimum: a scaled minimum can carry a fraction.
         let result: CommitResult = amt < jsRound(o["min"].double) ? .tooSmall : nw < amt * netWorthMultiple ? .notRichEnough : .ok
         return CommitCheck(offerID: offerID, name: o["n"].string, amount: amt, minimum: o["min"].double, netWorth: nw, requiredNetWorth: amt * netWorthMultiple,
                            largestCommitment: max(0, (nw / netWorthMultiple).rounded(.down)), result: result)
     }
 
-    /// The most a secondary buyer would pay this week, as a multiple of the quoted price: a smaller discount than the usual one, drawn per fund and week.
     static func buyerReservation(_ s: GameState, _ f: JSONValue) -> Double {
         var r = HashedRandom("\(s.seed):pe-sale:\(f["id"].int):\(s.week)")
         let d = discount(f, s)
         return (1 - d * (0.3 + 0.5 * r.next())) / (1 - d)
     }
 
-    /// What selling a fund stake on the secondary market brings at the default price.
     static func sellQuote(_ s: GameState, fundID: Int) -> VentureSale.Quote {
         guard let f = (s.rest["pe56"]?["mine"].array ?? []).first(where: { $0["id"].int == fundID && $0["st"].string == "live" }) else { return .unavailable("That fund stake is not for sale.") }
         let get = jsRound(f["nav"].double * (1 - discount(f, s)))
@@ -224,7 +192,6 @@ public extension PrivateEquity {
                                  askLowest: jsRound(get * VentureSale.askLowest), askHighest: jsRound(get * VentureSale.askHighest), remainingPercent: 0, closesStake: true, keepsBoardSeat: false)
     }
 
-    /// Sell a stake at the default price or at an asking price (a multiple of the quoted price). Nil when there is no such live stake.
     @discardableResult
     static func sellStakeAsking(_ s: inout GameState, fundID: Int, askMultiplier: Double?) -> VentureSale.Outcome? {
         guard var pe = s.rest["pe56"], var mine = Optional(pe["mine"].array), let k = mine.firstIndex(where: { $0["id"].int == fundID && $0["st"].string == "live" }) else { return nil }
@@ -244,12 +211,9 @@ public extension PrivateEquity {
     }
 }
 
-// MARK: Stakes in other groups
-
 public extension GroupDeals {
     enum StakeFailure: Error, Equatable, Sendable {
         case noGroup, badFraction, badMultiplier, notWorthAnything
-        /// You already hold this much of the group (0...1); the new share would take you over 100%.
         case alreadyHold(Double)
         case outbid
         case couldNotPay(Double)
@@ -272,11 +236,9 @@ public extension GroupDeals {
         public var name: String
         public var groupValue: Double
         public var fraction: Double, multiplier: Double, chance: Double
-        /// What the stake costs if you win, rounded to 1,000.
         public var price: Double
         public var available: Double
         public var canAfford: Bool
-        /// Set when the bid cannot be placed at all.
         public var refusal: StakeFailure?
     }
 
@@ -294,7 +256,6 @@ public extension GroupDeals {
 
     static func stakePrice(value v: Double, fraction: Double, multiplier: Double) -> Double { (v * fraction * multiplier / 1000).rounded() * 1000 }
 
-    /// `buyStake` with the bid checked first and the outcome as a Result: the price paid on success.
     static func buyStakeChecked(_ s: inout GameState, groupID: String, fraction: Double, multiplier: Double, chance: Double, context fc: FinanceContext) -> Result<Double, StakeFailure> {
         if let why = stakeQuote(s, groupID: groupID, fraction: fraction, multiplier: multiplier, chance: chance).refusal { return .failure(why) }
         switch buyStake(&s, groupID: groupID, fraction: fraction, multiplier: multiplier, chance: chance, context: fc) {

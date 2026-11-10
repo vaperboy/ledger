@@ -1,36 +1,23 @@
 import Foundation
 
-/// Everything that makes up one game in progress. Original: the global `S`.
-///
-/// The Swift game owns the parts it has been rewritten for (typed properties below). Everything else in a
-/// save, for example features that are not rewritten yet, lives in `rest` and is written back untouched, so a
-/// save always round-trips without losing a field.
 public struct GameState: Codable, Equatable, Sendable {
-    /// Save format version of the ORIGINAL game this state follows (its `VERSION`).
     public static let legacyVersion = 5
 
     public var version: Int
     public var seed: Int
     public var random: DeterministicRandom
-    /// Counter for unique ids of companies, people, loans ... Original: `uid`.
     public var nextID: Int
     public var week: Int
-    /// Day within the week, 0 = Monday ... 6 = Sunday. Original: `day`.
     public var day: Int
     public var homeCountryCode: String
     public var player: Player
-    /// The player's private current account. Never change directly: use `Ledger.move`.
     public package(set) var cash: Double
-    /// The starting loan amount; the ledger check compares against it. Original: `cash0`.
     public var openingCash: Double
-    /// Sum of everything booked to each cash holder ("me", "co<id>"). Lets tests prove cash equals what was booked.
     public var cashFlow: [String: Double]
     public var loans: [Loan]
-    /// 0-100 credit score.
     public var credit: Double
     public var overdraftLimit: Double
     public var companies: [Company]
-    /// People on the labour market and on payrolls, by id. Original: `npcs`.
     public var people: [Int: Person]
     public var inbox: [Message]
     public var economy: Economy
@@ -40,15 +27,11 @@ public struct GameState: Codable, Equatable, Sendable {
     public var exchangeRates: ExchangeDrift
     public var netWorthHistory: [Double]
     public var gameOver: JSONValue
-    /// Values that exist only while the game runs and are never saved.
     public var transient = Transient()
-    /// Everything else in the save, untouched.
     public var rest: [String: JSONValue]
 
     public struct Transient: Equatable, Sendable {
-        /// True while a whole week is being worked out (monthly bills then build up instead of being paid at once).
         public var simulatingWeek = false
-        /// While set, the player's payments wait here and land on their own day of the week. Original: `S.stage`.
         public var stagedPlayerLines: [StatementLine]? = nil
         public init() {}
     }
@@ -57,8 +40,6 @@ public struct GameState: Codable, Equatable, Sendable {
         public var values: [String: Double]
         public init(_ values: [String: Double] = [:]) { self.values = values }
     }
-
-    // MARK: Codable (legacy key names)
 
     public init(from decoder: Decoder) throws {
         var o = try decoder.singleValueContainer().decode([String: JSONValue].self)
@@ -70,7 +51,6 @@ public struct GameState: Codable, Equatable, Sendable {
         week = take("week").int
         day = take("day").int
         homeCountryCode = take("country").string
-        // Old saves stored an age for the player; none is kept any more, so it is dropped on load.
         var playerRaw: [String: JSONValue] = take("player").object
         playerRaw.removeValue(forKey: "age")
         player = Player(raw: playerRaw)
@@ -132,21 +112,16 @@ public struct GameState: Codable, Equatable, Sendable {
         try c.encode(o)
     }
 
-    // MARK: Helpers
-
     public func company(_ id: Int) -> Company? { companies.first { $0.id == id } }
     public func companyIndex(_ id: Int) -> Int? { companies.firstIndex { $0.id == id } }
     public var liveCompanies: [Company] { companies.filter { $0.status.isLive } }
-    /// The live stores of the registered chain `co` belongs to, oldest first (empty when it is in none). The first is the chain's head office.
     public func chainStores(of co: Company) -> [Company] {
         let id = co.value("chain")
         guard !id.isNull, (rest["chains"]?.array ?? []).contains(where: { $0["id"].int == id.int }) else { return [] }
         return companies.filter { $0.status.isLive && !$0.value("chain").isNull && $0.value("chain").int == id.int }
     }
-    /// A store of a chain with two or more live stores is a branch: one company with the others, not a legal entity of its own.
     public func isBranch(_ co: Company) -> Bool { chainStores(of: co).count >= 2 }
 
-    /// A fresh unique id. Original: `uid()`.
     public mutating func makeID() -> Int {
         nextID += 1
         return nextID
@@ -154,7 +129,6 @@ public struct GameState: Codable, Equatable, Sendable {
 
     public var isGameOver: Bool { !gameOver.isNull }
 
-    /// The game is played day by day (the normal way): recurring costs are billed monthly. Original: `S.dmode`.
     public var dayMode: Bool {
         get { rest["dmode"]?.bool ?? false }
         set { rest["dmode"] = .number(newValue ? 1 : 0) }

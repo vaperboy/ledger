@@ -2,20 +2,8 @@ import Foundation
 import GameCore
 import Finance
 
-/// One cap table for every company you own: REAL integer share counts and a price per share. The percentages the rest of the game reads
-/// (`Company.ownership`, `holders[].pct`, votes, dividends, board seats, valuation of your stake) are derived from the counts, so they always add
-/// up to 100 and every new issue dilutes everybody pro rata.
-///
-/// State: `cap` = { total, me } on the company (shares in issue, shares you hold), and each `holders[]` entry gains `sh` (its shares). `pct` and
-/// `ownership` stay as written caches. Code that still writes percentages directly is adopted at the next `normalise`: when the caches and the
-/// counts disagree the percentages win, counts are rebuilt from them, and if outsiders plus you come to more than 100 the outsiders are scaled
-/// back so the total is exactly 100 (you keep what you were shown).
-///
-/// Four distinct operations (see `Kind`): `issue` (new shares, the money goes to the company, everybody is diluted), `holderSells` (an existing
-/// shareholder sells to someone else, no money for the company or you), `sellFromYou` (the founder sells part of their own stake, the money is
-/// personal), and the whole-company exit (`CompanySale`, unchanged).
 public enum CapTable {
-    public static let initialShares = Int(pow(10.0, 6.0))   // a million shares; written so the money-literal lint sees a count, not an amount
+    public static let initialShares = Int(pow(10.0, 6.0))
 
     public struct Line: Equatable, Identifiable, Sendable {
         public var id: String { name }
@@ -32,9 +20,6 @@ public enum CapTable {
         public var outsidePct: Double { 100 - youPct }
     }
 
-    // MARK: Reading and normalising
-
-    /// The cap table as it stands (rebuilt from the percentages when they disagree with the counts; nothing is written).
     public static func table(_ co: Company) -> Table {
         var c = co
         _ = normalise(&c)
@@ -47,7 +32,6 @@ public enum CapTable {
         return Table(total: total, you: co.value("cap")["me"].int, holders: hs)
     }
 
-    /// Bring counts and percentages into line. Returns true if anything was written.
     @discardableResult
     public static func normalise(_ co: inout Company) -> Bool {
         var list = co.value("holders").array
@@ -62,18 +46,15 @@ public enum CapTable {
             if sum != total0 { consistent = false }
         }
         if consistent { return false }
-        // rebuild the counts from the percentages
         let total = total0 > 0 ? total0 : initialShares
         let own = min(100, max(0, co.ownership))
         var outside = list.reduce(0.0) { $0 + max(0, $1["pct"].double) }
         if outside + own > 100.0000001 {
-            // more than 100 in all: you keep your share, the others are scaled back to the rest
             let room = max(0, 100 - own)
             let k = outside > 0 ? room / outside : 0
             for n in list.indices { list[n]["pct"] = .number(max(0, list[n]["pct"].double) * k) }
             outside = room
         } else if outside + own < 99.9999 {
-            // a stake that was given away without a name (older saves): it becomes a holder of its own, so nobody's share changes
             list.append(.object(["name": "Other shareholders", "pct": .number(100 - outside - own), "in": 0, "sat": 60]))
         }
         var assigned = 0
@@ -94,12 +75,10 @@ public enum CapTable {
         return changed
     }
 
-    /// Run once a week so code that still writes percentages cannot leave the table above 100.
     public static func normaliseAll(_ s: inout GameState) {
         for i in s.companies.indices { normalise(&s, i) }
     }
 
-    /// Write counts and derive every percentage from them.
     static func sync(_ co: inout Company, total: Int, me: Int, holders list: [JSONValue]) {
         var hs = list
         let t = Double(max(1, total))
@@ -109,22 +88,15 @@ public enum CapTable {
         co.ownership = Double(me) / t * 100
     }
 
-    // MARK: Share arithmetic
-
-    /// New shares that give the buyer `pct` percent of the company AFTER the issue.
     public static func sharesForPercent(_ pct: Double, total: Int) -> Int {
         guard pct > 0, pct < 100 else { return 0 }
         return Int(saturating: (Double(total) * pct / (100 - pct)).rounded())
     }
-    /// Shares in the company for one share price: the valuation divided by the shares in issue.
     public static func pricePerShare(valuation: Double, total: Int) -> Double { valuation / Double(max(1, total)) }
 
-    // MARK: The operations
-
-    /// 1. New shares are issued to `name`; the money for them is the company's (the caller books it). Everybody is diluted pro rata.
     @discardableResult
     public static func issue(_ s: inout GameState, _ i: Int, newShares n: Int, to name: String, paid: Double, extra: [String: JSONValue] = [:]) -> Int {
-        guard n > 0, !s.isBranch(s.companies[i]) else { return 0 }   // a branch has no shares of its own: the chain has one cap table
+        guard n > 0, !s.isBranch(s.companies[i]) else { return 0 }
         normalise(&s, i)
         let t = read(s.companies[i])
         var list = s.companies[i].value("holders").array
@@ -139,10 +111,9 @@ public enum CapTable {
         return n
     }
 
-    /// 3. The founder (you) sells `n` of your own shares to `name`; the money is personal (the caller books it).
     @discardableResult
     public static func sellFromYou(_ s: inout GameState, _ i: Int, shares n: Int, to name: String, paid: Double, extra: [String: JSONValue] = [:]) -> Int {
-        if s.isBranch(s.companies[i]) { return 0 }   // a branch has no shares of its own: the chain has one cap table
+        if s.isBranch(s.companies[i]) { return 0 }
         normalise(&s, i)
         let t = read(s.companies[i])
         let k = min(max(0, n), max(0, t.you - 1))
@@ -159,7 +130,6 @@ public enum CapTable {
         return k
     }
 
-    /// 2. An existing shareholder sells `n` shares (nil: all) to someone else. Nothing is paid to the company or to you; the buyer's name joins the table.
     @discardableResult
     public static func holderSells(_ s: inout GameState, _ i: Int, holder name: String, shares n: Int?, to buyer: String, extra: [String: JSONValue] = [:]) -> Int {
         normalise(&s, i)
@@ -185,7 +155,6 @@ public enum CapTable {
         return sold
     }
 
-    /// You take over a holder's shares (a buy-back); the holder leaves the table. Returns the shares moved.
     @discardableResult
     public static func buyFromHolder(_ s: inout GameState, _ i: Int, holder name: String) -> Int {
         normalise(&s, i)
@@ -198,13 +167,11 @@ public enum CapTable {
         return sh
     }
 
-    /// You buy `percent` of the whole company from the other holders, pro rata (a share buy-back on the market). Returns the shares moved.
     @discardableResult
     public static func buyBackPercent(_ s: inout GameState, _ i: Int, percent: Double) -> Int {
         normalise(&s, i)
         let t = read(s.companies[i])
         var list = s.companies[i].value("holders").array
-        // A holding's own stake (`hid`) is not bought back here; it is sold through `HoldingStakes`.
         let outside = list.filter { $0["hid"].int == 0 }.reduce(0) { $0 + $1["sh"].int }
         let want = min(outside, Int(saturating: (Double(t.total) * percent / 100).rounded()))
         guard want > 0, outside > 0 else { return 0 }
@@ -218,7 +185,6 @@ public enum CapTable {
         return moved
     }
 
-    /// Give `percent` of the whole company from your stake to `name` for nothing (an equity award). Returns the shares moved.
     @discardableResult
     public static func award(_ s: inout GameState, _ i: Int, percent: Double, to name: String, extra: [String: JSONValue] = [:]) -> Int {
         normalise(&s, i)
@@ -227,8 +193,6 @@ public enum CapTable {
         return sellFromYou(&s, i, shares: n, to: name, paid: 0, extra: extra)
     }
 
-    // MARK: Terms shown before and after
-
     public enum Kind: String, Equatable, Sendable {
         case newIssue = "New shares"
         case holderSale = "A shareholder sells"
@@ -236,11 +200,9 @@ public enum CapTable {
         case fullExit = "Sale of the whole company"
     }
 
-    /// What a deal does, worked out before it is agreed. One read model for the investment screens.
     public struct DealTerms: Equatable, Sendable {
         public var kind: Kind
         public var buyer: String
-        /// Value of the company before the deal (what the price per share is worked from) and after (new issues add their money).
         public var valuationBefore: Double
         public var valuationAfter: Double
         public var pricePerShare: Double
@@ -253,7 +215,6 @@ public enum CapTable {
         public var yourPctBefore: Double
         public var yourPctAfter: Double
         public var buyerPctAfter: Double
-        /// How many percentage points every existing holder (you included) loses on average, as a share of what they had.
         public var dilutionPercent: Double
         public var amount: Double
         public var companyProceeds: Double
@@ -262,7 +223,6 @@ public enum CapTable {
         public var holdersAfter: [Line]
     }
 
-    /// New shares for `amount` at a pre-money valuation (a pitch offer, or a private share sale).
     public static func issueTerms(_ co: Company, preMoney: Double, amount: Double, buyer: String, conditions: [String] = []) -> DealTerms {
         let t = table(co)
         let price = pricePerShare(valuation: preMoney, total: t.total)
@@ -277,7 +237,6 @@ public enum CapTable {
                          buyerPctAfter: buyerPct, dilutionPercent: buyerPct, amount: amount, companyProceeds: amount, personalProceeds: 0, conditions: conditions, holdersAfter: hs)
     }
 
-    /// You sell `shares` of your own stake at `price` per share.
     public static func founderSaleTerms(_ co: Company, shares: Int, pricePerShare price: Double, buyer: String, conditions: [String] = []) -> DealTerms {
         let t = table(co)
         let n = min(max(0, shares), max(0, t.you - 1))
@@ -291,7 +250,6 @@ public enum CapTable {
                          buyerPctAfter: buyerPct, dilutionPercent: 0, amount: amount, companyProceeds: 0, personalProceeds: amount, conditions: conditions, holdersAfter: hs)
     }
 
-    /// An existing holder sells `shares` to `buyer`: no money for the company or for you.
     public static func holderSaleTerms(_ co: Company, holder: String, shares: Int, pricePerShare price: Double, buyer: String) -> DealTerms {
         let t = table(co)
         let n = min(max(0, shares), t.holders.first { $0.name == holder }?.shares ?? 0)
@@ -308,7 +266,6 @@ public enum CapTable {
                          conditions: ["The company and you receive nothing; only the name on those shares changes."], holdersAfter: hs.filter { $0.shares > 0 })
     }
 
-    /// The whole company sold at `price` (your share of it is personal money).
     public static func exitTerms(_ co: Company, price: Double, buyer: String) -> DealTerms {
         let t = table(co)
         let mine = price * t.youPct / 100

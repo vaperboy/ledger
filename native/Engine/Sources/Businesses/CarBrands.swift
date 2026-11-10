@@ -3,7 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// One model in a car brand's range. `factor` is its list price against the trade's average new-car ticket.
 public struct CarModel: Sendable, Equatable, Identifiable {
     public var id: String
     public var name: String
@@ -12,21 +11,16 @@ public struct CarModel: Sendable, Equatable, Identifiable {
     public var fuel: String
 }
 
-/// A car brand that sells through dealers (`Resources/car_brands.json`): its range, its dealer margin and what it demands of a dealership.
 public struct CarBrand: Sendable, Equatable, Identifiable {
     public var id: String
     public var name: String
     public var origin: String
     public var segment: String
     public var markets: [String]
-    /// 0 to 100: how much shoppers want the brand.
     public var strength: Double
-    /// Dealer margin on the list price, built into the invoice price (0.065 = the dealer buys at 93.5 percent of list).
     public var margin: Double
-    /// Extra share of the list price on a contract year's sales, paid after the yearly review when the volume target is met.
     public var bonus: Double
     public var termYears: Int
-    /// Cars a year for a dealership of size 1.
     public var target: Double
     public var minSpaces: Int
     public var minSales: Int
@@ -37,7 +31,6 @@ public struct CarBrand: Sendable, Equatable, Identifiable {
     public var averageFactor: Double { models.isEmpty ? 1 : models.map { $0.factor }.reduce(0, +) / Double(models.count) }
 }
 
-/// The brand and supplier data of the new-car dealership.
 public enum CarBrands {
     static let book: JSONValue = {
         guard let url = Bundle.module.url(forResource: "car_brands", withExtension: "json", subdirectory: "Resources"),
@@ -53,28 +46,17 @@ public enum CarBrands {
                  models: b["models"].array.map { CarModel(id: $0["id"].string, name: $0["name"].string, body: $0["body"].string, factor: $0["factor"].double, fuel: $0["fuel"].string) })
     }
 
-    /// The brands on sale in a country.
     public static func forCountry(_ code: String) -> [CarBrand] { all.filter { $0.markets.contains(code) } }
     public static func brand(_ id: String) -> CarBrand? { all.first { $0.id == id } }
 
-    /// The distributor's margin: lower than any brand's, because more of the chain is automated.
     public static var distributorMargin: Double { book["generic"]["margin"].double }
     public static var distributorName: String { book["generic"]["name"].string }
-    /// Weeks a car takes to arrive: the distributor ships from its own stock, a brand builds to order.
     public static func leadWeeks(brandContract: Bool) -> (Int, Int) {
         let a = brandContract ? book["brand"]["leadWeeks"] : book["generic"]["leadWeeks"]
         return (max(1, a[0].int), max(1, a[1].int))
     }
 }
 
-/// A brand contract between a dealership and one brand. It replaces the generic distributor: while it runs, cars can only be ordered
-/// from the brand. The brand reviews the dealership every contract year (volume against target, showroom, staff, customer satisfaction),
-/// pays a volume bonus when the target is met, warns when it is not, and drops the dealership after a second warning. At the end of the
-/// term it offers a renewal if it is happy, and otherwise lets the contract lapse. Leaving early costs a penalty.
-///
-/// Saved on the company as `cd.con` (only once a contract has been signed): b, start, end, margin, bonus, target, minSpaces, minSales,
-/// minSat, yr (week the contract year began), sold, soldList (list value sold this year), warn, offer {margin, bonus, target, years, until},
-/// last {w, ratio, sat, outcome, bonus}.
 public enum CarBrandContract {
     public struct Standard: Sendable, Equatable, Identifiable {
         public var id: String
@@ -109,7 +91,6 @@ public enum CarBrandContract {
         public var standards: [Standard]
         public var exitPenalty: Double
         public var weeksLeft: Int
-        /// Cars sold this contract year against the target, scaled to the weeks gone (1 = on pace).
         public var pace: Double
         public var offer: Offer?
         public var last: Review?
@@ -131,8 +112,6 @@ public enum CarBrandContract {
         public var bonus: Double
     }
 
-    // MARK: Reading
-
     public static func isActive(_ co: Company) -> Bool { !co.value("cd")["con"].isNull }
     public static func brandID(_ co: Company) -> String? { isActive(co) ? co.value("cd")["con"]["b"].string : nil }
 
@@ -149,12 +128,10 @@ public enum CarBrandContract {
         ]
     }
 
-    /// What it would cost to leave now: half a year of the brand margin on the target volume, for each year still to run.
     static func penalty(_ b: CarBrand, margin: Double, target: Int, weeksLeft: Int, listPrice: Double) -> Double {
         jsRound(Double(target) * listPrice * b.averageFactor * margin * 0.5 * max(0.25, Double(weeksLeft) / 52))
     }
 
-    /// The terms a brand offers this company today (nil when the brand does not sell in its country).
     public static func terms(brandID: String, _ co: Company, _ s: GameState, _ data: GameData) -> Terms? {
         guard let b = CarBrands.brand(brandID), b.markets.contains(co.countryCode), let bd = data.catalog[CarDealer.tradeID] else { return nil }
         let t = target(b, size: co.size)
@@ -182,9 +159,6 @@ public enum CarBrandContract {
                       last: l.isNull ? nil : Review(week: l["w"].int, ratio: l["ratio"].double, satisfaction: l["sat"].double, outcome: l["outcome"].string, bonus: l["bonus"].double))
     }
 
-    // MARK: Actions
-
-    /// Sign with a brand. Returns why not, or nil when signed. The brand's minimum standards must be met on the day.
     public static func sign(_ s: inout GameState, companyID: Int, brandID: String, data: GameData) -> String? {
         guard let i = s.companyIndex(companyID), s.companies[i].type == CarDealer.tradeID, s.companies[i].status == .open else { return "Only an open vehicle dealership can sign a brand contract." }
         guard !isActive(s.companies[i]) else { return "A brand contract is already running. Finish or leave it first." }
@@ -202,7 +176,6 @@ public enum CarBrandContract {
         return nil
     }
 
-    /// Leave the contract early and pay the penalty. Returns the penalty paid, or nil when there is no contract or the cash is short.
     public static func exitEarly(_ s: inout GameState, companyID: Int, data: GameData) -> Double? {
         guard let i = s.companyIndex(companyID), let a = active(s.companies[i], s, data), s.companies[i].cash >= a.exitPenalty else { return nil }
         if a.exitPenalty > 0 {
@@ -216,7 +189,6 @@ public enum CarBrandContract {
         return a.exitPenalty
     }
 
-    /// Take the renewal the brand offered. Returns why not, or nil when renewed.
     public static func renew(_ s: inout GameState, companyID: Int, data: GameData) -> String? {
         guard let i = s.companyIndex(companyID), let a = active(s.companies[i], s, data), let o = a.offer else { return "There is no renewal offer." }
         var cd = s.companies[i].value("cd")
@@ -231,7 +203,6 @@ public enum CarBrandContract {
         return nil
     }
 
-    /// Turn the renewal down: the contract runs to its end and then the dealership is back on the generic distributor.
     public static func declineRenewal(_ s: inout GameState, companyID: Int) {
         guard let i = s.companyIndex(companyID), !s.companies[i].value("cd")["con"]["offer"].isNull else { return }
         var cd = s.companies[i].value("cd")
@@ -253,15 +224,12 @@ public enum CarBrandContract {
         s.note(text, tone: tone, companyID: s.companies[i].id)
     }
 
-    // MARK: Weekly: reviews, bonus, renewal, drop
-
     static func week(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) {
         guard let a = active(s.companies[i], s, data) else { return }
         let id = s.companies[i].id
         let name = s.companies[i].name
         var cd = s.companies[i].value("cd")
         var c = cd["con"]
-        // Yearly review.
         if s.week - c["yr"].int >= 52 {
             let ratio = Double(c["sold"].int) / Double(max(1, a.target))
             let sat = s.companies[i].reputation
@@ -294,7 +262,6 @@ public enum CarBrandContract {
         guard let a2 = active(s.companies[i], s, data) else { return }
         cd = s.companies[i].value("cd")
         c = cd["con"]
-        // Near the end: a renewal when the brand is happy (target met in the last review, no warnings, standards met), else it lets the contract lapse.
         if a2.weeksLeft <= 8 && a2.weeksLeft > 0 && c["offer"].isNull && !c["declined"].bool && !c["asked"].bool {
             c["asked"] = .bool(true)
             let happy = a2.warnings == 0 && a2.standards.allSatisfy { $0.ok } && (a2.last?.ratio ?? a2.pace) >= 0.9
@@ -313,7 +280,6 @@ public enum CarBrandContract {
         if s.week >= a2.end { end(&s, i, note: "The \(a2.brand.name) dealer contract of \(name) has ended.", tone: "warn") }
     }
 
-    /// A sale of a car of the contract brand: counts towards the volume target.
     static func recordSale(_ co: inout Company, brand: String, list: Double) {
         guard co.value("cd")["con"]["b"].string == brand else { return }
         var cd = co.value("cd")

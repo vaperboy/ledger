@@ -5,7 +5,6 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// A new company chooses its first product from three starters, sells only that one, and finds the rest under add-item.
 final class StarterChoiceTests: XCTestCase {
     private func pending(_ trade: String) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)

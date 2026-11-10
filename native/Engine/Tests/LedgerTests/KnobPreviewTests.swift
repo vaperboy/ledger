@@ -6,7 +6,6 @@ import Businesses
 import Simulation
 
 extension GameEngine {
-    /// Write a business option directly, free of any changeover (test set-up only; the app uses `changeKnob`).
     mutating func setKnob(companyID: Int, knob: String, option: Int) {
         update { s, _, _ in
             guard let i = s.companyIndex(companyID) else { return }
@@ -15,8 +14,6 @@ extension GameEngine {
     }
 }
 
-/// The "how you sell" preview is the engine's own demand, price, capacity and cost functions on the company as it is: it must
-/// match what the engine then does, change nothing, and promise nothing.
 final class KnobPreviewTests: XCTestCase {
     private static let seeds = [5, 11, 29, 57]
 
@@ -27,7 +24,6 @@ final class KnobPreviewTests: XCTestCase {
         return id
     }
 
-    /// A single-choice knob whose options need no licence, and the option that differs most from the current one in pull on customers.
     private func target(_ e: GameEngine, _ trade: String, _ id: Int) throws -> (Knob, Int) {
         let co = try XCTUnwrap(e.state.company(id))
         let k = try XCTUnwrap(e.data.catalog[trade]?.knobs.first { !$0.isMulti && $0.options.count >= 3 && $0.options.allSatisfy { $0.requiredDocs.isEmpty } })
@@ -36,7 +32,6 @@ final class KnobPreviewTests: XCTestCase {
         return (k, to)
     }
 
-    /// Evaluate the same functions directly on the engine after the choice was really written, week by week ahead.
     private func direct(_ e: GameEngine, _ id: Int) throws -> (demand: [Double], capacity: [Double], price: [Double]) {
         var d: [Double] = [], c: [Double] = [], p: [Double] = []
         for ahead in 0..<KnobChange.previewHorizon {
@@ -97,8 +92,6 @@ final class KnobPreviewTests: XCTestCase {
     }
 
     func testWhatTheShopThenSellsFallsInsideThePreviewedRangeAcrossSeeds() throws {
-        // After the changeover weeks, real weekly sales (with all the engine's other dynamics: awareness, reputation, luck) stay
-        // within 35% of the previewed range. A stated tolerance, not a target.
         let tolerance = 0.35
         for seed in Self.seeds {
             var e = try ChainsTests.engine(seed: seed)

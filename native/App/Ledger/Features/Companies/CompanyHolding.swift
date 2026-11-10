@@ -5,7 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// A holding company's own section: what it is worth, the companies under it, the index fund, and moving money.
 struct CompanyHolding: View {
     private func figureItems(_ o: HoldingModel.Consolidated, _ cur: Currency) -> [KeyFigures.Item] {
         return [
@@ -29,7 +28,6 @@ struct CompanyHolding: View {
         let cur = engine.currency(for: company)
         let rivalStakes: [HoldingStakes.RivalStake] = engine.holdingRivalStakes(holdingID: company.id)
         let o = engine.holdingOverview(companyID: company.id).map { (x: HoldingModel.Consolidated) -> HoldingModel.Consolidated in
-            // Divisions are part of the holding, not stakes: they are listed on their own.
             var y: HoldingModel.Consolidated = x
             y.subsidiaries = x.subsidiaries.filter { (k: HoldingModel.Subsidiary) -> Bool in !HoldingStakes.isDivision(engine.state.company(k.id) ?? company) }
             return y
@@ -40,7 +38,6 @@ struct CompanyHolding: View {
         let offerIDs: Set<String> = Set(engine.holdingStakeOffers(holdingID: company.id).map { (x: HoldingStakes.Offer) -> String in x.id })
         return VStack(alignment: .leading, spacing: Theme.Space.xl) {
             if let o {
-                // The holding's value is the hero; the consolidated figures follow in one strip.
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("Holding value").textStyle(.label, tint: Theme.inkFaint)
                     Text(cur.tidyShort(o.holdingValue)).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6)
@@ -55,7 +52,6 @@ struct CompanyHolding: View {
                     }
                 }
             }
-            // The holding's own management (its managing director): the holding has no staff list, so its roster lives here.
             CompanyTeamRoster(engine: engine, company: company)
             if let o {
                 MoreBlock(title: "Stakes held", card: false, trailing: { Text("\(o.subsidiaries.count + rivalStakes.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
@@ -103,7 +99,6 @@ struct CompanyHolding: View {
                 Text("This holding company has no figures yet.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
-        // The holding's blocks sit on the page with no surface of their own.
         .environment(\.insideCard, true)
         .confirmAction($pending)
         .centerSheet(isPresented: $showBuy, size: .tall, category: .detail, tone: .info) { HoldingBuyStakes(holdingID: company.id).environmentObject(store) }
@@ -123,14 +118,12 @@ struct CompanyHolding: View {
         }
     }
 
-    /// Divisions of the holding itself and of the companies under it.
     private func allDivisions(_ o: HoldingModel.Consolidated?) -> [Company] {
         var out: [Company] = engine.holdingDivisions(hostID: company.id)
         for k in o?.subsidiaries ?? [] { out.append(contentsOf: engine.holdingDivisions(hostID: k.id)) }
         return out
     }
 
-    /// A division keeps its trade and people but is no longer a company of its own: opening it is all that is left to do.
     private func divisionCard(_ d: Company, _ cur: Currency) -> some View {
         let id: Int = d.id
         let hostName: String = HoldingStakes.divisionHostID(d).flatMap { (h: Int) -> String? in engine.state.company(h)?.name } ?? company.name
@@ -143,7 +136,6 @@ struct CompanyHolding: View {
         .accessibilityIdentifier("holding-division-\(id)")
     }
 
-    /// The stakes of one tier (controlled, big, small) under their heading: your companies first, then stakes in other businesses.
     @ViewBuilder private func stakeGroup(_ g: HoldingStakeGroup, _ o: HoldingModel.Consolidated, _ rivalStakes: [HoldingStakes.RivalStake],
                                          _ nodes: [StructureNode], _ offerIDs: Set<String>, _ cur: Currency) -> some View {
         let subs: [HoldingModel.Subsidiary] = o.subsidiaries.filter { (k: HoldingModel.Subsidiary) -> Bool in HoldingStakeGroup.of(percent: k.ownership) == g }
@@ -165,7 +157,6 @@ struct CompanyHolding: View {
         }
     }
 
-    /// One stake in one of your companies: who runs it and how it is doing, its share of the value, one main action and the rest under "More".
     private func heldCard(_ k: HoldingModel.Subsidiary, _ g: HoldingStakeGroup, _ cur: Currency, _ nodes: [StructureNode], _ offerIDs: Set<String>) -> some View {
         let seatedIDs: Set<Int> = Set(engine.holdingSeatedCompanies(holdingID: company.id).map { (c: Company) -> Int in c.id })
         let tax: String = k.inTaxGroup ? " \u{00B7} tax group" : ""
@@ -200,7 +191,6 @@ struct CompanyHolding: View {
         }
     }
 
-    /// A stake in another business: its share of the value, buying more as the main action (selling when nothing more is for sale).
     private func rivalCard(_ r: HoldingStakes.RivalStake, _ g: HoldingStakeGroup, _ cur: Currency, _ offerIDs: Set<String>) -> some View {
         let id: Int = r.id
         let canBuy: Bool = offerIDs.contains("r:\(id)")
@@ -225,7 +215,6 @@ struct CompanyHolding: View {
 
     private func askRelease(_ id: Int, _ name: String) {
         pending = PendingAction(title: "Take \(name) back to you?", message: "The holding's shares in it come back to you at no price and are owned by you directly again. It drops out of the tax group, and dividends to you are taxed at the normal rate.", button: "Take it back", destructive: true) {
-            // Shares moved under the holding and shares it bought are released separately; either counts.
             let ok: Bool = store.act { (e: inout GameEngine) -> Bool in
                 let moved: Bool = e.state.company(id)?.holdingID == company.id && e.releaseFromHolding(companyID: id)
                 let bought: Bool = e.holdingReleaseStake(holdingID: company.id, companyID: id)
@@ -237,14 +226,12 @@ struct CompanyHolding: View {
     }
 }
 
-/// Register a new holding company and choose which companies it holds.
 struct NewHoldingView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @State private var name = ""
-    /// Companies ticked, each with the share of your own stake that goes in, in percent (100 is all of it).
     @State private var picked: [Int: Double] = [:]
     @State private var accountantID: Int?
 
@@ -300,7 +287,6 @@ struct NewHoldingView: View {
         }
     }
 
-    /// One company to put under the holding: tick it, then choose how much of your own stake goes in.
     private func pickRow(_ c: Company) -> some View {
         let on: Bool = picked[c.id] != nil
         let share = Binding<Double>(get: { picked[c.id] ?? 100 }, set: { (v: Double) in picked[c.id] = v })

@@ -19,6 +19,4 @@ Carthage/
 
 # Ledger: heavy or generated, never needed for code work
 .claude/worktrees/
-native/design/mockups/
-native/design/art/
 node_modules/

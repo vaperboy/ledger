@@ -2,8 +2,6 @@ import XCTest
 import GameCore
 import Businesses
 
-/// The supply kinds (what your own companies can supply to each other) are data (`Resources/supply_kinds.json`). This pins them to the list
-/// that used to be written in code, so moving them changed no behaviour. New kinds and trades are data-only: add them to the data file and here.
 final class SupplyKindsGoldenTests: XCTestCase {
     static func snapshot() -> JSONValue {
         .array(IntercompanySupply.kinds.map { k in

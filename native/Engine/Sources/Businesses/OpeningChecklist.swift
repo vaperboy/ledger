@@ -3,36 +3,30 @@ import GameCore
 import Countries
 import Finance
 
-/// What a new company needs before it can open. Original: `openChecklist`, `openCompany`, `tryAutoOpen`.
 public enum OpeningChecklist {
     public struct Item: Equatable, Identifiable {
         public var id: String
         public var title: String
         public var isDone: Bool
         public var detail: String
-        /// What it still costs to finish this item with today's cheapest choice (0 when done or free).
         public var cost: Double = 0
     }
 
-    /// What it takes to finish an equipment item at the cheapest choice: one unit, or only the down payment (a fifth) where the piece can be financed.
     static func equipmentCost(_ e: EquipmentSpec, _ co: Company, _ bd: Trade, _ w: World) -> (price: Double, financed: Bool) {
         if let model = e.vehicleModels?.first { return ((w.catalog.tables.vehicles[model]?.price ?? 300000) * w.inflationIndex * 0.2, true) }
         let unit = CompanySetup.equipmentPrice(e, company: co, w)
         return EquipmentMarket.canFinance(e, tradeID: bd.id, total: unit, company: co, w, tables: w.catalog.tables) ? (unit * 0.2, true) : (unit, false)
     }
 
-    /// The cheapest rented place up front (three months' deposit plus fit-out), nil when the trade has none to choose.
     static func cheapestPremisesCost(_ co: Company, _ bd: Trade, _ w: World) -> Double? {
         let costs = CompanySetup.listings(for: co, bd, w).compactMap { l in CompanySetup.premisesTerms(co, l, catalog: w.catalog, world: w).map { $0.deposit + $0.fitOut } }
         return costs.min()
     }
 
-    /// Money the company still needs to finish every open item (fees, the cheapest place, required equipment, opening stock), less its cash.
     public static func missingCash(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         max(0, items(co, bd, w).filter { !$0.isDone }.reduce(0) { $0 + $1.cost } - max(0, co.cash))
     }
 
-    /// Cash needed for the first stock. Original: `initialStockCost`.
     public static func initialStockCost(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         guard let stock = bd.trait("stock"), stock != 0 else { return 0 }
         let city = w.city(co)
@@ -41,15 +35,12 @@ public enum OpeningChecklist {
         return jsRound(weekly * stock / 7 * max(0.5, co.size) * 0.6)
     }
 
-    /// The share of the standard opening stock the owner chose to buy: 1 when nothing was chosen (older companies and the original's way),
-    /// 0.5 or 0 when the owner picked half or none on the start-up plan. Stored in `flags.stockShare`.
     public static func openingStockShare(_ co: Company) -> Double {
         let v = co.value("flags")["stockShare"]
         return v.isNull ? 1 : clamp(v.double, 0, 1)
     }
-    /// What the opening stock costs the company at the owner's chosen share.
     public static func openingStockCost(_ co: Company, _ bd: Trade, _ w: World) -> Double {
-        if bd.id == CarDealer.tradeID { return 0 }   // a car dealership starts with an empty showroom: every car is ordered from a supplier
+        if bd.id == CarDealer.tradeID { return 0 }
         return jsRound(initialStockCost(co, bd, w) * openingStockShare(co))
     }
 
@@ -71,7 +62,7 @@ public enum OpeningChecklist {
                 out.append(Item(id: "prem", title: "Premises", isDone: m2 > 0, detail: m2 > 0 ? "\(Int(m2)) m²" : (cheapest.map { "From \(w.currency(co).display($0)) up front" } ?? "Not chosen"), cost: cheapest ?? 0))
             }
             for e in bd.equipment where e.isRequired {
-                let done = CapacityModel.equipmentCount(co, e) >= 1   // bought: one in repair is still bought
+                let done = CapacityModel.equipmentCount(co, e) >= 1
                 let (price, financed) = done ? (0.0, false) : equipmentCost(e, co, bd, w)
                 let how = financed ? "Down payment \(w.currency(co).display(price)), the rest financed" : "From \(w.currency(co).display(price))"
                 out.append(Item(id: "eq:\(e.id)", title: e.name, isDone: done, detail: done ? "" : how, cost: price))
@@ -90,7 +81,6 @@ public enum OpeningChecklist {
 
     public enum OpenResult: Equatable { case ok, missing, needsStockCash(Double) }
 
-    /// Open the company if everything is in place. Original: `openCompany`.
     @discardableResult
     public static func open(_ s: inout GameState, companyIndex i: Int, data: GameData) -> OpenResult {
         let co = s.companies[i]
@@ -112,7 +102,6 @@ public enum OpeningChecklist {
         return .ok
     }
 
-    /// Open by itself as soon as the last requirement is met. Original: `tryAutoOpen`.
     @discardableResult
     public static func tryAutoOpen(_ s: inout GameState, companyIndex i: Int, data: GameData) -> Bool {
         guard s.companies[i].status == .setup, let bd = data.catalog[s.companies[i].type] else { return false }

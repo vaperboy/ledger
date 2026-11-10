@@ -7,14 +7,9 @@ import Finance
 import Events
 import Simulation
 
-/// The startup market between players, as the app sees it. The screens talk only to this protocol; `MockStartupMarketService` stands in for the server
-/// until the online service is wired. The rules themselves (price, caps, escrow, band, lock-up, taxes, viral) are `CrowdStartupRules` in the engine and
-/// are the same on both sides: a founder can never name a price, and the server applies the rule again on its side.
-
 typealias CrowdStartup = CrowdStartupRules.Startup
 typealias CrowdHolding = CrowdStartupRules.Holding
 
-/// Shares another player offers for sale on the second-hand market, at a price inside the band.
 struct StartupShareOffer: Identifiable, Equatable {
     var id: String
     var startupID: String
@@ -26,7 +21,6 @@ struct StartupShareOffer: Identifiable, Equatable {
     var price: Double
 }
 
-/// A player who would buy shares from the user.
 struct StartupBuyer: Equatable {
     var id: String
     var name: String
@@ -34,7 +28,6 @@ struct StartupBuyer: Equatable {
     var accountWeeks: Int
 }
 
-/// What the market tells the player after time has passed. Each becomes one outcome popup.
 enum StartupMarketEvent: Equatable {
     case milestone(startupID: String, name: String, stage: Int, mine: Bool)
     case failed(startupID: String, name: String, mine: Bool, refunded: Double)
@@ -43,11 +36,8 @@ enum StartupMarketEvent: Equatable {
 }
 
 protocol StartupMarketService: AnyObject {
-    /// Called after anything changed, so the screens redraw.
     var onChange: (() -> Void)? { get set }
-    /// Keys of the player's own accounts; nothing linked to the founder may fund or buy.
     var myLinkKeys: Set<String> { get }
-    /// True once the player has done anything, so a late restore does not overwrite it.
     var hasActivity: Bool { get }
 
     func startups() -> [CrowdStartup]
@@ -56,18 +46,15 @@ protocol StartupMarketService: AnyObject {
     func offers(startupID: String) -> [StartupShareOffer]
     func buyer(startupID: String) -> StartupBuyer?
 
-    /// The player's own startup is listed for investors.
     func list(_ s: CrowdStartup)
     func commitInvestment(_ s: CrowdStartup, holding: CrowdHolding)
     func commitPurchase(offerID: String, startup: CrowdStartup, holding: CrowdHolding)
     func commitSale(startupID: String, remaining: CrowdHolding)
     func update(_ s: CrowdStartup)
 
-    /// Works the market forward to today. `scale` is the cost index of the player's currency; `own` is how far each of the player's startups has come.
     func advance(today: Int, scale: Double, own: [String: CrowdStartups.Progress]) -> [StartupMarketEvent]
 }
 
-/// Observable wrapper the screens watch, so they do not depend on which service stands behind it.
 @MainActor
 final class StartupMarketStore: ObservableObject {
     static let shared = StartupMarketStore()
@@ -85,7 +72,6 @@ final class StartupMarketStore: ObservableObject {
 
     private func touch() { DispatchQueue.main.async { [weak self] in self?.revision += 1 } }
 
-    /// Keeps the stand-in's book in the online mock's persisted blob, so it lasts between launches.
     func attach(_ mock: MockOnlineService) async {
         let data = await mock.extensionData(for: Self.storageKey)
         await MainActor.run {
@@ -94,15 +80,11 @@ final class StartupMarketStore: ObservableObject {
         }
     }
 
-    // MARK: Reading
-
-    /// Account age as the rules need it. Until the server reports it, the weeks the player's game has run stand in.
     static func accountWeeks(_ e: GameEngine) -> Int { e.state.week }
     static func today(_ e: GameEngine) -> Int { e.state.week * 7 + e.state.day }
 
     func gainsRate(_ e: GameEngine) -> Double { e.context.homeCountry(e.state).capitalGainsTax }
 
-    /// Brings the market up to today and tells the player what happened to their money and startups.
     func sync(_ store: GameStore) {
         guard let e = store.engine else { return }
         let scale: Double = max(0.05, e.homeCurrency.scaledPrice(100_000) / 100_000)
@@ -116,7 +98,6 @@ final class StartupMarketStore: ObservableObject {
         for ev in events { tell(store, ev, e.homeCurrency) }
     }
 
-    /// The player's own startups: milestones reached in the books release the stage's escrow into the company; a company that is gone fails the startup.
     private func applyOwn(_ store: GameStore, own: [String: CrowdStartups.Progress], today: Int, cur: Currency) {
         for var st in service.startups() where st.founderID == CrowdStartups.me && (st.status == .raising || st.status == .live) {
             guard let p = own[st.id] else { continue }
@@ -139,7 +120,6 @@ final class StartupMarketStore: ObservableObject {
                            released > 0 ? "\(cur.tidyShort(released)) of investors' money is released from escrow to \(st.name). Their shares are now on its cap table, so your share is smaller." : "No investor money was waiting for this stage.", tone: "good")
             }
             st.assets = p.assets
-            // One entry per game week: this runs every day, so within a week the latest figure replaces the last entry instead of piling up.
             if today % 7 == 0 || st.weeklyProfit.isEmpty { st.weeklyProfit.append(p.weeklyProfit) } else { st.weeklyProfit[st.weeklyProfit.count - 1] = p.weeklyProfit }
             st.weeklyProfit = Array(st.weeklyProfit.suffix(CrowdStartupRules.recentProfitWeeks))
             if changed || st != service.startup(st.id) { service.update(st) }

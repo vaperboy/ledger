@@ -2,34 +2,20 @@ import Foundation
 import GameCore
 import Countries
 
-/// Every payment between the player, companies and the outside world. Original: `payCo`, `coIn`, `payMe`, `gainMe`
-/// and friends in engine/money/money.js. Each one moves cash through `Ledger` (so it is recorded) and books the
-/// amount in the right category of the company's accounts.
 public enum Payments {
-    /// Recurring costs that, while a week is being simulated in day mode, wait on the monthly bill instead of
-    /// leaving cash at once. Original: `MONTHLY` in tidier_screens_and_monthly_bills.js.
     static let monthlyCategories: Set<String> = ["oth", "mkt", "ins", "acc", "rent"]
 
-    // MARK: Companies
-
-    /// A company pays. `category` books it in the P&L ("wages", "rent", "oth", "mkt", "ins", "acc", "int", "fine", "tax" ...);
-    /// nil category = not an expense (e.g. buying equipment, repaying a loan). A labelled payment shows in the company's
-    /// transaction list and always leaves cash now. Returns whether the account is still in credit.
     @discardableResult
     public static func companyPays(_ s: inout GameState, companyID: Int, amount: Double, category: String?, label: String? = nil) -> Bool {
         guard let i = s.companyIndex(companyID) else { return false }
         var amt = amount
-        // Fines are cut by a good lawyer or a legal team in the head office. Original: payCoCore.
         if category == "fine" {
             if let q = s.companies[i].value("law")["q"].isNull ? nil : s.companies[i].value("law")["q"].double { amt *= 1.1 - 0.45 * q }
             if s.hasHeadOffice("law") { amt *= 0.85 }
-            if s.companies[i].flag("brdLaw") { amt *= 0.9 }   // a legal adviser on the board
-            // A lawyer you know gets the next fine halved (world around you: favours).
+            if s.companies[i].flag("brdLaw") { amt *= 0.9 }
             if amt > 0, s.rest["net31"]?["fineCut"].double ?? 0 != 0 { amt *= 0.5; s.rest["net31"]?["fineCut"] = 0 }
         }
-        // A finance manager in the management team: cheaper books and fines.
         if category == "fine" || category == "acc", s.companies[i].value("tm")["fin"].double > 0 { amt *= 1 - 0.15 * s.companies[i].value("tm")["fin"].double }
-        // Monthly bills build up during a week simulated in day mode. Original: 'payCo.later'.
         if s.transient.simulatingWeek && s.dayMode && label == nil, let cat = category, monthlyCategories.contains(cat), s.companies[i].status.isLive {
             let a = jsRound(amt)
             if a <= 0 { return true }
@@ -60,7 +46,6 @@ public enum Payments {
                                                    "oth": "Running costs", "int": "Interest", "fine": "Fines", "acc": "Accounting fees", "tax": "Tax", "loss": "Losses"]
     static func defaultLabel(_ category: String?, income: Bool) -> String { category.flatMap { categoryNames[$0] } ?? (income ? "Receipt" : "Payment") }
 
-    /// A company receives money. Original: `coIn`.
     public static func companyReceives(_ s: inout GameState, companyID: Int, amount: Double, category: String?, label: String?, bookInPnL: Bool = true) {
         guard let i = s.companyIndex(companyID) else { return }
         let amt = jsRound(amount)
@@ -75,7 +60,6 @@ public enum Payments {
         if let l = label, bookInPnL { s.companies[i].addTransaction(week: s.week, amount: amt, label: l) }
     }
 
-    /// Book an expense without moving cash. Original: `bk`.
     public static func book(_ s: inout GameState, companyID: Int, category: String, amount: Double) {
         guard let i = s.companyIndex(companyID) else { return }
         var b = s.companies[i].books
@@ -83,10 +67,6 @@ public enum Payments {
         s.companies[i].books = b
     }
 
-    // MARK: The player
-
-    /// Proceeds from selling a company or shares of it, to whoever owns it: the holding company when it sits in a holding (cash and the gain in its
-    /// books, like dividends), else you (cash and the capital-gains base). Returns true when it went to a holding.
     @discardableResult
     public static func ownerReceivesSale(_ s: inout GameState, from co: Company, amount: Double, gain: Double, label: String) -> Bool {
         let g = max(0, gain)
@@ -109,12 +89,8 @@ public enum Payments {
         Ledger.move(&s, .me, jsRound(amount), why: label, companyID: companyID)
     }
 
-    /// What the player can spend now: the one account's balance.
     public static func liquid(_ s: GameState) -> Double { s.cash }
 
-    // MARK: Owner and company
-
-    /// The owner puts money into a company. Original: `injectCash`.
     @discardableResult
     public static func injectCash(_ s: inout GameState, companyID: Int, amount: Double) -> Bool {
         guard let i = s.companyIndex(companyID), liquid(s) >= amount else { return false }
@@ -127,8 +103,6 @@ public enum Payments {
         return true
     }
 
-    /// Most that can go out as a dividend now: retained profits (equity above share capital), leaving two weeks of
-    /// costs in the account. Original: `divMax`.
     public static func maximumDividend(_ co: Company, state s: GameState, context: FinanceContext) -> Double {
         let br = s.chainStores(of: co)
         if br.count >= 2 { return max(0, min(chainEquity(br, s), br.reduce(0) { $0 + spare($1, s, context) }).rounded(.down)) }
@@ -136,14 +110,11 @@ public enum Payments {
         return max(0, (min(equity, co.cash - context.weeklyCost(co, s) * 2)).rounded(.down))
     }
 
-    /// `needsBoard`: the company has partners, so a board meeting must vote for the dividend first.
     public enum DividendResult: Equatable, Sendable { case ok, noRetainedProfit, notEnoughCash, needsBoard }
 
-    /// A limited company pays a dividend. Original: `payDividend`.
     public static func payDividend(_ s: inout GameState, companyID: Int, amount: Double, context: FinanceContext) -> DividendResult {
         guard let i = s.companyIndex(companyID) else { return .notEnoughCash }
         let co = s.companies[i]
-        // A store of a chain is a branch: the dividend is the chain's, declared once from all branches (whichever store it is asked of).
         let br = s.chainStores(of: co)
         if br.count >= 2 { return payChainDividend(&s, br, amount: amount, context: context) }
         let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans) - co.shareCapital
@@ -158,15 +129,11 @@ public enum Payments {
         return .ok
     }
 
-    /// A chain is one company: its retained profit is that of all its branches together, and its cash is pooled.
     static func chainEquity(_ br: [Company], _ s: GameState) -> Double {
         br.reduce(0) { $0 + CompanyFigures.assets($1) - CompanyFigures.debts($1, loans: s.loans) - $1.shareCapital }
     }
-    /// Cash a branch can give up and keep two weeks of its costs.
     static func spare(_ co: Company, _ s: GameState, _ context: FinanceContext) -> Double { co.cash - context.weeklyCost(co, s) * 2 }
 
-    /// The chain's one dividend: each branch pays a part in proportion to its spare cash, and the owners of the chain (the cap table of its
-    /// head office, the oldest store) receive it once.
     static func payChainDividend(_ s: inout GameState, _ br: [Company], amount: Double, context: FinanceContext) -> DividendResult {
         let head = br[0]
         if amount > chainEquity(br, s) { return .noRetainedProfit }
@@ -190,8 +157,6 @@ public enum Payments {
         return .ok
     }
 
-    /// Keeps what a holding received as dividends, week by week (`divIn`: [[week, amount]], the latest 400 entries), so its income never depends on
-    /// how many bank movements are still remembered.
     static func recordHoldingDividend(_ s: inout GameState, holdingIndex hi: Int, amount: Double) {
         guard amount > 0 else { return }
         var list: [JSONValue] = s.companies[hi].value("divIn").array
@@ -204,12 +169,10 @@ public enum Payments {
         s.companies[hi].set("divIn", .array(list))
     }
 
-    /// Dividends a holding received in the given weeks (all time when nil).
     public static func holdingDividends(_ co: Company, weeks: ClosedRange<Int>? = nil) -> Double {
         co.value("divIn").array.filter { (e: JSONValue) -> Bool in weeks?.contains(e[0].int) ?? true }.reduce(0.0) { $0 + $1[1].double }
     }
 
-    /// The owners' side of a dividend: the holding the company sits in, or you.
     static func receiveDividend(_ s: inout GameState, from co: Company, amount: Double, name: String, context: FinanceContext) {
         let mine = amount * co.ownership / 100
         if co.holdingID != 0, let hi = s.companyIndex(co.holdingID), s.companies[hi].status.isLive {
@@ -221,7 +184,6 @@ public enum Payments {
             s.tax.dividends += mine
             s.stats.dividendsReceived += mine
         }
-        // A holding that owns a bought stake (a `holders` entry with `hid`) takes its share too; outside owners' shares leave the group.
         for l in co.value("holders").array where l["hid"].int != 0 {
             let part = amount * l["pct"].double / 100
             guard part > 0, let hi = s.companyIndex(l["hid"].int), s.companies[hi].status.isLive else { continue }
@@ -232,12 +194,9 @@ public enum Payments {
         let shield = context.homeCountry(s).dividendShield
         let injected = s.companies.filter { $0.status.isLive }.reduce(0) { $0 + $1.injectedCapital * $1.ownership / 100 }
         s.tax.dividendShield = max(s.tax.dividendShield, injected * shield)
-        PersonalFinance.withholdNow(&s, context: context)   // dividend tax is withheld on payout
+        PersonalFinance.withholdNow(&s, context: context)
     }
 
-    // MARK: Loan instalments
-
-    /// Original: `payCoLoan`. Returns whether the account stays within its overdraft room.
     @discardableResult
     static func companyPaysLoanInstalment(_ s: inout GameState, companyID: Int, interest: Double, principal: Double, loanName: String, loanID: Int = 0, context: FinanceContext) -> Bool {
         guard let i = s.companyIndex(companyID) else { return false }
@@ -250,7 +209,6 @@ public enum Payments {
         return s.companies[i].cash >= -context.overdraftRoom(s.companies[i], s)
     }
 
-    /// Original: `payPersonalLoan`. Missing the limit hurts the credit score.
     @discardableResult
     static func playerPaysLoanInstalment(_ s: inout GameState, interest: Double, principal: Double, loanName: String) -> Bool {
         let total = interest + principal

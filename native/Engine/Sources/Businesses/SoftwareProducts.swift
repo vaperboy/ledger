@@ -3,13 +3,6 @@ import GameCore
 import Countries
 import Finance
 
-/// Software of your own: build it with coders (and your own hours), let your companies test it, sell it, and use it in your own
-/// companies in place of a bought licence. The product record (`sw`: type, how customers pay, price, phase, progress, coders, your hours,
-/// customers, weekly revenue, the price your own companies pay) lives on a company here (`swp`, a web-development company builds it);
-/// `step` is the whole weekly model on a bare record, so a startup can host the same record and call it with its own quality and trust.
-/// Original: 'your own software' in features/world/rivals_holdings_software.js (`SWT`, `SWM`, `swPrice`, `ownSwWeek`, `ACT.swdev`,
-/// `ACT.swself`, `ACT.swmodel`, `ACT.swint`, `ACT.ownsw`) and the saas branch of features/player/startup_sectors.js.
-/// Not ported: the startup that would host it in the original (not merged yet), a check of your free hours before coding yourself.
 public enum SoftwareProducts {
     public static let types: [(id: String, name: String, equipmentPattern: [String])] = [
         ("crm", "CRM and sales", ["crm", "listing", "applicant", "case-management"]),
@@ -25,13 +18,12 @@ public enum SoftwareProducts {
     ]
     public static let models: [(id: String, name: String)] = [("once", "One-time purchase"), ("sub", "Subscription"), ("both", "Setup fee + subscription")]
 
-    /// The list price a customer pays, by how they pay. Original: `swPrice`.
     public static func listPrice(_ model: String, scale: (Double) -> Double) -> Double { model == "once" ? scale(15000) : model == "sub" ? scale(1200) : scale(800) }
 
     public enum Phase: String { case build, beta, live }
 
     public struct Product: Equatable, Identifiable {
-        public var id: Int                 // the company that builds it
+        public var id: Int
         public var name: String
         public var type: String
         public var model: String
@@ -42,7 +34,6 @@ public enum SoftwareProducts {
         public var selfHours: Double
         public var customers: Int
         public var weeklyRevenue: Double
-        /// What your own companies pay, as a percentage of the list price.
         public var internalPercent: Int
         public var trust: Double
         public var usable: Bool { phase == .beta || phase == .live }
@@ -58,18 +49,11 @@ public enum SoftwareProducts {
                        customers: sw["cust"].int, weeklyRevenue: sw["revW"].double, internalPercent: sw["int"].int, trust: sw["tr"].double)
     }
 
-    /// The product a company builds, if any.
     public static func product(_ s: GameState, companyID: Int) -> Product? { s.company(companyID).flatMap(read) }
-    /// Every product you build, for the startups tab.
     public static func products(_ s: GameState) -> [Product] { s.companies.filter { $0.status.isLive }.compactMap(read) }
 
-    /// Who can build software: a web-development company.
     public static func canBuild(_ co: Company) -> Bool { co.status == .open && co.type == "webdev" }
 
-    // MARK: The weekly model on a bare record
-
-    /// One week of building and selling. `quality` is 0...1 (how good the team and company are), `trust` 0...1 grows with sales, `burn` is the
-    /// weekly cost of the team. Returns the week's revenue and the notices. Original: the 'rivals_holdings_software weekly' step.
     public static func step(_ sw: inout JSONValue, name: String, quality q: Double, trust tr: inout Double, burn: Double, ownerFactor: Double = 1,
                             random r: inout DeterministicRandom, scale: (Double) -> Double) -> (revenue: Double, notes: [(text: String, news: Bool)]) {
         var notes: [(String, Bool)] = []
@@ -96,8 +80,6 @@ public enum SoftwareProducts {
         return (rev, notes.map { (text: $0.0, news: $0.1) })
     }
 
-    // MARK: A company that builds software
-
     @discardableResult
     public static func start(_ s: inout GameState, companyID: Int, type: String, model: String, name: String? = nil, coders: Int = 1, data: GameData) -> Bool {
         guard let i = s.companyIndex(companyID), canBuild(s.companies[i]), s.companies[i].value("swp").isNull,
@@ -115,7 +97,6 @@ public enum SoftwareProducts {
         var sw = s.companies[i].value("swp"); sw["devs"] = .number(Double(min(10, max(0, coders)))); s.companies[i].set("swp", sw)
     }
 
-    /// You code yourself for 20 hours a week, or stop. Original: `ACT.swself` (without the check of your free hours).
     public static func setSelfCoding(_ s: inout GameState, companyID: Int, on: Bool) {
         guard let i = s.companyIndex(companyID), !s.companies[i].value("swp").isNull else { return }
         var sw = s.companies[i].value("swp"); sw["selfH"] = .number(on ? 20 : 0); s.companies[i].set("swp", sw)
@@ -132,7 +113,6 @@ public enum SoftwareProducts {
         var sw = s.companies[i].value("swp"); sw["int"] = .number(Double(min(100, max(0, percent)))); s.companies[i].set("swp", sw)
     }
 
-    /// Weekly: the team is paid, the product moves on, sales come in. Original: 'rivals_holdings_software weekly'.
     public static func weekly(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status == .open && !s.companies[i].value("swp").isNull {
             let co = s.companies[i]
@@ -151,19 +131,16 @@ public enum SoftwareProducts {
         }
     }
 
-    // MARK: Using it in your own companies
-
     public struct Offer: Identifiable, Equatable {
         public var id: Int { producerID }
         public var producerID: Int
         public var name: String
-        public var tested: Bool           // a test version: cheaper trouble, less reliable
+        public var tested: Bool
         public var modelName: String
         public var monthly: Bool
-        public var cost: Double           // the price now (one-time) or per month
+        public var cost: Double
     }
 
-    /// Your own products that fit a piece of software in the equipment shop. Original: the 'V.shop' step.
     public static func offers(_ s: GameState, equipmentName: String, buyerID: Int) -> [Offer] {
         let n = equipmentName.lowercased()
         return products(s).filter { p in
@@ -175,7 +152,6 @@ public enum SoftwareProducts {
 
     public enum AdoptResult: Equatable { case ok, notPossible, notEnoughCash }
 
-    /// A company switches to your own software. Original: `ACT.ownsw`.
     @discardableResult
     public static func adopt(_ s: inout GameState, companyID: Int, equipmentID: String, producerID: Int, data: GameData) -> AdoptResult {
         guard let i = s.companyIndex(companyID), let p = product(s, companyID: producerID), p.usable, let bd = data.catalog[s.companies[i].type],
@@ -203,8 +179,6 @@ public enum SoftwareProducts {
         return .ok
     }
 
-    /// The weekly effect on a company that runs your own software: the producer is paid the fee, a test version can crash, a finished one
-    /// runs a little better than a bought one. Called from the equipment week with that equipment's record. Original: `ownSwWeek`.
     static func useWeek(_ s: inout GameState, companyIndex i: Int, record rec: inout JSONValue) {
         guard !rec["ownF"].isNull else { return }
         guard let p = product(s, companyID: rec["ownF"].int) else { rec["perf"] = 0.8; return }

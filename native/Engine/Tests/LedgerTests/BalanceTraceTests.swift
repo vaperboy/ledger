@@ -6,10 +6,7 @@ import Finance
 import Simulation
 import Employees
 
-/// Week-by-week averages over 12 seeds, the native twin of tools/ref/snippets/trace_weeks.js.
-/// Prints JSON in the same shape as the original script. Not a pass/fail test: it only runs with LEDGER_STATS=1.
 final class BalanceTraceTests: XCTestCase {
-    /// LEDGER_FAITHFUL=1: set-up and staffing as the original's test script does (one offer per job).
     static var faithful: Bool { ProcessInfo.processInfo.environment["LEDGER_FAITHFUL"] != nil }
     func testPrintWeekTrace() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
@@ -75,7 +72,6 @@ final class BalanceTraceTests: XCTestCase {
         }
     }
 
-    /// Parts of the quality target at week 20 for four seeds (twin of snippets/quality_parts.js): LEDGER_TRADE.
     func testPrintQualityParts() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         let t = ProcessInfo.processInfo.environment["LEDGER_TRADE"] ?? "gym"
@@ -100,7 +96,6 @@ final class BalanceTraceTests: XCTestCase {
         }
     }
 
-    /// One company, one seed, week by week (twin of snippets/weekly_one.js): LEDGER_TRADE, LEDGER_SEED.
     func testPrintWeeklyOne() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         let t = ProcessInfo.processInfo.environment["LEDGER_TRADE"] ?? "boutique"
@@ -124,7 +119,6 @@ final class BalanceTraceTests: XCTestCase {
         }
     }
 
-    /// Where does one company's cash go? Tallies every balance change by the calling function (`LEDGER_STATS=1 LEDGER_TRADE=boutique swift test -c release --filter testPrintCashByCause`). Twin of snippets/cash_by_cause.js.
     func testPrintCashByCause() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         let t = ProcessInfo.processInfo.environment["LEDGER_TRADE"] ?? "boutique"

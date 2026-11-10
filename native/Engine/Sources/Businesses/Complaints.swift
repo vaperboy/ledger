@@ -3,22 +3,17 @@ import GameCore
 import Countries
 import Finance
 
-/// The complaints list of a company, as the player manages it. The weekly arrival and the manager's answers are in `Satisfaction`.
-/// Original: `complaintsPart` and `ACT.complres` (features/people/owner_hours_clients_assistants.js).
 public enum Complaints {
     public struct Item: Equatable, Sendable {
         public var id: Int
         public var week: Int
         public var who: String
         public var text: String
-        /// 1 minor, 2 upset, 3 serious.
         public var severity: Int
-        /// "open", "refund", "sorry" or "ignore".
         public var state: String
         public var calmed: Bool
         public var answeredWeek: Int
         public var answeredBy: String
-        /// Weeks left before an unanswered complaint turns into a bad review.
         public var weeksLeft: Int
         public var refundCost: Double
     }
@@ -35,8 +30,6 @@ public enum Complaints {
         }
     }
 
-    /// Answer an open complaint. Returns nil if there is no such open complaint, else whether an apology calmed the customer
-    /// (true for a refund, false for ignoring). Original: `ACT.complres`.
     @discardableResult
     public static func answer(_ s: inout GameState, companyID: Int, complaintID: Int, answer: Satisfaction.Answer, data: GameData) -> Bool? {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type],

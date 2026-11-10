@@ -4,9 +4,6 @@ import Countries
 import Finance
 import Simulation
 
-/// The Loans tab of an account: only the loans taken for this account, their terms, early repayment, and a new loan with a chosen term
-/// and the whole cost shown first. A company's loans use the company loan screen (`CompanyLoans`, the same engine calls); the personal
-/// account's are below. Loans are never an account of their own.
 struct BankLoansTab: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -28,7 +25,6 @@ struct BankLoansTab: View {
         }
     }
 
-    /// A link that named an amount opens the application straight on the choice, with that amount.
     private func openWithAmount() {
         guard let amount = store.pendingLoanApply, account != .investments else { return }
         store.pendingLoanApply = nil
@@ -57,7 +53,6 @@ struct BankLoansTab: View {
     }
 }
 
-/// Your personal loans and borrowing.
 struct BankPersonalLoans: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -126,7 +121,6 @@ struct BankPersonalLoans: View {
     }
 }
 
-/// Pay back part or all of one loan: presets for one instalment, half and everything, with the balance after.
 struct RepayPersonalLoanSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore

@@ -1,23 +1,17 @@
 import Foundation
 import GameCore
 
-/// Pro cosmetics: logo badges and colour themes. Pure rules, no SwiftUI. Nothing here changes a sim number.
-/// Fairness: every badge earned in the career is free to wear for ever; the extra premium badges and the colour themes are Pro.
-/// A lapsed Pro falls back to the default badge and theme (the choice is kept and returns with Pro).
 public enum Cosmetics {
     public struct Badge: Equatable, Sendable, Identifiable {
         public var id: String
         public var title: String
-        /// An SF Symbol name.
         public var symbol: String
-        /// True: Pro only. False: the default badge or one earned in the career.
         public var premium: Bool
     }
 
     public struct Palette: Equatable, Sendable, Identifiable {
         public var id: String
         public var title: String
-        /// Accent colour as red, green, blue in 0...1.
         public var red: Double, green: Double, blue: Double
         public var premium: Bool
     }
@@ -25,7 +19,6 @@ public enum Cosmetics {
     public static let defaultBadgeID = "logo.default"
     public static let defaultThemeID = "gold"
 
-    /// Default first, then the career badges in the order the career hands them out, then the premium ones.
     public static let badges: [Badge] = [
         Badge(id: "logo.default", title: "Briefcase", symbol: "briefcase.fill", premium: false),
         Badge(id: "logo.star", title: "Star", symbol: "star.fill", premium: false),
@@ -59,20 +52,17 @@ public enum Cosmetics {
     public static func badge(_ id: String) -> Badge { badges.first { $0.id == id } ?? badges[0] }
     public static func theme(_ id: String) -> Palette { themes.first { $0.id == id } ?? themes[0] }
 
-    /// Whether a badge may be worn: the default always, a career badge once earned, a premium badge with Pro.
     public static func isBadgeUnlocked(_ id: String, earned: [String], pro: Bool) -> Bool {
         guard let b = badges.first(where: { $0.id == id }) else { return false }
         if id == defaultBadgeID { return true }
         return b.premium ? pro : earned.contains(id)
     }
 
-    /// Whether a theme may be used: the default always, the others with Pro.
     public static func isThemeUnlocked(_ id: String, pro: Bool) -> Bool {
         guard let t = themes.first(where: { $0.id == id }) else { return false }
         return !t.premium || pro
     }
 
-    /// The badge to show for a saved choice: the choice if it may be worn now, else the default.
     public static func resolvedBadge(_ selected: String?, earned: [String], pro: Bool) -> Badge {
         guard let s = selected, isBadgeUnlocked(s, earned: earned, pro: pro) else { return badges[0] }
         return badge(s)
@@ -83,25 +73,19 @@ public enum Cosmetics {
         return theme(s)
     }
 
-    /// How many career badges are still to win.
     public static func careerBadgesLeft(earned: [String]) -> Int {
         badges.filter { !$0.premium && $0.id != defaultBadgeID && !earned.contains($0.id) }.count
     }
 }
 
-/// Maths for the Home rank strip and the Insights charts (pure, so it is testable on Linux).
 public enum HomeProgress {
-    /// 0...1, clamped; a non-number counts as 0.
     public static func clamp(_ v: Double) -> Double { v.isFinite ? min(1, max(0, v)) : 0 }
 
-    /// Whole percent for a ring label (never 100 until it is truly full).
     public static func percent(_ p: Double) -> Int {
         let c = clamp(p)
         return c >= 1 ? 100 : min(99, Int(saturating: (c * 100).rounded(.down)))
     }
 
-    /// Days of cash left at the average daily outflow seen in the series; nil when cash is not falling (no runway to speak of).
-    /// `cash` is one value per day, oldest first.
     public static func runwayDays(cash: [Double]) -> Int? {
         guard cash.count >= 3, let last = cash.last, let first = cash.first else { return nil }
         let perDay: Double = (first - last) / Double(cash.count - 1)
@@ -110,7 +94,6 @@ public enum HomeProgress {
         return d.isFinite ? Int(min(d, 9999)) : nil
     }
 
-    /// Scales a series to 0...1 for drawing; a flat series sits in the middle.
     public static func normalised(_ v: [Double]) -> [Double] {
         guard let lo = v.min(), let hi = v.max() else { return [] }
         guard hi - lo > 1e-9 else { return v.map { _ in 0.5 } }

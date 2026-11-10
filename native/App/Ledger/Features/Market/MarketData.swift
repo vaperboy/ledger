@@ -7,29 +7,20 @@ import Investments
 import Events
 import Simulation
 
-// The one door between the Market app and the engine's Market API (Simulation/Market*.swift): the portfolio of every owner with cost
-// basis and results, marketQuote / marketBuy / marketSell, each company against its market, the rivals list and watchlist, the overview
-// signals and the world reads. Screens read the small `MarketUI` value types made here, so a change of the API stays in this file.
-
-/// The Market app's own value types, kept in one namespace so they never clash with engine types of the same idea.
 enum MarketUI {
-    /// The five parts of the app.
     enum Tab: String, CaseIterable, Hashable {
         case overview = "Overview", companies = "Companies", rivals = "Rivals", invest = "Invest", exchange = "Exchange", standing = "Standing", world = "World"
     }
 
-    /// Who holds a position or pays for a purchase: you (`.player`) or a holding company's treasury (`.holding(id)`).
     typealias Owner = PortfolioOwner
 
     struct OwnerInfo: Identifiable, Hashable {
         var owner: Owner
         var name: String
-        /// What this owner can spend now: current account and savings for you, the treasury cash for a holding.
         var cash: Double
         var id: String { owner.id }
     }
 
-    /// What kind of thing a position is.
     enum AssetClass: String, Hashable {
         case crypto, fund, shares, deposit, startup, privateEquity, groupStake, partnership, managed
         init(_ k: MarketAssetKind) {
@@ -69,21 +60,17 @@ enum MarketUI {
             case .managed: return Glyph.person
             }
         }
-        /// Units mean something to the player only for funds, crypto and shares.
         var countsUnits: Bool { self == .fund || self == .crypto || self == .shares }
     }
 
-    /// One holding of one owner.
     struct Position: Identifiable, Hashable {
         var id: String
         var owner: Owner
         var ownerName: String
         var assetClass: AssetClass
-        /// The asset behind it (for "Buy more"); nil for what cannot be bought here.
         var assetID: String?
         var name: String
         var symbol: String
-        /// Units as the engine keeps them (a stake's ownership in percent), for selling.
         var engineUnits: Double
         var price: Double
         var cost: Double
@@ -98,18 +85,14 @@ enum MarketUI {
         var risk: String
         var sellable: Bool
         var sellNote: String?
-        /// A private equity stake sells in one piece on the secondary market.
         var wholeOnly: Bool
-        /// Units to show (funds, crypto, shares); nil for stakes and deposits.
         var units: Double? { assetClass.countsUnits ? engineUnits : nil }
-        /// The latest weekly price move, as a share.
         var weekChange: Double? {
             guard history.count >= 2, history[history.count - 2] > 0 else { return nil }
             return history[history.count - 1] / history[history.count - 2] - 1
         }
     }
 
-    /// Something that can be bought here.
     struct Asset: Identifiable, Hashable {
         var id: String
         var kind: MarketAssetKind
@@ -125,17 +108,14 @@ enum MarketUI {
 
     struct Portfolio {
         var positions: [Position]
-        /// The engine's totals (nil for an owner with nothing yet).
         var totals: PortfolioTotals?
         var owners: [PortfolioOwnerSummary]
-        /// Total value at each week's end, oldest first.
         var history: [Double]
         var value: Double { totals?.value ?? 0 }
         var cost: Double { totals?.costBasis ?? 0 }
         var pnl: Double { totals?.pnl ?? 0 }
         var pnlShare: Double? { totals?.pnlPercent }
         var pnlToday: Double { totals?.pnlToday ?? 0 }
-        /// The week's move, nil while nothing is held.
         var weekMove: Double? { positions.isEmpty ? nil : totals?.pnlWeek }
         func only(_ owner: Owner?) -> Portfolio {
             guard let owner else { return self }
@@ -145,26 +125,21 @@ enum MarketUI {
         static let empty = Portfolio(positions: [], totals: nil, owners: [], history: [])
     }
 
-    /// What a trade would do, before it is made (from `marketQuote` / `marketSellQuote`).
     struct TradePreview: Equatable {
-        /// Buying: what is invested. Selling: the value sold.
         var amount: Double
         var fee: Double
         var feeLabel: String
         var units: Double
-        /// Buying: what leaves the owner's cash. Selling: what reaches it.
         var cashChange: Double
         var available: Double
         var cashAfter: Double
         var minimum: Double
-        /// Selling: the result realised (what reaches the account minus the cost of the units sold).
         var realizedGain: Double
         var refusal: String?
     }
 
     enum Outcome { case done(String), refused(String) }
 
-    /// One of your companies against its market.
     struct CompanyLine: Identifiable, Hashable {
         var id: Int
         var name: String
@@ -172,22 +147,16 @@ enum MarketUI {
         var city: String
         var marketKey: String?
         var level: MarketMap.Knowledge.Level
-        /// "18%", "12–15%" or words ("A fair slice"): who measures decides.
         var shareText: String
-        /// Your share in percent, only when measured (an analyst draws it).
         var share: Double?
-        /// Points gained or lost last month (measured only).
         var trend: Double?
-        /// Your place by sales among everybody in this market.
         var rank: Int?
         var players: Int
-        /// Your price against the rivals' average, as a share (+0.08 = 8% dearer).
         var priceGap: Double?
         var rating: Double?
         var ratingGap: Double?
     }
 
-    /// A row of the "you against the field" table.
     struct CompareRow: Identifiable, Hashable {
         var id: String
         var name: String
@@ -201,7 +170,6 @@ enum MarketUI {
         var forSale: Bool
     }
 
-    /// A rival business in one of your markets.
     struct RivalItem: Identifiable, Hashable {
         var companyID: Int
         var rivalID: Int
@@ -223,7 +191,6 @@ enum MarketUI {
         var id: String { "co\(companyID).r\(rivalID)" }
     }
 
-    /// A rival group around you.
     struct GroupItem: Identifiable, Hashable {
         var id: String
         var name: String
@@ -237,7 +204,6 @@ enum MarketUI {
         var rivalsInYourMarkets: Int
     }
 
-    /// A short card on the Overview.
     struct Signal: Identifiable, Hashable {
         enum Target: Hashable { case rival(Int, Int), company(Int), asset(String), country(String), nothing }
         var id: String
@@ -248,18 +214,15 @@ enum MarketUI {
         var target: Target
     }
 
-    /// A biggest move of the week.
     struct Mover: Identifiable, Hashable {
         var id: String
         var title: String
         var detail: String
-        /// A share (0.04 = 4%) or points of market share when `points` is true.
         var change: Double
         var points: Bool
         var amount: Double?
     }
 
-    /// A country on the World part.
     struct CountryLine: Identifiable, Hashable {
         var id: String
         var name: String
@@ -277,11 +240,8 @@ enum MarketUI {
     }
 }
 
-/// The reads and trades of the Market app, from the engine's Market API. Pure functions of the engine; trades go through `GameStore.act`.
 enum MarketData {
-    // MARK: Owners
 
-    /// You, then every open holding, with what each can invest now.
     static func owners(_ e: GameEngine) -> [MarketUI.OwnerInfo] {
         e.marketOwners.map { (o: PortfolioOwnerSummary) -> MarketUI.OwnerInfo in MarketUI.OwnerInfo(owner: o.owner, name: o.name, cash: max(0, o.cash)) }
     }
@@ -293,8 +253,6 @@ enum MarketData {
         }
     }
 
-    // MARK: Portfolio
-
     static func position(_ p: PortfolioPosition) -> MarketUI.Position {
         let cls: MarketUI.AssetClass = MarketUI.AssetClass(p.kind)
         return MarketUI.Position(id: p.id, owner: p.owner, ownerName: p.ownerName, assetClass: cls, assetID: p.assetID, name: p.name.tidyText,
@@ -304,7 +262,6 @@ enum MarketData {
                                  wholeOnly: p.kind == .privateEquity)
     }
 
-    /// Every position of every owner, with the engine's totals and weekly history.
     static func portfolio(_ e: GameEngine) -> MarketUI.Portfolio {
         let pf: Portfolio = e.portfolio
         return MarketUI.Portfolio(positions: pf.positions.map { (p: PortfolioPosition) -> MarketUI.Position in position(p) }, totals: pf.totals,
@@ -315,14 +272,10 @@ enum MarketData {
         e.portfolio.positions.first { (p: PortfolioPosition) -> Bool in p.id == id }.map { (p: PortfolioPosition) -> MarketUI.Position in position(p) }
     }
 
-    /// The portfolio's total value at each week's end (you and every holding), for the hero line.
     static func investedHistory(_ e: GameEngine) -> [Double] {
         Array(e.portfolio.history.suffix(52))
     }
 
-    // MARK: What can be bought
-
-    /// Funds, crypto and money for your fund manager; closed coins are left out.
     static func assets(_ e: GameEngine) -> [MarketUI.Asset] {
         e.marketAssets.filter { (a: MarketAsset) -> Bool in !a.closed }.map { (a: MarketAsset) -> MarketUI.Asset in
             MarketUI.Asset(id: a.id, kind: a.kind, symbol: a.symbol, name: a.name.tidyText, price: a.price, weekChange: a.weekChange,
@@ -334,27 +287,22 @@ enum MarketData {
         assets(e).first { (a: MarketUI.Asset) -> Bool in a.id == id }
     }
 
-    /// Why `owner` cannot hold `asset` at all (before any amount is chosen).
     static func refusal(_ asset: MarketUI.Asset, for owner: MarketUI.Owner) -> String? {
         if case .holding = owner, !asset.holdingsMayBuy { return "A holding's treasury holds funds only" }
         return nil
     }
-
-    // MARK: Quotes and trades
 
     static func preview(_ q: MarketQuote) -> MarketUI.TradePreview {
         MarketUI.TradePreview(amount: q.amount, fee: q.fee + q.spreadCost, feeLabel: q.feeLabel, units: q.units, cashChange: abs(q.cashChange),
                               available: q.available, cashAfter: q.cashAfter, minimum: q.minimum, realizedGain: q.realizedGain, refusal: q.refusal)
     }
 
-    /// Buying `amount` of `asset` for `owner`.
     static func buyPreview(_ e: GameEngine, _ asset: MarketUI.Asset, owner: MarketUI.Owner, amount: Double) -> MarketUI.TradePreview {
         var p: MarketUI.TradePreview = preview(e.marketQuote(asset: asset.id, owner: owner, amount: amount))
         if amount <= 0 { p.refusal = "Enter an amount." }
         return p
     }
 
-    /// Selling `fraction` (0...1) of a position.
     static func sellPreview(_ e: GameEngine, _ p: MarketUI.Position, fraction: Double) -> MarketUI.TradePreview {
         let f: Double = p.wholeOnly ? 1 : min(max(fraction, 0), 1)
         return preview(e.marketSellQuote(position: p.id, units: p.engineUnits * f))
@@ -381,9 +329,6 @@ enum MarketData {
         return .refused(r.refusal ?? "The sale did not go through.")
     }
 
-    // MARK: Your companies against their markets
-
-    /// The businesses that have a market (open, not a holding).
     static func companies(_ e: GameEngine) -> [Company] {
         e.state.companies.filter { (c: Company) -> Bool in c.status == .open && c.type != "hold" }
     }
@@ -396,7 +341,6 @@ enum MarketData {
                                     ratingGap: m.ratingVsMarket)
     }
 
-    /// One line per company that has a market.
     static func companyLines(_ e: GameEngine) -> [MarketUI.CompanyLine] {
         e.marketPositions().map { (m: CompanyMarketPosition) -> MarketUI.CompanyLine in line(m) }
     }
@@ -407,13 +351,11 @@ enum MarketData {
                                     shareText: "Not measured", share: nil, trend: nil, rank: nil, players: 1, priceGap: nil, rating: nil, ratingGap: nil)
     }
 
-    /// Your share month by month in percent, only where it is measured.
     static func shareHistory(_ e: GameEngine, companyID: Int) -> [Double] {
         guard let m = e.marketPosition(companyID: companyID), m.knowledge.canDrawShareGraph else { return [] }
         return m.shareHistory.map { (s: Double) -> Double in s * 100 }
     }
 
-    /// Everybody in the market, biggest first. Without an analyst a rival's share is a size word.
     static func compareRows(_ e: GameEngine, _ co: Company) -> [MarketUI.CompareRow] {
         guard let m = e.marketPosition(companyID: co.id) else { return [] }
         let measured: Bool = m.knowledge != .feeling
@@ -446,9 +388,6 @@ enum MarketData {
 
     static func marketKey(_ e: GameEngine, companyID: Int) -> String? { e.marketPosition(companyID: companyID)?.marketKey }
 
-    // MARK: Rivals
-
-    /// Every rival in your markets, for sale first, then the most valuable.
     static func rivals(_ e: GameEngine) -> [MarketUI.RivalItem] {
         let names: [Int: String] = Dictionary(e.state.companies.map { (c: Company) -> (Int, String) in (c.id, c.name) }, uniquingKeysWith: { (a, _) in a })
         let list: [MarketUI.RivalItem] = e.marketRivals().map { (r: MarketRivalRow) -> MarketUI.RivalItem in
@@ -463,7 +402,6 @@ enum MarketData {
         }
     }
 
-    /// The rival groups that compete where you are.
     static func groups(_ e: GameEngine) -> [MarketUI.GroupItem] {
         e.marketRivalGroups().map { (g: MarketGroupRow) -> MarketUI.GroupItem in
             MarketUI.GroupItem(id: g.id, name: g.name, owner: g.owner, strategy: g.strategyName, sites: g.branches, revenue: g.revenue, profit: g.profit,
@@ -478,9 +416,6 @@ enum MarketData {
         _ = store.act { (g: inout GameEngine) -> Bool in g.toggleWatch(rivalID: rivalID) }
     }
 
-    // MARK: Overview
-
-    /// Your sales against all sales of your local markets together; nil without a local market or while no analyst measures.
     static func combinedShare(_ e: GameEngine) -> Double? {
         guard e.marketPositions().contains(where: { (m: CompanyMarketPosition) -> Bool in m.knowledge != .feeling }) else { return nil }
         return e.marketOverview.combinedShare
@@ -524,9 +459,6 @@ enum MarketData {
         }
     }
 
-    // MARK: World
-
-    /// Every country, home first, then yours, then by name.
     static func countries(_ e: GameEngine) -> [MarketUI.CountryLine] {
         let lines: [MarketUI.CountryLine] = e.marketCountries().map { (c: MarketCountry) -> MarketUI.CountryLine in
             MarketUI.CountryLine(id: c.code, name: c.name, flag: c.flag, region: c.region, population: c.populationMillions,
@@ -541,12 +473,10 @@ enum MarketData {
         }
     }
 
-    /// The cities of a country, biggest first, with demand and rivals for `tradeID` when one is given.
     static func cities(_ e: GameEngine, country: String, tradeID: String? = nil) -> [MarketCity] {
         e.marketCities(countryCode: country, tradeID: tradeID).sorted { (a: MarketCity, b: MarketCity) -> Bool in a.population > b.population }
     }
 
-    /// Your companies that could open in `country`.
     static func expanders(_ e: GameEngine, country: String) -> [Company] {
         e.state.companies.filter { (co: Company) -> Bool in
             co.status == .open && co.type != "hold" && e.abroadOptions(companyID: co.id).contains { (o: Abroad.Option) -> Bool in o.countryCode == country }

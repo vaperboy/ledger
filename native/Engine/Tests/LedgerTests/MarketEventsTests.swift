@@ -4,7 +4,6 @@ import Finance
 import Simulation
 @testable import Businesses
 
-/// The market event log, the largest payment of the day and the market trend (read-only facts for the app's animations).
 final class MarketEventsTests: XCTestCase {
     private func engineWithCafe(weeks: Int = 6, seed: Int = 777) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -25,12 +24,11 @@ final class MarketEventsTests: XCTestCase {
     func testLoggingHelperKindsAndNewestFirst() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
         e.update { s, _, _ in
-            // one kind a week: at most 3 are written in one week
             for (n, k) in MarketEvent.Kind.allCases.enumerated() { s.week = 10 + n; MarketEvents.log(&s, k, title: k.rawValue, detail: "d", companyID: 3, amount: 1.5, tone: "good") }
         }
         let ev = e.marketEvents(limit: 20)
         XCTAssertEqual(ev.count, MarketEvent.Kind.allCases.count)
-        XCTAssertEqual(ev.first?.kind, MarketEvent.Kind.allCases.last)   // newest first
+        XCTAssertEqual(ev.first?.kind, MarketEvent.Kind.allCases.last)
         XCTAssertEqual(Set(ev.map { $0.kind }), Set(MarketEvent.Kind.allCases))
         XCTAssertEqual(ev.first?.companyID, 3)
         XCTAssertEqual(e.marketEvents(limit: 2).count, 2)
@@ -39,10 +37,9 @@ final class MarketEventsTests: XCTestCase {
     func testSupplierPriceChangeFiresAtThreePercent() throws {
         var (e, _) = try engineWithCafe()
         e.update { s, data, _ in
-            // let the log's 4-week rests (same fact, same index) pass, whatever the game announced by itself in the weeks before
             s.week += MarketEvents.dedupeWeeks + MarketEvents.supplierCooldown
             var mv = s.rest["mev"] ?? .object([:]); mv["seen"]["eco"] = .null; s.rest["mev"] = mv
-            MarketEvents.weekly(&s, data: data)           // remembers the level
+            MarketEvents.weekly(&s, data: data)
         }
         let supplierBefore: Int = e.marketEvents(limit: 100).filter { $0.kind == .supplierPriceChange }.count
         e.update { s, data, _ in
@@ -64,12 +61,11 @@ final class MarketEventsTests: XCTestCase {
         var key = ""
         e.update { s, data, _ in
             key = Rivals.key(s.company(id)!)
-            s.week += MarketEvents.dedupeWeeks   // the same rival's listing / share loss may already have been logged by the game itself
-            // no rival is for sale at the baseline (the game may have listed one by itself), so the listing below is a real change
+            s.week += MarketEvents.dedupeWeeks
             var mk0 = s.rest["mk"]!
             mk0[key]["riv"] = .array(mk0[key]["riv"].array.map { var r = $0; r["listed"] = .bool(false); return r })
             s.rest["mk"] = mk0
-            MarketEvents.weekly(&s, data: data)           // baseline
+            MarketEvents.weekly(&s, data: data)
             var mk = s.rest["mk"]!
             var riv = mk[key]["riv"].array
             XCTAssertFalse(riv.isEmpty)
@@ -77,9 +73,8 @@ final class MarketEventsTests: XCTestCase {
             mk[key]["riv"] = .array(riv)
             s.rest["mk"] = mk
             s.week += 1
-            MarketEvents.weekly(&s, data: data)           // the listing (one market-wide event a week)
+            MarketEvents.weekly(&s, data: data)
             s.week += 1
-            // pretend the first rival had five points more share last week
             let rid = String(riv[0]["id"].int)
             var m = s.rest["mev"]!
             m["seen"]["share"][rid] = .number(m["seen"]["share"][rid].double + 0.05)
@@ -121,18 +116,16 @@ final class MarketEventsTests: XCTestCase {
         var (e, id) = try engineWithCafe()
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
-            s.companies[i].set("rv26", .array([.number(1000), .number(1000)]))   // yearly sales 52,000
+            s.companies[i].set("rv26", .array([.number(1000), .number(1000)]))
             let co = s.companies[i]
-            MarketEvents.noteContractOffer(&s, company: co, customer: "Acme", worth: 2000)   // under 5 percent
+            MarketEvents.noteContractOffer(&s, company: co, customer: "Acme", worth: 2000)
             XCTAssertTrue(MarketEvents.events(s, limit: 10).filter { $0.kind == .majorContract }.isEmpty)
-            MarketEvents.noteContractOffer(&s, company: co, customer: "Acme", worth: 3000)   // over 5 percent
+            MarketEvents.noteContractOffer(&s, company: co, customer: "Acme", worth: 3000)
         }
         XCTAssertEqual(e.marketEvents(limit: 10).filter { $0.kind == .majorContract }.count, 1)
     }
 
     func testCompetitorLaunchAndRecognitionAreLoggedByTheirHelperOnly() throws {
-        // Both come from random weekly draws (rival offer, store opening) or from a kept promise / finished course, which need long set-ups:
-        // the shared logging helper is tested instead, and the hooks are plain calls to it next to the existing notes.
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
         e.update { s, _, _ in
             MarketEvents.log(&s, .competitorLaunch, title: "Rival launches 10% off", detail: "x", companyID: 1, amount: 10, tone: "bad")
@@ -143,7 +136,7 @@ final class MarketEventsTests: XCTestCase {
 
     func testCapDropsTheOldest() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
-        e.update { s, _, _ in for n in 0..<75 { s.week = 100 + n; MarketEvents.log(&s, .recognition, title: "e\(n)", detail: "") } }   // one a week: the weekly cap of 3 does not bite
+        e.update { s, _, _ in for n in 0..<75 { s.week = 100 + n; MarketEvents.log(&s, .recognition, title: "e\(n)", detail: "") } }
         let ev = e.marketEvents(limit: 500)
         XCTAssertEqual(ev.count, 60)
         XCTAssertEqual(ev.first?.title, "e74")
@@ -182,7 +175,6 @@ final class MarketEventsTests: XCTestCase {
         XCTAssertEqual(e.largestPaymentToday(companyID: nil)?.companyID, 77)
         e.update { s, _, _ in s.day = (s.day + 1) % 7; if s.day == 0 { s.week += 1 } }
         XCTAssertNil(e.largestPaymentToday(companyID: id))
-        // real trading books today's takings
         var (t, tid) = try engineWithCafe(weeks: 3)
         var got = false
         for _ in 0..<14 { t.nextDay(); if let p = t.largestPaymentToday(companyID: tid) { XCTAssertGreaterThan(p.amount, 0); got = true } }

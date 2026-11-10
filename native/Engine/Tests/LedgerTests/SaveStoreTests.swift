@@ -66,7 +66,6 @@ final class SaveStoreTests: XCTestCase {
         s.week = 16
         try store.save(s, summary: store.summary(of: s, trades: cat))
         XCTAssertEqual(try store.load().week, 16)
-        // Damage the main file: the previous save is used.
         try "garbage".write(to: dir.appendingPathComponent("current.ledgersave"), atomically: true, encoding: .utf8)
         XCTAssertEqual(try store.load().week, 15)
     }

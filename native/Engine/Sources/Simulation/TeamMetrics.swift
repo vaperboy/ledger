@@ -4,14 +4,11 @@ import Countries
 import Employees
 import Businesses
 
-/// Company > Team compact metrics (spec 3H): workers, average hourly rate, total hours, total payroll cost. All from the one employer-cost rule.
 public struct TeamMetrics: Equatable, Sendable {
     public var workers: Int
-    /// Average gross hourly pay across contracted hours.
     public var averageHourlyRate: Double
     public var totalHoursPerWeek: Double
     public var totalHoursPerMonth: Double
-    /// Total monthly employer cost of the people (EmployerCost, leave cover included).
     public var totalMonthlyCost: Double
     public var totalAnnualCost: Double
     public var grossMonthlyWages: Double

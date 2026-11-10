@@ -4,8 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Which picture a vehicle gets: the vehicle photos in the asset catalogue (`AppPhotos`), by the model of vehicle. Models without a photo
-/// (buses, ships, aircraft) show the vehicle icon.
 enum TechPhotos {
     static func vehicle(model: String) -> String {
         switch model {
@@ -18,9 +16,6 @@ enum TechPhotos {
     }
 }
 
-/// One item of the TechPro Store: its brands and classes, used listings, lease, subscription plans and your own companies' software. This is the
-/// old equipment shop, rebuilt for the store: choosing an offer adds a line to the basket (`StoreOrders.Line`); paying and delivery happen at checkout.
-/// A single offer pins its price and "Add to basket" at the bottom.
 struct TechProProduct: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -39,7 +34,6 @@ struct TechProProduct: View {
     @State private var pendingOwn: PendingAction?
     @State private var ownQty = 1
 
-    /// What the pinned bar adds: the basket line, the price on its left and the button's title.
     private struct Purchase {
         var line: StoreOrders.Line
         var value: String
@@ -77,7 +71,6 @@ struct TechProProduct: View {
         .confirmAction($pendingOwn)
     }
 
-    /// The pinned bar: the basket line when it holds something, then the price and the one action.
     @ViewBuilder private func bottomBar(_ buy: Purchase?) -> some View {
         if buy != nil || basketCount > 0 {
             VStack(spacing: 0) {
@@ -108,7 +101,6 @@ struct TechProProduct: View {
         }
     }
 
-    /// The supplier this page is about: "n<index>" a brand or provider, "v<id>" a make and model, "u" the used listings, "own" your own companies.
     private var offerRest: String { String(offerKey.dropFirst()) }
 
     private func title(_ e: GameEngine, _ need: EquipmentMarket.Need) -> String {
@@ -189,8 +181,6 @@ struct TechProProduct: View {
         }
     }
 
-    // MARK: Header
-
     private func header(_ need: EquipmentMarket.Need, title: String) -> some View {
         let have: Int = Int(saturating: (need.have + need.leased).rounded())
         let sub: String = EquipmentMarket.kindName(need.kind) + " \u{00B7} lasts about \(Int(need.lifeYears)) years" + (need.warrantyYears > 0 ? " \u{00B7} \(Int(need.warrantyYears)) yr warranty" : "")
@@ -219,19 +209,14 @@ struct TechProProduct: View {
                         selection: Binding<Mode>(get: { current }, set: { (m: Mode) in mode = m; finance = false }))
     }
 
-    // MARK: Rows
-
     private func stars(_ r: Double, _ n: Int) -> String { String(format: "%.1f", r) + " \u{2605} (\(n))" }
 
     private func reliabilityWord(_ r: Double) -> String { r < 0.85 ? "excellent" : r < 1.05 ? "good" : r < 1.25 ? "fair" : "poor" }
-
-    // MARK: New equipment and licences, by brand
 
     private func qty(_ need: EquipmentMarket.Need, one: Bool) -> Int {
         one ? 1 : (quantity > 0 ? quantity : max(1, Int(need.need - need.have - need.leased)))
     }
 
-    /// Quantity and how to pay, above the facts; the price and the button are in the pinned bar.
     @ViewBuilder private func buyControls(_ e: GameEngine, _ need: EquipmentMarket.Need, _ lease: Bool, one: Bool, total: Double) -> some View {
         let canFin: Bool = !lease && e.canFinance(companyID: companyID, equipmentID: equipmentID, total: total)
         if !one || canFin {
@@ -242,7 +227,6 @@ struct TechProProduct: View {
         }
     }
 
-    /// The pinned bar's line for a single offer (a brand or a vehicle); nil for the pages with their own buttons (plans, own companies, used).
     private func purchase(_ e: GameEngine, _ need: EquipmentMarket.Need, _ mode: Mode, _ cur: Currency, one: Bool) -> Purchase? {
         let lease: Bool = mode == .lease
         if offerKey.hasPrefix("v") {
@@ -281,8 +265,6 @@ struct TechProProduct: View {
         }
     }
 
-    // MARK: Items your other companies sell
-
     @ViewBuilder private func companyListings(_ e: GameEngine, _ cur: Currency) -> some View {
         let list: [OwnListing] = e.ownCompanyListings(forBuyer: companyID).filter { (l: OwnListing) -> Bool in l.equipmentID == equipmentID }
         ShopSection(title: "Sold by your companies", trailing: "\(list.count)", note: "You pay the selling company; the profit stays in your group.") {
@@ -307,10 +289,6 @@ struct TechProProduct: View {
         }
     }
 
-    // MARK: Your own software
-
-    /// A product one of your own companies builds that does this job: the buyer pays the producer its internal price (set where the product is managed).
-    /// It is taken at once (no delivery): it is a licence inside the group.
     @ViewBuilder private func ownSoftware(_ e: GameEngine, _ need: EquipmentMarket.Need, _ cur: Currency) -> some View {
         let list: [SoftwareProducts.Offer] = e.ownSoftwareOffers(buyerID: companyID, equipmentName: need.name)
         ShopSection(title: "From your own companies", trailing: "\(list.count)") {
@@ -358,8 +336,6 @@ struct TechProProduct: View {
         }
     }
 
-    // MARK: Subscriptions
-
     private func providerCard(_ e: GameEngine, _ o: EquipmentMarket.Offer, _ cur: Currency) -> some View {
         let list: [EquipmentMarket.Plan] = e.subscriptionPlans(companyID: companyID, equipmentID: equipmentID, offer: o)
         return VStack(alignment: .leading, spacing: 0) {
@@ -395,8 +371,6 @@ struct TechProProduct: View {
         .padding(.vertical, Theme.Space.m)
     }
 
-    // MARK: Used
-
     private func used() -> some View {
         ShopNote(title: "Bought used", text: "Used items are in Marketplace: second-hand goods from private sellers, with a price you can talk down.",
                  actionTitle: "Open Marketplace", identifier: "tp-open-marketplace") {
@@ -405,14 +379,12 @@ struct TechProProduct: View {
     }
 }
 
-/// A button style chosen at run time (a recommended plan gets the filled one).
 struct AnyButtonStyle: ButtonStyle {
     private let make: (ButtonStyleConfiguration) -> AnyView
     init<S: ButtonStyle>(_ s: S) { make = { (c: ButtonStyleConfiguration) -> AnyView in AnyView(s.makeBody(configuration: c)) } }
     func makeBody(configuration: Configuration) -> some View { make(configuration) }
 }
 
-/// One item a sister company sells to this one: the item, who sells it and the price a unit.
 private struct CompanyListingRow: View {
     @Environment(\.outsidePalette) private var P
     var listing: OwnListing

@@ -4,11 +4,6 @@ import Countries
 import Finance
 import Businesses
 
-/// A holding company's shares in other founders' startups. The tiers follow `HoldingStakes` (under 20% passive, 20 to 50% influence with a board seat,
-/// over 50% control, 90% or more squeeze-out right: the last shares come at fair value), with two startup rules: founders keep the majority until
-/// their first priced round (no control of a seed-stage startup), and a controlling holding lifts the startup's odds like a board that helps every week.
-/// Money moves through the holding's own account. The stakes are `rest["startups"]` records with `hid` (see `HoldingStartups`); the startup's rounds,
-/// bridges and exit then run on them, and the holding pays no personal gains tax on a sale.
 public enum StartupHolding {
     public struct Stake: Identifiable, Equatable {
         public var id: Int
@@ -16,9 +11,7 @@ public enum StartupHolding {
         public var stage: Int, stageName: String
         public var live: Bool, failed: Bool
         public var percent: Double, paid: Double
-        /// What the startup as a whole is worth now.
         public var valuation: Double
-        /// The holding's share of it.
         public var value: Double
         public var boardSeat: Bool
         public var tier: HoldingStakes.Tier
@@ -31,12 +24,10 @@ public enum StartupHolding {
         public var tierAfter: HoldingStakes.Tier
     }
 
-    /// Price of buying more of a startup the holding already holds.
     public struct MoreQuote: Equatable {
         public var percent: Double
         public var valuation: Double
         public var price: Double
-        /// 1.25 over 50% (control premium), 0.85 under 20%, fair at squeeze-out.
         public var priceFactor: Double
         public var heldAfter: Double
         public var tierAfter: HoldingStakes.Tier
@@ -50,7 +41,6 @@ public enum StartupHolding {
         HoldingStartups.records(s, holdingID: holdingID).first { $0["id"].int == stakeID }
     }
 
-    /// The holding's stakes in startups, biggest first (sold-out ones are left out).
     public static func stakes(_ s: GameState, holdingID: Int) -> [Stake] {
         HoldingStartups.records(s, holdingID: holdingID).filter { $0["st"].string != "exit" }.map { f in
             let pct = f["pct"].double
@@ -59,8 +49,6 @@ public enum StartupHolding {
                          value: f["st"].string == "live" ? f["val"].double * pct / 100 : 0, boardSeat: f["seat"].bool, tier: HoldingStakes.tier(forPercent: pct))
         }.sorted { $0.percent > $1.percent }
     }
-
-    // MARK: Buying into a pitch
 
     public static func investQuote(_ s: GameState, holdingID: Int, pitchID: Int, amount: Double, context fc: FinanceContext) -> Result<Startups.InvestQuote, HoldingStakes.Failure> {
         guard openHolding(s, holdingID) != nil else { return .failure(.notAHolding) }
@@ -73,7 +61,6 @@ public enum StartupHolding {
         }
     }
 
-    /// The holding puts money into a pitch; it gets the same share a private investor would.
     public static func invest(_ s: inout GameState, holdingID: Int, pitchID: Int, amount: Double, data: GameData, context fc: FinanceContext) -> Result<Deal, HoldingStakes.Failure> {
         switch investQuote(s, holdingID: holdingID, pitchID: pitchID, amount: amount, context: fc) {
         case .failure(let f): return .failure(f)
@@ -89,8 +76,6 @@ public enum StartupHolding {
         }
     }
 
-    // MARK: Buying more
-
     public static func buyMoreQuote(_ s: GameState, holdingID: Int, stakeID: Int, percent: Double) -> Result<MoreQuote, HoldingStakes.Failure> {
         guard openHolding(s, holdingID) != nil else { return .failure(.notAHolding) }
         guard let f = record(s, holdingID: holdingID, stakeID: stakeID), f["st"].string == "live" else { return .failure(.notFound) }
@@ -105,7 +90,6 @@ public enum StartupHolding {
         return .success(MoreQuote(percent: percent, valuation: val, price: jsRound(val * percent / 100 * factor), priceFactor: factor, heldAfter: after, tierAfter: HoldingStakes.tier(forPercent: after)))
     }
 
-    /// Buy more shares of a startup from its founders and early owners.
     public static func buyMore(_ s: inout GameState, holdingID: Int, stakeID: Int, percent: Double, data: GameData) -> Result<Deal, HoldingStakes.Failure> {
         switch buyMoreQuote(s, holdingID: holdingID, stakeID: stakeID, percent: percent) {
         case .failure(let f): return .failure(f)
@@ -125,8 +109,6 @@ public enum StartupHolding {
         }
     }
 
-    // MARK: Selling
-
     public static func sellQuote(_ s: GameState, holdingID: Int, stakeID: Int, fraction: Double) -> Result<VentureSale.Quote, HoldingStakes.Failure> {
         guard openHolding(s, holdingID) != nil else { return .failure(.notAHolding) }
         guard let f = record(s, holdingID: holdingID, stakeID: stakeID) else { return .failure(.notFound) }
@@ -134,7 +116,6 @@ public enum StartupHolding {
         return q.ok ? .success(q) : .failure(.refused(q.reason))
     }
 
-    /// Sell part of the holding's stake at the quoted price (by tier) or at an asking price (a multiple of the quoted proceeds).
     public static func sell(_ s: inout GameState, holdingID: Int, stakeID: Int, fraction: Double, askMultiplier: Double? = nil, data: GameData) -> Result<VentureSale.Outcome, HoldingStakes.Failure> {
         if case .failure(let f) = sellQuote(s, holdingID: holdingID, stakeID: stakeID, fraction: fraction) { return .failure(f) }
         let outcome = Startups.sellAsking(&s, stakeID: stakeID, fraction: fraction, askMultiplier: askMultiplier, holdingID: holdingID)

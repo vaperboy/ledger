@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// The president's desk: oxblood leather and old gold. The sitting president proposes rates and price support here; every proposal waits for
-/// an administrator. Anyone else sees who holds the office and what is proposed, read only.
 struct PresidentScreen: View {
     var e: GameEngine
     var r: CountryRead
@@ -54,8 +52,6 @@ struct PresidentScreen: View {
         .accessibilityIdentifier("country-president")
     }
 
-    // MARK: The seat
-
     private var seat: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
@@ -92,8 +88,6 @@ struct PresidentScreen: View {
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(LinearGradient(colors: [P.card, P.cardDeep], startPoint: .top, endPoint: .bottom)))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(P.accent.opacity(0.5), lineWidth: 1))
     }
-
-    // MARK: Rates
 
     private var ratesDesk: some View {
         let tLow: Double = max(GovPolicy.transferRange.lowerBound, pol.transferTax - GovPolicy.step)
@@ -136,8 +130,6 @@ struct PresidentScreen: View {
         }
         if ok { Haptics.success(); store.outcome(chosen: "Proposed new rates", result: "Transfer tax \(CivicWords.pct1(t)), gains tax \(CivicWords.pct1(g)). They start when an administrator confirms.") }
     }
-
-    // MARK: Price support
 
     private var supportDesk: some View {
         let trades: [Trade] = e.supportTrades()
@@ -198,8 +190,6 @@ struct PresidentScreen: View {
             store.outcome(chosen: "Proposed price support", result: "\(tradeName(trade)): \(CivicWords.pct(pct)) of sales for \(CivicWords.weeks(weeks)). It starts when an administrator confirms.")
         }
     }
-
-    // MARK: Lists
 
     private var supports: some View {
         let list: [GovPriceSupport] = r.gov.supports.reversed().filter { $0.status != .rejected }

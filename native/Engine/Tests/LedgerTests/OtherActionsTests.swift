@@ -30,13 +30,11 @@ final class OtherActionsTests: XCTestCase {
         XCTAssertEqual(m.partTimeShare, (m.weeklyHours ?? 0) / 37.5, accuracy: 1e-9)
         XCTAssertLessThanOrEqual(m.weeklyHours ?? 99, 30)
         let wage20 = m.monthlyWage
-        // More hours, more pay (pay follows hours) unless the person studies and cannot.
         if m.num("maxH", 60) >= 30 {
             XCTAssertTrue(e.contractPropose(companyID: id, personID: a, proposal: .init(.hours, amount: 30, choice: "hours")).changedTerms)
             m = e.state.company(id)!.staff.first { $0.id == a }!
             XCTAssertEqual(m.monthlyWage, wage20 * 30 / 20, accuracy: 1e-6)
         }
-        // A seasonal hire for the months that are not now is off and unpaid.
         let now = GameCalendar.month(week: e.state.week) + 1
         let other = (1...12).filter { $0 != now }.prefix(2).map { $0 }
         XCTAssertEqual(e.hire(personID: b, companyID: id, monthlyWage: e.state.people[b]!.askingMonthlyWage * 1.3, terms: Hiring.Terms(hours: 25, seasonMonths: Array(other))), .ok)
@@ -44,11 +42,10 @@ final class OtherActionsTests: XCTestCase {
         XCTAssertTrue(s.isOffSeason)
         XCTAssertFalse(StaffTalks.seasonText(Array(other)).isEmpty)
         XCTAssertTrue(e.contractPropose(companyID: id, personID: b, proposal: .init(.hours, choice: "season:summer")).changedTerms)
-        // Going full time is refused when it is not the work the person wants; once it works, hours and seasons are gone.
         let full = e.contractPropose(companyID: id, personID: a, proposal: .init(.hours, choice: "full"))
         switch full {
         case .agreed: XCTAssertNil(e.state.company(id)!.staff.first { $0.id == a }!.weeklyHours)
-        case .unwilling, .notPossible: break   // not the work they want, or a student: said in words
+        case .unwilling, .notPossible: break
         default: XCTFail("going full time is agreed, or the person is unwilling: \(full)")
         }
         if case .notPossible = e.contractPropose(companyID: id, personID: a, proposal: .init(.hours, choice: "part")) {} else { XCTFail("part time all year is for seasonal workers") }

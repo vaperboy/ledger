@@ -4,21 +4,13 @@ import Countries
 import Employees
 import Finance
 
-/// What a manager brings you: proposals to buy equipment, vehicles and premises, the proposals of a meeting, the profit bonus, the duties
-/// of a promoted manager, an assistant's monthly suggestion and basic insurance, and the rule that a manager never runs a team from home.
-/// Originals: engine/management/managers.js (`decideProposal`, `execProposal`), features/people/manager_search_and_meetings.js (`mprops`, `mtgo2`,
-/// `ACTS.mprop`), engine/core/week.js (the profit bonus), features/people/worker_roles_and_promotions.js (the duties step),
-/// features/people/owner_hours_clients_assistants.js (`asstWeek`), features/people/managers_who_manage.js (section 7), features/people/manager_duties.js.
 extension ManagerModel {
-    // MARK: Buying what is the bottleneck
-
-    /// What the manager would buy for the part that limits capacity. Original: the `over` branch of `decideProposal`.
     static func bottleneckProposal(_ s: GameState, _ co: Company, _ bd: Trade, data: GameData) -> Proposal? {
         let w = World(state: s, data: data)
         guard let bot = CapacityModel.compute(co, bd, w).bottleneck else { return nil }
         let key = bot.key.split(separator: ":").last.map(String.init) ?? ""
         switch bot.kind {
-        case .staff: return nil   // people are the staffing plan's job
+        case .staff: return nil
         case .equip:
             guard let e = bd.equipment.first(where: { $0.id == key }) else { return nil }
             if let vm = e.vehicleModels?.first, let v = data.catalog.tables.vehicles[vm] { return Proposal(kind: "veh", cost: EquipmentMarket.vehiclePrice(v, factor: 1, w) * 0.5, id: key) }
@@ -30,7 +22,6 @@ extension ManagerModel {
         }
     }
 
-    /// A duty the manager looks after unless you keep it (`duty56[k] = 0`); only `prem` (asking to expand the premises) is read.
     public static func dutyKept(_ co: Company, _ k: String) -> Bool { co.value("duty56")[k].isNull || co.value("duty56")[k].double != 0 }
     public static func setManagerDuty(_ s: inout GameState, companyID: Int, duty: String, manager: Bool) {
         guard let i = s.companyIndex(companyID) else { return }
@@ -39,8 +30,6 @@ extension ManagerModel {
         s.companies[i].set("duty56", d)
     }
 
-    /// A manager promoted for only some duties leaves the other decisions to you: `kind` is the duty "hire" (the staffing plan) or a purchase kind.
-    /// Original: the `makeProposal` step of worker_roles_and_promotions.js.
     static func dutyAllows(_ n: Person, _ kind: String) -> Bool {
         let k = n.value("k11")
         guard k["post"].string.hasPrefix("mgr@") else { return true }
@@ -49,10 +38,8 @@ extension ManagerModel {
         return k["duties"].array.contains { $0.string == nd }
     }
 
-    /// Proposal kinds that older saves may still hold open: hiring and seasonal help are the staffing plan's now.
     static let legacyProposalKinds: Set<String> = ["hire", "seas"]
 
-    /// Close the open hire and seasonal-help questions of an older save so nobody is asked about something that no longer exists.
     static func retireLegacyProposals(_ s: inout GameState, companyID: Int? = nil) {
         for i in s.inbox.indices where s.inbox[i].status == "open" && (companyID == nil || s.inbox[i].companyID == companyID!) {
             guard ["prop", "mprop"].contains(s.inbox[i].actionID), legacyProposalKinds.contains(s.inbox[i].value("data")["t"].string) else { continue }
@@ -60,7 +47,6 @@ extension ManagerModel {
         }
     }
 
-    /// Carry out a purchase the manager asked for. Original: `execProposal` for `eq`, `veh`, `space`.
     static func buyForProposal(_ s: inout GameState, _ ci: Int, _ dp: Proposal, _ n: Person, data: GameData) {
         let co = s.companies[ci]
         let w = World(state: s, data: data)
@@ -92,10 +78,8 @@ extension ManagerModel {
         }
     }
 
-    // MARK: Meeting: the manager brings two or three proposals
-
     public struct ManagerProposal: Equatable, Sendable {
-        public var kind: String          // price_up, price_down, mkt_more, quality, cut, eq, save
+        public var kind: String
         public var title: String
         public var why: String
         public var role: String
@@ -105,7 +89,6 @@ extension ManagerModel {
         public var once: Double
     }
 
-    /// The proposals a manager would bring to a meeting, with costs and expected revenue, best first. Original: `mprops`.
     public static func managerProposals(_ s: inout GameState, companyID: Int, data: GameData) -> [ManagerProposal] {
         guard let ci = s.companyIndex(companyID), let bd = data.catalog[s.companies[ci].type] else { return [] }
         let co = s.companies[ci]
@@ -143,7 +126,7 @@ extension ManagerModel {
         if co.maintenance > 0 && rev > 0 && out.count < 3 { out.append(ManagerProposal(kind: "save", title: "Trim upkeep", why: "A little less maintenance saves money with small risk.", role: "", id: "", addedCost: -max(cur.scaledPrice(100), rev * 0.015), addedRevenue: -rev * 0.01, once: 0)) }
         let dir = OwnerMeetings.directive(co)
         var scored: [(ManagerProposal, Double)] = out.map { x in
-            let lean = dir.map { OwnerMeetings.bias(directive: $0, kind: x.kind) * max(abs(x.addedRevenue - x.addedCost), rev * 0.05) } ?? 0   // the owner's strategic direction tilts the ranking
+            let lean = dir.map { OwnerMeetings.bias(directive: $0, kind: x.kind) * max(abs(x.addedRevenue - x.addedCost), rev * 0.05) } ?? 0
             return (x, x.addedRevenue - x.addedCost - x.once / 26 + s.random.gauss() * abs(x.addedRevenue - x.addedCost + 1) * 0.6 * (1 - q) + lean)
         }
         scored.sort { $0.1 > $1.1 }
@@ -153,7 +136,6 @@ extension ManagerModel {
         (ch == "google" ? [500, 1500, 3000, 7000, 15000] : [300, 1000, 2500, 5000, 10000]).map { cur.scaledPrice($0) }
     }
 
-    /// Call a meeting with one manager: they put proposals on the table as messages you answer. Original: `ACT.mtgo2`.
     @discardableResult
     public static func meetForProposals(_ s: inout GameState, companyID: Int, data: GameData) -> Int? {
         guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID, let n = s.people[mid] else { return nil }
@@ -177,7 +159,6 @@ extension ManagerModel {
         return props.count
     }
 
-    /// Answer a meeting proposal: 0 approve (hires wait for you to pick), 1 let the manager decide, 2 not now. Original: `ACTS.mprop`, `doProp`.
     static func answerProposal(_ s: inout GameState, message m: Message, option idx: Int, data: GameData, marketing: MarketingTables) {
         guard idx != 2, !legacyProposalKinds.contains(m.value("data")["t"].string), let ci = s.companyIndex(m.companyID), let mid = s.companies[ci].managerID, let n = s.people[mid], let bd = data.catalog[s.companies[ci].type] else { return }
         let d = m.value("data")
@@ -192,45 +173,12 @@ extension ManagerModel {
         if let k = keys[kind], let said = ask(&s, companyID: m.companyID, key: k, data: data, marketing: marketing) { s.note("\(n.name): \(said)", tone: "n", companyID: m.companyID) }
     }
 
-    // MARK: Profit bonus and a manager's year
-
-    /// The share of a month's profit a manager is paid on top of the salary is booked in `MonthEnd.closeMonth` (original: `monthEndCoCore`).
     public static func setManagerProfitBonus(_ s: inout GameState, companyID: Int, share: Double) {
         guard let i = s.companyIndex(companyID), s.companies[i].managerID != nil else { return }
         s.companies[i].managerProfitBonus = clamp(share, 0, 0.3)
     }
 
-    // MARK: Assistants: monthly suggestion and basic insurance
-
-    /// Every fourth week the assistant advises on something; with the insurance duty they also take out basic insurance. Original: `asstWeek` (end).
-    static func assistantExtras(_ s: inout GameState, companyIndex ci: Int, data: GameData) {
-        let co = s.companies[ci]
-        var a = co.value("asst")
-        guard a["npc"].int != 0, let n = s.people[a["npc"].int], co.status == .open else { return }
-        if a["duties"].array.contains(where: { $0.string == "insure" }), !co.value("insr").isNull, co.value("ins").object.values.allSatisfy({ !$0.bool }) {
-            // A policy the owner switched off themselves (`insOwn`) stays off: the assistant only fills gaps the owner left.
-            let own = co.value("insOwn")
-            var ins = co.value("ins"); if own["liab"].isNull { ins["liab"] = 1 }
-            let hasPlace = co.value("prem")["m2"].double > 0 && own["prop"].isNull
-            if hasPlace { ins["prop"] = 1 }
-            s.companies[ci].set("ins", ins)
-            s.note("\(n.name) took out basic liability\(hasPlace ? " and property" : "") insurance for \(co.name).", tone: "n", companyID: co.id)
-        }
-        let last = a["sug"].isNull ? a["w0"].int : a["sug"].int
-        if s.week - last >= 4 {
-            a["sug"] = .number(Double(s.week)); s.companies[ci].set("asst", a)
-            let props = managerProposals(&s, companyID: co.id, data: data)
-            if !props.isEmpty {
-                let x = props[Int(HashedRandom.first("asug:\(co.id):\(s.week)") * Double(min(3, props.count))) % props.count]
-                s.addMessage(kind: "info", from: n.name, title: "Suggestion for \(co.name): \(x.title)", body: x.why + " I can only advise. You decide.", companyID: co.id, tone: "n", status: "done")
-            }
-        }
-    }
-
-    // MARK: A manager never runs a team from your home
-
     static let homeTrades: Set<String> = ["plumber", "electrician", "construction", "mktg", "webdev", "acctfirm", "law", "cleaning", "estate", "engcons", "event", "drivsk", "staffing"]
-    /// A manager with staff rents a small place if the company works from home. Original: managers_who_manage.js section 7.
     static func managerRentsPlace(_ s: inout GameState, companyIndex ci: Int, data: GameData) {
         let co = s.companies[ci]
         guard co.status == .open, let mid = co.managerID, let n = s.people[mid], homeTrades.contains(co.type), !(co.value("prem")["m2"].double > 0), !co.staff.isEmpty else { return }

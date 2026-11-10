@@ -6,7 +6,6 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// The staff-terms gate, the financing-fee category, draft invoices and the commission on-cost.
 final class PayrollInvoiceAndStaffTermsTests: XCTestCase {
     private func start(trade: String = "cafe", seed: Int = 17) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
@@ -40,7 +39,6 @@ final class PayrollInvoiceAndStaffTermsTests: XCTestCase {
     func testFinancingFeeIsItsOwnCategoryAndDraftInvoicesBecomeSent() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 8)
         e.update { s, _, _ in Ledger.move(&s, .me, 600_000_000, why: "Test funds") }
-        // Loan arrangement fee: books under "fin", not interest.
         guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 150_000_000) else { return XCTFail("start") }
         _ = e.quickSetup(companyID: id); _ = e.openCompany(companyID: id)
         for _ in 0..<100 { _ = e.nextDay() }
@@ -54,7 +52,6 @@ final class PayrollInvoiceAndStaffTermsTests: XCTestCase {
                 XCTAssertEqual(Books.expenses(["fin": 10]), 10, "it counts as a cost in the profit")
             }
         }
-        // Draft invoices: a trade with business customers raises drafts that the next weekly run sends.
         func records(_ id: Int) -> [InvoiceBook.Record] { e.state.company(id).map { InvoiceBook.records($0) } ?? [] }
         var checkedDraft = false
         defer { XCTAssertTrue(checkedDraft, "some trade with business customers raised invoices") }

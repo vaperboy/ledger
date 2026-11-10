@@ -4,34 +4,20 @@ import Countries
 import Finance
 import Businesses
 
-/// Selling a whole company. Original: features/player/selling_startups_and_crisis.js (the sale screen) and
-/// engine/world/deals.js (`acceptSale`). You put a company on the market, privately or through a broker; buyers make
-/// offers over the next weeks (each open six weeks); you accept, counter once (+8%) or decline. Listings live in
-/// `state.rest["sales"]`, earn-outs in `state.rest["deferred"]`.
-///
-/// Selling part of your shares works the same way (`pct` < 100, limited companies only; the buyer pays you personally and takes
-/// a share of the company). Raising funding from investors (new shares, money into the company) is in `Funding`.
-/// Routes (the listing's `m`): a quiet handshake ("private"), a broker (4% fee, word gets out), an auction ("auction": a reserve, three weekly
-/// bidding rounds with named bidders; hammer any time or wait for higher bids, but bidders drop out), and a management buyout ("mbo").
-/// A merger with a rival and a sale to a rival group are direct deals (`mergeWithRival`, `GroupDeals.sellToGroup`). Every route ends in `complete` or `sellPart`.
-/// The buyer talk of the original (`V.saletalk`: ask about staff or payment, name your price, patience) is `talkAsk` and `talkCounter`.
 public enum CompanySale {
     public struct Offer: Identifiable, Equatable {
         public var id: Int
-        public var kind: String          // private, fund, rival, mbo
+        public var kind: String
         public var buyer: String
-        public var price: Double         // for the whole company
+        public var price: Double
         public var note: String
         public var expiresWeek: Int
         public var countered: Bool
-        /// What the buyer will pay at most, and how many times you can overreach before they leave. Set when the talk starts.
         public var maxPrice: Double = 0
         public var patience: Int = 3
         public var talk: [TalkLine] = []
-        /// Set when the bidder is a rival group (the sale then goes through `GroupDeals.sellToGroup`).
         public var group: String = ""
     }
-    /// One line of the buyer talk: `mine` = you said it; `system` = a notice.
     public struct TalkLine: Equatable {
         public var mine: Bool
         public var system: Bool = false
@@ -42,14 +28,10 @@ public enum CompanySale {
         public var broker: Bool
         public var since: Int
         public var offers: [Offer]
-        /// 100 = the whole company, else the percent of YOUR shares that is for sale.
         public var pct: Int = 100
-        /// private, broker, auction or mbo.
         public var route: String = "private"
-        /// Auction: the lowest whole-company price you accept (for a stake sale, the price of the stake), and the bidding round (0...3).
         public var reserve: Double = 0
         public var round: Int = 0
-        /// Broker and auction cost 4% of the price.
         public var hasFee: Bool { route == "broker" || route == "auction" }
     }
 
@@ -62,8 +44,6 @@ public enum CompanySale {
         let goodwillFactor = s.week - co.foundedWeek < youngWeeks ? min(1, factor) : factor
         return cash * min(1, factor) + (value - cash) * goodwillFactor
     }
-
-    // MARK: Reading
 
     public static func listing(_ s: GameState, companyID: Int) -> Listing? {
         guard let raw = (s.rest["sales"]?.array ?? []).first(where: { $0["co"].int == companyID }) else { return nil }
@@ -78,7 +58,6 @@ public enum CompanySale {
                        route: ["broker", "auction", "mbo"].contains(raw["m"].string) ? raw["m"].string : "private", reserve: raw["res"].double, round: raw["rnd"].int)
     }
 
-    /// Value as shown on the sale screen: what a buyer would pay for the whole company.
     public static func estimatedValue(_ s: GameState, companyID: Int, data: GameData) -> Double {
         guard let co = s.company(companyID) else { return 0 }
         return max(0, Valuation.companyValue(co, state: s, trades: data.catalog))
@@ -86,15 +65,12 @@ public enum CompanySale {
 
     public static func canSell(_ s: GameState, companyID: Int) -> Bool { SaleListings.canSell(s, companyID: companyID) }
 
-    // MARK: Listing
-
     static func write(_ s: inout GameState, _ list: [JSONValue]) { s.rest["sales"] = .array(list) }
 
     @discardableResult
     public static func startListing(_ s: inout GameState, companyID: Int, broker: Bool, pct: Int = 100) -> Bool {
         SaleListings.start(&s, companyID: companyID, route: broker ? "broker" : "private", pct: pct)
     }
-    /// List with a route: "private", "broker" or "mbo" (an auction is `startAuction`). Only limited companies sell part of their shares; keep at least 1%.
     @discardableResult
     public static func startListing(_ s: inout GameState, companyID: Int, route: String, pct: Int = 100) -> Bool {
         guard ["private", "broker", "mbo"].contains(route) else { return false }
@@ -114,7 +90,6 @@ public enum CompanySale {
         update(&s, companyID: companyID) { l in l["offers"] = .array(l["offers"].array.filter { $0["id"].int != offerID }) }
     }
 
-    /// Ask for 8% more, once. Some buyers walk away. Original: `ACT.salectr`.
     public static func counter(_ s: inout GameState, companyID: Int, offerID: Int) {
         guard let o = listing(s, companyID: companyID)?.offers.first(where: { $0.id == offerID }), !o.countered else { return }
         let ok = s.random.chance(o.kind == "rival" || o.kind == "fund" ? 0.55 : 0.4)
@@ -131,12 +106,10 @@ public enum CompanySale {
         if !ok { s.note("\(o.buyer) walked away.", tone: "n", companyID: companyID) }
     }
 
-    /// Accept an offer. Returns the cash you get, or nil if it is no longer possible.
     @discardableResult
     public static func accept(_ s: inout GameState, companyID: Int, offerID: Int, data: GameData, context fc: FinanceContext) -> Double? {
         guard let l = listing(s, companyID: companyID), let o = l.offers.first(where: { $0.id == offerID }), let i = s.companyIndex(companyID) else { return nil }
-        if Shareholders.isBlocked(s, companyID: companyID) { return nil }   // the other owners block a sale for half a year
-        // A company with partners is sold only through the listing its board voted for, and not for much less than it is worth.
+        if Shareholders.isBlocked(s, companyID: companyID) { return nil }
         let board = SaleListings.isBoardListing(s, companyID: companyID)
         if l.pct >= 100 {
             if !board, SaleListings.boardBlock(s, companyID: companyID) != nil { return nil }
@@ -172,21 +145,18 @@ public enum CompanySale {
         return nil
     }
 
-    /// Hammer down: take the highest bid standing now. Nil when nobody has bid.
     @discardableResult
     public static func hammer(_ s: inout GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> Double? {
         guard let l = listing(s, companyID: companyID), let best = l.offers.max(by: { $0.price < $1.price }) else { return nil }
         return accept(&s, companyID: companyID, offerID: best.id, data: data, context: fc)
     }
 
-    /// The sale itself: proceeds to you, loans closed, staff released. Original: `acceptSale`.
-    /// With `mbo` a third of the price is lent back to the buyers and paid after two years.
     @discardableResult
     static func complete(_ s: inout GameState, companyIndex i: Int, buyer: String, price: Double, mbo: Bool = false, data: GameData, context fc: FinanceContext) -> Double? {
         guard s.companies[i].status.isLive, SaleListings.boardBlock(s, companyID: s.companies[i].id) == nil else { return nil }
         HeldMoney.settle(&s, companyID: s.companies[i].id)
         let co = s.companies[i]
-        defer { if co.holdingID != 0 { HoldingModel.refreshAssets(&s, holdingID: co.holdingID, data: data) } }   // a sold company leaves the holding's assets at once
+        defer { if co.holdingID != 0 { HoldingModel.refreshAssets(&s, holdingID: co.holdingID, data: data) } }
         let mine = co.ownership / 100
         let proceeds = jsRound(price * mine)
         let basis = max(0, co.injectedCapital)
@@ -216,7 +186,6 @@ public enum CompanySale {
         return now
     }
 
-    /// Part of your shares go to a buyer; the cash is yours. Original: `sellPart`.
     static func sellPart(_ s: inout GameState, companyIndex i: Int, pct: Double, amount: Double, buyer: String, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         let t = CapTable.table(co)
@@ -227,9 +196,6 @@ public enum CompanySale {
         s.note("Sold \(Int(pct))% of your shares in \(co.name) to \(buyer) for \(fc.currency(co.countryCode, s).display(amount)).", tone: "good", companyID: co.id)
     }
 
-    // MARK: The buyer talk (V.saletalk)
-
-    /// Ask the buyer something. kind: "staff" or "pay". Original: `ACT.saleq`.
     public static func talkAsk(_ s: inout GameState, companyID: Int, offerID: Int, question: String) {
         guard let o = listing(s, companyID: companyID)?.offers.first(where: { $0.id == offerID }) else { return }
         let staffAnswer = ["rival": "We would merge it with ours. Some jobs will go.", "fund": "We keep the team and the name. We want it to grow.", "mbo": "I know everyone here. Nobody goes.",
@@ -245,9 +211,6 @@ public enum CompanySale {
 
     public enum TalkResult: Equatable { case unchanged, agreed(Double), stretched(Double), refused, walkedAway }
 
-    /// Name your price. At or below the offer: they ask you to sign. Up to their limit: they agree. Above it the buyer answers through the shared
-    /// `Negotiation` (it is a buyer, so it wants the price down): it stretches towards a figure it can pay, usually one it can really pay and now and then
-    /// an unrealistic one that does not move the offer; an insulting ask is refused; and when its patience is gone it walks away. Original: `ACT.salecounter`.
     @discardableResult
     public static func talkCounter(_ s: inout GameState, companyID: Int, offerID: Int, price: Double) -> TalkResult {
         guard let l = listing(s, companyID: companyID), let o = l.offers.first(where: { $0.id == offerID }) else { return .unchanged }
@@ -298,9 +261,6 @@ public enum CompanySale {
         }
     }
 
-    // MARK: Weekly
-
-    /// How well the company is doing in the eyes of investors, 0...1. Original: `traction`.
     static func traction(_ co: Company, _ s: GameState) -> Double {
         let e = CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week)
         let rev = (co.books.year["rev"] ?? 0) > 0 ? co.books.year["rev"]! : co.lastWeekRevenue * 52
@@ -318,7 +278,6 @@ public enum CompanySale {
         "private": "A private buyer who wants to run it themselves.",
         "player": "Another player who wants to run it."]
 
-    /// Offers arrive; old ones lapse; earn-outs fall due. Original: `salesWeek`, `deferredWeek`.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         for raw in s.rest["sales"]?.array ?? [] {
             let id = raw["co"].int
@@ -333,8 +292,7 @@ public enum CompanySale {
                 let currency = fc.currency(co.countryCode, s)
                 let tr = traction(co, s)
                 let profit = CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week) > 0
-                let hostedInv = StaffPerks.hosted(s, "inv")   // investors you hosted: buyers come sooner and pay a little more
-                // A buyout listing hears only from the manager, by a hash of the company and the week (no shared random rolls).
+                let hostedInv = StaffPerks.hosted(s, "inv")
                 let mboU = HashedRandom.first("mbo:\(id):\(s.week)")
                 if route == "mbo" ? (offers.isEmpty && mboU < 0.3 && co.managerID != nil && s.people[co.managerID!] != nil) : s.random.chance((broker ? 0.42 : 0.16) * (0.35 + tr) * (profit ? 1 : 0.45) * (1 + 0.35 * hostedInv)) {
                     var kinds = pct == 100 ? ["private", "fund", "rival"] : ["private", "fund", "angel"]
@@ -361,7 +319,6 @@ public enum CompanySale {
             }
             update(&s, companyID: id) { $0["offers"] = .array(offers) }
         }
-        // Earn-outs
         var keep: [JSONValue] = []
         for d in s.rest["deferred"]?.array ?? [] {
             guard s.week >= d["w"].int else { keep.append(d); continue }
@@ -375,13 +332,10 @@ public enum CompanySale {
         s.rest["deferred"] = .array(keep)
     }
 
-    // MARK: Auction
-
     static let fundNames = ["Northgate Capital", "Ashford Partners", "Bluewater Equity", "Kestrel Growth Fund", "Harbour Street Investments"]
     static let buyerNames = ["A family business from the area", "An entrepreneur expanding nearby", "A retired owner looking for a new venture", "A private buyer with cash ready"]
     static let angelNames = ["A business angel", "A private investor", "An investor who wants a say"]
 
-    /// What a whole-company buyer would pay at most, by kind, in the units of the sale (the whole company, or the stake for a part sale).
     static func bidLimit(_ s: GameState, _ co: Company, pct: Int, kind: String, u: Double, data: GameData, context fc: FinanceContext) -> Double {
         let tr = traction(co, s)
         let hostedInv = StaffPerks.hosted(s, "inv")
@@ -391,8 +345,6 @@ public enum CompanySale {
         return pct == 100 ? worth : worth * Double(pct) / 100 * co.ownership / 100
     }
 
-    /// Run an auction: set the lowest price you accept (`reserve`); three weekly rounds of bids from named bidders follow. Bidders are drawn by a
-    /// hash of the company and the week, so the same sale always draws the same field. Fee: 4%, and word gets out.
     @discardableResult
     public static func startAuction(_ s: inout GameState, companyID: Int, reserve: Double, pct: Int = 100, data: GameData, context fc: FinanceContext) -> Bool {
         guard let i = s.companyIndex(companyID), reserve > 0, SaleListings.routeProblem(s, companyID: companyID, route: "auction", pct: pct) == nil else { return false }
@@ -425,8 +377,6 @@ public enum CompanySale {
         return true
     }
 
-    /// One bidding round. Bids rise by about 7% a round; a bidder may drop out; bids under your reserve stay hidden. After round three the bids stand
-    /// for three weeks and then lapse; with no bid at your reserve the auction ends unsold.
     static func auctionWeek(_ s: inout GameState, companyIndex i: Int, raw: JSONValue, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i], id = co.id, w0 = raw["w0"].int
         let rnd = raw["rnd"].int
@@ -465,17 +415,13 @@ public enum CompanySale {
         }
     }
 
-    // MARK: Routes, stake tiers and what each unlocks
-
     public struct Route: Identifiable, Equatable {
         public var id: String
         public var title: String
         public var pitch: String
         public var available: Bool
-        /// Why it cannot be used now (empty when available).
         public var why: String
     }
-    /// Every way to sell, with the reason when one is shut. ids: private, broker, auction, mbo, merger, group, stake, ipo, franchise.
     public static func routes(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> [Route] {
         guard let co = s.company(companyID) else { return [] }
         let whole = SaleListings.routeProblem(s, companyID: companyID, route: "private", pct: 100)
@@ -507,13 +453,11 @@ public enum CompanySale {
     public struct StakeTier: Identifiable, Equatable {
         public var id: Int { pct }
         public var pct: Int
-        /// Points of the company the buyer gets, and what you keep.
         public var buyerPoints: Double
         public var youKeep: Double
         public var unlocks: [String]
         public var allowed: Bool
     }
-    /// 10 / 25 / 34 / 49% of YOUR shares, with what the buyer gains: a board seat from 20 points, a block over 33.4, control over 50.
     public static func stakeTiers(_ s: GameState, companyID: Int) -> [StakeTier] {
         guard let co = s.company(companyID) else { return [] }
         return [10, 25, 34, 49].map { p in
@@ -527,8 +471,6 @@ public enum CompanySale {
         }
     }
 
-    // MARK: Merger
-
     public struct MergeCandidate: Identifiable, Equatable { public var id: Int; public var name: String; public var owner: String; public var size: Double }
     public static func mergeCandidates(_ s: GameState, companyID: Int) -> [MergeCandidate] {
         guard let co = s.company(companyID) else { return [] }
@@ -537,8 +479,6 @@ public enum CompanySale {
         }.map { MergeCandidate(id: $0["id"].int, name: $0["name"].string, owner: $0["owner"].string, size: $0["size"].double) }
     }
     public enum MergeResult: Equatable { case merged, declined, refused(String) }
-    /// Merge with a rival: it joins the company (more size, awareness and demand), and its owner gets `pct`% of the company. 30% is certain; less
-    /// is a try that the rival owner may turn down (decided by a hash of the pair and the week, so you can try again next week).
     @discardableResult
     public static func mergeWithRival(_ s: inout GameState, companyID: Int, rivalID: Int, pct: Double, data: GameData, context fc: FinanceContext) -> MergeResult {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open else { return .refused("The company must be open.") }
@@ -556,10 +496,7 @@ public enum CompanySale {
         return .merged
     }
 
-    // MARK: Selling to a rival group
-
     public struct GroupBuyer: Identifiable, Equatable { public var id: String; public var name: String; public var price: Double }
-    /// What each active group would pay for the whole company now: about its value, a little either side by a hash of the group and the week.
     public static func groupBuyers(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> [GroupBuyer] {
         guard let co = s.company(companyID), co.status.isLive, co.type != "hold", !s.isBranch(co), !Shareholders.isBlocked(s, companyID: companyID), SaleListings.boardBlock(s, companyID: companyID) == nil else { return [] }
         let premium = BrandValues.salePremium(BrandValues.company(s, co).score)
@@ -568,7 +505,6 @@ public enum CompanySale {
             return GroupBuyer(id: g["id"].string, name: g["name"].string, price: (saleWorth(s, co, data: data, factor: f) / 1000).rounded() * 1000)
         }
     }
-    /// Approach a group: it buys at its quote and the company becomes one of its sites. Returns the cash you get.
     @discardableResult
     public static func sellToGroupNow(_ s: inout GameState, companyID: Int, groupID: String, data: GameData, context fc: FinanceContext) -> Double? {
         guard let i = s.companyIndex(companyID), let q = groupBuyers(s, companyID: companyID, data: data, context: fc).first(where: { $0.id == groupID }), !SaleListings.isListed(s, companyID: companyID) else { return nil }

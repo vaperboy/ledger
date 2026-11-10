@@ -2,8 +2,6 @@ import XCTest
 import SwiftUI
 @testable import Ledger
 
-/// The claim logic of nested hosts (a `.sheet` with `.popupHost()`), the order of arrival, the step-back rule of a tall popup with its own
-/// pages, and the popup role of a negotiation answer.
 final class PopupHostTests: XCTestCase {
 
     private func put(_ host: PopupHost, _ key: String, _ priority: PopupPriority = .panel) {
@@ -18,8 +16,6 @@ final class PopupHostTests: XCTestCase {
         let items: [PopupQueue.Item] = entries.map { (e: PopupEntry) -> PopupQueue.Item in e.item }
         return PopupQueue.visible(items)
     }
-
-    // MARK: Order of arrival
 
     func testEntriesGetIncreasingArrivalNumbers() {
         let host = PopupHost()
@@ -72,8 +68,6 @@ final class PopupHostTests: XCTestCase {
         XCTAssertEqual(visible(host.drawnEntries()), "discussion")
         XCTAssertEqual(keys(host.drawnEntries()), ["profile", "discussion"])
     }
-
-    // MARK: Nested hosts
 
     func testANestedHostClaimsTheHostAboveAndDrawsItsPopupsOnce() {
         let root = PopupHost()
@@ -156,15 +150,11 @@ final class PopupHostTests: XCTestCase {
         XCTAssertEqual(host.claims, 0)
     }
 
-    // MARK: Step back in a tall popup
-
     func testCloseInATallPopupPopsOnePageFirstAndClosesAtTheRoot() {
         XCTAssertEqual(PopupStep.forClose(pagesPushed: 2), .popPage)
         XCTAssertEqual(PopupStep.forClose(pagesPushed: 1), .popPage)
         XCTAssertEqual(PopupStep.forClose(pagesPushed: 0), .closePopup)
     }
-
-    // MARK: Negotiation answers
 
     func testOnlyAnAgreementIsAnEffectLine() {
         XCTAssertEqual(HireFeedback.hired("ok").popupRole, .effect)

@@ -4,7 +4,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// What the stores of a chain follow: a price band, a headcount floor and an ordering policy, kept on the chain and read through one call.
 final class ChainStandardsTests: XCTestCase {
     private func chain() throws -> (e: GameEngine, id: Int, a: Int, b: Int) {
         var e = try ChainsTests.engine("NO")
@@ -43,7 +42,6 @@ final class ChainStandardsTests: XCTestCase {
         let chainPrice = Chains.chain(e.state, id: id)?["rules"]["price"].double ?? 0
         XCTAssertEqual(e.state.company(b)?.priceLevel ?? 99, min(3, chainPrice + 1), "asked for +3, held to the band")
         XCTAssertEqual(e.state.company(a)?.priceLevel ?? 99, max(-3, chainPrice - 1), "asked for -3, held to the band")
-        // widening the band lets the store's own step through
         e.setChainStandards(chainID: id, priceLow: -3, priceHigh: 3)
         XCTAssertEqual(e.state.company(b)?.priceLevel ?? 99, min(3, chainPrice + 3))
     }

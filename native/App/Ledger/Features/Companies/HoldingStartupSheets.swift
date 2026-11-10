@@ -6,7 +6,6 @@ import Businesses
 import Events
 import Simulation
 
-/// The holding backs a startup from a pitch: amount, the engine's quote (share, valuation, tier reached), cash check, then confirm.
 struct HoldingBackStartupSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -92,7 +91,6 @@ struct HoldingBackStartupSheet: View {
     }
 }
 
-/// The holding buys more of a startup it already holds: percent, price with the premium or discount for the tier it reaches, cash check.
 struct HoldingBuyMoreStartupSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -172,7 +170,6 @@ struct HoldingBuyMoreStartupSheet: View {
     }
 }
 
-/// The holding sells part or all of a startup stake: the quote by tier, an asking price, the buyer's counter-offer or reason for declining.
 struct HoldingSellStartupSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss

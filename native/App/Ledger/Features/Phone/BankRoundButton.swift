@@ -3,7 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-/// A round outlined action button with its label under it (Deposit, Send, Transfer, Buy, Sell). Never filled: only Next Day is.
 struct BankRoundButton: View {
     @Environment(\.outsidePalette) private var P
     var glyph: String

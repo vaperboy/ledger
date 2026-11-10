@@ -18,7 +18,6 @@ func dueText(_ week: Int, now: Int) -> String {
     return left <= 0 ? "due" : left == 1 ? "1 wk" : "\(left) wk"
 }
 
-/// One project in full: key figures, every milestone with its date, what blocks it, and what lateness costs.
 struct ProjectTimelineDetail: View {
     @EnvironmentObject var store: GameStore
     var lineID: String

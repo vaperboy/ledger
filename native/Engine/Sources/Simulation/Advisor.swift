@@ -4,12 +4,9 @@ import Countries
 import Finance
 import Businesses
 
-/// What the Home screen offers the player right now: a short, ranked list of things worth doing, each with a real action,
-/// and a "first steps" tracker. Everything is derived from the state, so it cannot disagree with the books.
 public struct Suggestion: Identifiable, Equatable, Sendable {
     public enum Action: Equatable, Sendable {
         case openMessage(Int)
-        /// The section is the app's company section key ("finances", "setup", ...); nil opens the company hub.
         case openCompany(Int, section: String? = nil)
         case openLoans
         case openInvest
@@ -19,7 +16,7 @@ public struct Suggestion: Identifiable, Equatable, Sendable {
     public enum Tone: String, Sendable { case good, warn, bad, neutral }
 
     public var id: String
-    public var symbol: String          // an SF Symbol name
+    public var symbol: String
     public var title: String
     public var detail: String
     public var tone: Tone
@@ -28,7 +25,6 @@ public struct Suggestion: Identifiable, Equatable, Sendable {
 }
 
 public extension GameEngine {
-    /// Ranked suggestions: decisions waiting, money problems, then opportunities. At most `limit`.
     func suggestions(limit: Int = 5) -> [Suggestion] {
         var out: [Suggestion] = []
         let cur = homeCurrency
@@ -53,7 +49,6 @@ public extension GameEngine {
                                       detail: "It cannot trade until documents, premises and equipment are in place.", tone: .warn, action: .openCompany(co.id, section: "setup"), actionLabel: "Continue"))
             }
         }
-        // The monthly estimate covers income, dividends, gains, interest and wealth tax; before the first one, the income-side estimate stands in.
         let est = PersonalFinance.storedEstimate(s)?.total ?? PersonalFinance.taxEstimate(s, context: context)
         let liquid = max(0, s.cash)
         if s.tax.pending > 0 {

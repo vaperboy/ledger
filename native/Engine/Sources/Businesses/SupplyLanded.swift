@@ -1,18 +1,9 @@
 import Foundation
 import GameCore
 
-/// What a supplier's offer really costs the buyer, and whether the buyer has any use for it.
-///
-/// Landed cost: the price of the goods plus freight and customs from the supplier's country to the buyer's (`TransportCost`). A cheap supplier far
-/// away can cost more than a dearer one next door. Only goods that move (stock, materials, packaging, parts, supplies, fuel) travel; services (cleaning, laundry, repairs) are delivered without freight.
-///
-/// Needs: a trade can supply only lines of the fixed supply catalogue (`SupplyMarketCatalogue`), and only to trades that really use them (a
-/// bakery's bread goes to cafes, restaurants and shops, not to a car repairer). No custom products exist.
 public enum SupplyLanded {
-    /// Goods that spoil on the way.
     static let freshTrades: Set<String> = ["bakery", "farm", "salmon", "grocery"]
 
-    /// How a line travels; nil for a line that is not carried (no freight and no customs).
     public static func cargo(lineID: String, supplierTrade: String) -> TransportCost.Cargo? {
         switch lineID {
         case "goods": return freshTrades.contains(supplierTrade) ? .perishable : .standard
@@ -25,14 +16,11 @@ public enum SupplyLanded {
 
     public struct Row: Equatable, Sendable, Identifiable {
         public var id: String
-        /// What one unit costs at the supplier's price tier (the buyer's money).
         public var unitPrice: Double
         public var freightPerUnit: Double
         public var customsPerUnit: Double
         public var landedPerUnit: Double
-        /// Against the market supplier's unit price: positive costs more.
         public var vsMarketPerUnit: Double
-        /// Landed cost as a multiple of the goods' price (1 = no freight or customs).
         public var landedFactor: Double
         public var transitWeeks: Int
         public var distanceKm: Double
@@ -42,8 +30,6 @@ public enum SupplyLanded {
         public var weeklyCustoms: Double
     }
 
-    /// The offers of `listings` for a buyer in `buyerCountry` whose market supplier charges `marketUnitPrice` a unit. `units` is the weekly order;
-    /// `priceLevel` is the buyer country's cost index. Cheapest landed cost first, ties by listing id.
     public static func compare(_ listings: [SupplyListing], buyerCountry: String, marketUnitPrice: Double, units: Int, priceLevel: Double) -> [Row] {
         let n = Double(max(1, units))
         let market = max(0, marketUnitPrice.isFinite ? marketUnitPrice : 0)
@@ -62,7 +48,6 @@ public enum SupplyLanded {
         }.sorted { $0.landedPerUnit != $1.landedPerUnit ? $0.landedPerUnit < $1.landedPerUnit : $0.id < $1.id }
     }
 
-    /// The words for how a shipment travels and how long it takes.
     public static func transitText(_ r: Row) -> String {
         guard let m = r.mode else { return "No freight" }
         let how = m == .road ? "By road" : m == .sea ? "By sea" : "By air"
@@ -76,7 +61,6 @@ public enum SupplyNeeds {
     private static let vehicleTrades: Set<String> = ["taxi", "courier", "trucking", "shipping", "carrental", "usedcar", "cardealer", "carrepair", "airline"]
     private static let makers: Set<String> = ["factory", "furniture", "brewery", "bakery", "salmon", "farm", "vineyard"]
 
-    /// Whether a buyer of this trade and family has a real use for what a supplier of `supplierTrade` offers on `line`.
     public static func uses(buyerTrade: String, buyerFamily: String, line: String, supplierTrade: String) -> Bool {
         switch line {
         case "goods":
@@ -131,7 +115,6 @@ public enum SupplyNeeds {
         }
     }
 
-    /// The listings a buyer can use: its trade has a real need for them.
     public static func relevant(_ listings: [SupplyListing], buyerTrade: String, buyerFamily: String) -> [SupplyListing] {
         listings.filter { uses(buyerTrade: buyerTrade, buyerFamily: buyerFamily, line: $0.lineID, supplierTrade: $0.tradeID) }
     }

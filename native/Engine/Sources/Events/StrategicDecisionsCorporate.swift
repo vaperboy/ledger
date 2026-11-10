@@ -4,23 +4,12 @@ import Countries
 import Finance
 import Businesses
 
-/// The last 13 strategic decisions of round 27e (features/world/business_events.js): someone wants to buy your company, a good site in another
-/// city, a franchise inquiry, a rival proposes a merger, a rival in distress, a bank proposes listing your holding, private equity wants control,
-/// a hostile bid for your listed holding, the competition authority, an activist investor, an auction of a stake in a foreign group, and the two
-/// country events (a successor-less Japanese rival, American venture capital). They use the rivals in `rest["mk"][key].riv`, the groups in
-/// `rest["g27"]`, holders in the company's `holders` and the listing/PE/stake code of `Funding`, `GroupDeals` and `Shareholders`.
-///
-/// Not faithful: market share for the competition authority is your sales against the local market's size (what `WorldWeek.competitors` measures)
-/// rather than the original's market map; a foreign group for the auction must already exist in `rest["g27"]` (the original creates the country's
-/// groups on demand); without individual rivals or groups in the game (the Competition port) s_acqoffer, e_merger, e_distress, c_JP_succ, t_hostile
-/// and t_auction simply do not come up.
 extension StrategicDecisions {
     static let localFamilies: Set<String> = ["svc", "venue", "retail", "prod", "logi", "project"]
 
     static func isLocalTrade(_ co: Company, _ data: GameData) -> Bool { localFamilies.contains(data.catalog[co.type]?.family ?? "") }
     static func marketKey(_ co: Company) -> String { co.type + "|" + co.cityID }
     static func rivals(_ s: GameState, _ co: Company) -> [JSONValue] { s.rest["mk"]?[marketKey(co)]["riv"].array ?? [] }
-    /// A rival that belongs to no group (the original's `!r.g27`).
     static func independent(_ r: JSONValue) -> Bool { let g = r["g27"]; return g.isNull || g.string == "0" || g.string.isEmpty || g.string == "false" }
     static func scaled(_ s: GameState, _ co: Company, _ data: GameData, _ v: Double) -> Double {
         Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values)).scaledPrice(v)
@@ -37,7 +26,6 @@ extension StrategicDecisions {
         s.companies.contains { $0.type == "hold" && $0.status.isLive } || liveCompanies(s, data).count >= 5
     }
 
-    /// Your share of a local market (the sales of your companies in it against what the market holds), as the weekly competitor model measures it.
     static func marketShares(_ s: GameState, data: GameData) -> [(key: String, companyID: Int, name: String, share: Double)] {
         var by: [String: [Company]] = [:]
         for c in s.companies where c.status == .open && c.type != "club" && c.type != "hold" && isLocalTrade(c, data) { by[marketKey(c), default: []].append(c) }
@@ -61,7 +49,6 @@ extension StrategicDecisions {
         } else { s.note("The takeover attempt on \(h.name) failed.", tone: "good") }
     }
 
-    /// The owner's own merger with a rival of the market (the same merger as the rival's proposal, started by you).
     static func mergeRival(_ s: inout GameState, companyIndex i: Int, rivalID: Int, rivalName: String, owner: String, pct: Double, data: GameData, context fc: FinanceContext, currency cur: Currency) {
         let x = X(i: i, d: .object(["r": .number(Double(rivalID)), "n": .string(rivalName), "o": .string(owner)]), data: data, fc: fc, cur: cur)
         mergeIn(&s, x, pct: pct)
@@ -82,7 +69,6 @@ extension StrategicDecisions {
         if let sh = marketShares(s, data: x.data).first(where: { $0.key == key }), sh.share > 0.3 { later(&s, 8, "e_merger_review", x.i, .object(["s": .number(sh.share)])) }
     }
 
-    /// The follow-ups of these decisions. Original: `FOLLOW.g_location_neg`, `e_merger_review`.
     static func followUpCorporate(_ s: inout GameState, id: String, index k: Int, d: JSONValue, data: GameData, context fc: FinanceContext) {
         switch id {
         case "g_location_neg":
@@ -99,7 +85,6 @@ extension StrategicDecisions {
     static func corporateDecisions() -> [Def] {
         var L: [Def] = []
 
-        // Someone wants to buy your company: a group makes a bid (answered as the original's g27bid).
         L.append(Def(id: "s_acqoffer", cls: "opp", stages: ["start", "grow", "est"], w: 2,
                      cond: { s, co, data in ebit12(co, s) > 0 && value(co, s, data) > scaled(s, co, data, 500_000) && s.week - (co.openedWeek ?? co.foundedWeek) > 40 && !(co.num("bid27") > Double(s.week)) && SaleListings.boardBlock(s, companyID: co.id) == nil },
                      make: { s, i, data, fc in
@@ -112,7 +97,6 @@ extension StrategicDecisions {
                      silent: true,
                      title: { co, _, _ in "Someone wants to buy \(co.name)" }))
 
-        // A good site in another city.
         L.append(Def(id: "g_location", cls: "opp", stages: ["grow", "est"], w: 3, def: 2,
                      cond: { s, co, data in ebit12(co, s) > 0 && isLocalTrade(co, data) && (data.countries[co.countryCode]?.cities.count ?? 0) > 1 },
                      make: { s, i, data, _ in
@@ -138,7 +122,6 @@ extension StrategicDecisions {
                         Opt(label: "Negotiate an even better rent", detail: "They may give more, or rent it to someone else.") { s, x in later(&s, 3, "g_location_neg", x.i, x.d) },
                         Opt(label: "Wait until you have more cash", detail: "The site goes to someone else, maybe a rival.") { _, _ in }]))
 
-        // A franchise inquiry (the franchise system itself is the company's Grow tab).
         L.append(Def(id: "g_franinq", cls: "opp", stages: ["grow", "est"], w: 1, def: 2,
                      cond: { s, co, data in !co.value("fr")["on"].bool && co.reputation > 60 && isLocalTrade(co, data) && ebit12(co, s) > 0 },
                      title: { co, _, _ in "An investor wants to run a \(co.name) of their own" },
@@ -147,7 +130,6 @@ extension StrategicDecisions {
                             Opt(label: "Open your own branches instead", detail: "More control, your money.") { _, _ in },
                             Opt(label: "Not yet", detail: "Standardise first.") { _, _ in }]))
 
-        // A rival proposes a merger.
         L.append(Def(id: "e_merger", cls: "opp", stages: ["est", "grow"], w: 1, def: 2,
                      cond: { s, co, data in isLocalTrade(co, data) && !s.isBranch(co) && rivals(s, co).contains { independent($0) && $0["size"].double < co.size * 1.4 } },
                      make: { s, i, _, _ in
@@ -160,7 +142,6 @@ extension StrategicDecisions {
                                 if s.random.chance(0.5) { mergeIn(&s, x, pct: 20) } else { s.note("\(x.d["o"].string) turned down 20%.", tone: "n", companyID: s.companies[x.i].id) } },
                             Opt(label: "Decline", detail: "") { _, _ in }]))
 
-        // A rival is in trouble and for sale.
         L.append(Def(id: "e_distress", cls: "opp", stages: ["grow", "est"], w: 2, tone: "good",
                      cond: { s, co, data in isLocalTrade(co, data) && rivals(s, co).contains { independent($0) && !$0["listed"].bool } },
                      make: { s, i, _, _ in
@@ -172,7 +153,6 @@ extension StrategicDecisions {
                          let key = marketKey(s.companies[x.i]), wk = Double(s.week)
                          editRival(&s, key, x.d["r"].int) { $0["listed"] = true; $0["dist27"] = .number(wk) } }))
 
-        // A bank proposes listing your holding.
         L.append(Def(id: "t_ipo", cls: "corp", w: 2, def: 1, global: true,
                      cond: { s, co, data in holdingsOpen(s).contains { !$0.flag("listed") && value($0, s, data) > scaledHome(s, data, 30e6) } },
                      make: { s, _, data, _ in
@@ -199,7 +179,6 @@ extension StrategicDecisions {
                                 }
                             } }]))
 
-        // Private equity wants control of one of your companies.
         L.append(Def(id: "t_pe", cls: "corp", w: 2, def: 2, global: true,
                      cond: { s, _, data in peTarget(s, data) != nil },
                      make: { s, _, data, _ in
@@ -226,7 +205,6 @@ extension StrategicDecisions {
                             Funding.addBoardSeats(&s, ci, 1) },
                         Opt(label: "Say no", detail: "") { _, _ in }]))
 
-        // A group buys up shares of your listed holding.
         L.append(Def(id: "t_hostile", cls: "corp", w: 3, tone: "bad", def: 3, global: true,
                      cond: { s, _, _ in holdingsOpen(s).contains { $0.flag("listed") && $0.ownership < 60 } },
                      make: { s, _, _, _ in
@@ -250,7 +228,6 @@ extension StrategicDecisions {
                         Opt(label: "Defend your strategy in public", detail: "Convince the other shareholders.") { s, x in
                             if let h = s.company(x.d["h"].int) { hostile(&s, h: h, d: x.d, p: 0.5, x: x) } }]))
 
-        // The competition authority.
         L.append(Def(id: "t_antitrust", cls: "crisis", w: 2, tone: "bad", from: "Competition authority", def: 1, global: true,
                      cond: { s, _, data in marketShares(s, data: data).contains { $0.share > 0.35 } },
                      make: { s, _, data, _ in
@@ -281,7 +258,6 @@ extension StrategicDecisions {
                                 _ = Payments.companyPays(&s, companyID: c.id, amount: wk * 52 * 0.04, category: "fine", label: "Competition fine")
                             } else { s.note("The authority closed the case against \(c.name).", tone: "good", companyID: c.id) } }]))
 
-        // An activist investor.
         L.append(Def(id: "t_activist", cls: "corp", w: 2, def: 1, global: true,
                      cond: { s, _, data in activistTarget(s, data) != nil },
                      make: { s, _, data, _ in
@@ -301,7 +277,6 @@ extension StrategicDecisions {
                             satisfy(&s, ci, -10)
                             if Shareholders.outside(s.companies[ci]) > 50 { s.companies[ci].set("dp27", "mid"); s.note("The other owners outvoted you: \(s.companies[ci].name) now pays out half its profit.", tone: "bad", companyID: s.companies[ci].id) } }]))
 
-        // An auction of a stake in a foreign group.
         L.append(Def(id: "t_auction", cls: "opp", w: 1, def: 2, global: true,
                      cond: { s, _, data in isTycoon(s, data) && s.cash > scaledHome(s, data, 20e6) && !auctionGroups(s).isEmpty },
                      make: { s, _, _, _ in
@@ -317,7 +292,6 @@ extension StrategicDecisions {
                             Opt(label: "Partner with another investor", detail: "15% each, at a fair price. You may lose out.") { s, x in _ = GroupDeals.buyStake(&s, groupID: x.d["g"].string, fraction: 0.15, multiplier: 1.1, chance: 0.55, context: x.fc) },
                             Opt(label: "Walk away", detail: "") { _, _ in }]))
 
-        // Japan: a rival with no successor.
         L.append(Def(id: "c_JP_succ", cls: "cty", cc: CountryEvents.country(ofDecision: "JP_succ"), w: 2, tone: "good",
                      cond: { s, co, data in isLocalTrade(co, data) && rivals(s, co).contains { independent($0) && !$0["listed"].bool } },
                      make: { s, i, _, _ in
@@ -329,7 +303,6 @@ extension StrategicDecisions {
                          let key = marketKey(s.companies[x.i]), wk = Double(s.week)
                          editRival(&s, key, x.d["r"].int) { $0["listed"] = true; $0["dist27"] = .number(wk); $0["succ27"] = 1 } }))
 
-        // USA: venture capital wants in.
         L.append(Def(id: "c_US_vc", cls: "cty", cc: CountryEvents.country(ofDecision: "US_vc"), w: 2, def: 2,
                      cond: { s, co, data in
                          let k = Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values))
@@ -355,8 +328,6 @@ extension StrategicDecisions {
         return L
     }
 
-    // MARK: Who the corporate decisions are about
-
     static func peTarget(_ s: GameState, _ data: GameData) -> Company? {
         liveCompanies(s, data).map { s.companies[$0] }.filter { !s.isBranch($0) && ebit12($0, s) > scaled(s, $0, data, 1e6) && $0.ownership >= 90 }
             .max { value($0, s, data) < value($1, s, data) }
@@ -364,7 +335,6 @@ extension StrategicDecisions {
     static func activistTarget(_ s: GameState, _ data: GameData) -> Company? {
         liveCompanies(s, data).map { s.companies[$0] }.first { $0.value("holders").array.contains { $0["pct"].double >= 10 && $0["hid"].int == 0 } }
     }
-    /// Groups of other countries that you could buy a stake in.
     static func auctionGroups(_ s: GameState) -> [JSONValue] {
         (s.rest["g27"]?["g"].object ?? [:]).sorted { $0.key < $1.key }.map { $0.value }.filter { !$0["gone"].bool && $0["dist"].int == 0 && $0["cc"].string != s.homeCountryCode }
     }

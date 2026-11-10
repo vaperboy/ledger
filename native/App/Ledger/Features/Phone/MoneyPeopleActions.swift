@@ -5,8 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Host a deal on a yacht, jet, castle or island: investors, franchise prospects or a rival owner. Used in Group and on the rival sheet
-/// (`onlyRival` limits the guests to that one rival).
 struct HostingSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -77,7 +75,6 @@ struct HostingSection: View {
     }
 }
 
-/// Lend a piece to a manager or star worker, shown in the manage rows of the luxury collection.
 struct LendPieceSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -112,7 +109,6 @@ struct LendPieceSection: View {
         }
     }
 
-    /// Lending costs no money and is a routine reward, so it is done at once; the message says what it does.
     private func lend(_ r: StaffPerks.Reward) {
         switch store.act({ $0.lendPiece(pieceID: piece.id, companyID: r.companyID, staffID: r.staffID) }) {
         case .ok(let name)?:
@@ -123,7 +119,6 @@ struct LendPieceSection: View {
     }
 }
 
-/// Your own fund manager (Market > Invest): hire one with a mandate, add or take out money, let them go.
 struct FundManagerCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -140,7 +135,6 @@ struct FundManagerCard: View {
         }
     }
 
-    /// A manager is hired: a hero card with the balance and the result, then add or take out money.
     private func hiredView(_ a: FinanceManager.Account, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Card(padding: 16, radius: Theme.Radius.hero) {
@@ -180,7 +174,6 @@ struct FundManagerCard: View {
         else { Haptics.warning(); store.show(a > 0 ? "The manager holds less than that." : "Enter an amount first.", tone: "warn") }
     }
 
-    /// No manager yet: meet some, then choose a mandate and an amount and hire one from the cards.
     @ViewBuilder private func hireView(_ cur: Currency) -> some View {
         let cands = FinanceManager.candidates(engine.state)
         if cands.isEmpty {
@@ -249,7 +242,6 @@ struct FundManagerCard: View {
     }
 }
 
-/// Let the main office's finance manager run a holding (Company > holding): spare cash into the index fund, units sold to cover a deficit.
 struct HoldingFinanceManagerCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -332,7 +324,6 @@ struct HoldingFinanceManagerCard: View {
         .confirmAction($pending)
     }
 
-    /// Handing the holding over, or taking it back, costs nothing and can be changed back, so it is done at once.
     private func toggleManager() {
         if let now = store.act({ $0.toggleHoldingFinanceManager(holdingID: company.id) }) ?? nil { Haptics.success(); store.show(now ? "Handed over." : "You run it yourself again.", tone: "n") }
         else { store.show("Hire a finance manager in the group office first.", tone: "warn") }

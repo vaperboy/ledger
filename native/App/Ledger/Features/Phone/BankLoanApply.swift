@@ -3,20 +3,15 @@ import GameCore
 import Countries
 import Simulation
 
-/// The loan application in two stages: 1 Apply and the bank's assessment (Apply, Offer), then 2 the final
-/// agreement (Choose, Agreement, Confirm). The assessment shows the MAXIMUM the bank approves with its rate, period and instalment; the player then
-/// chooses any amount up to it (never forced to take the maximum), reads and accepts the agreement, and confirms where the money is paid.
-/// Every figure comes from `loanAssessment`, `loanApplicationQuote` and `loanAgreement`; `applyForLoan` re-checks everything and may refuse with a reason.
 struct BankLoanApplyFlow: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var account: BankAccountID
-    /// An amount a link asked for: when the bank approves, the flow opens on the choice with it (within the bank's limits).
     var prefill: Double? = nil
     @State private var burst: MoneyBurst?
-    @State private var step = 1   // 1 Offer, 2 Choose, 3 Confirm
+    @State private var step = 1
     @State private var amount = 0.0
     @State private var term = 36
     @State private var payInto: LoanPayout = .current
@@ -98,7 +93,6 @@ struct BankLoanApplyFlow: View {
         }
     }
 
-    /// From the offer to the choice: start below the maximum (the player is never pushed to the top) and on the bank's usual term.
     private func startChoosing(_ a: LoanAssessment) {
         let step100: Double = max(1, (a.maximum / 100).rounded())
         let suggested: Double = (a.maximum * 0.6 / step100).rounded() * step100
@@ -112,7 +106,6 @@ struct BankLoanApplyFlow: View {
         a.payoutAccounts.first(where: { $0.id == payInto })?.name ?? "the account"
     }
 
-    /// The final confirmation: cost, effect and risk first. Nothing is booked until the player confirms here and the bank accepts.
     private func confirmApply(_ a: LoanAssessment, _ q: LoanApplicationQuote, _ cur: Currency) {
         let into: String = payIntoName(a)
         var message: String = "You borrow \(cur.tidyDisplay(q.amount)) for \(q.termMonths) months at \(Currency.percent(q.yearlyRate, decimals: 2)) a year. "
@@ -142,7 +135,6 @@ struct BankLoanApplyFlow: View {
     }
 }
 
-/// Dots under the header: where the player is in the application.
 private struct StepDots: View {
     @Environment(\.outsidePalette) private var P
     var step: Int
@@ -163,8 +155,6 @@ private struct StepDots: View {
         .accessibilityLabel("Step \(step) of \(count)")
     }
 }
-
-// MARK: Stage 1: Offer
 
 private struct LoanStepOffer: View {
     @Environment(\.outsidePalette) private var P
@@ -209,7 +199,6 @@ private struct LoanStepOffer: View {
     }
 }
 
-/// The offer on ivory: the maximum approved amount first, then rate, period and the instalment at the maximum.
 private struct LoanOfferPanel: View {
     @Environment(\.outsidePalette) private var P
     var a: LoanAssessment
@@ -236,8 +225,6 @@ private struct LoanOfferPanel: View {
     }
 }
 
-// MARK: Stage 2: Choose
-
 private struct LoanStepChoose: View {
     @Environment(\.outsidePalette) private var P
     var a: LoanAssessment
@@ -250,7 +237,6 @@ private struct LoanStepChoose: View {
 
     private var valid: Bool { amount >= a.minimum && amount <= a.maximum + 0.5 && q.refusal == nil }
 
-    /// Why Continue waits: the engine's refusal first, else the approved range.
     private var blockedReason: String? {
         if valid { return nil }
         if let r = q.refusal { return r.tidyText }
@@ -323,7 +309,6 @@ private struct LoanStepChoose: View {
     }
 }
 
-/// The amount on ivory: the figure, a slider from the smallest loan to the maximum, and quick choices (25%, 50%, 75%, Maximum).
 private struct LoanAmountPanel: View {
     @Environment(\.outsidePalette) private var P
     var cur: Currency
@@ -371,8 +356,6 @@ private struct LoanAmountPanel: View {
         .accessibilityIdentifier("bank-loan-chip-" + title.lowercased())
     }
 }
-
-// MARK: Stage 2: Agreement (papers)
 
 private struct LoanStepPapers: View {
     @Environment(\.outsidePalette) private var P
@@ -455,7 +438,6 @@ private struct LoanStepPapers: View {
     }
 }
 
-/// The one visible line of the agreement: the tick that the loan terms were read. The terms themselves sit under `More options`.
 private struct LoanAgreeBox: View {
     @Environment(\.outsidePalette) private var P
     @Binding var agreed: Bool
@@ -478,8 +460,6 @@ private struct LoanAgreeBox: View {
         .accessibilityIdentifier("bank-loan-agree")
     }
 }
-
-// MARK: Confirm
 
 private struct LoanStepSummary: View {
     @Environment(\.outsidePalette) private var P

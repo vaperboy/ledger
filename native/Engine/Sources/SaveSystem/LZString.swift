@@ -1,18 +1,14 @@
 import Foundation
 
-/// Reads the original game's packed save texts ("LZ1:..." and "LZ64:..."), a copy of the lz-string compression
-/// scheme the HTML game uses (original: `lzUnpack`, `unpackText`, `unpackText64` in engine/core/state.js).
 public enum LZString {
     private static let base64Alphabet: [UInt16] = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".utf16)
 
-    /// "LZ1:" payload: 15 bits per character, offset by 32.
     public static func unpackText(_ packed: String) -> String? {
         let u = Array(packed.utf16)
         guard !u.isEmpty else { return "" }
         return unpack(length: u.count, reset: 16384) { i in i < u.count ? Int(u[i]) - 32 : 0 }
     }
 
-    /// "LZ64:" payload: 6 bits per character from a base-64 alphabet.
     public static func unpackText64(_ packed: String) -> String? {
         let allowed = Set(base64Alphabet)
         let u = packed.utf16.filter { allowed.contains($0) }
@@ -23,7 +19,6 @@ public enum LZString {
         }
     }
 
-    /// Any of the three save text forms (plain JSON, LZ1, LZ64) to JSON text. Original: `saveJSON`.
     public static func jsonText(fromSaveText text: String) -> String? {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if t.hasPrefix("LZ1:") { return unpackText(String(t.dropFirst(4))) }

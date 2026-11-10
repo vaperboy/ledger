@@ -3,22 +3,17 @@ import GameCore
 import Businesses
 import Simulation
 
-/// Compact rows for the latest market events (Market app). A dot carries the tone: gold = opportunity, green = gain, red = loss.
-/// A row that appears while the screen is open slides in and gets a brief edge; the first render never animates.
 struct MarketEventRows: View {
     @EnvironmentObject var store: GameStore
     var events: [MarketEvent]
-    /// The caps title above the rows; off when the screen labels the group itself.
     var showsTitle = true
     @State private var known: Set<Int>? = nil
     @State private var fresh: Set<Int> = []
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Events of this company, plus the ones about the whole market, newest first.
     static func relevant(_ e: GameEngine, companyID: Int?, limit: Int = 4) -> [MarketEvent] {
         let all: [MarketEvent] = e.marketEvents(limit: 30)
         var seen: Set<String> = []
-        // Newest first; the same headline again (a later week's copy) is left out.
         let mine: [MarketEvent] = all.filter { (m: MarketEvent) -> Bool in
             if let id = companyID, m.companyID != nil && m.companyID != id { return false }
             return seen.insert(m.title).inserted
@@ -26,7 +21,6 @@ struct MarketEventRows: View {
         return Array(mine.prefix(limit))
     }
 
-    /// What the event does to you, in one line: the first sentence of its consequence (or of its detail when it has none).
     static func impact(_ m: MarketEvent) -> String {
         let text: String = (m.consequence.isEmpty ? m.detail : m.consequence).tidyText
         guard let end = text.range(of: ". ") else { return text }

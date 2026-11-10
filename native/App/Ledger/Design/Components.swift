@@ -2,9 +2,6 @@ import SwiftUI
 import Countries
 import enum Events.ConfirmRule
 
-/// The surface primitive: a group or tile on the surface tone, no border. Inside another card or a section's group it draws flat
-/// (just its content), and in a popup it is a flat group under a hairline, so a box never sits inside a box. An explicit `fill` or
-/// `stroke` (a selected or warning state) is always drawn. `rule` is kept so older call sites compile. `padding: 0` for content that pads itself.
 struct Card<Content: View>: View {
     var padding: CGFloat = 14
     var rule = true
@@ -18,7 +15,6 @@ struct Card<Content: View>: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
-        // The game's cards are translucent over the backdrop; outside apps and Reduce Transparency keep the solid fill.
         let cardFill: Color = palette == .game && !reduceTransparency ? palette.card.opacity(0.65) : palette.card
         let plain: Bool = fill == nil && stroke == nil
         if plain && insideCard {
@@ -56,7 +52,6 @@ struct Card<Content: View>: View {
     }
 }
 
-/// A titled section: small-caps label on the left, an optional note or action on the right, then the content.
 struct LedgerSection<Content: View, Trailing: View>: View {
     var title: String
     var rule = true
@@ -82,21 +77,6 @@ extension LedgerSection where Trailing == EmptyView {
     }
 }
 
-/// A small icon at the lead of a row: a plain glyph, no tile.
-struct IconBadge: View {
-    var symbol: String
-    var tint: Color = Theme.gold
-    var size: CGFloat = 38
-    var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: max(13, size * 0.38), weight: .regular))
-            .foregroundStyle(tint)
-            .frame(width: max(20, size * 0.6), height: max(20, size * 0.6))
-            .accessibilityHidden(true)
-    }
-}
-
-/// A list row with an SF symbol in front: `LedgerRow` in its compact density.
 struct ListRow: View {
     var symbol: String
     var tint: Color = Theme.accent
@@ -112,14 +92,12 @@ struct ListRow: View {
     }
 }
 
-/// Next Day: the primary button at full width.
 struct GoldButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         PrimaryButtonStyle(fullWidth: true).makeBody(configuration: configuration)
     }
 }
 
-/// A secondary action: the secondary button; `tint` colours the text.
 struct QuietButtonStyle: ButtonStyle {
     var tint: Color? = nil
     func makeBody(configuration: Configuration) -> some View {
@@ -127,7 +105,6 @@ struct QuietButtonStyle: ButtonStyle {
     }
 }
 
-/// A line chart without axes, for real history. Draws nothing misleading for fewer than two points.
 struct Sparkline: View {
     var values: [Double]
     var tint: Color = Theme.gold
@@ -160,7 +137,6 @@ struct Sparkline: View {
     }
 }
 
-/// A small status: a dot and a word. No capsule, no border.
 struct Chip: View {
     @Environment(\.outsidePalette) private var P
     var text: String
@@ -175,7 +151,6 @@ struct Chip: View {
     }
 }
 
-/// A label with a figure beneath it: `Figure` at the inline size.
 struct Stat: View {
     var label: String
     var value: String
@@ -186,7 +161,6 @@ struct Stat: View {
     }
 }
 
-/// Key figures in a joined row under a hairline: `FigureRow`. `columns` per row; a second row follows the first.
 struct KeyFigures: View {
     struct Item: Identifiable {
         var id = UUID()
@@ -194,7 +168,6 @@ struct KeyFigures: View {
         var value: String
         var tint: Color = Theme.ink
         var sub: String = ""
-        /// The number behind `value`: when set, the figure rolls and flashes as it changes.
         var live: Double? = nil
     }
     var items: [Item]
@@ -206,9 +179,6 @@ struct KeyFigures: View {
     }
 }
 
-/// The page behind every screen: in the game palette a very soft vertical gradient from the page colour to a warmer, lifted tone and a faint
-/// large champagne glow in the top right corner, drawn once and never animated. Outside apps keep their flat ground. Reduce Transparency
-/// drops the glow.
 struct LedgerBackdrop: View {
     var palette: OutsidePalette
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -217,10 +187,8 @@ struct LedgerBackdrop: View {
         ZStack {
             if palette == .game {
                 LinearGradient(colors: [Theme.page, Theme.pageLift], startPoint: .top, endPoint: .bottom)
-                // Reduce Transparency: no photo behind the text, only the flat page colours.
                 if !reduceTransparency { photo }
                 if !reduceTransparency {
-                    // Faded out over the top inset so the status-bar guard strip (flat page colour) shows no edge.
                     RadialGradient(colors: [Theme.accent.opacity(0.07), Theme.accent.opacity(0)], center: .topTrailing, startRadius: 0, endRadius: 440)
                         .mask(LinearGradient(stops: [.init(color: .clear, location: 0.07), .init(color: .black, location: 0.28)], startPoint: .top, endPoint: .bottom))
                 }
@@ -232,7 +200,6 @@ struct LedgerBackdrop: View {
         .accessibilityHidden(true)
     }
 
-    /// The game's photo: blurred, darkened, with a dark scrim along the top and bottom so text stays readable. Slightly oversized so the blur has no soft edge.
     private var photo: some View {
         Color.clear
             .overlay {
@@ -242,8 +209,6 @@ struct LedgerBackdrop: View {
                     .scaleEffect(1.12)
                     .blur(radius: 18)
             }
-            // An even dark veil keeps card text readable over bright parts of the photo; the top and bottom scrims carry the status bar,
-            // the navigation bar and the tab bar.
             .overlay { Color.black.opacity(0.26) }
             .overlay {
                 LinearGradient(stops: [.init(color: Theme.page.opacity(0.8), location: 0), .init(color: Theme.page.opacity(0.35), location: 0.14),
@@ -257,7 +222,6 @@ struct LedgerBackdrop: View {
     }
 }
 
-/// A card or tile floating on the backdrop: Liquid Glass in a rounded rectangle (raised cards carry the raised surface tint).
 struct GlassSurface: ViewModifier {
     var radius: CGFloat
     var raised: Bool
@@ -267,7 +231,6 @@ struct GlassSurface: ViewModifier {
     }
 }
 
-/// The floating capsule (tab bar, Next day): Liquid Glass in a capsule.
 struct GlassCapsule: ViewModifier {
     func body(content: Content) -> some View { content.modifier(LiquidGlass(shape: Capsule())) }
 }
@@ -296,11 +259,7 @@ extension EnvironmentValues {
     }
 }
 
-/// Keeps scrolled content from ever drawing over the status bar, the Back button or the title. It does not depend on the global
-/// `UINavigationBar` appearance: an outside app's navigation bar gets its ground as an always-visible background and a ground-coloured strip
-/// covers the top safe area; the game palette uses a transparent bar and a soft scrim so the photo backdrop shows through. Applied by `ledgerBackground()`, so every screen gets it.
 struct LedgerScreen: ViewModifier {
-    /// Height of the floating tab bar plus margin (0 where there is none); set by `PhoneShell`.
     @Environment(\.tabBarClearance) private var tabBarClearance
     @Environment(\.outsidePalette) private var palette
 
@@ -316,7 +275,6 @@ struct LedgerScreen: ViewModifier {
     }
 }
 
-/// The navigation bar's background: transparent in the game palette (the photo backdrop runs under it), the flat ground of an outside app otherwise.
 private struct TopBarBackground: ViewModifier {
     var palette: OutsidePalette
     @ViewBuilder func body(content: Content) -> some View {
@@ -328,8 +286,6 @@ private struct TopBarBackground: ViewModifier {
     }
 }
 
-/// The strip over the top safe area: a soft dark scrim in the game palette (scrolled content fades out under the clock, the photo stays visible),
-/// the flat ground of an outside app otherwise.
 private struct TopStrip: View {
     var palette: OutsidePalette
     var body: some View {
@@ -346,7 +302,6 @@ extension View {
     func ledgerBackground() -> some View { modifier(LedgerBackground()) }
 }
 
-/// A row of label and value, used in lists.
 struct ValueRow: View {
     @Environment(\.outsidePalette) private var P
     var label: String
@@ -361,12 +316,11 @@ struct ValueRow: View {
     }
 }
 
-/// A money input in the currency being shown. Converts what the player types into the game's accounting units.
 struct AmountField: View {
     @Environment(\.outsidePalette) private var P
     var title: String
     var currency: Currency
-    @Binding var amount: Double          // accounting units
+    @Binding var amount: Double
     @State private var text = ""
     @FocusState private var focused: Bool
 
@@ -382,7 +336,6 @@ struct AmountField: View {
                     let cleaned = new.replacingOccurrences(of: ",", with: ".").filter { $0.isNumber || $0 == "." }
                     amount = (Double(cleaned) ?? 0) * currency.rate
                 }
-            // The decimal pad has no return key and a keyboard toolbar does not show inside a popup overlay: Done sits beside the field.
             if focused {
                 Button("Done") { Haptics.play(.tap); focused = false }
                     .textStyle(.body, tint: P.accent, weight: .semibold)
@@ -395,7 +348,6 @@ struct AmountField: View {
     }
 }
 
-/// Chips that wrap onto further lines instead of scrolling sideways. Put the chips directly inside (a Group is fine).
 struct WrapRow: Layout {
     var spacing: CGFloat = 8
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -420,30 +372,20 @@ struct WrapRow: Layout {
     }
 }
 
-/// Section switcher. It never scrolls sideways. Up to 5 items in one equal-width row when every title fits; more than 5 items: a fixed
-/// row of `primary` (default the first 4) plus a "More" menu listing the rest. When the titles of that row do not fit the width, the
-/// row keeps its first three plus "More". The chosen fixed item has a champagne underline; the menu marks the chosen item with a checkmark and "More"
-/// turns accent when the choice is inside it. A small red count may sit beside a title (counts of hidden items roll up onto "More").
-/// Tap targets are 44 pt tall.
 struct SectionTabs<T: Hashable>: View {
     var items: [T]
     var primary: [T]? = nil
     var title: (T) -> String
     @Binding var selection: T
     var badge: (T) -> Int = { _ in 0 }
-    /// Tabs that hold something new or important get a small marker in the app's colour (a dot; red-filled when `urgent`).
     var dots: ((T) -> Bool)? = nil
     var urgent: Bool = false
-    /// Second-level row (sub-navigation under another tab row): small capitals, no underline bar, a faint track.
     var sub: Bool = false
-    /// An accessibility identifier per item (nil: none). It takes precedence over an identifier set on the whole row.
     var itemIdentifier: ((T) -> String)? = nil
-    /// Every item in one sideways-scrolling row (the chosen one scrolled into view) instead of a fixed row plus "More".
     var scrolls: Bool = false
     @Environment(\.outsidePalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// The items kept in the fixed row. `condensed` is the narrow variant used when the full row does not fit.
     private func fixed(condensed: Bool) -> [T] {
         if let primary {
             let p = primary.filter { items.contains($0) }
@@ -472,7 +414,6 @@ struct SectionTabs<T: Hashable>: View {
         }
     }
 
-    /// The `scrolls` variant: all items at their natural width, the page margin as content inset, the selection kept in view.
     private var scrollRow: some View {
         ScrollViewReader { (proxy: ScrollViewProxy) in
             ScrollView(.horizontal) {
@@ -502,7 +443,6 @@ struct SectionTabs<T: Hashable>: View {
         .modifier(OptionalIdentifier(identifier: itemIdentifier?(item) ?? ""))
     }
 
-    /// The row of tabs: the fixed items, then a "More" menu for the rest. The width is shared equally, so a row never needs to scroll.
     private func tabRow(_ fixed: [T], tight: Bool) -> some View {
         let rest: [T] = items.filter { !fixed.contains($0) }
         return HStack(spacing: Theme.Space.xs) {
@@ -548,7 +488,6 @@ struct SectionTabs<T: Hashable>: View {
     }
 }
 
-/// A 0–100 meter such as reputation or quality: label, the one progress line, the level word.
 struct Meter: View {
     var label: String
     var value: Double
@@ -562,8 +501,6 @@ struct Meter: View {
     }
 }
 
-/// A labelled share (capacity used, demand met): label, the one progress line, percent. Give `word` for a standing that is not
-/// measured in real life (reputation, brand, awareness): the bar then carries a word instead of a percent.
 struct RateBar: View {
     var label: String
     var fraction: Double
@@ -583,46 +520,31 @@ struct RateBar: View {
     }
 }
 
-/// The other answers beside a primary one: the secondary button at full width.
 struct SmallOutlineButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         SecondaryButtonStyle(fullWidth: true).makeBody(configuration: configuration)
     }
 }
 
-/// A consequential action waiting for the in-game "Are you sure" popup: what it is, what it costs or changes, and what to run.
-/// One shared popup instead of a hand-written dialog per button.
-///
-/// The popup shows ONLY for a spend at or above the size the player chose (Settings, "Ask before spending") and for an irreversible
-/// action. Every other action runs at once when it is set. So a SPEND must give `amount` (in `currency`), or it would run unasked;
-/// anything irreversible (dismissals, wind-up, sales, closing, conversions) is `destructive`, which always asks (red button).
 struct PendingAction: Identifiable {
     let id = UUID()
     var title: String
     var message: String
     var button: String
     var destructive = false
-    /// Asks whatever the size, without the red button: a commitment of a size the screen cannot state (a loan, a bulk set-up).
     var alwaysAsk = false
     var amount: Double? = nil
     var currency: Currency? = nil
-    /// What can go wrong, shown under the effect. Empty: nothing extra (an irreversible action says it cannot be undone).
     var risk = ""
-    /// The event's accent; nil: red when destructive, champagne for a spend, otherwise neutral.
     var tone: PopupTone? = nil
-    /// SF Symbol of the popup's icon ring; nil: the tone's own symbol.
     var icon: String? = nil
     var run: () -> Void
 }
 
-/// The one money-size rule for confirmations. A device preference, not game state: it is not in the save and never travels with it.
 enum ConfirmThreshold {
-    /// Reference-economy sizes (scaled to the spend's own currency like every price). Step 0 = always ask a spend.
     static let sizes: [Double] = [0, 500, 2_000, 10_000, 50_000, 250_000]
-    /// What a new player gets: small everyday spends are not asked (step 2, 2,000 at the reference level).
     static let defaultStep = 2
     static let key = "askBelowStep"
-    /// Set by the game store: what managers may spend without asking (home currency) and that currency's rate.
     static var delegated: (() -> (limit: Double, rate: Double))?
     static var step: Int {
         get {
@@ -632,28 +554,22 @@ enum ConfirmThreshold {
         set { UserDefaults.standard.set(min(max(newValue, 0), sizes.count - 1), forKey: key) }
     }
 
-    /// True when `p` runs without asking. Pure so it can be tested as a decision table.
     static func skips(_ p: PendingAction, step: Int) -> Bool {
         var size: Double? = nil
         if let currency = p.currency {
             size = limit(step: step, currency: currency)
-            // With a manager in charge the limit grows with net worth: a 10k spend is not asked of someone worth 10M.
             if let d = delegated?(), d.limit > 0, abs(d.rate - currency.rate) < 1e-9 { size = max(size ?? 0, d.limit) }
         }
         return !ConfirmRule.asks(irreversible: p.destructive || p.alwaysAsk, amount: p.amount, limit: size)
     }
     static func skips(_ p: PendingAction) -> Bool { skips(p, step: step) }
 
-    /// The size in this currency under which the player is not asked (0 = a spend is always asked).
     static func limit(step: Int, currency: Currency) -> Double {
         let i = min(max(step, 0), sizes.count - 1)
         return sizes[i] == 0 ? 0 : currency.scaledPrice(sizes[i])
     }
 }
 
-/// Holds the popup for a `PendingAction`: setting `pending` either runs it at once (a small or free action) or opens the popup.
-/// The question is registered with the app's popup host (highest priority, above any popup or sheet that raised it). Nothing is
-/// presented, so no screen underneath changes.
 private struct ConfirmActionModifier: ViewModifier {
     @Binding var pending: PendingAction?
     @State private var asked: PendingAction?
@@ -685,36 +601,24 @@ private struct ConfirmActionModifier: ViewModifier {
     private func answer(_ p: PendingAction, go: Bool) {
         asked = nil
         pending = nil
-        // Once the popup is gone, so the action may open or close screens without clashing with it.
         if go { DispatchQueue.main.async { run(p) } }
     }
 
-    /// Runs the action; the game store then tells its outcome in one popup (or just runs it where no store is in the environment).
     private func run(_ p: PendingAction) {
         if let s = outcomeStore { s.runConfirmed(p) } else { p.run() }
     }
 }
 
-/// Runs `show` once a sheet that is closing has gone, so the popup it opens is not lost to the sheet's dismissal.
-func presentAfterSheet(_ show: @escaping () -> Void) {
-    DispatchQueue.main.asyncAfter(deadline: .now() + Motion.sheetLeaveSeconds, execute: show)
-}
-
 extension View {
-    /// Shows `pending` as the in-game "Are you sure" popup when it is a spend above the player's size or irreversible; any other
-    /// action runs at once. Confirming runs it, cancelling drops it.
     func confirmAction(_ pending: Binding<PendingAction?>) -> some View {
         modifier(ConfirmActionModifier(pending: pending))
     }
 }
 
-/// Segmented control for a choice made inside a page (Minimal / Normal / Thorough): the one segment look (`SegmentTrack`), so it never
-/// reads as page navigation (the underlined SectionTabs).
 struct SegmentedChoice<T: Hashable>: View {
     var items: [T]
     var title: (T) -> String
     @Binding var selection: T
-    /// Options that hold something new get a small marker in the app's colour.
     var badges: ((T) -> Bool)? = nil
 
     var body: some View {

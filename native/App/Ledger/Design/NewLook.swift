@@ -1,22 +1,6 @@
 import SwiftUI
 import GameCore
 
-// The shared pieces of the new look. Every screen is built from these, so a
-// colour, radius or icon changes in one place. Values are the mockups' own; tokens live in Theme.swift.
-//
-//   Icons ......... LedgerIcon / Glyph      the mockups' 24x24 SVG paths, drawn as strokes (never SF Symbols for the house icons)
-//   Headers ....... AppHeader, RoundBackButton, HomeHeader, .appScreen(title:subtitle:)
-//   Containers .... Card (in Components.swift), StatStrip, SharpTable (TableHeader / TableRow)
-//   Controls ...... ActionTile, ChoiceCard, SegmentedPill, QuietButton, SmallOutlineButton, CardRow
-//   Badges ........ RedBubble, IconCircle, AppIconTile
-//   Navigation .... PillTabBar (floating tab bar with highlighted pill and bubbles)
-//
-// House rules these encode: cards and icons are the style; the back button is round; title and "Hello, name"
-// only on Home; every other screen has its own AppHeader; only Next Day is a filled button.
-
-// MARK: Icons
-
-/// An icon drawn from SVG path data on a 24 x 24 grid (the mockups' own icons). Supports M L H V C A Z, absolute and relative.
 struct LedgerIcon: Shape {
     var svg: String
 
@@ -32,7 +16,6 @@ struct LedgerIcon: Shape {
     }
 }
 
-/// A stroked house icon at a size. `weight` is the SVG stroke width (1.4 to 1.7 in the mockups) and scales with the size.
 struct GlyphView: View {
     var glyph: String
     var size: CGFloat = 22
@@ -44,7 +27,6 @@ struct GlyphView: View {
     var body: some View {
         let line: CGFloat = size / 24 * weight
         let style = StrokeStyle(lineWidth: line, lineCap: .butt, lineJoin: .round)
-        // Same ink rules as `.textStyle`: a filled container's ink first, and game colours mapped into an outside app's palette.
         let ink: Color = containerInk ?? (tint ?? palette.accent).inPalette(palette)
         LedgerIcon(svg: glyph)
             .stroke(ink, style: style)
@@ -53,15 +35,12 @@ struct GlyphView: View {
     }
 }
 
-/// The house icon set: SVG path data. Add new icons here, in the same 24 x 24 style.
 enum Glyph {
-    // Tabs
     static let home = "M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"
     static let team = "M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20 M9 5 A3 3 0 1 0 9 11 A3 3 0 1 0 9 5"
     static let group = "M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"
     static let projects = "M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"
     static let phone = "M9.5 2.5 H14.5 A2.5 2.5 0 0 1 17 5 V19 A2.5 2.5 0 0 1 14.5 21.5 H9.5 A2.5 2.5 0 0 1 7 19 V5 A2.5 2.5 0 0 1 9.5 2.5 M10.5 18.5 H13.5"
-    // Phone apps
     static let bank = "M3 10 L12 4 L21 10 M5 10 V18 M9 10 V18 M15 10 V18 M19 10 V18 M3 20 H21"
     static let inbox = "M3 13 L6 5 H18 L21 13 V19 H3 Z M3 13 H9 L10.5 15 H13.5 L15 13 H21"
     static let news = "M4 5 H17 V19 H6 C5 19 4 18 4 17 Z M17 8 H20 V17 C20 18 19 19 18 19 M7 9 H14 M7 12 H14 M7 15 H11"
@@ -74,7 +53,6 @@ enum Glyph {
     static let reports = "M6 3 H15 L19 7 V21 H6 Z M9 13 H16 M9 17 H16"
     static let achievements = "M8 4 H16 V10 C16 13 14 14 12 14 C10 14 8 13 8 10 Z M12 14 V18 M9 20 H15"
     static let settings = "M12 8 A4 4 0 1 0 12 16 A4 4 0 1 0 12 8 M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22"
-    // Actions and marks
     static let hire = "M12 5 V19 M5 12 H19"
     static let market = "M4 18 L9 12 L13 15 L20 6"
     static let invest = "M4 18 L9 12 L13 15 L20 6 M15 6 H20 V11"
@@ -86,7 +64,6 @@ enum Glyph {
     static let cafe = "M5 9 H17 V15 C17 18 15 19 12 19 H10 C7 19 5 18 5 15 Z M17 10 H19 C21 10 21 14 18 14"
 }
 
-/// Parses SVG path data into a SwiftUI `Path`. Arcs assume no axis rotation (every mockup arc is a circle).
 enum SVGPathData {
     static func parse(_ d: String) -> Path {
         let toks: [String] = tokens(d)
@@ -177,7 +154,6 @@ enum SVGPathData {
         return out
     }
 
-    /// SVG endpoint arc to cubic curves (spec F.6.5 with no rotation).
     private static func addArc(_ path: inout Path, from p0: CGPoint, rx rx0: CGFloat, ry ry0: CGFloat, large: Bool, sweep: Bool, to p1: CGPoint) {
         if p0 == p1 { return }
         var rx: Double = Double(abs(rx0)), ry: Double = Double(abs(ry0))
@@ -201,7 +177,7 @@ enum SVGPathData {
         var delta: Double = theta2 - theta1
         if !sweep && delta > 0 { delta -= 2 * Double.pi }
         if sweep && delta < 0 { delta += 2 * Double.pi }
-        let n: Int = min(8, max(1, Int(saturating: (abs(delta) / (Double.pi / 2)).rounded(.up))))   // an arc has at most four quarter turns
+        let n: Int = min(8, max(1, Int(saturating: (abs(delta) / (Double.pi / 2)).rounded(.up))))
         let step: Double = delta / Double(n)
         let k: Double = 4.0 / 3.0 * tan(step / 4)
         for j in 0..<n {
@@ -215,9 +191,6 @@ enum SVGPathData {
     }
 }
 
-// MARK: Badges and icon holders
-
-/// The red notification bubble: a count on an app icon or a tab. Draws nothing for zero. Large (20 pt) on app icons, small (16 pt) on tabs.
 struct RedBubble: View {
     enum Size { case regular, small }
     var count: Int
@@ -250,8 +223,6 @@ struct RedBubble: View {
     }
 }
 
-/// The icon holder of rows and options: an unoutlined glyph at one of the three icon sizes, centred in a `size` square so layouts
-/// keep their measure. Champagne by default.
 struct IconCircle: View {
     var glyph: String
     var size: CGFloat = 40
@@ -263,7 +234,6 @@ struct IconCircle: View {
             .frame(width: size, height: size)
     }
 
-    /// The icon size for a holder: small under 36 pt, large over 48 pt, medium between.
     static func glyphSize(_ holder: CGFloat) -> CGFloat {
         if holder < 36 { return Theme.Icon.small }
         if holder > 48 { return Theme.Icon.large }
@@ -271,14 +241,11 @@ struct IconCircle: View {
     }
 }
 
-/// The app icon of the Phone grid: a 62 pt rounded square with a soft vertical gradient and a border.
 struct AppIconTile: View {
     var glyph: String
     var size: CGFloat = 62
-    /// A muted colour for inside the icon (Phone apps). Nil keeps the plain champagne icon.
     var tint: Color? = nil
 
-    /// The icon mood board (1 Nov 2026): a flat dark squircle with a thin outline, and a flat, desaturated outline glyph in the app's own tint.
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.appIcon * size / 62, style: .continuous)
         GlyphView(glyph: glyph, size: size * 0.45, weight: 1.5, tint: tint ?? Theme.gold)
@@ -289,9 +256,6 @@ struct AppIconTile: View {
     }
 }
 
-// MARK: Headers
-
-/// The back button: an unoutlined chevron in a 44 pt target. Every screen outside Home has one. It pops the current screen.
 struct RoundBackButton: View {
     var label = "Back"
     var action: () -> Void
@@ -312,8 +276,6 @@ struct RoundBackButton: View {
     }
 }
 
-/// A screen header: optional round back button, serif title (26 pt) and a grey subtitle (12.5 pt), with room for a trailing control.
-/// Use it as the first element of every screen except Home, or through `.appScreen(title:subtitle:)`.
 struct AppHeader<Trailing: View>: View {
     var title: String
     var subtitle: String = ""
@@ -345,30 +307,6 @@ extension AppHeader where Trailing == EmptyView {
     }
 }
 
-/// The Home header, the only one with the app name and "Hello, name": title and greeting at the left, date and New company at the right.
-struct HomeHeader: View {
-    var name: String
-    var dateText: String
-    /// Consecutive days played; the flame and number show only from 3 up (the store passes 0 below that).
-    var streak: Int = 0
-    var onNewCompany: () -> Void
-
-    var body: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(dateText).textStyle(.label, tint: Theme.inkFaint)
-                Text("Hello, \(name)").textStyle(.title).lineLimit(1).minimumScaleFactor(0.8)
-            }
-            Spacer(minLength: Theme.Space.s)
-            Button("New company", action: onNewCompany)
-                .buttonStyle(SecondaryButtonStyle(size: .compact))
-        }
-    }
-}
-
-/// Gives a pushed screen the new header: hides the system navigation bar (and its back button), pins an `AppHeader` with the round
-/// back button above the content. Back from the first screen a link from another tab pushed returns to that tab (see `GameStore.setPath`).
-/// `trailing` is for a screen's own menu (the Inbox options). Apply it to the content of a `navigationDestination`, not to a tab root.
 struct AppScreen<Trailing: View>: ViewModifier {
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
@@ -388,13 +326,11 @@ struct AppScreen<Trailing: View>: ViewModifier {
             .toolbar(.hidden, for: .navigationBar)
             .ledgerBackground()
             .safeAreaInset(edge: .top, spacing: 0) {
-                // On the ivory Bank the header is the forest-green band with ivory text; everywhere else it is the page colour.
                 AppHeader(title: title, subtitle: subtitle, onBack: (showsBack && !hidesRootBack) ? { dismiss() } : nil, trailing: trailing)
                     .environment(\.outsidePalette, palette == OutsidePalette.bank ? OutsidePalette.forest : palette)
                     .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
                     .background {
                         if palette == .game {
-                            // Soft scrim, no opaque strip: the photo backdrop runs under the status bar and header.
                             LinearGradient(colors: [Theme.page.opacity(0.6), Theme.page.opacity(0.25)], startPoint: .top, endPoint: .bottom).ignoresSafeArea(edges: .top)
                         } else {
                             (palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: .top)
@@ -404,8 +340,6 @@ struct AppScreen<Trailing: View>: ViewModifier {
     }
 }
 
-/// "Back to <tab>" at the root of a tab that a link from another tab landed on. It shows only while nothing is pushed on that tab: a
-/// pushed screen has its round back button, which returns to the origin by itself, so a screen never has two Back controls.
 struct ReturnLine: View {
     @EnvironmentObject var store: GameStore
     var tab: AppTab
@@ -431,32 +365,24 @@ struct ReturnLine: View {
 }
 
 extension View {
-    /// The new-look screen header (round back, serif title, grey subtitle) for a pushed screen. See `AppScreen`.
     func appScreen(title: String, subtitle: String = "", tab: AppTab = .company, showsBack: Bool = true) -> some View {
         modifier(AppScreen(title: title, subtitle: subtitle, tab: tab, showsBack: showsBack, trailing: { EmptyView() }))
     }
-    /// The same with a trailing control (a menu) in the header.
     func appScreen<T: View>(title: String, subtitle: String = "", tab: AppTab = .company, showsBack: Bool = true, @ViewBuilder trailing: @escaping () -> T) -> some View {
         modifier(AppScreen(title: title, subtitle: subtitle, tab: tab, showsBack: showsBack, trailing: trailing))
     }
 }
 
-// MARK: Containers
-
-/// Cells separated by hairlines, like the Private / Companies / Owed strip of the Home net-worth card: `FigureRow`, centred.
 struct StatStrip: View {
     struct Cell: Identifiable {
         var id: String { label }
         var label: String
         var value: String
         var tint: Color = Theme.ink
-        /// The number behind `value`: the figure rolls and flashes as it changes.
         var live: Double? = nil
-        /// Kept so older call sites compile; the profit glow is retired.
         var glow: Bool = false
     }
     var cells: [Cell]
-    /// A hairline above the strip, for use as the footer of a card.
     var ruled = true
 
     var body: some View {
@@ -470,7 +396,6 @@ struct StatStrip: View {
     }
 }
 
-/// A row on its own surface tile (flat inside a group): `LedgerRow` with a glyph or picture, a value, a chevron and an optional red count.
 struct CardRow: View {
     @Environment(\.insideCard) private var insideCard
     var glyph: String
@@ -480,7 +405,6 @@ struct CardRow: View {
     var valueTint: Color = Theme.ink
     var badge: Int = 0
     var chevron = true
-    /// A picture slot in place of the icon (company rows and the like).
     var thumb: ThumbSpec? = nil
 
     var body: some View {
@@ -492,7 +416,6 @@ struct CardRow: View {
     }
 }
 
-/// One of the quick-action tiles of Home (Bank, Hire, Reports, Market): icon over a label in a small card. Put four in a row.
 struct ActionTile: View {
     @Environment(\.outsidePalette) private var P
     var glyph: String
@@ -520,15 +443,12 @@ struct ActionTile: View {
     }
 }
 
-/// A selectable option as a card with a radio mark: the chosen one is outlined in champagne. For exclusive choices that need a sentence
-/// (hiring options, loan terms, the way to pay); for short labels use `SegmentedPill`.
 struct ChoiceCard: View {
     @Environment(\.outsidePalette) private var P
     var title: String
     var subtitle: String = ""
     var trailing: String = ""
     var selected: Bool
-    /// An optional picture slot after the radio (premises options); nil keeps the plain card.
     var thumb: ThumbSpec? = nil
     var action: () -> Void
 
@@ -560,14 +480,11 @@ struct ChoiceCard: View {
     }
 }
 
-/// The switch between a few short options (Rent / Buy / Home): the one segment look (`SegmentTrack`).
 struct SegmentedPill<T: Hashable>: View {
     var items: [T]
     var title: (T) -> String
     @Binding var selection: T
-    /// Accessibility identifier of each segment (default `segment-<title>`).
     var identifier: ((T) -> String)? = nil
-    /// Segments that hold something new or important get a small marker in the app's colour (nil = none).
     var badges: ((T) -> Bool)? = nil
 
     var body: some View {
@@ -577,22 +494,17 @@ struct SegmentedPill<T: Hashable>: View {
     }
 }
 
-// MARK: Sharp table
-
-/// One column of a `SharpTable`. `width` nil = takes the rest of the row (the first, name column).
 struct TableColumn: Identifiable {
     var id: String { title }
     var title: String
     var width: CGFloat? = nil
 }
 
-/// The sharp trade table: a bordered 8 pt box holding a `TableHeader` and `TableRow`s (the trade picker; any comparison list).
 struct SharpTable<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @Environment(\.insideCard) private var insideCard
     @ViewBuilder var content: () -> Content
 
-    /// On its own the table sits on a surface tile; inside a group it is flat. No outline either way.
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
         VStack(spacing: 0, content: content)
@@ -602,7 +514,6 @@ struct SharpTable<Content: View>: View {
     }
 }
 
-/// The caps header line of a table. The first column is the flexible name column; the others are right-aligned.
 struct TableHeader: View {
     @Environment(\.outsidePalette) private var P
     var columns: [TableColumn]
@@ -625,8 +536,6 @@ struct TableHeader: View {
     }
 }
 
-/// A table row: a name with a grey note under it, then one value per remaining column. A selected row is washed in champagne.
-/// Money in `values` must already come through the store formatter.
 struct TableRow: View {
     @Environment(\.outsidePalette) private var P
     var columns: [TableColumn]
@@ -635,7 +544,6 @@ struct TableRow: View {
     var values: [String]
     var valueTints: [Color] = []
     var selected = false
-    /// A picture slot before the name (a rival's logo and the like); nil keeps the plain row.
     var thumb: ThumbSpec? = nil
     var action: (() -> Void)? = nil
 
@@ -670,9 +578,6 @@ struct TableRow: View {
     }
 }
 
-// MARK: Buttons
-
-/// The secondary button as a view (Continue, Register ...); `tint` colours the text.
 struct QuietButton: View {
     var title: String
     var tint: Color? = nil
@@ -690,7 +595,6 @@ struct QuietButton: View {
     }
 }
 
-/// The compact secondary button next to a title (New company): accent text, 44 pt hit area.
 struct SmallOutlineButton: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -708,15 +612,12 @@ struct SmallOutlineButton: View {
     }
 }
 
-// MARK: Floating pill tab bar
-
 struct PillTabItem: Identifiable, Equatable {
     var id: String
     var title: String
     var glyph: String
     var accent: Color = Theme.accent
     var badge: Int = 0
-    /// True for the tab the player can re-point with a long press (the Custom tab).
     var changeable: Bool = false
 }
 
@@ -724,7 +625,6 @@ struct PillTabBar: View {
     var items: [PillTabItem]
     @Binding var selection: String
     var onReselect: (String) -> Void = { _ in }
-    /// Called with the item's id when a `changeable` item is long-pressed.
     var onLongPress: (String) -> Void = { _ in }
     @State private var longPressed: String?
     @State private var flashing: String?
@@ -805,7 +705,6 @@ struct PillTabBar: View {
         }
     }
 
-    /// A brief wash on the re-tapped tab so the jump back to its root is visible (a plain, instant change under Reduce Motion).
     private func flash(_ id: String) {
         withAnimation(Motion.quick(reduceMotion)) { flashing = id }
         Task { @MainActor in

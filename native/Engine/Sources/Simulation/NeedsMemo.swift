@@ -1,8 +1,6 @@
 import Foundation
 import Businesses
 
-/// A small cache of the store's item lists, one per company. A class on purpose: the engine is a value that is copied around the app, and the
-/// copies share the cache; an entry is only used when its key (day, cash, what the company owns) still matches.
 final class NeedsMemo: @unchecked Sendable {
     private let lock = NSLock()
     private var entries: [Int: (key: String, list: [EquipmentMarket.Need])] = [:]
@@ -18,9 +16,6 @@ final class NeedsMemo: @unchecked Sendable {
     }
 }
 
-/// Results of heavy screen reads, kept for as long as the game state has not changed. `GameEngine.state` takes a fresh stamp (a number no other
-/// state value ever had) on every change, so an entry for an older stamp is never returned: a result can never be stale after an action or a day.
-/// A class on purpose, like `NeedsMemo`: copies of the engine share it, and the stamp tells them apart once they differ.
 final class ReadMemo: @unchecked Sendable {
     private let lock = NSLock()
     private var stamp: UInt64 = 0

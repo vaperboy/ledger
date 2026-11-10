@@ -3,13 +3,9 @@ import GameCore
 import Countries
 import Finance
 
-/// What choosing a provider does (one engine action, `GameEngine.switchSupplier`, carries it out).
 public enum SupplierSwitch: Equatable, Sendable {
-    /// A named outside supplier of goods ("auto" lets the manager or market choose).
     case goodsVendor(String)
-    /// A named outside repair supplier ("auto" = none fixed).
     case repairVendor(String)
-    /// Back to outside suppliers (for an input that your own companies could supply).
     case outside
     case ownCompany(Int, mode: String)
     case businessCustomer(Int)
@@ -17,18 +13,8 @@ public enum SupplierSwitch: Equatable, Sendable {
 
 public enum SupplierSwitchResult: Equatable, Sendable { case ok, notAllowed, notKnownWell, unknown, governed }
 
-/// The deals with providers behind the Suppliers section: switching (one path for a store and for a chain rule), the chain-wide supplier rule,
-/// and the negotiation of a supplier's price. Outside suppliers are negotiated through the shared `Negotiation` module; your own companies
-/// at their transfer price are not (the price is fixed by the mode you pick).
-///
-/// Chain rule: `rules.sup[input]` of the chain (key present only while a rule is set). It is mandatory for the chain's stores in the same
-/// way a knob standard is: each store switches on its own terms, a store that cannot (the provider does not serve it, the own company has no
-/// spare capacity) keeps its choice and is reported, and releasing the rule gives the choice back. A franchised unit follows the rule only if its
-/// franchise agreement fixes that input (`franchise.supStd`); a holding imposes nothing on its subsidiaries (the rule belongs to a chain).
 public enum SupplyDeals {
-    // MARK: Switching
 
-    /// The input ids: "goods", "repair" or a supply kind id.
     public static func perform(_ s: inout GameState, _ d: GameData, companyID: Int, input: String, to change: SupplierSwitch) -> SupplierSwitchResult {
         guard let co = s.company(companyID), co.status.isLive else { return .unknown }
         switch change {
@@ -56,7 +42,6 @@ public enum SupplyDeals {
         }
     }
 
-    /// Is this the provider the company uses for the input now?
     public static func isCurrent(_ s: GameState, _ co: Company, input: String, _ change: SupplierSwitch) -> Bool {
         switch change {
         case .goodsVendor(let id):
@@ -74,8 +59,6 @@ public enum SupplyDeals {
             return AccountSupply.link(s, buyer: co.id, kind: input)?.accountID == aid
         }
     }
-
-    // MARK: Chain rule
 
     static func encode(_ c: SupplierSwitch) -> JSONValue {
         switch c {
@@ -97,19 +80,15 @@ public enum SupplyDeals {
         }
     }
 
-    /// The chain's rule for an input, if it has one.
     public static func chainRule(_ s: GameState, chainID: Int, input: String) -> SupplierSwitch? {
         Chains.chain(s, id: chainID).flatMap { decode($0["rules"]["sup"][input]) }
     }
-    /// The inputs a chain has a rule for.
     public static func chainRuleInputs(_ s: GameState, chainID: Int) -> [String] {
         (Chains.chain(s, id: chainID)?["rules"]["sup"].object.keys.sorted()) ?? []
     }
 
-    /// Who governs this input for the company, if anyone. A franchised unit is bound only where its agreement says so.
     public static func governedBy(_ s: GameState, _ co: Company, input: String, data: GameData? = nil) -> String? {
         let f = co.value("franchise")
-        // a franchise agreement that fixes the supplier binds the unit whether or not it is in a chain
         if f["fran"].bool, let std = franchiseStandard(co, input: input) {
             var who = ""
             if case .goodsVendor(let id) = std, let d = data, let v = Suppliers.vendor(s, id: id, data: d) { who = ": \(v.name)" }
@@ -120,7 +99,6 @@ public enum SupplyDeals {
         return "\(ch["name"].string) sets this for all its stores."
     }
 
-    /// The provider a franchise agreement requires for this input, if it names one (`franchise.supStd`).
     public static func franchiseStandard(_ co: Company, input: String) -> SupplierSwitch? {
         let f = co.value("franchise")
         guard f["fran"].bool, !f["supStd"][input].isNull else { return nil }
@@ -131,11 +109,8 @@ public enum SupplyDeals {
         public var id: Int { storeID }
         public var storeID: Int
         public var storeName: String
-        /// False when the store already uses the provider.
         public var changes: Bool
-        /// Why this store keeps its choice (nil = it follows the rule).
         public var reason: String?
-        /// True when the store is a franchised unit that the rule does not bind.
         public var free: Bool
     }
     public struct ChainPlan: Equatable, Sendable {
@@ -145,7 +120,6 @@ public enum SupplyDeals {
         public var exceptions: Int { lines.filter { $0.changes && $0.reason != nil }.count }
     }
 
-    /// Why this store could not use that provider (nil = it can). `committed` is the capacity already promised to a supplier in this round.
     static func problem(_ s: GameState, _ d: GameData, store co: Company, input: String, _ change: SupplierSwitch, committed: inout [Int: Double]) -> String? {
         switch change {
         case .goodsVendor(let id):
@@ -182,7 +156,6 @@ public enum SupplyDeals {
         }
     }
 
-    /// What making this the chain's rule would do store by store. Nothing is changed.
     public static func chainPlan(_ s: GameState, _ d: GameData, chainID: Int, input: String, _ change: SupplierSwitch) -> ChainPlan {
         guard let ch = Chains.chain(s, id: chainID) else { return ChainPlan(lines: []) }
         var committed: [Int: Double] = [:]
@@ -200,8 +173,6 @@ public enum SupplyDeals {
         return ChainPlan(lines: lines)
     }
 
-    /// Make this the chain's mandatory rule for the input and switch every store it governs. A store that cannot keeps its choice and is
-    /// reported; running it again later retries the stores that still differ.
     @discardableResult
     public static func setChainRule(_ s: inout GameState, _ d: GameData, chainID: Int, input: String, _ change: SupplierSwitch) -> ChainPlan {
         guard var ch = Chains.chain(s, id: chainID) else { return ChainPlan(lines: []) }
@@ -222,7 +193,6 @@ public enum SupplyDeals {
         return ChainPlan(lines: lines)
     }
 
-    /// Give the choice back to the stores.
     public static func releaseChainRule(_ s: inout GameState, chainID: Int, input: String) {
         guard var ch = Chains.chain(s, id: chainID) else { return }
         var sup = ch["rules"]["sup"].object
@@ -231,7 +201,6 @@ public enum SupplyDeals {
         Chains.save(&s, ch)
     }
 
-    /// A store that joins a chain (or opens in it) follows the chain's supplier rules like any other; one that cannot is told so.
     static func applyChainRules(_ s: inout GameState, _ d: GameData, storeID: Int) {
         guard let co = s.company(storeID), let ch = Chains.chain(s, of: co) else { return }
         for input in ch["rules"]["sup"].object.keys.sorted() {
@@ -248,11 +217,8 @@ public enum SupplyDeals {
         input == "goods" ? "goods" : input == "repair" ? "repairs" : (IntercompanySupply.kind(input)?.name.lowercased() ?? input)
     }
 
-    // MARK: Negotiated prices
-
     static func scope(_ input: String) -> String? { input == "goods" ? "goods" : input == "repair" ? "fix" : nil }
 
-    /// The extra discount a deal with this supplier gives (on top of the relationship's), while it lasts.
     public static func dealDiscount(_ co: Company, scope: String, vendorID: String, week: Int) -> Double {
         let d = co.value("sdl")[scope]
         guard !d.isNull, d["v"].string == vendorID, week - d["w"].int < SupplyTerms.tables.dealWeeks else { return 0 }
@@ -265,7 +231,6 @@ public enum SupplyDeals {
         guard !d.isNull, week - d["w"].int < SupplyTerms.tables.dealWeeks else { return nil }
         return Deal(vendorID: d["v"].string, extraDiscount: d["d"].double, weeksLeft: SupplyTerms.tables.dealWeeks - (week - d["w"].int))
     }
-    /// Until which week the supplier will not talk (after a walk-out), or nil.
     public static func coolUntil(_ co: Company, vendorID: String, week: Int) -> Int? {
         let u = co.value("sdl")["cool"][vendorID]
         return u.isNull || u.int <= week ? nil : u.int
@@ -285,19 +250,15 @@ public enum SupplyDeals {
     }
 
     public enum Talk: Equatable, Sendable {
-        /// Agreed: the extra discount (0 = list terms) and the supplier is now used.
         case agreed(extra: Double)
-        /// The supplier names its own figure (an extra discount): accept it, counter, or walk away.
         case countered(Negotiation.Counter)
         case refused
-        /// Patience gone: the supplier will not talk until this week.
         case walkedAway(until: Int)
         case cooling(until: Int)
         case notAllowed
         case notNeeded(String)
     }
 
-    /// The most extra discount this supplier could give someone it knows this well (hidden from the player; the talk finds it).
     static func headroom(relationship r: Double) -> Double {
         let t = SupplyTerms.tables
         return t.headroomBase + t.headroomPerRelationship * r
@@ -307,9 +268,6 @@ public enum SupplyDeals {
         Int(HashedRandom.first("talk:\(vendorID):\(input)") * 900) + 1
     }
 
-    /// Ask an outside supplier for an extra discount `ask` (a share, 0.02 = 2 points) and use them. The better you know them, the more they
-    /// can give and the longer they listen; asking for nothing is just taking their list terms. Your own companies, business customers and
-    /// "back to outside suppliers" need no talk.
     public static func negotiate(_ s: inout GameState, _ d: GameData, companyID: Int, input: String, vendorID: String, ask: Double) -> Talk {
         guard let sc = scope(input), let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return .notNeeded("Only outside suppliers of goods and repairs are negotiated.") }
         let co = s.companies[i]

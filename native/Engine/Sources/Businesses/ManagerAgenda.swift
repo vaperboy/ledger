@@ -4,53 +4,34 @@ import Countries
 import Employees
 import Finance
 
-/// The board's one decision list. What the owner can be asked to decide is fixed: sell a company, close it, start a dividend, replace the CEO,
-/// put in capital, and open or close a chain location. Each item appears when the numbers or a proposal call for it, with the recommendation of
-/// the person who knows the company (its manager, the chain's CEO or chain manager, else the board). Approving first puts the move to the
-/// shares through `boardVote` (a sole owner decides alone), then carries it out through the game's own systems; a refused item stays on the list with
-/// the reason. A declined item is not raised again for a while. Saved on the board `brd`: `memo` {item: week until which it is not raised
-/// again}, `locp[]` (location proposals, see `ChainLocations`), `fu[]` (follow-up jobs) and `mts[]` (emergency meetings, see `ManagerMeetings`).
 extension ManagerModel {
     static let declinedQuietWeeks = 12, approvedQuietWeeks = 8, locationQuietWeeks = 26
     static let keptMeetings = 24, keptFollowUps = 20
 
-    // MARK: Types
-
     public struct BoardDecision: Identifiable, Equatable, Sendable {
         public var id: String
-        /// The board it belongs to (`boardKey`).
         public var key: String
-        /// sell, close, dividend, ceo, inject, open (a chain location) or shut (close a chain location).
         public var kind: String
         public var companyID: Int
         public var title: String
-        /// What approving does, what it costs once (0 if nothing), and what could go wrong.
         public var effect: String
         public var cost: Double
         public var risk: String
-        /// "Name, Title" of who recommends, and what they recommend and why.
         public var advisor: String
         public var recommends: Bool
         public var reason: String
-        /// For a location: the proposal's number and what it is about (a city id to open in, a store id to close).
         public var proposalID: Int = 0
         public var target: String = ""
     }
 
     public enum BoardDecisionResult: Equatable, Sendable {
-        /// Carried out, with what happened.
         case done(String)
         case declined
-        /// The shares voted it down: the percent that were for it.
         case voteFailed(Int)
-        /// Could not be carried out now; the item stays on the list.
         case refused(String)
         case gone
     }
 
-    // MARK: Reading
-
-    /// A job the board handed on after a decision, with who has it and when it lapses.
     public struct FollowUp: Identifiable, Equatable, Sendable {
         public var id: Int
         public var text: String
@@ -58,7 +39,7 @@ extension ManagerModel {
         public var assignee: String
         public var week: Int
         public var due: Int
-        public var status: String       // "" open, "done", "lapsed"
+        public var status: String
         public var note: String
     }
 
@@ -69,18 +50,15 @@ extension ManagerModel {
     }
     public static func openFollowUps(_ s: GameState, key: String) -> [FollowUp] { followUps(s, key: key).filter { $0.status.isEmpty } }
 
-    /// Who speaks for a company: its manager, else the board.
     static func advisor(_ s: GameState, _ co: Company) -> String {
         if let mid = co.managerID, let n = s.people[mid] { return "\(n.name), Manager" }
         return "Your board"
     }
 
-    /// Points waiting for the owner on one board: the decision list, plus emergencies nobody has answered yet.
     public static func openDecisionCount(_ s: GameState, key: String, data: GameData) -> Int {
         boardDecisions(s, key: key, data: data).count + meetings(s, key: key).filter { $0.isEmergency && $0.status.isEmpty }.count
     }
 
-    /// Every board's decisions in one list, the ones their advisers recommend first.
     public static func boardDecisions(_ s: GameState, data: GameData) -> [BoardDecision] {
         let all = boardKeys(s).flatMap { boardDecisions(s, key: $0, data: data) }
         return all.filter { $0.recommends } + all.filter { !$0.recommends }
@@ -151,9 +129,6 @@ extension ManagerModel {
         return out
     }
 
-    // MARK: Deciding
-
-    /// The kind of vote the shares hold on a decision (`boardVote`); nil where the owner decides alone or the vote is part of the move.
     static func voteKind(_ kind: String) -> String? {
         switch kind {
         case "sell": return "sell"
@@ -164,14 +139,11 @@ extension ManagerModel {
         }
     }
 
-    /// Does the board carry a move? Nil when it does (or when you own it alone); else the share of yes votes.
     public static func boardGate(_ s: GameState, kind: String, companyID: Int) -> Int? {
         let v = boardVote(s, kind: kind, companyID: companyID, advisory: true)
         return v.active && !v.passes ? Int(saturating: jsRound(v.percentYes)) : nil
     }
 
-    /// Put an item to the board and carry it out (`approve`), or turn it down. "close" ends in `GameEngine.windUpCompany`, which this model cannot reach:
-    /// the engine calls `boardGate` and `settleDecision` around it.
     @discardableResult
     public static func decideBoardItem(_ s: inout GameState, id: String, approve: Bool, data: GameData, context fc: FinanceContext) -> BoardDecisionResult {
         guard let d = boardDecisions(s, data: data).first(where: { $0.id == id }) else { return .gone }
@@ -184,11 +156,10 @@ extension ManagerModel {
         return r
     }
 
-    /// A decision taken: it is not raised again for a while, and a location proposal leaves the list.
     public static func settleDecision(_ s: inout GameState, _ d: BoardDecision, approved: Bool) {
         var b = board(s, key: d.key)
         var memo = b["memo"].isNull ? JSONValue.object([:]) : b["memo"]
-        for (k, v) in memo.object where v.int <= s.week { memo[k] = .null }   // forget what has run out
+        for (k, v) in memo.object where v.int <= s.week { memo[k] = .null }
         if d.proposalID != 0 {
             b["locp"] = .array(b["locp"].array.filter { $0["id"].int != d.proposalID })
             memo[ChainLocations.memoKey(kind: d.kind, target: d.target)] = .number(Double(s.week + locationQuietWeeks))
@@ -199,7 +170,6 @@ extension ManagerModel {
         writeBoard(&s, key: d.key, b)
     }
 
-    /// Do what an approved item says. Changes the game only when it can be carried out in full.
     static func carryOut(_ s: inout GameState, _ d: BoardDecision, data: GameData, context fc: FinanceContext) -> BoardDecisionResult {
         guard let co = s.company(d.companyID), co.status.isLive, let ci = s.companyIndex(d.companyID) else { return .refused("That company is no longer there.") }
         switch d.kind {
@@ -216,7 +186,6 @@ extension ManagerModel {
             return .done("You put \(World(state: s, data: data).currency(co).short(d.cost)) into \(co.name).")
         case "ceo":
             guard co.managerID != nil else { return .refused("\(co.name) has no manager to dismiss.") }
-            // With co-owners this is a vote by shares (you decide alone above half); a failed vote closes the point.
             switch proposeCEOChange(&s, companyID: co.id, data: data) {
             case .dismissed:
                 addFollowUp(&s, key: d.key, text: "Appoint a new manager for \(co.name) (Team).", companyID: co.id, check: "mgr")
@@ -232,12 +201,8 @@ extension ManagerModel {
         }
     }
 
-    /// Put the company up with a broker, as the emergency answer "put it up for sale" does: the same listing the owner's sale routes make
-    /// (`SaleListings`, run by `CompanySale`). False if it was listed already or cannot be sold.
     @discardableResult
     static func listForSale(_ s: inout GameState, companyID: Int) -> Bool { SaleListings.start(&s, companyID: companyID, route: "broker") }
-
-    // MARK: Follow-up jobs
 
     static func addFollowUp(_ s: inout GameState, key: String, text: String, companyID: Int, check: String?) {
         var b = board(s, key: key)
@@ -248,13 +213,11 @@ extension ManagerModel {
                                         "w": .number(Double(s.week)), "due": .number(Double(s.week + 8)), "st": ""]
         if let c = check { rec["chk"] = .string(c) }
         fu.append(.object(rec))
-        // keep every open job and the latest finished ones
         let open = fu.filter { $0["st"].string.isEmpty }, closed = fu.filter { !$0["st"].string.isEmpty }.suffix(keptFollowUps)
         b["fu"] = .array(Array(closed) + open)
         writeBoard(&s, key: key, b)
     }
 
-    /// The owner marks a follow-up done by hand (for jobs the game cannot check).
     @discardableResult
     public static func completeFollowUp(_ s: inout GameState, key: String, id: Int) -> Bool {
         var b = board(s, key: key)
@@ -266,7 +229,6 @@ extension ManagerModel {
         return true
     }
 
-    /// Weekly: follow-ups with a check close when the check is true; old ones lapse.
     static func sweepBoards(_ s: inout GameState) {
         for key in boardKeys(s) {
             var b = board(s, key: key)
