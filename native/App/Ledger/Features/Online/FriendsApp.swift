@@ -26,6 +26,7 @@ struct FriendsApp: View {
     }
 
     @ViewBuilder private var signedIn: some View {
+        OfflineNote()
         OnlineGroup(title: "") {
             NavigationLink { WorldFeedView() } label: {
                 OnlineLine(glyph: Glyph.world, title: "World", note: "Events, friends' activity and invitations", chevron: true)

@@ -290,3 +290,22 @@ begin
   reset role;
   if n < 1 then raise exception 'a party could not end their own friendship'; end if;
 end $$;
+
+do $$
+declare u uuid := gen_random_uuid(); r jsonb; code text := 'ANON-ADMIN-CODE-2026';
+begin
+  insert into auth.users (id, aud, role, is_anonymous) values (u, 'authenticated', 'authenticated', true);
+  perform pg_temp.as_user(u);
+  r := public.account_status();
+  if (r ->> 'hasProfile')::boolean or (r ->> 'adultConfirmed')::boolean then raise exception 'anonymous status before profile: %', r; end if;
+  perform pg_temp.expect_error('select public.ensure_profile(false)', 'adult_required');
+  perform pg_temp.expect_error('select public.redeem_admin_code(''' || code || ''')', 'not_signed_in');
+  r := public.ensure_profile(true);
+  if r ->> 'id' <> u::text then raise exception 'anonymous profile not created: %', r; end if;
+  r := public.account_status();
+  if not (r ->> 'adultConfirmed')::boolean or (r ->> 'isAdmin')::boolean then raise exception 'anonymous status after profile: %', r; end if;
+  insert into public.admin_codes (code_hash) values (encode(extensions.digest(code, 'sha256'), 'hex'));
+  r := public.redeem_admin_code(code);
+  if r ->> 'reason' <> 'granted' then raise exception 'anonymous admin code: %', r; end if;
+  if not (public.account_status() ->> 'isAdmin')::boolean then raise exception 'anonymous admin not recognised'; end if;
+end $$;

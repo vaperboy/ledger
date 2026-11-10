@@ -197,7 +197,7 @@ struct ProfileView: View {
                     .accessibilityIdentifier("profile-add-friend")
             }
             if friends.isEmpty {
-                Text(online.isSignedIn ? "No friends yet. Add one." : "Link an account above to add friends.").textStyle(.caption)
+                Text(online.isSignedIn ? "No friends yet. Add one." : "Friends show here once you are online.").textStyle(.caption)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(friends.prefix(5).enumerated()), id: \.element.id) { (i: Int, p: PlayerProfile) in
@@ -245,27 +245,39 @@ struct ProfileView: View {
     }
 
     @ViewBuilder private var codeSection: some View {
-        if online.isSignedIn, let p = online.profile {
-            HStack(spacing: Theme.Space.xs) {
-                Text("Friend code").textStyle(.caption)
-                Text(p.code).textStyle(.headline, numeric: true)
-                ShareLink(item: InviteLink.message(code: p.code)) { LedgerGlyph(glyph: Glyph.share, size: Theme.Icon.small, tint: Theme.accent).frame(minWidth: 44, minHeight: 44) }
-                    .accessibilityLabel("Share your friend code")
-            }
-            .frame(maxWidth: .infinity)
-            .accessibilityIdentifier("profile-code")
-        } else if !online.isSignedIn {
-            VStack(spacing: Theme.Space.xs) {
-                Text("Link an account to get a friend code and use the online world. Your game stays on this device.").textStyle(.caption).multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: Theme.Space.s) {
-                    linkButton(.apple)
-                    linkButton(.google)
+        VStack(spacing: Theme.Space.xs) {
+            if online.isSignedIn, let p = online.profile {
+                HStack(spacing: Theme.Space.xs) {
+                    Text("Friend code").textStyle(.caption)
+                    Text(p.code).textStyle(.headline, numeric: true)
+                    ShareLink(item: InviteLink.message(code: p.code)) { LedgerGlyph(glyph: Glyph.share, size: Theme.Icon.small, tint: Theme.accent).frame(minWidth: 44, minHeight: 44) }
+                        .accessibilityLabel("Share your friend code")
                 }
-                if let problem = online.problem { Text(problem).textStyle(.caption, tint: Theme.loss).multilineTextAlignment(.center) }
+                .accessibilityIdentifier("profile-code")
+                if online.offline { Text("Offline. It reconnects by itself.").textStyle(.caption).accessibilityIdentifier("online-offline") }
+            } else if !online.isSignedIn {
+                Text(guestNote).textStyle(.caption).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity)
+            if online.canLink {
+                if online.isSignedIn {
+                    Text("Link an account to keep your profile and progress across devices. Your game stays on this device.").textStyle(.caption)
+                        .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                }
+                HStack(spacing: Theme.Space.s) {
+                    ForEach(online.linkProviders, id: \.self) { (provider: SignInProvider) in linkButton(provider) }
+                }
+            }
+            if let problem = online.problem, online.canLink || !online.isSignedIn {
+                Text(problem).textStyle(.caption, tint: Theme.loss).multilineTextAlignment(.center)
+            }
         }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var guestNote: String {
+        if online.offline { return "Offline. Your game stays on this device and the online world returns by itself." }
+        if online.service.createsAccountsItself { return online.pausedByPlayer ? "You are offline by choice. Go online from Settings." : "Setting up your online profile." }
+        return "Link an account to get a friend code and use the online world. Your game stays on this device."
     }
 
     private func linkButton(_ provider: SignInProvider) -> some View {
@@ -279,7 +291,7 @@ struct ProfileView: View {
             }
         } label: { Text(provider.title).frame(maxWidth: .infinity) }
             .buttonStyle(SecondaryButtonStyle(size: .compact))
-            .disabled(online.state == .signingIn)
+            .disabled(online.isLinking)
             .accessibilityIdentifier("profile-link-" + provider.rawValue)
     }
 

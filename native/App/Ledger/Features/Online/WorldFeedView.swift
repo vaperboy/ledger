@@ -27,6 +27,7 @@ struct WorldFeedView: View {
 
     var body: some View {
         PhonePageScroll(spacing: Theme.Space.l) {
+            OfflineNote()
             needsYou
             worldGroup
             friendsGroup
@@ -132,9 +133,9 @@ struct WorldFeedView: View {
 
     private var friendsGroup: some View {
         let friends: [PlayerProfile] = overview?.friends ?? []
-        return OnlineGroup(title: "Friends", footer: online.isSignedIn ? "" : "Link an account to add friends.") {
+        return OnlineGroup(title: "Friends", footer: online.isSignedIn ? "" : "Friends show here once you are online.") {
             if friends.isEmpty {
-                Text(online.isSignedIn ? "No friends yet. Invite one below and their activity will show here." : "Friends and their activity show here once you link an account.")
+                Text(online.isSignedIn ? "No friends yet. Invite one below and their activity will show here." : "Friends and their activity show here once you are online.")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).padding(.vertical, Theme.Space.m)
             } else {
                 ForEach(Array(friends.enumerated()), id: \.element.id) { (i: Int, p: PlayerProfile) in

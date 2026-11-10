@@ -15,7 +15,7 @@ final class MockJointVentureService: JointVentureService, @unchecked Sendable {
     }
 
     func send(_ offer: JVOffer) async {
-        guard let mock = online as? MockOnlineService else { return }
+        let mock: MockOnlineService = (online as? MockOnlineService) ?? OnlineBackend.standIn
         var all: [String: [JVOffer]] = [:]
         if let data = await mock.extensionData(for: Self.sentKey), let saved = try? JSONDecoder().decode([String: [JVOffer]].self, from: data) { all = saved }
         var mine: [JVOffer] = (all[offer.friendID] ?? []).filter { $0.id != offer.id }
@@ -25,7 +25,8 @@ final class MockJointVentureService: JointVentureService, @unchecked Sendable {
     }
 
     func offers(for friendID: String) async -> [JVOffer] {
-        guard let mock = online as? MockOnlineService, let data = await mock.extensionData(for: Self.sentKey),
+        let mock: MockOnlineService = (online as? MockOnlineService) ?? OnlineBackend.standIn
+        guard let data = await mock.extensionData(for: Self.sentKey),
               let all = try? JSONDecoder().decode([String: [JVOffer]].self, from: data) else { return [] }
         return all[friendID] ?? []
     }
