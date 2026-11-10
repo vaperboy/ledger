@@ -33,23 +33,28 @@ extension ManagerModel {
         public var blockedByAbsent: Bool
     }
 
-    public enum MeetingOutcome: Equatable, Sendable {
-        case carriedOut(String)
-        case votedDown(Int)
-        case blocked([String])
-        case refused(String)
-        case gone
-    }
-
-    public struct MeetingResult: Equatable, Sendable {
-        public var outcome: MeetingOutcome
+    public struct MeetingRuling: Identifiable, Equatable, Sendable {
+        public enum Kind: Equatable, Sendable { case carried, votedDown, blocked, refused }
+        public var id: String
+        public var kind: Kind
+        public var line: String
+        public var yesPercent: Double
+        public var noPercent: Double
         public var attendees: [Attendee]
-        public var verdict: MeetingVerdict
 
-        public init(outcome: MeetingOutcome, attendees: [Attendee], verdict: MeetingVerdict) {
-            self.outcome = outcome; self.attendees = attendees; self.verdict = verdict
+        public init(id: String, kind: Kind, line: String, yesPercent: Double, noPercent: Double, attendees: [Attendee]) {
+            self.id = id; self.kind = kind; self.line = line; self.yesPercent = yesPercent; self.noPercent = noPercent; self.attendees = attendees
         }
     }
+
+    public struct MeetingBallot: Equatable, Sendable {
+        public var attendees: [Attendee]
+        public var verdict: MeetingVerdict
+        public var alone: Bool
+        public var passes: Bool { verdict.passes }
+    }
+
+    public static let agendaLimit = 4
 
     public static func joinChance(percent: Double, activity: Double) -> Double {
         let stake = min(1, max(0, percent) / 30)
@@ -90,7 +95,7 @@ extension ManagerModel {
         }
     }
 
-    static func meetingSeed(_ s: GameState, key: String, id: String) -> String { "bm:\(key):\(id):\(board(s, key: key)["mc"].int)" }
+    static func meetingSeed(_ s: GameState, key: String) -> String { "bm:\(key):\(board(s, key: key)["mc"].int)" }
 
     public static func meetingStakes(_ s: GameState, _ d: BoardDecision) -> [Attendee] {
         guard let kind = meetingKind(d.kind), let co = s.company(d.companyID) else { return [] }
@@ -105,7 +110,89 @@ extension ManagerModel {
     }
 
     public static func meetingAttendees(_ s: GameState, key: String, _ d: BoardDecision) -> [Attendee] {
-        gather(meetingStakes(s, d), seed: meetingSeed(s, key: key, id: d.id))
+        gather(meetingStakes(s, d), seed: meetingSeed(s, key: key))
+    }
+
+    public static func voteChance(opinion: Bool, percent: Double, satisfaction: Double) -> Double {
+        let sat = min(1, max(0, satisfaction))
+        let firm = 0.1 + 0.2 * min(1, max(0, percent) / 30)
+        let lean = 0.5 + (opinion ? 0.2 + firm : -0.2 - firm)
+        return min(0.97, max(0.03, lean + 0.2 * (sat - 0.5)))
+    }
+
+    public static func castVotes(_ people: [Attendee], seed: String, youYes: Bool) -> [Attendee] {
+        people.map { (a: Attendee) -> Attendee in
+            var x = a
+            if a.isYou { x.yes = youYes; return x }
+            var r = HashedRandom("\(seed):v:\(a.id)")
+            x.yes = r.next() < voteChance(opinion: a.yes, percent: a.percent, satisfaction: a.activity)
+            return x
+        }
+    }
+
+    public static func ballot(_ s: GameState, key: String, _ d: BoardDecision, youYes: Bool) -> MeetingBallot {
+        let here = meetingAttendees(s, key: key, d)
+        guard !here.isEmpty else {
+            return MeetingBallot(attendees: [], verdict: MeetingVerdict(passes: youYes, yesPercent: youYes ? 100 : 0, noPercent: youYes ? 0 : 100, absentPercent: 0, blockers: [], blockedByAbsent: false), alone: true)
+        }
+        let voted = castVotes(here, seed: meetingSeed(s, key: key) + ":" + d.id, youYes: youYes)
+        return MeetingBallot(attendees: voted, verdict: meetingVerdict(voted), alone: false)
+    }
+
+    public static func meetingAgenda(_ s: GameState, keys: [String], data: GameData) -> [BoardDecision] {
+        var seen = Set<String>()
+        let all = keys.flatMap { (k: String) -> [BoardDecision] in meetingDecisions(s, key: k, data: data) }
+            .filter { (d: BoardDecision) -> Bool in meetingKind(d.kind) != nil && seen.insert(d.id).inserted }
+        return Array((all.filter { $0.recommends } + all.filter { !$0.recommends }).prefix(agendaLimit))
+    }
+
+    public static func meetingGuests(_ s: GameState, _ points: [BoardDecision]) -> [Attendee] {
+        var seen = Set<String>()
+        return points.flatMap { (d: BoardDecision) -> [Attendee] in meetingAttendees(s, key: d.key, d) }.filter { (a: Attendee) -> Bool in !a.isYou && seen.insert(a.id).inserted }
+    }
+
+    public static func meetingSubject(_ d: BoardDecision, _ s: GameState) -> String {
+        let name = s.company(d.companyID)?.name ?? "the company"
+        switch d.kind {
+        case "dividend": return "Dividend at \(name)"
+        case "close": return "Closing \(name)"
+        case "sell": return "Sale of \(name)"
+        case "ceo": return "New manager at \(name)"
+        default: return d.title
+        }
+    }
+
+    public static func meetingDone(_ kind: String) -> String {
+        switch kind {
+        case "dividend": return "dividend set"
+        case "close": return "wound up"
+        case "sell": return "listed for sale"
+        case "ceo": return "manager replaced"
+        case "open": return "location opening"
+        default: return "location closed"
+        }
+    }
+
+    public static func rulingLine(subject: String, ballot b: MeetingBallot, kind: MeetingRuling.Kind, detail: String = "") -> String {
+        let yes = Int(saturating: shareOfVote(b.verdict).rounded())
+        let tally = " \(yes)% to \(100 - yes)%"
+        switch kind {
+        case .carried:
+            let how = b.alone ? " by you" : tally
+            return "\(subject) approved\(how): \(detail)"
+        case .votedDown:
+            if b.alone { return "\(subject) not carried: you voted no." }
+            return "\(subject) rejected\(tally)."
+        case .blocked:
+            return "\(subject) held up: \(detail) stayed away and could block it."
+        case .refused:
+            return "\(subject): \(detail)"
+        }
+    }
+
+    static func shareOfVote(_ v: MeetingVerdict) -> Double {
+        let total = v.yesPercent + v.noPercent
+        return total <= 0 ? 0 : v.yesPercent * 100 / total
     }
 
     public static func countMeeting(_ s: inout GameState, key: String) {
@@ -133,13 +220,14 @@ extension ManagerModel {
 
     public static func putForward(_ s: GameState, key: String, data: GameData) -> [BoardDecision] {
         let raised = Set(boardDecisions(s, key: key, data: data).map { $0.id })
+        let memo = board(s, key: key)["memo"]
         var out: [BoardDecision] = []
         for c in boardCompanies(s, key: key) where c.status == .open {
             let p3 = c.monthlyHistory.suffix(3).reduce(0.0) { $0 + $1.profit }
             let adviser = advisor(s, c)
             func add(_ kind: String, manager: String = "", recommends: Bool, reason: String) {
                 let id = "\(kind):\(c.id)"
-                guard !raised.contains(id) else { return }
+                guard !raised.contains(id), memo[id].isNull || memo[id].int <= s.week else { return }
                 let t = decisionText(kind, c, manager: manager)
                 out.append(BoardDecision(id: id, key: key, kind: kind, companyID: c.id, title: t.title, effect: t.effect, cost: 0, risk: t.risk,
                                          advisor: adviser, recommends: recommends, reason: reason))

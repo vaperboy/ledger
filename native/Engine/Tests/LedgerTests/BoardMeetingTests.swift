@@ -105,69 +105,139 @@ final class BoardMeetingTests: XCTestCase {
         }
     }
 
-    func testAlonePuttingAPointForwardDecidesAtOnce() throws {
+    func testVoteChanceFollowsOpinionStakeAndSatisfaction() {
+        XCTAssertGreaterThan(ManagerModel.voteChance(opinion: true, percent: 10, satisfaction: 0.5), ManagerModel.voteChance(opinion: false, percent: 10, satisfaction: 0.5))
+        XCTAssertGreaterThan(ManagerModel.voteChance(opinion: false, percent: 10, satisfaction: 0.9), ManagerModel.voteChance(opinion: false, percent: 10, satisfaction: 0.1))
+        XCTAssertGreaterThan(ManagerModel.voteChance(opinion: true, percent: 30, satisfaction: 0.5), ManagerModel.voteChance(opinion: true, percent: 2, satisfaction: 0.5))
+        for sat in [0.0, 0.5, 1.0] { for op in [true, false] {
+            let p = ManagerModel.voteChance(opinion: op, percent: 100, satisfaction: sat)
+            XCTAssertGreaterThanOrEqual(p, 0.03); XCTAssertLessThanOrEqual(p, 0.97)
+        } }
+    }
+
+    func testCastVotesAreSeededAndYourVoteIsYourOwn() {
+        let people = [you(30)] + (0..<10).map { who("h\($0)", 7, yes: $0 % 2 == 0, activity: 0.5) }
+        let a = ManagerModel.castVotes(people, seed: "s1", youYes: false)
+        XCTAssertEqual(a, ManagerModel.castVotes(people, seed: "s1", youYes: false))
+        XCTAssertFalse(a[0].yes)
+        XCTAssertTrue(ManagerModel.castVotes(people, seed: "s1", youYes: true)[0].yes)
+        XCTAssertNotEqual(a.map { $0.yes }, ManagerModel.castVotes(people, seed: "s2", youYes: false).map { $0.yes })
+    }
+
+    func testHappyHoldersBackYouMoreOftenThanUnhappyOnes() {
+        var happy = 0, unhappy = 0
+        for n in 0..<400 {
+            let a = ManagerModel.castVotes([who("a", 10, yes: false, activity: 1), who("b", 10, yes: false, activity: 0)], seed: "r\(n)", youYes: true)
+            if a[0].yes { happy += 1 }
+            if a[1].yes { unhappy += 1 }
+        }
+        XCTAssertGreaterThan(happy, unhappy)
+    }
+
+    func testAloneTheAgendaIsDecidedByYourVoteAndExecutesAtOnce() throws {
         var (e, id, key) = try table(seed: 61, ownership: 100, holders: [])
         let point = "close:\(id)"
-        XCTAssertTrue(e.boardPutForward(key: key).contains { $0.id == point })
-        XCTAssertTrue(e.boardMeetingAttendees(key: key, id: point).isEmpty)
-        let r = try XCTUnwrap(e.holdBoardMeeting(key: key, id: point))
-        guard case .carriedOut(let said) = r.outcome else { return XCTFail("\(r.outcome)") }
-        XCTAssertTrue(said.contains("wound up"))
+        XCTAssertTrue(e.boardMeetingAgenda(keys: [key]).contains { $0.id == point })
+        XCTAssertTrue(e.boardMeetingGuests(e.boardMeetingAgenda(keys: [key])).isEmpty)
+        let r = try XCTUnwrap(e.voteOnBoardPoint(key: key, id: point, yes: true))
+        XCTAssertEqual(r.kind, .carried)
+        XCTAssertTrue(r.line.contains("approved by you"), r.line)
         XCTAssertFalse(try XCTUnwrap(e.state.company(id)).status.isLive)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+        XCTAssertNil(e.voteOnBoardPoint(key: key, id: point, yes: true), "an executed point is gone")
     }
 
-    func testSellingIsNotAMeetingPoint() throws {
+    func testAloneVotingNoLeavesTheCompanyAndTakesThePointOffTheTable() throws {
+        var (e, id, key) = try table(seed: 67, ownership: 100, holders: [])
+        let point = "close:\(id)"
+        let r = try XCTUnwrap(e.voteOnBoardPoint(key: key, id: point, yes: false))
+        XCTAssertEqual(r.kind, .votedDown)
+        XCTAssertTrue(r.line.contains("you voted no"), r.line)
+        XCTAssertTrue(try XCTUnwrap(e.state.company(id)).status.isLive)
+        XCTAssertFalse(e.boardMeetingAgenda(keys: [key]).contains { $0.id == point })
+    }
+
+    func testNothingToSellMeansNoSaleOnTheAgenda() throws {
         let (e, id, key) = try table(seed: 66, ownership: 100, holders: [])
-        XCTAssertFalse(e.boardPutForward(key: key).contains { $0.id == "sell:\(id)" })
+        XCTAssertFalse(e.boardMeetingAgenda(keys: [key]).contains { $0.id == "sell:\(id)" })
     }
 
-    func testPreviewAndMeetingSeeTheSameAttendance() throws {
-        var (e, id, key) = try table(seed: 62, ownership: 40, holders: [ann(60)])
-        let point = "dividend:\(id)"
-        let preview = e.boardMeetingAttendees(key: key, id: point)
-        XCTAssertEqual(preview.count, 2)
-        XCTAssertEqual(preview, e.boardMeetingAttendees(key: key, id: point))
-        let r = try XCTUnwrap(e.holdBoardMeeting(key: key, id: point))
-        XCTAssertEqual(r.attendees, preview)
-    }
-
-    func testAnAbsentMajorityHolderBlocksAndNothingIsSettled() throws {
-        var (e, id, key) = try table(seed: 63, ownership: 40, holders: [ann(60)])
-        let point = "dividend:\(id)"
-        var found = false
-        for n in 0..<400 {
-            setMeetingCount(&e, id: id, key: key, n)
-            if let a = e.boardMeetingAttendees(key: key, id: point).first(where: { $0.name == "Ann Partner" }), !a.present { found = true; break }
+    func testAgendaIsCappedAtFourPoints() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 68)
+        e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
+        var keys: [String] = []
+        for _ in 0..<3 {
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("could not start a company") }
+            e.update { s, _, _ in
+                if let i = s.companyIndex(id) {
+                    s.companies[i].status = .open
+                    s.companies[i].ownership = 40
+                    s.companies[i].set("holders", .array([ann(60)]))
+                    s.companies[i].monthlyHistory = (0..<3).map { MonthRecord(monthIndex: $0, revenue: 40_000, profit: 9_000, cash: 10_000) }
+                }
+            }
+            keys.append(try XCTUnwrap(e.boardKey(companyID: id)))
         }
-        guard found else { throw XCTSkip("the co-owner always turns up in these meetings") }
-        let r = try XCTUnwrap(e.holdBoardMeeting(key: key, id: point))
-        XCTAssertEqual(r.outcome, .blocked(["Ann Partner"]))
-        XCTAssertEqual(e.dividendPolicy(companyID: id), "none")
-        XCTAssertTrue(e.boardPutForward(key: key).contains { $0.id == point }, "the point stays on the table")
+        XCTAssertEqual(e.boardMeetingAgenda(keys: keys).count, ManagerModel.agendaLimit)
+        XCTAssertEqual(Set(e.boardMeetingAgenda(keys: keys).map { $0.id }).count, ManagerModel.agendaLimit)
     }
 
-    func testWhenTheCoOwnerSitsTheMeetingIsNeverBlockedByThem() throws {
-        var (e, id, key) = try table(seed: 64, ownership: 40, holders: [ann(60)])
-        let point = "dividend:\(id)"
-        var found = false
-        for n in 0..<400 {
-            setMeetingCount(&e, id: id, key: key, n)
-            if let a = e.boardMeetingAttendees(key: key, id: point).first(where: { $0.name == "Ann Partner" }), a.present { found = true; break }
+    func testTheSameMeetingGivesTheSameRuling() throws {
+        let run = { () throws -> ManagerModel.MeetingRuling in
+            var (e, id, key) = try self.table(seed: 62, ownership: 40, holders: [self.ann(60)])
+            e.beginBoardMeeting(keys: [key])
+            return try XCTUnwrap(e.voteOnBoardPoint(key: key, id: "dividend:\(id)", yes: true))
         }
-        guard found else { throw XCTSkip("the co-owner never turns up") }
-        let r = try XCTUnwrap(e.holdBoardMeeting(key: key, id: point))
-        if case .blocked = r.outcome { XCTFail("a present holder cannot block") }
-        XCTAssertFalse(r.verdict.blockedByAbsent)
+        XCTAssertEqual(try run(), try run())
+    }
+
+    func testEveryRulingExecutesOrLeavesThingsAsItsLineSays() throws {
+        var (base, id, key) = try table(seed: 63, ownership: 40, holders: [ann(60)])
+        let point = "dividend:\(id)"
+        var seen = Set<String>()
+        for n in 0..<200 {
+            setMeetingCount(&base, id: id, key: key, n)
+            var e = base
+            let guests = e.boardMeetingGuests(e.boardMeetingAgenda(keys: [key]))
+            let r = try XCTUnwrap(e.voteOnBoardPoint(key: key, id: point, yes: true))
+            XCTAssertEqual(r.attendees.map { $0.present }, ManagerModel.meetingAttendees(base.state, key: key, try XCTUnwrap(ManagerModel.meetingDecisions(base.state, key: key, data: base.data).first { $0.id == point })).map { $0.present })
+            XCTAssertEqual(guests.map { $0.present }, r.attendees.filter { !$0.isYou }.map { $0.present })
+            switch r.kind {
+            case .carried:
+                XCTAssertEqual(e.dividendPolicy(companyID: id), "low")
+                XCTAssertTrue(r.line.contains("approved"), r.line)
+                XCTAssertTrue(r.line.contains("%"), r.line)
+            case .votedDown:
+                XCTAssertEqual(e.dividendPolicy(companyID: id), "none")
+                XCTAssertFalse(e.boardMeetingAgenda(keys: [key]).contains { $0.id == point })
+                XCTAssertTrue(r.line.contains("rejected"), r.line)
+            case .blocked:
+                XCTAssertEqual(e.dividendPolicy(companyID: id), "none")
+                XCTAssertTrue(e.boardMeetingAgenda(keys: [key]).contains { $0.id == point }, "a held-up point stays on the table")
+                XCTAssertTrue(r.line.contains("Ann Partner"), r.line)
+            case .refused:
+                XCTFail(r.line)
+            }
+            XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+            seen.insert("\(r.kind)")
+        }
+        XCTAssertTrue(seen.contains("carried") || seen.contains("votedDown") || seen.contains("blocked"))
+        XCTAssertGreaterThanOrEqual(seen.count, 2, "different meetings give different results: \(seen)")
+    }
+
+    func testBeginningAMeetingMovesTheRollOnlyOnce() throws {
+        var (e, _, key) = try table(seed: 65, ownership: 40, holders: [ann(60)])
+        let n0 = ManagerModel.board(e.state, key: key)["mc"].int
+        e.beginBoardMeeting(keys: [key])
+        XCTAssertEqual(ManagerModel.board(e.state, key: key)["mc"].int, n0 + 1)
     }
 
     func testEveryMeetingUsesANewRoll() throws {
-        var (e, id, key) = try table(seed: 65, ownership: 40, holders: [ann(60)])
-        let point = "dividend:\(id)"
+        var (e, id, key) = try table(seed: 69, ownership: 40, holders: [ann(60)])
         var seen = Set<Bool>()
         for n in 0..<60 {
             setMeetingCount(&e, id: id, key: key, n)
-            if let a = e.boardMeetingAttendees(key: key, id: point).first(where: { $0.name == "Ann Partner" }) { seen.insert(a.present) }
+            if let a = e.boardMeetingGuests(e.boardMeetingAgenda(keys: [key])).first(where: { $0.name == "Ann Partner" }) { seen.insert(a.present) }
         }
         XCTAssertEqual(seen, [true, false])
     }

@@ -80,37 +80,33 @@ public extension GameEngine {
         return r
     }
 
-    func boardPutForward(key: String) -> [ManagerModel.BoardDecision] { ManagerModel.putForward(state, key: key, data: data) }
-    func boardMeetingAttendees(key: String, id: String) -> [ManagerModel.Attendee] {
-        ManagerModel.meetingDecisions(state, key: key, data: data).first(where: { $0.id == id }).map { ManagerModel.meetingAttendees(state, key: key, $0) } ?? []
-    }
+    func boardMeetingAgenda(keys: [String]) -> [ManagerModel.BoardDecision] { ManagerModel.meetingAgenda(state, keys: keys, data: data) }
+    func boardMeetingGuests(_ points: [ManagerModel.BoardDecision]) -> [ManagerModel.Attendee] { ManagerModel.meetingGuests(state, points) }
+    mutating func beginBoardMeeting(keys: [String]) { update { s, _, _ in for k in keys { ManagerModel.countMeeting(&s, key: k) } } }
 
-    mutating func holdBoardMeeting(key: String, id: String) -> ManagerModel.MeetingResult? {
+    mutating func voteOnBoardPoint(key: String, id: String, yes: Bool) -> ManagerModel.MeetingRuling? {
         guard let d = ManagerModel.meetingDecisions(state, key: key, data: data).first(where: { $0.id == id }) else { return nil }
-        let people = ManagerModel.meetingAttendees(state, key: key, d)
-        let verdict = ManagerModel.meetingVerdict(people)
-        func result(_ o: ManagerModel.MeetingOutcome) -> ManagerModel.MeetingResult { ManagerModel.MeetingResult(outcome: o, attendees: people, verdict: verdict) }
-        if people.isEmpty {
-            switch decideBoardPoint(d, approve: true, attended: true) {
-            case .done(let what): return result(.carriedOut(what))
-            case .refused(let why): return result(.refused(why))
-            case .voteFailed(let pct): return result(.votedDown(pct))
-            case .declined, .gone: return result(.gone)
-            }
+        let ballot = ManagerModel.ballot(state, key: key, d, youYes: yes)
+        let v = ballot.verdict
+        let subject = ManagerModel.meetingSubject(d, state)
+        func ruling(_ kind: ManagerModel.MeetingRuling.Kind, _ detail: String = "", line: String? = nil) -> ManagerModel.MeetingRuling {
+            ManagerModel.MeetingRuling(id: id, kind: kind, line: line ?? ManagerModel.rulingLine(subject: subject, ballot: ballot, kind: kind, detail: detail),
+                                       yesPercent: v.yesPercent, noPercent: v.noPercent, attendees: ballot.attendees)
         }
-        update { s, _, _ in ManagerModel.countMeeting(&s, key: key) }
-        if verdict.blockedByAbsent { return result(.blocked(verdict.blockers.map { $0.name })) }
-        if !verdict.passes {
+        if v.blockedByAbsent { return ruling(.blocked, v.blockers.map { $0.name }.joined(separator: ", ")) }
+        if !ballot.passes {
             update { s, _, _ in ManagerModel.settleDecision(&s, d, approved: false) }
-            return result(.votedDown(Int(saturating: verdict.yesPercent.rounded())))
+            return ruling(.votedDown)
         }
         switch decideBoardPoint(d, approve: true, attended: true) {
-        case .done(let what): return result(.carriedOut(what))
-        case .refused(let why): return result(.refused(why))
-        case .voteFailed(let pct): return result(.votedDown(pct))
-        case .declined, .gone: return result(.gone)
+        case .done: return ruling(.carried, ManagerModel.meetingDone(d.kind))
+        case .refused(let why): return ruling(.refused, why)
+        case .voteFailed(let pct):
+            return ruling(.votedDown, line: "\(subject) rejected by the directors: \(pct)% for.")
+        case .declined, .gone: return nil
         }
     }
+
     func boardOpenDecisions(key: String) -> Int { ManagerModel.openDecisionCount(state, key: key, data: data) }
     var boardDecisionsWaiting: Int { boardKeys.reduce(0) { $0 + boardOpenDecisions(key: $1) } }
     func boardFollowUps(key: String) -> [ManagerModel.FollowUp] { ManagerModel.followUps(state, key: key) }
