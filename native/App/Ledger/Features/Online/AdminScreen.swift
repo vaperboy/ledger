@@ -73,11 +73,6 @@ struct AdminScreen: View {
                 Text("Every change is logged with your name").textStyle(.caption, tint: P.inkSoft)
             }
             Spacer(minLength: 0)
-            Button { Haptics.tap(); Task { await load() } } label: {
-                Text("Refresh").textStyle(.caption, tint: P.accent, weight: .medium).frame(minWidth: 44, minHeight: 44)
-            }
-            .buttonStyle(.plain).disabled(loading || !online.isAdmin)
-            .accessibilityIdentifier("admin-refresh")
         }
     }
 

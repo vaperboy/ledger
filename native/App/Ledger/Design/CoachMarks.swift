@@ -247,7 +247,7 @@ enum CoachTours {
             CoachMark(stop: .phoneBank, text: "The Bank holds your money, bills and loans.", button: "Done"),
         ]),
         CoachTour(id: "custom", trigger: .tab(.custom), marks: [
-            CoachMark(stop: .customTab, text: "This tab is yours. Press and hold it to choose what it opens: it starts on the Store. Pick any app, or one of your companies.", button: "Done", fallback: .tabBar),
+            CoachMark(stop: .customTab, text: "This tab is yours. Press and hold it to choose what it opens: it starts on the Inbox. Pick any app, or one of your companies.", button: "Done", fallback: .tabBar),
         ]),
         CoachTour(id: "company", trigger: .route(.company), marks: [
             CoachMark(stop: .companyTabs, text: "Overview is the summary, Team the people, Manage how it runs, Sales what it sells and what you charge, Supply who you buy from and Stats the money."),

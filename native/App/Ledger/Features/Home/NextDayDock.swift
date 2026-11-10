@@ -20,7 +20,7 @@ struct NextDayDock: View {
     private var blockID: Int? { store.blockingMessageID }
 
     var body: some View {
-        HStack(spacing: Theme.Space.s) { pill }
+        HStack(spacing: Theme.Space.s) { storeButton; pill }
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.trailing, Theme.Space.page)
             .onChange(of: store.isAdvancing) { _, running in
@@ -29,6 +29,23 @@ struct NextDayDock: View {
                 dayRing = 0
                 if reduceMotion { dayRing = 1 } else { withAnimation(.linear(duration: 0.35)) { dayRing = 1 } }
             }
+    }
+
+    private var storeButton: some View {
+        Button {
+            Haptics.tap()
+            store.openApp(.store)
+        } label: {
+            LedgerGlyph(glyph: PhoneApp.store.glyph, size: Theme.Icon.medium, tint: PhoneApp.store.tint)
+                .frame(width: 44, height: 44)
+                .glassCapsule()
+                .overlay(Circle().strokeBorder(Theme.accent.opacity(0.3), lineWidth: 1))
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
+                .contentShape(Circle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel("Store")
+        .accessibilityIdentifier("home-store")
     }
 
     private var pill: some View {

@@ -237,24 +237,16 @@ final class FeatureToursTests: FeatureTourCase {
 
     func testT06_Ventures() {
         step("ventures tab: opens") { goTab("Ventures") ? .pass(signature().text) : .fail("no Ventures tab") }
-        for part in ["Running", "Portfolio", "Done"] {
+        for part in ["Projects", "Portfolio", "Bids", "Done"] {
             step("ventures: \(part) part opens and is clean") {
                 guard goTab("Ventures") else { return .fail("no Ventures tab") }
                 guard tapLabel(part, wait: 3) else { return .fail("no '\(part)' tab") }
                 return health("ventures \(part)", title: false)
             }
         }
-        for seg in ["In progress", "Timeline", "Bids and offers"] {
-            step("ventures: Running > \(seg) opens and is clean") {
-                guard goTab("Ventures"), tapLabel("Running", wait: 3) else { return .fail("no Running tab") }
-                guard tapID("segment-\(seg)", wait: 3) else { return .fail("no segment-\(seg)") }
-                return isSelected("segment-\(seg)") ? health("ventures \(seg)", title: false) : .fail("not selected after the tap")
-            }
-        }
-        step("ventures: New project goes to Running > Bids and offers") {
-            guard goTab("Ventures") else { return .fail("no Ventures tab") }
-            guard tapLabel("New project", wait: 3) else { return .skip("no New project button") }
-            return isSelected("segment-Bids and offers") ? .pass() : .fail("Bids and offers is not selected: \(signature().text)")
+        step("ventures: Projects shows the Start a venture section") {
+            guard goTab("Ventures"), tapLabel("Projects", wait: 3) else { return .fail("no Projects tab") }
+            return has("ventures-start", wait: 3) ? .pass() : .fail("no Start a venture section: \(signature().text)")
         }
     }
 

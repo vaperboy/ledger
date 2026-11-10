@@ -6,7 +6,7 @@ import Finance
 import Events
 import Simulation
 
-/// What the venture portfolio is worth and how it stands, read once from the engine so the header, the Projects tile and the sections agree.
+/// What the venture portfolio is worth and how it stands, read once from the engine so the header and the sections agree.
 /// Your share of your own startups, stakes in other founders' startups, funds and group stakes; `gain` is the value (plus fund payouts)
 /// against everything put in.
 struct VenturesFigures {
@@ -101,7 +101,7 @@ enum VentureSheet: Identifiable, Equatable {
     }
 }
 
-/// The one home of the venture portfolio (Projects > Ventures, and the standalone phone app): a portfolio header, then your startups, the
+/// The one home of the venture portfolio (Ventures > Portfolio, and the standalone phone app): a portfolio header, then your startups, the
 /// startups and funds you back, group stakes and software, each with one row per holding and its main action. Founding, backing, committing
 /// and selling run in popups with the price or cost shown first.
 /// Logic: `Startups`, `PrivateEquity`, `BigMeeting`, `GroupDeals`, `SoftwareProducts`.
@@ -193,25 +193,5 @@ struct VenturesHeader: View {
             .padding(.top, Theme.Space.xs)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// The Venture tile of Projects, in place: the portfolio value and what it is made of; the row opens the portfolio inside Projects.
-struct VenturesGlance: View {
-    @EnvironmentObject var store: GameStore
-    var open: () -> Void
-
-    var body: some View {
-        if let e = store.engine {
-            let f = VenturesFigures(e)
-            LedgerSection("Venture") {
-                LedgerRow(leading: .glyph(Glyph.ventures), title: "Venture portfolio",
-                          subtitle: f.parts.isEmpty ? "Found a startup, back a founder or commit to a fund." : f.parts,
-                          value: f.total > 0 ? f.cur.tidyShort(f.total) : "None yet",
-                          valueNote: f.changeLine.isEmpty ? "" : (f.gain >= 0 ? "+" : "\u{2212}") + f.cur.tidyShort(abs(f.gain)),
-                          valueNoteTint: f.changeLine.isEmpty ? nil : Theme.change(f.gain),
-                          badge: f.offers, identifier: "projects-venture-tile", action: open)
-            }
-        }
     }
 }

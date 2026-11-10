@@ -29,13 +29,12 @@ struct CustomTabView: View {
 
     private var rootIdentity: String { "\(String(describing: store.customTarget))-\(store.rootToken(.custom))" }
 
-    /// A company that is gone falls back to the Store.
     @ViewBuilder private var root: some View {
         switch store.customTarget {
         case .app(let app):
             PhoneAppScreen(app: app)
         case .company(let id):
-            if store.engine?.state.company(id) != nil { CompanyRouteDestination(route: .company(id)) } else { PhoneAppScreen(app: .store) }
+            if store.engine?.state.company(id) != nil { CompanyRouteDestination(route: .company(id)) } else { PhoneAppScreen(app: .inbox) }
         }
     }
 }
