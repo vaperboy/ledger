@@ -3,6 +3,7 @@ import UIKit
 
 @main
 struct LedgerApp: App {
+    @UIApplicationDelegateAdaptor(PushAppDelegate.self) private var pushDelegate
     @StateObject private var store = GameStore()
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var statusBar = StatusBarScheme.shared
@@ -56,6 +57,10 @@ struct LedgerApp: App {
                 .task { OnlineWiring.install(); await online.start(); await OnlineDirectoryCache.refresh(from: online.service); store.syncPlayerCompanies() }
                 .task(id: online.isSignedIn && scenePhase == .active) {
                     if online.isSignedIn && scenePhase == .active { await online.runPresence(store: store) }
+                }
+                .task(id: online.isSignedIn) { PushAlerts.registerIfAllowed(); await PushAlerts.sync(service: online.service, signedIn: online.isSignedIn) }
+                .onReceive(NotificationCenter.default.publisher(for: PushAlerts.tokenArrived)) { (_: Notification) in
+                    Task { await PushAlerts.sync(service: online.service, signedIn: online.isSignedIn) }
                 }
                 .onOpenURL { url in if online.receive(url: url) { store.openApp(.profile) } }
                 .preferredColorScheme(statusBar.light ? .light : .dark)

@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var haptics = Haptics.enabled
     @State private var sounds = SoundCues.enabled
     @State private var reminders: Bool = Reminders.enabled
+    @State private var pushOn: Set<PushCategory> = Set(PushAlerts.enabledCategories)
     @State private var askStep = ConfirmThreshold.step
     @State private var pending: PendingAction?
     @State private var showAdmin = false
@@ -21,6 +22,7 @@ struct SettingsView: View {
                 AccountSettingsGroup()
                 lookGroup
                 feelGroup
+                alertsGroup
                 if store.engine != nil { helpGroup }
                 if store.engine != nil && !embedded { savingGroup }
                 proGroup
@@ -56,8 +58,6 @@ struct SettingsView: View {
             toggleRow(Glyph.phone, "Haptic feedback", isOn: $haptics)
             rule
             toggleRow(Glyph.phone, "Sounds", detail: "Short cues, silent when the ringer is muted", isOn: $sounds)
-            rule
-            toggleRow(Glyph.phone, "Reminders", isOn: $reminders)
             if store.engine != nil {
                 rule
                 Button { store.customPickerOpen = true } label: {
@@ -66,6 +66,25 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings-custom-tab")
             }
         }
+    }
+
+    private var alertsGroup: some View {
+        group("Alerts", footer: "Push alerts arrive only on builds signed for notifications.") {
+            toggleRow(Glyph.phone, "Reminders", isOn: $reminders)
+            ForEach(PushCategory.allCases) { (c: PushCategory) in
+                rule
+                toggleRow(Glyph.phone, c.title, detail: c.detail, isOn: pushBinding(c))
+            }
+        }
+    }
+
+    private func pushBinding(_ c: PushCategory) -> Binding<Bool> {
+        Binding<Bool>(get: { pushOn.contains(c) }, set: { (v: Bool) in
+            if v { pushOn.insert(c) } else { pushOn.remove(c) }
+            PushAlerts.setEnabled(c, v)
+            store.saved(c.title.lowercased() + " alerts " + (v ? "on" : "off"))
+            Task { await PushAlerts.sync(service: online.service, signedIn: online.isSignedIn) }
+        })
     }
 
     private var helpGroup: some View {

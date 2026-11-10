@@ -40,3 +40,4 @@ jobs:
       - run: supabase link --project-ref ktcjbitrwuieuxthrqhu
       - run: supabase db push --yes
       - run: supabase functions deploy invite --no-verify-jwt
+      - run: supabase functions deploy send-push --no-verify-jwt

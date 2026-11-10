@@ -365,3 +365,19 @@ begin
   perform pg_temp.as_user(z);
   if public.claim_friend_goal(wk) then raise exception 'stranger claimed a goal'; end if;
 end $$;
+
+do $$ declare a uuid := pg_temp.id('a'); b uuid := pg_temp.id('b'); tok text := repeat('cd', 32);
+begin
+  perform pg_temp.as_user(a);
+  perform public.register_push_token(tok, 'sandbox', '{gift,auction}');
+  perform public.register_push_token(tok, 'sandbox', '{gift}');
+  if (select count(*) from public.device_tokens where token = tok) <> 1 then raise exception 'push token not upserted'; end if;
+  perform pg_temp.expect_error($q$select public.register_push_token('short', 'sandbox', '{}')$q$, 'invalid_value');
+  perform private.queue_push(a, 'auction', 'x', 'y');
+  if exists (select 1 from public.push_outbox where user_id = a and category = 'auction') then raise exception 'push queued for a disabled category'; end if;
+  perform private.queue_push(a, 'gift', 'x', 'y');
+  if not exists (select 1 from public.push_outbox where user_id = a and category = 'gift') then raise exception 'push not queued'; end if;
+  perform pg_temp.as_user(b);
+  perform public.register_push_token(tok, 'production', '{gift}');
+  if (select user_id from public.device_tokens where token = tok) <> b then raise exception 'push token did not move to the new owner'; end if;
+end $$;

@@ -16,3 +16,4 @@ native/App/*.xcodeproj/
 *.xcarchive
 *.dSYM/
 native/App/InfoPlists/
+native/App/Entitlements/

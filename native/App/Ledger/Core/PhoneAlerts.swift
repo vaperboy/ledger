@@ -51,7 +51,9 @@ enum Reminders {
     static func askOnce() {
         guard enabled, !UserDefaults.standard.bool(forKey: askedKey) else { return }
         UserDefaults.standard.set(true, forKey: askedKey)
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            if granted { DispatchQueue.main.async { PushAlerts.registerIfAllowed() } }
+        }
     }
 
     static func cancelAll() {

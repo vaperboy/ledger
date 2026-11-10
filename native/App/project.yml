@@ -30,6 +30,10 @@ targets:
     dependencies:
       - package: LedgerEngine
         product: LedgerEngine
+    entitlements:
+      path: Entitlements/Ledger.entitlements
+      properties:
+        aps-environment: development
     info:
       path: InfoPlists/Ledger.plist
       properties:
