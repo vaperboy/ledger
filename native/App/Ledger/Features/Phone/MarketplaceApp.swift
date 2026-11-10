@@ -19,6 +19,18 @@ struct MarketplaceApp: View {
         case newest = "Newest", low = "Price low to high", high = "Price high to low"
     }
 
+    enum Mode: String, CaseIterable, Hashable {
+        case nearby = "Near you", players = "Players", deals = "Deals", sell = "Sell"
+    }
+
+    private static let playerKinds: [String] = ["All", "Cars", "Vans and trucks", "Planes", "Boats", "Equipment", "Luxury"]
+
+    @Environment(OnlineSession.self) private var online
+    @StateObject private var players = PlayerMarketModel()
+    @State private var mode: Mode = .nearby
+    @State private var playerKind = "All"
+    @State private var playerListingID: String? = nil
+    @State private var itemID: String? = nil
     @State private var companyID = 0
     @State private var filter: Filter = .all
     @State private var sort: Sort = .newest
@@ -28,29 +40,41 @@ struct MarketplaceApp: View {
     var body: some View {
         page
             .outsideScreen(P)
-            .swipeBackEnabled(canStep: { openID != nil }, step: { openID = nil })
+            .swipeBackEnabled(canStep: { openID != nil || playerListingID != nil || itemID != nil }, step: { stepBack() })
+            .task(id: mode) { await players.refresh(online) }
             .safeAreaInset(edge: .top, spacing: 0) { VStack(spacing: 0) { band; header } }
     }
 
     private var band: some View {
-        ShopBand(title: "Marketplace", glyph: Glyph.marketplace, color: P.accent, onBack: { back() }, backLabel: openID == nil ? "Back to Phone" : "Back")
+        ShopBand(title: "Marketplace", glyph: Glyph.marketplace, color: P.accent, onBack: { back() }, backLabel: (openID == nil && playerListingID == nil && itemID == nil) ? "Back to Phone" : "Back")
             .environment(\.outsidePalette, P)
     }
 
     private func back() {
-        if openID != nil { openID = nil } else { dismiss() }
+        if openID != nil || playerListingID != nil || itemID != nil { stepBack() } else { dismiss() }
+    }
+
+    private func stepBack() {
+        if itemID != nil { itemID = nil } else if playerListingID != nil { playerListingID = nil } else { openID = nil }
     }
 
     @ViewBuilder private var header: some View {
-        if openID == nil, let e = store.engine, let co = current(e) {
+        if openID == nil && playerListingID == nil && itemID == nil {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 ShopChipRow {
-                    ForEach(Filter.allCases, id: \.self) { (f: Filter) in
-                        ShopChip(title: f.rawValue, selected: filter == f) { filter = f }
-                            .accessibilityIdentifier("mk-filter-\(f.rawValue)")
+                    ForEach(Mode.allCases, id: \.self) { (m: Mode) in
+                        ShopChip(title: m == .deals && players.openDeals > 0 ? "Deals (\(players.openDeals))" : m.rawValue, selected: mode == m) { mode = m }
+                            .accessibilityIdentifier("mk-mode-\(m.rawValue)")
                     }
                 }
-                lotLine(e, co)
+                if mode == .players {
+                    ShopChipRow {
+                        ForEach(Self.playerKinds, id: \.self) { (k: String) in
+                            ShopChip(title: k, selected: playerKind == k) { playerKind = k }
+                        }
+                    }
+                }
+                if mode == .nearby, let e = store.engine, let co = current(e) { nearbyHeader(e, co) }
             }
             .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.xs)
             .frame(maxWidth: ShopMetrics.maxWidth)
@@ -59,6 +83,16 @@ struct MarketplaceApp: View {
             .overlay(alignment: .bottom) { Hairline() }
             .environment(\.outsidePalette, P)
         }
+    }
+
+    @ViewBuilder private func nearbyHeader(_ e: GameEngine, _ co: Company) -> some View {
+        ShopChipRow {
+            ForEach(Filter.allCases, id: \.self) { (f: Filter) in
+                ShopChip(title: f.rawValue, selected: filter == f) { filter = f }
+                    .accessibilityIdentifier("mk-filter-\(f.rawValue)")
+            }
+        }
+        lotLine(e, co)
     }
 
     @ViewBuilder private func lotLine(_ e: GameEngine, _ co: Company) -> some View {
@@ -122,6 +156,41 @@ struct MarketplaceApp: View {
     }
 
     @ViewBuilder private var page: some View {
+        if let id = itemID {
+            InventoryItemPage(model: players, itemID: id, onClose: { itemID = nil })
+        } else if let id = playerListingID {
+            PlayerListingPage(model: players, listingID: id, onClose: { playerListingID = nil })
+        } else {
+            switch mode {
+            case .nearby: nearbyPage
+            case .players: playersPage
+            case .deals: MarketDealsView(model: players)
+            case .sell: MarketSellView(model: players, onOpenItem: { (id: String) in itemID = id })
+            }
+        }
+    }
+
+    private var playersPage: some View {
+        let kind: String? = MarketFormat.kindFilter(playerKind)
+        let list: [PlayerListing] = players.listings.filter { (l: PlayerListing) -> Bool in kind == nil || l.kind == kind }
+        return ShopPage(spacing: Theme.Space.l) {
+            if !online.isSignedIn {
+                ShopEmptyNote(text: "Sign in to see what other players are selling.", glyph: Glyph.marketplace)
+            } else if list.isEmpty {
+                ShopEmptyNote(text: players.loaded ? "Nothing here yet. Be the first to list something." : "Loading.", glyph: Glyph.marketplace)
+            }
+            ShopGrid {
+                ForEach(list) { (l: PlayerListing) in
+                    Button { Haptics.tap(); playerListingID = l.id } label: { PlayerListingTile(listing: l) }
+                        .buttonStyle(PressableStyle())
+                        .accessibilityIdentifier("mk-player-\(l.id)")
+                }
+            }
+        }
+        .accessibilityIdentifier("mk-players")
+    }
+
+    @ViewBuilder private var nearbyPage: some View {
         if let e = store.engine, let co = current(e) {
             let all: [MarketListing] = MarketplaceBridge.listings(e, companyID: co.id)
             let cur: Currency = e.currency(for: co)

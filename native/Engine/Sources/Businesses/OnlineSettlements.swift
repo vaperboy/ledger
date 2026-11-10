@@ -12,10 +12,12 @@ public struct OnlineSettlement: Equatable, Sendable {
     public var companyKey: String?
     public var units: Int?
     public var unitPrice: Double?
+    public var meta: JSONValue
 
-    public init(id: String, amount: Double, currency: String, kind: String, label: String = "", companyKey: String? = nil, units: Int? = nil, unitPrice: Double? = nil) {
+    public init(id: String, amount: Double, currency: String, kind: String, label: String = "", companyKey: String? = nil, units: Int? = nil, unitPrice: Double? = nil,
+                meta: JSONValue = .null) {
         self.id = id; self.amount = amount; self.currency = currency; self.kind = kind; self.label = label
-        self.companyKey = companyKey; self.units = units; self.unitPrice = unitPrice
+        self.companyKey = companyKey; self.units = units; self.unitPrice = unitPrice; self.meta = meta
     }
 }
 
@@ -61,6 +63,10 @@ public enum OnlineSettlements {
         let fx: Double = rate(item.currency, s, data)
         let amount: Double = item.amount * fx
         let company: Int? = companyID(fromKey: item.companyKey).flatMap { (id: Int) -> Int? in s.company(id)?.status == .open ? id : nil }
+        if item.kind.hasPrefix("market_") {
+            MarketSettlements.book(&s, item, amount: amount, data: data)
+            return
+        }
         if item.kind == "supply_notice" {
             s.addMessage(kind: "info", from: "Supply", title: "A buyer chose you", body: item.label, companyID: company ?? 0, tone: "good")
             return

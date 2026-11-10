@@ -404,7 +404,7 @@ extension MockOnlineService {
         return FriendActivity(activity: items.sorted { $0.at > $1.at }, presence: presence)
     }
 
-    func pendingSettlements() async throws -> [OnlineSettlementRow] { [] }
+    func pendingSettlements() async throws -> [OnlineSettlementRow] { await MockMarketBook.shared.pending() }
 
-    func acknowledgeSettlements(_ ids: [String]) async throws {}
+    func acknowledgeSettlements(_ ids: [String]) async throws { await MockMarketBook.shared.acknowledge(ids) }
 }

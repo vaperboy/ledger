@@ -388,6 +388,7 @@ public struct GameEngine {
             Luxury.weekly(&state)
             MarketEvents.weekly(&state, data: data)
             Marketplace.weekly(&state)
+            PlayerInventory.weekly(&state)
         case 1:
             WorldWeek.competitors(&state, data: data)
             FootballModel.leaguesWeek(&state, data: data)

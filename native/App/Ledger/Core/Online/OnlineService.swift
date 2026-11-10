@@ -1,4 +1,5 @@
 import Foundation
+import GameCore
 
 enum SignInProvider: String, Codable, CaseIterable, Sendable {
     case apple, google
@@ -206,17 +207,32 @@ struct FriendActivity: Decodable, Equatable, Sendable {
 }
 
 struct OnlineSettlementRow: Decodable, Equatable, Sendable {
-    struct Meta: Decodable, Equatable, Sendable {
-        var companyKey: String?
-        var units: Int?
-        var unitPrice: Double?
-    }
     var id: String
     var amount: Double
     var currency: String
     var kind: String
     var label: String
-    var meta: Meta?
+    var companyKey: String?
+    var units: Int?
+    var unitPrice: Double?
+    var meta: JSONValue
+
+    private enum Keys: String, CodingKey { case id, amount, currency, kind, label, meta }
+
+    init(id: String, amount: Double, currency: String, kind: String, label: String, meta: JSONValue = .null) {
+        self.id = id; self.amount = amount; self.currency = currency; self.kind = kind; self.label = label; self.meta = meta
+        companyKey = meta["companyKey"].string.isEmpty ? nil : meta["companyKey"].string
+        units = meta["units"] == .null ? nil : Int(meta["units"].double)
+        unitPrice = meta["unitPrice"] == .null ? nil : meta["unitPrice"].double
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Keys.self)
+        let raw: JSONValue = (try? c.decodeIfPresent(JSONValue.self, forKey: .meta)) ?? .null
+        self.init(id: try c.decode(String.self, forKey: .id), amount: try c.decode(Double.self, forKey: .amount),
+                  currency: try c.decode(String.self, forKey: .currency), kind: try c.decode(String.self, forKey: .kind),
+                  label: (try? c.decode(String.self, forKey: .label)) ?? "", meta: raw)
+    }
 }
 
 protocol OnlineWorldService: Sendable {
@@ -227,7 +243,7 @@ protocol OnlineWorldService: Sendable {
     func acknowledgeSettlements(_ ids: [String]) async throws
 }
 
-protocol OnlineService: AdminService, OnlineWorldService, FriendPlayService, PushService, Sendable {
+protocol OnlineService: AdminService, OnlineWorldService, FriendPlayService, PushService, MarketplaceService, Sendable {
     var createsAccountsItself: Bool { get }
     func currentAccount() async -> OnlineAccount?
     func startSession(createIfMissing: Bool) async throws -> OnlineAccount

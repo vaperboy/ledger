@@ -62,6 +62,7 @@ extension UsedCarDealer {
     static let staleDepreciation = 0.005
     static let staleOddsWeeks = 12.0
     static let bayShare = 0.25
+    static let repairedWear = 0.15
     static let ownRepairFactor = 0.8
     static let partsShare = 0.35
     static let offerShare = 0.7, offerSpread = 0.1
@@ -136,6 +137,12 @@ extension UsedCarDealer {
         c["rep"] = .number(c["rep"].double + price)
         c["fx"] = .bool(true)
         c.removeKey("job")
+        let worn = c["wear"].double, fixedWear = min(worn, repairedWear)
+        if worn > fixedWear {
+            c["fair"] = .number(c["fair"].double * (1 + 0.3 * (worn - fixedWear) / max(0.3, 1.15 - 0.3 * worn)))
+            c["wear"] = .number(fixedWear)
+            c["vis"] = .number(min(c["vis"].isNull ? fixedWear : c["vis"].double, fixedWear))
+        }
         return true
     }
 

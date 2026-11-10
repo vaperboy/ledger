@@ -158,6 +158,18 @@ enum SupabaseWire {
         case "linked_account", "linked_parties", "linked_to_founder": return .rejected("Deals between accounts of the same person are not allowed.")
         case "listing_full": return .rejected("That supplier has no room left.")
         case "capacity_below_commitments": return .rejected("Capacity cannot go below what is already contracted.")
+        case "deal_open": return .rejected("You already have a deal open on this.")
+        case "own_listing": return .rejected("You cannot buy your own listing or one from a linked account.")
+        case "offer_used": return .rejected("You have already made your offer on this.")
+        case "offer_not_lower": return .rejected("An offer has to be lower than the asking price.")
+        case "offer_too_low": return .rejected("That offer is too far below the asking price.")
+        case "too_many_listings": return .rejected("You can have 12 listings at a time.")
+        case "invalid_item": return .rejected("This item cannot be listed.")
+        case "invalid_price": return .rejected("Check the price.")
+        case "price_not_lower": return .rejected("The new price has to be lower than the asking price.")
+        case "already_discussing": return .rejected("A price is already on the table.")
+        case "invalid_action": return .rejected("That cannot be done now.")
+        case "listing_closed": return .rejected("This listing is closed.")
         default:
             if key.hasPrefix("listing_") { return .rejected("That offer is not available.") }
         }
