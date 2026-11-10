@@ -181,7 +181,7 @@ final class UnlockGatesTests: XCTestCase {
         XCTAssertEqual(vis(e, .group), .open)
     }
 
-    func testVenturesNeedTwoClosedYearsWithProfit() throws {
+    func testVenturesNeedOneProfitableQuarterOrWeek26() throws {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cafe")
         func months(_ n: Int) {
@@ -190,12 +190,28 @@ final class UnlockGatesTests: XCTestCase {
                 s.companies[i].monthlyHistory = (0..<n).map { MonthRecord(monthIndex: $0, revenue: 400_000, profit: 9_000, cash: 0) }
             }
         }
+        let text = "Unlocks after your first profitable quarter, or in week 26"
+        e.update { s, _, _ in s.week = 3 }
+        months(2)
+        XCTAssertEqual(vis(e, .ventures), .locked(text))
         months(3)
-        XCTAssertEqual(vis(e, .ventures), .hidden)
-        months(12)
-        XCTAssertEqual(vis(e, .ventures), .locked("Unlocks after two profitable years"))
-        months(24)
         for g in [Gate.ventures, .venturesFeed] { XCTAssertEqual(vis(e, g), .open, g.rawValue) }
+    }
+
+    func testVenturesProgressCountsClosedMonthsAndWeekFallbackOpensThem() throws {
+        var e = try ChainsTests.engine()
+        let id = ChainsTests.start(&e, "cafe")
+        e.update { s, _, _ in
+            guard let i = s.companyIndex(id) else { return }
+            s.companies[i].monthlyHistory = (0..<2).map { MonthRecord(monthIndex: $0, revenue: 400_000, profit: -9_000, cash: 0) }
+            s.week = 5
+        }
+        let item = try XCTUnwrap(e.unlockRoadmap().first { $0.id == "gate.ventures" })
+        XCTAssertGreaterThan(item.progress, 0.5)
+        XCTAssertEqual(item.condition, "Unlocks after your first profitable quarter, or in week 26")
+        XCTAssertNotEqual(vis(e, .ventures), .open)
+        e.update { s, _, _ in s.week = 26 }
+        XCTAssertEqual(vis(e, .ventures), .open)
     }
 
     func testLuxuryOpensAboveFiftyMedianWages() throws {

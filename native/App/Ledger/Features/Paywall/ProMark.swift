@@ -18,7 +18,7 @@ struct ProMark: View {
 }
 
 /// Wraps a button's action: runs it when the feature is open, otherwise opens the paywall named after the item.
-/// Use: `Button { gate.run(.groupLayer, "Build a group") { openGroup() } }` with `@Environment(Entitlements.self) var gate`.
+/// Use: `Button { gate.run(.saveSlots, "More save slots") { createSlot() } }` with `@Environment(Entitlements.self) var gate`.
 extension Entitlements {
     func run(_ feature: LockedFeature, _ title: String? = nil, action: () -> Void) {
         if require(feature, title: title) { action() }

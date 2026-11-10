@@ -5,7 +5,7 @@ import UIKit
 import Simulation
 import GameCore
 
-/// A paywall asked for by a locked item. `title` is the item that triggered it ("Open a bakery in Lithuania").
+/// A paywall asked for by a locked item. `title` is the item that triggered it ("More save slots").
 struct PaywallRequest: Identifiable, Equatable {
     let id = UUID()
     var title: String

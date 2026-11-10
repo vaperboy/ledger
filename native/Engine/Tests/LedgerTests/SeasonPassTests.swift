@@ -6,8 +6,8 @@ import GameCore
 final class SeasonPassTests: XCTestCase {
     private let day0 = 20_000
 
-    private func snap(seed: Int = 1, week: Int = 1, cash: Double = 100, companies: Int = 1, loans: Int = 0, goals: Int = 0, daily: String = "") -> SeasonPass.Snapshot {
-        SeasonPass.Snapshot(seed: seed, week: week, cash: cash, companies: companies, loans: loans, goals: goals, dailyDone: daily)
+    private func snap(seed: Int = 1, week: Int = 1, cash: Double = 100, months: Int = 0, loans: Int = 0, goals: Int = 0, daily: String = "") -> SeasonPass.Snapshot {
+        SeasonPass.Snapshot(seed: seed, week: week, cash: cash, profitMonths: months, loans: loans, goals: goals, dailyDone: daily)
     }
 
     func testTierMath() {
@@ -55,10 +55,10 @@ final class SeasonPassTests: XCTestCase {
         var p = SeasonPass(today: day0)
         XCTAssertEqual(p.observe(snap(), today: day0), 0, "first look only sets the baseline")
         XCTAssertEqual(p.observe(snap(week: 2), today: day0), 20, "a finished week")
-        XCTAssertEqual(p.observe(snap(week: 2, companies: 2), today: day0 + 1), 40, "a company opened")
-        XCTAssertEqual(p.observe(snap(week: 2, companies: 2, goals: 1), today: day0 + 2), 50, "a milestone")
-        XCTAssertEqual(p.observe(snap(week: 2, companies: 2, goals: 1, daily: "2026-1-1"), today: day0 + 3), 30, "daily goal")
-        XCTAssertEqual(p.observe(snap(week: 2, companies: 2, goals: 1, daily: "2026-1-1"), today: day0 + 3), 0, "same facts pay nothing twice")
+        XCTAssertEqual(p.observe(snap(week: 2, months: 1), today: day0 + 1), 30, "a month closed in profit")
+        XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1), today: day0 + 2), 50, "a milestone")
+        XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1, daily: "2026-1-1"), today: day0 + 3), 30, "daily goal")
+        XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1, daily: "2026-1-1"), today: day0 + 3), 0, "same facts pay nothing twice")
         var l = SeasonPass(today: day0)
         l.observe(snap(loans: 1), today: day0)
         XCTAssertEqual(l.observe(snap(loans: 0), today: day0), 40, "a loan repaid")
@@ -77,8 +77,8 @@ final class SeasonPassTests: XCTestCase {
     func testOtherGameOrEarlierWeekPaysNothing() {
         var p = SeasonPass(today: day0)
         p.observe(snap(seed: 1, week: 10), today: day0)
-        XCTAssertEqual(p.observe(snap(seed: 2, week: 50, companies: 9), today: day0), 0)
-        XCTAssertEqual(p.observe(snap(seed: 2, week: 3, companies: 9), today: day0), 0, "an older save")
+        XCTAssertEqual(p.observe(snap(seed: 2, week: 50, months: 9), today: day0), 0)
+        XCTAssertEqual(p.observe(snap(seed: 2, week: 3, months: 9), today: day0), 0, "an older save")
         XCTAssertEqual(p.xp, 0)
     }
 
@@ -184,6 +184,24 @@ final class SeasonPassTests: XCTestCase {
         p.xp = 700; p.observe(snap(), today: day0); p.claimed = ["f1"]; p.owned = ["badge.s1.first"]
         let back = try JSONDecoder().decode(SeasonPass.self, from: JSONEncoder().encode(p))
         XCTAssertEqual(back, p)
+    }
+
+    func testOpeningCompaniesPaysNoXp() throws {
+        var e = try ChainsTests.engine("UK")
+        var p = SeasonPass(today: day0)
+        p.observe(SeasonPass.snapshot(e.state), today: day0)
+        for t in ["cafe", "barber", "gym"] { _ = ChainsTests.start(&e, t) }
+        XCTAssertEqual(p.observe(SeasonPass.snapshot(e.state), today: day0), 0)
+        XCTAssertEqual(p.xp, 0)
+    }
+
+    func testOldSavedBaselineStillDecodesAndPaysNothingForExistingMonths() throws {
+        let old = #"{"seed":1,"week":4,"cash":10,"companies":3,"loans":0,"goals":0,"dailyDone":""}"#
+        let b = try JSONDecoder().decode(SeasonPass.Snapshot.self, from: Data(old.utf8))
+        XCTAssertEqual(b.profitMonths, SeasonPass.Snapshot.unknownMonths)
+        var p = SeasonPass(today: day0)
+        p.baseline = b
+        XCTAssertEqual(p.observe(snap(seed: 1, week: 4, months: 5), today: day0), 0)
     }
 
     func testSnapshotFromGameState() throws {

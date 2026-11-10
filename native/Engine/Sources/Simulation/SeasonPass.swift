@@ -16,14 +16,14 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public static let cashStreakWeeks = 4
 
     public enum Source: String, Codable, Sendable, CaseIterable {
-        case weekReport, dailyGoal, cashStreak, loanRepaid, companyOpened, milestone
+        case weekReport, dailyGoal, cashStreak, loanRepaid, profitMonth, milestone
         public var xp: Int {
             switch self {
             case .weekReport: return 20
             case .dailyGoal: return 30
             case .cashStreak: return 25
             case .loanRepaid: return 40
-            case .companyOpened: return 40
+            case .profitMonth: return 30
             case .milestone: return 50
             }
         }
@@ -33,7 +33,7 @@ public struct SeasonPass: Codable, Equatable, Sendable {
             case .dailyGoal: return "Complete the daily goal"
             case .cashStreak: return "Keep cash positive for \(SeasonPass.cashStreakWeeks) weeks"
             case .loanRepaid: return "Repay a loan"
-            case .companyOpened: return "Open a company"
+            case .profitMonth: return "Close a month in profit"
             case .milestone: return "Reach a career or country milestone"
             }
         }
@@ -41,17 +41,39 @@ public struct SeasonPass: Codable, Equatable, Sendable {
 
     /// The few facts read from a game to find what happened since the last look.
     public struct Snapshot: Codable, Equatable, Sendable {
-        public var seed: Int, week: Int, cash: Double, companies: Int, loans: Int, goals: Int
+        public static let unknownMonths = -1
+        public var seed: Int, week: Int, cash: Double, profitMonths: Int, loans: Int, goals: Int
         /// The date key of the daily goal once its reward is claimed; empty otherwise.
         public var dailyDone: String
-        public init(seed: Int, week: Int, cash: Double, companies: Int, loans: Int, goals: Int, dailyDone: String) {
-            self.seed = seed; self.week = week; self.cash = cash; self.companies = companies; self.loans = loans; self.goals = goals; self.dailyDone = dailyDone
+        public init(seed: Int, week: Int, cash: Double, profitMonths: Int, loans: Int, goals: Int, dailyDone: String) {
+            self.seed = seed; self.week = week; self.cash = cash; self.profitMonths = profitMonths; self.loans = loans; self.goals = goals; self.dailyDone = dailyDone
         }
+
+        enum CodingKeys: String, CodingKey { case seed, week, cash, profitMonths, loans, goals, dailyDone }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            seed = try c.decode(Int.self, forKey: .seed)
+            week = try c.decode(Int.self, forKey: .week)
+            cash = try c.decode(Double.self, forKey: .cash)
+            profitMonths = try c.decodeIfPresent(Int.self, forKey: .profitMonths) ?? Self.unknownMonths
+            loans = try c.decode(Int.self, forKey: .loans)
+            goals = try c.decode(Int.self, forKey: .goals)
+            dailyDone = try c.decode(String.self, forKey: .dailyDone)
+        }
+    }
+
+    static func profitMonths(_ s: GameState) -> Int {
+        var byMonth: [Int: Double] = [:]
+        for c in s.companies where c.type != "hold" {
+            for m in c.monthlyHistory { byMonth[m.monthIndex, default: 0] += m.profit }
+        }
+        return byMonth.values.filter { $0 > 0 }.count
     }
 
     public static func snapshot(_ s: GameState) -> Snapshot {
         let daily: String = (s.rest["dy59"]?["got"].int ?? 0) != 0 ? (s.rest["dy59"]?["d"].string ?? "") : ""
-        return Snapshot(seed: s.seed, week: s.week, cash: s.cash, companies: s.companies.count, loans: s.loans.count, goals: Career.goalsDone(s), dailyDone: daily)
+        return Snapshot(seed: s.seed, week: s.week, cash: s.cash, profitMonths: profitMonths(s), loans: s.loans.count, goals: Career.goalsDone(s), dailyDone: daily)
     }
 
     // MARK: State
@@ -178,7 +200,7 @@ public struct SeasonPass: Codable, Equatable, Sendable {
                 if hits > 0 { total += award(.cashStreak, today: today, count: hits) }
             } else { cashStreak = 0 }
         }
-        if now.companies > b.companies { total += award(.companyOpened, today: today, count: now.companies - b.companies) }
+        if b.profitMonths >= 0, now.profitMonths > b.profitMonths { total += award(.profitMonth, today: today, count: now.profitMonths - b.profitMonths) }
         if now.loans < b.loans { total += award(.loanRepaid, today: today, count: b.loans - now.loans) }
         if now.goals > b.goals { total += award(.milestone, today: today, count: now.goals - b.goals) }
         if !now.dailyDone.isEmpty && now.dailyDone != b.dailyDone { total += award(.dailyGoal, today: today) }

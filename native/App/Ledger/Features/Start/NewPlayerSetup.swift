@@ -23,7 +23,6 @@ struct NewPlayerSetup: View {
     @State private var suggested = ""
     /// The game mode, chosen on the last step (Classic unless changed); fixed once the game starts.
     @State private var difficulty: Difficulty = .classic
-    @Environment(Entitlements.self) private var ent
     @State private var allTrades: [StarterTrade] = []
     @State private var loading = false
     @State private var showAll = false
@@ -246,31 +245,16 @@ struct NewPlayerSetup: View {
     private var difficultyRow: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text("Difficulty").textStyle(.label, tint: Theme.inkFaint)
-            Picker("Difficulty", selection: difficultyChoice) {
+            Picker("Difficulty", selection: $difficulty) {
                 ForEach(Difficulty.allCases) { (d: Difficulty) in Text(d.name).tag(d) }
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("setup-difficulty")
             Text(difficulty.blurb).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-            if !ent.isUnlocked(.sandboxMode) {
-                HStack(spacing: Theme.Space.xs) {
-                    Text("Sandbox").textStyle(.caption, tint: Theme.inkFaint)
-                    ProMark(feature: .sandboxMode)
-                }
-            }
         }
     }
 
-    /// The picker's selection; Sandbox opens the paywall instead of being chosen while it is locked.
-    private var difficultyChoice: Binding<Difficulty> {
-        Binding(get: { difficulty }, set: { (d: Difficulty) in
-            if d == .sandbox, !ent.isUnlocked(.sandboxMode) { _ = ent.require(.sandboxMode, title: "Sandbox mode"); return }
-            difficulty = d
-        })
-    }
-
     private func start() {
-        if difficulty == .sandbox, !ent.require(.sandboxMode, title: "Sandbox mode") { return }
         let n: String = companyName.trimmingCharacters(in: .whitespacesAndNewlines)
         begin(countryCode, tradeID, n.isEmpty ? suggested : n, playerName.trimmingCharacters(in: .whitespacesAndNewlines), difficulty)
     }

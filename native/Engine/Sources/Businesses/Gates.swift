@@ -8,8 +8,8 @@ import Finance
 public enum UnlockRule: Equatable, Sendable {
     /// Nothing to wait for (a company-level feature only needs the company to exist).
     case always
-    /// A game week, a ladder goal (1 to 10), profitable closed years, or wealth.
-    case week(Int), goal(Int), profitableYears(Int), rich
+    /// A game week, a ladder goal (1 to 10), profitable closed quarters, or wealth.
+    case week(Int), goal(Int), profitableQuarters(Int), rich
     /// A week closed with sales, a month closed in profit, a loss or fine booked or a month closed at a loss.
     case firstSalesWeek, firstProfitMonth, firstLossEvent
     /// Company level: weeks traded, twelve closed months in profit, a proven pilot, a possible board seat, profit to pay out.
@@ -111,8 +111,10 @@ public enum Gates {
         RuleEntry(feature: .gate(.group), title: "Group", rule: .anyOf([.goal(7), .week(13)]), text: "Unlocks after your first profitable month, or in week 13"),
         RuleEntry(feature: .gate(.atlas), title: "Atlas", rule: .anyOf([.firstProfitMonth, .firstLossEvent]),
                   text: "Unlocks with your first profitable month or your first loss"),
-        RuleEntry(feature: .gate(.ventures), title: "Ventures", rule: .profitableYears(2), text: "Unlocks after two profitable years"),
-        RuleEntry(feature: .gate(.venturesFeed), title: "Ventures feed", rule: .profitableYears(2), text: "Unlocks after two profitable years", roadmap: false),
+        RuleEntry(feature: .gate(.ventures), title: "Ventures", rule: .anyOf([.profitableQuarters(1), .week(26)]),
+                  text: "Unlocks after your first profitable quarter, or in week 26"),
+        RuleEntry(feature: .gate(.venturesFeed), title: "Ventures feed", rule: .anyOf([.profitableQuarters(1), .week(26)]),
+                  text: "Unlocks after your first profitable quarter, or in week 26", roadmap: false),
         RuleEntry(feature: .gate(.luxury), title: "Luxury", rule: .rich, text: "Unlocks when you are rich"),
         RuleEntry(feature: .gate(.ownerHours), title: "Owner hours", rule: .week(13), text: "", roadmap: false),
         // Company features, announced once by `Unlocks`.
@@ -165,6 +167,27 @@ public enum Gates {
         return n
     }
 
+    public static let monthsPerQuarter = 3
+
+    public static func profitableQuarters(_ s: GameState) -> Int {
+        let cs = s.companies.filter { $0.type != "hold" }
+        let quarters = (cs.map { $0.monthlyHistory.count }.max() ?? 0) / monthsPerQuarter
+        var n = 0
+        for b in 0..<quarters {
+            let total = cs.reduce(0.0) { acc, c in
+                let h = c.monthlyHistory
+                let hi = h.count - monthsPerQuarter * b, lo = hi - monthsPerQuarter
+                return lo < 0 ? acc : acc + h[lo..<hi].reduce(0.0) { $0 + $1.profit }
+            }
+            if total > 0 { n += 1 }
+        }
+        return n
+    }
+
+    public static func closedMonths(_ s: GameState) -> Int {
+        s.companies.filter { $0.type != "hold" }.map { $0.monthlyHistory.count }.max() ?? 0
+    }
+
     public static func netWorthLimit(_ s: GameState, data: GameData) -> Double {
         data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode).medianMonthlyWage * richMultiple
     }
@@ -182,7 +205,7 @@ public enum Gates {
         case .always: return company?.status.isLive ?? true
         case .week(let w): return s.week >= w
         case .goal(let n): return goalDone(s, n)
-        case .profitableYears(let n): return profitableYears(s) >= n
+        case .profitableQuarters(let n): return profitableQuarters(s) >= n
         case .rich:
             guard let data else { return false }
             return Valuation.netWorth(s, trades: data.catalog).total > netWorthLimit(s, data: data)
@@ -222,7 +245,10 @@ public enum Gates {
         case .always: return (1, "")
         case .week(let w): return (ratio(Double(s.week), Double(w)), "Week \(s.week) of \(w)")
         case .goal(let n): return (ratio(Double(goalsDone(s)), Double(n)), "Goal \(min(goalsDone(s), n)) of \(n)")
-        case .profitableYears(let n): return (ratio(Double(profitableYears(s)), Double(n)), "\(min(profitableYears(s), n)) of \(n) profitable years")
+        case .profitableQuarters(let n):
+            if profitableQuarters(s) >= n { return (1, "\(n) of \(n) profitable quarters") }
+            let months: Int = min(closedMonths(s), monthsPerQuarter * n)
+            return (min(0.9, ratio(Double(months), Double(monthsPerQuarter * n))), "\(months) of \(monthsPerQuarter * n) months closed, in profit overall")
         case .rich:
             guard let data else { return (0, "") }
             let limit: Double = netWorthLimit(s, data: data)
@@ -283,8 +309,7 @@ public enum Gates {
         switch r {
         case .week(let w): return w - s.week <= nearWeeks
         case .goal(let n): return n - goalsDone(s) <= 1
-        case .profitableYears(let n): return profitableYears(s) + 1 >= n
-        case .firstSalesWeek, .firstProfitMonth, .firstLossEvent: return s.week >= eventNearWeek
+        case .firstSalesWeek, .firstProfitMonth, .firstLossEvent, .profitableQuarters: return s.week >= eventNearWeek
         case .anyOf(let rs): return rs.contains { (x: UnlockRule) -> Bool in near(x, s) }
         case .rich, .always, .weeksTraded, .profitableYear, .provenConcept, .boardSeat, .retainedProfit: return false
         }

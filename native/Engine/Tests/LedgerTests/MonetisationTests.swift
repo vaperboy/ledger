@@ -12,7 +12,7 @@ final class EntitlementGatesTests: XCTestCase {
         let pro = EntitlementSnapshot(owned: [.pro])
         let founder = EntitlementSnapshot(owned: [.founder])
         let plus = EntitlementSnapshot(owned: [.plusYearly], plusExpires: now.addingTimeInterval(86_400))
-        XCTAssertEqual(LockedFeature.allCases.count, 8)
+        XCTAssertEqual(Set(LockedFeature.allCases.map { $0.rawValue }), ["saveSlots", "cloudBackup"], "only comfort is sold, never a game feature")
         for f in LockedFeature.allCases {
             XCTAssertFalse(free.isUnlocked(f, now: now), f.rawValue)
             for (name, e) in [("pro", pro), ("founder", founder), ("plus", plus)] { XCTAssertTrue(e.isUnlocked(f, now: now), "\(f.rawValue) \(name)") }
@@ -46,12 +46,11 @@ final class EntitlementGatesTests: XCTestCase {
         XCTAssertFalse(AdPolicy.canOfferPass(entitlements: EntitlementSnapshot(owned: [.pro]), now: now, AdLedger()))
     }
 
-    func testFreeTradesAreTheStarterTwelveAndTheCheapOnes() {
-        XCTAssertTrue(TradeAccess.isFree(tradeID: "cafe", startUpCost: 9e9, medianWage: 100))
-        XCTAssertTrue(TradeAccess.isFree(tradeID: "hotel", startUpCost: 199, medianWage: 100))
-        XCTAssertFalse(TradeAccess.isFree(tradeID: "hotel", startUpCost: 200, medianWage: 100))
-        XCTAssertFalse(TradeAccess.isFree(tradeID: "hotel", startUpCost: nil, medianWage: 100))
-        XCTAssertTrue(TradeAccess.isUnlocked(tradeID: "hotel", startUpCost: 5000, medianWage: 100, entitlements: EntitlementSnapshot(owned: [.pro]), now: now))
+    func testNoPurchaseGatesAnyTradeOrCoreFeature() throws {
+        for f in ["tradeAboveCostLine", "expansionAbroad", "groupLayer", "ventures", "luxuryGivingFootball", "sandboxMode"] {
+            XCTAssertNil(LockedFeature(rawValue: f), f)
+        }
+        XCTAssertNoThrow(try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, difficulty: .sandbox))
     }
 }
 

@@ -10,7 +10,6 @@ import Simulation
 /// are listed under a toggle. Founding runs in `FoundStartupSheet`.
 struct VenturesStartupsSection: View {
     @EnvironmentObject var store: GameStore
-    @Environment(Entitlements.self) private var ent
     var engine: GameEngine
     @Binding var open: String?
     @Binding var sheet: VentureSheet?
@@ -27,7 +26,7 @@ struct VenturesStartupsSection: View {
                 if live.isEmpty {
                     EmptyState(glyph: Glyph.ventures, title: "You run no startup",
                                message: "You put in the seed money, hire builders and raise rounds as the product takes shape. Most fail; a few sell for many times what went in.",
-                               actionTitle: "Found a startup", action: { ent.run(.ventures, "Found a startup") { sheet = .found } }, centered: false)
+                               actionTitle: "Found a startup", action: { sheet = .found }, centered: false)
                         .padding(.vertical, Theme.Space.s)
                 }
                 ForEach(Array(live.enumerated()), id: \.element.id) { item in

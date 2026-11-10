@@ -9,7 +9,6 @@ import Simulation
 struct StartConfirmView: View {
     @EnvironmentObject var store: GameStore
     @EnvironmentObject var estimator: StartEstimator
-    @Environment(Entitlements.self) private var ent
     @Environment(\.dismiss) private var dismiss
     var tradeID: String
     @State var cityID: String
@@ -162,9 +161,6 @@ struct StartConfirmView: View {
 
     private func open(_ e: GameEngine) {
         guard let f = facts else { return }
-        let cost: Double? = e.startableRows(cityID: f.cityID).first { $0.tradeID == f.tradeID }?.startUpCost
-        let unlocked: Bool = TradeAccess.isUnlocked(tradeID: f.tradeID, startUpCost: cost, medianWage: e.homeCountry.medianMonthlyWage, entitlements: ent.effective, now: Date())
-        if !unlocked { ent.run(.tradeAboveCostLine, "Open a " + f.name.lowercased()) {}; return }
         let choices: SetupChoices = e.suggestedChoices(tradeID: f.tradeID, cityID: f.cityID, size: f.size)
         let typed: String = name.trimmingCharacters(in: .whitespaces)
         let pick: NewCompanyPlan.Pick? = currentPick(premisesPlan(e, f))
