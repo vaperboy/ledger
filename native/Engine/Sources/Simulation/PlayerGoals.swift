@@ -196,7 +196,7 @@ public enum PlayerGoals {
 
     static let ladderList: [(id: String, title: String, body: String, button: String, link: String, past: String, reward: String)] = [
         ("M1", "Get through your first week", "Tap Next day. Each day trades, each week ends with a report.", "", "", "You got through your first week.", "Your credit score goes up a little"),
-        ("M2", "Choose how you sell", "Pick who you are for and what else you offer.", "Open sales", "sales", "You chose how you sell.", "More people know the name"),
+        ("M2", "Set your prices", "Move a price up or down and see who still buys.", "Open sales", "sales", "You set your prices.", "More people know the name"),
         ("M3", "Hire your first worker", "Check what they claim before you hire.", "Find workers", "hire", "You hired your first worker.", "A better name as an employer"),
         ("M4", "Answer a decision", "Problems and offers wait in the Inbox for your answer.", "Open Inbox", "inbox", "You answered your first decision.", "A little better reputation"),
         ("M5", "Word gets around", "Even a small campaign brings people in.", "Open marketing", "marketing", "Your first campaign ran.", ""),

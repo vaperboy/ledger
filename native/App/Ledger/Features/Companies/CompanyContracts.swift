@@ -151,7 +151,7 @@ struct CompanyContracts: View {
         let edge: Color = warned ? Theme.caution.opacity(0.6) : Theme.border
         let iconTint: Color = warned ? Theme.caution : Theme.gold
         let warnText: String = "\(Int(c.warnings)) warning\(Int(c.warnings) == 1 ? "" : "s")"
-        let sub: String = "\(c.customer) · \(String(format: "%.1f", c.units)) a week · \(c.reliabilityWord.lowercased()) payer"
+        let sub: String = "\(c.customer)\(c.buyerIsPlayer ? " (a player)" : "") · \(String(format: "%.1f", c.units)) a week · \(c.reliabilityWord.lowercased()) payer"
         return Card(padding: 12, radius: Theme.Radius.row, stroke: edge) {
             VStack(alignment: .leading, spacing: 10) {
                 Button {

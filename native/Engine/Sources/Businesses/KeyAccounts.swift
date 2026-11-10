@@ -129,7 +129,7 @@ public enum KeyAccounts {
         }
         s.companies[i].set("accts", .array(list))
         for n in left { s.note("\(n) took its business elsewhere from \(co.name).", tone: "bad", companyID: co.id) }
-        if s.week % 4 == 0, list.count < maximum(co), co.awareness >= 8 || co.reputation >= 50, h.next() < 0.16 + co.awareness / 400 {
+        if s.week % 4 == 0, co.chosenChannel == nil, list.count < maximum(co), co.awareness >= 8 || co.reputation >= 50, h.next() < 0.16 + co.awareness / 400 {
             offer(&s, i, &h, data: data)
         }
     }

@@ -17,6 +17,7 @@ struct StartConfirmView: View {
     @State private var name = ""
     @State private var rentIndex: Int?
     @State private var buying = false
+    @State private var channel: SalesChannel = .consumers
 
     init(tradeID: String, cityID: String) {
         self.tradeID = tradeID
@@ -29,6 +30,7 @@ struct StartConfirmView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     if let f = facts {
                         setup(e, f)
+                        SalesChannelPicker(tradeID: f.tradeID, channel: $channel)
                         if let plan = premisesPlan(e, f) { PremisesPicker(plan: plan, cur: e.homeCurrency, rentIndex: $rentIndex, buying: $buying) }
                         ifYouOpen(f)
                         if let refusal {
@@ -150,7 +152,8 @@ struct StartConfirmView: View {
 
     private func open(_ e: GameEngine) {
         guard let f = facts else { return }
-        let choices: SetupChoices = e.suggestedChoices(tradeID: f.tradeID, cityID: f.cityID, size: f.size)
+        var choices: SetupChoices = e.suggestedChoices(tradeID: f.tradeID, cityID: f.cityID, size: f.size)
+        choices.channel = channel
         let typed: String = name.trimmingCharacters(in: .whitespaces)
         let pick: NewCompanyPlan.Pick? = currentPick(premisesPlan(e, f))
         let r = store.act { $0.startCompanyChoosingPremises(tradeID: f.tradeID, cityID: f.cityID, size: f.size, name: typed.isEmpty ? nil : typed, pick: pick, fundWith: f.invest, choices: choices, accountantID: nil) }

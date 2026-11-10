@@ -31,6 +31,8 @@ public enum DemandModel {
         if !prem.isNull, prem["loc"].double != 0, Competition.isFootTraffic(prem["kind"].string) { D *= prem["loc"].double }
         parts.append(("price", pe))
         apply("choices", Knobs.effect(co, bd, "d", w))
+        let channel = SalesChannel.demandFactor(co, week: w.week, seed: w.state.seed)
+        if channel != 1 { apply("channel", channel) }
         apply("economy", 1 + (w.economy.demand - 1) * (w.balance.economySensitivity[bd.family] ?? 0.8))
         let credit = creditFactor(co, w)
         if credit != 1 { apply("credit", credit) }
@@ -139,7 +141,8 @@ public enum DemandModel {
     }
 
     static func applyWaysToSell(_ r: inout DemandResult, _ co: Company, _ bd: Trade, _ w: World) {
-        guard let ways = w.balance.salesWays[co.type], !ways.isEmpty, co.status == .open, r.customers >= 0 else { return }
+        let ways = w.balance.salesWays[co.type] ?? []
+        guard !ways.isEmpty || SalesChannel.takesContracts(co), co.status == .open, r.customers >= 0 else { return }
         let s = co.value("sw33")
         let on = s["on"]
         let d0 = r.customers

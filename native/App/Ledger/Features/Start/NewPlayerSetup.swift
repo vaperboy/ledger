@@ -9,7 +9,7 @@ struct NewPlayerSetup: View {
     enum Step { case country, trade, name }
 
     var onClose: () -> Void
-    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ difficulty: Difficulty) -> Void
+    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ channel: SalesChannel, _ difficulty: Difficulty) -> Void
 
     @State private var step: Step = .country
     @State private var countryCode = ""
@@ -18,6 +18,7 @@ struct NewPlayerSetup: View {
     @State private var playerName = ""
     @State private var suggested = ""
     @State private var difficulty: Difficulty = .classic
+    @State private var channel: SalesChannel = .consumers
     @State private var allTrades: [StarterTrade] = []
     @State private var loading = false
     @State private var showAll = false
@@ -197,34 +198,42 @@ struct NewPlayerSetup: View {
         tradeID = t.id
         suggested = GameEngine.suggestedCompanyName(countryCode: countryCode, tradeID: t.id)
         companyName = suggested
+        channel = .consumers
         picked = nil
         step = .name
     }
 
     private var nameStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            TextField("Company name", text: $companyName)
-                .textInputAutocapitalization(.words)
-                .focused($nameFocused)
-                .submitLabel(.go)
-                .onSubmit { start() }
-                .textStyle(.figure)
-                .padding(.vertical, Theme.Space.s)
-                .overlay(alignment: .bottom) { Hairline() }
-            TextField("Your name (optional)", text: $playerName)
-                .textInputAutocapitalization(.words)
-                .submitLabel(.go)
-                .onSubmit { start() }
-                .textStyle(.figure)
-                .padding(.vertical, Theme.Space.s)
-                .overlay(alignment: .bottom) { Hairline() }
-            difficultyRow
-            Spacer(minLength: 0)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) { nameFields }
+            }
+            .scrollDismissesKeyboard(.interactively)
             Button("Start") { Haptics.tap(); start() }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                 .accessibilityIdentifier("setup-start")
         }
         .onAppear { nameFocused = true }
+    }
+
+    @ViewBuilder private var nameFields: some View {
+        TextField("Company name", text: $companyName)
+            .textInputAutocapitalization(.words)
+            .focused($nameFocused)
+            .submitLabel(.go)
+            .onSubmit { start() }
+            .textStyle(.figure)
+            .padding(.vertical, Theme.Space.s)
+            .overlay(alignment: .bottom) { Hairline() }
+        TextField("Your name (optional)", text: $playerName)
+            .textInputAutocapitalization(.words)
+            .submitLabel(.go)
+            .onSubmit { start() }
+            .textStyle(.figure)
+            .padding(.vertical, Theme.Space.s)
+            .overlay(alignment: .bottom) { Hairline() }
+        SalesChannelPicker(tradeID: tradeID, channel: $channel)
+        difficultyRow
     }
 
     private var difficultyRow: some View {
@@ -241,6 +250,6 @@ struct NewPlayerSetup: View {
 
     private func start() {
         let n: String = companyName.trimmingCharacters(in: .whitespacesAndNewlines)
-        begin(countryCode, tradeID, n.isEmpty ? suggested : n, playerName.trimmingCharacters(in: .whitespacesAndNewlines), difficulty)
+        begin(countryCode, tradeID, n.isEmpty ? suggested : n, playerName.trimmingCharacters(in: .whitespacesAndNewlines), channel, difficulty)
     }
 }

@@ -165,3 +165,154 @@ public enum SalesWays {
         return names[max(0, min(11, m - 1))]
     }
 }
+
+public enum SalesChannel: String, CaseIterable, Equatable, Sendable {
+    case consumers = "private"
+    case business
+
+    static let consumerDemand = 1.05
+    static let consumerPrice = 0.985
+    static let businessDemand = 0.5
+    static let businessPrice = 1.12
+    static let businessLumpiness = 0.5
+    static let contractShareOfCapacity = 0.7
+    static let contractWeeks = [4, 8, 13]
+
+    public var title: String { self == .consumers ? "Private customers" : "Business customers" }
+
+    public static func canChoose(_ channel: SalesChannel, tradeID: String) -> Bool {
+        channel == .consumers || SupplyMarketCatalogue.canSupply(tradeID: tradeID)
+    }
+
+    public static func options(tradeID: String) -> [SalesChannel] { allCases.filter { canChoose($0, tradeID: tradeID) } }
+
+    static func takesContracts(_ co: Company) -> Bool { co.chosenChannel == .business }
+
+    static func demandFactor(_ co: Company, week: Int, seed: Int) -> Double {
+        switch co.chosenChannel {
+        case nil: return 1
+        case .consumers?: return consumerDemand
+        case .business?: return businessDemand * (1 + businessLumpiness * (2 * HashedRandom.first("\(seed):chan:\(week):\(co.id)") - 1))
+        }
+    }
+
+    static func priceFactor(_ co: Company) -> Double {
+        switch co.chosenChannel {
+        case nil: return 1
+        case .consumers?: return consumerPrice
+        case .business?: return businessPrice
+        }
+    }
+
+    public static func refusal(_ s: GameState, companyID: Int, channel: SalesChannel) -> String? {
+        guard let co = s.company(companyID) else { return "That company no longer exists." }
+        if co.chosenChannel != nil || co.status != .setup { return "How you sell is chosen once, when the company starts." }
+        if !canChoose(channel, tradeID: co.type) { return "This kind of company has nothing to supply to business customers." }
+        return nil
+    }
+
+    @discardableResult
+    public static func choose(_ s: inout GameState, companyID: Int, channel: SalesChannel) -> String? {
+        if let why = refusal(s, companyID: companyID, channel: channel) { return why }
+        guard let i = s.companyIndex(companyID) else { return "That company no longer exists." }
+        s.companies[i].set("chan", channel.rawValue)
+        return nil
+    }
+}
+
+public extension Company {
+    var chosenChannel: SalesChannel? {
+        let v = str("chan")
+        return v.isEmpty ? nil : SalesChannel(rawValue: v)
+    }
+
+    var channel: SalesChannel { chosenChannel ?? .consumers }
+}
+
+public struct DemandPost: Equatable, Identifiable, Sendable {
+    public var id: String
+    public var ownerName: String
+    public var companyName: String
+    public var lineID: String
+    public var units: Int
+    public var weeks: Int
+
+    public init(id: String, ownerName: String, companyName: String, lineID: String, units: Int, weeks: Int) {
+        self.id = id; self.ownerName = ownerName; self.companyName = companyName; self.lineID = lineID; self.units = units; self.weeks = weeks
+    }
+
+    init(_ j: JSONValue) {
+        self.init(id: j["id"].string, ownerName: j["o"].string, companyName: j["c"].string, lineID: j["l"].string, units: j["u"].int, weeks: j["w"].int)
+    }
+
+    var json: JSONValue {
+        .object(["id": .string(id), "o": .string(ownerName), "c": .string(companyName), "l": .string(lineID), "u": .number(Double(units)), "w": .number(Double(weeks))])
+    }
+}
+
+extension SalesChannel {
+    public static func demandPosts(_ s: GameState) -> [DemandPost] { (s.rest["pdm"]?.array ?? []).map { DemandPost($0) } }
+
+    public static func saveDemandPosts(_ s: inout GameState, _ posts: [DemandPost]) {
+        s.rest["pdm"] = .array(posts.prefix(60).map { $0.json })
+    }
+
+    static func offers(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
+        let co = s.companies[i]
+        guard co.status == .open else { return }
+        let lw = co.value("lastW")
+        let cap = lw["cap"].double
+        guard cap >= 1 else { return }
+        let waiting = s.inbox.filter { $0.status == "open" && $0.companyID == co.id && $0.actionID == VolumeContracts.action }.count
+        let room = cap * contractShareOfCapacity - VolumeContracts.committedUnits(co)
+        guard waiting < 2, room >= 1 else { return }
+        var h = HashedRandom("\(s.seed):bzo:\(s.week):\(co.id)")
+        let chance = 0.15 + 0.2 * clamp(co.awareness / 100, 0, 1) + 0.15 * clamp((co.reputation - 40) / 60, 0, 1)
+        guard h.next() < chance else { return }
+        let seen = co.value("bzSeen").array.map { $0.string }
+        let supplied = SupplyMarketCatalogue.supplies[co.type] ?? []
+        let posts = demandPosts(s).filter { supplied.contains($0.lineID) && !seen.contains($0.id) }
+        let w = World(state: s, data: data)
+        let tk = Pricing.ticket(co, bd, w)
+        let usePost = !posts.isEmpty && h.next() < 0.5
+        let post: DemandPost? = usePost ? posts[min(posts.count - 1, Int(h.next() * Double(posts.count)))] : nil
+        let who: String
+        if let post {
+            who = post.companyName
+        } else {
+            let country = data.countries[co.countryCode] ?? data.countries.countries[0]
+            var names = DeterministicRandom(seed: Int(h.next() * 1_000_000_000))
+            who = CompanySetup.generateName(country: country, family: "svc", &names)
+        }
+        let wanted: Double = post.map { Double($0.units) } ?? max(1, jsRound(cap * (0.06 + 0.16 * h.next())))
+        let units: Double = max(1, min(room.rounded(.down), wanted))
+        let weeks: Int = post?.weeks ?? contractWeeks[min(contractWeeks.count - 1, Int(h.next() * Double(contractWeeks.count)))]
+        let discount: Double = jsRound((post == nil ? 0.02 - 0.10 * h.next() : 0.01 - 0.06 * h.next()) * 100) / 100
+        let pay: Int = post == nil ? [0, 0, 2, 4][min(3, Int(h.next() * 4))] : 0
+        let reliability: Double = post == nil ? jsRound((0.4 + 0.6 * h.next()) * 100) / 100 : 0.9
+        let terms = VolumeContracts.Terms(name: "Supply contract", customer: who, units: units, discount: discount, weeks: weeks, paymentWeeks: pay,
+                                          reliability: reliability, buyerIsPlayer: post != nil)
+        if let post {
+            var marks = co.value("bzSeen").array
+            marks.append(.string(post.id))
+            s.companies[i].set("bzSeen", .array(Array(marks.suffix(40))))
+        }
+        let price = tk * (1 - discount)
+        let worth = price * units * Double(weeks)
+        if let manager = co.managerID.flatMap({ s.people[$0]?.name }) {
+            let takes = lw["util"].double < 0.9 && reliability >= 0.6
+            MarketEvents.noteContractOffer(&s, company: co, customer: who, worth: worth,
+                                           outcome: takes ? "\(manager) signed it." : "\(manager) declined it: the terms or the room were not right.")
+            if takes { VolumeContracts.sign(&s, companyID: co.id, terms: terms, signedBy: manager) }
+            return
+        }
+        MarketEvents.noteContractOffer(&s, company: co, customer: who, worth: worth)
+        let cur = w.currency(co)
+        let paid = pay == 0 ? "on delivery" : "\(pay) weeks after delivery"
+        let buyer = post != nil ? "a player's company" : "a company"
+        let body = "\(who) is \(buyer). It wants \(Int(units)) units a week for \(weeks) weeks at \(cur.display(price)) a unit, paid \(paid). "
+            + "Worth about \(cur.display(worth)) in all. Once you accept, deliveries run by themselves; missed units bring warnings, a penalty and a worse name."
+        s.addMessage(kind: "ask", from: co.name, title: "\(who) offers a supply contract", body: body, companyID: co.id, tone: "n", status: "open",
+                     options: [.option("Accept"), .option("Decline")], action: VolumeContracts.action, data: VolumeContracts.json(terms), expiresWeek: s.week + 2)
+    }
+}

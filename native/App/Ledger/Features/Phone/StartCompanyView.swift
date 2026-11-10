@@ -312,3 +312,33 @@ struct StartBrowseView: View {
         .contentShape(Rectangle())
     }
 }
+
+enum SalesChannelWords {
+    static func pitch(_ channel: SalesChannel) -> String {
+        switch channel {
+        case .consumers:
+            return "Customers buy straight from you and sales happen by themselves every week.\nMore customers, but lower prices and thinner margins."
+        case .business:
+            return "Companies and other players order in bulk and pay better prices, and this is how you supply them.\nOrders are rarer. Each contract arrives in your Inbox to accept or decline, then runs by itself. Late deliveries cost you your name."
+        }
+    }
+}
+
+struct SalesChannelPicker: View {
+    var tradeID: String
+    @Binding var channel: SalesChannel
+
+    var body: some View {
+        let options: [SalesChannel] = SalesChannel.options(tradeID: tradeID)
+        if options.count > 1 {
+            CardSection("How you sell") {
+                Text("Choose once, now. It cannot be changed after the company starts.")
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                ForEach(options, id: \.self) { (o: SalesChannel) in
+                    ChoiceCard(title: o.title, subtitle: SalesChannelWords.pitch(o), selected: channel == o) { channel = o }
+                        .accessibilityIdentifier("sell-channel-\(o.rawValue)")
+                }
+            }
+        }
+    }
+}

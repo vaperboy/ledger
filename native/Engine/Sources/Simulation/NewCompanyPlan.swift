@@ -15,8 +15,11 @@ public struct SetupChoices: Equatable, Sendable {
     public var team: CompanySetup.SetupOptions.Team = .minimum
     public var putInto: Double? = nil
     public var chooseFirstItem = true
-    public init(stock: Stock = .full, optionalEquipment: Bool = false, team: CompanySetup.SetupOptions.Team = .minimum, putInto: Double? = nil, chooseFirstItem: Bool = true) {
+    public var channel: SalesChannel? = nil
+    public init(stock: Stock = .full, optionalEquipment: Bool = false, team: CompanySetup.SetupOptions.Team = .minimum, putInto: Double? = nil, chooseFirstItem: Bool = true,
+                channel: SalesChannel? = nil) {
         self.stock = stock; self.optionalEquipment = optionalEquipment; self.team = team; self.putInto = putInto; self.chooseFirstItem = chooseFirstItem
+        self.channel = channel
     }
 }
 
@@ -283,6 +286,7 @@ public extension GameEngine {
     mutating func startCompanyChoosingPremises(tradeID: String, cityID: String, size: Double?, name: String?, pick: NewCompanyPlan.Pick?, fundWith amount: Double,
                                                choices requested: SetupChoices = SetupChoices(), accountantID: Int? = nil) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
         let choices: SetupChoices = tutorialLimited(requested)
+        if let channel = choices.channel, !SalesChannel.canChoose(channel, tradeID: tradeID) { return .failure(.notAllowedHere) }
         let r = startCompany(tradeID: tradeID, cityID: cityID, size: size, name: name, accountantID: accountantID, fundWith: amount, quickSetup: false)
         guard case .success(let id) = r else {
             if case .failure(let e) = r { return .failure(e) }
@@ -290,6 +294,7 @@ public extension GameEngine {
         }
         var out = NewCompanyOutcome(companyID: id, premises: nil, setupNotes: [])
         update { s, d, _ in
+            if let channel = choices.channel { SalesChannel.choose(&s, companyID: id, channel: channel) }
             if let pick, let i = s.companyIndex(id), let bd = d.catalog[s.companies[i].type], let k = bd.premisesKind, k != "none", k != "home",
                let l = CompanySetup.listings(for: s.companies[i], bd, World(state: s, data: d)).first(where: { $0.index == pick.listingIndex }) {
                 out.premises = CompanySetup.setPremises(&s, companyID: id, listing: l, buy: pick.buy, data: d)

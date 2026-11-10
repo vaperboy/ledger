@@ -19,10 +19,12 @@ public enum VolumeContracts {
         public var tenderID: Int? = nil
         public var extensions = 0
         public var higherQuality = false
+        public var buyerIsPlayer = false
         public init(name: String, customer: String, units: Double, discount: Double, weeks: Int, paymentWeeks: Int, reliability: Double,
-                    isPublic: Bool = false, tenderID: Int? = nil, extensions: Int = 0, higherQuality: Bool = false) {
+                    isPublic: Bool = false, tenderID: Int? = nil, extensions: Int = 0, higherQuality: Bool = false, buyerIsPlayer: Bool = false) {
             self.name = name; self.customer = customer; self.units = units; self.discount = discount; self.weeks = weeks; self.paymentWeeks = paymentWeeks
             self.reliability = reliability; self.isPublic = isPublic; self.tenderID = tenderID; self.extensions = extensions; self.higherQuality = higherQuality
+            self.buyerIsPlayer = buyerIsPlayer
         }
     }
 
@@ -41,6 +43,7 @@ public enum VolumeContracts {
         public var higherQuality: Bool
         public var paymentWeeks: Int
         public var reliability: Double
+        public var buyerIsPlayer: Bool
         public var index: Int
         public var reliabilityWord: String { reliability >= 0.85 ? "Solid" : reliability >= 0.65 ? "Average" : "Shaky" }
     }
@@ -61,7 +64,8 @@ public enum VolumeContracts {
     static func contract(_ j: JSONValue, index: Int, week: Int) -> Contract {
         Contract(id: j["id"].int, name: j["n"].string, customer: j["who"].string, units: j["u"].double, discount: j["d"].double, startWeek: j["w0"].int,
                  endWeek: j["end"].int, isPublic: j["pub"].bool, tenderID: j["tnd"].isNull ? nil : j["tnd"].int, extensionsLeft: j["ext"].int, warnings: j["warn"].double,
-                 higherQuality: j["q"].bool, paymentWeeks: j["pay"].int, reliability: j["cr"].isNull ? 0.8 : j["cr"].double, index: index)
+                 higherQuality: j["q"].bool, paymentWeeks: j["pay"].int, reliability: j["cr"].isNull ? 0.8 : j["cr"].double,
+                 buyerIsPlayer: j["pl"].bool, index: index)
     }
 
     public static func contracts(_ co: Company, week: Int = 0) -> [Contract] {
@@ -105,6 +109,7 @@ public enum VolumeContracts {
                                       "pay": .number(Double(t.paymentWeeks)), "cr": .number(t.reliability), "warn": 0, "ext": .number(Double(t.extensions))]
         if t.isPublic { c["pub"] = 1 }
         if t.higherQuality { c["q"] = 1 }
+        if t.buyerIsPlayer { c["pl"] = 1 }
         if let tid = t.tenderID { c["tnd"] = .number(Double(tid)) }
         var list = sw["ct"].array
         list.append(.object(c))
@@ -150,12 +155,12 @@ public enum VolumeContracts {
 
     static func terms(from d: JSONValue) -> Terms {
         Terms(name: d["name"].string, customer: d["who"].string, units: d["u"].double, discount: d["d"].double, weeks: d["wk"].int, paymentWeeks: d["pay"].int,
-              reliability: d["cr"].isNull ? 0.8 : d["cr"].double)
+              reliability: d["cr"].isNull ? 0.8 : d["cr"].double, buyerIsPlayer: d["pl"].bool)
     }
 
     static func json(_ t: Terms) -> JSONValue {
         .object(["k": "contract", "name": .string(t.name), "who": .string(t.customer), "u": .number(t.units), "d": .number(t.discount), "wk": .number(Double(t.weeks)),
-                 "pay": .number(Double(t.paymentWeeks)), "cr": .number(t.reliability)])
+                 "pay": .number(Double(t.paymentWeeks)), "cr": .number(t.reliability), "pl": .bool(t.buyerIsPlayer)])
     }
 
     static func ratingFactor(_ co: Company) -> Double { clamp((co.int("rvN") >= 5 ? Pricing.rating(co) : 3.8) - 3, 0, 1.5) / 1.5 }
@@ -245,7 +250,7 @@ public enum VolumeContracts {
             serviceAndRisk(&s, i, bd, data: data)
             endings(&s, i, data: data)
         }
-        offers(&s, i, bd, data: data)
+        if SalesChannel.takesContracts(s.companies[i]) { SalesChannel.offers(&s, i, bd, data: data) } else { offers(&s, i, bd, data: data) }
     }
 
     static func settle(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
@@ -312,6 +317,7 @@ public enum VolumeContracts {
             let name = c["n"].string, who = c["who"].string
             var gone = false
             if served < 0.85 {
+                if SalesChannel.takesContracts(co) { co.reputation = max(0, co.reputation - 0.5) }
                 c["warn"] = .number(c["warn"].double + 1)
                 let warn = c["warn"].double
                 if warn == 2 {

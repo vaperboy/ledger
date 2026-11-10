@@ -109,4 +109,17 @@ public extension GameEngine {
     }
 
     func shipmentsOnTheWay(companyID: Int) -> [Shipments.Row] { Shipments.rows(state, companyID: companyID) }
+
+    @discardableResult
+    mutating func chooseSalesChannel(companyID: Int, channel: SalesChannel) -> ActionResult {
+        var why: String?
+        update { s, _, _ in why = SalesChannel.choose(&s, companyID: companyID, channel: channel) }
+        return why.map { ActionResult.refused($0) } ?? .done
+    }
+
+    mutating func savePlayerDemand(_ posts: [DemandPost]) {
+        update { s, _, _ in SalesChannel.saveDemandPosts(&s, posts) }
+    }
+
+    var playerDemandPosts: [DemandPost] { SalesChannel.demandPosts(state) }
 }

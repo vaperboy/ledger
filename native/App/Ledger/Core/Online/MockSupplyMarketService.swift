@@ -7,9 +7,6 @@ final class MockSupplyMarketService: SupplyMarketService {
 
     private var all: [SupplyListing] = []
     private var contracts: [SupplyContract] = []
-    private var orderLog: [String: [SupplyOrder]] = [:]
-    private var unitValues: [String: Double] = [:]
-    private var buyersOf: [String: Int] = [:]
     private var failPlan: [String: (after: Int, reason: SupplyEnd)] = [:]
     private var failAt: [String: (week: Int, reason: SupplyEnd)] = [:]
     private var knownIDs: Set<String>
@@ -149,24 +146,14 @@ final class MockSupplyMarketService: SupplyMarketService {
         onChange?()
     }
 
-    func restore(contracts saved: [SupplyContract], listings: [SupplyListing], orders: [String: [SupplyOrder]], unitValues values: [String: Double]) {
-        all.removeAll { $0.companyID != nil }
-        all += listings
-        orderLog = orders
-        for (k, v) in values { unitValues[k] = v }
+    func restore(contracts saved: [SupplyContract]) {
         contracts = []
         for c in saved {
             contracts.append(c)
             if let i = all.firstIndex(where: { $0.id == c.listingID }) { all[i].committedUnits += c.unitsPerWeek }
         }
-        let used: [Int] = (saved.map { $0.id } + listings.map { $0.id }).compactMap { Int($0.dropFirst()) }
-        counter = max(counter, used.max() ?? 0)
+        counter = max(counter, saved.compactMap { Int($0.id.dropFirst()) }.max() ?? 0)
         onChange?()
-    }
-
-    func ownSnapshot() -> (listings: [SupplyListing], orders: [String: [SupplyOrder]]) {
-        let mine = all.filter { $0.companyID != nil && !$0.stopped }
-        return (mine, orderLog.filter { k, _ in mine.contains { $0.id == k } })
     }
 
     func randomPick(lineID: String, units: Int, today: Int, seed: String, excluding: Set<String>) -> SupplyListing? {
@@ -177,57 +164,22 @@ final class MockSupplyMarketService: SupplyMarketService {
         SupplyChoice.wellKnown(listings(lineID: lineID), units: units, buyerLinkKeys: buyerLinkKeys, today: today)
     }
 
-    func myListings(companyID: Int) -> [SupplyListing] { all.filter { $0.companyID == companyID && !$0.stopped } }
+    func openContractsAsSupplier(ownerID: String) -> Int { contracts.filter { $0.supplierOwnerID == ownerID }.count }
 
-    func saveListing(_ d: ListingDraft, today: Int) -> ListingSaveResult {
-        guard SupplyMarketCatalogue.supplyableLines(tradeID: d.tradeID).contains(where: { $0.id == d.lineID }), let line = SupplyMarketCatalogue.line(d.lineID) else {
-            return .refused("Only what the trade's catalogue lists can be offered.")
+    func demandPosts(today: Int) -> [DemandPost] {
+        let week: Int = today / 7
+        let lines: [String] = Array(Set(SupplyMarketCatalogue.supplies.values.flatMap { $0 })).sorted()
+        return (0..<6).map { (n: Int) -> DemandPost in
+            let key: String = "demand\(week):\(n)"
+            let f: String = Self.first[Int(roll(key + "f") * Double(Self.first.count))]
+            let l: String = Self.last[Int(roll(key + "l") * Double(Self.last.count))]
+            let noun: String = Self.nouns[Int(roll(key + "n") * Double(Self.nouns.count))]
+            return DemandPost(id: "D\(week):\(n)", ownerName: "\(f) \(l)", companyName: "\(l) \(noun)", lineID: lines[Int(roll(key + "x") * Double(lines.count))],
+                              units: 5 + Int(roll(key + "u") * 40), weeks: [4, 8, 13][Int(roll(key + "w") * 3)])
         }
-        guard d.capacityPerWeek > 0, d.minOrder > 0, d.minOrder <= d.capacityPerWeek else { return .refused("The minimum order has to fit within the weekly capacity.") }
-        guard SupplyMarketCatalogue.durations.contains(d.durationDays) else { return .refused("Choose how long the offer lasts.") }
-        if let id = d.listingID, let i = all.firstIndex(where: { $0.id == id }) {
-            let changed: Bool = all[i].priceTier != d.priceTier || all[i].qualityTier != d.qualityTier
-            if changed && contracts.contains(where: { $0.listingID == id }) { all[i].record.priceChanges += 1 }
-            all[i].priceTier = d.priceTier; all[i].qualityTier = d.qualityTier; all[i].capacityPerWeek = d.capacityPerWeek
-            all[i].leadDays = d.leadDays; all[i].minOrder = d.minOrder; all[i].termsDays = d.termsDays
-            all[i].expiresDay = today + d.durationDays; all[i].paused = false
-            unitValues[id] = d.unitValue
-            onChange?()
-            return .saved(all[i])
-        }
-        counter += 1
-        let l = SupplyListing(id: "M\(counter)", ownerID: "me", ownerName: "You", profileCode: "YOU", companyName: d.companyName, companyID: d.companyID, tradeID: d.tradeID,
-                              tradeName: Self.tradeTitles[d.tradeID] ?? d.tradeID.capitalized, city: "Your city", region: "Your region", lineID: d.lineID, lineName: line.name,
-                              priceTier: d.priceTier, qualityTier: d.qualityTier, capacityPerWeek: d.capacityPerWeek, leadDays: d.leadDays, minOrder: d.minOrder,
-                              termsDays: d.termsDays, linkKey: "me", expiresDay: today + d.durationDays, country: d.country)
-        all.append(l)
-        unitValues[l.id] = d.unitValue
-        onChange?()
-        return .saved(l)
     }
 
-    func setPaused(listingID: String, _ paused: Bool) {
-        guard let i = all.firstIndex(where: { $0.id == listingID }) else { return }
-        all[i].paused = paused
-        onChange?()
-    }
-
-    func stopListing(listingID: String) {
-        guard let i = all.firstIndex(where: { $0.id == listingID }) else { return }
-        all[i].stopped = true
-        buyersOf[listingID] = 0
-        onChange?()
-    }
-
-    func orders(listingID: String) -> [SupplyOrder] { orderLog[listingID] ?? [] }
-
-    func openContractsAsSupplier(ownerID: String) -> Int {
-        let signed: Int = contracts.filter { $0.supplierOwnerID == ownerID }.count
-        let mock: Int = all.filter { $0.ownerID == ownerID && !$0.stopped }.reduce(0) { $0 + (buyersOf[$1.id] ?? 0) }
-        return signed + mock
-    }
-
-    func advance(today: Int, liveCompanyIDs: Set<Int>) -> [SupplyMarketEvent] {
+    func advance(today: Int) -> [SupplyMarketEvent] {
         let week: Int = today / 7
         guard let last = processedWeek else {
             processedWeek = week
@@ -236,13 +188,13 @@ final class MockSupplyMarketService: SupplyMarketService {
         }
         guard week > last else { return [] }
         var events: [SupplyMarketEvent] = []
-        for w in (last + 1)...min(week, last + 4) { events += step(week: w, liveCompanyIDs: liveCompanyIDs) }
+        for w in (last + 1)...min(week, last + 4) { events += step(week: w) }
         processedWeek = week
         onChange?()
         return events
     }
 
-    private func step(week: Int, liveCompanyIDs: Set<Int>) -> [SupplyMarketEvent] {
+    private func step(week: Int) -> [SupplyMarketEvent] {
         var events: [SupplyMarketEvent] = []
         for (owner, f) in failAt.sorted(by: { $0.key < $1.key }) where week >= f.week {
             events += supplierStopped(ownerID: owner, reason: f.reason).map { SupplyMarketEvent.supplierEnded($0) }
@@ -250,66 +202,24 @@ final class MockSupplyMarketService: SupplyMarketService {
         }
         for i in all.indices where !all[i].stopped {
             let l = all[i]
-            if let cid = l.companyID, !liveCompanyIDs.contains(cid) {
-                all[i].stopped = true
-                continue
-            }
             let cap: Int = SupplyGuards.effectiveCapacity(l)
             let contractUnits: Int = contracts.filter { $0.listingID == l.id }.reduce(0) { $0 + $1.unitsPerWeek }
             var promised = contractUnits, delivered = contractUnits, late = 0, complaints = 0, orders = contractUnits > 0 ? 1 : 0
             let key = "\(l.id):\(week)"
-            if l.companyID != nil {
-                guard !l.paused, (l.expiresDay ?? Int.max) >= week * 7 else { all[i].committedUnits = contractUnits; continue }
-                let appeal: Double = 0.35 + 0.15 * Double(2 - l.priceTier) + 0.1 * Double(l.qualityTier) + 0.2 * roll("appeal" + key)
-                let demand: Int = min(cap, Int(Double(cap) * min(1, appeal)))
-                let want: Int = demand >= l.minOrder ? demand : 0
-                let n: Int = want == 0 ? 0 : 1 + Int(roll("n" + key) * 3)
-                let unit: Double = (unitValues[l.id] ?? 0) * l.priceFactor
-                var left: Int = want
-                var made: [SupplyOrder] = []
-                for k in 0..<n {
-                    let units: Int = k == n - 1 ? left : max(l.minOrder, left / (n - k))
-                    guard units > 0, units <= left else { continue }
-                    left -= units
-                    let isLate: Bool = roll("late\(key):\(k)") < 0.1
-                    made.append(SupplyOrder(id: "\(key):\(k)", listingID: l.id, buyerName: Self.first[Int(roll("b\(key):\(k)") * 26)] + " " + Self.last[Int(roll("bl\(key):\(k)") * 24)],
-                                            units: units, delivered: units, late: isLate, day: week * 7 + k, revenue: Double(units) * unit))
-                }
-                orderLog[l.id] = Array((made + (orderLog[l.id] ?? [])).prefix(20))
-                let sold: Int = made.reduce(0) { $0 + $1.delivered }
-                promised += want; delivered += sold; orders += made.count; late += made.filter { $0.late }.count
-                buyersOf[l.id] = made.count
-                if sold > 0 && unit > 0 { events.append(.sale(companyID: l.companyID ?? 0, units: sold, unitPrice: unit, unitCost: unit * 0.88)) }
-                all[i].committedUnits = contractUnits + want
-            } else {
-                let miss: Double = l.word == .struggling ? 0.3 : l.word == .mostlyReliable ? 0.12 : 0.04
-                let weekPromised: Int = max(1, Int(Double(cap) * (0.2 + 0.4 * roll("load" + key))))
-                let short: Bool = roll("short" + key) < miss
-                promised += weekPromised; delivered += short ? weekPromised * 3 / 4 : weekPromised; orders += 2
-                late += roll("lt" + key) < miss ? 1 : 0; complaints += short ? 1 : 0
-                all[i].committedUnits = min(cap, Int(Double(cap) * (0.2 + 0.6 * roll("c" + key))) + contractUnits)
-            }
+            let miss: Double = l.word == .struggling ? 0.3 : l.word == .mostlyReliable ? 0.12 : 0.04
+            let weekPromised: Int = max(1, Int(Double(cap) * (0.2 + 0.4 * roll("load" + key))))
+            let short: Bool = roll("short" + key) < miss
+            promised += weekPromised; delivered += short ? weekPromised * 3 / 4 : weekPromised; orders += 2
+            late += roll("lt" + key) < miss ? 1 : 0; complaints += short ? 1 : 0
+            all[i].committedUnits = min(cap, Int(Double(cap) * (0.2 + 0.6 * roll("c" + key))) + contractUnits)
             all[i].record = SupplyRecordRules.applying(all[i].record, promised: promised, delivered: delivered, orders: orders, late: late, complaints: complaints)
             if promised > 0 && contracts.contains(where: { $0.listingID == l.id }) { events.append(.delivery(listingID: l.id, promised: promised, delivered: delivered, orders: max(1, orders), late: late)) }
         }
         return events
     }
 
-    func companyStopped(companyID: Int, reason: SupplyEnd) -> [SupplyFallback] {
-        var out: [SupplyFallback] = []
-        for i in all.indices where all[i].companyID == companyID && !all[i].stopped {
-            all[i].stopped = true
-            buyersOf[all[i].id] = 0
-            let r = SupplyContracts.end(contracts, listingID: all[i].id, reason: reason)
-            contracts = r.kept
-            out += r.fallbacks
-        }
-        onChange?()
-        return out
-    }
-
     func supplierStopped(ownerID: String, reason: SupplyEnd) -> [SupplyFallback] {
-        for i in all.indices where all[i].ownerID == ownerID { all[i].stopped = true; buyersOf[all[i].id] = 0 }
+        for i in all.indices where all[i].ownerID == ownerID { all[i].stopped = true }
         let r = SupplyContracts.end(contracts, supplierOwnerID: ownerID, reason: reason)
         contracts = r.kept
         onChange?()

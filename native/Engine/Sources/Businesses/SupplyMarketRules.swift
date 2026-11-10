@@ -33,7 +33,6 @@ public enum SupplyMarketCatalogue {
 
     public static let priceTiers: [String] = ["Basic", "Standard", "Premium"]
     public static let qualityTiers: [String] = SupplyCatalogue.qualityWords
-    public static let durations: [Int] = [1, 3, 7, 14]
     public static let termOptions: [Int] = [0, 14, 30]
 }
 

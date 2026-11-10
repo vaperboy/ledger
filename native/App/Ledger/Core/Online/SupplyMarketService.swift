@@ -29,36 +29,7 @@ enum SupplierOwnerProfileHook {
     nonisolated(unsafe) static var destination: ((String) -> AnyView)?
 }
 
-struct ListingDraft: Equatable {
-    var listingID: String?
-    var companyID: Int
-    var companyName: String
-    var tradeID: String
-    var lineID: String
-    var priceTier: Int = 1
-    var qualityTier: Int = 1
-    var capacityPerWeek: Int = 50
-    var leadDays: Int = 3
-    var minOrder: Int = 10
-    var termsDays: Int = 14
-    var durationDays: Int = 7
-    var unitValue: Double = 0
-    var country: String = ""
-}
-
-struct SupplyOrder: Identifiable, Equatable {
-    var id: String
-    var listingID: String
-    var buyerName: String
-    var units: Int
-    var delivered: Int
-    var late: Bool
-    var day: Int
-    var revenue: Double
-}
-
 enum SupplyMarketEvent: Equatable {
-    case sale(companyID: Int, units: Int, unitPrice: Double, unitCost: Double)
     case shortDelivery(listingID: String)
     case delivery(listingID: String, promised: Int, delivered: Int, orders: Int, late: Int)
     case supplierEnded(SupplyFallback)
@@ -66,11 +37,6 @@ enum SupplyMarketEvent: Equatable {
 
 enum SupplySignResult: Equatable {
     case signed(SupplyContract)
-    case refused(String)
-}
-
-enum ListingSaveResult: Equatable {
-    case saved(SupplyListing)
     case refused(String)
 }
 
@@ -99,29 +65,12 @@ protocol SupplyMarketService: AnyObject {
     func wellKnown(lineID: String, units: Int, today: Int) -> [SupplyListing]
 
     var ownerID: String { get }
-    func restore(contracts: [SupplyContract], listings: [SupplyListing], orders: [String: [SupplyOrder]], unitValues: [String: Double])
-    func ownSnapshot() -> (listings: [SupplyListing], orders: [String: [SupplyOrder]])
-
-    func myListings(companyID: Int) -> [SupplyListing]
-    func saveListing(_ draft: ListingDraft, today: Int) -> ListingSaveResult
-    func setPaused(listingID: String, _ paused: Bool)
-    func stopListing(listingID: String)
-    func orders(listingID: String) -> [SupplyOrder]
+    func restore(contracts: [SupplyContract])
     func openContractsAsSupplier(ownerID: String) -> Int
+    func demandPosts(today: Int) -> [DemandPost]
 
-    func advance(today: Int, liveCompanyIDs: Set<Int>) -> [SupplyMarketEvent]
+    func advance(today: Int) -> [SupplyMarketEvent]
     func supplierStopped(ownerID: String, reason: SupplyEnd) -> [SupplyFallback]
-    func companyStopped(companyID: Int, reason: SupplyEnd) -> [SupplyFallback]
-}
-
-extension SupplyOrder {
-    init(_ r: SupplyOrderRecord) {
-        self.init(id: r.id, listingID: r.listingID, buyerName: r.buyerName, units: r.units, delivered: r.delivered, late: r.late, day: r.day, revenue: r.revenue)
-    }
-
-    var record: SupplyOrderRecord {
-        SupplyOrderRecord(id: id, listingID: listingID, buyerName: buyerName, units: units, delivered: delivered, late: late, day: day, revenue: revenue)
-    }
 }
 
 @MainActor final class SupplyMarketStore: ObservableObject {
@@ -131,7 +80,6 @@ extension SupplyOrder {
     var service: SupplyMarketService {
         didSet { service.onChange = { [weak self] in self?.touch() }; hydratedFor = nil; touch() }
     }
-    private weak var game: GameStore?
     private var hydratedFor: Int?
 
     init(service: SupplyMarketService = MockSupplyMarketService()) {
@@ -140,11 +88,7 @@ extension SupplyOrder {
     }
 
     private func touch() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.revision += 1
-            if let g = self.game { self.persist(g) }
-        }
+        DispatchQueue.main.async { [weak self] in self?.revision += 1 }
     }
 
     static func today(_ e: GameEngine) -> Int { e.state.week * 7 + e.state.day }
@@ -152,31 +96,15 @@ extension SupplyOrder {
     private func hydrate(_ e: GameEngine) {
         guard hydratedFor != e.state.seed else { return }
         hydratedFor = e.state.seed
-        let listings: [SupplyListing] = e.playerSupplyListings
-        var values: [String: Double] = [:]
-        for l in listings { if let co = l.companyID.flatMap({ e.state.company($0) }) { values[l.id] = SupplyMarketBooks.unitValue(co) } }
-        service.restore(contracts: e.playerSupplyContracts, listings: listings, orders: e.playerSupplyOrders.mapValues { $0.map { SupplyOrder($0) } }, unitValues: values)
-    }
-
-    private func persist(_ g: GameStore) {
-        guard let e = g.engine, hydratedFor == e.state.seed else { return }
-        let snap = service.ownSnapshot()
-        let orders: [String: [SupplyOrderRecord]] = snap.orders.mapValues { $0.map { $0.record } }
-        if snap.listings == e.playerSupplyListings && orders == e.playerSupplyOrders { return }
-        _ = g.act { $0.savePlayerListings(snap.listings, orders: orders) }
+        service.restore(contracts: e.playerSupplyContracts)
     }
 
     func sync(_ store: GameStore) {
         guard let e = store.engine else { return }
-        game = store
         hydrate(e)
-        stopGoneCompanies(store, e)
-        let live = Set(e.state.companies.filter { $0.status == .open }.map { $0.id })
-        let events = service.advance(today: Self.today(e), liveCompanyIDs: live)
-        for ev in events {
+        let today: Int = Self.today(e)
+        for ev in service.advance(today: today) {
             switch ev {
-            case .sale(let id, let units, let price, let cost):
-                _ = store.act { $0.update { s, _, _ in _ = SupplyMarketBooks.settleSupply(&s, supplierCompanyID: id, buyerCompanyID: nil, units: units, unitPrice: price, unitCost: cost) } }
             case .delivery(let listingID, let promised, let delivered, let orders, let late):
                 _ = store.act { $0.reportSupplyDelivery(listingID: listingID, promised: promised, delivered: delivered, orders: orders, late: late) }
             case .shortDelivery(let listingID):
@@ -185,25 +113,16 @@ extension SupplyOrder {
                 fallBack(store, f)
             }
         }
-        persist(store)
-    }
-
-    private func stopGoneCompanies(_ store: GameStore, _ e: GameEngine) {
-        let ids = Set(service.ownSnapshot().listings.compactMap { $0.companyID })
-        for id in ids.sorted() where e.state.company(id)?.status != .open {
-            let reason: SupplyEnd = e.state.company(id)?.status == .bust ? .bankrupt : .stopped
-            for f in service.companyStopped(companyID: id, reason: reason) { fallBack(store, f) }
-        }
+        let posts: [DemandPost] = service.demandPosts(today: today)
+        if posts != e.playerDemandPosts { _ = store.act { $0.savePlayerDemand(posts) } }
     }
 
     func accountDeleted(_ store: GameStore) {
         for f in service.supplierStopped(ownerID: service.ownerID, reason: .accountDeleted) { fallBack(store, f) }
-        persist(store)
     }
 
     func sign(_ store: GameStore, companyID: Int, lineID: String, listing: SupplyListing, units: Int, weeklyMarketSpend: Double) -> SupplySignResult {
         guard let e = store.engine else { return .refused("There is no game open.") }
-        game = store
         hydrate(e)
         let r = service.sign(buyerCompanyID: companyID, lineID: lineID, listingID: listing.id, unitsPerWeek: units, today: Self.today(e))
         guard case .signed(let c) = r else { return r }

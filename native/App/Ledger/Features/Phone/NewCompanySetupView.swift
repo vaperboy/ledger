@@ -41,6 +41,7 @@ struct NewCompanyDetailedSetupView: View {
     @State private var placeIndex: Int?
     @State private var goReview = false
     @State private var choices = SetupChoices()
+    @State private var channel: SalesChannel = .consumers
     @State private var accountantID: Int?
 
     init(tradeID: String, cityID: String) {
@@ -53,7 +54,9 @@ struct NewCompanyDetailedSetupView: View {
             let country = e.homeCountry
             let basePlan: NewCompanyPlan? = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: "", pick: nil, choices: choices).plan(e)
             let pick: NewCompanyPlan.Pick? = currentPick(basePlan)
-            let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: choices, accountantID: accountantID)
+            var chosen: SetupChoices = choices
+            chosen.channel = channel
+            let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: chosen, accountantID: accountantID)
             let plan: NewCompanyPlan? = draft.plan(e)
             let costs: StartUpCostBreakdown? = draft.costs(e)
             let monthly: MonthlyFixedCostEstimate? = draft.monthly(e)
@@ -62,6 +65,7 @@ struct NewCompanyDetailedSetupView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     fields(t, country, costs)
+                    SalesChannelPicker(tradeID: tradeID, channel: $channel)
                     AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID)
                     if let plan { premisesBlock(plan) }
                     if let plan { PlanStatement(plan: plan, cur: e.homeCurrency, choices: $choices, onAlternative: { alt in applyAlternative(alt) }) }
@@ -275,6 +279,8 @@ struct NewCompanyReviewView: View {
                     LedgerSection("The company") {
                         VStack(spacing: 0) {
                             line("Premises", premisesText(plan))
+                            Hairline()
+                            line("How you sell", (draft.choices.channel ?? .consumers).title)
                         }
                     }
                     LedgerSection("The cost") {

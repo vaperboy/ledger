@@ -1,4 +1,5 @@
 # What's new
+- You choose how a company sells once, when you start it: to private customers (steady weekly demand at lower prices) or to business customers (rarer demand at better prices, with weekly contract offers you accept or decline in the Inbox and deliveries that run by themselves; late deliveries cost your name). Only trades that can supply others offer the business choice. The manual Supply other players screen and the How you sell popup are gone
 - Goal rewards are claimed on purpose: finished goals wait with a Claim button (ladder, career and daily) and pay a small cash reward; Home shows your level bar, the current mission and the Season Pass claim or a watch-an-ad bonus, and you can put the cards away for a week
 - One global electricity price that follows how much power companies use and how much plants supply, a World prices card in the Market app, and bank, insurance, fund, casino and football club can no longer be started
 - A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold
@@ -8,7 +9,7 @@
 - Popups are rounded at the bottom as well, the top of the screen shows the photo instead of black, and Group and Ventures are locked with a lock and an unlock popup until you earn them; Pick tab only offers tabs you have unlocked
 - A guided first game: the tutorial tells you what to press, you pick your first product and price before anything else, the Inbox points to what to read, and Your next goal opens a list of the goals being tracked
 - No more auto-hire or buy-everything: a new company opens with the essentials, and a chain store can appoint a manager
-- Suppliers show what each business really buys, grouped by what is supplied, with a choice of suppliers that changes cost, quality and reliability, and a Supply other players screen
+- Suppliers show what each business really buys, grouped by what is supplied, with a choice of suppliers that changes cost, quality and reliability
 - The free Pro pass can no longer be repeated by starting a new game, Plus keeps working during Apple's grace period, purchases are remembered offline, and the paywall lists only what exists
 - Free players can double a week's reward or take a second chance after a bankruptcy, and ads are capped per day
 - A Season Pass in the Phone tab (30 tiers, free and Plus tracks, cosmetic and comfort rewards only)

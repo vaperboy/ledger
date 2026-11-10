@@ -297,9 +297,9 @@ final class GameStore: ObservableObject {
     @discardableResult
     func renameSlot(_ slot: String, to raw: String) -> Bool { (try? saves?.renameSlot(slot, to: raw)) ?? false }
 
-    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, difficulty: Difficulty = .classic) {
+    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, channel: SalesChannel? = nil, difficulty: Difficulty = .classic) {
         RememberedDetails.clearAll()
-        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, difficulty: difficulty); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
+        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, channel: channel, difficulty: difficulty); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
     }
 
     var canRetrySameSetup: Bool {
@@ -312,7 +312,7 @@ final class GameStore: ObservableObject {
         guard let s = engine?.state else { return }
         let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
         if story == .fresh, let c = s.companies.first(where: { (c: Company) -> Bool in c.type != "hold" }) {
-            newGame(name: s.player.name, countryCode: s.homeCountryCode, story: .fresh, tradeID: c.type, companyName: c.name)
+            newGame(name: s.player.name, countryCode: s.homeCountryCode, story: .fresh, tradeID: c.type, companyName: c.name, channel: c.chosenChannel)
         } else if story != .fresh {
             newGame(name: s.player.name, countryCode: s.homeCountryCode, story: story)
         }

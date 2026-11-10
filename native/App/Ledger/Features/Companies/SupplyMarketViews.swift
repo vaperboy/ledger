@@ -22,53 +22,6 @@ enum SupplyMarketWords {
     }
 }
 
-struct TrendArrow: View {
-    var delta: Double?
-
-    var body: some View {
-        if let d = delta, abs(d) >= 0.5 {
-            HStack(spacing: Theme.Space.xs) {
-                StockArrow(up: d > 0, good: d > 0)
-                Text("\(Int(abs(d).rounded())) pts").textStyle(.caption, tint: d > 0 ? Theme.gain : Theme.loss, numeric: true)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(d > 0 ? "Up \(Int(abs(d).rounded())) points" : "Down \(Int(abs(d).rounded())) points")
-        }
-    }
-}
-
-struct DeliveryRecordView: View {
-    var record: DeliveryRecord
-
-    var body: some View {
-        let word: DeliveryWord = SupplyRecordRules.word(record)
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack {
-                Chip(text: word.rawValue, tint: SupplyMarketWords.tint(word))
-                Spacer(minLength: 0)
-            }
-            if word == .unproven {
-                Text("Too little history to judge yet.").textStyle(.caption, tint: Theme.inkSoft)
-            }
-            line("Promised units delivered", record.ordersTotal == 0 ? "No orders yet" : SupplyMarketWords.percent(record.deliveredShare), record.deliveredTrend)
-            line("Orders on time", record.ordersTotal == 0 ? "No orders yet" : SupplyMarketWords.percent(record.onTimeShare), record.onTimeTrend)
-            line("Complaints", record.complaints == 0 ? "None" : "\(record.complaints)", nil)
-            line("Disputes", record.disputes == 0 ? "None" : "\(record.disputes)", nil)
-            line("Price changes after signing", record.priceChanges == 0 ? "None" : "\(record.priceChanges)", nil)
-            line("Weeks trading", "\(record.weeksTrading)", nil)
-        }
-    }
-
-    private func line(_ label: String, _ value: String, _ trend: Double?) -> some View {
-        HStack(spacing: Theme.Space.s) {
-            Text(label).textStyle(.caption, tint: Theme.inkSoft)
-            Spacer(minLength: Theme.Space.s)
-            TrendArrow(delta: trend)
-            Text(value).textStyle(.caption, numeric: true)
-        }
-    }
-}
-
 struct SupplyListingCard: View {
     var listing: SupplyListing
     var known: Bool

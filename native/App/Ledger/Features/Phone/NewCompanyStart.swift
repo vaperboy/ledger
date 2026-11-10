@@ -19,6 +19,7 @@ struct TradeDetailView: View {
     @State private var pending: PendingAction?
     @State private var choices = SetupChoices()
     @State private var accountantID: Int?
+    @State private var channel: SalesChannel = .consumers
 
     init(tradeID: String, startUnderBrand: Bool = false) {
         self.tradeID = tradeID
@@ -48,6 +49,7 @@ struct TradeDetailView: View {
                         if let plan {
                             premises(t, plan, cur)
                             PlanStatement(plan: plan, cur: cur, choices: $choices, onAlternative: { alt in applyAlternative(alt, t) })
+                            SalesChannelPicker(tradeID: tradeID, channel: $channel)
                             AccountantStep(countryCode: e.state.homeCountryCode, currency: cur, accountantID: $accountantID)
                             risks(plan)
                             PrimaryAction(title: "Review and start · \(cur.tidyShort(plan.neededNow))",
@@ -196,7 +198,8 @@ struct TradeDetailView: View {
         let fund = plan.intoCompany
         let nm = name.trimmingCharacters(in: .whitespaces)
         let sz = size
-        let chosen = choices
+        var chosen = choices
+        chosen.channel = channel
         let accountant = accountantID
         return PendingAction(title: "Start \(t.name) in \(cityName)?", message: msg.tidyMoney, button: "Start it", amount: plan.total, currency: cur) {
             let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, fundWith: fund, choices: chosen, accountantID: accountant) }

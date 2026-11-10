@@ -13,7 +13,6 @@ struct CompanySupply: View {
     var company: Company
     @State private var choosing: SupplierSubject?
     @State private var ordering = false
-    @State private var showSell = false
 
     private struct ItemNeed: Identifiable {
         var id: String
@@ -56,7 +55,6 @@ struct CompanySupply: View {
         .navigationDestination(isPresented: $ordering) {
             SettingsPage(title: "Order stock", subtitle: company.name) { StockOrderPopup(companyID: company.id, onDone: { ordering = false }).environmentObject(store) }
         }
-        .navigationDestination(isPresented: $showSell) { SupplyOtherPlayersScreen(companyID: company.id).environmentObject(store) }
         .task { market.sync(store) }
         .onChange(of: store.engine?.state.week) { _, _ in market.sync(store) }
     }
@@ -82,16 +80,11 @@ struct CompanySupply: View {
         }
     }
 
-    private var more: some View {
-        PageGroup("More") {
-            if engine.stockOrderBasis(companyID: company.id) != nil {
+    @ViewBuilder private var more: some View {
+        if engine.stockOrderBasis(companyID: company.id) != nil {
+            PageGroup("More") {
                 LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Order stock once",
                           subtitle: "Compare price and transport, then order", identifier: "suppliers-order") { ordering = true }
-                RowRule()
-            }
-            if SupplyMarketCatalogue.canSupply(tradeID: company.type) {
-                LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Supply other players",
-                          subtitle: "Offer what this company makes", identifier: "suppliers-sell") { showSell = true }
             }
         }
     }

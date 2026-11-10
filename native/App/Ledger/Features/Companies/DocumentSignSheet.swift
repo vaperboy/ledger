@@ -71,7 +71,7 @@ struct CompanyLicences: View {
         let held: Int = lines.filter { $0.form.status == "ok" }.count
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             TeamHero(value: "\(held) of \(lines.count)", unit: "held",
-                     context: "Licences add new things to sell. Once one is held, switch the product on in Sales > How you sell.")
+                     context: "Licences let the company sell things it could not sell before.")
             if lines.isEmpty {
                 Text("This business has no licences to add.").textStyle(.caption)
             } else {

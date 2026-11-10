@@ -41,12 +41,14 @@ struct NewCompanySetupView: View {
     var cityID: String
     @State private var name = ""
     @State private var accountantID: Int?
+    @State private var channel: SalesChannel = .consumers
     @State private var goReview = false
 
     private func draft(_ t: Trade, _ e: GameEngine) -> NewCompanyDraft {
         var d = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: name.trimmingCharacters(in: .whitespaces), pick: nil, choices: SetupChoices())
         d.accountantID = accountantID
         if let s = d.size(e) { d.choices = e.suggestedChoices(tradeID: tradeID, cityID: cityID, size: s) }
+        d.choices.channel = channel
         return d
     }
 
@@ -58,6 +60,7 @@ struct NewCompanySetupView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     costBlock(plan)
                     LedgerField(placeholder: t.name, text: $name, identifier: "new-company-name", hint: "Company name. Leave it empty and one is chosen for you.")
+                    SalesChannelPicker(tradeID: tradeID, channel: $channel)
                     AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID)
                     NavigationLink { NewCompanyDetailedSetupView(tradeID: tradeID, cityID: cityID) } label: {
                         LedgerRow(leading: .glyph(Glyph.settings), title: "Customise", subtitle: "City, premises and each item", chevron: true)

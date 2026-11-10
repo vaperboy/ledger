@@ -36,7 +36,7 @@ public struct GameEngine {
     }
 
     public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, story: LifeStory = .loan, ambition: String? = nil,
-                               tradeID: String? = nil, companyName: String? = nil, chooseFirstItem: Bool = false,
+                               tradeID: String? = nil, companyName: String? = nil, chooseFirstItem: Bool = false, channel: SalesChannel? = nil,
                                difficulty: Difficulty = .classic,
                                admins: Set<String>? = nil, worldRules: WorldRules? = nil) throws -> GameEngine {
         let (data, events, marketing) = try loadResources()
@@ -88,6 +88,7 @@ public struct GameEngine {
         } else if story == .fresh {
             let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
             guard let tradeID, LifeStories.applyFresh(&state, data: data, context: ctx, tradeID: tradeID, name: companyName ?? "", chooseFirstItem: chooseFirstItem) else { throw CocoaError(.fileReadUnknown) }
+            if let channel, SalesChannel.canChoose(channel, tradeID: tradeID), let first = state.companies.indices.first { state.companies[first].set("chan", channel.rawValue) }
             state.note("Welcome to Ledger. \(state.companies.first?.name ?? "Your business") is open. Pick what it sells first; the guide shows where to press.", tone: "good")
             if chooseFirstItem { Tutorial.start(&state) }
         } else {

@@ -9,7 +9,6 @@ struct CompanySales: View {
     var engine: GameEngine
     var company: Company
     @State private var showMarketing = false
-    @State private var showHowSell = false
     @State private var priceFor: SalesItemPick?
     @State private var supplierFor: SupplierSubject?
     @State private var pendingPrice: String?
@@ -30,11 +29,9 @@ struct CompanySales: View {
             addonsCard
             OverviewSettingsCard(heading: "Marketing and more") {
                 marketingRow
-                if hasHowSell { howSellRow }
             }
         }
         .centerSheet(isPresented: $showMarketing, title: "Marketing", category: .detail, tone: .investment) { MarketingSheet(companyID: company.id) }
-        .centerSheet(isPresented: $showHowSell, category: .detail, tone: .info) { HowYouSellSheet(companyID: company.id) }
         .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id }), category: .medium, tone: .info) { (p: NewItemPick) in
             NewItemSheet(companyID: company.id, isService: p.id, onClose: { addingService = nil },
                          onHireAdvisor: { addingService = nil; showHire = true },
@@ -104,20 +101,5 @@ struct CompanySales: View {
         let cur: Currency = engine.currency(for: company)
         let spend: Double = company.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
         return SettingsTableRow(title: "Marketing", value: spend > 0 ? cur.tidyShort(spend) + " a week" : "No campaigns", opens: .sheet, glyph: Glyph.opsMega) { showMarketing = true }
-    }
-
-    private var hasHowSell: Bool {
-        let hasKnobs: Bool = !(engine.tradeInfo(companyID: company.id)?.knobs.isEmpty ?? true)
-        return hasKnobs || engine.waysToSell(companyID: company.id).contains { $0.canSwitch }
-    }
-
-    private var howSellRow: some View {
-        let concept: Knob? = engine.tradeInfo(companyID: company.id)?.knobs.first { (k: Knob) -> Bool in !k.isMulti }
-        let value: String = concept.map { (k: Knob) -> String in
-            let v: JSONValue = company.value("knob")[k.id]
-            let i: Int = v.isNull ? k.defaultIndex : v.int
-            return k.options.indices.contains(i) ? k.options[i].name : ""
-        } ?? ""
-        return SettingsTableRow(title: "How you sell", value: value, opens: .sheet, glyph: Glyph.opsRoute) { showHowSell = true }
     }
 }

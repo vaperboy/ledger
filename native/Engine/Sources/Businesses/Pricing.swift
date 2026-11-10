@@ -58,6 +58,7 @@ public enum Pricing {
         m *= wineCountryFactor(co, w)
         m *= MarketPrices.index(w.state, co)
         m *= Development.factor(co, "tick")
+        m *= SalesChannel.priceFactor(co)
         return m
     }
 
