@@ -29,6 +29,8 @@ struct NewPlayerSetup: View {
     @State private var countryPage = 0
     @State private var tradePage = 0
     @FocusState private var field: Field?
+    @Environment(OnlineSession.self) private var online
+    @StateObject private var checker = UsernameChecker()
     private static let countryRows = 6
     private static let tradeRows = 5
     private static let sizeOrder: [Country] = GameEngine.countriesBySize()
@@ -243,19 +245,25 @@ struct NewPlayerSetup: View {
                 .textStyle(.figure)
                 .padding(.vertical, Theme.Space.s)
                 .overlay(alignment: .bottom) { Hairline() }
-            TextField("Your name (optional)", text: $playerName)
-                .textInputAutocapitalization(.words)
-                .focused($field, equals: .player)
-                .submitLabel(.done)
-                .onSubmit { field = nil }
-                .textStyle(.figure)
-                .padding(.vertical, Theme.Space.s)
-                .overlay(alignment: .bottom) { Hairline() }
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                TextField("Username (optional)", text: $playerName)
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .focused($field, equals: .player)
+                    .submitLabel(.done)
+                    .onSubmit { field = nil }
+                    .textStyle(.figure)
+                    .padding(.vertical, Theme.Space.s)
+                    .overlay(alignment: .bottom) { Hairline() }
+                    .onChange(of: playerName) { _, new in checker.check(new, current: ProfileLocal.shared.name, online: online) }
+                    .accessibilityIdentifier("setup-username")
+                UsernameStatusLine(checker: checker)
+            }
             Button("Next") { Haptics.tap(); field = nil; step = .options }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .disabled(!playerName.isEmpty && !checker.canUse && checker.verdict != .unchanged)
                 .accessibilityIdentifier("setup-next")
         }
-        .onAppear { field = .company }
+        .onAppear { field = .company; if playerName.isEmpty { playerName = ProfileLocal.shared.name } }
     }
 
     private var optionsStep: some View {
@@ -282,6 +290,8 @@ struct NewPlayerSetup: View {
 
     private func start() {
         let n: String = companyName.trimmingCharacters(in: .whitespacesAndNewlines)
-        begin(countryCode, tradeID, n.isEmpty ? suggested : n, playerName.trimmingCharacters(in: .whitespacesAndNewlines), channel, difficulty)
+        let player: String = ProfileRules.clean(playerName)
+        if !player.isEmpty, ProfileLocal.shared.name.isEmpty, ProfileRules.problem(with: player) == nil { ProfileLocal.shared.setName(player) }
+        begin(countryCode, tradeID, n.isEmpty ? suggested : n, player, channel, difficulty)
     }
 }

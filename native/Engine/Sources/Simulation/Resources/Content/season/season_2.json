@@ -23,7 +23,7 @@
   {"id": "box.s2.p4", "tier": 4, "premium": true, "kind": "box", "amount": 2},
   {"id": "backdrop.pastel", "tier": 5, "premium": true, "kind": "backdrop", "title": "Pastel backdrop", "detail": "Sky blue fading to lilac.", "colors": ["BFD8F2", "8A78B0"], "rarity": "rare"},
   {"id": "badge.s2.plus", "tier": 6, "premium": true, "kind": "badge", "title": "Spring plus badge", "detail": "A premium badge with a lily.", "colors": ["F7E3B5", "A5566F"], "rarity": "rare"},
-  {"id": "gold.s2.p7", "tier": 7, "premium": true, "kind": "gold", "amount": 120},
+  {"id": "gold.s2.p7", "tier": 7, "premium": true, "kind": "gold", "amount": 24},
   {"id": "card.c.roadster", "tier": 8, "premium": true, "kind": "card", "card": "card.c.roadster"},
   {"id": "trade.market", "tier": 9, "premium": true, "kind": "tradePlate", "title": "Market-stall plate", "detail": "Striped awning above your trade names.", "colors": ["E8A9BC", "4A2E36"], "rarity": "rare"},
   {"id": "box.s2.p10", "tier": 10, "premium": true, "kind": "box", "amount": 2},
@@ -34,7 +34,7 @@
   {"id": "flair.egg", "tier": 15, "premium": true, "kind": "richListFlair", "title": "Painted-egg flair", "detail": "A tiny painted egg beside your name.", "colors": ["F7E3B5", "A5566F"], "rarity": "epic"},
   {"id": "box.s2.p16", "tier": 16, "premium": true, "kind": "box", "amount": 2},
   {"id": "advisor.s2.patience", "tier": 17, "premium": true, "kind": "advisorLine", "title": "Advisor: slow growth", "detail": "\"Blossom first, fruit later. Do not shake the tree.\"", "colors": [], "rarity": "common"},
-  {"id": "gold.s2.p19", "tier": 19, "premium": true, "kind": "gold", "amount": 180},
+  {"id": "gold.s2.p19", "tier": 19, "premium": true, "kind": "gold", "amount": 36},
   {"id": "spring.jewel", "tier": 20, "premium": true, "kind": "artifact", "artifact": "spring.jewel"},
   {"id": "backdrop.dawn.s2", "tier": 21, "premium": true, "kind": "backdrop", "title": "Spring dawn backdrop", "detail": "Peach sky over a pale meadow.", "colors": ["FFD9A0", "8FB98A"], "rarity": "epic"},
   {"id": "card.c.yacht", "tier": 22, "premium": true, "kind": "card", "card": "card.c.yacht"},
@@ -43,7 +43,7 @@
   {"id": "card.p.dawn", "tier": 26, "premium": true, "kind": "card", "card": "card.p.dawn"},
   {"id": "xp.s2.p27", "tier": 27, "premium": true, "kind": "xp", "amount": 250, "rarity": "rare"},
   {"id": "trade.gilded.s2", "tier": 28, "premium": true, "kind": "tradePlate", "title": "Gilded-hare plate", "detail": "Gold leaf behind your trade names.", "colors": ["E4C875", "4A3812"], "rarity": "epic"},
-  {"id": "gold.s2.p29", "tier": 29, "premium": true, "kind": "gold", "amount": 250},
+  {"id": "gold.s2.p29", "tier": 29, "premium": true, "kind": "gold", "amount": 50},
   {"id": "badge.s2.crown", "tier": 30, "premium": true, "kind": "badge", "title": "Spring crown badge", "detail": "A flower crown for finishing the premium track.", "colors": ["F7D6E0", "B5718A"], "rarity": "legendary"}
  ]
 }

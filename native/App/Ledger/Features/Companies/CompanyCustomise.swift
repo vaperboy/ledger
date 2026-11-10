@@ -11,10 +11,11 @@ struct CompanyCardPreview: View {
     var tradeKey: String
     var badge: Cosmetics.Badge
     var accent: Color
+    var backdrop: SeasonReward? = nil
 
     var body: some View {
         VStack(spacing: Theme.Space.s) {
-            CompanyCardView(name: name, def: def, logoID: logoID)
+            CompanyCardView(name: name, def: def, logoID: logoID, backdrop: backdrop)
             HStack(spacing: Theme.Space.m) {
                 if logoID.isEmpty { ThumbnailView(kind: .trade, key: tradeKey, size: 28) } else { LogoBadge(logoID: logoID, size: 28) }
                 CosmeticBadgeView(badge: badge, tint: accent, size: 24)
@@ -28,19 +29,30 @@ struct CompanyCustomiseButton: View {
     @State private var open = false
 
     var body: some View {
-        HomeRoundButton(glyph: Glyph.luxury, label: "Customise", identifier: "company-customise") { open = true }
-            .navigationDestination(isPresented: $open) { CompanyCustomiseView(companyID: companyID) }
+        Button { Haptics.tap(); open = true } label: {
+            LedgerGlyph(glyph: Glyph.luxury, size: Theme.Icon.medium, tint: Theme.gold)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(Color.black.opacity(0.45)))
+                .overlay(Circle().strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1.2))
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel("Customise")
+        .accessibilityHint("Backdrop, card, colours and logo")
+        .accessibilityIdentifier("company-customise")
+        .navigationDestination(isPresented: $open) { CompanyCustomiseView(companyID: companyID) }
     }
 }
 
 struct CompanyCustomiseView: View {
     enum Part: String, CaseIterable, Identifiable {
-        case card, colours, logo, plate
+        case card, backdrop, colours, badge, logo, plate
         var id: String { rawValue }
-        var title: String { self == .plate ? "Profile plate" : rawValue.capitalized }
+        var title: String { self == .plate ? "Plate" : rawValue.capitalized }
     }
 
-    static let skipPrice = 40
+    static let barClearance: CGFloat = 130
 
     var companyID: Int
     @EnvironmentObject var store: GameStore
@@ -52,10 +64,6 @@ struct CompanyCustomiseView: View {
     @State private var part: Part = .card
     @State private var pending: PendingAction?
     @State private var note = ""
-    @State private var newName = ""
-    @State private var shortOfGold = false
-    @State private var shortNeed = 0
-    @State private var showPacks = false
     @State private var shareURL: URL?
 
     private let columns: [GridItem] = [GridItem(.adaptive(minimum: 92), spacing: Theme.Space.s)]
@@ -67,12 +75,15 @@ struct CompanyCustomiseView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         preview(e, co, cabinet)
-                        nameSection(e, co)
-                        SegmentedPill(items: Part.allCases, title: { (p: Part) -> String in p.title }, selection: $part, identifier: { (p: Part) -> String in "company-look-" + p.rawValue })
+                        ScrollView(.horizontal) {
+                            SegmentedPill(items: Part.allCases, title: { (p: Part) -> String in p.title }, selection: $part, identifier: { (p: Part) -> String in "company-look-" + p.rawValue })
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+                        .scrollIndicators(.hidden)
                         if !note.isEmpty { Text(note).textStyle(.caption, tint: Theme.accent).frame(maxWidth: .infinity, alignment: .leading).lineLimit(3) }
                         content(e, co, cabinet)
                     }
-                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xl)
+                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Self.barClearance)
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden)
@@ -83,10 +94,8 @@ struct CompanyCustomiseView: View {
                 Text("This company no longer exists.").textStyle(.body, tint: Theme.inkSoft).frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .appScreen(title: "Customise", subtitle: store.engine?.state.company(companyID)?.name ?? "")
+        .appScreen(title: "Customise", subtitle: store.engine?.state.company(companyID)?.name ?? "", backdrop: store.engine.flatMap { (e: GameEngine) -> SeasonReward? in LookKit.companyBackdrop(e, companyID) })
         .confirmAction($pending)
-        .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") { ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; showPacks = true }) }
-        .navigationDestination(isPresented: $showPacks) { StoreApp() }
         .task { await session.load() }
     }
 
@@ -99,12 +108,12 @@ struct CompanyCustomiseView: View {
         let s: (theme: String, badge: String) = style(e)
         let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(s.badge, earned: e.careerCosmetics, pro: ent.isPro)
         let accent: Color = Cosmetics.resolvedTheme(s.theme, pro: ent.isPro).accent
-        return CompanyCardPreview(name: co.name, def: e.companyCard(co.id, cabinet: cabinet), logoID: e.companyLogoID(companyID: co.id), tradeKey: co.type, badge: badge, accent: accent)
+        return CompanyCardPreview(name: co.name, def: e.companyCard(co.id, cabinet: cabinet), logoID: e.companyLogoID(companyID: co.id), tradeKey: co.type, badge: badge, accent: accent, backdrop: LookKit.companyBackdrop(e, co.id))
     }
 
     private func signature(_ e: GameEngine, _ co: Company, _ cabinet: Cabinet) -> String {
         let s: (theme: String, badge: String) = style(e)
-        return [co.name, e.companyCard(co.id, cabinet: cabinet)?.id ?? "", e.companyLogoID(companyID: co.id), s.theme, s.badge].joined(separator: "|")
+        return [co.name, e.companyCard(co.id, cabinet: cabinet)?.id ?? "", e.companyLogoID(companyID: co.id), s.theme, s.badge, e.companyBackdrop(companyID: co.id)].joined(separator: "|")
     }
 
     private func preview(_ e: GameEngine, _ co: Company, _ cabinet: Cabinet) -> some View {
@@ -137,68 +146,12 @@ struct CompanyCustomiseView: View {
         do { try data.write(to: url, options: .atomic); shareURL = url } catch { shareURL = nil }
     }
 
-    @ViewBuilder private func nameSection(_ e: GameEngine, _ co: Company) -> some View {
-        let inChain: Bool = e.chainOf(companyID: co.id) != nil
-        let left: Int = e.renameCooldownLeft(companyID: co.id)
-        let cur = e.currency(for: co)
-        let cost: Double = e.renameCost(companyID: co.id)
-        let clean: String = newName.trimmingCharacters(in: .whitespaces)
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Company name").textStyle(.label, tint: Theme.inkFaint)
-            if inChain {
-                Text("This store carries its chain's name. Rebranding the whole chain is done from the chain.").textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-            } else {
-                TextField(co.name, text: $newName).textStyle(.body).autocorrectionDisabled()
-                    .padding(.horizontal, 12).frame(minHeight: 44)
-                    .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset))
-                    .accessibilityIdentifier("company-new-name")
-                if left > 0 {
-                    Text("The name can change again in \(left) \(left == 1 ? "week" : "weeks"). Costs \(cur.tidyDisplay(cost)).").textStyle(.caption, tint: Theme.inkSoft)
-                    Button { skipAndRename(clean) } label: { Text("Change now \u{00B7} \(StoreText.gold(Self.skipPrice))") }
-                        .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
-                        .disabled(clean.count < 2)
-                        .accessibilityIdentifier("company-name-skip")
-                } else {
-                    Text("Costs \(cur.tidyDisplay(cost)); about a third of customers lose track of you. Then you wait \(GameEngine.renameCooldownWeeks) weeks.").textStyle(.caption, tint: Theme.inkSoft)
-                    Button { confirmRename(clean, cost, cur) } label: { Text("Change name") }
-                        .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
-                        .disabled(clean.count < 2)
-                        .accessibilityIdentifier("company-name-change")
-                }
-            }
-        }
-    }
-
-    private func confirmRename(_ name: String, _ cost: Double, _ cur: Currency) {
-        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename", amount: cost, currency: cur, tone: .info, icon: "pencil") {
-            rename(name, skip: false)
-        }
-    }
-
-    private func skipAndRename(_ name: String) {
-        StorePurchase.ask(.service("Skip the name wait", Self.skipPrice), pending: $pending, onShort: { (price: Int) in shortNeed = price; shortOfGold = true }, then: { (done: Bool) in
-            if done { rename(name, skip: true) }
-        })
-    }
-
-    private func rename(_ name: String, skip: Bool) {
-        let id: Int = companyID
-        switch store.act({ $0.renameCompany(companyID: id, to: name, skipCooldown: skip) }) {
-        case .ok?: Haptics.success(); newName = ""; store.show("Now called \(name).", tone: "good")
-        case .tooShort?: Haptics.warning(); store.show("Choose a different name of at least two letters.", tone: "warn")
-        case .nameTaken?: Haptics.warning(); store.show("Another company already has that name.", tone: "warn")
-        case .notEnoughCash?: Haptics.warning(); store.show("The company does not have the cash for new signs.", tone: "warn")
-        case .partOfChain?: Haptics.warning(); store.show("A chain store carries the chain's name.", tone: "warn")
-        case .cooldown?: Haptics.warning(); store.show("The name cannot change yet.", tone: "warn")
-        case nil: break
-        default: Haptics.warning(); store.show("It cannot be renamed now.", tone: "warn")
-        }
-    }
-
     @ViewBuilder private func content(_ e: GameEngine, _ co: Company, _ cabinet: Cabinet) -> some View {
         switch part {
         case .card: cardGrid(e, co, cabinet)
-        case .colours: colours(e, co)
+        case .backdrop: backdropGrid(e, co)
+        case .colours: colours(e, co, show: .colour)
+        case .badge: colours(e, co, show: .badge)
         case .logo: logoGrid(e, co)
         case .plate: plateGrid()
         }
@@ -249,12 +202,39 @@ struct CompanyCustomiseView: View {
         }
     }
 
-    private func colours(_ e: GameEngine, _ co: Company) -> some View {
+    private func colours(_ e: GameEngine, _ co: Company, show: ColourBadgePicker.Show) -> some View {
         let id: Int = companyID
         let s: (theme: String, badge: String) = style(e)
         let theme = Binding<String>(get: { s.theme }, set: { (v: String) in _ = store.act { (g: inout GameEngine) -> Void in _ = g.setCompanyStyle(companyID: id, theme: v) } })
         let badge = Binding<String>(get: { s.badge }, set: { (v: String) in _ = store.act { (g: inout GameEngine) -> Void in _ = g.setCompanyStyle(companyID: id, badge: v) } })
-        return ColourBadgePicker(earned: e.careerCosmetics, theme: theme, badge: badge)
+        return ColourBadgePicker(earned: e.careerCosmetics, theme: theme, badge: badge, show: show)
+    }
+
+    private func backdropGrid(_ e: GameEngine, _ co: Company) -> some View {
+        var seen = Set<String>()
+        let all: [SeasonReward] = (SeasonRewards.all + GoldCosmetics.all.map { (g: GoldCosmetic) -> SeasonReward in g.item })
+            .filter { (r: SeasonReward) -> Bool in r.kind == .backdrop && seen.insert(r.id).inserted }
+        let owned: [SeasonReward] = all.filter { (r: SeasonReward) -> Bool in season.pass.owned.contains(r.id) }.sorted { $0.title < $1.title }
+        let shut: [SeasonReward] = all.filter { (r: SeasonReward) -> Bool in !season.pass.owned.contains(r.id) }
+        let current: String = e.companyBackdrop(companyID: co.id)
+        let id: Int = co.id
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Fills the top of this company's page and its card.").textStyle(.caption, tint: Theme.inkSoft)
+            LazyVGrid(columns: columns, spacing: Theme.Space.s) {
+                ForEach(owned + shut) { (r: SeasonReward) in
+                    let isOpen: Bool = season.pass.owned.contains(r.id)
+                    let how: String = CustomiseView.how(r)
+                    LookTile(title: r.title, note: isOpen ? "" : how, worn: current == r.id, wornText: "On this company", locked: !isOpen, id: "company-backdrop-" + r.id,
+                             art: ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 48, wide: true)) {
+                        if !isOpen { Haptics.warning(); note = r.title + ": " + how; return }
+                        Haptics.success()
+                        note = ""
+                        let next: String = current == r.id ? "" : r.id
+                        _ = store.act { (g: inout GameEngine) -> Void in _ = g.setCompanyBackdrop(companyID: id, id: next) }
+                    }
+                }
+            }
+        }
     }
 
     private func logoGrid(_ e: GameEngine, _ co: Company) -> some View {

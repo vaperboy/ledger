@@ -1,4 +1,5 @@
 import SwiftUI
+import Simulation
 import GameCore
 
 struct LedgerIcon: Shape {
@@ -36,6 +37,7 @@ struct GlyphView: View {
 }
 
 enum Glyph {
+    static let edit = "M15 5 L19 9 L8 20 L4 20 L4 16 Z M13 7 L17 11"
     static let home = "M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"
     static let team = "M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20 M9 5 A3 3 0 1 0 9 11 A3 3 0 1 0 9 5"
     static let group = "M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"
@@ -283,17 +285,36 @@ struct AppHeader<Trailing: View>: View {
     var backLabel = "Back"
     @ViewBuilder var trailing: () -> Trailing
     @Environment(\.outsidePalette) private var palette
+    var titleAction: (() -> Void)? = nil
+
+    @ViewBuilder private var titleText: some View {
+        if let titleAction {
+            Button { Haptics.tap(); titleAction() } label: {
+                HStack(spacing: Theme.Space.xs) {
+                    Text(title).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+                    LedgerGlyph(glyph: Glyph.edit, size: 14, tint: Theme.inkSoft)
+                }
+                .frame(minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel(title + ", rename")
+            .accessibilityIdentifier("header-title-rename")
+        } else {
+            Text(title).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+        }
+    }
 
     var body: some View {
         HStack(spacing: Theme.Space.s) {
             if let onBack { RoundBackButton(label: backLabel, action: onBack).padding(.leading, -Theme.Space.m) }
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(title).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+                titleText
                 if !subtitle.isEmpty {
                     Text(subtitle.tidyText).textStyle(.caption).lineLimit(2)
                 }
             }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: titleAction == nil ? .combine : .contain)
             .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
             trailing()
@@ -317,6 +338,8 @@ struct AppScreen<Trailing: View>: ViewModifier {
     var subtitle: String
     var tab: AppTab
     var showsBack: Bool
+    var backdrop: SeasonReward? = nil
+    var titleAction: (() -> Void)? = nil
     @ViewBuilder var trailing: () -> Trailing
 
     func body(content: Content) -> some View {
@@ -326,14 +349,17 @@ struct AppScreen<Trailing: View>: ViewModifier {
             .toolbar(.hidden, for: .navigationBar)
             .ledgerBackground()
             .safeAreaInset(edge: .top, spacing: 0) {
-                AppHeader(title: title, subtitle: subtitle, onBack: (showsBack && !hidesRootBack) ? { dismiss() } : nil, trailing: trailing)
+                AppHeader(title: title, subtitle: subtitle, onBack: (showsBack && !hidesRootBack) ? { dismiss() } : nil, trailing: trailing, titleAction: titleAction)
                     .environment(\.outsidePalette, palette == OutsidePalette.bank ? OutsidePalette.forest : palette)
                     .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
                     .background {
-                        if palette == .game {
-                            LinearGradient(colors: [Theme.page.opacity(0.6), Theme.page.opacity(0.25)], startPoint: .top, endPoint: .bottom).ignoresSafeArea(edges: .top)
-                        } else {
-                            (palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: .top)
+                        ZStack {
+                            if palette == .game {
+                                LinearGradient(colors: [Theme.page.opacity(0.6), Theme.page.opacity(0.25)], startPoint: .top, endPoint: .bottom).ignoresSafeArea(edges: .top)
+                            } else {
+                                (palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: .top)
+                            }
+                            if let backdrop { HeaderBackdropFill(reward: backdrop).ignoresSafeArea(edges: .top) }
                         }
                     }
             }
@@ -365,11 +391,11 @@ struct ReturnLine: View {
 }
 
 extension View {
-    func appScreen(title: String, subtitle: String = "", tab: AppTab = .company, showsBack: Bool = true) -> some View {
-        modifier(AppScreen(title: title, subtitle: subtitle, tab: tab, showsBack: showsBack, trailing: { EmptyView() }))
+    func appScreen(title: String, subtitle: String = "", tab: AppTab = .company, showsBack: Bool = true, backdrop: SeasonReward? = nil, onTitleTap: (() -> Void)? = nil) -> some View {
+        modifier(AppScreen(title: title, subtitle: subtitle, tab: tab, showsBack: showsBack, backdrop: backdrop, titleAction: onTitleTap, trailing: { EmptyView() }))
     }
-    func appScreen<T: View>(title: String, subtitle: String = "", tab: AppTab = .company, showsBack: Bool = true, @ViewBuilder trailing: @escaping () -> T) -> some View {
-        modifier(AppScreen(title: title, subtitle: subtitle, tab: tab, showsBack: showsBack, trailing: trailing))
+    func appScreen<T: View>(title: String, subtitle: String = "", tab: AppTab = .company, showsBack: Bool = true, backdrop: SeasonReward? = nil, onTitleTap: (() -> Void)? = nil, @ViewBuilder trailing: @escaping () -> T) -> some View {
+        modifier(AppScreen(title: title, subtitle: subtitle, tab: tab, showsBack: showsBack, backdrop: backdrop, titleAction: onTitleTap, trailing: trailing))
     }
 }
 

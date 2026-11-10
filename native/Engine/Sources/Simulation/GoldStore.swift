@@ -30,21 +30,11 @@ public struct SeasonBundle: Equatable, Sendable {
 }
 
 public enum GoldStore {
-    public static let packs: [GoldPack] = [
-        GoldPack(id: "gold.pouch", name: "Pouch", priceCents: 199, gold: 200),
-        GoldPack(id: "gold.purse", name: "Purse", priceCents: 499, gold: 550),
-        GoldPack(id: "gold.chest", name: "Chest", priceCents: 999, gold: 1_200),
-        GoldPack(id: "gold.vault", name: "Vault", priceCents: 1_999, gold: 2_600),
-        GoldPack(id: "gold.hoard", name: "Hoard", priceCents: 4_999, gold: 7_000)
-    ]
+    public static let packs: [GoldPack] = Pricing.goldPacks
 
-    public static let seasonBundle = SeasonBundle(name: "Season bundle", priceCents: 1_499, gold: 1_000, boxes: [(.cabinet, 3)], includesPlus: true)
+    public static let seasonBundle: SeasonBundle = Pricing.seasonBundle
 
-    public static let boxBundles: [BoxBundle] = [
-        BoxBundle(kind: .cabinet, count: 5, price: 540),
-        BoxBundle(kind: .cabinet, count: 10, price: 1_000),
-        BoxBundle(kind: .grand, count: 3, price: 1_080)
-    ]
+    public static let boxBundles: [BoxBundle] = Pricing.boxBundles
 
     public static func firstPurchaseBonus(_ pack: GoldPack) -> Int { pack.gold / 2 }
 

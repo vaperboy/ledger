@@ -1,5 +1,5 @@
 {
- "about": "Cosmetics sold for gold, dropped by boxes or earned from collections. kind: theme, namePlate, backdrop, tradePlate, richListFlair or saveSlot. rarity: common, rare, epic, legendary. source: store (bought with gold), box (only from boxes) or collection (reward for finishing a collection). theme: optional look theme id from Content/themes/item_themes.json (default classic); founderEdition: optional true; bound: optional true (not sellable). price: optional gold price; if left out a store item costs 60, 150 or 400 by rarity. colors: hex, tint first. Image: <kind>.<id>.png in App/Ledger/Resources/Content/art, with kind written theme, namePlate, backdrop, tradePlate or flair.",
+ "about": "Cosmetics sold for gold, dropped by boxes or earned from collections. kind: theme, namePlate, backdrop, tradePlate, richListFlair or saveSlot. rarity: common, rare, epic, legendary. source: store (bought with gold), box (only from boxes) or collection (reward for finishing a collection). theme: optional look theme id from Content/themes/item_themes.json (default classic); founderEdition: optional true; bound: optional true (not sellable). Store prices are in pricing/prices.json (by rarity, or by id for single items). colors: hex, tint first. Image: <kind>.<id>.png in App/Ledger/Resources/Content/art, with kind written theme, namePlate, backdrop, tradePlate or flair.",
  "cosmetics": [
   {"id": "gold.plate.pewter", "kind": "namePlate", "title": "Pewter plate", "detail": "A quiet grey name plate.", "colors": ["A9ADB5", "2C2E33"], "rarity": "common", "source": "store"},
   {"id": "gold.backdrop.fog", "kind": "backdrop", "title": "Fog backdrop", "detail": "A soft grey backdrop.", "colors": ["39414A", "262B31"], "rarity": "common", "source": "store"},
@@ -21,8 +21,8 @@
   {"id": "gold.coll.market", "kind": "tradePlate", "title": "Market Square trade plate", "detail": "Reward for completing the Market Square collection.", "colors": ["D99AA6", "3A2227"], "rarity": "epic", "source": "collection", "theme": "market"},
   {"id": "gold.coll.archive", "kind": "richListFlair", "title": "Archive seal", "detail": "Reward for completing the Town Archive collection.", "colors": ["E4DFD3", "4A4842"], "rarity": "epic", "source": "collection", "theme": "archive"},
   {"id": "gold.coll.spring", "kind": "backdrop", "title": "Spring Fair backdrop", "detail": "Reward for completing the Spring Market collection.", "colors": ["F0C4D0", "6F8F5E"], "rarity": "epic", "source": "collection", "theme": "spring"},
-  {"id": "gold.slot.1", "kind": "saveSlot", "title": "Extra save slot", "detail": "Room for one more saved game.", "colors": [], "rarity": "common", "source": "store", "price": 400},
-  {"id": "gold.slot.2", "kind": "saveSlot", "title": "Second extra save slot", "detail": "Room for one more saved game.", "colors": [], "rarity": "common", "source": "store", "price": 600},
-  {"id": "gold.slot.3", "kind": "saveSlot", "title": "Third extra save slot", "detail": "Room for one more saved game.", "colors": [], "rarity": "common", "source": "store", "price": 900}
+  {"id": "gold.slot.1", "kind": "saveSlot", "title": "Extra save slot", "detail": "Room for one more saved game.", "colors": [], "rarity": "common", "source": "store"},
+  {"id": "gold.slot.2", "kind": "saveSlot", "title": "Second extra save slot", "detail": "Room for one more saved game.", "colors": [], "rarity": "common", "source": "store"},
+  {"id": "gold.slot.3", "kind": "saveSlot", "title": "Third extra save slot", "detail": "Room for one more saved game.", "colors": [], "rarity": "common", "source": "store"}
  ]
 }

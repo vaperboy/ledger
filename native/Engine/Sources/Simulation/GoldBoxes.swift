@@ -97,7 +97,7 @@ enum BoxCatalog {
     static let entries: [String: Entry] = {
         var out: [String: Entry] = [:]
         for e in ContentFile.load("boxes", "boxes")["boxes"].array {
-            out[e["id"].string] = Entry(title: e["title"].string, price: e["price"].int, theme: ItemThemes.id(e), rows: e["rows"].array.map { (r: JSONValue) -> BoxRow in BoxCatalog.row(r) })
+            out[e["id"].string] = Entry(title: e["title"].string, price: Pricing.box(e["id"].string), theme: ItemThemes.id(e), rows: e["rows"].array.map { (r: JSONValue) -> BoxRow in BoxCatalog.row(r) })
         }
         return out
     }()

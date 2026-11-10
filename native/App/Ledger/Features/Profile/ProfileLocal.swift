@@ -10,6 +10,7 @@ final class ProfileLocal: ObservableObject {
 
     @Published private(set) var name: String
     @Published private(set) var showcase: [String]
+    @Published var nameTaken = false
 
     private init() {
         name = UserDefaults.standard.string(forKey: Self.nameKey) ?? ""
@@ -22,6 +23,7 @@ final class ProfileLocal: ObservableObject {
     }
 
     func setName(_ value: String) {
+        nameTaken = false
         name = value
         UserDefaults.standard.set(value, forKey: Self.nameKey)
     }

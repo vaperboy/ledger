@@ -89,6 +89,16 @@ public extension GameEngine {
         }
     }
 
+    func companyBackdrop(companyID: Int) -> String { state.company(companyID)?.value("backdrop").string ?? "" }
+
+    @discardableResult
+    mutating func setCompanyBackdrop(companyID: Int, id: String) -> SettingResult {
+        applySetting(refuse: { (s: GameState) -> String? in s.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
+            guard let i = s.companyIndex(companyID) else { return }
+            s.companies[i].set("backdrop", id)
+        }
+    }
+
     mutating func grantLogo(_ id: String) {
         guard LogoCatalogue.logo(id) != nil, !ownedLogos().contains(id) else { return }
         update { s, _, _ in

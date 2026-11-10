@@ -59,10 +59,6 @@ actor SupabaseOnlineService: OnlineService {
 
     func updateMyProfile(_ update: ProfileUpdate) async throws -> PlayerProfile {
         var fields: [String: Any] = [:]
-        if let name = update.displayName {
-            if let why = ProfileRules.problem(with: name) { throw OnlineError.nameRejected(why) }
-            fields["p_display_name"] = ProfileRules.clean(name)
-        }
         if let colour = update.avatarColour { fields["p_avatar_colour"] = max(0, min(PlayerProfile.avatarColourCount - 1, colour)) }
         if let country = update.countryCode { fields["p_country_code"] = country.uppercased() }
         if let privacy = update.privacy { fields["p_privacy"] = SupabaseWire.privacyWire(privacy) }
@@ -76,6 +72,21 @@ actor SupabaseOnlineService: OnlineService {
             _ = try await raw(path: "/rest/v1/rpc/share_progress", method: "POST", body: try SupabaseWire.makeEncoder().encode(args))
         }
         return try await myProfile()
+    }
+
+    func usernameAvailable(_ name: String) async throws -> UsernameResult {
+        guard ProfileRules.problem(with: name) == nil else { return .invalid }
+        return try usernameResult(try await rpcData("username_available", ["p_username": ProfileRules.clean(name)]))
+    }
+
+    func claimUsername(_ name: String) async throws -> UsernameResult {
+        guard ProfileRules.problem(with: name) == nil else { return .invalid }
+        return try usernameResult(try await rpcData("claim_username", ["p_username": ProfileRules.clean(name)]))
+    }
+
+    private func usernameResult(_ data: Data) throws -> UsernameResult {
+        let word: String = try JSONDecoder().decode(String.self, from: data)
+        return UsernameResult(rawValue: word) ?? .invalid
     }
 
     func profile(id: String) async throws -> PlayerProfile { try await profileRPC("view_profile", ["p_id": id]) }

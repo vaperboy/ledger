@@ -59,14 +59,15 @@ struct TermsView: View {
             .scrollBounceBehavior(.basedOnSize)
 
             VStack(spacing: Theme.Space.s) {
-                TextField("Your name", text: $name)
+                TextField("Choose a username", text: $name)
                     .textFieldStyle(.plain).textStyle(.headline, tint: P.ink, weight: .regular)
-                    .textInputAutocapitalization(.words).autocorrectionDisabled()
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .padding(.horizontal, Theme.Space.m).frame(minHeight: 48)
                     .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(P.card))
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(P.line, lineWidth: 0.8))
                     .accessibilityIdentifier("terms-name")
                 if let problem = nameProblem { Text(problem).textStyle(.caption, tint: P.loss).multilineTextAlignment(.center) }
+                else { Text("3 to 16 letters, numbers or _. Usernames are unique.").textStyle(.caption, tint: P.inkSoft).multilineTextAlignment(.center) }
                 Text("By continuing you confirm you are 18 or older.").textStyle(.caption, tint: P.inkSoft).multilineTextAlignment(.center)
                 Button {
                     Haptics.tap()

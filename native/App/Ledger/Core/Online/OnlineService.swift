@@ -75,7 +75,6 @@ struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
 }
 
 struct ProfileUpdate: Codable, Sendable {
-    var displayName: String?
     var avatarColour: Int?
     var countryCode: String?
     var privacy: PrivacyLevel?
@@ -84,12 +83,16 @@ struct ProfileUpdate: Codable, Sendable {
     var badges: [String]?
     var gameWeek: Int?
     var avatarIcon: String?
-    init(displayName: String? = nil, avatarColour: Int? = nil, countryCode: String? = nil, privacy: PrivacyLevel? = nil,
+    init(avatarColour: Int? = nil, countryCode: String? = nil, privacy: PrivacyLevel? = nil,
          companies: [OnlineCompany]? = nil, level: Int? = nil, badges: [String]? = nil, gameWeek: Int? = nil, avatarIcon: String? = nil) {
-        self.displayName = displayName; self.avatarColour = avatarColour; self.countryCode = countryCode; self.privacy = privacy
+        self.avatarColour = avatarColour; self.countryCode = countryCode; self.privacy = privacy
         self.companies = companies; self.level = level; self.badges = badges; self.gameWeek = gameWeek
         self.avatarIcon = avatarIcon
     }
+}
+
+enum UsernameResult: String, Codable, Equatable, Sendable {
+    case ok, taken, invalid
 }
 
 struct OnlineAccount: Codable, Hashable, Sendable {
@@ -238,6 +241,8 @@ protocol OnlineService: AdminService, OnlineWorldService, FriendPlayService, Pus
 
     func myProfile() async throws -> PlayerProfile
     func updateMyProfile(_ update: ProfileUpdate) async throws -> PlayerProfile
+    func usernameAvailable(_ name: String) async throws -> UsernameResult
+    func claimUsername(_ name: String) async throws -> UsernameResult
     func profile(id: String) async throws -> PlayerProfile
     func profile(code: String) async throws -> PlayerProfile
     func searchPlayers(query: String) async throws -> [PlayerProfile]

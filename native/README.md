@@ -35,7 +35,7 @@ set -o pipefail && xcodebuild -scheme Ledger -destination 'platform=iOS Simulato
 All game content is JSON. Edit the file, push, and CI checks it (`ContentValidationTests`). A wrong id, colour or reference fails CI with a plain message naming the file and the entry. Ids never change once players have them (saves use them); to retire an item, leave it in and do not hand it out.
 
 Folders (paths below start at `native/`):
-- `Engine/Sources/Simulation/Resources/Content/<kind>/`: boxes, cards, artifacts, cosmetics, season, progression.
+- `Engine/Sources/Simulation/Resources/Content/<kind>/`: boxes, cards, artifacts, cosmetics, season, progression, pricing.
 - `App/Ledger/Resources/Content/<kind>/`: avatars (profile icons), trade_icons.
 - `Engine/Sources/<Businesses|Countries|Events>/Resources/`: trades, countries, events, decisions, supplies, luxury and the other game-world files.
 
@@ -49,10 +49,11 @@ Pictures: drop a PNG named `<kind>.<id>.png` into `App/Ledger/Resources/Content/
 | Artifact collection | same file, `collections` | id, name, blurb, reward (a cosmetic id), look | none |
 | Profile or company card | `.../Content/cards/cards.json` | id (card.p.x or card.c.x), kind, name, rarity, colors, motion, logo (company) | `artifact.<id>.png` |
 | Card given at a level | same file, `levelRewards` | level, card | none |
-| Theme, name plate, backdrop, trade plate, flair, save slot | `.../Content/cosmetics/gold_cosmetics.json` | id, kind, title, detail, rarity, source (store, box, collection), colors, price (optional) | `<kind>.<id>.png` |
+| Theme, name plate, backdrop, trade plate, flair, save slot | `.../Content/cosmetics/gold_cosmetics.json` | id, kind, title, detail, rarity, source (store, box, collection), colors | `<kind>.<id>.png` |
 | Company badge or app colour theme | `.../Content/cosmetics/badges_themes.json` | badge: id, title, symbol, premium. theme: id, title, red, green, blue, premium | `badge.<id>.png` |
 | Season pass reward | `.../Content/season/season_1.json` | id, tier (1 to 30), premium (true or false), kind, title, detail, colors; card: card; box or gold: amount | `<kind>.<id>.png` |
-| Box odds, price, name | `.../Content/boxes/boxes.json` | title, price, rows (rarity, prize, weight, amount); weights add to 10000 | `box.<id>.png` |
+| Box odds, name | `.../Content/boxes/boxes.json` | title, rows (rarity, prize, weight, amount); weights add to 10000 | `box.<id>.png` |
+| Any price (box, cosmetic, save slot, gold pack, service, store tier) | `.../Content/pricing/prices.json` | gold prices in gold (1 gold is about 1 NOK); App Store tiers in US cents; per-currency table | none |
 | Feature unlock level | `.../Content/progression/level_gates.json` | feature, level, title, gives | none |
 | Company logo | `Engine/Sources/Businesses/Resources/logo_catalogue.json` | id, name, how (free, level:N, box:rarity), asset | the `asset` name plus `.png` |
 | Country | `Engine/Sources/Countries/Resources/countries.json` | copy the `NO` block and change every value; then add the code to `city_market.json` and `country_traits.json` | none |
