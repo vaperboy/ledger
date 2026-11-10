@@ -7,7 +7,6 @@ import Businesses
 /// as a pushed full screen with its own `AppHeader` and a round back button to this home. The tab owns the navigation stack: apps and the
 /// companies they link to are pushed on it, so Back always returns to where the player came from.
 struct PhoneHome: View {
-    @Environment(Entitlements.self) private var ent
     @EnvironmentObject var store: GameStore
     @Environment(\.tabBarClearance) private var clearance
     /// The Phone stack lives in the store; opening an app from the grid pushes through it like every other link.
@@ -31,7 +30,7 @@ struct PhoneHome: View {
                         if gateState(app) != .hidden {
                             AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText, quietDot: app == .desk && store.deskWaitingNow) {
                                 Haptics.tap()
-                                if app == .luxury { ent.run(.luxuryGivingFootball, "Luxury") { path.append(.app(app)) } } else { path.append(.app(app)) }
+                                path.append(.app(app))
                             }
                             .coachAnchor(.phoneBank, enabled: app == .bank)
                             .coachAnchor(.phoneInbox, enabled: app == .inbox)

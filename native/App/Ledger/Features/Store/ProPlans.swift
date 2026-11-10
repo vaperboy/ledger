@@ -13,18 +13,20 @@ struct ProPlansView: View {
         var excludes: String = ""
     }
 
+    private static let proIncludes: [String] = ["3 save slots and cloud backup", "Insights charts", "Premium themes, badges and avatars", "No ads"]
+
     private static let yearly = Spec(
         product: .plusYearly, name: "Ledger Plus, yearly", billing: "Subscription, renews every year",
         summary: "Everything in Pro, plus the premium Season Pass. Billed once a year.",
-        includes: ["Every locked item and 3 save slots", "No ads", "Premium Season Pass track"])
+        includes: ProPlansView.proIncludes + ["Premium Season Pass track"])
     private static let monthly = Spec(
         product: .plusMonthly, name: "Ledger Plus, monthly", billing: "Subscription, renews every month",
         summary: "The same as the yearly plan, paid month by month. Stop whenever you like.",
-        includes: ["Every locked item and 3 save slots", "No ads", "Premium Season Pass track"])
+        includes: ProPlansView.proIncludes + ["Premium Season Pass track"])
     private static let pro = Spec(
         product: .pro, name: "Ledger Pro", billing: "One-time purchase, yours for good",
-        summary: "Pay once and keep every locked item. Nothing renews.",
-        includes: ["Every locked item and 3 save slots", "No ads", "Family Sharing"], excludes: "Does not include the premium Season Pass track.")
+        summary: "Pay once and keep the extras. Nothing renews.",
+        includes: ProPlansView.proIncludes + ["Family Sharing"], excludes: "Does not include the premium Season Pass track.")
     private static let founder = Spec(
         product: .founder, name: "Founder's Edition", billing: "One-time purchase, yours for good",
         summary: "Ledger Pro with a Founder mark, for people who want to back the game. Nothing renews.",
@@ -41,7 +43,7 @@ struct ProPlansView: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 Text("Ledger plans").capsLabel(Theme.inkFaint)
-                Text("A subscription renews until you cancel it. A one-time purchase is paid once and is yours for good.")
+                Text("Plans sell comfort and looks only. Every part of the game is free, and nothing in it waits behind a purchase. A subscription renews until you cancel it; a one-time purchase is paid once and is yours for good.")
                     .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, Theme.Space.m)
@@ -88,7 +90,7 @@ struct ProPlansView: View {
             GlyphView(glyph: Glyph.check, size: 14, weight: 1.8, tint: Theme.gain)
             VStack(alignment: .leading, spacing: 2) {
                 Text(ent.isFounder ? "You own Founder's Edition" : "You own Ledger Pro").textStyle(.headline)
-                Text("One-time purchase. Every locked item is open and ads are off, for good.").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                Text("One-time purchase. Every extra is open and ads are off, for good.").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
@@ -106,8 +108,8 @@ struct ProPlansView: View {
                 Spacer(minLength: 0)
                 StoreTag(text: "Subscription", tint: Theme.gain)
             }
-            Text(ent.plusRenews.map { "Renews on \($0.formatted(date: .abbreviated, time: .omitted)). Everything in Pro, no ads and the premium Season Pass track." }
-                 ?? "Everything in Pro, no ads and the premium Season Pass track.")
+            Text(ent.plusRenews.map { "Renews on \($0.formatted(date: .abbreviated, time: .omitted)). Everything in Pro and the premium Season Pass track." }
+                 ?? "Everything in Pro and the premium Season Pass track.")
                 .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             Button { Haptics.tap(); Task { await ent.manageSubscription() } } label: {
                 Text("Manage or cancel the subscription").textStyle(.caption, tint: Theme.accent, weight: .semibold).frame(minHeight: 32, alignment: .leading)
@@ -202,7 +204,9 @@ struct ProPlansView: View {
                     word("Once")
                     word("Once")
                 }
-                row("Every locked item, 3 save slots", true, true, true)
+                row("3 save slots, cloud backup", true, true, true)
+                row("Insights charts", true, true, true)
+                row("Premium themes, badges, avatars", true, true, true)
                 row("No ads", true, true, true)
                 row("Premium Season Pass track", true, false, false)
                 row("Founder mark in Settings", false, false, true)

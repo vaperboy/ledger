@@ -10,7 +10,6 @@ struct BankAccountsScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var onPick: (BankAccountID) -> Void
-    @Environment(Entitlements.self) private var ent
     @State private var givingOpen = false
     @State private var move: BankMoveKind?
 
@@ -60,9 +59,8 @@ struct BankAccountsScreen: View {
     private func givingLink(_ e: GameEngine) -> some View {
         let n: Int = e.givingMarks.count
         let sub: String = "\(n) \(n == 1 ? "mark" : "marks")" + (e.foundation != nil ? " \u{00B7} foundation running" : "")
-        return Button { ent.run(.luxuryGivingFootball, "Giving back") { givingOpen = true } } label: {
+        return Button { givingOpen = true } label: {
             CardRow(glyph: Glyph.richList, title: "Giving back", subtitle: "Gifts, sponsorships and your foundation \u{00B7} " + sub)
-                .overlay(alignment: .topTrailing) { ProMark(feature: .luxuryGivingFootball).padding(8) }
         }
         .buttonStyle(PressableStyle())
         .navigationDestination(isPresented: $givingOpen) { GivingView() }

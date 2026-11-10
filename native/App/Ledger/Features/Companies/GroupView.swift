@@ -8,7 +8,6 @@ import Simulation
 struct GroupView: View {
     @EnvironmentObject var store: GameStore
     @State private var showAddMenu = false
-    @Environment(Entitlements.self) private var ent
     @State private var addDestination: GroupAddDestination?
     @State private var tab: GroupHomeTab = .overview
 
@@ -27,10 +26,7 @@ struct GroupView: View {
             .centerSheet(isPresented: $showAddMenu) {
                 GroupAddMenu(onPick: { (d: GroupAddDestination) in
                     showAddMenu = false
-                    // The push (or the paywall) waits until the popup has gone, or it would be dropped while the popup closes.
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        if let g = d.gate { ent.run(g, "Add to group") { addDestination = d } } else { addDestination = d }
-                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { addDestination = d }
                 })
                 .environmentObject(store)
             }

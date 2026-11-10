@@ -61,14 +61,14 @@ struct SettingsView: View {
     private var helpGroup: some View {
         group("Help") {
             Button { askReplay() } label: {
-                plainRow(Glyph.info, "Replay the tutorial", detail: "Five short steps on your own company", chevron: true)
+                plainRow(Glyph.info, "Replay the tutorial", detail: "\(Tutorial.stepCount) short steps on your own company", chevron: true)
             }.buttonStyle(PressableStyle())
             .accessibilityIdentifier("settings-replay-tutorial")
         }
     }
 
     private func askReplay() {
-        pending = PendingAction(title: "Replay the tutorial?", message: "The five steps start again from the first one. Nothing in your game changes.",
+        pending = PendingAction(title: "Replay the tutorial?", message: "The \(Tutorial.stepCount) steps start again from the first one. Nothing in your game changes.",
                                 button: "Replay", alwaysAsk: true) {
             store.tutorialReplay()
             store.show("The tutorial starts again.", tone: "good")

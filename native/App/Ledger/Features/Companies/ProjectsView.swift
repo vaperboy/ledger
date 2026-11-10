@@ -13,7 +13,6 @@ struct ProjectsView: View {
     }
 
     @EnvironmentObject var store: GameStore
-    @Environment(Entitlements.self) private var ent
     @State private var part: Part = .projects
     @State private var developFor: DevelopRef?
     @State private var foundOpen = false
@@ -60,7 +59,8 @@ struct ProjectsView: View {
         switch o.action {
         case .route(let r): store.push(r)
         case .develop(let id): developFor = DevelopRef(id: id)
-        case .found: ent.run(.ventures, "Found a startup") { foundOpen = true }
+        case .found:
+            if let e = store.engine, !Gates.isOpen(.ventures, e.state, data: e.data) { part = .portfolio } else { foundOpen = true }
         }
     }
 

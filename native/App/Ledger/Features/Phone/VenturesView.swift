@@ -107,7 +107,6 @@ enum VentureSheet: Identifiable, Equatable {
 /// Logic: `Startups`, `PrivateEquity`, `BigMeeting`, `GroupDeals`, `SoftwareProducts`.
 struct VenturesHome: View {
     @EnvironmentObject var store: GameStore
-    @Environment(Entitlements.self) private var ent
     @State private var sheet: VentureSheet?
     @State private var pending: PendingAction?
     /// The row that is open (its actions showing): one at a time across the whole page.
@@ -116,33 +115,41 @@ struct VenturesHome: View {
     var body: some View {
         if let e = store.engine {
             let fig = VenturesFigures(e)
-            VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                VenturesHeader(figures: fig, found: found).coachAnchor(.venturesHeader)
-                if fig.isEmpty {
-                    EmptyState(glyph: Glyph.ventures, title: "No ventures yet",
-                               message: "Found a startup and build it, back a founder with a stake, or commit to a fund. Whatever you hold shows here with its value and what to do next.",
-                               actionTitle: "Found a startup", action: found)
-                } else {
-                    VenturesStartupsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
-                }
-                if !fig.isEmpty || fig.pitches > 0 {
-                    VenturesBackingSection(engine: e, open: $open, sheet: $sheet, pending: $pending).coachTopStrip(.venturesBacking, height: 56)
-                }
-                if !fig.isEmpty || fig.fundOffers > 0 {
-                    VenturesFundsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
-                }
-                if fig.groupCount > 0 || fig.bigOffer != nil || !e.rivalGroupsAround().isEmpty {
-                    VenturesGroupsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
-                }
-                StartupMarketEntry()
-                VenturesSoftwareSection(engine: e)
+            if fig.isEmpty && !Gates.isOpen(.ventures, e.state, data: e.data) {
+                VenturesLockCard()
+            } else {
+                portfolio(e, fig)
             }
-            .confirmAction($pending)
-            .centerSheet(item: $sheet, title: "", category: .medium, tone: .investment) { (s: VentureSheet) in sheetContent(s) }
         }
     }
 
-    private func found() { ent.run(.ventures, "Found a startup") { sheet = .found } }
+    private func portfolio(_ e: GameEngine, _ fig: VenturesFigures) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            VenturesHeader(figures: fig, found: found).coachAnchor(.venturesHeader)
+            if fig.isEmpty {
+                EmptyState(glyph: Glyph.ventures, title: "No ventures yet",
+                           message: "Found a startup and build it, back a founder with a stake, or commit to a fund. Whatever you hold shows here with its value and what to do next.",
+                           actionTitle: "Found a startup", action: found)
+            } else {
+                VenturesStartupsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
+            }
+            if !fig.isEmpty || fig.pitches > 0 {
+                VenturesBackingSection(engine: e, open: $open, sheet: $sheet, pending: $pending).coachTopStrip(.venturesBacking, height: 56)
+            }
+            if !fig.isEmpty || fig.fundOffers > 0 {
+                VenturesFundsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
+            }
+            if fig.groupCount > 0 || fig.bigOffer != nil || !e.rivalGroupsAround().isEmpty {
+                VenturesGroupsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
+            }
+            StartupMarketEntry()
+            VenturesSoftwareSection(engine: e)
+        }
+        .confirmAction($pending)
+        .centerSheet(item: $sheet, title: "", category: .medium, tone: .investment) { (s: VentureSheet) in sheetContent(s) }
+    }
+
+    private func found() { sheet = .found }
 
     @ViewBuilder private func sheetContent(_ s: VentureSheet) -> some View {
         switch s {
@@ -184,14 +191,37 @@ struct VenturesHeader: View {
             ForEach(Array(f.notes.enumerated()), id: \.offset) { item in
                 AcctPill(text: item.element.text, tone: item.element.tone)
             }
-            HStack(spacing: Theme.Space.s) {
-                Button("Found a startup", action: found).buttonStyle(PrimaryButtonStyle(size: .compact))
-                    .coachAnchor(.venturesFound)
-                    .accessibilityIdentifier("ventures-found")
-                ProMark(feature: .ventures)
-            }
-            .padding(.top, Theme.Space.xs)
+            Button("Found a startup", action: found).buttonStyle(PrimaryButtonStyle(size: .compact))
+                .coachAnchor(.venturesFound)
+                .accessibilityIdentifier("ventures-found")
+                .padding(.top, Theme.Space.xs)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct VenturesLockCard: View {
+    @EnvironmentObject var store: GameStore
+
+    var body: some View {
+        let item: UnlockRoadmapItem? = (store.memo("venturesLock") { (g: GameEngine) -> [UnlockRoadmapItem] in
+            g.unlockRoadmap().filter { (i: UnlockRoadmapItem) -> Bool in i.id == "gate.ventures" }
+        } ?? []).first
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(spacing: Theme.Space.s) {
+                LedgerGlyph(glyph: Glyph.lock, size: Theme.Icon.medium, tint: Theme.gold)
+                Text("Ventures open soon").textStyle(.headline)
+            }
+            Text("Found startups, back founders and commit to funds.").textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+            Text(item?.condition ?? "Keep trading to unlock Ventures.").textStyle(.body).fixedSize(horizontal: false, vertical: true)
+            ProgressLine(fraction: item?.progress ?? 0, tint: Theme.gold, height: 4)
+            Text((item?.detail ?? "").isEmpty ? "A quarter is three closed months that add up to a profit." : (item?.detail ?? "") + ". A quarter is three closed months that add up to a profit.")
+                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(Theme.Space.l)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassSurface()
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("ventures-lock")
     }
 }

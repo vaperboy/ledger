@@ -55,7 +55,6 @@ final class StarterChoiceTests: XCTestCase {
     }
 
     func testSandboxIsOpenToFreePlayers() throws {
-        XCTAssertTrue(EntitlementSnapshot.free.isUnlocked(.sandboxMode, now: Date()))
         XCTAssertNoThrow(try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, difficulty: .sandbox))
     }
 }

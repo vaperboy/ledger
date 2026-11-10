@@ -8,14 +8,6 @@ import Simulation
 enum GroupAddDestination: String, Identifiable, Hashable {
     case newCompany, holding, franchise, club
     var id: String { rawValue }
-    /// The locked feature this destination needs, if any (a plain new company is free).
-    var gate: LockedFeature? {
-        switch self {
-        case .newCompany: return nil
-        case .holding, .franchise: return .groupLayer
-        case .club: return .luxuryGivingFootball
-        }
-    }
 }
 
 /// The centred popup of Group > Overview: the ways to grow the group, each with a few words. A tap closes the popup and
@@ -38,10 +30,7 @@ struct GroupAddMenu: View {
         HStack(spacing: Theme.Space.s) {
             Button { Haptics.tap(); onPick(d) } label: {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    HStack(spacing: Theme.Space.s) {
-                        Text(title).popupText(.button)
-                        if let g = d.gate { ProMark(feature: g) }
-                    }
+                    Text(title).popupText(.button)
                     Text(line).popupText(.caption)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

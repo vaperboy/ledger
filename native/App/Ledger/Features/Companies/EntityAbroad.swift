@@ -11,7 +11,6 @@ import Simulation
 struct EntityAbroadSection: View {
     @EnvironmentObject var store: GameStore
     let companyID: Int
-    @Environment(Entitlements.self) private var ent
     @State private var all = false
     @State private var chosen: String?
 
@@ -32,7 +31,7 @@ struct EntityAbroadSection: View {
 
     @ViewBuilder private func openSection(_ e: GameEngine, _ co: Company, _ options: [Abroad.Option]) -> some View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack(spacing: Theme.Space.s) { Text("EXPAND ABROAD").capsLabel(); ProMark(feature: .expansionAbroad) }
+                Text("EXPAND ABROAD").capsLabel()
                 Text("A foreign subsidiary of \(co.name) is a new company that takes part of its brand along.")
                     .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 if options.isEmpty {
@@ -68,7 +67,7 @@ struct EntityAbroadSection: View {
         let values: [String] = [cur.tidyShort(o.estimatedStartCost), "\(Int(o.registrationWeeks))"]
         let code: String = o.countryCode, countryName: String = o.name
         return TableRow(columns: columns, title: o.name, note: note, values: values, valueTints: [Theme.ivory, Theme.ivoryMuted]) {
-            ent.run(.expansionAbroad, "Open a company in " + countryName) { chosen = code }
+            chosen = code
         }
     }
 }

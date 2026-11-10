@@ -18,24 +18,15 @@ public enum LedgerProduct: String, CaseIterable, Sendable {
     public var isPlus: Bool { self == .plusMonthly || self == .plusYearly }
 }
 
-/// What a free player sees locked, with a key glyph and the words `Ledger Pro`.
 public enum LockedFeature: String, CaseIterable, Sendable {
-    case tradeAboveCostLine, expansionAbroad, groupLayer, ventures, luxuryGivingFootball, saveSlots, cloudBackup, sandboxMode
+    case saveSlots, cloudBackup
 
-    /// Needs a Plus subscription itself, not just Pro. Nothing is Plus-only: Plus is Pro plus the season pass, which is not a locked item.
     public var plusOnly: Bool { false }
 
-    /// The line the paywall shows on top, when no specific item is named.
     public var paywallTitle: String {
         switch self {
-        case .tradeAboveCostLine: return "Open any trade"
-        case .expansionAbroad: return "Open a company abroad"
-        case .groupLayer: return "Build a group"
-        case .ventures: return "Ventures, private equity and funds"
-        case .luxuryGivingFootball: return "Luxury, giving and football"
         case .saveSlots: return "More save slots"
         case .cloudBackup: return "Cloud backup"
-        case .sandboxMode: return "Sandbox mode"
         }
     }
 }
@@ -67,21 +58,7 @@ public struct EntitlementSnapshot: Equatable, Sendable {
 
     public func isUnlocked(_ f: LockedFeature, now: Date) -> Bool { f.plusOnly ? isPlus(now: now) : isPro(now: now) }
 
-    /// Free save slots: one; Pro and above three.
     public func saveSlots(now: Date) -> Int { isPro(now: now) ? 3 : 1 }
-}
-
-/// Which trades a free player may start.
-public enum TradeAccess {
-    /// The twelve starter trades, or any trade whose start-up cost is below 2 x the country's median wage.
-    public static func isFree(tradeID: String, startUpCost: Double?, medianWage: Double) -> Bool {
-        if GameEngine.starterTradeIDs.contains(tradeID) { return true }
-        guard let cost = startUpCost, medianWage > 0 else { return false }
-        return cost < 2 * medianWage
-    }
-    public static func isUnlocked(tradeID: String, startUpCost: Double?, medianWage: Double, entitlements e: EntitlementSnapshot, now: Date) -> Bool {
-        isFree(tradeID: tradeID, startUpCost: startUpCost, medianWage: medianWage) || e.isUnlocked(.tradeAboveCostLine, now: now)
-    }
 }
 
 /// What the store last confirmed, kept on the device so a cold start or an offline launch keeps what was paid for.

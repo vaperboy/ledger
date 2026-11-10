@@ -13,7 +13,7 @@ struct PaywallView: View {
                 if !request.lead.isEmpty { Text(request.lead).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
                 Text(request.title).textStyle(.title).fixedSize(horizontal: false, vertical: true)
             }
-            Text("This is part of Ledger Pro and Ledger Plus. Every plan and price is in the Store.").textStyle(.body, tint: Theme.inkSoft)
+            Text("This extra is part of Ledger Pro and Ledger Plus. It adds comfort and looks, never game progress. Every plan and price is in the Store.").textStyle(.body, tint: Theme.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
             Button {
                 Haptics.tap()
@@ -81,6 +81,6 @@ struct PostM7Paywall: ViewModifier {
         armed = false
         guard !shownBefore, !ent.isPro else { return }
         UserDefaults.standard.set(true, forKey: Self.shownKey)
-        ent.paywall = PaywallRequest(title: "Ledger Pro", lead: "Your first profitable month. Pro opens the rest of the game and removes ads.")
+        ent.paywall = PaywallRequest(title: "Ledger Pro", lead: "Your first profitable month. Pro adds save slots, cloud backup, Insights and themes, and removes ads. The whole game stays free.")
     }
 }
