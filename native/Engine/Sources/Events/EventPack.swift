@@ -156,7 +156,7 @@ public enum EventPack {
 
     static func spawn(_ s: inout GameState, companyIndex i: Int, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
-        guard co.status == .open, let opened = co.openedWeek, data.catalog[co.type] != nil else { return }
+        guard co.status == .open, let opened = co.openedWeek, let bd = data.catalog[co.type] else { return }
         let last = co.value("pkc")["last"]
         if !last.isNull && s.week - last.int < gapWeeks { return }
         let age = s.week - opened
