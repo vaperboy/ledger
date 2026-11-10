@@ -210,7 +210,7 @@ extension FeatureToursTests {
     private func openFirstItem() -> Bool {
         guard let add = bringIn({ $0.id == "sales-add-item" }, wait: 4) else { return false }
         let head: CGFloat = find({ $0.type == .staticText && ($0.label == "Items" || $0.label == "ITEMS") })?.frame.maxY ?? (add.frame.minY - 400)
-        return tapWhere(wait: 1) { $0.type == .button && $0.frame.minY > head && $0.frame.maxY < add.frame.minY && !$0.label.isEmpty } && has("back-button", wait: 3)
+        return tapWhere(wait: 1) { $0.type == .button && $0.frame.minY > head && $0.frame.maxY < add.frame.minY && !$0.label.isEmpty } && popupUp(3)
     }
 
     func testT13_SalesItemAndMarketing() {
@@ -220,19 +220,19 @@ extension FeatureToursTests {
             onSales = true
             return health("sales list")
         }
-        step("sales: item page opens with the price slider in view") {
+        step("sales: item popup opens with the price slider in view") {
             guard onSales, openCompany("Caf"), tapID("company-tab-prices") else { return .skip("Sales not reachable") }
-            guard openFirstItem() else { return .fail("no item row opens a page: " + tabState()) }
+            guard openFirstItem() else { return .fail("no item row opens a popup: " + tabState()) }
             let r: R = primaryInView("sales-item-price")
             let h: R = health("sales item", clip: true)
-            _ = tapBack()
+            closePopup(); _ = waitPopupGone(3)
             if case .fail(let m) = r { return .fail(m) }
             return h
         }
-        step("sales: dragging the price slider changes the price, Back returns to Sales") {
+        step("sales: dragging the price slider changes the price, closing returns to Sales") {
             guard onSales, openCompany("Caf"), tapID("company-tab-prices") else { return .skip("Sales not reachable") }
             let sales: TourSig = signature()
-            guard openFirstItem(), let sl = hit("sales-item-price", wait: 3) else { return .fail("no item page with a price slider") }
+            guard openFirstItem(), let sl = hit("sales-item-price", wait: 3) else { return .fail("no item popup with a price slider") }
             let before: String = readout()
             let o: XCUICoordinate = app.coordinate(withNormalizedOffset: .zero)
             let y: CGFloat = sl.frame.midY
@@ -247,29 +247,28 @@ extension FeatureToursTests {
                 o.withOffset(CGVector(dx: sl2.frame.minX + sl2.frame.width * 0.7, dy: sl2.frame.midY)).press(forDuration: 0.2, thenDragTo: o.withOffset(CGVector(dx: sl2.frame.minX + sl2.frame.width * 0.45, dy: sl2.frame.midY)))
                 pause(0.8)
             }
-            if !tapBack() { problems.append("no Back on the item page") }
+            closePopup(); if !waitPopupGone(3) { problems.append("the item popup did not close") }
             let after: TourSig = signature()
-            if !sales.same(after, strictText: false) { problems.append("Back changed the screen: \(sales.text) -> \(after.text)") }
+            if !sales.same(after, strictText: false) { problems.append("Closing changed the screen: \(sales.text) -> \(after.text)") }
             return problems.isEmpty ? .pass("") : .fail(problems.prefix(3).joined(separator: "; "))
         }
         step("sales: typing a price in the price field sets it") {
-            guard onSales, openCompany("Caf"), tapID("company-tab-prices"), openFirstItem() else { return .skip("no item page") }
+            guard onSales, openCompany("Caf"), tapID("company-tab-prices"), openFirstItem() else { return .skip("no item popup") }
             guard let f = bringIn({ $0.id == "typed-price" && $0.type == .textField }, wait: 3) else { return .skip("no typed-price field") }
             let before: String = readout()
             touch(f)
             let field: XCUIElement = app.textFields["typed-price"].firstMatch
-            guard field.waitForExistence(timeout: 2) else { _ = tapBack(); return .fail("the field is not editable") }
+            guard field.waitForExistence(timeout: 2) else { closePopup(); return .fail("the field is not editable") }
             let old: String = (field.value as? String) ?? ""
             let num: Double = Double(old.filter { "0123456789.".contains($0) }) ?? 0
-            guard num > 0 else { _ = tapBack(); return .skip("the field shows no price to start from ('\(old)')") }
+            guard num > 0 else { closePopup(); return .skip("the field shows no price to start from ('\(old)')") }
             field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: max(old.count, 8)) + String(format: "%.2f", num * 1.05))
             pause(0.4)
             if !tapID("typed-price-action", wait: 1) { field.typeText("\n") }
             pause(1)
             let changed: Bool = readout() != before
-            if let done = find({ $0.type == .button && $0.label == "Done" }) { touch(done) }
-            _ = tapBack()
-            return changed ? .pass() : .fail("typing 3.5 and return did not change the item page")
+            closePopup(); _ = waitPopupGone(3)
+            return changed ? .pass() : .fail("typing a price and return did not change the item popup")
         }
         roundTrip("sales: Marketing popup closes and keeps Sales", prepare: { openCompany("Caf") && tapID("company-tab-prices") }) { tapLabel("Marketing") }
         step("marketing: switching a channel on shows its effect, switching it off again") {

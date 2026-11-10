@@ -5,10 +5,6 @@ import Businesses
 import Countries
 import Simulation
 
-/// Customers, a part of Stats (no header or tabs of its own): who buys first (private customers against businesses), then how they rate the
-/// company (stars out of 5, a word for the reputation, happy against unhappy, stars given), key accounts, the credit check and volume
-/// contracts. What customers wrote is in the Reviews app (a row links to it); IT security is where insurance is chosen
-/// (Manage > Insurance and advisers).
 struct CompanyCustomers: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -24,8 +20,6 @@ struct CompanyCustomers: View {
         }
     }
 
-    // MARK: Satisfaction
-
     private struct StarBar: Identifiable { var id: Int; var count: Int }
 
     @ViewBuilder private var mood: some View {
@@ -37,7 +31,6 @@ struct CompanyCustomers: View {
         }
     }
 
-    /// The rating as the hero: the stars' figure, the word, how many reviews and the reputation.
     private func moodHero(_ r: ReviewSummary) -> some View {
         let context: String = r.count == 0 ? "Reviews arrive once customers come" : "\(r.count.countText("review")) \u{00B7} reputation " + StandingWords.reputation(company.reputation).lowercased()
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -47,7 +40,6 @@ struct CompanyCustomers: View {
         }
     }
 
-    /// Happy (4 and 5 stars), neutral (3) and unhappy (1 and 2) as one strip. Shares of the reviews written, not of all customers.
     private func loyaltyStrip(_ r: ReviewSummary) -> some View {
         let total: Double = Double(max(1, r.count))
         let h: [Int] = r.histogram
@@ -89,9 +81,6 @@ struct CompanyCustomers: View {
         }
     }
 
-    // MARK: Buyers
-
-    /// Who the sales go to: private customers against businesses (the trade's own split), as one bar.
     @ViewBuilder private var segments: some View {
         if let t = engine.tradeInfo(companyID: company.id) {
             let biz: Double = min(1, max(0, t.businessShare))
@@ -131,7 +120,6 @@ struct CompanyCustomers: View {
         }
     }
 
-    /// Only for trades that invoice businesses: checking a buyer's credit before selling on account costs a little and cuts unpaid invoices.
     @ViewBuilder private var creditCheck: some View {
         if let t = engine.tradeInfo(companyID: company.id), t.businessShare > 0, company.status.isLive {
             let on = company.value("flags")["ccheck"].bool
@@ -142,7 +130,7 @@ struct CompanyCustomers: View {
                 })) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Check buyers before selling on account").textStyle(.body)
-                        Text("About 0.4% of business invoices; about 70% fewer unpaid ones.")
+                        Text("Costs about 0.4% of business invoices; about 70% fewer go unpaid.")
                             .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                 }.tint(Theme.gold)
@@ -168,7 +156,7 @@ private struct AccountRow: View {
                         .textStyle(.caption, tint: Theme.inkFaint)
                     if account.owed > 0 || account.lateRun > 0 {
                         Text((account.owed > 0 ? "Still owes you \(cur.tidyShort(account.owed)) on invoices" : "Nothing owed now")
-                             + (account.lateRun > 0 ? " · paid late \(account.lateRun) time\(account.lateRun == 1 ? "" : "s") in a row. Late payment earns interest where the country allows it." : ""))
+                             + (account.lateRun > 0 ? " · paid late \(account.lateRun) time\(account.lateRun == 1 ? "" : "s") in a row" : ""))
                             .font(.system(size: 11)).foregroundStyle(account.lateRun > 0 ? Theme.caution : Theme.ivoryFaint)
                     }
                     let profile = engine.keyAccountProfile(account)

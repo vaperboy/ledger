@@ -376,12 +376,12 @@ struct CompanyOverview: View {
                 let use: String = ops?.capacityUse.map { "\(Int(saturating: ($0 * 100).rounded()))%" } ?? ""
                 let turnedAway: Bool = h.demandCoverage > 1.05
                 let note: String = h.bottleneck.map { b in turnedAway ? "Turning customers away: \(b.lowercased()) is full" : "Room to grow: demand is the limit" } ?? ""
-                LedgerRow(leading: .glyph(Glyph.capacity), leadingTint: turnedAway ? P.warn : P.inkSoft, title: "Run the place", subtitle: note, value: use, valueNote: use.isEmpty ? "" : "capacity used",
+                LedgerRow(leading: .glyph(Glyph.capacity), leadingTint: turnedAway ? P.warn : P.inkSoft, title: "Manage", subtitle: note, value: use, valueNote: use.isEmpty ? "" : "capacity used",
                           identifier: "overview-open-manage") { openPage(.run) }
                 RowRule()
             }
             let rated: String = h.rating > 0 ? StandingWords.ratingText(h.rating) : ""
-            LedgerRow(leading: .glyph(Glyph.stats), leadingTint: P.inkSoft, title: "Money and stats", subtitle: "Reputation " + StandingWords.reputation(co.reputation).lowercased(),
+            LedgerRow(leading: .glyph(Glyph.stats), leadingTint: P.inkSoft, title: "Stats", subtitle: "Reputation " + StandingWords.reputation(co.reputation).lowercased(),
                       value: rated, valueNote: rated.isEmpty ? "" : "rating", identifier: "overview-open-stats") { openPage(.stats) }
             if sells {
                 RowRule()

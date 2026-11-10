@@ -18,7 +18,7 @@ class CompanyBatchTourCase: FinanceTourCase {
     }
 }
 
-/// Sales: the products table, an item's price popup (centred, with "How it is sold" under it) and the Marketing popup.
+/// Sales: the products table, an item's price popup (centred) and the Marketing popup.
 final class CompanySalesTourTests: CompanyBatchTourCase {
     /// Closes a centred popup by tapping the dimmed area above it.
     func closePopup() {
@@ -33,8 +33,6 @@ final class CompanySalesTourTests: CompanyBatchTourCase {
         if tapContaining("vs market") || tapContaining("At market") {
             shot("91-sales-item-popup")
             XCTAssertTrue(app.descendants(matching: .any)["sales-item-price"].waitForExistence(timeout: 3), "the item popup shows the price")
-            app.swipeUp(); sleep(1)
-            shot("92-how-it-is-sold")
             closePopup()
         }
         if tapLabel("Marketing") || tapContaining("Marketing") {

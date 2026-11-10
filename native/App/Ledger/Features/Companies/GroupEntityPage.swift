@@ -100,6 +100,7 @@ struct GroupEntityPage: View {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 EntityExpansionView(companyID: entity.companyID)
                 GroupBuyRows(engine: e, entity: entity)
+                TradeAssociationRows(engine: e, entity: entity)
             }
         case .money: GroupEntityMoney(engine: e, entity: entity)
         case .deals: GroupEntityOwnership(engine: e, entity: entity)
