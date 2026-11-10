@@ -11,7 +11,7 @@ public enum StaffExtras {
         public var left = false
     }
 
-    public static func week(_ m: inout StaffMember, person n: inout Person, week: Int, random r: inout DeterministicRandom, companyUtilisation util: Double?) -> Outcome {
+    public static func week(_ m: inout StaffMember, person n: inout Person, week: Int, random r: inout DeterministicRandom, companyUtilisation util: Double?, canLeave: Bool = true) -> Outcome {
         var out = Outcome()
         if m.commissionMode == "com" {
             if r.chance(0.003) {
@@ -19,7 +19,7 @@ public enum StaffExtras {
                 out.fines.append((f, "A customer complaint about pushy selling by \(n.name) cost {co} {fine}."))
                 out.reputationLoss += 1.5
             }
-            if r.chance(0.004 + ((util ?? 1) < 0.5 ? 0.01 : 0)) {
+            if r.chance(0.004 + ((util ?? 1) < 0.5 ? 0.01 : 0)) && canLeave {
                 out.notes.append(("\(n.name) left {co} after a slow month on commission.", "bad"))
                 out.left = true
                 return out

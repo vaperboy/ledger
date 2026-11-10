@@ -55,7 +55,7 @@ public enum StaffRoutine {
                 continue
             }
             var person = n
-            let extra = StaffExtras.week(&m, person: &person, week: s.week, random: &s.random, companyUtilisation: utilisationLast)
+            let extra = StaffExtras.week(&m, person: &person, week: s.week, random: &s.random, companyUtilisation: utilisationLast, canLeave: !co.value("flags")["noquit"].bool)
             if person.raw != n.raw { changedPeople[m.id] = person }
             extras.append(extra)
             if extra.left { goneIDs.append(m.id); var p2 = person; p2.employerID = 0; changedPeople[m.id] = p2; staff[idx] = m; continue }

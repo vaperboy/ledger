@@ -66,6 +66,7 @@ final class PayPlansTests: XCTestCase {
         var (e, id) = try shop("boutique")
         let pid = candidate(&e, id, role: "cashier")
         XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: e.state.people[pid]!.askingMonthlyWage * 1.5, terms: Hiring.Terms(payPlan: "com", commissionRate: 0.08)), .ok)
+        e.update { s, _, _ in if let i = s.companyIndex(id) { var f = s.companies[i].value("flags"); f["noquit"] = .bool(true); s.companies[i].set("flags", f) } }
         for _ in 0..<28 { e.nextDay() }
         let m = try XCTUnwrap(e.state.company(id)?.staff.first { $0.id == pid })
         XCTAssertEqual(m.commissionMode, "com")

@@ -213,7 +213,7 @@ public enum StaffProfile {
         guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == staffID }), let n = s.people[staffID] else { return .unknown }
         let salesRoles = data.catalog.tables.salesRoles, role = s.companies[i].staff[k].role
         guard PayPlans.eligible(role: role, trade: s.companies[i].type, salesRoles: salesRoles), ["fix", "mix", "com"].contains(mode) else { return .notSales }
-        if mode == "com" && n.num("sec") > 0.65 && s.random.chance(0.6) {
+        if mode == "com" && n.num("sec") > 0.65 && s.random.chance(0.6) && !s.companies[i].value("flags")["noquit"].bool {
             s.note("\(n.name) will not work on commission only and resigns.", tone: "bad", companyID: companyID)
             Dismissal.dismiss(&s, companyID: companyID, staffID: staffID, reason: .resignation, data: data)
             return .resigned

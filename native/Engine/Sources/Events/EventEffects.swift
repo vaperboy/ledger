@@ -73,7 +73,7 @@ extension EventEngine {
         if fx["pr"].double != 0 { s.companies[i].priceLevel = clamp(s.companies[i].priceLevel + fx["pr"].double, -3, 3) }
         if fx["fixeq"].double != 0 { repairWorstEquipment(&s, i, level: fx["fixeq"].double) }
         if fx["brk"].bool { breakEquipment(&s, i) }
-        if fx["quit"].bool && !s.companies[i].staff.isEmpty {
+        if fx["quit"].bool && !s.companies[i].staff.isEmpty && !s.companies[i].value("flags")["noquit"].bool {
             let sorted = s.companies[i].staff.sorted { $0.monthlyWage > $1.monthlyWage }
             let leaver = sorted[s.random.int(0, sorted.count - 1)]
             s.note("\(s.people[leaver.id]?.name ?? "A team member") left \(s.companies[i].name).", tone: "bad", companyID: id)
@@ -179,7 +179,7 @@ extension EventEngine {
         if s.companies[i].managerID != nil && raise > 0.09 && fx["stay"].isNull {
             s.companies[i].managerMonthlyWage = currency.roundedStep(s.companies[i].managerMonthlyWage * (1 + raise), about: 100)
         }
-        if !fx["stay"].isNull && !staff.isEmpty && !s.random.chance(fx["stay"].double) {
+        if !fx["stay"].isNull && !staff.isEmpty && !s.random.chance(fx["stay"].double) && !s.companies[i].value("flags")["noquit"].bool {
             let leaver = staff[targets[0]]
             s.companies[i].staff = s.companies[i].staff.filter { $0.id != leaver.id }
             if var p = s.people[leaver.id] { p.employerID = 0; s.people[leaver.id] = p }
