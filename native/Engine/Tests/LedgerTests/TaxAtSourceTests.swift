@@ -18,31 +18,6 @@ final class TaxAtSourceTests: XCTestCase {
         return e
     }
 
-    func testADividendPaysDividendTaxAtOnce() throws {
-        var e = try fresh()
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("cafe") }
-        e.update { s, _, ctx in
-            let i = s.companyIndex(id)!
-            s.companies[i].status = .open
-            s.companies[i].shareCapital = 0
-            Ledger.moveRaw(&s, .company(id), 100_000_000)
-            let cash0 = s.cash
-            XCTAssertEqual(Payments.payDividend(&s, companyID: id, amount: 40_000_000, context: ctx), .ok)
-            let mine = s.tax.dividends
-            XCTAssertGreaterThan(mine, 0)
-            let tax = Taxes.dividendTax(mine, shield: s.tax.dividendShield, in: ctx.homeCountry(s))
-            XCTAssertGreaterThan(tax, 0)
-            XCTAssertEqual(s.tax.paidDividend, tax, accuracy: 1, "the tax is recorded as paid this year")
-            XCTAssertEqual(s.cash - cash0, mine - tax, accuracy: 1, "the account gets the dividend less the tax")
-            let line = s.statement.first { $0.label == "Dividend tax" }
-            XCTAssertEqual(line?.amount ?? 0, -tax, accuracy: 1, "its own statement line")
-            let b = PersonalFinance.breakdown(s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
-            XCTAssertEqual(b.dividendTax, tax, accuracy: 1)
-            XCTAssertEqual(b.total, 0, accuracy: 1)
-            XCTAssertEqual(b.paidSoFar, tax, accuracy: 1)
-        }
-    }
-
     func testAGainPaysTaxAtTheSale() throws {
         var e = try fresh()
         XCTAssertEqual(e.buyInvestment(.fund, symbol: "idx", amount: 5_000_000), .ok)

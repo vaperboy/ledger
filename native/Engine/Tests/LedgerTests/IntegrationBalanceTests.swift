@@ -333,7 +333,7 @@ final class IntegrationBalanceTests: XCTestCase {
         e.update { s, _, _ in
             s.companies[s.companyIndex(id)!].foundedWeek = s.week - 60
             Ledger.set(&s, to: 0)
-            _ = CompanySale.startListing(&s, companyID: id, broker: true)
+            _ = CompanySale.startListing(&s, companyID: id)
         }
         var plain = e
         var famous = e

@@ -170,7 +170,7 @@ final class StoreDealsOwnerHoursTests: XCTestCase {
         e.update { s, d, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].status = .open
-            s.companies[i].staff = (0..<12).map { (k: Int) -> StaffMember in StaffMember(raw: ["id": 9000 + k, "role": "waiter", "wage": 30000, "w0": 0]) }
+            s.companies[i].staff = (0..<12).map { (k: Int) -> StaffMember in StaffMember(raw: ["id": .number(Double(9000 + k)), "role": "waiter", "wage": .number(30000), "w0": .number(0)]) }
             OwnerHours.adjustWeek(&s, data: d)
         }
         let covered = try XCTUnwrap(e.state.company(id))

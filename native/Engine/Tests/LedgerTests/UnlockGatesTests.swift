@@ -33,7 +33,6 @@ final class UnlockGatesTests: XCTestCase {
     func testGoalGatesHiddenBeforeAndOpenAfter() throws {
         let rows: [(Gate, Int, String)] = [
             (.marketing, 3, "Unlocks after your first hire, or in week 6"), (.reviews, 3, "Unlocks after your first hire, or in week 6"),
-            (.ownerMoney, 4, "Unlocks after your first decision, or in week 8"),
             (.bank, 7, "Unlocks after your first profitable month or loss, or in week 8"),
             (.newCompany, 7, "Unlocks after your first profitable month, or in week 13"),
             (.management, 7, "Unlocks after your first profitable month, or in week 13"),

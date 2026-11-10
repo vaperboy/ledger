@@ -1,5 +1,6 @@
 import XCTest
 import GameCore
+import Finance
 import Businesses
 import Simulation
 

@@ -24,7 +24,7 @@ final class NewLookEngineReadsTests: XCTestCase {
         XCTAssertNil(e.payrollAlerts().first { $0.companyID == id && !$0.isLate }, "the 'Approve routine payroll' rule covers it")
     }
 
-    func testLoansBelongToTheirAccountAndStatementsAreListed() throws {
+    func testLoansAndStatementsAreListedOnTheOneAccount() throws {
         var e = try game()
         let id = try cafe(&e)
         let biz = e.loanOffer(kind: "biz", amount: 1, companyID: id).maximum / 2, cons = e.loanOffer(kind: "cons", amount: 1, companyID: nil).maximum / 2
@@ -32,19 +32,14 @@ final class NewLookEngineReadsTests: XCTestCase {
         XCTAssertEqual(e.takeLoan(kind: "biz", amount: biz, termMonths: 36, companyID: id), .ok)
         XCTAssertEqual(e.takeLoan(kind: "cons", amount: cons, termMonths: 24, companyID: nil), .ok)
         let bank = e.bankAccounts()
-        XCTAssertEqual(bank.rows.first { $0.id == .company(id) }?.loanCount, 1)
-        XCTAssertEqual(bank.rows.first { $0.id == .personal }?.loanCount, e.state.loans.filter { $0.companyID == 0 }.count)
+        XCTAssertEqual(bank.rows.first { $0.id == .personal }?.loanCount, e.state.loans.filter { $0.balance > 0 }.count)
         XCTAssertEqual(bank.rows.first { $0.id == .investments }?.loanCount, 0)
-        XCTAssertEqual(bank.rows.map(\.id).filter { if case .company = $0 { return false }; return true }, [.personal, .investments])
-        let company = try XCTUnwrap(e.bankAccount(.company(id)))
-        XCTAssertEqual(company.loans.map(\.kind), ["biz"])
-        XCTAssertGreaterThan(company.loans[0].yearlyRate, 0)
-        XCTAssertTrue(company.upcoming.contains { $0.kind == .loan })
-        XCTAssertEqual(company.balance, e.state.company(id)!.cash)
-        XCTAssertGreaterThanOrEqual(company.available, company.balance)
+        XCTAssertEqual(bank.rows.map(\.id), [.personal, .investments])
         let me = try XCTUnwrap(e.bankAccount(.personal))
         XCTAssertTrue(me.loans.map(\.kind).contains("cons"))
-        XCTAssertFalse(me.loans.contains { $0.kind == "biz" }, "a company's loan is not on the personal account")
+        XCTAssertTrue(me.loans.map(\.kind).contains("biz"))
+        XCTAssertGreaterThan(me.loans.first { $0.kind == "biz" }?.yearlyRate ?? 0, 0)
+        XCTAssertTrue(me.upcoming.contains { $0.kind == .loan })
         XCTAssertFalse(me.recent.isEmpty)
         XCTAssertEqual(me.statements.map(\.kind), ReportKind.allCases)
         XCTAssertEqual(e.bankAccount(.investments)?.loans.count, 0)

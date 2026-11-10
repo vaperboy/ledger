@@ -10,7 +10,7 @@ final class ProgressionAuditTests: XCTestCase {
 
     private func vis(_ e: GameEngine, _ g: Gate) -> GateVisibility { Gates.visibility(g, e.state, data: e.data) }
 
-    private static let goalGates: [Gate] = [.marketing, .reviews, .ownerMoney, .bank, .newCompany, .management, .accounting, .techpro, .group, .property, .rivals, .airstay]
+    private static let goalGates: [Gate] = [.marketing, .reviews, .bank, .newCompany, .management, .accounting, .techpro, .group, .property, .rivals, .airstay]
 
     func testEveryMenuOpensWithTimeAloneForAPlayerWhoNeverMeetsItsGoal() throws {
         var e = try fresh()
@@ -24,9 +24,8 @@ final class ProgressionAuditTests: XCTestCase {
         XCTAssertNotEqual(vis(e, .marketing), .open)
         e.update { s, _, _ in s.week = 6 }
         XCTAssertEqual(vis(e, .marketing), .open)
-        XCTAssertNotEqual(vis(e, .ownerMoney), .open)
         e.update { s, _, _ in s.week = 8 }
-        for g in [Gate.ownerMoney, .bank, .accounting] { XCTAssertEqual(vis(e, g), .open, g.rawValue) }
+        for g in [Gate.bank, .accounting] { XCTAssertEqual(vis(e, g), .open, g.rawValue) }
         XCTAssertNotEqual(vis(e, .group), .open)
         e.update { s, _, _ in s.week = 13 }
         for g in [Gate.group, .management, .newCompany, .techpro] { XCTAssertEqual(vis(e, g), .open, g.rawValue) }

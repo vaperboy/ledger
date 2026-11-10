@@ -76,7 +76,7 @@ final class DecisionsTests: XCTestCase {
 
     func testSellingACompany() throws {
         var (e, id) = try engineWithCompany(weeks: 10)
-        e.update { s, _, _ in XCTAssertTrue(CompanySale.startListing(&s, companyID: id, broker: true)) }
+        e.update { s, _, _ in XCTAssertTrue(CompanySale.startListing(&s, companyID: id)) }
         var offer: CompanySale.Offer? = nil
         for _ in 0..<(40 * 7) where offer == nil {
             e.nextDay()
