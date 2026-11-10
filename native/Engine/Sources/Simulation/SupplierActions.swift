@@ -38,20 +38,20 @@ public struct LogoChoice: Identifiable, Equatable, Sendable {
 public extension GameEngine {
     func ownedLogos() -> Set<String> { Set((state.rest["logos"] ?? .null).array.map { (v: JSONValue) -> String in v.string }) }
 
-    func logoChoices() -> [LogoChoice] {
+    func logoChoices(perks: Set<String> = []) -> [LogoChoice] {
         let level: Int = PlayerLevel.info(state).level
         let ladder: Bool = Gates.ladderOn(state)
         let owned: Set<String> = ownedLogos()
         return LogoCatalogue.all.map { (l: LogoCatalogue.Logo) -> LogoChoice in
-            LogoChoice(logo: l, unlocked: LogoCatalogue.isUnlocked(l, level: level, ladderOn: ladder, owned: owned), how: LogoCatalogue.how(l))
+            LogoChoice(logo: l, unlocked: LogoCatalogue.isUnlocked(l, level: level, ladderOn: ladder, owned: owned, perks: perks), how: LogoCatalogue.how(l))
         }
     }
 
     func companyLogoID(companyID: Int) -> String { state.company(companyID)?.value("logo").string ?? "" }
 
     @discardableResult
-    mutating func setCompanyLogo(companyID: Int, logoID: String) -> SettingResult {
-        let choices: [LogoChoice] = logoChoices()
+    mutating func setCompanyLogo(companyID: Int, logoID: String, perks: Set<String> = []) -> SettingResult {
+        let choices: [LogoChoice] = logoChoices(perks: perks)
         return applySetting(refuse: { s in
             guard s.company(companyID) != nil else { return "That company no longer exists." }
             guard let c = choices.first(where: { (x: LogoChoice) -> Bool in x.id == logoID }) else { return "That logo does not exist." }

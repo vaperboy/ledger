@@ -22,9 +22,10 @@ public struct SeasonBundle: Equatable, Sendable {
     public var gold: Int
     public var boxes: [(kind: BoxKind, count: Int)]
     public var includesPlus: Bool
+    public var tiers: Int = 0
 
     public static func == (a: SeasonBundle, b: SeasonBundle) -> Bool {
-        a.name == b.name && a.priceCents == b.priceCents && a.gold == b.gold && a.includesPlus == b.includesPlus
+        a.name == b.name && a.priceCents == b.priceCents && a.gold == b.gold && a.includesPlus == b.includesPlus && a.tiers == b.tiers
             && a.boxes.map { "\($0.kind)\($0.count)" } == b.boxes.map { "\($0.kind)\($0.count)" }
     }
 }
@@ -33,6 +34,8 @@ public enum GoldStore {
     public static let packs: [GoldPack] = GoldPrices.goldPacks
 
     public static let seasonBundle: SeasonBundle = GoldPrices.seasonBundle
+
+    public static let seasonLevels: SeasonBundle = GoldPrices.seasonLevels
 
     public static let boxBundles: [BoxBundle] = GoldPrices.boxBundles
 

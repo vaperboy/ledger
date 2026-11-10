@@ -26,6 +26,18 @@ final class SeasonPassTests: XCTestCase {
         XCTAssertEqual(p.tierProgress, 1)
     }
 
+    func testUnlockedTiersAddToProgressAndStopAtTheTop() {
+        var p = SeasonPass(today: day0)
+        p.xp = 350
+        XCTAssertEqual(p.unlockTiers(10), 10 * SeasonPass.xpPerTier)
+        XCTAssertEqual(p.tier, 11)
+        XCTAssertEqual(p.xpIntoTier, 50, "progress inside the current tier is kept")
+        p.unlockTiers(100)
+        XCTAssertTrue(p.isComplete)
+        XCTAssertEqual(p.unlockTiers(5), 0)
+        XCTAssertEqual(p.unlockTiers(-3), 0)
+    }
+
     func testDailyCapAndNewDay() {
         var p = SeasonPass(today: day0)
         XCTAssertEqual(p.award(.milestone, today: day0), 50)

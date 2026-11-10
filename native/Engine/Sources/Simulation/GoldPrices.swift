@@ -26,14 +26,26 @@ public enum GoldPrices {
         GoldPack(id: e["id"].string, name: e["name"].string, priceCents: e["usdCents"].int, gold: e["gold"].int)
     }
 
-    public static let seasonBundle: SeasonBundle = {
-        let e: JSONValue = table["realMoney"]["seasonBundle"]
+    private static func bundle(_ key: String) -> SeasonBundle {
+        let e: JSONValue = table["realMoney"][key]
         var boxes: [(kind: BoxKind, count: Int)] = []
         for b in e["boxes"].array {
             if let k = BoxKind(rawValue: b["kind"].string) { boxes.append((kind: k, count: b["count"].int)) }
         }
-        return SeasonBundle(name: e["name"].string, priceCents: e["usdCents"].int, gold: e["gold"].int, boxes: boxes, includesPlus: e["includesPlus"].bool)
-    }()
+        return SeasonBundle(name: e["name"].string, priceCents: e["usdCents"].int, gold: e["gold"].int, boxes: boxes, includesPlus: e["includesPlus"].bool, tiers: e["tiers"].int)
+    }
+
+    public static let seasonBundle: SeasonBundle = bundle("seasonBundle")
+
+    public static let seasonLevels: SeasonBundle = bundle("seasonLevels")
+
+    public static var proBundleGold: Int { table["realMoney"]["bundles"]["pro"]["gold"].int }
+
+    public static var founderBundleGold: Int { table["realMoney"]["bundles"]["founder"]["gold"].int }
+
+    public static var founderPassTiers: Int { table["realMoney"]["bundles"]["founder"]["passTiers"].int }
+
+    public static var founderLastSeason: Int { table["realMoney"]["bundles"]["founder"]["lastSeason"].int }
 
     public static let boxBundles: [BoxBundle] = {
         var out: [BoxBundle] = []

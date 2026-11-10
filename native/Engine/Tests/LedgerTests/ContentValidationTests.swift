@@ -184,7 +184,7 @@ final class ContentValidationTests: XCTestCase {
             checkRarity(c, "rarity", file, label, &p)
             checkHex(c["colors"].array, file, label, &p)
             if !kinds.contains(c["kind"].string) { p.append("\(file): \(label) has kind \"\(c["kind"].string)\"; use theme, namePlate, backdrop, tradePlate, richListFlair or saveSlot") }
-            if !["store", "box", "collection"].contains(c["source"].string) { p.append("\(file): \(label) has source \"\(c["source"].string)\"; use store, box or collection") }
+            if !["store", "box", "collection", "plan"].contains(c["source"].string) { p.append("\(file): \(label) has source \"\(c["source"].string)\"; use store, box, collection or plan") }
             if c["source"].string == "collection" && !colRewards.contains(c["id"].string) { p.append("\(file): \(label) is a collection reward but no collection in artifacts.json names it") }
             if c["source"].string == "store" && GoldPrices.item(c["id"].string) == nil && GoldCosmetics.storePrice(ContentFile.rarity(c["rarity"].string)) == nil { p.append("\(file): \(label) is a legendary store item and needs a price in pricing/prices.json") }
         }
@@ -360,7 +360,7 @@ final class ContentValidationTests: XCTestCase {
             if !Self.motifs.contains(a["motif"].string) { p.append("\(file): \(label) has motif \"\(a["motif"].string)\"; use rings, dots, hills, rays, stars, waves, stripes or grid") }
             let value: JSONValue = a["value"]
             switch a["unlock"].string {
-            case "free", "gold", "pro":
+            case "free", "gold", "pro", "plus", "proOwner", "founder":
                 break
             case "rank":
                 if !(1..<Career.ranks.count).contains(value.int) { p.append("\(file): \(label) needs a rank value from 1 to \(Career.ranks.count - 1)") }
@@ -373,7 +373,7 @@ final class ContentValidationTests: XCTestCase {
             case "season":
                 if SeasonRewards.item(value.string) == nil { p.append("\(file): \(label) needs a value that is a reward id in season_1.json, not \"\(value.string)\"") }
             default:
-                p.append("\(file): \(label) has unlock \"\(a["unlock"].string)\"; use free, gold, rank, level, badge, collection, season or pro")
+                p.append("\(file): \(label) has unlock \"\(a["unlock"].string)\"; use free, gold, rank, level, badge, collection, season, pro, plus, proOwner or founder")
             }
         }
         if !list.contains(where: { (a: JSONValue) -> Bool in a["unlock"].string == "free" }) { p.append("\(file): at least one icon must be free") }

@@ -8,9 +8,12 @@ public enum LedgerProduct: String, CaseIterable, Sendable {
     case founder = "com.ledger.founder"
     case plusMonthly = "com.ledger.plus.monthly"
     case plusYearly = "com.ledger.plus.yearly"
+    case proYearly = "com.ledger.pro.yearly"
 
     public static let plusGroupID = "plus"
+    public static let proGroupID = "pro"
     public var isPlus: Bool { self == .plusMonthly || self == .plusYearly }
+    public var isSubscription: Bool { isPlus || self == .proYearly }
 }
 
 public enum LockedFeature: String, CaseIterable, Sendable {
@@ -39,7 +42,7 @@ public struct EntitlementSnapshot: Equatable, Sendable {
     public static let free = EntitlementSnapshot()
 
     public func isFounder() -> Bool { owned.contains(.founder) }
-    public func ownsPro() -> Bool { owned.contains(.pro) || owned.contains(.founder) }
+    public func ownsPro() -> Bool { owned.contains(.pro) || owned.contains(.proYearly) || owned.contains(.founder) }
     public func isPlus(now: Date) -> Bool { (plusExpires.map { $0 > now } ?? false) || (plusGraceUntil.map { $0 > now } ?? false) }
     public func hasPass(now: Date) -> Bool { passExpires.map { $0 > now } ?? false }
     public func isPro(now: Date) -> Bool { ownsPro() || isPlus(now: now) || hasPass(now: now) }

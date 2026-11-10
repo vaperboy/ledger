@@ -176,7 +176,7 @@ struct CustomiseView: View {
     }
 
     private func iconGrid(_ cabinet: Cabinet) -> some View {
-        let open: [AvatarDef] = AvatarCatalog.all.filter { avatars.isUnlocked($0, pro: ent.isPro, cabinet: cabinet) }
+        let open: [AvatarDef] = AvatarCatalog.all.filter { avatars.isUnlocked($0, pro: ent.isPro, plus: ent.isPlus, ownsPro: ent.ownsPro, founder: ent.isFounder, cabinet: cabinet) }
         let shut: [AvatarDef] = AvatarCatalog.all.filter { (d: AvatarDef) -> Bool in !open.contains(d) }
         return LazyVGrid(columns: columns, spacing: Theme.Space.s) {
             ForEach(open + shut) { (d: AvatarDef) in
@@ -239,6 +239,7 @@ struct CustomiseView: View {
         case .store: return g.price.map { (p: Int) -> String in "Store, " + StoreText.gold(p) } ?? "Store"
         case .box: return "Cosmetic boxes"
         case .collection: return "Complete a collection"
+        case .plan: return "Ledger plans"
         }
     }
 

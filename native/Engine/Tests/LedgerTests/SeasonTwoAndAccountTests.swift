@@ -173,7 +173,8 @@ final class SeasonTwoAndAccountTests: XCTestCase {
             XCTAssertTrue(TradeRules.isAccountBound(c.id), c.id)
             XCTAssertFalse(TradeRules.isSellable(ArtifactItem(defID: c.id, serial: 1)), c.id)
         }
-        for c in GoldCosmetics.all where c.source != .store { XCTAssertEqual(c.item.accountBound, false, c.id) }
+        for c in GoldCosmetics.all where c.source != .store && c.source != .plan { XCTAssertEqual(c.item.accountBound, false, c.id) }
+        for c in GoldCosmetics.all where c.source == .plan { XCTAssertTrue(c.item.accountBound, c.id); XCTAssertNil(c.price, c.id) }
     }
 
     private func ownedPass() -> SeasonPass {

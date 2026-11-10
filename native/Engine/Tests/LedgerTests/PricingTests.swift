@@ -61,6 +61,7 @@ final class PricingTests: XCTestCase {
         XCTAssertEqual(Set(GoldPrices.planProductIDs), Set(LedgerProduct.allCases.map { $0.rawValue }))
         for pack in GoldStore.packs { XCTAssertEqual(kit[PurchaseCatalog.productID(.goldPack(pack.id))], pack.priceCents, pack.id) }
         XCTAssertEqual(kit[PurchaseCatalog.seasonBundleID], GoldStore.seasonBundle.priceCents)
+        XCTAssertEqual(kit[PurchaseCatalog.seasonLevelsID], GoldStore.seasonLevels.priceCents)
     }
 
     func testGoldPacksStayNearOneGoldPerNokAndNeverBeatTheBestPackRate() {

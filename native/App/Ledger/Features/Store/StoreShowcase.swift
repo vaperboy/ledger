@@ -33,7 +33,7 @@ struct StoreSeasonCard: View {
     var body: some View {
         let pass: SeasonPass = model.pass
         let left: Int = pass.daysLeft(today: model.today)
-        let ready: Int = pass.claimableCount(isPlus: model.premiumOpen(plus: ent.isPlus))
+        let ready: Int = pass.claimableCount(isPlus: model.premiumOpen(plus: ent.isPlus, founder: ent.isFounder))
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
                 Text("Season \(pass.seasonNumber) Pass").capsLabel(Theme.accent)
@@ -91,12 +91,12 @@ struct StoreProRow: View {
             HStack(spacing: Theme.Space.m) {
                 LedgerGlyph(glyph: Glyph.lock, size: Theme.Icon.large, tint: Theme.gold)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Ledger plans").textStyle(.headline)
+                    Text("Plans and gold").textStyle(.headline)
                     Text(subtitle).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: Theme.Space.s)
                 if ent.ownsPro || ent.isPlus { StoreTag(text: "Owned", tint: Theme.gain) }
-                else { Text("Compare").textStyle(.caption, tint: Theme.accent, weight: .semibold) }
+                else { Text("See all").textStyle(.caption, tint: Theme.accent, weight: .semibold) }
                 Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
             }
             .padding(Theme.Space.m)
@@ -109,9 +109,9 @@ struct StoreProRow: View {
     }
 
     private var subtitle: String {
-        if ent.isPlus { return "Ledger Plus is active. Subscription." }
-        if ent.ownsPro { return "Ledger Pro is yours for good. One-time purchase." }
-        return "Subscription (Plus) or one-time purchase (Pro, Founder's Edition)."
+        if ent.isFounder { return "Founder's Edition is yours. Gold packs are here too." }
+        if ent.isPlus { return "Ledger Plus is active. Gold packs are here too." }
+        return "Plus, Pro, Battle Pass, Founder's Edition and gold packs."
     }
 }
 
