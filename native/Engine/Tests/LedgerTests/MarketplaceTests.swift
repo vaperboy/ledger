@@ -9,7 +9,7 @@ import Businesses
 final class MarketplaceTests: XCTestCase {
     private func game(seed: Int = 7, trade: String = "usedcar", cash: Double = 400_000_000, open: Bool = true) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
-        e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
+        e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds"); s.rest["ldr"] = nil }
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: cash) else { throw XCTSkip("no company") }
         _ = e.quickSetup(companyID: id)
         if open { _ = e.openCompany(companyID: id) }
@@ -158,6 +158,7 @@ final class MarketplaceTests: XCTestCase {
 
     func testDealerBuysStockAndSellsWithMargin() throws {
         var (e, id) = try game()
+        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         let cars = Marketplace.pool(e.state, companyID: id, data: e.data).filter { $0.h.vehicle && $0.h.equipmentID.isEmpty && $0.h.kind != 2 }.prefix(5)
         XCTAssertEqual(cars.count, 5)
         let cash0 = e.state.company(id)!.cash
