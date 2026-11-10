@@ -48,7 +48,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .airStay: return Glyph.airStay
         case .techPro: return Glyph.techPro
         case .store: return Glyph.shopBag
-        case .auctions: return Glyph.gavel
+        case .auctions: return Glyph.auctionGavel
         case .competition: return Glyph.rivalsFlag
         case .rankings: return Glyph.rankPodium
         case .world: return Glyph.civicDome
@@ -109,7 +109,7 @@ enum PhoneSection: String, CaseIterable, Identifiable {
 
 extension Glyph {
     static let shopBag = "M5 8 H19 L18 20 H6 Z M9 8 V6 A3 3 0 0 1 15 6 V8 M9 12 V13 M15 12 V13"
-    static let gavel = "M10 4 L16 10 L13 13 L7 7 Z M11 12 L4 19 M13 20 H21"
+    static let auctionGavel = "M10 4 L16 10 L13 13 L7 7 Z M11 12 L4 19 M13 20 H21"
     static let rankPodium = "M3 20 H21 M4 20 V13 H9 V20 M9 20 V7 H15 V20 M15 20 V15 H20 V20"
 }
 
