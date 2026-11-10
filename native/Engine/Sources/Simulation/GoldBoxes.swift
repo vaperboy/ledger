@@ -35,7 +35,6 @@ public enum BoxKind: String, Codable, CaseIterable, Sendable, Identifiable {
 /// What a row of the odds table hands out. Gold is a small prize: never more than the box costs.
 public enum BoxPrizeClass: Equatable, Sendable {
     case cosmetic, artifact, gold(Int)
-    /// A small prize of in-game money, in reference-economy units (scaled to the player's currency when claimed). Free boxes only.
     case money(Int)
 }
 
@@ -53,13 +52,30 @@ public struct BoxResult: Equatable, Sendable {
         case cosmetic(String)
         case artifact(ArtifactItem)
         case gold(Int, doubled: Bool)
-        /// Reference-economy money; `BoxMoney.claim` pays it into the player's account through the ledger.
         case money(Int)
     }
     public var rarity: BoxRarity
     public var content: Content
     /// True when the guarantee decided this box (a rare or better was owed).
     public var guaranteed: Bool
+}
+
+public struct BoxHaul: Equatable, Sendable {
+    public var gold = 0
+    public var money = 0
+    public var cosmetics: [String] = []
+    public var artifacts: [ArtifactItem] = []
+
+    public init(_ results: [BoxResult]) {
+        for r in results {
+            switch r.content {
+            case .gold(let g, _): gold += g
+            case .money(let m): money += m
+            case .cosmetic(let id): cosmetics.append(id)
+            case .artifact(let item): artifacts.append(item)
+            }
+        }
+    }
 }
 
 /// The count towards the guaranteed rare. Applies to paid boxes: after `threshold - 1` boxes without a rare or better, the next one has one.
@@ -100,14 +116,14 @@ public enum BoxOdds {
                     r(.legendary, .artifact, 50)]
         case .cabinet:
             return [r(.common, .cosmetic, 2800), r(.common, .artifact, 2800), r(.common, .gold(20), 1400),
-                    r(.rare, .cosmetic, 900), r(.rare, .artifact, 1000), r(.rare, .gold(40), 400),
-                    r(.epic, .cosmetic, 300), r(.epic, .artifact, 250), r(.epic, .gold(60), 50),
-                    r(.legendary, .cosmetic, 40), r(.legendary, .artifact, 60)]
+                    r(.rare, .cosmetic, 800), r(.rare, .artifact, 900), r(.rare, .gold(40), 400), r(.rare, .money(1_000), 200),
+                    r(.epic, .cosmetic, 250), r(.epic, .artifact, 200), r(.epic, .gold(60), 50), r(.epic, .money(2_000), 100),
+                    r(.legendary, .cosmetic, 40), r(.legendary, .artifact, 40), r(.legendary, .money(5_000), 20)]
         case .grand:
             return [r(.common, .cosmetic, 1500), r(.common, .artifact, 2500), r(.common, .gold(40), 500),
-                    r(.rare, .cosmetic, 1400), r(.rare, .artifact, 2000), r(.rare, .gold(80), 400),
-                    r(.epic, .cosmetic, 500), r(.epic, .artifact, 800), r(.epic, .gold(150), 100),
-                    r(.legendary, .cosmetic, 120), r(.legendary, .artifact, 180)]
+                    r(.rare, .cosmetic, 1300), r(.rare, .artifact, 1900), r(.rare, .gold(80), 400), r(.rare, .money(2_000), 200),
+                    r(.epic, .cosmetic, 450), r(.epic, .artifact, 700), r(.epic, .gold(150), 100), r(.epic, .money(5_000), 150),
+                    r(.legendary, .cosmetic, 100), r(.legendary, .artifact, 150), r(.legendary, .money(5_000), 50)]
         }
     }
 
@@ -136,7 +152,6 @@ public enum BoxOdds {
         return kind == .free ? top * 2 : top
     }
 
-    /// Chance in percent that a box holds a money prize (only the free box has any), and the most such a prize is worth in reference-economy money.
     public static func moneyPercent(_ kind: BoxKind) -> Double {
         Double(rows(kind).filter { if case .money = $0.prize { return true } else { return false } }.reduce(0) { $0 + $1.weight }) / 100
     }
@@ -146,15 +161,12 @@ public enum BoxOdds {
             return m
         }
     }
-    /// The most a money prize can be worth: a few days of a small shop's takings, never a way to buy a company.
     public static let moneyCap = 5_000
 
-    /// The check behind the promise: weights add up, a paid box returns less gold than it costs on average (and no single gold prize reaches its price),
-    /// a free box's gold stays small.
     public static func isFair(_ kind: BoxKind) -> Bool {
         guard rows(kind).reduce(0, { $0 + $1.weight }) == totalWeight else { return false }
         guard largestMoney(kind) <= moneyCap else { return false }
-        if kind.isPaid { return moneyPercent(kind) == 0 && expectedGold(kind) < Double(kind.price) && largestGold(kind) < kind.price }
+        if kind.isPaid { return moneyPercent(kind) <= 5 && expectedGold(kind) < Double(kind.price) && largestGold(kind) < kind.price }
         return largestGold(kind) <= 50 && moneyPercent(kind) <= 2
     }
 
@@ -215,6 +227,19 @@ public enum BoxOdds {
         var next: BoxPity = pity
         if kind.isPaid { next.record(row.rarity) }
         return (BoxResult(rarity: row.rarity, content: content, guaranteed: guaranteed), next)
+    }
+
+    public static func openMany(_ kind: BoxKind, count: Int, pity: BoxPity, ownedCosmetics: Set<String>, seed: String) -> (results: [BoxResult], pity: BoxPity) {
+        var next: BoxPity = pity
+        var owned: Set<String> = ownedCosmetics
+        var results: [BoxResult] = []
+        for n in 0..<max(0, count) {
+            let out = open(kind, pity: next, ownedCosmetics: owned, seed: seed + "|" + String(n))
+            next = out.pity
+            if case .cosmetic(let id) = out.result.content { owned.insert(id) }
+            results.append(out.result)
+        }
+        return (results, next)
     }
 
     private static func artifact(_ rarity: BoxRarity, _ itemRoll: Double, _ serialRoll: Double) -> ArtifactItem {

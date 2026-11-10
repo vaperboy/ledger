@@ -10,7 +10,7 @@ struct CollectionView: View {
         let cabinet: Cabinet = session.state.cabinet
         let auctionsOpen: Bool = StoreGate.access(countryCode: online.profile?.countryCode) != .hidden
         PhonePageScroll(spacing: Theme.Space.l) {
-            OnlineGroup(title: "", footer: auctionsOpen ? "Sell artifacts you own, or bid on other players' pieces, in gold." : "Auctions are not offered where you are.") {
+            OnlineGroup(title: "", footer: auctionsOpen ? "Sell artifacts you own, or bid on other players' pieces, in cash." : "Auctions are not offered where you are.") {
                 NavigationLink { CabinetView() } label: {
                     OnlineLine(glyph: Glyph.luxury, title: "Artifacts", note: cabinet.items.count == 1 ? "1 piece and your collections" : "\(cabinet.items.count) pieces and your collections", chevron: true)
                 }

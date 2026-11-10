@@ -107,14 +107,15 @@ final class PopupShotsTests: CompanyBatchTourCase {
             guard openPhoneApp("Settings") else { return false }
             popup("settings-page"); return true
         }
-        site("paywall") {
-            guard tapID("settings-ledger-pro", wait: 3) else { return false }
-            popup("paywall"); closeAny(); return true
-        }
         site("save-slots") {
             guard tapContaining("Save slots") else { return false }
             popup("save-slots")
             return true
+        }
+        site("paywall") {
+            guard openPhoneApp("Store") else { return false }
+            guard tapID("store-plans", wait: 3) else { return false }
+            popup("paywall"); closeAny(); return true
         }
     }
 

@@ -1,9 +1,6 @@
 import Foundation
 import Simulation
 
-/// The stand-in server's memory for the store side: the gold wallet, box stock, pity count, cabinet and the auction book, saved in
-/// UserDefaults. Both mock services work on one vault, because a bid holds the same gold a purchase would spend.
-/// All rules live in the engine (`BoxOdds`, `AuctionBook`, `AuctionMarket`); this only wires them to storage and the clock.
 actor GoldVault {
     static let meID = "me"
 
@@ -16,6 +13,7 @@ actor GoldVault {
         var opened: Int
         var book: AuctionBook
         var lastTick: Double
+        var cashAuctions: Bool?
     }
 
     private let defaults: UserDefaults
@@ -41,7 +39,12 @@ actor GoldVault {
         names = map
         if let data = defaults.data(forKey: key), let s = try? JSONDecoder().decode(Saved.self, from: data) {
             wallet = s.wallet; boxes = s.boxes; pity = s.pity; firstPurchaseDone = s.firstPurchaseDone
-            cabinet = s.cabinet; opened = s.opened; book = s.book; lastTick = s.lastTick
+            cabinet = s.cabinet; opened = s.opened
+            if s.cashAuctions == true {
+                book = s.book; lastTick = s.lastTick
+            } else {
+                for a in s.book.auctions where a.seller == GoldVault.meID && a.status == .live { cabinet.add(a.item) }
+            }
         }
     }
 
@@ -52,7 +55,7 @@ actor GoldVault {
     }
 
     private func save() {
-        let s = Saved(wallet: wallet, boxes: boxes, pity: pity, firstPurchaseDone: firstPurchaseDone, cabinet: cabinet, opened: opened, book: book, lastTick: lastTick)
+        let s = Saved(wallet: wallet, boxes: boxes, pity: pity, firstPurchaseDone: firstPurchaseDone, cabinet: cabinet, opened: opened, book: book, lastTick: lastTick, cashAuctions: true)
         if let data = try? JSONEncoder().encode(s) { defaults.set(data, forKey: key) }
     }
 
@@ -99,28 +102,31 @@ actor GoldVault {
         return state()
     }
 
-    func openBox(_ kind: BoxKind, owned: Set<String>, paidBoxesAllowed: Bool) throws -> BoxOpening {
+    func openBoxes(_ kind: BoxKind, count: Int, owned: Set<String>, paidBoxesAllowed: Bool) throws -> BoxOpening {
         if kind.isPaid && !paidBoxesAllowed { throw StoreError.paidBoxesUnavailable }
-        var fromStock = false
-        if (boxes[kind.rawValue] ?? 0) > 0 {
-            boxes[kind.rawValue] = (boxes[kind.rawValue] ?? 1) - 1
-            fromStock = true
-        } else if kind.isPaid {
-            guard wallet.spend(kind.price) else { throw StoreError.notEnoughGold(missing: kind.price - wallet.available) }
-        } else {
-            throw StoreError.noBox
+        let n: Int = max(1, count)
+        let stock: Int = boxes[kind.rawValue] ?? 0
+        let fromStock: Int = min(stock, n)
+        let toBuy: Int = n - fromStock
+        if toBuy > 0 {
+            guard kind.isPaid else { throw StoreError.noBox }
+            let cost: Int = toBuy * kind.price
+            guard wallet.spend(cost) else { throw StoreError.notEnoughGold(missing: cost - wallet.available) }
         }
-        let out = BoxOdds.open(kind, pity: pity, ownedCosmetics: owned, seed: UUID().uuidString)
+        boxes[kind.rawValue] = stock - fromStock
+        let out = BoxOdds.openMany(kind, count: n, pity: pity, ownedCosmetics: owned, seed: UUID().uuidString)
         pity = out.pity
-        opened += 1
+        opened += n
         var completed: [ArtifactCollection] = []
-        switch out.result.content {
-        case .gold(let g, _): wallet.credit(g)
-        case .artifact(let item): completed = cabinet.add(item)
-        case .cosmetic, .money: break
+        for r in out.results {
+            switch r.content {
+            case .gold(let g, _): wallet.credit(g)
+            case .artifact(let item): completed += cabinet.add(item)
+            case .cosmetic, .money: break
+            }
         }
         save()
-        return BoxOpening(result: out.result, state: state(), completed: completed, fromStock: fromStock)
+        return BoxOpening(kind: kind, results: out.results, state: state(), completed: completed)
     }
 
     func grantFromSeason(boxes n: Int, gold: Int) -> StoreState {
@@ -139,25 +145,31 @@ actor GoldVault {
         return AuctionsSnapshot(auctions: book.auctions, state: state(), now: now(), names: names, settled: mine)
     }
 
-    func refresh() -> AuctionsSnapshot {
+    func refresh(cash: Int, priceLevel: Double) -> AuctionsSnapshot {
         let t: Double = now()
-        let done = AuctionMarket.advance(&book, wallet: &wallet, cabinet: &cabinet, from: lastTick == 0 ? t - 1 : lastTick, to: t, players: players)
+        let done = AuctionMarket.advance(&book, cash: cash, cabinet: &cabinet, from: lastTick == 0 ? t - 1 : lastTick, to: t, players: players, priceLevel: priceLevel)
         lastTick = t
-        // Finished auctions older than a day drop off the books.
         book.auctions.removeAll { $0.status != .live && $0.endsAt < t - 86_400 }
         save()
         return snapshot(done)
     }
 
-    func placeBid(_ id: String, amount: Int) throws -> AuctionsSnapshot {
-        let t: Double = now()
-        _ = try book.place(id, bidder: GoldVault.meID, amount: amount, now: t, wallet: &wallet)
+    func placeBid(_ id: String, amount: Int, cash: Int) throws -> AuctionsSnapshot {
+        _ = try book.place(id, bidder: GoldVault.meID, amount: amount, now: now(), cash: cash)
         save()
         return snapshot()
     }
 
-    func list(_ itemID: String, startPrice: Int, reserve: Int?, duration: AuctionDuration) throws -> AuctionsSnapshot {
-        _ = try book.list(itemID, startPrice: startPrice, reserve: reserve, duration: duration, now: now(), cabinet: &cabinet)
+    func buyNow(_ id: String, cash: Int) throws -> AuctionsSnapshot {
+        let t: Double = now()
+        try book.buyNow(id, buyer: GoldVault.meID, now: t, cash: cash)
+        let done = book.settleDue(now: t, cash: cash, cabinet: &cabinet)
+        save()
+        return snapshot(done)
+    }
+
+    func list(_ itemID: String, startPrice: Int, reserve: Int?, buyNow: Int?, duration: AuctionDuration) throws -> AuctionsSnapshot {
+        _ = try book.list(itemID, startPrice: startPrice, reserve: reserve, buyNow: buyNow, duration: duration, now: now(), cabinet: &cabinet)
         save()
         return snapshot()
     }

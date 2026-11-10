@@ -1,8 +1,6 @@
 import SwiftUI
 import Simulation
 
-/// Artifact auctions: the live list, and the player's own bids and listings. Bids are held in gold while they lead and returned when beaten.
-/// Times are shown as plain text; nothing flashes or counts down loudly.
 struct AuctionsApp: View {
     enum Part: Hashable { case live, mine }
     private let session = StoreSession.shared
@@ -11,7 +9,7 @@ struct AuctionsApp: View {
 
     var body: some View {
         PhonePageScroll(spacing: Theme.Space.l) {
-            goldLine
+            cashLine
             SegmentedChoice(items: [Part.live, Part.mine], title: { (t: Part) -> String in t == .live ? "Live auctions" : "My auctions" }, selection: $tab)
             if session.auctions == nil {
                 ProgressView().frame(maxWidth: .infinity)
@@ -20,10 +18,10 @@ struct AuctionsApp: View {
             } else {
                 MyAuctionsList()
             }
-            Text("Gold moves between players only here. A sale carries a \(AuctionRules.feePercent)% fee taken from the seller, and that gold leaves the economy. A bid in the last two minutes extends the auction by up to two minutes.")
+            Text("Auctions are in cash, from and to your personal account. A sale carries a \(AuctionRules.feePercent)% fee taken from the seller, and that money leaves the economy. A bid in the last two minutes extends the auction by up to two minutes.")
                 .textStyle(.caption).fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
         }
-        .appScreen(title: "Auctions", subtitle: "Artifacts, bid in gold")
+        .appScreen(title: "Auctions", subtitle: "Artifacts, bought and sold for cash")
         .task {
             await session.load()
             while !Task.isCancelled {
@@ -33,12 +31,12 @@ struct AuctionsApp: View {
         }
     }
 
-    private var goldLine: some View {
+    private var cashLine: some View {
         HStack {
-            Text("Available").textStyle(.caption)
-            GoldAmount(amount: session.available)
+            Text("Cash available").textStyle(.caption)
+            Text(session.money(session.spendableCash)).textStyle(.headline, numeric: true)
             Spacer()
-            if session.state.wallet.held > 0 { Text("\(StoreText.gold(session.state.wallet.held)) held").textStyle(.caption) }
+            if session.heldCash > 0 { Text("\(session.money(session.heldCash)) set aside").textStyle(.caption) }
         }
         .padding(.horizontal, Theme.Space.m)
     }
@@ -46,7 +44,7 @@ struct AuctionsApp: View {
 
 // MARK: Rows
 
-private enum AuctionLook {
+@MainActor private enum AuctionLook {
     /// Whether the player has bid here, and whether they lead.
     static func stance(_ a: Auction) -> String? {
         if a.seller == GoldVault.meID { return "Yours" }
@@ -58,7 +56,8 @@ private enum AuctionLook {
     static func stanceTint(_ s: String) -> Color { s == "You lead" || s == "You won" ? Theme.gain : (s == "Outbid" || s == "Lost" ? Theme.loss : Theme.inkSoft) }
 
     static func priceLine(_ a: Auction) -> String {
-        a.bids.isEmpty ? "Starts at \(StoreText.gold(a.startPrice))" : "\(StoreText.gold(a.currentPrice)), \(a.bids.count) \(a.bids.count == 1 ? "bid" : "bids")"
+        let money: (Int) -> String = StoreSession.shared.money
+        return a.bids.isEmpty ? "Starts at \(money(a.startPrice))" : "\(money(a.currentPrice)), \(a.bids.count) \(a.bids.count == 1 ? "bid" : "bids")"
     }
 }
 
@@ -73,6 +72,7 @@ struct AuctionRow: View {
             HStack(spacing: Theme.Space.s) {
                 Text(AuctionLook.priceLine(auction)).textStyle(.caption, numeric: true)
                 if auction.reserve != nil { Text(auction.reserveMet ? "Reserve met" : "Reserve not met").textStyle(.caption) }
+                if auction.canBuyNow(at: now) { Text("Buy now").textStyle(.caption, tint: Theme.accent) }
                 Spacer()
                 if let s = stance { Text(s).textStyle(.caption, tint: AuctionLook.stanceTint(s), weight: .semibold) }
             }
@@ -134,8 +134,8 @@ struct MyAuctionsList: View {
             let ended: [Auction] = all.filter { (a: Auction) -> Bool in a.status != .live && (a.seller == me || iBid(a)) }.sorted { $0.endsAt > $1.endsAt }
             VStack(spacing: Theme.Space.l) {
                 if !session.notes.isEmpty { notes }
-                group("You lead", "Your bid is held in gold until the auction ends or someone outbids you.", leading, now)
-                group("Outbid", "The gold you held came back to you.", outbid, now)
+                group("You lead", "The cash for your bid is set aside until the auction ends or someone outbids you.", leading, now)
+                group("Outbid", "The cash you had set aside is free again.", outbid, now)
                 group("You are selling", "A piece comes off sale if nobody bids and you cancel; with bids it runs to the end.", selling, now)
                 group("Ended", "", ended, now)
                 if leading.isEmpty && outbid.isEmpty && selling.isEmpty && ended.isEmpty {
@@ -206,7 +206,11 @@ struct AuctionDetailView: View {
                 OnlineLine(glyph: Glyph.luxury, title: ArtifactCatalog.collection(def?.collection ?? "")?.name ?? "Collection", note: "Seller: \(name(a.seller))")
             }
             OnlineGroup(title: "Price", footer: "") {
-                OnlineLine(glyph: Glyph.market, title: a.bids.isEmpty ? "Start price" : "Current bid", value: StoreText.gold(a.currentPrice))
+                OnlineLine(glyph: Glyph.market, title: a.bids.isEmpty ? "Start price" : "Current bid", value: session.money(a.currentPrice))
+                if let b = a.buyNow {
+                    Hairline()
+                    OnlineLine(glyph: Glyph.market, title: "Buy now", value: a.canBuyNow(at: now) ? session.money(b) : "Gone")
+                }
                 Hairline()
                 OnlineLine(glyph: Glyph.person, title: "Leading", value: a.leader.map { name($0) } ?? "No bids yet")
                 Hairline()
@@ -218,21 +222,21 @@ struct AuctionDetailView: View {
                     Text("Extended \(a.extensions) \(a.extensions == 1 ? "time" : "times") by late bids.").textStyle(.caption).padding(.vertical, Theme.Space.s)
                 }
             }
-            actions(a, live: live)
+            actions(a, live: live, now: now)
             history(a)
         }
     }
 
     private func statusText(_ a: Auction) -> String {
         switch a.status {
-        case .sold: return "Sold for \(StoreText.gold(a.soldFor ?? a.currentPrice))"
+        case .sold: return "Sold for \(session.money(a.soldFor ?? a.currentPrice))"
         case .unsold: return a.bids.isEmpty ? "Ended, no bids" : "Ended, reserve not met"
         case .cancelled: return "Taken off sale"
         case .live: return "Ended"
         }
     }
 
-    @ViewBuilder private func actions(_ a: Auction, live: Bool) -> some View {
+    @ViewBuilder private func actions(_ a: Auction, live: Bool, now: Double) -> some View {
         let access: StoreAccess.Access = StoreGate.access(countryCode: nil)
         OnlineGroup(title: "", footer: footer(a, live: live)) {
             VStack(spacing: Theme.Space.s) {
@@ -242,11 +246,16 @@ struct AuctionDetailView: View {
                     Button("Take it off sale") { askCancel(a) }
                         .buttonStyle(SecondaryButtonStyle(fullWidth: true)).disabled(!a.bids.isEmpty)
                 } else if a.leader == GoldVault.meID {
-                    Text("You lead. \(StoreText.gold(a.currentPrice)) is held and comes back if you are outbid.").textStyle(.body, tint: Theme.gain)
+                    Text("You lead. \(session.money(a.currentPrice)) is set aside and is free again if you are outbid.").textStyle(.body, tint: Theme.gain)
                 } else {
                     Button { bidding = true } label: { Text("Place a bid").frame(maxWidth: .infinity) }
                         .buttonStyle(PrimaryButtonStyle(fullWidth: true)).disabled(access == .hidden)
                         .accessibilityIdentifier("auction-bid")
+                    if a.canBuyNow(at: now), let price = a.buyNow {
+                        Button { askBuyNow(a, price: price) } label: { Text("Buy now for \(session.money(price))").frame(maxWidth: .infinity) }
+                            .buttonStyle(SecondaryButtonStyle(fullWidth: true)).disabled(access == .hidden)
+                            .accessibilityIdentifier("auction-buy-now")
+                    }
                 }
             }
             .padding(.vertical, Theme.Space.m)
@@ -255,7 +264,7 @@ struct AuctionDetailView: View {
 
     private func footer(_ a: Auction, live: Bool) -> String {
         if a.seller == GoldVault.meID && live { return a.bids.isEmpty ? "Nobody has bid, so you can still take it back." : "It has bids, so it runs to the end. The sale fee is \(AuctionRules.feePercent)%." }
-        return live ? "Next bid at least \(StoreText.gold(AuctionRules.minimumBid(a))). Sales carry a \(AuctionRules.feePercent)% fee for the seller." : ""
+        return live ? "Next bid at least \(session.money(AuctionRules.minimumBid(a))). Sales carry a \(AuctionRules.feePercent)% fee for the seller." : ""
     }
 
     private func history(_ a: Auction) -> some View {
@@ -268,7 +277,7 @@ struct AuctionDetailView: View {
                         HStack {
                             Text(name(b.bidder)).textStyle(.body)
                             Spacer()
-                            Text(StoreText.gold(b.amount)).textStyle(.body, tint: Theme.inkSoft, numeric: true)
+                            Text(session.money(b.amount)).textStyle(.body, tint: Theme.inkSoft, numeric: true)
                         }
                         .frame(minHeight: 44)
                     }
@@ -279,6 +288,13 @@ struct AuctionDetailView: View {
 
     private func name(_ id: String) -> String { session.name(of: id) }
 
+    private func askBuyNow(_ a: Auction, price: Int) {
+        pending = PendingAction(title: "Buy it now?", message: "If you buy this, \(session.money(price)) leaves your personal account at once and the piece joins your Cabinet. The auction ends.",
+                                button: "Buy for \(session.money(price))", alwaysAsk: true, tone: .investment, icon: "bag") {
+            Task { if await session.buyNow(a.id) { Haptics.success() } }
+        }
+    }
+
     private func askCancel(_ a: Auction) {
         pending = PendingAction(title: "Take it off sale?", message: "The piece goes back into your cabinet. Nothing is charged.", button: "Take it back", alwaysAsk: true, tone: .info, icon: "arrow.uturn.backward") {
             Task { _ = await session.cancel(a.id) }
@@ -288,7 +304,6 @@ struct AuctionDetailView: View {
 
 // MARK: Bid popup
 
-/// The bid, and what it will do before it is placed: how much gold is held, what stays spendable, what happens if someone outbids you or the auction is extended.
 struct BidCard: View {
     var auctionID: String
     private let session = StoreSession.shared
@@ -301,29 +316,29 @@ struct BidCard: View {
     var body: some View {
         if let a = session.auctions?.auctions.first(where: { $0.id == auctionID }) {
             let now: Double = Date().timeIntervalSince1970
-            let p = AuctionRules.preview(a, amount: amount, bidder: GoldVault.meID, wallet: session.state.wallet, now: now)
+            let p = AuctionRules.preview(a, amount: amount, bidder: GoldVault.meID, cash: session.cash, held: session.heldCash, now: now)
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(spacing: Theme.Space.m) {
                     stepButton("minus") { amount = max(AuctionRules.minimumBid(a), amount - AuctionRules.increment(at: max(1, amount))) }
-                    TextField("Gold", value: $amount, format: .number)
+                    TextField("Amount", value: $amount, format: .number)
                         .keyboardType(.numberPad).multilineTextAlignment(.center)
                         .textStyle(.figure, numeric: true).frame(minHeight: 48)
                         .accessibilityIdentifier("bid-amount")
                     stepButton("plus") { amount += AuctionRules.increment(at: max(1, amount)) }
                 }
-                Text("Lowest bid now: \(StoreText.gold(p.minimum))").textStyle(.caption).frame(maxWidth: .infinity)
+                Text("Your bid: \(session.money(max(0, amount))). Lowest bid now: \(session.money(p.minimum))").textStyle(.caption).frame(maxWidth: .infinity)
                 Hairline()
-                line("Held while you lead", StoreText.gold(p.heldAfter))
-                line("Still available", StoreText.gold(p.availableAfter))
-                Text("If someone outbids you, the held gold comes back at once. If you win, the bid is paid and the piece joins your Cabinet.").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                line("Set aside while you lead", session.money(p.heldAfter))
+                line("Cash still free", session.money(p.availableAfter))
+                Text("Nothing leaves your account yet. If someone outbids you, the cash is free again at once. If you win, the bid is paid from your personal account and the piece joins your Cabinet.").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 if p.extendsAuction { Text("This bid is in the last two minutes, so the auction is extended to give others time to answer.").textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
-                if a.reserve != nil { Text(p.reserveMetAfter ? "This bid meets the reserve." : "This bid does not meet the reserve yet; if the reserve is not met the piece is not sold and your gold comes back.").textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
-                if let why = p.problem { Text(why).textStyle(.body, tint: Theme.loss) }
+                if a.reserve != nil { Text(p.reserveMetAfter ? "This bid meets the reserve." : "This bid does not meet the reserve yet; if the reserve is not met the piece is not sold and you pay nothing.").textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
+                if let why = p.problem { Text(p.shortBy > 0 ? "\(why) You are \(session.money(p.shortBy)) short." : why).textStyle(.body, tint: Theme.loss) }
                 else if let why = session.problem { Text(why).textStyle(.body, tint: Theme.loss) }
             }
             .onAppear { if !seeded { amount = AuctionRules.minimumBid(a); seeded = true } }
             .popupFooter {
-                PopupFooter(cancel: "Cancel", action: "Hold \(StoreText.gold(amount)) and bid", onCancel: { close() }, onAction: {
+                PopupFooter(cancel: "Cancel", action: "Bid \(session.money(max(0, amount)))", onCancel: { close() }, onAction: {
                     Task { if await session.bid(a.id, amount: amount) { Haptics.success(); close() } }
                 }, actionEnabled: p.allowed)
             }
@@ -347,13 +362,14 @@ struct BidCard: View {
 
 // MARK: Listing popup
 
-/// Selling a piece: start price, optional reserve, length, and what the fee and the reserve will do.
 struct ListingCard: View {
     var item: ArtifactItem
     private let session = StoreSession.shared
     @State private var startPrice = 0
     @State private var useReserve = false
     @State private var reserve = 0
+    @State private var useBuyNow = false
+    @State private var buyNow = 0
     @State private var duration: AuctionDuration = .sixHours
     @State private var seeded = false
     @Environment(\.dismiss) private var systemDismiss
@@ -361,32 +377,46 @@ struct ListingCard: View {
     private func close() { if let c = popupClose { c() } else { systemDismiss() } }
 
     var body: some View {
-        let problem: String? = AuctionRules.listingProblem(startPrice: startPrice, reserve: useReserve ? reserve : nil)
+        let preview = AuctionRules.listingPreview(startPrice: startPrice, reserve: useReserve ? reserve : nil, buyNow: useBuyNow ? buyNow : nil, duration: duration)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             ArtifactRow(item: item)
-            field("Start price (gold)", $startPrice, id: "list-start")
+            field("Start price", $startPrice, id: "list-start")
             Toggle("Set a reserve", isOn: $useReserve)
-            if useReserve { field("Reserve (gold)", $reserve, id: "list-reserve") }
+            if useReserve { field("Reserve", $reserve, id: "list-reserve") }
+            Toggle("Set a buy-now price", isOn: $useBuyNow)
+            if useBuyNow { field("Buy now", $buyNow, id: "list-buynow") }
             Text("Length").textStyle(.caption)
             SegmentedChoice(items: AuctionDuration.allCases, title: { (d: AuctionDuration) -> String in d.title }, selection: $duration)
             Hairline()
-            Text("The piece leaves your cabinet while it is on sale. The fee is \(AuctionRules.feePercent)% of the final price, at least 1 gold, and leaves the economy. At your start price you would receive \(StoreText.gold(AuctionRules.proceeds(forSale: startPrice))).")
-                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-            if useReserve { Text("A reserve is hidden; bidders see only whether it is met. If bids stay below it, the piece is not sold, there is no fee and it comes back to you.").textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
-            if let problem { Text(problem).textStyle(.body, tint: Theme.loss) }
+            Text(proceeds(preview)).textStyle(.caption, tint: Theme.ink).fixedSize(horizontal: false, vertical: true)
+            ForEach(Array(preview.lines.enumerated()), id: \.offset) { (_: Int, line: String) in
+                Text(line).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+            }
+            if let problem = preview.problem { Text(problem).textStyle(.body, tint: Theme.loss) }
             else if let why = session.problem { Text(why).textStyle(.body, tint: Theme.loss) }
         }
         .onAppear {
             if !seeded {
-                let base: Int = [BoxRarity.common: 20, .rare: 80, .epic: 300, .legendary: 1_200][ArtifactCatalog.def(item.defID)?.rarity ?? .common] ?? 20
-                startPrice = base; reserve = base * 2; seeded = true
+                let base: Int = AuctionMarket.suggestedStart(ArtifactCatalog.def(item.defID)?.rarity ?? .common, priceLevel: session.priceLevel)
+                startPrice = base; reserve = base * 2; buyNow = base * 3; seeded = true
             }
         }
         .popupFooter {
             PopupFooter(cancel: "Cancel", action: "Put it up for \(duration.title)", onCancel: { close() }, onAction: {
-                Task { if await session.list(itemID: item.id, startPrice: startPrice, reserve: useReserve ? reserve : nil, duration: duration) { Haptics.success(); close() } }
-            }, actionEnabled: problem == nil)
+                Task {
+                    if await session.list(itemID: item.id, startPrice: startPrice, reserve: useReserve ? reserve : nil, buyNow: useBuyNow ? buyNow : nil, duration: duration) {
+                        Haptics.success(); close()
+                    }
+                }
+            }, actionEnabled: preview.problem == nil)
         }
+    }
+
+    private func proceeds(_ p: AuctionRules.ListingPreview) -> String {
+        var text: String = "You are paid in cash into your personal account. At your start price you would receive \(session.money(p.proceedsAtStart))"
+        if let r = p.proceedsAtReserve { text += ", at your reserve \(session.money(r))" }
+        if let b = p.proceedsAtBuyNow { text += ", at the buy-now price \(session.money(b))" }
+        return text + ", after the fee."
     }
 
     private func field(_ title: String, _ value: Binding<Int>, id: String) -> some View {
@@ -394,7 +424,7 @@ struct ListingCard: View {
             Text(title).textStyle(.body)
             Spacer()
             TextField("0", value: value, format: .number).keyboardType(.numberPad).multilineTextAlignment(.trailing)
-                .textStyle(.headline, numeric: true).frame(width: 110).frame(minHeight: 44)
+                .textStyle(.headline, numeric: true).frame(width: 130).frame(minHeight: 44)
                 .accessibilityIdentifier(id)
         }
     }

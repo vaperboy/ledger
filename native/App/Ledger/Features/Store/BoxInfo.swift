@@ -22,6 +22,17 @@ struct LootInfoButton: View {
     }
 }
 
+struct LootBoxInfoSheet: View {
+    var kind: BoxKind
+
+    var body: some View {
+        ScrollView {
+            LootBoxInfoContent(kind: kind)
+                .padding(.horizontal, PopupLayout.inset).padding(.bottom, PopupLayout.inset)
+        }
+    }
+}
+
 /// Everything a player should know about boxes, in one place: the choice to turn them off, the exact odds, the guarantee and the rules.
 /// Opened from the "i" on the box screen and on the result screen; it is the only place these appear.
 struct LootBoxInfoContent: View {
@@ -31,7 +42,7 @@ struct LootBoxInfoContent: View {
 
     static let rules: [String] = [
         "Boxes are opened with gold. Gold is bought with real money through the App Store: the price is shown and you confirm before anything is charged.",
-        "Gold has no cash value, cannot be cashed out and never buys in-game money.",
+        "Gold has no cash value, cannot be cashed out and never turns into in-game money. A box can also hold a cash prize in the game's money, paid into your personal account, and numbered artifacts you can sell at auction for cash.",
         "These are the exact odds used for every opening. They do not change with how much you spend or how often you open.",
         "A cosmetic you already own is replaced by an artifact of the same rarity, so no opening is wasted.",
         "Loot boxes are for players aged 18 or older, which you confirmed when you accepted the terms. They are not offered where the law restricts them.",

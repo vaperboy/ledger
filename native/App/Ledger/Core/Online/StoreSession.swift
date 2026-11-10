@@ -2,6 +2,12 @@ import Foundation
 import Observation
 import Simulation
 
+struct AuctionPurse {
+    var cash: Int
+    var priceLevel: Double
+    var format: (Int) -> String
+}
+
 /// The player's store state for the views: gold, box stock, cabinet and the auctions, kept up to date from the services.
 /// Shared, because the Season Pass hands out boxes and gold from outside the store screens. Cosmetics won or bought go to the
 /// wardrobe (`SeasonModel`), where the player picks what to wear.
@@ -16,9 +22,13 @@ final class StoreSession {
     var problem: String?
     /// What happened to the player's auctions since they last looked, one line each.
     private(set) var notes: [String] = []
+    private(set) var pendingOpening: BoxOpening?
+    @ObservationIgnored private var opening = false
 
     /// Set by the game store: pays a box's cash prize (reference-economy amount, the opening's id) into the running game.
     @ObservationIgnored var moneyPrizeHandler: ((Int, String) -> Void)?
+    @ObservationIgnored var purse: (() -> AuctionPurse?)?
+    @ObservationIgnored var cashHandler: ((Int, String, String) -> Void)?
     @ObservationIgnored private let store: any StoreService
     @ObservationIgnored private let market: any AuctionService
 
@@ -31,6 +41,11 @@ final class StoreSession {
     var isVisualOnly: Bool { store.isVisualOnly }
     var gold: Int { state.wallet.balance }
     var available: Int { state.wallet.available }
+    var cash: Int { purse?()?.cash ?? 0 }
+    var heldCash: Int { AuctionRules.held(by: GoldVault.meID, in: auctions?.auctions ?? []) }
+    var spendableCash: Int { max(0, cash - heldCash) }
+    var priceLevel: Double { purse?()?.priceLevel ?? 1 }
+    func money(_ n: Int) -> String { purse?()?.format(n) ?? n.formatted() }
 
     func load() async {
         state = await store.state()
@@ -79,18 +94,25 @@ final class StoreSession {
         } catch { problem = message(error); return false }
     }
 
-    /// Opens a box (from the stock, else paid for in gold) and puts its prizes where they belong. Nil with `problem` set on failure.
-    func openBox(_ kind: BoxKind, paidBoxesAllowed: Bool) async -> BoxOpening? {
+    func openBoxes(_ kind: BoxKind, count: Int, paidBoxesAllowed: Bool) async -> BoxOpening? {
+        guard !opening, pendingOpening == nil else { return nil }
+        opening = true
+        defer { opening = false }
         problem = nil
         do {
-            let out = try await store.openBox(kind, owned: SeasonModel.shared.pass.owned, paidBoxesAllowed: paidBoxesAllowed)
+            let out = try await store.openBoxes(kind, count: count, owned: SeasonModel.shared.pass.owned, paidBoxesAllowed: paidBoxesAllowed)
             state = out.state
-            if case .cosmetic(let id) = out.result.content { SeasonModel.shared.grantOwned(id) }
-            if case .money(let amount) = out.result.content { moneyPrizeHandler?(amount, UUID().uuidString) }
+            for r in out.results {
+                if case .cosmetic(let id) = r.content { SeasonModel.shared.grantOwned(id) }
+                if case .money(let amount) = r.content { moneyPrizeHandler?(amount, UUID().uuidString) }
+            }
             grantCollections(out.completed)
+            pendingOpening = out
             return out
         } catch { problem = message(error); return nil }
     }
+
+    func acknowledgeOpening() { pendingOpening = nil }
 
     /// Boxes and gold from a claimed Season Pass reward.
     func receiveSeason(_ r: SeasonReward) {
@@ -105,8 +127,8 @@ final class StoreSession {
     // MARK: Auctions
 
     func refreshAuctions() async {
-        let snap = await market.refresh()
-        apply(snap)
+        guard let p = purse?() else { return }
+        apply(await market.refresh(cash: p.cash, priceLevel: p.priceLevel))
     }
 
     private func apply(_ snap: AuctionsSnapshot) {
@@ -114,18 +136,27 @@ final class StoreSession {
         state = snap.state
         for s in snap.settled {
             grantCollections(s.completed)
-            notes.append(note(for: s, names: snap.names))
+            if s.cash != 0 { cashHandler?(s.cash, s.auctionID + "|" + s.status.rawValue, cashLabel(for: s)) }
+            notes.append(note(for: s))
         }
     }
 
-    private func note(for s: AuctionSettlement, names: [String: String]) -> String {
-        let piece: String = (ArtifactCatalog.def(s.item.defID)?.name ?? "Piece") + ", " + ArtifactCatalog.label(s.item)
+    private func pieceName(_ s: AuctionSettlement) -> String {
+        (ArtifactCatalog.def(s.item.defID)?.name ?? "Piece") + ", " + ArtifactCatalog.label(s.item)
+    }
+
+    private func cashLabel(for s: AuctionSettlement) -> String {
+        (s.seller == GoldVault.meID ? "Auction sale: " : "Auction purchase: ") + (ArtifactCatalog.def(s.item.defID)?.name ?? "artifact")
+    }
+
+    private func note(for s: AuctionSettlement) -> String {
+        let piece: String = pieceName(s)
         let youSold: Bool = s.seller == GoldVault.meID
         switch s.status {
         case .sold where youSold:
-            return "Sold: \(piece) for \(s.price) gold. After the \(s.fee) gold fee you received \(s.price - s.fee)."
+            return "Sold: \(piece) for \(money(s.price)). After the \(money(s.fee)) fee you received \(money(s.price - s.fee))."
         case .sold:
-            return "Won: \(piece) for \(s.price) gold. It is in your cabinet."
+            return "Won: \(piece) for \(money(s.price)). It is in your cabinet."
         case .unsold where youSold:
             return "Not sold: \(piece). It is back in your cabinet."
         default:
@@ -138,13 +169,21 @@ final class StoreSession {
     @discardableResult
     func bid(_ auctionID: String, amount: Int) async -> Bool {
         problem = nil
-        do { apply(try await market.placeBid(auctionID: auctionID, amount: amount)); return true } catch { problem = message(error); return false }
+        guard let p = purse?() else { problem = "Open a game to bid."; return false }
+        do { apply(try await market.placeBid(auctionID: auctionID, amount: amount, cash: p.cash)); return true } catch { problem = message(error); return false }
     }
 
     @discardableResult
-    func list(itemID: String, startPrice: Int, reserve: Int?, duration: AuctionDuration) async -> Bool {
+    func buyNow(_ auctionID: String) async -> Bool {
         problem = nil
-        do { apply(try await market.list(itemID: itemID, startPrice: startPrice, reserve: reserve, duration: duration)); return true } catch { problem = message(error); return false }
+        guard let p = purse?() else { problem = "Open a game to buy."; return false }
+        do { apply(try await market.buyNow(auctionID: auctionID, cash: p.cash)); return true } catch { problem = message(error); return false }
+    }
+
+    @discardableResult
+    func list(itemID: String, startPrice: Int, reserve: Int?, buyNow: Int?, duration: AuctionDuration) async -> Bool {
+        problem = nil
+        do { apply(try await market.list(itemID: itemID, startPrice: startPrice, reserve: reserve, buyNow: buyNow, duration: duration)); return true } catch { problem = message(error); return false }
     }
 
     @discardableResult

@@ -51,7 +51,7 @@ struct CabinetView: View {
 
     @ViewBuilder private func pieces(_ cabinet: Cabinet) -> some View {
         let canSell: Bool = StoreGate.access(countryCode: nil) != .hidden
-        OnlineGroup(title: "Your artifacts", footer: cabinet.items.isEmpty ? "Artifacts come from boxes and auctions." : (canSell ? "Tap a piece to sell it at auction. Gold from a sale is yours less a \(AuctionRules.feePercent)% fee." : "")) {
+        OnlineGroup(title: "Your artifacts", footer: cabinet.items.isEmpty ? "Artifacts come from boxes and auctions." : (canSell ? "Tap a piece to sell it at auction. Cash from a sale goes to your personal account, less a \(AuctionRules.feePercent)% fee." : "")) {
             if cabinet.items.isEmpty {
                 Text("Nothing here yet.").textStyle(.body, tint: Theme.inkSoft).frame(minHeight: 52, alignment: .leading)
             } else {

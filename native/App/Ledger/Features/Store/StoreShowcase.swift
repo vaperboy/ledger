@@ -87,46 +87,31 @@ struct StoreProRow: View {
     @Environment(Entitlements.self) private var ent
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
+        Button { Haptics.tap(); onPlans() } label: {
             HStack(spacing: Theme.Space.m) {
                 LedgerGlyph(glyph: Glyph.lock, size: Theme.Icon.large, tint: Theme.gold)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Ledger Pro").textStyle(.headline)
+                    Text("Ledger plans").textStyle(.headline)
                     Text(subtitle).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: Theme.Space.s)
-                trailing
+                if ent.ownsPro || ent.isPlus { StoreTag(text: "Owned", tint: Theme.gain) }
+                else { Text("Compare").textStyle(.caption, tint: Theme.accent, weight: .semibold) }
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
             }
-            Button { Haptics.tap(); onPlans() } label: {
-                Text(ent.isPlus ? "Your plan" : "Plus, Founder's Edition and other plans").textStyle(.caption, tint: Theme.accent, weight: .semibold)
-                    .frame(minHeight: 32, alignment: .leading)
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("store-plans")
+            .padding(Theme.Space.m)
+            .frame(minHeight: 44)
+            .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
+            .contentShape(Rectangle())
         }
-        .padding(Theme.Space.m)
-        .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("store-plans")
     }
 
     private var subtitle: String {
-        if ent.isPlus { return "Included with Ledger Plus." }
-        if ent.ownsPro { return "Owned. Every locked item is open and ads are off." }
-        return "Every locked item and three save slots, once, for good. Removes ads."
-    }
-
-    @ViewBuilder private var trailing: some View {
-        if ent.ownsPro || ent.isPlus {
-            StoreTag(text: "Owned", tint: Theme.gain)
-        } else {
-            Button { Haptics.tap(); Task { await ent.purchase(.pro) } } label: {
-                Text(ent.price(.pro).isEmpty ? "..." : ent.price(.pro)).textStyle(.headline, tint: Theme.accentInk, numeric: true)
-                    .padding(.horizontal, Theme.Space.l).frame(minHeight: 40)
-                    .background(Capsule().fill(Theme.accent))
-            }
-            .buttonStyle(PressableStyle())
-            .disabled(ent.isBusy || ent.price(.pro).isEmpty)
-            .accessibilityIdentifier("store-buy-pro")
-        }
+        if ent.isPlus { return "Ledger Plus is active. Subscription." }
+        if ent.ownsPro { return "Ledger Pro is yours for good. One-time purchase." }
+        return "Subscription (Plus) or one-time purchase (Pro, Founder's Edition)."
     }
 }
 

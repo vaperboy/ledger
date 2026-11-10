@@ -72,6 +72,7 @@ final class GoldBoxesTests: XCTestCase {
             XCTAssertTrue(out.result.guaranteed)
             XCTAssertGreaterThanOrEqual(out.result.rarity, .rare)
             if case .gold = out.result.content { XCTFail("a guaranteed prize is an item") }
+            if case .money = out.result.content { XCTFail("a guaranteed prize is an item") }
             XCTAssertEqual(out.pity.sinceRare, 0)
         }
     }
@@ -173,17 +174,61 @@ final class GoldBoxesTests: XCTestCase {
         XCTAssertFalse(p.owned.contains("nonsense"))
     }
 
+    func testPaidBoxesAlsoHoldCashInTheRareTiers() {
+        for kind in BoxKind.allCases where kind.isPaid {
+            XCTAssertGreaterThan(BoxOdds.moneyPercent(kind), 0)
+            XCTAssertLessThanOrEqual(BoxOdds.moneyPercent(kind), 5)
+            var cash = 0
+            for n in 0..<20_000 {
+                let r = BoxOdds.open(kind, pity: BoxPity(), ownedCosmetics: [], seed: "m\(n)").result
+                if case .money(let m) = r.content {
+                    cash += 1
+                    XCTAssertGreaterThanOrEqual(r.rarity, .rare)
+                    XCTAssertLessThanOrEqual(m, BoxOdds.moneyCap)
+                }
+            }
+            XCTAssertGreaterThan(cash, 20, "\(kind) pays cash now and then")
+        }
+    }
+
+    func testOpeningTenIsRepeatableTracksPityAndNeverRepeatsACosmetic() {
+        let a = BoxOdds.openMany(.grand, count: 10, pity: BoxPity(), ownedCosmetics: [], seed: "ten")
+        let b = BoxOdds.openMany(.grand, count: 10, pity: BoxPity(), ownedCosmetics: [], seed: "ten")
+        XCTAssertEqual(a.results, b.results)
+        XCTAssertEqual(a.results.count, 10)
+        XCTAssertLessThan(a.pity.sinceRare, BoxPity.threshold)
+        XCTAssertTrue(a.results.contains { $0.rarity >= .rare }, "ten paid boxes always hold a rare or better")
+        XCTAssertTrue(BoxOdds.openMany(.free, count: 0, pity: BoxPity(), ownedCosmetics: [], seed: "none").results.isEmpty)
+        for n in 0..<200 {
+            let out = BoxOdds.openMany(.grand, count: 10, pity: BoxPity(), ownedCosmetics: [], seed: "u\(n)")
+            let ids: [String] = out.results.compactMap { r in if case .cosmetic(let id) = r.content { return id } else { return nil } }
+            XCTAssertEqual(Set(ids).count, ids.count, "a cosmetic won in the batch is not offered again in it")
+        }
+    }
+
+    func testTheHaulAddsUpWhatTenBoxesHeld() {
+        let rs: [BoxResult] = [
+            BoxResult(rarity: .common, content: .gold(20, doubled: false), guaranteed: false),
+            BoxResult(rarity: .rare, content: .gold(40, doubled: false), guaranteed: false),
+            BoxResult(rarity: .rare, content: .money(1_000), guaranteed: false),
+            BoxResult(rarity: .epic, content: .money(2_000), guaranteed: false),
+            BoxResult(rarity: .common, content: .cosmetic("gold.plate.copper"), guaranteed: false),
+            BoxResult(rarity: .common, content: .artifact(ArtifactItem(defID: "abacus", serial: 3)), guaranteed: false)
+        ]
+        let h = BoxHaul(rs)
+        XCTAssertEqual(h.gold, 60)
+        XCTAssertEqual(h.money, 3_000)
+        XCTAssertEqual(h.cosmetics, ["gold.plate.copper"])
+        XCTAssertEqual(h.artifacts.map(\.id), ["abacus#3"])
+    }
+
     func testTheWalletSaysWhenGoldRunsShortAndWhichPackClosesTheGap() throws {
-        var w = GoldWallet(balance: 150)
+        let w = GoldWallet(balance: 150)
         XCTAssertNil(w.shortfall(for: BoxKind.cabinet.price, purpose: .box), "120 gold is there")
-        XCTAssertTrue(w.hold(100))
-        let short = try XCTUnwrap(w.shortfall(for: BoxKind.cabinet.price, purpose: .box))
-        XCTAssertEqual(short.available, 50)
+        let short = try XCTUnwrap(w.shortfall(for: 220, purpose: .box))
+        XCTAssertEqual(short.available, 150)
         XCTAssertEqual(short.missing, 70)
-        XCTAssertTrue(short.coveredByHeld, "the lead on a bid is what ties the gold up")
         XCTAssertTrue(short.text.contains("70 gold short"))
-        XCTAssertTrue(short.text.contains("held for bids"))
-        // The smallest pack that covers 70 gold, with and without the first-purchase bonus.
         XCTAssertEqual(short.suggestedPack(firstPurchase: false)?.id, GoldStore.packs[0].id)
         let big = try XCTUnwrap(GoldWallet(balance: 0).shortfall(for: 1_300, purpose: .cosmetic))
         let pack = try XCTUnwrap(big.suggestedPack(firstPurchase: false))
@@ -191,7 +236,5 @@ final class GoldBoxesTests: XCTestCase {
         XCTAssertNotNil(big.suggestedPack(firstPurchase: true))
         XCTAssertLessThanOrEqual(try XCTUnwrap(big.suggestedPack(firstPurchase: true)).priceCents, pack.priceCents, "the bonus can only make a smaller pack enough")
         XCTAssertNil(GoldWallet(balance: 0).shortfall(for: 1_000_000, purpose: .box)?.suggestedPack(firstPurchase: true), "no pack covers a huge gap")
-        // A bid that replaces your own leading bid gets that gold back first.
-        XCTAssertNil(w.shortfall(for: 140, purpose: .bid, ownLead: 100))
     }
 }

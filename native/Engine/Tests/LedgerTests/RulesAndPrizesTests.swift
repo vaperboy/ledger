@@ -12,12 +12,16 @@ final class RulesAndPrizesTests: XCTestCase {
 
     // MARK: Gold boxes
 
-    func testBoxMoneyIsRareFreeOnlyAndDisclosed() {
-        XCTAssertGreaterThan(BoxOdds.largestMoney(.free), 0)
-        XCTAssertLessThanOrEqual(BoxOdds.largestMoney(.free), BoxOdds.moneyCap)
-        XCTAssertEqual(BoxOdds.largestMoney(.cabinet), 0)
-        XCTAssertTrue(BoxOdds.isFair(.free))
-        XCTAssertTrue(BoxOdds.isFair(.grand))
+    func testBoxMoneyIsRareCappedAndDisclosed() {
+        for kind in BoxKind.allCases {
+            XCTAssertGreaterThan(BoxOdds.largestMoney(kind), 0, "\(kind)")
+            XCTAssertLessThanOrEqual(BoxOdds.largestMoney(kind), BoxOdds.moneyCap)
+            XCTAssertTrue(BoxOdds.isFair(kind))
+            XCTAssertTrue(BoxOdds.disclosure(kind).contains { $0.title.contains("cash prize") }, "the odds list the cash prizes")
+        }
+        for kind in BoxKind.allCases where kind.isPaid {
+            for row in BoxOdds.rows(kind) { if case .money = row.prize { XCTAssertGreaterThanOrEqual(row.rarity, .rare) } }
+        }
     }
 
     func testBoxMoneyPaysOnceAndBalances() throws {
@@ -28,6 +32,21 @@ final class RulesAndPrizesTests: XCTestCase {
         XCTAssertNil(e.claimBoxMoney(1_000, claimID: "open-1"), "the same opening pays once")
         XCTAssertNil(e.claimBoxMoney(BoxOdds.moneyCap + 1, claimID: "open-2"), "above the cap is refused")
         XCTAssertGreaterThan(e.state.cash, before)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
+
+    func testAuctionCashMovesThroughTheLedgerOncePerSettlement() throws {
+        var e = try game()
+        let rate = e.homeCurrency.rate
+        let before = e.state.cash
+        XCTAssertEqual(e.auctionCash, Int((before / rate).rounded(.down)))
+        XCTAssertGreaterThan(e.auctionPriceLevel, 0)
+        XCTAssertNotNil(e.settleAuctionCash(500, claimID: "A1|sold", label: "Auction"))
+        XCTAssertNil(e.settleAuctionCash(500, claimID: "A1|sold", label: "Auction"), "the same settlement pays once")
+        XCTAssertEqual(e.state.cash, before + 500 * rate, accuracy: 1)
+        XCTAssertNotNil(e.settleAuctionCash(-200, claimID: "A2|won", label: "Auction"))
+        XCTAssertEqual(e.state.cash, before + 300 * rate, accuracy: 1)
+        XCTAssertNil(e.settleAuctionCash(0, claimID: "A3", label: "Auction"))
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
@@ -51,9 +70,8 @@ final class RulesAndPrizesTests: XCTestCase {
         var b = AuctionBook(me: "me")
         b.auctions.append(a)
         b.linkKeys = ["me": "grp", "s": "grp"]
-        var w = GoldWallet(balance: 1_000)
-        XCTAssertThrowsError(try b.place("A1", bidder: "me", amount: 100, now: 10, wallet: &w))
-        XCTAssertEqual(w.held, 0)
+        XCTAssertThrowsError(try b.place("A1", bidder: "me", amount: 100, now: 10, cash: 1_000))
+        XCTAssertEqual(b.held, 0)
     }
 
     // MARK: Government penalties

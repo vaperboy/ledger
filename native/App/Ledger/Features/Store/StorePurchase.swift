@@ -69,9 +69,9 @@ extension BoxKind {
     /// What the box is, in a line.
     var blurb: String {
         switch self {
-        case .free: return "A small gift: usually a cosmetic or an artifact, sometimes a little gold."
-        case .cabinet: return "Cosmetics and numbered artifacts for your cabinet. Gold prizes are small."
-        case .grand: return "Better odds of rare and epic pieces. Gold prizes stay small."
+        case .free: return "A small gift: usually a cosmetic or an artifact, sometimes a little gold or cash."
+        case .cabinet: return "Cosmetics, numbered artifacts you can sell for cash, and now and then a cash prize."
+        case .grand: return "Better odds of rare and epic pieces, with bigger cash prizes. Gold prizes stay small."
         }
     }
 }
