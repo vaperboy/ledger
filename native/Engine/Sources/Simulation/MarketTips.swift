@@ -13,8 +13,8 @@ public enum MarketTips {
 
     public struct Tip: Equatable, Sendable {
         public var id: String
-        public var text: String
         public var weight: Double
+        public var text: String
     }
 
     static func percent(_ x: Double) -> Int { Int(saturating: (abs(x) * 100).rounded()) }
