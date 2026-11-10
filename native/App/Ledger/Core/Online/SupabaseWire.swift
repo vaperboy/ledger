@@ -152,6 +152,8 @@ enum SupabaseWire {
         case "not_live": return .rejected("This auction has ended.")
         case "has_bids": return .rejected("Someone has bid, so the listing cannot be taken back.")
         case "already_listed": return .rejected("This is already on offer.")
+        case "gift_limit": return .rejected("You have already sent a gift today.")
+        case "invalid_gift": return .rejected("That piece cannot be sent.")
         case "not_yours": return .rejected("That is not yours.")
         case "linked_account", "linked_parties", "linked_to_founder": return .rejected("Deals between accounts of the same person are not allowed.")
         case "listing_full": return .rejected("That supplier has no room left.")

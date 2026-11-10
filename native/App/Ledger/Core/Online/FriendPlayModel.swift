@@ -77,6 +77,11 @@ final class FriendPlayModel {
             }
         }
         if changed { persist() }
+        if engine != nil {
+            try? await service.submitRaceScore(week: week, growth: saved.growth)
+            try? await service.submitGoalUnits(week: week, units: saved.mine)
+            if saved.pendingWeek != 0 { try? await service.submitRaceScore(week: saved.pendingWeek, growth: saved.pendingGrowth) }
+        }
         let others: [RaceEntry] = (try? await service.raceEntries(week: week, day: today, friends: friends)) ?? []
         race = FriendRace.standings([RaceEntry(id: "me", name: "You", growth: saved.growth, isYou: true)] + others)
         if saved.pendingWeek != 0 {
@@ -104,10 +109,12 @@ final class FriendPlayModel {
         return gold
     }
 
-    func claimGoal() -> String? {
+    func claimGoal(service: any FriendPlayService) async -> String? {
         guard goalClaimable, let g = goal else { return nil }
+        guard let granted = try? await service.claimGoalReward(week: g.week) else { return nil }
         saved.claimedGoalWeek = g.week
         persist()
+        guard granted else { return nil }
         SeasonModel.shared.grantOwned(g.reward)
         return GoldCosmetics.cosmetic(g.reward)?.item.title ?? "a cosmetic"
     }

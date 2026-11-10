@@ -83,9 +83,11 @@ struct FriendPlayGroups: View {
     }
 
     private func claimGoal() {
-        guard let name = FriendPlayModel.shared.claimGoal() else { return }
-        Haptics.success()
-        store.tell("Shared goal reached", "You and your friends earned \(name).", tone: "good")
+        Task { @MainActor in
+            guard let name = await FriendPlayModel.shared.claimGoal(service: online.service) else { return }
+            Haptics.success()
+            store.tell("Shared goal reached", "You and your friends earned \(name).", tone: "good")
+        }
     }
 }
 
