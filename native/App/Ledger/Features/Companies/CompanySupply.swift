@@ -14,7 +14,6 @@ struct CompanySupply: View {
     @State private var choosing: SupplierSubject?
     @State private var ordering = false
     @State private var showSell = false
-    @State private var showAssociation = false
 
     private struct ItemNeed: Identifiable {
         var id: String
@@ -58,7 +57,6 @@ struct CompanySupply: View {
             SettingsPage(title: "Order stock", subtitle: company.name) { StockOrderPopup(companyID: company.id, onDone: { ordering = false }).environmentObject(store) }
         }
         .navigationDestination(isPresented: $showSell) { SupplyOtherPlayersScreen(companyID: company.id).environmentObject(store) }
-        .navigationDestination(isPresented: $showAssociation) { TradeAssociationScreen(companyID: company.id).environmentObject(store) }
         .task { market.sync(store) }
         .onChange(of: store.engine?.state.week) { _, _ in market.sync(store) }
     }
@@ -94,11 +92,7 @@ struct CompanySupply: View {
             if SupplyMarketCatalogue.canSupply(tradeID: company.type) {
                 LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Supply other players",
                           subtitle: "Offer what this company makes", identifier: "suppliers-sell") { showSell = true }
-                RowRule()
             }
-            LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Trade association",
-                      subtitle: TradeAssociations.membership(engine.state, companyID: company.id).map { "Member of \($0.club.name)" } ?? "Join for group buying",
-                      identifier: "suppliers-association") { showAssociation = true }
         }
     }
 }
