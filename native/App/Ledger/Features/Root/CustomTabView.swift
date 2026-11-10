@@ -106,7 +106,7 @@ struct CustomTabPicker: View {
 
     private var companyChoices: [Choice] {
         guard let e = store.engine else { return [] }
-        let list = e.state.companies.filter { $$0.status != .sold }
+        let list = e.state.companies.filter { $0.status != .sold }
         return list.map { Choice(id: $0.id, name: $0.name) }
     }
 
