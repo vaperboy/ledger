@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.112",
+          "buildVersion": "112",
+          "date": "2026-11-10T02:12:05Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v112/Ledger-unsigned.ipa",
+          "size": 34995844,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Goal rewards are claimed on purpose: finished goals wait with a Claim button (ladder, career and daily) and pay a small cash reward; Home shows your level bar, the current mission and the Season Pass claim or a watch-an-ad bonus, and you can put the cards away for a week\n- One global electricity price that follows how much power companies use and how much plants supply, a World prices card in the Market app, and bank, insurance, fund, casino and football club can no longer be started\n- A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold\n- Joint ventures: co-own a company with friends at a price you set for each, with planned and urgent board meetings, voting by share, and decisions the game applies\n- Startups funded by other players (Ventures, Startup market): browse by trade, stage and viral, open a startup for a high entry cost, invest in three escrow-released stages at a price set by a fixed rule, with caps, a resale lock-up, a price band and taxes; every action first says what will happen; the other players are a local stand-in for now\n- Rivals "
+        },
+        {
           "version": "1.0.111",
           "buildVersion": "111",
           "date": "2026-11-10T01:40:55Z",
@@ -187,22 +196,13 @@
           "size": 30156651,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Ventures quotes come from the engine; set your own asking price when selling a stake (counter-offers and declines are shown); holdings can buy stakes in other founders' startups; Group stakes can be bought\n- Holdings can borrow to buy a stake, turn a fully owned company into a division, sell shares you moved in, and hold board talks; a single chosen first product no longer sells like a full range\n- Ventures is one portfolio page inside Projects: your startups, backing others, funds, group stakes and software, with a cost summary before founding and buy/sell popups; the Venture tile opens it in place\n- Holding companies can buy full or partial stakes in your companies and in rivals (passive, influence, control, squeeze-out), take board seats, sell and merge stakes\n- Home: net worth counts up after a report closes and shows your personal account with last week and last month; \"All\" opens every company in a popup; more companies fit on screen; the yearly tax note itemises each charge\n- Choose what a new company sells first (only chosen products sell); price limit now depends on the trade; each screen shows only its own feature with no jump links; payroll approvals are a"
-        },
-        {
-          "version": "1.0.92",
-          "buildVersion": "92",
-          "date": "2026-11-08T00:21:00Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v92/Ledger-unsigned.ipa",
-          "size": 29644509,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Choose what a new company sells first (only chosen products sell); price limit now depends on the trade; each screen shows only its own feature with no jump links; payroll approvals are answered in the Inbox; Group, Company, Market and Reports redirects removed; Market app, Home skip week, Group tabs and Company marketing steps added\n- One broken machine no longer stops a business: it cuts only what depends on it (a caf\u00e9 without its display fridge stops chilled items, about a third fewer customers), and the weekly note says what was lost\n- Sliders move only on a sideways drag, so scrolling never changes a value by accident\n- Group redesigned: group value and trend, what needs you, Boardroom where you can talk to every board member, sale routes, chain page with branch close/sell\n- No more jumping between tabs: links open inside the tab you are on with Back, a company switcher on company and group pages; outside apps redesigned (TechPro, AirStay, Atlas, Marketplace, Luxury, Reviews, Market, Ventures) with a readable status bar\n- Redesigned Home (one screen: net worth, what needs you or your next goal, top companies, Next day), Team (people and cost, one worker profile,"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.111",
-      "versionDate": "2026-11-10T01:40:55Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v111/Ledger-unsigned.ipa",
-      "size": 34996650
+      "version": "1.0.112",
+      "versionDate": "2026-11-10T02:12:05Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v112/Ledger-unsigned.ipa",
+      "size": 34995844
     }
   ]
 }
