@@ -4,9 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The trade association of one company: the clubs it can join (its trade's club in its region and a few across trades), what each club
-/// requires of its members, what pooled buying saves, the monthly fee and who the members are. A member sees how its record stands against the
-/// standards and what the discount has saved so far. Joining and leaving ask first, with a plain list of what will happen.
 struct TradeAssociationScreen: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -24,7 +21,7 @@ struct TradeAssociationScreen: View {
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .appScreen(title: "Trade association", subtitle: co.name, tab: .company)
+            .appScreen(title: "Trade association", subtitle: co.name, tab: .group)
             .centerSheet(item: $consequence, category: .medium, tone: .info) { (c: AssociationChoice) in
                 AssociationConsequencePopup(companyID: companyID, choice: c) { consequence = nil; problem = $0 }.environmentObject(store)
             }
@@ -60,8 +57,6 @@ struct TradeAssociationScreen: View {
         }
     }
 
-    // MARK: Member
-
     private func memberCard(_ e: GameEngine, _ m: AssociationMembership, _ x: AssociationStanding, _ cur: Currency) -> some View {
         let toNext: Int = AssociationEnforcement.cycleWeeks - ((e.state.week - m.joinedWeek) % AssociationEnforcement.cycleWeeks)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -91,8 +86,6 @@ struct TradeAssociationScreen: View {
         default: return "Fined. Another miss means removal from the club."
         }
     }
-
-    // MARK: Parts
 
     private func standardsCard(_ club: AssociationClub, _ x: AssociationStanding) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -156,7 +149,6 @@ struct TradeAssociationScreen: View {
 
     private func percent(_ v: Double) -> String { "\(Int((v * 100).rounded())) percent" }
 
-    /// Keeps the member count behind the discount up to date with the list the club shows.
     private func syncMembers(_ e: GameEngine, _ co: Company) {
         guard let m = TradeAssociations.membership(e.state, companyID: co.id) else { return }
         let n: Int = directory.pooledMembers(of: m.club, includingYou: true)
@@ -165,7 +157,30 @@ struct TradeAssociationScreen: View {
     }
 }
 
-/// A join or leave waiting for the player's answer.
+struct TradeAssociationRows: View {
+    var engine: GameEngine
+    var entity: GroupEntity
+
+    var body: some View {
+        let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in
+            c.status == .open && CompanyDetailView.availableSections(c, engine).contains(.operations)
+        }
+        if !cos.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("TRADE ASSOCIATION").capsLabel()
+                ForEach(cos) { (c: Company) in
+                    NavigationLink { TradeAssociationScreen(companyID: c.id) } label: {
+                        CardRow(glyph: Glyph.suppliers, title: cos.count > 1 ? c.name : "Trade association",
+                                subtitle: TradeAssociations.membership(engine.state, companyID: c.id).map { (m: AssociationMembership) -> String in "Member of \(m.club.name)" } ?? "Join for group buying")
+                    }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("group-association-\(c.id)")
+                }
+            }
+        }
+    }
+}
+
 struct AssociationChoice: Identifiable, Equatable {
     var club: AssociationClub
     var join: Bool
@@ -176,7 +191,6 @@ struct AssociationChoice: Identifiable, Equatable {
     }
 }
 
-/// "If you join, this will happen": the fee, the discount, the checks and the way out, said before anything is charged.
 struct AssociationConsequencePopup: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -232,7 +246,6 @@ struct AssociationConsequencePopup: View {
     }
 }
 
-/// The people in a club, from their public profiles; a tap opens the profile.
 struct AssociationMembersPopup: View {
     var club: AssociationClub
     var includesYou: Bool

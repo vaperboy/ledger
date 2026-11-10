@@ -27,6 +27,7 @@ struct GroupEntityManagement: View {
                 people(co)
                 approvalNote(co)
                 ApplicantsLinkRow(engine: engine, companyID: co.id)
+                CompanyTargetsCard(engine: engine, company: co)
                 openPosts(co)
             } else {
                 Text("This company no longer exists.").textStyle(.body, tint: Theme.inkFaint)

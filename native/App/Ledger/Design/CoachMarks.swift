@@ -200,8 +200,8 @@ enum CoachTours {
             ]
         case .setPrice:
             return [
-                CoachMark(stop: .itemPrice, text: "Set your price: type it next to the market price, tap Use market price, or press Keep this price.", passThrough: true, button: ""),
-                CoachMark(stop: .firstItemRow, text: "Tap your product to open it. There you set its price.", passThrough: true, button: ""),
+                CoachMark(stop: .itemPrice, text: "Set your price: type it, tap Use market price, or press Keep this price.", passThrough: true, button: ""),
+                CoachMark(stop: .firstItemRow, text: "Tap your product to set its price.", passThrough: true, button: ""),
                 CoachMark(stop: .companyTabs, text: "Tap Sales to find your product.", passThrough: true, button: ""),
                 CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: ""),
             ]

@@ -4,24 +4,14 @@ import Countries
 import Businesses
 import Simulation
 
-/// "How you sell", a popup (sheet) only: the choices a business has (its concept, its add-ons and its ways to sell) with what each
-/// costs, and nothing else. The rules and the numbers are the engine's (`knobChangeQuote`, `changeKnob`, `toggleKnobOption`, `waysToSell`,
-/// `setWayToSell`); this view only asks and reports. A chain's standard or a franchise agreement locks a choice ("Locked").
-/// A change that costs money, needs a licence or reduces capacity asks first, and says only what it costs.
 struct HowYouSellSheet: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
-    /// True when the choices sit inside another popup (the item popup of Sales): no sheet of its own.
-    var embedded = false
     @State private var pending: PendingAction?
 
     var body: some View {
-        if embedded {
-            VStack(alignment: .leading, spacing: Theme.Space.l) { inner }.confirmAction($pending)
-        } else {
-            PeopleSheet(title: "How you sell") { inner }
-                .confirmAction($pending)
-        }
+        PeopleSheet(title: "How you sell") { inner }
+            .confirmAction($pending)
     }
 
     @ViewBuilder private var inner: some View {
@@ -59,8 +49,6 @@ struct HowYouSellSheet: View {
         }
     }
 
-    // MARK: The concept (one choice)
-
     private func concept(_ e: GameEngine, _ co: Company, _ knob: Knob, _ cur: Currency) -> some View {
         let value: Int = currentValue(co, knob)
         let locked: Bool = e.knobGovernedBy(companyID: co.id, knob: knob.id) != nil
@@ -82,8 +70,6 @@ struct HowYouSellSheet: View {
         return q.totalCost > 0 ? cur.tidyShort(q.totalCost) : "Free"
     }
 
-    // MARK: Add-ons (several at once)
-
     private func addOns(_ e: GameEngine, _ co: Company, _ knob: Knob, _ cur: Currency) -> some View {
         let value: Int = currentValue(co, knob)
         let locked: Bool = e.knobGovernedBy(companyID: co.id, knob: knob.id) != nil
@@ -102,15 +88,12 @@ struct HowYouSellSheet: View {
         return SellToggleRow(name: o.name, cost: addOnCost(quote, monthly: monthly, on: on, cur), isOn: binding, disabled: locked)
     }
 
-    /// "Setup £x, about £y a month": what it costs to switch on and to run (the engine's quote and monthly estimate).
     private func addOnCost(_ q: KnobChangeQuote?, monthly: Double, on: Bool, _ cur: Currency) -> String {
         let running: String = monthly > 0.5 ? "about " + cur.tidyShort(monthly) + " a month" : ""
         if on { return running.isEmpty ? "On" : running }
         let setup: String = (q?.totalCost ?? 0) > 0 ? "Setup " + cur.tidyShort(q?.totalCost ?? 0) : "No setup cost"
         return running.isEmpty ? setup : setup + ", " + running
     }
-
-    // MARK: Ways to sell
 
     @ViewBuilder private func ways(_ e: GameEngine, _ co: Company) -> some View {
         let rows: [SalesWays.Row] = e.waysToSell(companyID: co.id).filter { $0.canSwitch }
@@ -134,9 +117,6 @@ struct HowYouSellSheet: View {
         }
     }
 
-    // MARK: Actions
-
-    /// What the change costs and commits you to, and nothing else.
     private func costLines(_ q: KnobChangeQuote, _ cur: Currency) -> String {
         var lines: [String] = []
         if q.changeoverCost > 0 { lines.append("Changeover: \(cur.tidyShort(q.changeoverCost)), paid now.") }
@@ -146,8 +126,6 @@ struct HowYouSellSheet: View {
         if q.transitionWeeks > 0 { lines.append("\(q.transitionWeeks) week\(q.transitionWeeks == 1 ? "" : "s") at \(Int((1 - q.capacityLoss) * 100))% capacity while the business settles.") }
         return lines.joined(separator: "\n")
     }
-
-    // A change is applied at once; it asks first only when it costs more than the size the player set (the cost is `amount`).
 
     private func choose(_ e: GameEngine, _ co: Company, _ knob: Knob, _ option: Int, _ cur: Currency) {
         guard let q = e.knobChangeQuote(companyID: co.id, knob: knob.id, option: option) else { return }
@@ -184,7 +162,6 @@ struct HowYouSellSheet: View {
     }
 }
 
-/// One choice of a concept: its name and what it costs to change to it; the company's current choice has a champagne outline and a check.
 private struct SellChoiceRow: View {
     var name: String
     var cost: String
@@ -216,7 +193,6 @@ private struct SellChoiceRow: View {
     }
 }
 
-/// One add-on or way to sell: its name, what it costs, and a switch.
 private struct SellToggleRow: View {
     var name: String
     var cost: String

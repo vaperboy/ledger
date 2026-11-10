@@ -9,15 +9,15 @@ struct CompanySales: View {
     var engine: GameEngine
     var company: Company
     @State private var showMarketing = false
-    @State private var openItem: SalesItemPick?
-    /// The item whose supplier is being asked for, right after it was picked or added.
+    @State private var showHowSell = false
+    @State private var priceFor: SalesItemPick?
     @State private var supplierFor: SalesItemPick?
+    @State private var pendingPrice: String?
     @State private var addingService: Bool?
     @State private var showHire = false
     @State private var showAddons = false
     @Environment(\.outsidePalette) private var P
 
-    /// A tapped item, for its page.
     private struct SalesItemPick: Identifiable, Hashable { var id: String }
     private struct NewItemPick: Identifiable { var id: Bool }
 
@@ -30,9 +30,11 @@ struct CompanySales: View {
             addonsCard
             OverviewSettingsCard(heading: "Marketing and more") {
                 marketingRow
+                if hasHowSell { howSellRow }
             }
         }
         .centerSheet(isPresented: $showMarketing, title: "Marketing", category: .detail, tone: .investment) { MarketingSheet(companyID: company.id) }
+        .centerSheet(isPresented: $showHowSell, category: .detail, tone: .info) { HowYouSellSheet(companyID: company.id) }
         .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id }), category: .medium, tone: .info) { (p: NewItemPick) in
             NewItemSheet(companyID: company.id, isService: p.id, onClose: { addingService = nil },
                          onHireAdvisor: { addingService = nil; showHire = true },
@@ -41,18 +43,16 @@ struct CompanySales: View {
                              if let id { itemChosen(id) }
                          })
         }
-        // Who supplies it? asked at once, with the best offer suggested; closing it goes on to the item's page to set the price.
-        .centerSheet(item: $supplierFor, category: .medium, tone: .info, onDismiss: { if let id = pendingPrice { pendingPrice = nil; openItem = SalesItemPick(id: id) } }) { (p: SalesItemPick) in
+        .centerSheet(item: $supplierFor, category: .medium, tone: .info, onDismiss: { if let id = pendingPrice { pendingPrice = nil; showPrice(id) } }) { (p: SalesItemPick) in
             ItemSupplierChooser(companyID: company.id, itemID: p.id, asking: true, onClose: { pendingPrice = p.id; supplierFor = nil })
         }
-        .navigationDestination(item: $openItem) { (p: SalesItemPick) in ItemPageView(companyID: company.id, itemID: p.id) }
+        .centerSheet(item: $priceFor, category: .detail, tone: .investment) { (p: SalesItemPick) in
+            ItemPriceSheet(companyID: company.id, itemID: p.id, onClose: { priceFor = nil })
+        }
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "advisor") }
         .navigationDestination(isPresented: $showAddons) { DealerAddonsPage(companyID: company.id) }
     }
 
-    @State private var pendingPrice: String?
-
-    /// The used car yard and the new car showroom have their own pages (real cars, one price each); every other trade lists its items.
     @ViewBuilder private func productsArea(_ items: [SalesItem], _ service: Bool) -> some View {
         if company.type == UsedCarDealer.tradeID {
             UsedCarYardSection(engine: engine, company: company)
@@ -60,19 +60,22 @@ struct CompanySales: View {
             CarDealerSection(engine: engine, company: company)
         } else {
             ItemsList(engine: engine, company: company, items: items, service: service,
-                      onOpen: { (id: String) in openItem = SalesItemPick(id: id) }, onAdd: { addingService = service },
+                      onOpen: { (id: String) in showPrice(id) }, onAdd: { addingService = service },
                       onChosen: { (id: String) in itemChosen(id) })
         }
     }
 
-    /// An item was picked or added: ask who supplies it when there is a choice, then open its page for the price.
     private func itemChosen(_ id: String) {
         if ItemSupplierChooser.hasChoice(engine: store.engine ?? engine, companyID: company.id, itemID: id) {
             supplierFor = SalesItemPick(id: id)
         } else {
             store.tutorialAdvance(from: .pickSupplier)
-            openItem = SalesItemPick(id: id)
+            showPrice(id)
         }
+    }
+
+    private func showPrice(_ id: String) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { priceFor = SalesItemPick(id: id) }
     }
 
     private func hero(_ items: [SalesItem]) -> some View {
@@ -100,5 +103,20 @@ struct CompanySales: View {
         let cur: Currency = engine.currency(for: company)
         let spend: Double = company.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
         return SettingsTableRow(title: "Marketing", value: spend > 0 ? cur.tidyShort(spend) + " a week" : "No campaigns", opens: .sheet, glyph: Glyph.opsMega) { showMarketing = true }
+    }
+
+    private var hasHowSell: Bool {
+        let hasKnobs: Bool = !(engine.tradeInfo(companyID: company.id)?.knobs.isEmpty ?? true)
+        return hasKnobs || engine.waysToSell(companyID: company.id).contains { $0.canSwitch }
+    }
+
+    private var howSellRow: some View {
+        let concept: Knob? = engine.tradeInfo(companyID: company.id)?.knobs.first { (k: Knob) -> Bool in !k.isMulti }
+        let value: String = concept.map { (k: Knob) -> String in
+            let v: JSONValue = company.value("knob")[k.id]
+            let i: Int = v.isNull ? k.defaultIndex : v.int
+            return k.options.indices.contains(i) ? k.options[i].name : ""
+        } ?? ""
+        return SettingsTableRow(title: "How you sell", value: value, opens: .sheet, glyph: Glyph.opsRoute) { showHowSell = true }
     }
 }

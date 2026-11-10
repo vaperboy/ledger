@@ -97,26 +97,13 @@ final class ShotsTeamTests: FeatureTourCase {
             } else { miss("07-contract-discussion", "no discuss button on the profile") }
         } else { miss("04-worker-profile", "no worker row") }
 
-        // Perks, goals, applicants
+        // Perks
         if openTeam() {
             if tapID("team-perks", wait: 2) || tapLabel("Perks") {
                 pause(0.8)
                 shot("11-perks")
                 closePopup()
             } else { miss("11-perks", "no Perks row") }
-        }
-        if openTeam() {
-            if tapID("team-goals", wait: 2) || tapLabel("Goals") {
-                pause(0.8)
-                shot("12-goals")
-            } else { miss("12-goals", "no Goals row") }
-        }
-        if openTeam() {
-            if tapID("open-applicants", wait: 3) {
-                pause(0.8)
-                shot("13-applicants")
-                scrollShot("14-applicants-lower")
-            } else { miss("13-applicants", "no Applicants row") }
         }
 
         // Hiring: the ad page, a role picked, the agency, post the ad

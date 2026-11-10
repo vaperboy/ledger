@@ -6,14 +6,10 @@ import Finance
 import Businesses
 import Simulation
 
-/// The company's own figures on Stats > Finances: where the money goes first (the total in the box, no title), the margins
-/// box right under it (no title), and later the company record (registration, capital, equity). Cash is not repeated here (it is on the Overview). All from
-/// `companyOverviewStats`, so Overview and Stats read the same numbers.
 struct CompanyStatsFigures: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    /// `spending` = where the money goes and the margins under it; `legal` = the company record not already in the settings rows.
     var block: Block = .spending
     @State private var period: StatsPeriod = .year
 
@@ -41,8 +37,6 @@ struct CompanyStatsFigures: View {
         }
     }
 
-    // MARK: Margins (no title)
-
     private func resultCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
         let marginText: String = s.margin.map { Currency.percent($0, decimals: 0) } ?? "\u{2013}"
         let marginTint: Color = (s.margin ?? 0) < 0 ? Theme.loss : Theme.ink
@@ -55,9 +49,8 @@ struct CompanyStatsFigures: View {
             }
             .accessibilityElement(children: .combine)
             if s.taxBooked > 0.5 {
-                FlatRow(label: "Company tax booked", value: cur.tidyShort(s.taxBooked), sub: "shown apart: it is not in the profit above")
+                FlatRow(label: "Company tax booked", value: cur.tidyShort(s.taxBooked), sub: "not in the profit above")
             }
-            // Loans owed are under Owed on this page; only the part you guarantee personally is added here.
             if s.guaranteedLoans > 0.5 {
                 FlatRow(label: "Loans you guarantee", value: cur.tidyShort(s.guaranteedLoans), sub: "you pay these if the company cannot")
             }
@@ -71,8 +64,6 @@ struct CompanyStatsFigures: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-
-    // MARK: Where the money goes (no title): the total, the period, the split from the books
 
     private func expensesCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -124,8 +115,6 @@ struct CompanyStatsFigures: View {
         }
     }
 
-    // MARK: Company record
-
     private struct RecordLine {
         var label: String
         var value: String
@@ -134,7 +123,6 @@ struct CompanyStatsFigures: View {
     }
 
     private func legalCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
-        // Your share and (when you own it all) its worth are in the Ownership rows above: only the rest here.
         let ownsAll: Bool = company.ownership >= 99.5 && SaleListings.canSell(engine.state, companyID: company.id)
         var rows: [RecordLine] = []
         if !s.otherShareholders.isEmpty { rows.append(RecordLine(label: "Other shareholders", value: s.otherShareholders.joined(separator: ", "))) }
@@ -144,7 +132,7 @@ struct CompanyStatsFigures: View {
         }
         if let acc = s.accountant { rows.append(RecordLine(label: "Accountant", value: acc)) }
         rows.append(RecordLine(label: "Equity (assets less debts)", value: cur.tidyShort(s.equity), tint: s.equity < 0 ? Theme.loss : nil))
-        if !ownsAll { rows.append(RecordLine(label: "Estimated value", value: cur.tidyShort(s.estimatedValue), sub: "an estimate of the whole company, not cash")) }
+        if !ownsAll { rows.append(RecordLine(label: "Estimated value", value: cur.tidyShort(s.estimatedValue), sub: "not cash")) }
         return LedgerSection("Company record") {
             VStack(spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { n, r in

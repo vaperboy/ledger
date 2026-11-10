@@ -23,16 +23,13 @@ extension CompanySection {
     var shortTitle: String { rawValue }
 }
 
-/// The six sections of the company screen, in the fixed bar. Prices are set in Sales (on each item's page); Supply holds every supplier.
 enum CompanyTab: String, CaseIterable, Hashable {
     case overview = "Overview", team = "Team", manage = "Manage", sales = "Sales", supply = "Supply", stats = "Stats"
     var id: String { rawValue.lowercased() }
 }
 
-/// The parts of Stats: the finance summary and its pages, how the company performs, and its customers.
 enum StatsPart: String, CaseIterable, Hashable { case finances = "Finances", customers = "Customers" }
 
-/// The parts of Sales: the sales table, and Projects for the companies that take projects (project businesses) only.
 enum SalesPart: String, CaseIterable, Hashable { case sales = "Sales", projects = "Projects" }
 
 enum OverviewPage: String, Hashable, Identifiable {
@@ -71,15 +68,15 @@ struct CompanyDetailView: View {
             let tabs: [CompanyTab] = Self.tabs(co, e)
             let pagerSelection: Binding<CompanyTab> = Binding(get: { tabs.contains(segment) ? segment : CompanyTab.overview }, set: { segment = $0 })
             VStack(spacing: 0) {
-                SegmentedPill(items: tabs, title: { $0.rawValue }, selection: $segment, identifier: { "company-tab-\($0.id)" })
+                tabBar(tabs)
                     .coachAnchor(.companyTabs)
-                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xxs).padding(.bottom, Theme.Space.s)
+                    .padding(.top, Theme.Space.xxs).padding(.bottom, Theme.Space.s)
                 SegmentPager(items: tabs, selection: pagerSelection) { (t: CompanyTab) in
                     ScrollView {
                         VStack(alignment: .leading, spacing: Theme.Space.l) {
                             content(t, co, e)
                         }
-                        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
+                        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.xl)
                         .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                     }
                     .scrollIndicators(.hidden)
@@ -101,6 +98,25 @@ struct CompanyDetailView: View {
             .onChange(of: opsPart) { (_: OpsPart, new: OpsPart) in if new != .setup { heldOpsPart = new } }
         } else {
             EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    private func tabPill(_ tabs: [CompanyTab]) -> some View {
+        SegmentedPill(items: tabs, title: { $0.rawValue }, selection: $segment, identifier: { "company-tab-\($0.id)" })
+    }
+
+    private func tabBar(_ tabs: [CompanyTab]) -> some View {
+        ViewThatFits(in: .horizontal) {
+            tabPill(tabs).padding(.horizontal, Theme.Space.page)
+            ScrollViewReader { (reader: ScrollViewProxy) in
+                ScrollView(.horizontal) {
+                    tabPill(tabs).fixedSize(horizontal: true, vertical: false)
+                }
+                .scrollIndicators(.hidden)
+                .contentMargins(.horizontal, Theme.Space.page, for: .scrollContent)
+                .onAppear { reader.scrollTo(segment, anchor: .center) }
+                .onChange(of: segment) { (_: CompanyTab, now: CompanyTab) in Motion.animate(Motion.quickAnimation) { reader.scrollTo(now, anchor: .center) } }
+            }
         }
     }
 
@@ -129,7 +145,6 @@ struct CompanyDetailView: View {
         case .supply:
             CompanySupply(engine: e, company: co)
         case .stats:
-            // A holding company sells to no one: no Customers part.
             let parts: [StatsPart] = co.type == "hold" ? [.finances] : StatsPart.allCases
             if parts.count > 1 {
                 SegmentedPill(items: parts, title: { $0.rawValue }, selection: $statsPart, identifier: { "stats-part-\($0.rawValue.lowercased())" })
@@ -144,7 +159,6 @@ struct CompanyDetailView: View {
         }
     }
 
-    /// Where the Overview's rows go: a section of the bar, in place.
     private func openPage(_ p: OverviewPage, _ co: Company, _ e: GameEngine) {
         switch p {
         case .sales: salesPart = .sales; show(.sales)
@@ -157,7 +171,6 @@ struct CompanyDetailView: View {
 
     private func show(_ t: CompanyTab) { Motion.animate(Motion.quickAnimation) { segment = t } }
 
-    /// Sales: the items with their prices; project businesses also get a Projects part (nobody else has projects of their own).
     @ViewBuilder private func salesContent(_ co: Company, _ e: GameEngine) -> some View {
         if Self.hasProjects(co, e) {
             SegmentedPill(items: SalesPart.allCases, title: { $0.rawValue }, selection: $salesPart, identifier: { "sales-part-" + $0.rawValue.lowercased() })
@@ -171,7 +184,6 @@ struct CompanyDetailView: View {
         }
     }
 
-    /// Opens on the part a link asked for, once (the screen appears again when a page pushed from it is closed).
     private func applyPart(_ tabs: [CompanyTab]) {
         guard !appliedPart else { return }
         appliedPart = true
@@ -195,8 +207,6 @@ struct CompanyDetailView: View {
         return parts.isEmpty ? nil : parts.joined(separator: " \u{00B7} ")
     }
 
-    /// The sections of the bar this company has. A holding has its management under Team (no staff list), a football club its own page
-    /// under Manage, a company still being set up has neither Manage nor Sales yet. Supply is for every company that sells.
     static func tabs(_ co: Company, _ e: GameEngine) -> [CompanyTab] {
         let a = availableSections(co, e)
         var out: [CompanyTab] = [.overview]
@@ -214,7 +224,6 @@ struct CompanyDetailView: View {
         }
     }
 
-    /// The section of the bar an old section key opens, or nil for a page of its own (`isLeaf`) that is pushed instead.
     static func tab(for section: CompanySection, _ co: Company, _ e: GameEngine) -> CompanyTab? {
         let a = availableSections(co, e)
         switch section {

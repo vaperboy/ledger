@@ -423,6 +423,7 @@ struct SegmentTrack<T: Hashable>: View {
                 .buttonStyle(PressableStyle())
                 .accessibilityAddTraits(on ? .isSelected : [])
                 .modifier(OptionalIdentifier(identifier: identifier(item)))
+                .id(item)
             }
         }
         .padding(Theme.Space.xxs)
