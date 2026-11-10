@@ -66,6 +66,7 @@ public enum StrategicDecisions {
         s.companies[i].staff = st
     }
     static func removeStaff(_ s: inout GameState, _ i: Int, id: Int) {
+        guard !s.companies[i].value("flags")["noquit"].bool else { return }
         s.companies[i].staff = s.companies[i].staff.filter { $0.id != id }
         if var p = s.people[id] { p.employerID = 0; s.people[id] = p }
     }

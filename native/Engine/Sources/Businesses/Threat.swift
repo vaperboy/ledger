@@ -56,7 +56,7 @@ public enum Threat {
 
     static func staffApproach(_ s: inout GameState, _ i: Int, rival: String, _ h: inout HashedRandom) {
         let co = s.companies[i]
-        guard let best = co.staff.max(by: { (s.people[$0.id]?.skill ?? 0) < (s.people[$1.id]?.skill ?? 0) }) else { return }
+        guard !co.value("flags")["noquit"].bool, let best = co.staff.max(by: { (s.people[$0.id]?.skill ?? 0) < (s.people[$1.id]?.skill ?? 0) }) else { return }
         let who = s.people[best.id]?.name ?? "Your best employee"
         let stay = 0.5 + (co.managerID != nil ? 0.15 : 0) + clamp(co.reputation - 50, 0, 50) / 250
         if h.next() < stay {

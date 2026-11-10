@@ -313,7 +313,7 @@ public enum Payday {
         co.set("mood", clamp(mood - 1.5, 0, 100))
         if n == 3 { s.note("Staff at \(co.name) are three days without full pay.", tone: "bad", companyID: co.id) }
         if n >= 3 {
-            for m in co.staff where s.random.chance(0.04) {
+            for m in co.staff where !co.value("flags")["noquit"].bool && s.random.chance(0.04) {
                 s.note("\(s.people[m.id]?.name ?? "A worker") quit \(co.name) over late wages.", tone: "bad", companyID: co.id)
                 if var p = s.people[m.id] { p.employerID = 0; s.people[m.id] = p }
                 co.staff = co.staff.filter { $0.id != m.id }

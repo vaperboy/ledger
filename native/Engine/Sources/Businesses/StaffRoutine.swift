@@ -148,8 +148,10 @@ public enum StaffRoutine {
         case .sick(let id):
             s.note("\(name(id)) is off sick this week at \(co.name).", tone: "bad", companyID: co.id)
         case .leave(let id):
-            s.note("\(name(id)) has left \(co.name).", tone: "bad", companyID: co.id)
-            Dismissal.dismiss(&s, companyID: co.id, staffID: id, reason: .resignation, noticeServed: true, data: data)
+            let who = name(id)
+            if Dismissal.dismiss(&s, companyID: co.id, staffID: id, reason: .resignation, noticeServed: true, data: data) != nil {
+                s.note("\(who) has left \(co.name).", tone: "bad", companyID: co.id)
+            }
         case .problem(let id, let trait):
             let labels = ["late": "is often late", "lazy": "is under-performing", "conflict": "is causing conflict in the team",
                           "sick": "has high sick leave", "theft": "is suspected of stealing"]

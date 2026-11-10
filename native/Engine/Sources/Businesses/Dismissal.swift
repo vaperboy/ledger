@@ -60,6 +60,7 @@ public enum Dismissal {
         guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == staffID }) else { return nil }
         let m = s.companies[ci].staff[k]
         let why = reason ?? reasonForDismissing(m)
+        if why == .resignation && s.companies[ci].value("flags")["noquit"].bool { return nil }
         guard let q = quote(s, companyID: companyID, staffID: staffID, reason: why, noticeServed: noticeServed, data: data) else { return nil }
         let claims = why == .unjustified && q.canClaimUnfairDismissal && s.random.chance(!m.value("flag").isNull ? 0.35 : 0.55)
         let name = s.people[staffID]?.name ?? "A team member"
