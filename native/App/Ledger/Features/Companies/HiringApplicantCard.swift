@@ -18,7 +18,6 @@ struct ApplicantRow: View {
     @Environment(\.outsidePalette) private var P
     var applicant: Applicant
     var roleName: String
-    var companyName: String = ""
     var currency: Currency
     var ask: (ask: Double, market: Double)?
     var open: Bool
@@ -48,7 +47,6 @@ struct ApplicantRow: View {
 
     var body: some View {
         let a = applicant
-        let at: String = companyName.isEmpty ? "" : " \u{00B7} " + companyName
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(alignment: .center, spacing: Theme.Space.xs) {
                 Button { Haptics.tap(); onTalk() } label: {
@@ -56,7 +54,7 @@ struct ApplicantRow: View {
                         ThumbnailView(kind: .person, key: a.role, size: ThinPersonRow.portrait, initials: a.name, face: a.faceKey)
                         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                             Text(a.name.tidyText).textStyle(.headline).lineLimit(1)
-                            Text("\(a.age) \u{00B7} \(roleName) \u{00B7} \(experienceLine)\(at)".tidyText).textStyle(.caption).lineLimit(2)
+                            Text("\(a.age) \u{00B7} \(roleName) \u{00B7} \(experienceLine)".tidyText).textStyle(.caption).lineLimit(2)
                         }
                         Spacer(minLength: Theme.Space.s)
                         VStack(alignment: .trailing, spacing: Theme.Space.xxs) {

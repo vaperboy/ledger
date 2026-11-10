@@ -24,7 +24,7 @@ struct GroupEntityManagement: View {
                 chainOfCommand(co)
                 people(co)
                 approvalNote(co)
-                ApplicantsLinkRow(engine: engine, companyID: co.id)
+                hireRow(co)
                 CompanyTargetsCard(engine: engine, company: co)
                 openPosts(co)
             } else {
@@ -141,6 +141,14 @@ struct GroupEntityManagement: View {
             Text("MANAGEMENT").capsLabel()
             CompanyManagement(engine: engine, company: co, showAll: true)
             CompanyTeamRoster(engine: engine, company: co)
+        }
+    }
+
+    private func hireRow(_ co: Company) -> some View {
+        let n: Int = engine.applicants(companyID: co.id).count
+        return LedgerRow(leading: .glyph(Glyph.hire), title: "Hire", subtitle: "Pick a role, see applicants, make an offer",
+                         value: n == 0 ? "" : "\(n) waiting", identifier: "group-hire") {
+            store.openHire(companyID: co.id)
         }
     }
 
