@@ -53,7 +53,7 @@ enum LifeStories {
         Ledger.move(&probe, .me, big, why: "Start probe")
         guard let pid = build(&probe, data: data, context: context, tradeID: tradeID, cityID: city.id, size: size, name: name),
               let pi = probe.companyIndex(pid) else { return false }
-        let spent: Double = big - probe.cash - probe.companies[pi].cash
+        let spent: Double = big - probe.cash
         let weekly: Double = context.weeklyCost(probe.companies[pi], probe)
         let weeks: Double = Double(data.balance.firstYear.startRunwayWeeks)
         let cash: Double = ((spent + weekly * weeks) / 1000).rounded(.up) * 1000
