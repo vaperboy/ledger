@@ -190,7 +190,7 @@ public enum Career {
             var c = s.rest["car"] ?? .object(["done": .object([:])])
             var done = c["done"]; done[d.id] = .object(["w": .number(Double(s.week)), "u": .number(1)]); c["done"] = done
             s.rest["car"] = c
-            PlayerLevel.award(&s, d.horizon == .short ? 40 : d.horizon == .medium ? 80 : 150)
+            PlayerLevel.award(&s, d.horizon == .short ? 30 : d.horizon == .medium ? 60 : 120)
             let title = d.text(d.title, cur)
             s.note("Goal reached: \(title). Claim the reward on Home.", tone: "good")
             Celebrations.add(&s, kind: "goal", title: title, detail: d.horizon.label + " goal reached", reward: d.reward, art: "goal.career", tier: d.horizon == .short ? 1 : 2)

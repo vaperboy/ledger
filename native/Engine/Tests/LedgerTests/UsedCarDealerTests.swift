@@ -9,7 +9,7 @@ import Businesses
 final class UsedCarDealerTests: XCTestCase {
     private func game(seed: Int = 7, trade: String = "usedcar", cash: Double = 400_000_000, open: Bool = true) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
-        e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
+        e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds"); s.rest["ldr"] = nil }
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: cash) else { throw XCTSkip("no company") }
         _ = e.quickSetup(companyID: id)
         if open {
@@ -304,6 +304,7 @@ final class UsedCarDealerTests: XCTestCase {
     func testCommissionOnlySalespersonIsPaidFromTheProfitOfTheSale() throws {
         var (e, id) = try game()
         let person = try XCTUnwrap(e.state.company(id)!.staff.first { $0.role == "cardealer" })
+        e.update { s, _, _ in if let i = s.companyIndex(id) { var f = s.companies[i].value("flags"); f["noquit"] = .bool(true); s.companies[i].set("flags", f) } }
         e.update { s, d, _ in _ = StaffProfile.setPayModel(&s, companyID: id, staffID: person.id, mode: "com", data: d) }
         let st = try XCTUnwrap(e.state.company(id)!.staff.first { $0.id == person.id })
         guard st.commissionMode == "com" else { throw XCTSkip("the salesperson refused commission only") }
