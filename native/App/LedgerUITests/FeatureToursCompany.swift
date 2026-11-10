@@ -131,13 +131,6 @@ extension FeatureToursTests {
             _ = tapBack()
             return isSelected("company-tab-people") ? h : .fail("Back did not return to Team: \(signature().text)")
         }
-        step("team: Applicants page opens and Back returns") {
-            guard openCompany("Caf"), tapID("company-tab-people") else { return .skip("no company / Team section") }
-            guard tapID("open-applicants", wait: 3) else { return .skip("no Applicants row") }
-            let h: R = health("applicants")
-            _ = tapBack()
-            return isSelected("company-tab-people") ? h : .fail("Back did not return to Team: \(signature().text)")
-        }
     }
 
     private func openSuppliers() -> Bool {

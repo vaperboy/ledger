@@ -17,7 +17,13 @@ struct HireWorkersView: View {
     @State private var talk: WorkerRef?
     @State private var openID: Int?
 
+    @State private var sort = ApplicantSort.best
+
     enum Method: String, CaseIterable, Hashable { case ad = "Job ad", agency = "Agency" }
+
+    enum ApplicantSort: String, CaseIterable, Hashable {
+        case best = "Best match", wage = "Lowest wage ask", newest = "Newest"
+    }
 
     private struct RunLine: Identifiable { var id: String; var text: String }
 
@@ -37,21 +43,32 @@ struct HireWorkersView: View {
         return nil
     }
 
+    private var typing: Bool { !custom.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    private func sorted(_ e: GameEngine, _ list: [Applicant]) -> [Applicant] {
+        switch sort {
+        case .best:
+            return list.sorted { (x: Applicant, y: Applicant) -> Bool in (x.claimedExperienceYears ?? 0) > (y.claimedExperienceYears ?? 0) }
+        case .wage:
+            let ask: (Applicant) -> Double = { (a: Applicant) -> Double in e.applicantAskPreview(personID: a.personID, companyID: companyID)?.ask ?? a.marketMonthly }
+            return list.sorted { (x: Applicant, y: Applicant) -> Bool in ask(x) < ask(y) }
+        case .newest:
+            return Array(list.reversed())
+        }
+    }
+
     private func screen(_ e: GameEngine, _ co: Company) -> some View {
         let roles: [RoleOption] = e.recommendedRoles(companyID: companyID)
         let chosen: (id: String, name: String)? = chosenRole(roles)
         let cur: Currency = e.currency(for: co)
         let waiting: [Applicant] = e.applicants(companyID: companyID)
+        let shown: [Applicant] = sorted(e, typing ? waiting : waiting.filter { (a: Applicant) -> Bool in chosen.map { $0.id == a.role } ?? true })
         return ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-                hero(e, co, waiting.count, role: chosen?.id)
-                if !waiting.isEmpty { applicantsSection(e, co, cur, roles, waiting) }
-                roleSection(roles)
+                hero(e, co, shown.count, role: chosen?.id)
+                roleSection(roles, waiting)
+                if !shown.isEmpty { applicantsSection(e, co, cur, roles, shown) }
                 searchSection(e, cur)
-                if waiting.isEmpty {
-                    Button("Applicants of all companies") { Haptics.tap(); store.openApplicants(companyID: nil, role: nil) }
-                        .buttonStyle(TertiaryButtonStyle(size: .compact)).padding(.leading, -Theme.Space.s)
-                }
             }
             .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xl)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -93,15 +110,15 @@ struct HireWorkersView: View {
         }
     }
 
-    private func roleSection(_ roles: [RoleOption]) -> some View {
+    private func roleSection(_ roles: [RoleOption], _ waiting: [Applicant]) -> some View {
         let active: String = roleID.isEmpty ? (startRole ?? "") : roleID
-        let typing: Bool = !custom.trimmingCharacters(in: .whitespaces).isEmpty
         let picked: RoleOption? = typing ? nil : roles.first { (r: RoleOption) -> Bool in r.id == active }
         return TeamBlock("Which role") {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 WrapRow(spacing: Theme.Space.xs) {
                     ForEach(roles) { (r: RoleOption) in
-                        HireChip(title: r.filled ? r.name + " \u{2713}" : r.name, on: !typing && r.id == active) { Haptics.choose(); roleID = r.id; custom = "" }
+                        let n: Int = waiting.filter { (a: Applicant) -> Bool in a.role == r.id }.count
+                        HireChip(title: (r.filled ? r.name + " \u{2713}" : r.name) + (n > 0 ? " \u{00B7} \(n)" : ""), on: !typing && r.id == active) { Haptics.choose(); roleID = r.id; custom = "" }
                     }
                 }
                 if let picked {
@@ -197,21 +214,44 @@ struct HireWorkersView: View {
 
     private func applicantsSection(_ e: GameEngine, _ co: Company, _ cur: Currency, _ roles: [RoleOption], _ list: [Applicant]) -> some View {
         TeamBlock(title: "Applicants", trailing: {
-            Button("All applicants") { Haptics.tap(); store.openApplicants(companyID: companyID, role: nil) }
-                .buttonStyle(TertiaryButtonStyle(size: .compact))
+            if list.count > 1 { sortMenu }
         }) {
             VStack(spacing: 0) {
-                    ForEach(Array(list.enumerated()), id: \.element.personID) { n, a in
-                        if n > 0 { PersonRowRule() }
-                        ApplicantRow(applicant: a, roleName: roleName(a.role, roles), currency: cur,
-                                     ask: e.applicantAskPreview(personID: a.personID, companyID: companyID),
-                                     open: openID == a.personID, talkIdentifier: "hire-talk-terms",
-                                     onTap: { Motion.animate(Motion.quickAnimation) { openID = openID == a.personID ? nil : a.personID } },
-                                     onTrial: { pending = ApplicantTrial.ask(store, a, companyID: companyID, cur) },
-                                     onTalk: { talk = WorkerRef(id: a.personID) })
+                ForEach(Array(list.enumerated()), id: \.element.personID) { n, a in
+                    if n > 0 { PersonRowRule() }
+                    ApplicantRow(applicant: a, roleName: roleName(a.role, roles), currency: cur,
+                                 ask: e.applicantAskPreview(personID: a.personID, companyID: companyID),
+                                 open: openID == a.personID, talkIdentifier: "hire-talk-terms",
+                                 onTap: { Motion.animate(Motion.quickAnimation) { openID = openID == a.personID ? nil : a.personID } },
+                                 onTrial: { pending = ApplicantTrial.ask(store, a, companyID: companyID, cur) },
+                                 onTalk: { talk = WorkerRef(id: a.personID) })
                 }
             }
         }
+    }
+
+    private var sortMenu: some View {
+        Menu {
+            ForEach(ApplicantSort.allCases, id: \.self) { (s: ApplicantSort) in
+                Button { Haptics.choose(); sort = s } label: {
+                    if sort == s { Label(s.rawValue, systemImage: "checkmark") } else { Text(s.rawValue) }
+                }
+            }
+        } label: {
+            HStack(spacing: Theme.Space.xs) {
+                Text("Sort: " + sort.rawValue)
+                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+            }
+        }
+        .menuStyle(.button)
+        .buttonStyle(TertiaryButtonStyle(size: .compact))
+        .accessibilityIdentifier("hire-sort")
+    }
+}
+
+extension GameStore {
+    func openHire(companyID: Int) {
+        Task { @MainActor [weak self] in self?.push(CompanyRoute.hire(companyID)) }
     }
 }
 
