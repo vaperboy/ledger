@@ -45,7 +45,7 @@ public enum Wealth {
         var lines: [WealthLine] = []
         func add(_ id: String, _ title: String, _ amount: Double, _ words: String) { if abs(amount) >= 0.5 { lines.append(WealthLine(id: id, title: title, amount: amount, words: words)) } }
         add("cash", "Cash and savings", nw.personal, "Money in your current account and savings. Counted in full.")
-        add("market", "Shares, crypto and funds", nw.stocks + nw.crypto + nw.funds, "Counted at today's market prices, in full.")
+        add("market", "Crypto and funds", nw.crypto + nw.funds, "Counted at today's market prices, in full.")
         add("exchange", "Shares on the exchange", nw.exchange, "Shares you hold in the World Bank, the World Index and other listings, at the last closing price.")
         add("listed", "Your listed company", listedMarket, listedNames.isEmpty ? "" :
             "Your shares in \(listedNames.joined(separator: ", ")) at the last close, less \(Currency.percent(blockDiscount, decimals: 0)) because a whole block cannot be sold at once.")
