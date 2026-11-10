@@ -193,6 +193,7 @@ final class OnlineSession {
             return
         }
         status = s
+        if s.fakePlayersRemoved == true { FakePlayers.removed = true }
         setAdmin(s.isAdmin)
         await WorldRulesSync.refresh()
     }

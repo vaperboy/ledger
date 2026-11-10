@@ -141,4 +141,5 @@ protocol AdminService: Sendable {
     func adminSetRule(key: String, value: Double, reason: String) async throws
     func adminDecide(id: String, approve: Bool, reason: String) async throws
     func adminAudit(before: Int?, limit: Int) async throws -> [AuditEntry]
+    func adminRemoveFakePlayers(reason: String) async throws
 }

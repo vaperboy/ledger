@@ -50,6 +50,25 @@ public extension GameEngine {
         update { s, _, _ in PlayerSupply.end(&s, buyer: companyID, line: lineID) }
     }
 
+    func playerSupplyCancelFee(companyID: Int, lineID: String) -> Double {
+        PlayerSupply.contract(state, buyer: companyID, line: lineID).map { PlayerSupply.cancelFee($0) } ?? 0
+    }
+
+    @discardableResult
+    mutating func cancelPlayerSupplier(companyID: Int, lineID: String, bySupplier: Bool = false) -> SettingResult {
+        var why: String?
+        update { s, _, _ in why = PlayerSupply.cancel(&s, buyer: companyID, line: lineID, bySupplier: bySupplier) }
+        if let why { return .refused(why) }
+        return .applied
+    }
+
+    func physicalSupplyCapacity(companyID: Int) -> Int? {
+        guard let co = state.company(companyID), co.status == .open, let bd = data.catalog[co.type] else { return nil }
+        let capacity = CapacityModel.compute(co, bd, World(state: state, data: data)).capacity
+        let own = co.value("lastW")["units"].double
+        return max(0, Int(saturating: (capacity - own).rounded(.down)))
+    }
+
     mutating func reportShortDelivery(listingID: String) {
         update { s, _, _ in
             if PlayerSupply.recordDelivery(&s, listingID: listingID, promised: 100, delivered: 75, orders: 1, late: 0).isEmpty { return }
@@ -87,7 +106,14 @@ public extension GameEngine {
     var playerSupplyOrders: [String: [SupplyOrderRecord]] { PlayerSupply.orders(state) }
 
     mutating func savePlayerListings(_ listings: [SupplyListing], orders: [String: [SupplyOrderRecord]]) {
-        update { s, _, _ in PlayerSupply.saveListings(&s, listings: listings, orders: orders) }
+        let capped: [SupplyListing] = listings.map { (l: SupplyListing) -> SupplyListing in
+            guard let id = l.companyID, let room = physicalSupplyCapacity(companyID: id) else { return l }
+            var x = l
+            x.capacityPerWeek = min(l.capacityPerWeek, room)
+            x.logoID = companyLogoID(companyID: id)
+            return x
+        }
+        update { s, _, _ in PlayerSupply.saveListings(&s, listings: capped, orders: orders) }
     }
 
     func stockOrderBasis(companyID: Int) -> StockOrderBasis? {

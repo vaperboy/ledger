@@ -300,7 +300,7 @@ struct CompanyRow: View {
         let month: Double = h.profitTTM / 12
         let profitTint: Color = month < -0.5 ? Theme.loss : month > 0.5 ? Theme.gain : Theme.inkSoft
         HStack(spacing: Theme.Space.s) {
-            ThumbnailView(kind: .trade, key: co.type, size: 28)
+            if engine.companyLogoID(companyID: co.id).isEmpty { ThumbnailView(kind: .trade, key: co.type, size: 28) } else { LogoBadge(logoID: engine.companyLogoID(companyID: co.id), size: 28) }
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: Theme.Space.xs) {
                     if urgent { LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.small, tint: Theme.loss).accessibilityLabel("Needs attention") }

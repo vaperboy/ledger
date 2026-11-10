@@ -109,6 +109,12 @@ actor MockOnlineService: OnlineService {
         try adminBook.decide(id: id, approve: approve, reason: reason)
     }
 
+    func adminRemoveFakePlayers(reason: String) async throws {
+        await pause()
+        try requireAdmin()
+        FakePlayers.removed = true
+    }
+
     func adminAudit(before: Int?, limit: Int) async throws -> [AuditEntry] {
         try requireAdmin()
         return Array(adminBook.audit.filter { before == nil || $0.id < before! }.prefix(max(1, limit)))

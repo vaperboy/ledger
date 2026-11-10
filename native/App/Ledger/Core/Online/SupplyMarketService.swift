@@ -115,6 +115,18 @@ protocol SupplyMarketService: AnyObject {
         }
         let posts: [DemandPost] = service.demandPosts(today: today)
         if posts != e.playerDemandPosts { _ = store.act { $0.savePlayerDemand(posts) } }
+        let real: Int = realSuppliers()
+        if Suppliers.realSuppliers(e.state) != real { _ = store.act { $0.setRealSuppliers(count: real) } }
+        if FakePlayers.removed && !e.fakePlayersRemoved { _ = store.act { $0.removeFakePlayers() } }
+    }
+
+    func realSuppliers() -> Int {
+        let lines: [String] = Array(Set(SupplyMarketCatalogue.supplies.values.flatMap { (l: [String]) -> [String] in l })).sorted()
+        var owners: Set<String> = []
+        for line in lines {
+            for l in service.listings(lineID: line) where !FakePlayers.isFake(ownerID: l.ownerID) { owners.insert(l.ownerID) }
+        }
+        return owners.count
     }
 
     func accountDeleted(_ store: GameStore) {
@@ -135,10 +147,12 @@ protocol SupplyMarketService: AnyObject {
         return r
     }
 
-    func end(_ store: GameStore, companyID: Int, lineID: String) {
+    func end(_ store: GameStore, companyID: Int, lineID: String) -> String? {
+        let r: SettingResult? = store.act { $0.cancelPlayerSupplier(companyID: companyID, lineID: lineID) }
+        if case .refused(let why)? = r { return why }
         service.endContract(buyerCompanyID: companyID, lineID: lineID)
-        _ = store.act { $0.endPlayerSupplier(companyID: companyID, lineID: lineID) }
         returnToHouse(store, companyID: companyID, lineID: lineID)
+        return nil
     }
 
     func fallBack(_ store: GameStore, _ f: SupplyFallback) {

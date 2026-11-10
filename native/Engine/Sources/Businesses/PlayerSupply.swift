@@ -29,8 +29,13 @@ public enum PlayerSupply {
         public var leadDays: Int
         public var country: String
         public var landedFactor: Double
+        public var orderValue: Double = 0
         public var id: String { base.id }
     }
+
+    public static let cancelFeeWeeks = 2.0
+
+    public static func cancelFee(_ c: Contract) -> Double { c.orderValue * cancelFeeWeeks }
 
     public static func priceFactor(_ c: Contract) -> Double { SupplyCatalogue.tierPrice[min(2, max(0, c.priceTier))] * max(1, c.landedFactor) }
 
@@ -45,14 +50,14 @@ public enum PlayerSupply {
         Contract(base: SupplyContract(id: j["id"].string, buyerCompanyID: j["b"].int, lineID: j["ln"].string, listingID: j["li"].string, supplierOwnerID: j["ow"].string,
                                       supplierName: j["nm"].string, unitsPerWeek: j["u"].int, startDay: j["d0"].int),
                  priceTier: j["pt"].int, qualityTier: j["qt"].int, reliability: j["rel"].isNull ? 0.93 : j["rel"].double, termsDays: j["tm"].int, leadDays: j["ld"].int,
-                 country: j["cc"].string, landedFactor: j["lf"].isNull ? 1 : j["lf"].double)
+                 country: j["cc"].string, landedFactor: j["lf"].isNull ? 1 : j["lf"].double, orderValue: j["ov"].double)
     }
 
     static func json(_ c: Contract) -> JSONValue {
         .object(["id": .string(c.base.id), "b": .number(Double(c.base.buyerCompanyID)), "ln": .string(c.base.lineID), "li": .string(c.base.listingID), "ow": .string(c.base.supplierOwnerID),
                  "nm": .string(c.base.supplierName), "u": .number(Double(c.base.unitsPerWeek)), "d0": .number(Double(c.base.startDay)), "pt": .number(Double(c.priceTier)),
                  "qt": .number(Double(c.qualityTier)), "rel": .number(c.reliability), "tm": .number(Double(c.termsDays)), "ld": .number(Double(c.leadDays)),
-                 "cc": .string(c.country), "lf": .number(c.landedFactor)])
+                 "cc": .string(c.country), "lf": .number(c.landedFactor), "ov": .number(c.orderValue)])
     }
 
     public static func contracts(_ s: GameState) -> [Contract] { record(s)["c"].array.map { contract($0) } }
@@ -72,7 +77,7 @@ public enum PlayerSupply {
         let spend = max(0, weeklyMarketSpend.isFinite ? weeklyMarketSpend : 0)
         let row = SupplyLanded.compare([l], buyerCountry: co.countryCode, marketUnitPrice: spend / Double(base.unitsPerWeek), units: base.unitsPerWeek, priceLevel: level).first
         let c = Contract(base: base, priceTier: l.priceTier, qualityTier: l.qualityTier, reliability: reliability(of: l.record), termsDays: l.termsDays, leadDays: l.leadDays,
-                         country: l.country, landedFactor: max(1, row?.landedFactor ?? 1))
+                         country: l.country, landedFactor: max(1, row?.landedFactor ?? 1), orderValue: (row?.unitPrice ?? 0) * Double(base.unitsPerWeek))
         var rec = record(s)
         var list = rec["c"].array.filter { !($0["b"].int == base.buyerCompanyID && $0["ln"].string == base.lineID) }
         list.append(json(c))
@@ -99,6 +104,24 @@ public enum PlayerSupply {
         rec["rw"] = .object(rw)
         s.rest["psup"] = rec
         if let i = s.companyIndex(buyer), SupplyCatalogue.chosenID(s.companies[i], line: line).hasPrefix("P:") { setChoice(&s, companyIndex: i, line: line, offer: "market") }
+    }
+
+    @discardableResult
+    public static func cancel(_ s: inout GameState, buyer: Int, line: String, bySupplier: Bool) -> String? {
+        guard let c = contract(s, buyer: buyer, line: line), let co = s.company(buyer) else { return "There is no supplier to end." }
+        let fee = cancelFee(c)
+        if bySupplier {
+            Payments.companyReceives(&s, companyID: buyer, amount: fee, category: "oth", label: "Fee from \(c.base.supplierName) for ending the supply")
+        } else {
+            if co.cash < fee { return "Not enough cash for the cancellation fee." }
+            Payments.companyPays(&s, companyID: buyer, amount: fee, category: "oth", label: "Fee to \(c.base.supplierName) for ending the supply")
+        }
+        end(&s, buyer: buyer, line: line)
+        s.addMessage(kind: "info", from: c.base.supplierName, title: bySupplier ? "Supplier ended the supply" : "Supply ended",
+                     body: bySupplier ? "\(c.base.supplierName) stopped supplying and paid the fee of two weeks of the order. This line goes back to a market supplier."
+                                      : "You ended the supply from \(c.base.supplierName) and paid the fee of two weeks of the order. This line goes back to a market supplier.",
+                     companyID: buyer, tone: bySupplier ? "bad" : "n")
+        return nil
     }
 
     private static func setChoice(_ s: inout GameState, companyIndex i: Int, line: String, offer: String) {
@@ -260,7 +283,7 @@ public enum PlayerSupply {
                                       "co": .number(Double(l.companyID ?? 0)), "td": .string(l.tradeID), "tn": .string(l.tradeName), "ci": .string(l.city), "rg": .string(l.region),
                                       "cc": .string(l.country), "ln": .string(l.lineID), "lnm": .string(l.lineName), "pt": .number(Double(l.priceTier)), "qt": .number(Double(l.qualityTier)),
                                       "cap": .number(Double(l.capacityPerWeek)), "ld": .number(Double(l.leadDays)), "mo": .number(Double(l.minOrder)), "tm": .number(Double(l.termsDays)),
-                                      "lk": .string(l.linkKey), "rec": .object(rec), "pa": .bool(l.paused), "st": .bool(l.stopped), "cm": .number(Double(l.committedUnits))]
+                                      "lk": .string(l.linkKey), "rec": .object(rec), "pa": .bool(l.paused), "st": .bool(l.stopped), "cm": .number(Double(l.committedUnits)), "lg": .string(l.logoID)]
         if let e = l.expiresDay { o["ex"] = .number(Double(e)) }
         if let d = l.stopsDay { o["sd"] = .number(Double(d)) }
         return .object(o)
@@ -271,12 +294,14 @@ public enum PlayerSupply {
         let record = DeliveryRecord(weeksTrading: r["wt"].int, ordersTotal: r["ot"].int, ordersOnTime: r["oo"].int, unitsPromised: r["up"].int, unitsDelivered: r["ud"].int,
                                     complaints: r["cp"].int, disputes: r["dp"].int, priceChanges: r["pc"].int, cleanWeeks: r["cw"].int,
                                     deliveredTrend: r["dt"].isNull ? nil : r["dt"].double, onTimeTrend: r["ott"].isNull ? nil : r["ott"].double, lifetimeUnits: r["lu"].int)
-        return SupplyListing(id: j["id"].string, ownerID: j["ow"].string, ownerName: j["on"].string, profileCode: j["pc"].string, companyName: j["cn"].string,
+        var made = SupplyListing(id: j["id"].string, ownerID: j["ow"].string, ownerName: j["on"].string, profileCode: j["pc"].string, companyName: j["cn"].string,
                              companyID: j["co"].int == 0 ? nil : j["co"].int, tradeID: j["td"].string, tradeName: j["tn"].string, city: j["ci"].string, region: j["rg"].string,
                              lineID: j["ln"].string, lineName: j["lnm"].string, priceTier: j["pt"].int, qualityTier: j["qt"].int, capacityPerWeek: j["cap"].int,
                              leadDays: j["ld"].int, minOrder: j["mo"].int, termsDays: j["tm"].int, linkKey: j["lk"].string, record: record, paused: j["pa"].bool,
                              stopped: j["st"].bool, expiresDay: j["ex"].isNull ? nil : j["ex"].int, committedUnits: j["cm"].int, country: j["cc"].string,
                              stopsDay: j["sd"].isNull ? nil : j["sd"].int)
+        made.logoID = j["lg"].string
+        return made
     }
 
     public static func listings(_ s: GameState) -> [SupplyListing] {

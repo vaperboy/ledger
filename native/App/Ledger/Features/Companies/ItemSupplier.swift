@@ -47,6 +47,11 @@ private struct SupplierChoice: Identifiable {
     var current: Bool
     var blocked: String?
     var action: SupplierAction
+    var unit: Double = 0
+    var free: Int?
+    var need: Int = 0
+    var start: Int = 0
+    var logoID: String = ""
 }
 
 private struct SupplierSheet {
@@ -59,7 +64,12 @@ private struct SupplierSheet {
     var lineID: String?
     var lineTitle: String
     var goodsTier: Bool
+    var cooldown: Int = 0
+    var endFee: Double?
+    var itemID: String?
 }
+
+private let weeksPerMonth: Double = 52.0 / 12.0
 
 struct SupplierPopup: View {
     @EnvironmentObject var store: GameStore
@@ -70,12 +80,20 @@ struct SupplierPopup: View {
     var asking: Bool = false
     var onClose: () -> Void
     @State private var rank: SupplierRank = .cheapest
-    @State private var opened: String?
     @State private var message: String?
+    @State private var ordering: SupplierChoice?
+    @State private var units: Double = 1
+    @State private var ending: Bool = false
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID), let sheet = makeSheet(e, co) {
-            content(sheet, co)
+            if ending, let fee = sheet.endFee {
+                endView(sheet, fee: fee)
+            } else if let c = ordering {
+                orderView(c, sheet)
+            } else {
+                content(sheet, co)
+            }
         } else {
             Text("This is gone.").popupText(.subtitle)
                 .centerSheetTitle("Supplier")
@@ -94,13 +112,19 @@ struct SupplierPopup: View {
         guard let p = e.itemPage(companyID: companyID, itemID: id), !p.offers.isEmpty else { return nil }
         let cur: Currency = e.currency(for: co)
         let currentID: String? = p.record?.supplierID
+        let need: Int = e.itemMonthlyNeed(companyID: companyID, itemID: id)
         let choices: [SupplierChoice] = p.offers.map { (o: ItemModels.SupplyLine) -> SupplierChoice in
-            SupplierChoice(id: o.vendorID, name: o.vendorName, badge: "Company", price: itemAmount(o.buyPrice, cur) + " a unit", trust: o.reliability,
-                           delivery: o.leadDays > 0 ? "Delivery: \(o.leadDays) days" : "", cost: o.buyPrice, current: o.vendorID == currentID, blocked: nil,
-                           action: .vendor(o.vendorID))
+            let mine: Bool = o.vendorID == currentID
+            let saved: Int = p.record?.monthlyUnits ?? 0
+            let wanted: Int = mine && saved > 0 ? saved : need
+            return SupplierChoice(id: o.vendorID, name: o.vendorName, badge: "Supplier", price: itemAmount(o.buyPrice, cur) + " a unit", trust: o.reliability,
+                                  delivery: o.leadDays > 0 ? "Delivery: \(o.leadDays) days" : "", cost: o.buyPrice, current: mine, blocked: nil,
+                                  action: .vendor(o.vendorID), unit: o.buyPrice, free: o.capacityFree, need: need, start: max(1, min(wanted, max(1, o.capacityFree))))
         }
+        let weeks: Int = e.itemRepickWeeksLeft(companyID: companyID, itemID: id)
+        let fee: Double? = currentID == nil ? nil : e.itemCancelFee(companyID: companyID, itemID: id)
         return SupplierSheet(title: "Who supplies \(p.item.name.tidyText)?", subtitle: "Pick who you buy it from.", currency: cur, choices: choices, governed: nil,
-                             weekly: 0, lineID: nil, lineTitle: p.item.name, goodsTier: false)
+                             weekly: 0, lineID: nil, lineTitle: p.item.name, goodsTier: false, cooldown: weeks, endFee: fee, itemID: id)
     }
 
     private func lineSheet(_ e: GameEngine, _ co: Company, _ id: String) -> SupplierSheet? {
@@ -118,7 +142,8 @@ struct SupplierPopup: View {
             choices.append(contentsOf: listingChoices(e, row, cur, contract))
         }
         return SupplierSheet(title: "Who supplies \(row.title.lowercased())?", subtitle: "Pick who you buy it from.", currency: cur, choices: choices, governed: row.governed,
-                             weekly: row.weekly ?? 0, lineID: id, lineTitle: row.title, goodsTier: id == "goods")
+                             weekly: row.weekly ?? 0, lineID: id, lineTitle: row.title, goodsTier: id == "goods", cooldown: 0,
+                             endFee: contract == nil ? nil : e.playerSupplyCancelFee(companyID: companyID, lineID: id), itemID: nil)
     }
 
     private func listingChoices(_ e: GameEngine, _ row: SupplyRow, _ cur: Currency, _ contract: SupplyContract?) -> [SupplierChoice] {
@@ -138,9 +163,13 @@ struct SupplierPopup: View {
                 }
             }
             if l.leadDays > 0 { delivery.append("\(l.leadDays) days") }
+            let room: Int = max(0, SupplyGuards.effectiveCapacity(l) - l.committedUnits)
+            let weeklyStart: Int = min(max(l.minOrder, 20), max(l.minOrder, room))
             return SupplierChoice(id: "l:" + l.id, name: l.ownerName, badge: "Player", price: price, trust: l.record.ordersTotal == 0 ? nil : l.record.deliveredShare,
                                   delivery: delivery.isEmpty ? "" : "Delivery: " + delivery.joined(separator: " \u{00B7} "), cost: l.priceFactor * (r?.landedFactor ?? 1),
-                                  current: contract?.listingID == l.id, blocked: a.message.map { Self.short($0) }, action: .listing(l))
+                                  current: contract?.listingID == l.id, blocked: a.message.map { Self.short($0) }, action: .listing(l),
+                                  unit: r?.unitPrice ?? 0, free: Int(Double(room) * weeksPerMonth), start: Int((Double(weeklyStart) * weeksPerMonth).rounded()),
+                                  logoID: l.logoID)
         }
     }
 
@@ -172,9 +201,18 @@ struct SupplierPopup: View {
             Text(sheet.subtitle).popupText(.subtitle)
             if let g = sheet.governed { Text(g.tidyText).popupText(.risk) }
             if sheet.goodsTier { goodsTier(co) }
+            if sheet.cooldown > 0 {
+                Text("You changed this supplier recently. You can pick another one in \(sheet.cooldown) \(sheet.cooldown == 1 ? "week" : "weeks"). The first pick is free.").popupText(.risk)
+            }
             if let now {
                 heading("Your supplier now")
                 row(now, sheet, locked: true)
+                if let fee = sheet.endFee {
+                    Button("End this supply") { Haptics.tap(); ending = true; message = nil }
+                        .buttonStyle(SecondaryButtonStyle(size: .compact))
+                        .accessibilityIdentifier("supply-end")
+                    Text("Ending it costs two weeks of the order, about " + sheet.currency.tidyShort(fee) + ". Either side can end it.").popupText(.caption)
+                }
             } else {
                 Text("No supplier chosen yet.").popupText(.risk)
             }
@@ -186,7 +224,7 @@ struct SupplierPopup: View {
                 }
                 ForEach(Array(usable.enumerated()), id: \.element.id) { (n: Int, c: SupplierChoice) in
                     if n > 0 { Hairline() }
-                    row(c, sheet, locked: sheet.governed != nil)
+                    row(c, sheet, locked: sheet.governed != nil || sheet.cooldown > 0)
                 }
             }
             if !unavailable.isEmpty {
@@ -221,6 +259,7 @@ struct SupplierPopup: View {
     private func row(_ c: SupplierChoice, _ sheet: SupplierSheet, locked: Bool) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                if case .listing = c.action { LogoBadge(logoID: c.logoID, size: 28) }
                 Text(c.name.tidyText).popupText(.body).lineLimit(1)
                 Spacer(minLength: Theme.Space.s)
                 Text(c.badge).popupText(.caption)
@@ -231,6 +270,11 @@ struct SupplierPopup: View {
                 Text(c.price).popupText(.rowValue).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: Theme.Space.s)
                 if c.current {
+                    if case .vendor = c.action {
+                        Button("Change order") { Haptics.tap(); open(c) }
+                            .buttonStyle(SecondaryButtonStyle(size: .compact))
+                            .accessibilityIdentifier("supply-edit-\(c.id)")
+                    }
                     Chip(text: "In use", tint: P.accent)
                 } else if c.blocked == nil && !locked {
                     Button("Use") { Haptics.tap(); choose(c) }
@@ -243,11 +287,8 @@ struct SupplierPopup: View {
                 Spacer(minLength: Theme.Space.s)
                 if !c.delivery.isEmpty { Text(c.delivery).popupText(.caption).lineLimit(1).minimumScaleFactor(0.8) }
             }
+            if let free = c.free, c.blocked == nil, !c.current { Text("Room for \(free) units a month").popupText(.caption) }
             if let why = c.blocked { Text(why).popupText(.caption).lineLimit(2) }
-            if opened == c.id, case .listing(let l) = c.action, let lineID = sheet.lineID {
-                SupplySignBlock(companyID: companyID, lineID: lineID, lineTitle: sheet.lineTitle, listing: l, weeklyMarketSpend: sheet.weekly, currency: sheet.currency,
-                                onSigned: { onClose() })
-            }
         }
         .padding(.vertical, Theme.Space.xs)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -274,16 +315,114 @@ struct SupplierPopup: View {
 
     private func choose(_ c: SupplierChoice) {
         switch c.action {
-        case .vendor(let vendor): chooseVendor(vendor, c.name)
+        case .vendor: open(c)
         case .offer(let o): chooseOffer(o)
-        case .listing: opened = opened == c.id ? nil : c.id; message = nil
+        case .listing: open(c)
         }
     }
 
-    private func chooseVendor(_ vendor: String, _ name: String) {
+    private func open(_ c: SupplierChoice) {
+        message = nil
+        units = Double(max(1, c.start))
+        ordering = c
+    }
+
+    private func orderView(_ c: SupplierChoice, _ sheet: SupplierSheet) -> some View {
+        let free: Int = max(0, c.free ?? Int.max)
+        let upper: Double = Double(max(1, min(free, 1_000_000)))
+        let count: Int = Int(units)
+        let month: Double = c.unit * Double(count)
+        let fee: Double = month / weeksPerMonth * 2
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text(c.need > 0 ? "About \(c.need) units a month is what this item needs now. Change it if you want." : "Say how many units a month you want.").popupText(.subtitle)
+            HStack {
+                Text("Units a month").popupText(.rowLabel)
+                Spacer(minLength: Theme.Space.s)
+                Text("\(count)").popupText(.rowValue)
+                StepperPill(value: $units, range: 1...upper, step: upper > 40 ? 5 : 1)
+            }
+            HStack {
+                Text("Price a unit").popupText(.rowLabel)
+                Spacer(minLength: Theme.Space.s)
+                Text(c.unit > 0 ? sheet.currency.tidyShort(c.unit) : c.price).popupText(.rowValue)
+            }
+            if c.unit > 0 {
+                HStack {
+                    Text("About a month").popupText(.rowLabel)
+                    Spacer(minLength: Theme.Space.s)
+                    Text(sheet.currency.tidyShort(month)).popupText(.rowValue)
+                }
+            }
+            if let f = c.free { Text(f > 0 ? "\(f) units a month still free with them." : "They are fully booked.").popupText(.caption) }
+            Text("Either side can end it later for a fee of two weeks of the order, about " + sheet.currency.tidyShort(fee) + ".").popupText(.caption)
+            if let message { Text(message).popupText(.risk) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .centerSheetTitle("Order from \(c.name.tidyText)")
+        .popupFooter {
+            PopupFooter(cancel: "Back", action: "Confirm", onCancel: { ordering = nil; message = nil }, onAction: { confirm(c, sheet) },
+                        actionEnabled: free > 0, cancelID: "supply-order-back", actionID: "supply-order-confirm")
+        }
+        .accessibilityIdentifier("supply-order")
+    }
+
+    private func confirm(_ c: SupplierChoice, _ sheet: SupplierSheet) {
+        switch c.action {
+        case .vendor(let vendor): chooseVendor(vendor, c.name, units: Int(units))
+        case .listing(let l): signListing(l, sheet)
+        case .offer: break
+        }
+    }
+
+    private func signListing(_ l: SupplyListing, _ sheet: SupplierSheet) {
+        guard let lineID = sheet.lineID else { return }
+        let room: Int = max(l.minOrder, SupplyGuards.effectiveCapacity(l) - l.committedUnits)
+        let weekly: Int = min(room, max(l.minOrder, Int((units / weeksPerMonth).rounded(.up))))
+        let r: SupplySignResult = market.sign(store, companyID: companyID, lineID: lineID, listing: l, units: weekly, weeklyMarketSpend: sheet.weekly)
+        switch r {
+        case .signed:
+            Haptics.success()
+            store.outcome(chosen: "\(l.ownerName) for \(sheet.lineTitle)", result: "\(l.ownerName) now supplies \(sheet.lineTitle.lowercased()), \(Int(units)) units a month. A market supplier is the backup.")
+            onClose()
+        case .refused(let why):
+            Haptics.warning()
+            message = why
+        }
+    }
+
+    private func endView(_ sheet: SupplierSheet, fee: Double) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("Ending the supply costs a fee of two weeks of the order: " + sheet.currency.tidyShort(fee) + ". \(sheet.lineTitle) then goes back to a market supplier.").popupText(.subtitle)
+            if let message { Text(message).popupText(.risk) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .centerSheetTitle("End this supply?")
+        .popupFooter {
+            PopupFooter(cancel: "Keep it", action: "Pay " + sheet.currency.tidyShort(fee) + " and end", tone: .destructive, onCancel: { ending = false; message = nil },
+                        onAction: { endSupply(sheet) }, cancelID: "supply-end-keep", actionID: "supply-end-confirm")
+        }
+        .accessibilityIdentifier("supply-end-sheet")
+    }
+
+    private func endSupply(_ sheet: SupplierSheet) {
+        let id: Int = companyID
+        var why: String?
+        if let item = sheet.itemID {
+            let r: SettingResult? = store.act { $0.cancelItemSupplier(companyID: id, itemID: item) }
+            if case .refused(let w)? = r { why = w }
+        } else if let line = sheet.lineID {
+            why = market.end(store, companyID: id, lineID: line)
+        }
+        if let why { Haptics.warning(); message = why; return }
+        Haptics.success()
+        store.saved("supply ended")
+        onClose()
+    }
+
+    private func chooseVendor(_ vendor: String, _ name: String, units: Int) {
         guard case .item(let item) = subject else { return }
         let id: Int = companyID
-        let r = store.act { $0.setItemSupplier(companyID: id, itemID: item, vendorID: vendor) }
+        let r = store.act { $0.setItemSupplier(companyID: id, itemID: item, vendorID: vendor, unitsPerMonth: units) }
         if case .refused(let why)? = r { Haptics.warning(); message = why; return }
         if r?.didChange == true { Haptics.success(); store.saved("supplied by " + name) }
         if asking { store.tutorialAdvance(from: .pickSupplier) }

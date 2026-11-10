@@ -35,14 +35,50 @@ public enum Suppliers {
                       relationship: r, relationshipWord: relationshipWord(r), discount: discount(s, scope: scope, vendorID: v.id))
     }
 
+    public static func fakesOff(_ s: GameState) -> Bool { (s.rest["fake"] ?? .null)["off"].bool }
+    public static func realSuppliers(_ s: GameState) -> Int { max(0, (s.rest["fake"] ?? .null)["real"].int) }
+
+    public static func fakeSlots(needed: Int, real: Int, off: Bool) -> Int { off ? 0 : max(0, needed - max(0, real)) }
+
     public static func candidates(_ s: GameState, company co: Company, scope: String, data: GameData) -> [Vendor] {
         guard let bd = data.catalog[co.type] else { return [] }
         let n = EquipmentMarket.brandCount(co, state: s)
+        let slots = fakeSlots(needed: n, real: realSuppliers(s), off: fakesOff(s))
         return EquipmentMarket.vendors(for: scope + ":" + co.type, count: n, family: bd.family, seed: s.seed, countryCode: co.countryCode,
-                                       countries: data.countries, nouns: nouns(data)).map { make($0, scope: scope, s) }
+                                       countries: data.countries, nouns: nouns(data)).prefix(slots).map { make($0, scope: scope, s) }
+    }
+
+    public static func setRealSuppliers(_ s: inout GameState, count: Int) {
+        var f = s.rest["fake"] ?? .object([:])
+        let n = Double(max(0, count))
+        guard f["real"].double != n else { return }
+        f["real"] = .number(n)
+        s.rest["fake"] = f
+    }
+
+    @discardableResult
+    public static func removeFakes(_ s: inout GameState) -> Int {
+        var f = s.rest["fake"] ?? .object([:])
+        let already = f["off"].bool
+        f["off"] = .bool(true)
+        s.rest["fake"] = f
+        let n = ItemModels.dropFakeVendors(&s)
+        for i in s.companies.indices {
+            let co = s.companies[i]
+            if !co.value("src")["v"].isNull, co.value("src")["v"].string != "auto" {
+                var src = co.value("src"); src["v"] = .string("auto"); s.companies[i].set("src", src)
+            }
+            if !co.value("fixv").isNull, co.value("fixv").string != "auto" { s.companies[i].set("fixv", JSONValue.string("auto")) }
+        }
+        if !already {
+            s.addMessage(kind: "info", from: "Suppliers", title: "Supplier lists changed",
+                         body: "Computer-run players were removed from the world. Items they supplied need a new supplier.", tone: "bad")
+        }
+        return n
     }
 
     public static func vendor(_ s: GameState, id: String, scope: String = "goods", data: GameData) -> Vendor? {
+        guard !fakesOff(s) else { return nil }
         let p = id.split(separator: "-").map(String.init)
         guard p.count == 3, p[0] == "V", let i = Int(p[2]) else { return nil }
         let pool = EquipmentMarket.vendorPool(seed: s.seed, countryCode: p[1], countries: data.countries, nouns: nouns(data))
@@ -160,7 +196,8 @@ public enum Suppliers {
         guard let v = goodsVendor(s, company: co, data: data) else { return (c.cost, c.quality, nil) }
         let deal = SupplyDeals.dealDiscount(co, scope: "goods", vendorID: v.id, week: s.week)
         let terms = SupplyTerms.goodsTerm(s, co, data: data)?.priceEffect ?? 0
-        return (clamp(c.cost * (1 + v.quality * 0.3) * (1 - v.discount - deal) * (1 + terms), 0.7, 1.4), c.quality + v.quality * 10, v)
+        let disc = ItemModels.blendedDiscount(s, co, base: v.discount) ?? v.discount
+        return (clamp(c.cost * (1 + v.quality * 0.3) * (1 - disc - deal) * (1 + terms), 0.7, 1.4), c.quality + v.quality * 10, v)
     }
 
     public static func repairVendor(_ s: GameState, company co: Company, data: GameData) -> Vendor? {
