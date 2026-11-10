@@ -10,7 +10,6 @@ struct CompanySettings: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var newName = ""
     @State private var closeWeeks = 4
     @State private var giveUpRent = false
     @State private var pauseSubscriptions = false
@@ -20,45 +19,11 @@ struct CompanySettings: View {
         let cur = engine.currency(for: company)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if company.status == .closed { closing(cur) }
-            rename(cur)
             if company.status != .closed { closing(cur) }
             windUp(cur)
             documents(cur)
         }
         .confirmAction($pending)
-    }
-
-    @ViewBuilder private func rename(_ cur: Currency) -> some View {
-        let cost = engine.renameCost(companyID: company.id)
-        let inChain = engine.chainOf(companyID: company.id) != nil
-        CardSection(title: "Name", trailing: { Text(company.name).textStyle(.caption).lineLimit(1) }) {
-            if inChain {
-                Text("This store carries its chain's name. Rebranding the whole chain is done from the chain.").textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-            } else {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    TextField("New name", text: $newName).textStyle(.body).autocorrectionDisabled()
-                        .padding(.horizontal, 10).padding(.vertical, 8).background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05)))
-                    Text("Costs \(cur.tidyDisplay(cost)); about a third of customers lose track of you.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                    Button("Rename…") { confirmRename(cost, cur) }.buttonStyle(QuietButtonStyle()).disabled(newName.trimmingCharacters(in: .whitespaces).count < 2)
-                }
-            }
-        }
-    }
-
-    private func confirmRename(_ cost: Double, _ cur: Currency) {
-        let name = newName.trimmingCharacters(in: .whitespaces)
-        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename", amount: cost, currency: cur, tone: .info, icon: "pencil") {
-            switch store.act({ $0.renameCompany(companyID: company.id, to: name) }) {
-            case .ok?: Haptics.success(); newName = ""; store.show("Now called \(name).", tone: "good")
-            case .tooShort?: Haptics.warning(); store.show("Choose a different name of at least two letters.", tone: "warn")
-            case .nameTaken?: Haptics.warning(); store.show("Another company already has that name.", tone: "warn")
-            case .notEnoughCash?: Haptics.warning(); store.show("The company needs \(cur.tidyDisplay(cost)) in cash.", tone: "warn")
-            case .partOfChain?: Haptics.warning(); store.show("A chain store carries the chain's name.", tone: "warn")
-            case nil: break
-            default: Haptics.warning(); store.show("It cannot be renamed now.", tone: "warn")
-            }
-        }
     }
 
     @ViewBuilder private func closing(_ cur: Currency) -> some View {
@@ -124,21 +89,6 @@ struct CompanySettings: View {
     @ViewBuilder private func windUp(_ cur: Currency) -> some View {
         if company.status.isLive && engine.isBranch(companyID: company.id) {
             branchExit(cur)
-        } else if company.status.isLive {
-            let back = engine.windUpEstimate(companyID: company.id)
-            let debts = CompanyFigures.debts(company, loans: engine.state.loans)
-            CardSection("Close down for good") {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("Assets sell at about 55% of book value; everyone is let go." + " Guaranteed loans become yours.")
-                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-                    FlatRow(label: "Debts and bills paid first", value: cur.tidyShort(debts), tint: debts > 0 ? Theme.loss : Theme.ivory, rule: false)
-                    FlatRow(label: "Left for you (your share)", value: cur.tidyShort(back), tint: back > 0 ? Theme.gain : Theme.ivoryMuted)
-                    if CompanySale.canSell(engine.state, companyID: company.id) {
-                        Text("Selling as a going concern usually fetches more: see You and owners.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    Button("Wind up \(company.name)…") { confirmWindUp(back, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
-                }
-            }
         }
     }
 
@@ -181,19 +131,6 @@ struct CompanySettings: View {
             }
             else { if case .success = store.act({ $0.sellBranch(storeID: id) }) { ok = true } else { ok = false } }
             Haptics.warning(); store.show(ok ? (close ? "\(name) is closed." : "\(name) is sold.") : "\(name) could not leave the chain.", tone: ok ? "n" : "warn")
-        }
-    }
-
-    private func confirmWindUp(_ back: Double, _ cur: Currency) {
-        let name = company.name, staff = company.staff.count
-        pending = PendingAction(title: "Wind up \(name)?", message: "This is final. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back)).", button: "Wind up for good", destructive: true, tone: .danger, icon: "xmark.octagon") {
-            let alone = engine.boardVote(kind: "close", companyID: company.id).pushedThroughAlone
-            if store.act({ $0.windUpCompany(companyID: company.id) }) == true {
-                if alone { store.act { $0.recordPushedThrough(companyID: company.id) } }
-                Haptics.warning(); store.show("\(name) is closed down and its things sold." + (alone ? " The other owners did not want this." : ""), tone: "n")
-            } else {
-                Haptics.warning(); store.show("\(name) could not be wound up.", tone: "warn")
-            }
         }
     }
 

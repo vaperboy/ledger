@@ -7,7 +7,7 @@ import Simulation
 
 enum OpsPart: String, CaseIterable, Hashable {
     case setup = "Operations", premises = "Premises"
-    case equipment = "Equipment", insurance = "Insurance and law firm", licences = "Licences"
+    case supply = "Suppliers", equipment = "Equipment", insurance = "Insurance and law firm", licences = "Licences"
 }
 
 extension Glyph {
@@ -53,6 +53,9 @@ struct CompanyOperations: View {
         let rental: Bool = engine.tradeInfo(companyID: company.id)?.family == "rent"
         return PageGroup("Run the place") {
             upkeepRow
+            RowRule()
+            LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Suppliers", subtitle: "Who supplies what you sell and what the company needs",
+                      identifier: "manage-suppliers") { part = .supply }
             if !licences.isEmpty {
                 let held: Int = licences.filter { $0.form.status == "ok" }.count
                 RowRule()
