@@ -285,4 +285,28 @@ final class ItemModelsTests: XCTestCase {
         XCTAssertEqual(e.setCompanyLogo(companyID: id, logoID: "nothing"), .refused("That logo does not exist."))
         XCTAssertTrue(all.contains { if case .level = $0.logo.source { return true } else { return false } })
     }
+
+    func testALogoIsUsedByOneCompanyAtATimeAndMovesWhenChosenElsewhere() throws {
+        var (e, a) = try engine()
+        guard case .success(let b) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("could not start a second company") }
+        let free = try XCTUnwrap(e.logoChoices().first { $0.logo.source == .free })
+        XCTAssertEqual(e.setCompanyLogo(companyID: a, logoID: free.id), .applied)
+        XCTAssertNil(e.companyUsingLogo(free.id, besides: a))
+        XCTAssertEqual(e.companyUsingLogo(free.id, besides: b)?.id, a)
+        XCTAssertEqual(e.setCompanyLogo(companyID: b, logoID: free.id), .applied)
+        XCTAssertEqual(e.companyLogoID(companyID: b), free.id)
+        XCTAssertEqual(e.companyLogoID(companyID: a), "")
+        XCTAssertEqual(e.clearCompanyLogo(companyID: b), .applied)
+        XCTAssertEqual(e.companyLogoID(companyID: b), "")
+    }
+
+    func testCompanyColoursAndBadgeAreKeptPerCompany() throws {
+        var (e, a) = try engine()
+        XCTAssertEqual(e.companyStyle(companyID: a).theme, "")
+        XCTAssertEqual(e.setCompanyStyle(companyID: a, theme: "gold", badge: "logo.default"), .applied)
+        XCTAssertEqual(e.companyStyle(companyID: a).theme, "gold")
+        XCTAssertEqual(e.companyStyle(companyID: a).badge, "logo.default")
+        XCTAssertEqual(e.setCompanyStyle(companyID: a, theme: "gold"), .unchanged)
+        XCTAssertTrue(e.setCompanyStyle(companyID: 999_999, theme: "gold").isRefused)
+    }
 }

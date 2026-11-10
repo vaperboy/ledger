@@ -42,25 +42,24 @@ struct ProfileView: View {
     private func identity(_ e: GameEngine) -> some View {
         let info: PlayerLevel.Info = e.playerLevel
         let rank: String = e.careerStatus.rank.title
-        let look: [String: String] = season.pass.equipped
-        let accent: Color = LookKit.accent(look) ?? Theme.gold
+        let accent: Color = LookKit.accent(season.pass.equipped) ?? Theme.gold
         return VStack(spacing: Theme.Space.s) {
-            NavigationLink { AvatarPickerView() } label: {
-                ProfilePicture(name: shownName(e), size: 84).overlay(Circle().strokeBorder(accent, lineWidth: 2))
+            ProfileCard()
+            if editingName {
+                nameEditor(e)
+            } else {
+                HStack(spacing: Theme.Space.s) {
+                    NavigationLink { CustomiseView() } label: { Text("Customise").frame(maxWidth: .infinity) }
+                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                        .accessibilityIdentifier("profile-customise")
+                    Button { Haptics.tap(); nameDraft = shownName(e); editingName = true } label: { Text("Rename").frame(maxWidth: .infinity) }
+                        .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                        .accessibilityIdentifier("profile-name")
+                }
             }
-            .buttonStyle(PressableStyle())
-            .accessibilityLabel("Change profile icon")
-            .accessibilityIdentifier("profile-avatar")
-            NavigationLink { AvatarPickerView() } label: {
-                Text("Change icon").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minHeight: 44)
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("profile-icon")
-            if editingName { nameEditor(e) } else { nameLine(e, look: look) }
-            LookTradeChip(look: look, company: LookKit.company(store))
             Button { Haptics.tap(); showLadder = true } label: {
                 VStack(spacing: Theme.Space.xs) {
-                    Text("Level \(info.level) · \(rank)").textStyle(.caption, tint: Theme.inkSoft)
+                    Text("Level \(info.level) \u{00B7} \(rank)").textStyle(.caption, tint: Theme.inkSoft)
                     ProgressLine(fraction: info.progress, tint: accent, height: 3).frame(maxWidth: 160)
                 }
                 .frame(minHeight: 44)
@@ -69,30 +68,8 @@ struct ProfileView: View {
             .buttonStyle(PressableStyle())
             .accessibilityLabel("Level \(info.level), \(rank). Shows every level and what it unlocks.")
             .accessibilityIdentifier("profile-level")
-            NavigationLink { LookView() } label: {
-                Text("Change look").textStyle(.caption, tint: Theme.accent).frame(minHeight: 44)
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("profile-look")
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Space.m)
-        .background(LookBackdrop(look: look))
-    }
-
-    private func nameLine(_ e: GameEngine, look: [String: String]) -> some View {
-        Button { Haptics.tap(); nameDraft = shownName(e); editingName = true } label: {
-            HStack(spacing: Theme.Space.xs) {
-                LookNamePlate(look: look, name: shownName(e))
-                if e.inHallOfFame { HallOfFameMark() }
-                Image(systemName: "pencil").font(.caption.weight(.semibold)).foregroundStyle(Theme.inkFaint)
-            }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityLabel("Name, \(shownName(e)). Double tap to change.")
-        .accessibilityIdentifier("profile-name")
     }
 
     private func nameEditor(_ e: GameEngine) -> some View {
@@ -177,8 +154,8 @@ struct ProfileView: View {
     }
 
     private var collectionRow: some View {
-        NavigationLink { CollectionView() } label: {
-            LedgerRow(leading: .glyph(Glyph.luxury), title: "Collection", subtitle: "Artifacts and auctions", chevron: true)
+        NavigationLink { CabinetView() } label: {
+            LedgerRow(leading: .glyph(Glyph.luxury), title: "Artifacts and cards", subtitle: "Your pieces, collections and sales", chevron: true)
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("profile-collection")
@@ -290,5 +267,69 @@ struct ProfileView: View {
     private func loadFriends() async {
         guard online.isSignedIn else { friends = []; return }
         friends = (try? await online.service.friends().friends) ?? []
+    }
+}
+
+struct ProfileCard: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(Entitlements.self) private var ent
+    @ObservedObject private var local = ProfileLocal.shared
+    @ObservedObject private var season = SeasonModel.shared
+    @AppStorage(CosmeticKeys.badge) private var badgeID: String = Cosmetics.defaultBadgeID
+    @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
+    private let session = StoreSession.shared
+    var compact = false
+
+    var body: some View {
+        if let e = store.engine {
+            let look: [String: String] = season.pass.equipped
+            let name: String = local.name.isEmpty ? e.state.player.name : local.name
+            let info: PlayerLevel.Info = e.playerLevel
+            let accent: Color = LookKit.accent(look) ?? Theme.gold
+            let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: e.careerCosmetics, pro: ent.isPro)
+            let tone: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
+            let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+            VStack(spacing: Theme.Space.s) {
+                ProfilePicture(name: name, size: compact ? 64 : 84).overlay(Circle().strokeBorder(accent, lineWidth: 2))
+                HStack(spacing: Theme.Space.xs) {
+                    LookNamePlate(look: look, name: name)
+                    if e.inHallOfFame { HallOfFameMark() }
+                }
+                LookTradeChip(look: look, company: LookKit.company(store))
+                HStack(spacing: Theme.Space.xs) {
+                    CosmeticBadgeView(badge: badge, tint: tone, size: 18)
+                    Text("Level \(info.level) \u{00B7} \(e.careerStatus.rank.title)").textStyle(.caption, tint: Theme.inkSoft)
+                }
+                showcaseRow
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, compact ? Theme.Space.m : Theme.Space.l).padding(.horizontal, Theme.Space.m)
+            .background(ZStack { shape.fill(Theme.inset); LookBackdrop(look: look) })
+            .clipShape(shape)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("profile-card")
+        }
+    }
+
+    @ViewBuilder private var showcaseRow: some View {
+        let cabinet: Cabinet = session.state.cabinet
+        let pieces: [ArtifactDef] = local.showcase.compactMap { (id: String) -> ArtifactDef? in
+            cabinet.items.first(where: { (i: ArtifactItem) -> Bool in i.id == id }).flatMap { (i: ArtifactItem) -> ArtifactDef? in ArtifactCatalog.def(i.defID) }
+        }
+        if compact || !pieces.isEmpty {
+            HStack(spacing: Theme.Space.s) {
+                ForEach(0..<ProfileLocal.showcaseSlots, id: \.self) { (n: Int) in
+                    if n < pieces.count {
+                        ItemArt(artifact: pieces[n], size: 40)
+                    } else if compact {
+                        RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+                            .strokeBorder(Theme.inkFaint.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                            .frame(width: 40, height: 40)
+                    }
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Showcase")
+        }
     }
 }

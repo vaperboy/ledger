@@ -146,7 +146,7 @@ struct SeasonView: View {
         switch r.kind {
         case .gold: return "\(r.title) added to your gold wallet in the Store."
         case .box: return "\(r.title) waiting in the Store, free to open."
-        case .profileCard, .companyCard: return "\(r.title) added to your cabinet. Wear it in Your look."
+        case .profileCard, .companyCard: return "\(r.title) added to your cabinet. Wear it in Customise."
         default: return "\(r.title) added to your collection below."
         }
     }

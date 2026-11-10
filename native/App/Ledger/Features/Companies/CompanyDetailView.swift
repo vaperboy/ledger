@@ -140,7 +140,7 @@ struct CompanyDetailView: View {
         case .team:
             CompanyTeam(engine: e, company: co)
         case .manage:
-            CompanyCardLink(company: co)
+            CompanyLookRow(company: co)
             if a.contains(.operations) {
                 CompanyOperations(engine: e, company: co, part: $opsPart)
             } else {

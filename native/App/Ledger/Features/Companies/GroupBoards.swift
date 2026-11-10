@@ -45,7 +45,7 @@ struct BoardDecisions: View {
     var engine: GameEngine
     var keys: [String]
     @State private var pending: PendingAction?
-    @State private var meeting: BoardMeetingRef?
+    @State private var meetingOpen = false
 
     private struct KeyedJob: Identifiable {
         var key: String
@@ -66,7 +66,7 @@ struct BoardDecisions: View {
                 Text("To decide").textStyle(.label, tint: Theme.inkFaint)
                 Text(n == 0 ? "Nothing waits" : "\(n) \(n == 1 ? "point" : "points")").textStyle(.display, tint: n == 0 ? Theme.inkSoft : nil)
                     .lineLimit(1).minimumScaleFactor(0.6)
-                Text(n == 0 ? "The board raises a point when the numbers or the people running it call for one." : "Approve or decline each point.")
+                Text(n == 0 ? "The board raises a point when the numbers or the people running it call for one." : "Call a board meeting to put them to a vote.")
                     .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
@@ -76,41 +76,21 @@ struct BoardDecisions: View {
             if !jobs.isEmpty { followUps(jobs) }
         }
         .confirmAction($pending)
-        .centerSheet(item: $meeting, category: .medium, tone: .info) { (m: BoardMeetingRef) in
-            BoardMeetingSheet(key: m.key, pointID: m.pointID, title: m.title).environmentObject(store)
-        }
+        .navigationDestination(isPresented: $meetingOpen) { BoardMeetingScreen(keys: keys) }
     }
 
     @ViewBuilder private func callMeeting() -> some View {
-        let points: [ManagerModel.BoardDecision] = keys.flatMap { (k: String) -> [ManagerModel.BoardDecision] in engine.boardPutForward(key: k) }
+        let points: [ManagerModel.BoardDecision] = engine.boardMeetingAgenda(keys: keys)
         if !points.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Call a board meeting").textStyle(.label, tint: Theme.inkFaint)
-                Text("Put a point to the owners. Shareholders join the meeting; a holder who stays away cannot vote, and a large one can hold the point up.")
+                Text("\(points.count) \(points.count == 1 ? "question" : "questions") go to the owners one at a time. Shares decide, and the winner is carried out at once. A large holder who stays away can hold a point up.")
                     .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-                VStack(spacing: 0) {
-                    ForEach(Array(points.enumerated()), id: \.element.id) { (n: Int, d: ManagerModel.BoardDecision) in
-                        if n > 0 { Hairline() }
-                        LedgerRow(leading: .glyph(Glyph.achievements), title: d.title.tidyMoney, lineLimit: 1, identifier: "board-forward-\(d.id)",
-                                  action: { askMeeting(d, engine.state.company(d.companyID)) })
-                    }
-                }
+                Button("Call the meeting") { Haptics.tap(); meetingOpen = true }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("board-call-meeting")
             }
         }
-    }
-
-    private func needsMeeting(_ d: ManagerModel.BoardDecision) -> Bool {
-        engine.boardMeetingAttendees(key: d.key, id: d.id).contains { (a: ManagerModel.Attendee) -> Bool in !a.isYou }
-    }
-
-    private func askMeeting(_ d: ManagerModel.BoardDecision, _ co: Company?) {
-        let ref = BoardMeetingRef(key: d.key, pointID: d.id, title: d.title)
-        let open: () -> Void = { DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { meeting = ref } }
-        let irreversible: Bool = ["sell", "close", "shut", "ceo"].contains(d.kind)
-        if !irreversible && d.cost <= 0 { meeting = ref; return }
-        let cur: Currency? = co.map { (c: Company) -> Currency in engine.currency(for: c) }
-        pending = PendingAction(title: "Call a board meeting?", message: d.title.tidyMoney + ". " + d.effect.tidyMoney, button: "Call the meeting", destructive: irreversible,
-                                amount: d.cost > 0 ? d.cost : nil, currency: cur, risk: d.risk, run: open)
     }
 
     private func keyOf(_ m: ManagerModel.BoardMeeting) -> String {
@@ -131,20 +111,9 @@ struct BoardDecisions: View {
                     if !d.reason.isEmpty { Text(d.reason.tidyMoney).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    detailLine("If you approve", d.effect.tidyMoney)
+                    detailLine("If it passes", d.effect.tidyMoney)
                     detailLine("Cost now", cost)
                     detailLine("Risk", d.risk)
-                }
-                HStack(spacing: Theme.Space.m) {
-                    if needsMeeting(d) {
-                        Button("Call a board meeting") { askMeeting(d, co) }.buttonStyle(QuietButtonStyle())
-                            .accessibilityIdentifier("board-meeting-\(d.id)")
-                    } else {
-                        Button("Approve") { askApprove(d, co) }.buttonStyle(QuietButtonStyle())
-                            .accessibilityIdentifier("board-approve-\(d.id)")
-                    }
-                    Button("Decline") { decide(d, approve: false) }.buttonStyle(GreyOutlineButtonStyle())
-                        .accessibilityIdentifier("board-decline-\(d.id)")
                 }
             }
         }
@@ -156,28 +125,6 @@ struct BoardDecisions: View {
                 Text(label).textStyle(.caption, tint: Theme.inkFaint, weight: .medium).frame(width: 92, alignment: .leading)
                 Text(value).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
-        }
-    }
-
-    private func askApprove(_ d: ManagerModel.BoardDecision, _ co: Company?) {
-        let irreversible: Bool = ["sell", "close", "shut", "ceo"].contains(d.kind)
-        if !irreversible && d.cost <= 0 { decide(d, approve: true); return }
-        let cur: Currency? = co.map { (c: Company) -> Currency in engine.currency(for: c) }
-        pending = PendingAction(title: "Approve: " + d.title.tidyMoney + "?", message: d.effect.tidyMoney, button: "Approve", destructive: irreversible,
-                                amount: d.cost > 0 ? d.cost : nil, currency: cur, risk: d.risk) { decide(d, approve: true) }
-    }
-
-    private func decide(_ d: ManagerModel.BoardDecision, approve: Bool) {
-        let id: String = d.id
-        let label: String = (approve ? "Approved: " : "Declined: ") + d.title.tidyMoney
-        let r: ManagerModel.BoardDecisionResult? = store.act { (e: inout GameEngine) -> ManagerModel.BoardDecisionResult in e.decideBoardItem(id: id, approve: approve) }
-        switch r {
-        case .done(let what)?: Haptics.success(); store.outcome(chosen: label, result: what)
-        case .declined?: store.outcome(chosen: label, result: "Nothing changes. The board will not raise it again for a while.")
-        case .voteFailed(let pct)?: Haptics.warning(); store.outcome(chosen: label, result: "The co-owners voted it down: \(pct)% of the shares were for it. Nothing changed.")
-        case .refused(let why)?: Haptics.warning(); store.show(why, tone: "warn")
-        case .gone?: Haptics.warning(); store.show("That point is no longer on the list.", tone: "warn")
-        case nil: break
         }
     }
 
