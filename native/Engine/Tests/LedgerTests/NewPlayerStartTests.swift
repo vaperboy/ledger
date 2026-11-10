@@ -18,8 +18,8 @@ final class NewPlayerStartTests: XCTestCase {
             XCTAssertEqual(co.name, "Test Café")
             XCTAssertTrue(e.state.loans.isEmpty)
             XCTAssertEqual(e.state.week, 0)
-            XCTAssertEqual(e.state.cash, 0, accuracy: 0.5, code)
-            XCTAssertGreaterThan(co.cash, 0, code)
+            XCTAssertEqual(co.cash, e.state.cash, accuracy: 0.5, code)
+            XCTAssertGreaterThan(e.state.cash, 0, code)
             XCTAssertTrue(e.openingChecklist(companyID: co.id).allSatisfy { $0.isDone }, code)
             XCTAssertEqual(e.lifeStory, .fresh)
         }
