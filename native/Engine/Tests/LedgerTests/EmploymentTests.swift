@@ -463,6 +463,7 @@ final class EmploymentTests: XCTestCase {
         var (e, id) = try shop()
         let pid = candidate(&e, id)
         XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: e.marketWage(role: "cook", companyID: id) * 2), .ok)
+        e.update { s, _, _ in if let i = s.companyIndex(id) { var f = s.companies[i].value("flags"); f["noquit"] = .bool(true); s.companies[i].set("flags", f) } }
         XCTAssertFalse(try XCTUnwrap(e.performanceFeedback(companyID: id, personID: pid)).enoughToJudge, "too early at first")
         for _ in 0..<8 { week(&e) }
         let m = try XCTUnwrap(member(e, id, pid))

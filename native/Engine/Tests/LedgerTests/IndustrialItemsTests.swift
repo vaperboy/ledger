@@ -34,6 +34,13 @@ final class IndustrialItemsTests: XCTestCase {
         return try XCTUnwrap(SalesItems.items(co, bd).first { $0.name == name }, name)
     }
 
+    func traded(_ e: inout GameEngine, _ id: Int, units: Double) {
+        e.update { s, _, _ in
+            guard let i = s.companyIndex(id) else { return }
+            s.companies[i].set("lastW", .object(["units": .number(units), "rev": .number(0), "cogs": .number(0), "D": .number(units), "cap": .number(units * 2), "util": .number(0.5)]))
+        }
+    }
+
     func facts(_ e: GameEngine, _ id: Int, _ name: String) throws -> IndustrialItems.Facts {
         let it = try item(e, id, name)
         return try XCTUnwrap(IndustrialItems.facts(e.state, companyID: id, itemID: it.id, data: e.data), name)
@@ -241,13 +248,13 @@ final class IndustrialItemsTests: XCTestCase {
 
     func testMadeForStockRunsInBatchesWithALeadTime() throws {
         var (e, id) = try start("furniture", weeks: 6)
+        traded(&e, id, units: 400)
         e.update { s, d, _ in IndustrialItems.install(&s, companyID: id, data: d) }
         let chair = try item(e, id, "Dining chair")
         var sawOrder = false, sawArrival = false
         var last: Int?
         for _ in 0..<20 {
-            e.w4week()
-            e.update { s, d, _ in if let i = s.companyIndex(id) { IndustrialItems.weekly(&s, i, data: d) } }
+            e.update { s, d, _ in if let i = s.companyIndex(id) { s.week += 1; IndustrialItems.weekly(&s, i, data: d) } }
             let r = try XCTUnwrap(ItemModels.record(try XCTUnwrap(e.state.company(id)), itemID: chair.id))
             XCTAssertGreaterThanOrEqual(r.stock, 0); XCTAssertGreaterThanOrEqual(r.onOrder, 0)
             XCTAssertEqual(r.onOrder % 8, 0, "whole batches of 8")

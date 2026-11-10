@@ -14,6 +14,7 @@ final class PayPlansTests: XCTestCase {
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
         e.update { s, _, _ in if let i = s.companyIndex(id), s.companies[i].value("prem")["kind"].string == "office" || s.companies[i].value("prem")["kind"].isNull { var p = s.companies[i].value("prem"); if p.isNull { p = .object([:]) }; p["m2"] = .number(900); s.companies[i].set("prem", p) } }
+        e.update { s, _, _ in if let i = s.companyIndex(id) { var f = s.companies[i].value("flags"); f["noquit"] = .bool(true); s.companies[i].set("flags", f) } }
         return (e, id)
     }
 
@@ -66,7 +67,7 @@ final class PayPlansTests: XCTestCase {
         let pid = candidate(&e, id, role: "cashier")
         XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: e.state.people[pid]!.askingMonthlyWage * 1.5, terms: Hiring.Terms(payPlan: "com", commissionRate: 0.08)), .ok)
         for _ in 0..<28 { e.nextDay() }
-        let m = e.state.company(id)!.staff.first { $0.id == pid }!
+        let m = try XCTUnwrap(e.state.company(id)?.staff.first { $0.id == pid })
         XCTAssertEqual(m.commissionMode, "com")
         XCTAssertGreaterThan(m.num("lastComm"), 0, "commission accrues on what they sold")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
