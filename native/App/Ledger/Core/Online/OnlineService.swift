@@ -94,7 +94,7 @@ struct ProfileUpdate: Codable, Sendable {
 
 struct OnlineAccount: Codable, Hashable, Sendable {
     var playerID: String
-    var provider: SignInProvider
+    var provider: SignInProvider?
     var createdAt: Date
 }
 
@@ -128,6 +128,7 @@ enum OnlineError: Error, Equatable, LocalizedError, Sendable {
     case notSignedIn, notFound, blocked, alreadyFriends, requestPending, cannotTargetYourself, nameRejected(String), offline
     case adultRequired
     case notAdmin
+    case cancelled
     case rejected(String)
     var errorDescription: String? {
         switch self {
@@ -141,6 +142,7 @@ enum OnlineError: Error, Equatable, LocalizedError, Sendable {
         case .offline: return "Could not reach the server."
         case .adultRequired: return "A profile needs the 18+ confirmation."
         case .notAdmin: return "This account is not an administrator."
+        case .cancelled: return nil
         case .rejected(let why): return why
         }
     }
@@ -222,7 +224,9 @@ protocol OnlineWorldService: Sendable {
 }
 
 protocol OnlineService: AdminService, OnlineWorldService, Sendable {
+    var createsAccountsItself: Bool { get }
     func currentAccount() async -> OnlineAccount?
+    func startSession(createIfMissing: Bool) async throws -> OnlineAccount
     func signIn(with provider: SignInProvider) async throws -> OnlineAccount
     func accountStatus() async throws -> AccountStatus
     func createProfile(adultConfirmed: Bool) async throws -> PlayerProfile
@@ -247,4 +251,13 @@ protocol OnlineService: AdminService, OnlineWorldService, Sendable {
     func unblockPlayer(_ playerID: String) async throws
     func blockedPlayers() async throws -> [PlayerProfile]
     func report(_ playerID: String, reason: ReportReason, note: String) async throws
+}
+
+extension OnlineService {
+    var createsAccountsItself: Bool { false }
+
+    func startSession(createIfMissing: Bool) async throws -> OnlineAccount {
+        guard let account = await currentAccount() else { throw OnlineError.notSignedIn }
+        return account
+    }
 }

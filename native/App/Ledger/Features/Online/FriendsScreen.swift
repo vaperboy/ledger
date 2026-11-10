@@ -31,6 +31,7 @@ struct FriendsScreen: View {
     }
 
     @ViewBuilder private var signedIn: some View {
+        OfflineNote()
         searchGroup
         if let o = overview {
             if !o.incoming.isEmpty { incomingGroup(o.incoming) }

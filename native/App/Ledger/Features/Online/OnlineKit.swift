@@ -95,6 +95,22 @@ struct OnlineLine: View {
     }
 }
 
+struct OfflineNote: View {
+    @Environment(OnlineSession.self) private var online
+
+    var body: some View {
+        if online.offline && online.isSignedIn {
+            HStack(spacing: Theme.Space.xs) {
+                LedgerGlyph(glyph: Glyph.cloud, size: Theme.Icon.small, tint: Theme.inkFaint)
+                Text("Offline. It reconnects by itself.").textStyle(.caption)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, Theme.Space.m)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("online-offline")
+        }
+    }
+}
+
 struct OnlineGroup<Content: View>: View {
     var title: String
     var footer: String = ""
@@ -167,7 +183,7 @@ struct InviteAcceptCard: View {
         if let code = online.pendingInvite {
             OnlineGroup(title: "Friend invite", footer: message) {
                 if !online.isSignedIn {
-                    OnlineLine(glyph: Glyph.person, title: "Link an account to accept", note: "Invite code " + code)
+                    OnlineLine(glyph: Glyph.person, title: "Go online to accept", note: "Invite code " + code)
                 } else if let p = found {
                     PlayerRow(player: p) { EmptyView() }
                     Hairline()

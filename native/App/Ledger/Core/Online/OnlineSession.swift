@@ -7,10 +7,17 @@ import Simulation
 import Businesses
 
 enum OnlineBackend {
-    static func make() -> any OnlineService {
-        guard OnlineConfig.useServer, let url = OnlineConfig.projectURL else { return MockOnlineService() }
-        return SupabaseOnlineService(baseURL: url, apiKey: OnlineConfig.publishableKey, tokens: UnavailableIdentityTokenProvider())
+    private static var standInOnly: Bool {
+        ProcessInfo.processInfo.arguments.contains("-showcase") || NSClassFromString("XCTestCase") != nil
     }
+
+    static func make() -> any OnlineService {
+        guard OnlineConfig.useServer, !standInOnly, let url = OnlineConfig.projectURL else { return standIn }
+        let tokens = SupabaseIdentityProvider(baseURL: url, apiKey: OnlineConfig.publishableKey)
+        return SupabaseOnlineService(baseURL: url, apiKey: OnlineConfig.publishableKey, tokens: tokens)
+    }
+
+    static let standIn: MockOnlineService = MockOnlineService()
 
     static let shared: any OnlineService = make()
 }
@@ -87,9 +94,12 @@ enum AccountantHireIntent {
 
 @MainActor @Observable
 final class OnlineSession {
-    enum State: Equatable { case guest, signingIn, signedIn(SignInProvider) }
+    enum State: Equatable { case guest, signedIn(SignInProvider?) }
 
     private(set) var state: State = .guest
+    private(set) var offline = false
+    private(set) var isLinking = false
+    private(set) var pausedByPlayer = false
     private(set) var profile: PlayerProfile?
     private(set) var status: AccountStatus?
     private(set) var isAdmin = false
@@ -104,6 +114,7 @@ final class OnlineSession {
     @ObservationIgnored let service: any OnlineService
     @ObservationIgnored private var deviceRegistered = false
     @ObservationIgnored private var sharedWeek: Int?
+    @ObservationIgnored private var reconnectTask: Task<Void, Never>?
     private static let boards: any LeaderboardService = LeaderboardBackend.make()
     private static let adminKey = "ledger.online.adminAccounts"
     private static let inviteKey = "ledger.online.pendingInvite"
@@ -115,15 +126,52 @@ final class OnlineSession {
 
     var isSignedIn: Bool { if case .signedIn = state { return true }; return false }
     var provider: SignInProvider? { if case .signedIn(let p) = state { return p }; return nil }
+    var isLinked: Bool { provider != nil }
+    var linkProviders: [SignInProvider] { OnlineConfig.linkProviders }
+    var canLink: Bool { !isLinking && (isSignedIn ? !isLinked : !service.createsAccountsItself) }
     var awaitingAdultConfirmation: Bool { isSignedIn && status?.adultConfirmed == false }
     var linkRewardGold: Int { status?.linkRewardGold ?? 0 }
 
     func start() async {
-        guard let account = await service.currentAccount() else { return }
-        adopt(account)
+        guard service.createsAccountsItself else { await connect(); return }
+        scheduleReconnect(after: 0)
+    }
+
+    private func connect() async {
+        guard !isSignedIn, !pausedByPlayer, Terms.accepted || !service.createsAccountsItself else { return }
+        do {
+            let account = try await service.startSession(createIfMissing: true)
+            offline = false
+            adopt(account)
+            await finishSignIn()
+        } catch OnlineError.offline {
+            offline = true
+        } catch {}
+    }
+
+    private func finishSignIn() async {
         await refreshStatus()
-        if status?.adultConfirmed == true { profile = try? await service.myProfile() }
-        else if status?.adultConfirmed == false { await confirmAdult() }
+        if status?.adultConfirmed == true {
+            profile = try? await service.myProfile()
+            await collectLinkReward()
+        } else if status?.adultConfirmed == false, !(await confirmAdult()) {
+            problem = nil
+        }
+    }
+
+    private func scheduleReconnect(after delay: UInt64 = 3) {
+        guard reconnectTask == nil, service.createsAccountsItself, !isSignedIn else { return }
+        reconnectTask = Task { [weak self] in
+            var wait: UInt64 = delay
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: wait * 1_000_000_000)
+                guard let self, !self.isSignedIn, !self.pausedByPlayer else { break }
+                await self.connect()
+                if self.isSignedIn { break }
+                wait = self.offline ? min(max(wait, 3) * 2, 120) : 3
+            }
+            self?.reconnectTask = nil
+        }
     }
 
     private func adopt(_ account: OnlineAccount) {
@@ -132,8 +180,18 @@ final class OnlineSession {
         isAdmin = Self.rememberedAdmins().contains(account.playerID)
     }
 
+    func resume() {
+        pausedByPlayer = false
+        scheduleReconnect(after: 0)
+    }
+
     func refreshStatus() async {
-        guard isSignedIn, let s = try? await service.accountStatus() else { return }
+        guard isSignedIn else { return }
+        let s: AccountStatus
+        do { s = try await service.accountStatus() } catch {
+            if error as? OnlineError == .offline { offline = true }
+            return
+        }
         status = s
         setAdmin(s.isAdmin)
         await WorldRulesSync.refresh()
@@ -153,21 +211,17 @@ final class OnlineSession {
     func signIn(with provider: SignInProvider) async -> Bool {
         problem = nil
         notice = nil
-        let before: State = state
-        state = .signingIn
+        isLinking = true
+        defer { isLinking = false }
         do {
             let account = try await service.signIn(with: provider)
             adopt(account)
-            await refreshStatus()
-            if status?.adultConfirmed == true {
-                profile = try? await service.myProfile()
-                await collectLinkReward()
-            } else if status?.adultConfirmed == false {
-                await confirmAdult()
-            }
+            offline = false
+            await finishSignIn()
             return true
+        } catch OnlineError.cancelled {
+            return false
         } catch {
-            state = before
             problem = (error as? LocalizedError)?.errorDescription ?? "Could not sign in. Try again."
             return false
         }
@@ -188,7 +242,7 @@ final class OnlineSession {
     }
 
     private func collectLinkReward() async {
-        guard let s = status, !s.linkRewardClaimed else { return }
+        guard isLinked, let s = status, !s.linkRewardClaimed else { return }
         guard let r = try? await service.claimLinkReward() else { return }
         if r.granted { linkReward = r }
         await refreshStatus()
@@ -199,6 +253,7 @@ final class OnlineSession {
 
     func signOut() async {
         await service.signOut()
+        pausedByPlayer = service.createsAccountsItself
         clearAccount()
     }
 
@@ -231,6 +286,7 @@ final class OnlineSession {
         problem = nil
         do {
             try await service.deleteAccount()
+            pausedByPlayer = service.createsAccountsItself
             clearAccount()
         } catch {
             problem = (error as? LocalizedError)?.errorDescription ?? "Could not delete the account. Try again."
@@ -306,9 +362,21 @@ final class OnlineSession {
     }
 
     func syncWorld(store: GameStore) async {
-        guard isSignedIn, status?.adultConfirmed == true else { return }
+        guard isSignedIn else { return }
+        if status?.adultConfirmed != true { await finishSignIn() }
+        guard status?.adultConfirmed == true else { return }
         if !deviceRegistered { deviceRegistered = (try? await service.registerDevice(DeviceIdentity.current)) != nil }
-        if let p = try? await service.heartbeat() { pulse = p }
+        do {
+            pulse = try await service.heartbeat()
+            offline = false
+        } catch OnlineError.offline {
+            offline = true
+            return
+        } catch OnlineError.notSignedIn {
+            clearAccount()
+            scheduleReconnect()
+            return
+        } catch {}
         await bookSettlements(store: store)
         await reconcileHire(store: store)
         if let e = store.engine, sharedWeek != e.state.week {
