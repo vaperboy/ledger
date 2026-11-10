@@ -184,7 +184,7 @@ struct NewCompanyDetailedSetupView: View {
             let kind: String = store.engine?.data.catalog[plan.tradeID]?.premisesKind ?? "office"
             let places: String = Workplaces.places(kind: kind, squareMetres: o.squareMetres).map { (n: Int) -> String in " · \(n) places" } ?? ""
             let sub: String = "\(Int(o.squareMetres)) m²\(places) · \(store.money(o.monthlyRent)) a month · \(o.landlord)"
-            ChoiceCard(title: o.name, subtitle: sub, trailing: store.money(up) + " up front", selected: o.index == chosen, thumb: ThumbSpec(kind: .premisesPhoto, key: ArtLibrary.premisesPicture(kind: kind, squareMetres: o.squareMetres, variant: o.index, seed: plan.tradeID), glyph: Glyph.home, shape: .wide)) {
+            ChoiceCard(title: o.name, subtitle: sub, trailing: store.money(up) + " up front", selected: o.index == chosen, thumb: ThumbSpec(kind: .premisesPhoto, key: ArtLibrary.premisesKey(kind: store.engine?.data.catalog[plan.tradeID]?.premisesKind ?? "office", squareMetres: o.squareMetres, variant: o.index), glyph: Glyph.home, shape: .wide)) {
                 placeIndex = o.index
                 if !o.canBuy { way = .rent }
             }

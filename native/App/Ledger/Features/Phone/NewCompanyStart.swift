@@ -260,7 +260,7 @@ struct PremisesPicker: View {
 
     private func premisesThumb(_ o: NewCompanyPlan.PremisesOption) -> ThumbSpec {
         let kind: String = store.engine?.data.catalog[plan.tradeID]?.premisesKind ?? "office"
-        return ThumbSpec(kind: .premisesPhoto, key: ArtLibrary.premisesPicture(kind: kind, squareMetres: o.squareMetres, variant: o.index, seed: plan.tradeID), glyph: Glyph.home, shape: .wide)
+        return ThumbSpec(kind: .premisesPhoto, key: ArtLibrary.premisesKey(kind: kind, squareMetres: o.squareMetres, variant: o.index), glyph: Glyph.home, shape: .wide)
     }
 
     private func modeNote(_ o: NewCompanyPlan.PremisesOption) -> String {
