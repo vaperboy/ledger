@@ -84,7 +84,6 @@ public extension GameEngine {
         applySetting(probe: { .object($0.rest) }) { s, _, _ in Startups.declineRound(&s, startupID: startupID, index: index) }
     }
     @discardableResult
-    @discardableResult
     mutating func shutDownStartup(startupID: Int) -> Bool { var r = false; update { s, _, _ in r = Startups.shutDown(&s, startupID: startupID) }; return r }
     @discardableResult
     mutating func changeBuilders(startupID: Int, by delta: Int) -> SettingResult {
