@@ -58,7 +58,34 @@ public extension GameEngine {
             return c.unlocked ? nil : "Not unlocked yet: " + c.how.lowercased() + "."
         }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
             guard let i = s.companyIndex(companyID) else { return }
+            for j in s.companies.indices where j != i && s.companies[j].value("logo").string == logoID { s.companies[j].set("logo", "") }
             s.companies[i].set("logo", logoID)
+        }
+    }
+
+    func companyUsingLogo(_ logoID: String, besides companyID: Int) -> Company? {
+        state.companies.first { (c: Company) -> Bool in c.id != companyID && c.status.isLive && c.value("logo").string == logoID }
+    }
+
+    @discardableResult
+    mutating func clearCompanyLogo(companyID: Int) -> SettingResult {
+        applySetting(refuse: { (s: GameState) -> String? in s.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
+            guard let i = s.companyIndex(companyID) else { return }
+            s.companies[i].set("logo", "")
+        }
+    }
+
+    func companyStyle(companyID: Int) -> (theme: String, badge: String) {
+        let c: Company? = state.company(companyID)
+        return (c?.value("hue").string ?? "", c?.value("mark").string ?? "")
+    }
+
+    @discardableResult
+    mutating func setCompanyStyle(companyID: Int, theme: String? = nil, badge: String? = nil) -> SettingResult {
+        applySetting(refuse: { (s: GameState) -> String? in s.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
+            guard let i = s.companyIndex(companyID) else { return }
+            if let theme { s.companies[i].set("hue", theme) }
+            if let badge { s.companies[i].set("mark", badge) }
         }
     }
 
