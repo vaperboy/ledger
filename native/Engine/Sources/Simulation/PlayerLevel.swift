@@ -1,6 +1,21 @@
 import Foundation
 import GameCore
 
+public struct ProfileProgress: Codable, Equatable, Sendable {
+    public var xp: Int
+    public var seen: [String]?
+
+    public init(xp: Int = 0, seen: [String]? = nil) {
+        self.xp = xp
+        self.seen = seen
+    }
+
+    public func merged(with other: ProfileProgress) -> ProfileProgress {
+        let both: [String]? = seen == nil && other.seen == nil ? nil : Array(Set((seen ?? []) + (other.seen ?? []))).sorted()
+        return ProfileProgress(xp: max(xp, other.xp), seen: both)
+    }
+}
+
 public enum PlayerLevel {
     public static let ladderXP = 60
     public static let dailyXP = 25
@@ -42,6 +57,26 @@ public enum PlayerLevel {
             Celebrations.add(&s, kind: "milestone", title: "Level \(after)", detail: "You gained a level", reward: "", art: "milestone.rank", tier: 1)
         }
         return points
+    }
+
+    static func seenIDs(_ s: GameState) -> [String]? {
+        guard let v = s.rest["lvl"], !v["seen"].isNull else { return nil }
+        return v["seen"].array.map { $0.string }
+    }
+
+    public static func profile(of s: GameState) -> ProfileProgress { ProfileProgress(xp: info(s).xp, seen: seenIDs(s)) }
+
+    @discardableResult
+    public static func adopt(_ s: inout GameState, profile p: ProfileProgress) -> ProfileProgress {
+        let merged: ProfileProgress = profile(of: s).merged(with: p)
+        var v = s.rest["lvl"] ?? .object([:])
+        v["xp"] = .number(Double(merged.xp))
+        s.rest["lvl"] = v
+        let seen: [String] = merged.seen ?? LevelGates.reached(level: info(s).level)
+        v["seen"] = .array(seen.map { JSONValue.string($0) })
+        s.rest["lvl"] = v
+        UnlockNotices.seedGates(&s)
+        return ProfileProgress(xp: merged.xp, seen: seen)
     }
 
     public static func sweep(_ s: inout GameState) {

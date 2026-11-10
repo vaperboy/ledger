@@ -34,7 +34,6 @@ struct AppIcon: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
-        .disabled(lock != nil)
         .accessibilityLabel(app.title)
         .accessibilityValue(quietDot ? "Today's question is waiting" : badge > 0 ? "\(badge) waiting" : "")
         .accessibilityIdentifier("phone-app-\(app.title)")

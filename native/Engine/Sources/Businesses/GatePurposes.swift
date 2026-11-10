@@ -25,9 +25,6 @@ public enum GatePurposes {
         "luxury": "Spend your wealth on cars, art, yachts and homes that show how far you have come.",
         "ownerHours": "Your own working hours: the time you give a company each week.",
         "board": "A board of directors can steer a large company and takes decisions off your desk.",
-        "chain": "Copy a company that works into more locations under one name.",
-        "franchise": "Let other owners open units under your name and pay you a fee.",
-        "abroad": "Open a company in another country to reach customers there.",
         "research": "Study a market to learn what customers want before you spend on it.",
         "dividends": "Pay profit out of a company to yourself instead of leaving it in the business.",
     ]

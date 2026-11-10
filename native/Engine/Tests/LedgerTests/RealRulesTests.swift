@@ -28,83 +28,30 @@ final class RealRulesTests: XCTestCase {
         return (e, id)
     }
 
-    private func setDocs(_ e: inout GameEngine, _ id: Int, _ ids: [String]) {
-        e.update { s, _, _ in
-            guard let i = s.companyIndex(id) else { return }
-            var docs = s.companies[i].value("docs")
-            for d in ids { docs[d] = .object(["st": "ok", "done": 0, "ok": 0]) }
-            s.companies[i].set("docs", docs)
-        }
+    private func reach(_ e: inout GameEngine, _ f: LevelFeature) {
+        e.update { s, _, _ in PlayerLevel.award(&s, PlayerLevel.threshold(LevelGates.level(f))) }
     }
 
-    func testProvenConceptNeedsAYearAndFourProfitableQuarters() throws {
+    func testStartingAChainWaitsForItsLevelAndNeedsNoPapers() throws {
         var (e, id) = try game()
-        func proven() -> Bool { Franchising.provenConcept(e.state, e.state.company(id)!).ok }
-        func set(open weeksAgo: Int, profits: [Double]) {
-            e.update { s, _, _ in
-                guard let i = s.companyIndex(id) else { return }
-                s.companies[i].openedWeek = s.week - weeksAgo
-                s.companies[i].monthlyHistory = profits.enumerated().map { MonthRecord(monthIndex: $0.offset, revenue: 1000, profit: $0.element, cash: 0) }
-            }
-        }
-        set(open: 60, profits: Array(repeating: 100, count: 12)); XCTAssertTrue(proven())
-        set(open: 40, profits: Array(repeating: 100, count: 12)); XCTAssertFalse(proven(), "under 52 weeks of trading")
-        set(open: 60, profits: Array(repeating: 100, count: 9) + [-100, -100, -100]); XCTAssertFalse(proven(), "a loss-making quarter")
-        set(open: 60, profits: Array(repeating: 100, count: 9)); XCTAssertFalse(proven(), "fewer than four quarters of record")
-        set(open: 60, profits: [100, 100, 100, 100, 100, 100, 100, 100, 100, 200, -100, 100]); XCTAssertTrue(proven())
+        XCTAssertNil(e.startChain(companyID: id, name: "Brand"))
+        XCTAssertNil(e.chainOf(companyID: id))
+        reach(&e, .chain)
+        let chainID = try XCTUnwrap(e.startChain(companyID: id, name: "Brand"))
+        XCTAssertEqual(e.chainOf(companyID: id)?["id"].int, chainID)
+        XCTAssertEqual(e.state.company(id)!.value("docs")["chain"]["st"].string, "ok")
+        XCTAssertEqual(e.startChain(companyID: id, name: "Other"), chainID, "a second press returns the same chain")
     }
 
-    func testFranchisorRequirementsAreRealPapersWithStatus() throws {
-        var (e, id) = try game()
-        let r0 = Franchising.requirements(e.state, e.state.company(id)!)
-        XCTAssertEqual(r0.map { $0.key }, ["proven", "trademark", "ops_manual", "fran", "support"])
-        XCTAssertTrue(r0.allSatisfy { !$0.ok && $0.status == .missing }, "a fresh company has none of them")
-        XCTAssertFalse(r0.contains { $0.detail.lowercased().contains("reputation") || $0.title.lowercased().contains("cash") })
-        let cash0 = e.state.company(id)!.cash
-        XCTAssertEqual(e.applyForChainDocument(companyID: id, document: "trademark"), .ok)
-        XCTAssertLessThan(e.state.company(id)!.cash, cash0, "the fee is paid")
-        XCTAssertEqual(e.state.company(id)!.value("docs")["trademark"]["signed"].bool, true, "the application is signed and can be refused")
-        var tm = Franchising.requirements(e.state, e.state.company(id)!).first { $0.key == "trademark" }!
-        XCTAssertEqual(tm.status, .waiting)
-        let weeks = e.state.company(id)!.value("docs")["trademark"]["done"].int - e.state.week
-        XCTAssertTrue((4...8).contains(weeks), "a trademark review takes 4 to 8 weeks, got \(weeks)")
-        e.update { s, d, _ in
-            s.week += weeks
-            if let i = s.companyIndex(id) { Documents.weekly(&s, companyIndex: i, data: d) }
-        }
-        tm = Franchising.requirements(e.state, e.state.company(id)!).first { $0.key == "trademark" }!
-        XCTAssertTrue(tm.status == .done || tm.detail.lowercased().contains("refused"), "reviewed: approved or refused with a reason")
-        XCTAssertEqual(e.applyForChainDocument(companyID: id, document: "ops_manual"), .ok)
-        XCTAssertNotEqual(e.state.company(id)!.value("docs")["ops_manual"]["signed"].bool, true)
-        e.update { s, d, _ in
-            s.week += 3
-            if let i = s.companyIndex(id) { Documents.weekly(&s, companyIndex: i, data: d) }
-        }
-        XCTAssertEqual(Franchising.requirements(e.state, e.state.company(id)!).first { $0.key == "ops_manual" }!.status, .done)
-    }
-
-    func testChainRegistrationNeedsTrademarkAndManualOnly() throws {
-        var (e, id) = try game()
-        if case .notYet = e.applyForChainDocument(companyID: id, document: "chain") {} else { XCTFail("trademark and manual are missing") }
-        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].reputation = 5; s.companies[i].monthlyHistory = [] } }
-        setDocs(&e, id, ["trademark", "ops_manual"])
-        XCTAssertTrue(e.chainRequirements(companyID: id).allSatisfy { $0.ok })
-        XCTAssertEqual(e.applyForChainDocument(companyID: id, document: "chain"), .ok)
-    }
-
-    func testFranchiseLaunchNeedsEveryPaper() throws {
+    func testFranchisingWaitsForItsLevelAndNeedsNoPapers() throws {
         var (e, id) = try game(manager: true)
-        e.update { s, _, _ in
-            guard let i = s.companyIndex(id) else { return }
-            s.companies[i].openedWeek = s.week - 80
-            s.companies[i].monthlyHistory = (0..<12).map { MonthRecord(monthIndex: $0, revenue: 1000, profit: 100, cash: 0) }
-        }
-        setDocs(&e, id, ["trademark", "ops_manual"])
-        XCTAssertEqual(e.launchFranchise(companyID: id, entryFee: 1, royalty: 0.05, support: 1), .needDocuments, "the disclosure document is missing")
-        XCTAssertEqual(e.applyForChainDocument(companyID: id, document: "fran"), .ok)
-        setDocs(&e, id, ["fran"])
-        XCTAssertTrue(e.franchiseRequirements(companyID: id).allSatisfy { $0.ok }, "\(e.franchiseRequirements(companyID: id))")
-        XCTAssertEqual(e.launchFranchise(companyID: id, entryFee: 1, royalty: 0.05, support: 1), .ok)
+        XCTAssertNil(e.startFranchise(companyID: id))
+        XCTAssertFalse(e.isFranchisor(companyID: id))
+        reach(&e, .franchise)
+        XCTAssertEqual(e.startFranchise(companyID: id), .ok)
+        XCTAssertTrue(e.isFranchisor(companyID: id))
+        XCTAssertEqual(e.franchiseSystem(companyID: id)["roy"].double, Franchising.standardRoyalty, accuracy: 0.0001)
+        XCTAssertEqual(e.startFranchise(companyID: id), .already)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 

@@ -178,7 +178,11 @@ enum CompanyRunner {
             return Reading(short: "Run by \(boss.name), \(role)", line: "Run by \(boss.name)", nobody: false, title: "", why: "")
         }
         if co.type == "hold" || co.status != .open { return Reading(short: "", line: "", nobody: false, title: "", why: "") }
-        if co.managerID != nil { return Reading(short: "Has a manager", line: "Has a manager", nobody: false, title: "", why: "") }
+        if let mid = co.managerID {
+            let name: String = e.state.people[mid]?.name ?? "its manager"
+            return Reading(short: "Run by \(name)", line: "Run by \(name)", nobody: false, title: "", why: "")
+        }
+        if OwnerHours.crewRuns(co) { return Reading(short: "Run by its team", line: "The team covers the work", nobody: false, title: "", why: "") }
         if OwnerHours.works(co) && co.ownerHours > 0 {
             return Reading(short: "Run by you", line: "You work here, \(Int(saturating: co.ownerHours.rounded())) h a week", nobody: false, title: "", why: "")
         }

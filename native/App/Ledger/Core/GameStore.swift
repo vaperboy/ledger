@@ -97,7 +97,12 @@ struct TransferChip: Equatable, Identifiable {
 
 @MainActor
 final class GameStore: ObservableObject {
-    @Published private(set) var engine: GameEngine? { didSet { memoBox.removeAll(keepingCapacity: true) } }
+    @Published private(set) var engine: GameEngine? {
+        didSet {
+            memoBox.removeAll(keepingCapacity: true)
+            if let e = engine, !isShowcase { ProfileStore.record(PlayerLevel.profile(of: e.state)) }
+        }
+    }
     private var memoBox: [String: Any] = [:]
     func memo<T>(_ key: String, _ compute: (GameEngine) -> T) -> T? {
         guard let e = engine else { return nil }
@@ -264,6 +269,7 @@ final class GameStore: ObservableObject {
         let (data, events, marketing) = try GameEngine.loadResources()
         var e = GameEngine(state: state, data: data, events: events, marketing: marketing)
         if e.state.rest["dayHist"] == nil { e.recordDay() }
+        if !isShowcase { ProfileStore.adopt(into: &e) }
         engine = e
     }
 
@@ -299,7 +305,14 @@ final class GameStore: ObservableObject {
 
     func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, channel: SalesChannel? = nil, difficulty: Difficulty = .classic) {
         RememberedDetails.clearAll()
-        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, channel: channel, difficulty: difficulty); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
+        do {
+            var e = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, channel: channel, difficulty: difficulty)
+            ProfileStore.adopt(into: &e)
+            engine = e
+            loadProblem = nil
+            resetNavigation()
+            save()
+        } catch { errorText = "Could not start a game: \(error)" }
     }
 
     var canRetrySameSetup: Bool {
@@ -375,6 +388,7 @@ final class GameStore: ObservableObject {
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }
         if out.gameOver { Haptics.failure() }
         celebrationQueue.append(contentsOf: celebrations)
+        queueNotices()
         if out.completedWeek { queueUnlocks() }
         reportSheet = digest
         Task { @MainActor in
@@ -429,6 +443,7 @@ final class GameStore: ObservableObject {
             save()
             celebrationQueue.append(contentsOf: taken)
         }
+        queueNotices()
         queueUnlocks()
     }
 
@@ -464,6 +479,7 @@ final class GameStore: ObservableObject {
         engine = e
         save()
         SeasonModel.shared.observe(e.state)
+        queueNotices()
         return r
     }
 
@@ -525,6 +541,16 @@ final class GameStore: ObservableObject {
         outcomeCapture?.refused = true
         let t = Toast(title: title, text: text.tidyText, tone: tone)
         if notices.last?.text == t.text && notices.last?.title == t.title { return }
+        notices.append(t)
+    }
+
+    func tellLocked(_ app: PhoneApp, reason: String) {
+        var text: String = reason
+        if let g = app.gate, let item = engine?.unlockRoadmap().first(where: { (i: UnlockRoadmapItem) -> Bool in i.id == "gate." + g.rawValue }), !item.detail.isEmpty {
+            text += "\n" + item.detail
+        }
+        var t = Toast(title: app.title + " is locked", text: text, tone: "n")
+        t.style = "locked"
         notices.append(t)
     }
 
@@ -825,5 +851,29 @@ enum TidyMoney {
             p3 = p2; p2 = p1; p1 = c
         }
         return false
+    }
+}
+
+@MainActor
+enum ProfileStore {
+    private static let key = "ledger.profile.progress"
+    private static var cache: ProfileProgress = stored()
+
+    private static func stored() -> ProfileProgress {
+        guard let d = UserDefaults.standard.data(forKey: key), let p = try? JSONDecoder().decode(ProfileProgress.self, from: d) else { return ProfileProgress() }
+        return p
+    }
+
+    static func record(_ p: ProfileProgress) {
+        let merged: ProfileProgress = cache.merged(with: p)
+        guard merged != cache else { return }
+        cache = merged
+        if let d = try? JSONEncoder().encode(merged) { UserDefaults.standard.set(d, forKey: key) }
+    }
+
+    static func adopt(into e: inout GameEngine) {
+        let known: ProfileProgress = cache
+        e.update { s, _, _ in _ = PlayerLevel.adopt(&s, profile: known) }
+        record(PlayerLevel.profile(of: e.state))
     }
 }
