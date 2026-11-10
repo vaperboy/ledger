@@ -59,9 +59,6 @@ struct AccountSettingsGroup: View {
             Button { store.openProfile() } label: { OnlineLine(glyph: Glyph.person, title: "Profile", note: "Your name, friend code and who can see you", chevron: true) }
                 .buttonStyle(PressableStyle())
             Hairline()
-            Button { store.openApp(.friends) } label: { OnlineLine(glyph: Glyph.team, title: "Friends", note: "Requests, search and your friends", chevron: true) }
-                .buttonStyle(PressableStyle())
-            Hairline()
             exportRow
             Hairline()
             Button { askToDelete() } label: { OnlineLine(glyph: Glyph.warning, title: "Delete account", note: "Removes everything online", tint: Theme.loss, chevron: true) }

@@ -54,7 +54,7 @@ extension GameState {
         case "Your insurer": return "atlas"
         case "Your bank", "Bank": return "bank"
         case "The tax office", "Your accountant": return "accounting"
-        case "Weather service": return "weather"
+        case "Weather service": return "news"
         case "Supplier": return "techPro"
         case "Trophy wall": return "profile"
         default: return ""

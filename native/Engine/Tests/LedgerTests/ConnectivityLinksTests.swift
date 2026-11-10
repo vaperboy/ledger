@@ -24,7 +24,7 @@ final class ConnectivityLinksTests: XCTestCase {
             ids.append(s.addMessage(from: "A stranger", title: "g", body: "", app: "news"))
         }
         let links: [String] = ids.map { id in e.state.inbox.first { $0.id == id }!.appLink }
-        XCTAssertEqual(links, ["atlas", "bank", "accounting", "weather", "", "", "news"])
+        XCTAssertEqual(links, ["atlas", "bank", "accounting", "news", "", "", "news"])
     }
 
     func testAppLinkSurvivesASaveAndOldMessagesHaveNone() throws {

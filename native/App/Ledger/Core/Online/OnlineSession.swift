@@ -282,7 +282,7 @@ final class OnlineSession {
 
     private static func badges(_ e: GameEngine) -> [String] {
         let names: [String] = TrophyList.unlocked(e).map { (t: Trophies.Entry) -> String in String(t.name.prefix(40)) }.filter { (n: String) -> Bool in !n.isEmpty }
-        return Array(names.prefix(64))
+        return Array(((e.inHallOfFame ? [HallOfFameBadge.name] : []) + names).prefix(64))
     }
 
     private static func companies(_ e: GameEngine) -> [OnlineCompany] {

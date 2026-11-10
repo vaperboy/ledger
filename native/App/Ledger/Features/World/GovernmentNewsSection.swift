@@ -8,8 +8,8 @@ struct GovernmentNewsSection: View {
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
-        let read: CountryRead? = engine.countryRead()
-        let list: [GovNews] = read.map { (r: CountryRead) -> [GovNews] in Array(r.gov.news.prefix(40)) } ?? []
+        let read: WorldRead? = engine.worldRead()
+        let list: [GovNews] = read.map { (r: WorldRead) -> [GovNews] in Array(r.gov.news.prefix(40)) } ?? []
         VStack(alignment: .leading, spacing: 0) {
             Text("Source: the government. Rates, printed money, elections, terms of office and the courts, as it announces them.")
                 .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 12)
@@ -23,9 +23,9 @@ struct GovernmentNewsSection: View {
                 Text("No announcements yet.").textStyle(.body, tint: P.inkSoft)
                     .frame(maxWidth: .infinity).padding(.vertical, 36)
             }
-            Button { store.openApp(.country) } label: {
+            Button { store.openApp(.world) } label: {
                 HStack(spacing: 6) {
-                    Text("Open the Country app").textStyle(.caption, tint: P.accent, weight: .semibold)
+                    Text("Open the World app").textStyle(.caption, tint: P.accent, weight: .semibold)
                     GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: P.accent)
                     Spacer(minLength: 0)
                 }

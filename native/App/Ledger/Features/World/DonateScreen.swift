@@ -7,7 +7,7 @@ import Simulation
 
 struct DonateScreen: View {
     var e: GameEngine
-    var r: CountryRead
+    var r: WorldRead
     var back: () -> Void
     @EnvironmentObject var store: GameStore
     @State private var text = ""
@@ -30,12 +30,12 @@ struct DonateScreen: View {
 
     var body: some View {
         CivicPage(spacing: 20) {
-            CivicHeader(title: "Donate", subtitle: "A gift to the treasury of \(r.name)", onBack: back)
+            CivicHeader(title: "Donate", subtitle: "A gift to the world treasury", onBack: back)
             pledge
             roll
         }
         .outsideScreen(.pledge)
-        .accessibilityIdentifier("country-donate")
+        .accessibilityIdentifier("world-donate")
     }
 
     private var pledge: some View {
@@ -107,9 +107,8 @@ struct DonateScreen: View {
     }
 
     private func donate(_ a: Double) {
-        let country: String = r.code
         let ok: Bool = store.govRun { (s: inout GameState, _: GameData, _: FinanceContext) -> Void in
-            try GovernmentBridge.donate(&s, country: country, amount: a)
+            try GovernmentBridge.donate(&s, amount: a)
         }
         confirming = false
         guard ok else { return }

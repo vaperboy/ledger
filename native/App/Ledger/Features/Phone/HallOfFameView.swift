@@ -1,18 +1,20 @@
 import SwiftUI
 import GameCore
+import Events
 import Businesses
 import Simulation
 
-struct WorldRecordsView: View {
+struct HallOfFameView: View {
     enum Page: String, CaseIterable, Hashable, Identifiable {
         var id: String { rawValue }
-        case rival = "Your rival", topFifty = "Top 50", months = "Monthly results", crisis = "Crisis centre", hall = "Retirement hall"
+        case fame = "Hall of Fame", champions = "Past champions", rival = "Your rival", topFifty = "Top 50", months = "Monthly results", hall = "Retirement hall"
         var glyph: String {
             switch self {
+            case .fame: return Glyph.achievements
+            case .champions: return Glyph.rankPodium
             case .rival: return Glyph.people
             case .topFifty: return Glyph.list
             case .months: return Glyph.calendar
-            case .crisis: return Glyph.warning
             case .hall: return Glyph.person
             }
         }
@@ -44,37 +46,40 @@ struct WorldRecordsView: View {
 
     @ViewBuilder private func record(_ page: Page, _ e: GameEngine) -> some View {
         switch page {
+        case .fame: fame(e)
+        case .champions: champions(e)
         case .rival: rival(e)
         case .topFifty: topFifty(e)
         case .months: months(e)
-        case .crisis: crisis(e)
         case .hall: hall(e)
         }
     }
 
     private func recordsTable(_ e: GameEngine) -> some View {
-        OverviewSettingsCard(heading: "Records") {
+        OverviewSettingsCard(heading: "Hall of Fame") {
             ForEach(Page.allCases) { (p: Page) in
                 SettingsTableRow(title: p.rawValue, note: note(p), value: value(p, e), glyph: p.glyph) { opened = p }
             }
         }
         .navigationDestination(item: $opened) { (p: Page) in
-            WorldRecordsView(page: p).appScreen(title: p.rawValue, subtitle: "Records of the world around you")
+            HallOfFameView(page: p).appScreen(title: p.rawValue, subtitle: "Hall of Fame")
         }
     }
 
     private func note(_ p: Page) -> String {
         switch p {
+        case .fame: return "The top two ranks of the career"
+        case .champions: return "Business award winners, year by year"
         case .rival: return "The owner who keeps beating you, or loses to you"
         case .topFifty: return "The fifty biggest groups"
         case .months: return "Results per company, month by month"
-        case .crisis: return "Open crises and what answers them"
         case .hall: return "Owners who retired"
         }
     }
 
     private func value(_ p: Page, _ e: GameEngine) -> String {
         switch p {
+        case .fame: return e.inHallOfFame ? "Member" : ""
         case .rival: return e.nemesis?.owner ?? "None yet"
         default: return ""
         }
@@ -158,21 +163,28 @@ struct WorldRecordsView: View {
         }
     }
 
-    @ViewBuilder private func crisis(_ e: GameEngine) -> some View {
-        let list = e.crisisCentre
-        if list.isEmpty {
-            NoteCard(text: "No crisis is waiting. Warnings and decisions that need you quickly collect here.", glyph: Glyph.check)
+    @ViewBuilder private func fame(_ e: GameEngine) -> some View {
+        let status: Career.RankStatus = e.careerStatus
+        let top: [Career.Rank] = Career.ranks.filter { (r: Career.Rank) -> Bool in Career.inHallOfFame(r) }
+        HeroFigure(label: "Your rank", value: status.rank.title, note: e.inHallOfFame ? "In the Hall of Fame" : "Not in the Hall of Fame yet")
+        CardSection("Who is in") {
+            Text("Owners who reach " + top.map { (r: Career.Rank) -> String in r.title }.joined(separator: " or ") + " join the Hall of Fame and carry a small mark on their profile.")
+                .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder private func champions(_ e: GameEngine) -> some View {
+        let years = Array(e.awardYears.reversed())
+        if years.isEmpty {
+            NoteCard(text: "The first awards are given at the end of the year.", glyph: Glyph.achievements)
         } else {
-            Card(padding: 14) {
-                VStack(spacing: 0) {
-                    ForEach(Array(list.enumerated()), id: \.element.id) { i, m in
-                        if i > 0 { CardLine() }
-                        Button { store.go(.openMessage(m.id)) } label: {
-                            RowLine(glyph: m.tone == "bad" ? Glyph.warning : Glyph.inbox, tint: m.tone == "bad" ? Theme.loss : Theme.gold,
-                                    title: e.displayText(m.title, companyID: m.companyID),
-                                    subtitle: m.expiresWeek.map { w in let left = w - e.state.week; return left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week" } ?? "No deadline",
-                                    chevron: true)
-                        }.buttonStyle(PressableStyle())
+            ForEach(years, id: \.year) { (y: Awards.Year) in
+                CardSection("\(y.year)") {
+                    VStack(spacing: 0) {
+                        ForEach(Array(y.results.enumerated()), id: \.offset) { (i: Int, r: Awards.Result) in
+                            FlatRow(label: Awards.name(r.kind), value: r.won ? "You won" : "Won by " + r.other,
+                                    sub: r.won ? r.company + ": " + r.why : "You were in the running.", tint: r.won ? Theme.gold : Theme.ivory, rule: i > 0)
+                        }
                     }
                 }
             }

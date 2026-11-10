@@ -4,17 +4,16 @@ import Countries
 import Finance
 
 public enum Brokerage {
-    public enum Kind: String, Sendable { case stock, crypto, fund }
+    public enum Kind: String, Sendable { case crypto, fund }
     public enum BuyResult: Equatable, Sendable { case ok, tooSmall, notEnoughCash, delisted }
 
     public static func brokerFee(_ v: Double, currency: Currency? = nil) -> Double { max(currency?.scaledPrice(29) ?? 29, v * 0.001) }
     public static func minimumPurchase(_ currency: Currency?) -> Double { currency?.scaledPrice(100) ?? 100 }
 
-    static func bagKey(_ k: Kind) -> String { k == .stock ? "stocks" : k == .crypto ? "crypto" : "funds" }
+    static func bagKey(_ k: Kind) -> String { k == .crypto ? "crypto" : "funds" }
 
     public static func price(_ s: GameState, _ kind: Kind, _ sym: String) -> Double {
         switch kind {
-        case .stock: return s.rest["stocks"]?[sym]["p"].double ?? 0
         case .crypto: return s.rest["crypto"]?[sym]["p"].double ?? 0
         case .fund: return s.rest["fundPx"]?[sym].isNull == false ? s.rest["fundPx"]![sym].double : 100
         }
@@ -83,16 +82,6 @@ public enum Brokerage {
 
     public static func weekly(_ s: inout GameState) {
         var inv = s.rest["inv"] ?? .object([:])
-        if s.week % 13 == 0 {
-            for (sym, pos) in inv["stocks"].object.sorted(by: { $0.key < $1.key }) {
-                let st = s.rest["stocks"]?[sym] ?? .null
-                let d = pos["q"].double * st["p"].double * st["dy"].double / 4
-                if d > 0 {
-                    Ledger.move(&s, .me, d, why: "Dividend \(sym)")
-                    s.tax.dividends += d
-                }
-            }
-        }
         var kept: [JSONValue] = []
         for d in inv["deposits"].array {
             if Double(s.week) >= d["wEnd"].double {
@@ -114,7 +103,6 @@ public enum Brokerage {
         s.rest["inv"] = inv
         if s.cash >= need { return }
         for k in (s.rest["inv"]?["funds"].object.keys.sorted() ?? []) { sell(&s, .fund, k, fraction: 1, currency: currency) }
-        for k in (s.rest["inv"]?["stocks"].object.keys.sorted() ?? []) { sell(&s, .stock, k, fraction: 1, currency: currency) }
         for k in (s.rest["inv"]?["crypto"].object.keys.sorted() ?? []) { sell(&s, .crypto, k, fraction: 1, currency: currency) }
     }
 }

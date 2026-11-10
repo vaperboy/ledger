@@ -35,7 +35,7 @@ struct HomeWorldStrip: View {
                 Circle().fill(Theme.gain).frame(width: 6, height: 6).accessibilityHidden(true)
                 Text("Live").textStyle(.caption, tint: Theme.inkFaint)
                 Spacer(minLength: Theme.Space.s)
-                NavigationLink { WorldFeedView() } label: {
+                Button { Haptics.tap(); store.openApp(.news, request: .newsPlayers) } label: {
                     HStack(spacing: Theme.Space.xxs) {
                         Text("All").textStyle(.caption, tint: Theme.inkSoft)
                         LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
@@ -43,7 +43,7 @@ struct HomeWorldStrip: View {
                     .frame(minHeight: 28).contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
-                .accessibilityLabel("Open the World feed")
+                .accessibilityLabel("Open the player news")
             }
             if items.isEmpty {
                 quiet
@@ -62,7 +62,7 @@ struct HomeWorldStrip: View {
     }
 
     private var quiet: some View {
-        NavigationLink { WorldFeedView() } label: {
+        Button { Haptics.tap(); store.openApp(.news, request: .newsPlayers) } label: {
             HStack(spacing: Theme.Space.s) {
                 LedgerGlyph(glyph: Glyph.world, size: Theme.Icon.small, tint: Theme.inkFaint)
                 Text(loaded ? "Quiet for now. Other players' news, auctions and offers show here." : "Looking around")
@@ -77,13 +77,13 @@ struct HomeWorldStrip: View {
     @ViewBuilder private func chip(_ it: Item) -> some View {
         switch it.target {
         case .world:
-            NavigationLink { WorldFeedView() } label: { chipBody(it) }.buttonStyle(PressableStyle())
+            Button { Haptics.tap(); store.openApp(.news, request: .newsPlayers) } label: { chipBody(it) }.buttonStyle(PressableStyle())
         case .market:
             Button { Haptics.tap(); store.openMarket() } label: { chipBody(it) }.buttonStyle(PressableStyle())
         case .auctions:
             Button { Haptics.tap(); store.openApp(.store) } label: { chipBody(it) }.buttonStyle(PressableStyle())
         case .ventures:
-            Button { Haptics.tap(); store.openApp(.ventures) } label: { chipBody(it) }.buttonStyle(PressableStyle())
+            Button { Haptics.tap(); store.openVentures() } label: { chipBody(it) }.buttonStyle(PressableStyle())
         }
     }
 

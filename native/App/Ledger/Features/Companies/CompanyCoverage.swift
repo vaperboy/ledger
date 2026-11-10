@@ -14,23 +14,22 @@ struct CompanyCoverageScreen: View {
             let cur = e.currency(for: co)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    MoreHeader(glyph: Glyph.reports, title: co.name, blurb: "Insurance and advisers")
+                    MoreHeader(glyph: Glyph.reports, title: co.name, blurb: "Insurance and law firm")
                     FigureCard(items: [
                         .init(label: "Policies on", value: "\(o.activeCount) of \(o.policies.count)", tint: o.activeCount == 0 ? Theme.caution : Theme.ivory),
                         .init(label: "Premiums", value: cur.tidyShort(o.weeklyPremiums * 52 / 12), sub: "a month"),
-                        .init(label: "Advisers", value: cur.tidyShort(o.lawMonthly + (o.accountant?.monthlyFee ?? 0)), sub: "a month in fees")
+                        .init(label: "Law firm", value: cur.tidyShort(o.lawMonthly), sub: "a month in fees")
                     ])
                     policies(e, co, o, cur)
                     CompanySecurityCard(engine: e, company: co)
                     providers(e, co, o, .insurer, "Insurer", cur, empty: "No insurer yet. Policies cannot be switched on without one.")
                     providers(e, co, o, .law, "Law firm", cur, empty: "No law firm on retainer. Legal matters are handled at full cost.")
-                    providers(e, co, o, .accountant, "Accountant", cur, empty: "No accountant chosen.")
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .appScreen(title: "Insurance", subtitle: "Policies, insurer, law firm and accountant", tab: .company)
+            .appScreen(title: "Insurance", subtitle: "Policies, insurer and law firm", tab: .company)
             .confirmAction($pending)
             .task { store.act { $0.prepareAdvisers(companyID: companyID) } }
         } else {
@@ -113,7 +112,7 @@ struct CompanyCoverageScreen: View {
                         else { Button(current == nil ? "Hire" : "Switch") { hire(a, current, cur) }.buttonStyle(QuietButtonStyle()) }
                     }.padding(.vertical, 9)
                 }
-                if current != nil, kind != .accountant {
+                if current != nil {
                     CardLine()
                     Button("Drop \(title.lowercased())") { drop(kind, title, current!, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.loss)).padding(.top, 8)
                 }
@@ -124,8 +123,7 @@ struct CompanyCoverageScreen: View {
     private func currentAdviser(_ kind: Advisers.Kind, _ o: CoverageOverview) -> AdviserOption? {
         switch kind {
         case .insurer: return o.insurer
-        case .law: return o.lawFirm
-        default: return o.accountant
+        default: return o.lawFirm
         }
     }
 

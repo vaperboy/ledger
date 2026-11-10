@@ -106,7 +106,6 @@ public enum LegacyIds {
         if let s = root["stocks"] { root["stocks"] = renameKeys(s, stocks) }
         if let c = root["crypto"] { root["crypto"] = renameKeys(c, crypto) }
         if var inv = root["inv"], !inv.isNull {
-            if !inv["stocks"].isNull { inv["stocks"] = renameKeys(inv["stocks"], stocks) }
             if !inv["crypto"].isNull { inv["crypto"] = renameKeys(inv["crypto"], crypto) }
             root["inv"] = inv
         }

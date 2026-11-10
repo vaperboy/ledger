@@ -51,7 +51,7 @@ public enum Markets {
         s.rest["idx"] = 100
         s.economy.set("salmon", 1.0)
         s.rest["fundPx"] = .object(["idx": 100, "bond": 100, "mm": 100])
-        s.rest["inv"] = .object(["stocks": .object([:]), "crypto": .object([:]), "funds": .object([:]), "deposits": .array([])])
+        s.rest["inv"] = .object(["crypto": .object([:]), "funds": .object([:]), "deposits": .array([])])
     }
 
     static let transitions: [String: [String]] = [

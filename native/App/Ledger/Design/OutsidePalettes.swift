@@ -59,27 +59,6 @@ struct OutsidePalette: Equatable {
         accent: Color(hex: 0xC5A059), accent2: Color(hex: 0xE6C775), onAccent: Color(hex: 0x0A0B0E),
         gain: Color(hex: 0x6FBF9C), loss: Color(hex: 0xD48A94), caution: Color(hex: 0xC9A24F))
 
-    static let ventures = OutsidePalette(
-        ground: Color(hex: 0x12111C), ground2: Color(hex: 0x0D1517), card: Color(hex: 0x1B1A29), cardDeep: Color(hex: 0x16151F),
-        line: Color(hex: 0x2E2D42), lineStrong: Color(hex: 0x45445F), divider: Color(hex: 0x2A293C), hairline: Color(hex: 0x252438),
-        ink: Color(hex: 0xECEAF4), inkSoft: Color(hex: 0xB2B0C6), inkFaint: Color(hex: 0x9391AB), inkDim: Color(hex: 0x797791),
-        accent: Color(hex: 0x6FB5AB), accent2: Color(hex: 0xA397D6), onAccent: Color(hex: 0x0D1517),
-        gain: Color(hex: 0x7FC7A4), loss: Color(hex: 0xE0907F), caution: Color(hex: 0xD2B46E))
-
-    static let world = OutsidePalette(
-        ground: Color(hex: 0x0C2326), ground2: Color(hex: 0x081A1D), card: Color(hex: 0x12302F), cardDeep: Color(hex: 0x0F2A2C),
-        line: Color(hex: 0x225049), lineStrong: Color(hex: 0x37746C), divider: Color(hex: 0x1D4543), hairline: Color(hex: 0x1A3E3E),
-        ink: Color(hex: 0xE8F3F0), inkSoft: Color(hex: 0xABCAC4), inkFaint: Color(hex: 0x88ADA7), inkDim: Color(hex: 0x70938E),
-        accent: Color(hex: 0x72B89F), accent2: Color(hex: 0x8DC4CD), onAccent: Color(hex: 0x08191B),
-        gain: Color(hex: 0x8FD1A8), loss: Color(hex: 0xE39A86), caution: Color(hex: 0xD2BC80))
-
-    static let richList = OutsidePalette(
-        ground: Color(hex: 0x0D1526), ground2: Color(hex: 0x090F1C), card: Color(hex: 0x141E35), cardDeep: Color(hex: 0x101830),
-        line: Color(hex: 0x273555), lineStrong: Color(hex: 0x3E4E74), divider: Color(hex: 0x222F4C), hairline: Color(hex: 0x1D2845),
-        ink: Color(hex: 0xEEF0F5), inkSoft: Color(hex: 0xB4BBCD), inkFaint: Color(hex: 0x959DB3), inkDim: Color(hex: 0x7B839C),
-        accent: Color(hex: 0xC4CAD6), accent2: Color(hex: 0xC9A862), onAccent: Color(hex: 0x0D1526),
-        gain: Color(hex: 0x86C4A0), loss: Color(hex: 0xDE9484), caution: Color(hex: 0xC9A862))
-
     static let forest = OutsidePalette(
         ground: Color(hex: 0x0D1F1A), ground2: Color(hex: 0x08140F), card: Color(hex: 0x132A22), cardDeep: Color(hex: 0x0F221B),
         line: Color(hex: 0x24433A), lineStrong: Color(hex: 0x3E5F52), divider: Color(hex: 0x1F3B31), hairline: Color(hex: 0x1A332A),
@@ -155,26 +134,6 @@ struct OutsidePalette: Equatable {
         ink: Color(hex: 0xFFFFFF), inkSoft: Color(hex: 0xE0EAF8), inkFaint: Color(hex: 0xC4D5EE), inkDim: Color(hex: 0xA6BDDF),
         accent: Color(hex: 0xFFFFFF), accent2: Color(hex: 0xFFFFFF), onAccent: Color(hex: 0x1F4B8F),
         gain: Color(hex: 0xFFFFFF), loss: Color(hex: 0xFFFFFF), caution: Color(hex: 0xFFFFFF))
-
-    static func weather(kind: String) -> OutsidePalette {
-        var p = OutsidePalette(
-            ground: Color(hex: 0x16304D), ground2: Color(hex: 0x0E1D31), card: Color(hex: 0x24405E), cardDeep: Color(hex: 0x1B3552),
-            line: Color(hex: 0x3A5878), lineStrong: Color(hex: 0x5B7B9F), divider: Color(hex: 0x33506F), hairline: Color(hex: 0x2B4663),
-            ink: Color(hex: 0xF4F8FC), inkSoft: Color(hex: 0xBFD0E3), inkFaint: Color(hex: 0x9BB1C9), inkDim: Color(hex: 0x849CB7),
-            accent: Color(hex: 0xA9BCD0), accent2: Color(hex: 0xA9BCD0), onAccent: Color(hex: 0x0E1D31),
-            gain: Color(hex: 0x8FCFAE), loss: Color(hex: 0xE89E8D), caution: Color(hex: 0xE3C27E))
-        switch kind {
-        case "sun": p.accent = Color(hex: 0xE3C27E)
-        case "heat": p.accent = Color(hex: 0xE0A670)
-        case "rain": p.accent = Color(hex: 0x7FA3C7); p.ground = Color(hex: 0x182A40)
-        case "snow": p.accent = Color(hex: 0xD3E3F0)
-        case "cold": p.accent = Color(hex: 0x9CC3DA)
-        case "storm": p.accent = Color(hex: 0xA99DCB); p.ground = Color(hex: 0x1A2038); p.ground2 = Color(hex: 0x101426)
-        default: break
-        }
-        p.accent2 = p.accent
-        return p
-    }
 }
 
 private struct OutsidePaletteKey: EnvironmentKey { static let defaultValue: OutsidePalette = .game }
@@ -190,18 +149,16 @@ extension PhoneApp {
 
     func outsidePalette(ownBankIsMain: Bool) -> OutsidePalette? {
         switch self {
-        case .weather: return .weather(kind: "sun")
         case .news: return .news
         case .luxury: return .luxury
-        case .ventures: return .ventures
         case .bank: return ownBankIsMain ? nil : .forest
         case .inbox: return .inbox
-        case .activity, .reports, .market, .reviews, .settings, .season, .friends, .desk, .rivals, .store, .profile: return nil
+        case .stats, .market, .settings, .season, .desk, .store, .profile, .competition, .rankings: return nil
         case .airStay: return .airStay
         case .techPro: return .techPro
         case .atlas: return .atlas
         case .marketplace: return .marketplace
-        case .country: return .civic
+        case .world: return .civic
         }
     }
 

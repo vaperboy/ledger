@@ -10,7 +10,7 @@ final class TrophiesMoreTests: XCTestCase {
     func testAcquisitionGiftAndLuxuryTrophies() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242)
         let ids = Set(Trophies.all.map { $0.id })
-        for id in ["acq", "give", "g10", "stars", "st48", "rd", "ten10", "mgr10", "hq5", "abr50", "lx1", "lxj", "lxi", "ch3", "fr1", "fr100", "tyall"] {
+        for id in ["acq", "give", "g10", "stars", "st48", "ten10", "mgr10", "hq5", "abr50", "lx1", "lxj", "lxi", "ch3", "fr1", "fr100", "tyall"] {
             XCTAssertTrue(ids.contains(id), id)
         }
         XCTAssertEqual(ids.count, Trophies.all.count, "trophy ids are unique")

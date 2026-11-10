@@ -24,9 +24,4 @@ public enum Ventures {
         default: return true
         }
     }
-
-    public static func crises(_ s: GameState) -> [Message] {
-        s.inbox.filter { $0.status == "open" && !$0.options.isEmpty && ($0.tone == "bad" || $0.kind == "decision") && $0.actionID != "mprop" }
-            .sorted { ($0.expiresWeek ?? 999) < ($1.expiresWeek ?? 999) }
-    }
 }

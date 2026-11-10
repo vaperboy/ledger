@@ -4,14 +4,14 @@ import Countries
 import Businesses
 import Simulation
 
-struct MarketRivalsPage: View {
+struct CompetitionRivalsTab: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
     var open: (MarketRoute) -> Void
     @State private var query = ""
     @State private var filter: Filter = .all
 
-    enum Filter: String, CaseIterable, Hashable { case all = "All", forSale = "For sale", watching = "Watching", groups = "Groups", players = "Players" }
+    enum Filter: String, CaseIterable, Hashable { case all = "All", forSale = "For sale", following = "Following", groups = "Groups", players = "Players" }
 
     var body: some View {
         if let e = store.engine {
@@ -20,15 +20,46 @@ struct MarketRivalsPage: View {
             let watched: Set<String> = Set(all.filter { (r: MarketUI.RivalItem) -> Bool in r.watched }.map { (r: MarketUI.RivalItem) -> String in r.id })
             ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
                 hero(all, groups, e)
-                LedgerField(placeholder: "Search", text: $query, identifier: "market-rival-search")
+                decisions(e)
+                LedgerField(placeholder: "Search", text: $query, identifier: "competition-rival-search")
                 SegmentedPill(items: Filter.allCases, title: { (f: Filter) -> String in f.rawValue }, selection: $filter,
-                              identifier: { (f: Filter) -> String in "market-rivals-\(f.rawValue)" })
+                              identifier: { (f: Filter) -> String in "competition-rivals-\(f.rawValue)" })
                 if filter == .players {
                     PlayerCompanyOffers()
                 } else if filter == .groups {
                     groupList(groups.filter { (g: MarketUI.GroupItem) -> Bool in matches(g.name + " " + g.owner + " " + g.countries.joined(separator: " ")) })
                 } else {
                     rivalList(shown(all, watched), watched)
+                }
+                lately(e)
+            }
+        }
+    }
+
+    @ViewBuilder private func decisions(_ e: GameEngine) -> some View {
+        let open: [Message] = e.openDecisions.filter { (m: Message) -> Bool in RivalStories.handlesAnswer(m.actionID) }
+        if !open.isEmpty {
+            MarketLabel(title: "Waiting for you")
+            ForEach(open, id: \.id) { (m: Message) in
+                LedgerRow(leading: .glyph(Glyph.rivalsFlag), title: m.title, subtitle: "It stays until you answer or it lapses.", action: { store.decisionPopup = m.id })
+            }
+        }
+    }
+
+    @ViewBuilder private func lately(_ e: GameEngine) -> some View {
+        if filter != .players, filter != .groups, let first = e.rivalMarkets().first {
+            let moves: [RivalStories.Move] = e.rivalMoves(companyID: first.companyID, limit: 12)
+            if !moves.isEmpty {
+                MarketLabel(title: "Lately")
+                ForEach(Array(moves.enumerated()), id: \.element.id) { (i: Int, m: RivalStories.Move) in
+                    if i > 0 { Hairline() }
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                        EffectArrow(effect: m.effect, size: 14)
+                        Text(m.text).textStyle(.body).fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 6)
+                        Text(GameCalendar.dateString(week: m.week)).textStyle(.caption, tint: P.inkFaint)
+                    }
+                    .padding(.vertical, Theme.Space.s)
                 }
             }
         }
@@ -44,7 +75,7 @@ struct MarketRivalsPage: View {
             switch filter {
             case .all, .groups, .players: break
             case .forSale: if !r.forSale { return false }
-            case .watching: if !watched.contains(r.id) { return false }
+            case .following: if !watched.contains(r.id) { return false }
             }
             return matches([r.name, r.owner, r.trade, r.city, r.country, r.groupName ?? ""].joined(separator: " "))
         }
@@ -54,12 +85,12 @@ struct MarketRivalsPage: View {
         let forSale: Int = all.filter { (r: MarketUI.RivalItem) -> Bool in r.forSale }.count
         let context: String = all.isEmpty ? "" : "\(forSale) for sale \u{00B7} \(groups.count.countText("group"))"
         return MarketHero(label: "Rivals in your markets", value: "\(all.count)", context: context, contextTint: forSale > 0 ? P.accent : nil,
-                          identifier: "market-rivals-hero")
+                          identifier: "competition-rivals-hero")
     }
 
     @ViewBuilder private func rivalList(_ list: [MarketUI.RivalItem], _ watched: Set<String>) -> some View {
         if list.isEmpty {
-            EmptyState(glyph: Glyph.market, title: filter == .watching ? "No rival watched" : "No rival matches")
+            EmptyState(glyph: Glyph.market, title: filter == .following ? "No rival followed" : "No rival matches")
         } else {
             let cur: Currency? = store.engine?.homeCurrency
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -77,9 +108,9 @@ struct MarketRivalsPage: View {
         let title: String = watched ? r.name + " \u{2605}" : r.name
         return LedgerRow(leading: .thumb(logo), title: title, subtitle: "\(r.trade) \u{00B7} \(r.city) \u{00B7} \(r.sizeWord)", value: value,
                          valueNote: r.forSale ? "" : r.shareText, pill: r.forSale ? "For sale" : (r.inTrouble ? "In trouble" : nil),
-                         pillTone: r.forSale ? .good : .warn, lineLimit: 1, identifier: "market-rival-\(r.id)",
+                         pillTone: r.forSale ? .good : .warn, lineLimit: 1, identifier: "competition-rival-\(r.id)",
                          action: { open(.rival(companyID: r.companyID, rivalID: r.rivalID)) })
-            .newMarker(.market, "r\(r.companyID).\(r.rivalID)", style: .dot, alignment: .topLeading)
+            .newMarker(.competition, "r\(r.companyID).\(r.rivalID)", style: .dot, alignment: .topLeading)
     }
 
     @ViewBuilder private func groupList(_ list: [MarketUI.GroupItem]) -> some View {
@@ -94,10 +125,31 @@ struct MarketRivalsPage: View {
                     LedgerRow(leading: .thumb(ThumbSpec(kind: .logo, key: "group|\(g.id)", glyph: Glyph.group, initials: g.name, shape: .square)),
                               title: g.name, subtitle: "\(g.owner) \u{00B7} \(g.sites) sites \u{00B7} \(g.strategy)",
                               value: cur.map { (c: Currency) -> String in c.tidyShort(g.revenue) } ?? "", valueNote: "sales a year",
-                              pill: g.inTrouble ? "In trouble" : nil, pillTone: .warn, lineLimit: 1, identifier: "market-group-\(g.id)",
+                              pill: g.inTrouble ? "In trouble" : nil, pillTone: .warn, lineLimit: 1, identifier: "competition-group-\(g.id)",
                               action: { open(.group(g.id)) })
                 }
             }
+        }
+    }
+}
+
+extension Glyph {
+    static let rivalsFlag = "M7 4 V20 M7 5 H18 L15 8.5 L18 12 H7"
+    static let moveUp = "M12 19 V5 M6 11 L12 5 L18 11"
+    static let moveDown = "M12 5 V19 M6 13 L12 19 L18 13"
+}
+
+struct EffectArrow: View {
+    var effect: Int
+    var size: CGFloat = 16
+
+    var body: some View {
+        if effect == 0 {
+            Color.clear.frame(width: size, height: size)
+        } else {
+            GlyphView(glyph: effect > 0 ? Glyph.moveUp : Glyph.moveDown, size: size, weight: 1.8, tint: effect > 0 ? Theme.gain : Theme.loss)
+                .accessibilityElement()
+                .accessibilityLabel(effect > 0 ? "Good for you" : "Against you")
         }
     }
 }
@@ -136,7 +188,7 @@ struct RivalProfilePage: View {
                                                      set: { (r: MarketRoute?) in if r == nil { group = nil } })) { (r: MarketRoute) in MarketDestination(route: r) }
             } else {
                 EmptyState(glyph: Glyph.market, title: "This rival is gone")
-                    .appScreen(title: "Rival", subtitle: "Market")
+                    .appScreen(title: "Rival", subtitle: "Competition")
             }
         }
     }
@@ -259,11 +311,11 @@ struct RivalProfilePage: View {
                 Image(systemName: watching ? "star.fill" : "star").font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(watching ? P.accent : P.ink).frame(width: 44, height: 44)
             }
-            .accessibilityLabel(watching ? "Stop watching" : "Watch")
-            .accessibilityIdentifier("rival-watch")
+            .accessibilityLabel(watching ? "Stop following" : "Follow")
+            .accessibilityIdentifier("rival-follow")
             Menu {
                 Button("Meet the owner \u{00B7} " + cur.tidyShort(cur.scaledPrice(4000))) { meet(d) }
-                if canOpenBeside { Button("Open a new site beside them") { openSite() } }
+                if canOpenBeside { Button("Open a site beside them") { openSite() } }
             } label: {
                 Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).foregroundStyle(P.ink).frame(width: 44, height: 44)
             }

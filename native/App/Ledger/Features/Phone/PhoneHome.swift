@@ -21,15 +21,23 @@ struct PhoneHome: View {
         return FixedScreen(spacing: 16, top: 16, maxWidth: 560, overflowScrolls: true) {
             VStack(spacing: 16) {
                 clock
-                LazyVGrid(columns: columns, spacing: 18) {
-                    ForEach(PhoneApp.launcher) { app in
-                        if gateState(app) != .hidden {
-                            AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText, quietDot: app == .desk && store.deskWaitingNow) {
-                                Haptics.tap()
-                                path.append(.app(app))
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(PhoneSection.allCases) { (section: PhoneSection) in
+                        let shown: [PhoneApp] = section.apps.filter { (app: PhoneApp) -> Bool in gateState(app) != .hidden }
+                        if !shown.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(section.rawValue).textStyle(.label, tint: Theme.inkFaint).padding(.leading, 4)
+                                LazyVGrid(columns: columns, spacing: 18) {
+                                    ForEach(shown) { (app: PhoneApp) in
+                                        AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText, quietDot: app == .desk && store.deskWaitingNow) {
+                                            Haptics.tap()
+                                            path.append(.app(app))
+                                        }
+                                        .coachAnchor(.phoneBank, enabled: app == .bank)
+                                        .coachAnchor(.phoneInbox, enabled: app == .inbox)
+                                    }
+                                }
                             }
-                            .coachAnchor(.phoneBank, enabled: app == .bank)
-                            .coachAnchor(.phoneInbox, enabled: app == .inbox)
                         }
                     }
                 }

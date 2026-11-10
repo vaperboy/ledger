@@ -114,8 +114,6 @@ public extension GameEngine {
                 else if state.cash < amt { q.refusal = "Your fund manager is paid from the current account, which holds \(cur.display(max(0, state.cash)))." }
                 q.price = 1; q.tradePrice = 1; q.units = amt; q.feeLabel = "Yearly fee"
                 q.available = state.cash
-            case "stock":
-                q.refusal = "Buying shares in single listed companies is not offered. Shares you already hold can be sold."
             default:
                 q.refusal = "That is not something you can buy."
             }
@@ -170,7 +168,7 @@ public extension GameEngine {
         case .player:
             q.available = Payments.liquid(state)
             switch key {
-            case "fund", "crypto", "stock":
+            case "fund", "crypto":
                 let kind = Brokerage.Kind(rawValue: key) ?? .fund
                 let t = sellQuote(kind, symbol: sym, fraction: f)
                 q.tradePrice = kind == .crypto ? p.price * 0.992 : p.price
@@ -268,7 +266,7 @@ public extension GameEngine {
         switch p.owner {
         case .player:
             switch key {
-            case "fund", "crypto", "stock":
+            case "fund", "crypto":
                 let kind = Brokerage.Kind(rawValue: key) ?? .fund
                 update { s, _, ctx in Brokerage.sell(&s, kind, sym, fraction: whole ? 1 : f, currency: ctx.homeCurrency(s)) }
             case "managed": update { s, _, _ in _ = FinanceManager.withdraw(&s, amount: whole ? p.value : q.amount) }

@@ -31,8 +31,8 @@ public enum PlayerGoals {
         DailyDef(id: "stock", title: "Check the stock page", link: "market", visit: "market"),
         DailyDef(id: "quote", title: "Review a supplier quote", link: "techPro", visit: "techPro"),
         DailyDef(id: "collect", title: "Chase an unpaid invoice", link: "money"),
-        DailyDef(id: "reviews", title: "Read what customers say", link: "reviews", visit: "reviews"),
-        DailyDef(id: "weather", title: "Check the weather outlook", link: "weather", visit: "weather")]
+        DailyDef(id: "reviews", title: "Read what customers say", link: "competition", visit: "competition"),
+        DailyDef(id: "weather", title: "Check the weather outlook", link: "news", visit: "weather")]
 
     static func families(_ s: GameState, _ data: GameData) -> Set<String> { Set(live(s).compactMap { data.catalog[$0.type]?.family }) }
     static func openPayrollAsks(_ s: GameState) -> Int { s.inbox.filter { $0.status == "open" && $0.actionID.hasPrefix("pay29") }.count }

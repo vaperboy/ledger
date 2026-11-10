@@ -35,6 +35,17 @@ final class CareerTests: XCTestCase {
         XCTAssertNil(top.next); XCTAssertEqual(top.progress, 1)
     }
 
+    func testOnlyTheTopTwoRanksEnterTheHallOfFame() throws {
+        let cur = try UKCurrency()
+        let mogul = Career.rankStatus(netWorth: cur.scaledPrice(2e8), goalsDone: 17, currency: cur)
+        XCTAssertEqual(mogul.rank.title, "Mogul")
+        XCTAssertTrue(Career.inHallOfFame(mogul.rank))
+        let magnate = Career.rankStatus(netWorth: cur.scaledPrice(5e7), goalsDone: 14, currency: cur)
+        XCTAssertEqual(magnate.rank.title, "Magnate")
+        XCTAssertFalse(Career.inHallOfFame(magnate.rank))
+        XCTAssertFalse(try cafe().inHallOfFame)
+    }
+
     func testGoalsAlwaysShowNextShortMediumLong() throws {
         let e = try cafe()
         let next = e.careerNextGoals

@@ -113,22 +113,46 @@ struct OnlineGroup<Content: View>: View {
     }
 }
 
+enum HallOfFameBadge {
+    static let name = "Hall of Fame"
+}
+
+struct HallOfFameMark: View {
+    var body: some View {
+        LedgerGlyph(glyph: Glyph.achievements, size: Theme.Icon.small, tint: Theme.gold)
+            .accessibilityLabel(HallOfFameBadge.name)
+            .accessibilityIdentifier("hall-of-fame-mark")
+    }
+}
+
 struct OnlineCompanyList: View {
+    @EnvironmentObject var store: GameStore
     var companies: [OnlineCompany]
 
     var body: some View {
         ForEach(Array(companies.enumerated()), id: \.element.id) { (i: Int, c: OnlineCompany) in
             if i > 0 { Hairline() }
-            HStack(spacing: Theme.Space.m) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(c.name).textStyle(.headline).lineLimit(2)
-                    Text(c.trade + " · " + c.city + ", " + OnlineCountry.name(c.countryCode)).textStyle(.caption).lineLimit(2)
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                HStack(spacing: Theme.Space.m) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(c.name).textStyle(.headline).lineLimit(2)
+                        Text(c.trade + " · " + c.city + ", " + OnlineCountry.name(c.countryCode)).textStyle(.caption).lineLimit(2)
+                    }
+                    Spacer(minLength: Theme.Space.s)
+                    Text(c.health.title).textStyle(.body, tint: c.health.tint)
                 }
-                Spacer(minLength: Theme.Space.s)
-                Text(c.health.title).textStyle(.body, tint: c.health.tint)
+                .accessibilityElement(children: .combine)
+                HStack(spacing: Theme.Space.s) {
+                    Button("Visit") { Haptics.tap(); store.openMarket(tab: .companies) }
+                        .buttonStyle(TertiaryButtonStyle(size: .compact))
+                        .accessibilityIdentifier("friend-company-visit-\(c.id)")
+                    Button("Trade") { Haptics.tap(); store.openMarket(tab: .exchange) }
+                        .buttonStyle(TertiaryButtonStyle(size: .compact))
+                        .accessibilityIdentifier("friend-company-trade-\(c.id)")
+                    Spacer(minLength: 0)
+                }
             }
             .padding(.vertical, Theme.Space.s).frame(minHeight: 52)
-            .accessibilityElement(children: .combine)
         }
     }
 }

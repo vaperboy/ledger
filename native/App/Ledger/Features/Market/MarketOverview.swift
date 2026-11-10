@@ -8,18 +8,14 @@ struct MarketOverviewPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
     var open: (MarketRoute) -> Void
-    var show: (MarketUI.Tab) -> Void
 
     var body: some View {
         if let e = store.engine {
             ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
                 hero(e)
-                invested(e)
-                EnergyMarketRow()
                 movers(e)
                 signals("Opportunities", store.memo("mk.opps") { MarketData.opportunities($0) } ?? [])
                 signals("Threats", store.memo("mk.threats") { MarketData.threats($0) } ?? [])
-                latest(e)
             }
         }
     }
@@ -45,47 +41,6 @@ struct MarketOverviewPage: View {
                     .accessibilityIdentifier("market-overview-analyst")
             }
         }
-    }
-
-    private func invested(_ e: GameEngine) -> some View {
-        let cur: Currency = e.homeCurrency
-        let p: MarketUI.Portfolio = store.memo("mk.portfolio") { MarketData.portfolio($0) } ?? MarketUI.Portfolio.empty
-        let series: [Double] = MarketData.investedHistory(e)
-        let week: Double = p.weekMove ?? 0
-        return Button {
-            Haptics.tap()
-            show(.invest)
-        } label: {
-            HStack(alignment: .center, spacing: Theme.Space.m) {
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    Text("Invested").textStyle(.label, tint: P.inkFaint)
-                    Text(cur.tidyShort(p.value)).textStyle(.figure).lineLimit(1).minimumScaleFactor(0.7)
-                    if !p.positions.isEmpty {
-                        HStack(spacing: Theme.Space.s) {
-                            if p.weekMove != nil {
-                                Text(MarketFormat.money(week, cur) + " this week").textStyle(.caption, tint: P.change(week), numeric: true)
-                            }
-                            Text(MarketFormat.money(p.pnl, cur) + " in all").textStyle(.caption, tint: P.change(p.pnl), numeric: true)
-                        }
-                        .lineLimit(1).minimumScaleFactor(0.8)
-                    }
-                }
-                Spacer(minLength: Theme.Space.s)
-                if series.count >= 2 && series.contains(where: { (v: Double) -> Bool in abs(v) > 0.5 }) {
-                    Sparkline(values: series, tint: (series.last ?? 0) >= (series.first ?? 0) ? P.gain : P.loss, filled: false)
-                        .frame(width: 88, height: 32)
-                        .accessibilityHidden(true)
-                }
-                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
-            }
-            .padding(.vertical, Theme.Space.m)
-            .overlay(alignment: .top) { Hairline() }
-            .overlay(alignment: .bottom) { Hairline() }
-            .contentShape(Rectangle())
-            .accessibilityElement(children: .combine)
-        }
-        .buttonStyle(AcctPressStyle())
-        .accessibilityIdentifier("market-overview-invested")
     }
 
     @ViewBuilder private func movers(_ e: GameEngine) -> some View {
@@ -142,14 +97,6 @@ struct MarketOverviewPage: View {
         case .asset(let id): open(.buy(assetID: id, owner: nil))
         case .country(let code): open(.country(code))
         case .nothing: break
-        }
-    }
-
-    @ViewBuilder private func latest(_ e: GameEngine) -> some View {
-        let events: [MarketEvent] = MarketEventRows.relevant(e, companyID: nil, limit: 4)
-        if !events.isEmpty {
-            MarketLabel(title: "Latest in your markets")
-            MarketEventRows(events: events, showsTitle: false)
         }
     }
 }

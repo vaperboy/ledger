@@ -42,10 +42,14 @@ struct PlayerProfileView: View {
     private func header(_ p: PlayerProfile) -> some View {
         VStack(spacing: Theme.Space.s) {
             PlayerAvatar(player: p, size: 84)
-            Text(p.displayName).textStyle(.title)
+            HStack(spacing: Theme.Space.xs) {
+                Text(p.displayName).textStyle(.title)
+                if p.badges.contains(HallOfFameBadge.name) { HallOfFameMark() }
+            }
             Text(p.subline).textStyle(.caption)
-            if !p.badges.isEmpty {
-                Text(p.badges.joined(separator: "  ·  ")).textStyle(.caption, tint: Theme.accent).multilineTextAlignment(.center)
+            let shown: [String] = p.badges.filter { (b: String) -> Bool in b != HallOfFameBadge.name }
+            if !shown.isEmpty {
+                Text(shown.joined(separator: "  ·  ")).textStyle(.caption, tint: Theme.accent).multilineTextAlignment(.center)
             }
         }
         .frame(maxWidth: .infinity).padding(.vertical, Theme.Space.m)

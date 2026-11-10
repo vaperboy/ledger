@@ -27,7 +27,6 @@ struct ProfileView: View {
                     trophies(e)
                     collectionRow
                     friendsSection
-                    runSection(e)
                     if online.isSignedIn, let p = online.profile { privacySection(p) }
                 }
             }
@@ -77,6 +76,7 @@ struct ProfileView: View {
         Button { Haptics.tap(); nameDraft = shownName(e); editingName = true } label: {
             HStack(spacing: Theme.Space.xs) {
                 Text(shownName(e)).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+                if e.inHallOfFame { HallOfFameMark() }
                 Image(systemName: "pencil").font(.caption.weight(.semibold)).foregroundStyle(Theme.inkFaint)
             }
             .frame(minHeight: 44)
@@ -181,9 +181,13 @@ struct ProfileView: View {
             HStack {
                 Text("Friends").capsLabel(Theme.inkFaint)
                 Spacer()
-                Button("Add friend") { Haptics.tap(); store.openApp(.friends) }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                if online.isSignedIn {
+                    NavigationLink { FriendsScreen() } label: {
+                        Text("Add friend").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minHeight: 44)
+                    }
+                    .buttonStyle(PressableStyle())
                     .accessibilityIdentifier("profile-add-friend")
+                }
             }
             if friends.isEmpty {
                 Text(online.isSignedIn ? "No friends yet. Add one." : "Link an account above to add friends.").textStyle(.caption)
@@ -196,38 +200,6 @@ struct ProfileView: View {
                         }
                         .buttonStyle(PressableStyle())
                     }
-                }
-            }
-        }
-    }
-
-    private struct Fact: Identifiable {
-        var id: String
-        var glyph: String
-        var title: String
-        var value: String
-    }
-
-    private func facts(_ e: GameEngine) -> [Fact] {
-        let s = e.state
-        let best: Double = max(s.stats.peakNetWorth, e.netWorth.total)
-        let m: MilestoneProgress = e.milestoneProgress
-        var out: [Fact] = [Fact(id: "days", glyph: Glyph.clock, title: "Days in business", value: "\(s.week * 7 + s.day)")]
-        if best > 0 { out.append(Fact(id: "best", glyph: Glyph.stats, title: "Best net worth so far", value: store.short(best))) }
-        if m.bestWeek > 0 { out.append(Fact(id: "week", glyph: Glyph.arrowIn, title: "Best single week", value: store.short(m.bestWeek))) }
-        if m.bestStreak > 1 { out.append(Fact(id: "run", glyph: Glyph.check, title: "Longest run of growing weeks", value: "\(m.bestStreak)")) }
-        if s.stats.companiesSold > 0 { out.append(Fact(id: "sold", glyph: Glyph.bank, title: "Companies sold", value: "\(s.stats.companiesSold)")) }
-        if s.stats.dividendsReceived > 0 { out.append(Fact(id: "div", glyph: Glyph.arrowIn, title: "Dividends you received", value: store.short(s.stats.dividendsReceived))) }
-        return Array(out.prefix(5))
-    }
-
-    private func runSection(_ e: GameEngine) -> some View {
-        let list: [Fact] = facts(e)
-        return LedgerSection("Your run") {
-            VStack(spacing: 0) {
-                ForEach(Array(list.enumerated()), id: \.element.id) { (i: Int, f: Fact) in
-                    if i > 0 { Hairline() }
-                    LedgerRow(leading: .glyph(f.glyph), title: f.title, value: f.value, density: .compact)
                 }
             }
         }

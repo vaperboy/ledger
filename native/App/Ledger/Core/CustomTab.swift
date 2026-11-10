@@ -10,7 +10,7 @@ enum CustomTabTarget: Codable, Hashable {
 
     static let standard: CustomTabTarget = .app(.inbox)
 
-    static var apps: [PhoneApp] { PhoneApp.launcher.filter { $0 != .ventures } }
+    static var apps: [PhoneApp] { PhoneApp.launcher.filter { $0 != .season && $0 != .profile } }
 
     static func stored() -> CustomTabTarget {
         guard let data = UserDefaults.standard.data(forKey: defaultsKey) else { return standard }

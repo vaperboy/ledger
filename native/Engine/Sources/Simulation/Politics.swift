@@ -4,16 +4,15 @@ import GameCore
 public struct GovCitizen: Equatable, Sendable {
     public var account: String
     public var linkKey: String
-    public var country: String
     public var name: String
     public var ageWeeks: Int
     public var simulated = false
     public var barredFromVoting = false
     public var barredFromOffice = false
 
-    public init(account: String, linkKey: String? = nil, country: String, name: String = "", ageWeeks: Int, simulated: Bool = false,
+    public init(account: String, linkKey: String? = nil, name: String = "", ageWeeks: Int, simulated: Bool = false,
                 barredFromVoting: Bool = false, barredFromOffice: Bool = false) {
-        self.account = account; self.linkKey = linkKey ?? account; self.country = country; self.name = name.isEmpty ? account : name
+        self.account = account; self.linkKey = linkKey ?? account; self.name = name.isEmpty ? account : name
         self.ageWeeks = ageWeeks; self.simulated = simulated; self.barredFromVoting = barredFromVoting; self.barredFromOffice = barredFromOffice
     }
 }
@@ -63,11 +62,11 @@ public enum Politics {
     public static let manifestoLimit = 300
     public static let candidacyFeeReference = 500_000.0
 
-    public static func mayVote(_ c: GovCitizen, country: String) -> Bool {
-        c.country == country && !c.simulated && c.ageWeeks >= voterMinAgeWeeks && !c.barredFromVoting
+    public static func mayVote(_ c: GovCitizen) -> Bool {
+        !c.simulated && c.ageWeeks >= voterMinAgeWeeks && !c.barredFromVoting
     }
-    public static func mayStand(_ c: GovCitizen, country: String) -> Bool {
-        c.country == country && !c.simulated && c.ageWeeks >= candidateMinAgeWeeks && !c.barredFromOffice
+    public static func mayStand(_ c: GovCitizen) -> Bool {
+        !c.simulated && c.ageWeeks >= candidateMinAgeWeeks && !c.barredFromOffice
     }
 
     public static func realismProblem(_ p: CampaignPromise, policy: GovPolicy, treasury: Double, rules: WorldRules = WorldRules.defaults) -> String? {
@@ -96,7 +95,7 @@ extension Government {
 
     public func validateStand(_ c: GovCitizen, promises: [CampaignPromise], week: Int) throws {
         guard let e = election, e.status == .nomination, week < e.nominateUntil else { throw GovError.notOpen }
-        guard Politics.mayStand(c, country: country) else { throw GovError.notEligible("You cannot stand: you must live here, be at least 8 weeks old, and not be barred.") }
+        guard Politics.mayStand(c) else { throw GovError.notEligible("You cannot stand: you must be at least 8 weeks old and not be barred.") }
         guard !e.candidates.contains(where: { $0.account == c.account }) else { throw GovError.alreadyStanding }
         try validatePromises(promises)
     }
@@ -133,7 +132,7 @@ extension Government {
 
     public mutating func castBallot(_ c: GovCitizen, for candidate: String, week: Int) throws {
         guard var e = election, e.status == .voting, week < e.votingUntil else { throw GovError.notOpen }
-        guard Politics.mayVote(c, country: country) else { throw GovError.notEligible("You cannot vote here.") }
+        guard Politics.mayVote(c) else { throw GovError.notEligible("You cannot vote.") }
         guard e.candidates.contains(where: { $0.account == candidate }) else { throw GovError.notFound }
         guard !e.voted.contains(c.account), !e.usedKeys.contains(c.linkKey) else { throw GovError.alreadyVoted }
         e.voted.insert(c.account)
@@ -149,7 +148,7 @@ extension Government {
         return e.candidates.map { (account: $0.account, votes: e.ballots[$0.account] ?? 0) }
     }
 
-    public mutating func advance(week: Int, canStand: (String) -> Bool, hasCitizens: Bool = true) {
+    public mutating func advance(week: Int, canStand: (String) -> Bool) {
         expireSupports(week: week)
         if let o = office, week >= o.termEnd { endTerm(o, week: week) }
         if var e = election {
@@ -161,7 +160,7 @@ extension Government {
                 count(&e, week: week, canStand: canStand)
             }
         }
-        if !electionRunning, office == nil, hasCitizens, week - (lastCycleClosedWeek ?? -1_000) >= Politics.cooldownWeeks {
+        if !electionRunning, office == nil, week - (lastCycleClosedWeek ?? -1_000) >= Politics.cooldownWeeks {
             election = Election(id: takeID(), status: .nomination, nominateUntil: week + Politics.nominationWeeks,
                                 votingUntil: week + Politics.nominationWeeks + Politics.votingWeeks)
             publish("Nominations for president are open.", week: week)

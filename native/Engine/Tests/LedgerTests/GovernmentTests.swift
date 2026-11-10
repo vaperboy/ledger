@@ -3,8 +3,8 @@ import GameCore
 @testable import Simulation
 
 final class GovernmentTests: XCTestCase {
-    private func gov() -> Government { Government(country: "NO", admins: ["admin"], startingSupply: 1_000_000) }
-    private func cit(_ a: String, age: Int = 20, link: String? = nil) -> GovCitizen { GovCitizen(account: a, linkKey: link, country: "NO", name: a, ageWeeks: age) }
+    private func gov() -> Government { Government(admins: ["admin"], startingSupply: 1_000_000) }
+    private func cit(_ a: String, age: Int = 20, link: String? = nil) -> GovCitizen { GovCitizen(account: a, linkKey: link, name: a, ageWeeks: age) }
     private let anyone: (String) -> Bool = { _ in true }
 
     private func withPresident(promises: [CampaignPromise] = [], approve: Bool = true) throws -> Government {
@@ -182,9 +182,8 @@ final class GovernmentTests: XCTestCase {
         XCTAssertThrowsError(try g.castBallot(cit("v1", link: "owner1"), for: "b", week: 8)) { XCTAssertEqual($0 as? GovError, .alreadyVoted) }
         XCTAssertThrowsError(try g.castBallot(cit("v1-alt", link: "owner1"), for: "b", week: 8), "a linked account shares the vote")
         XCTAssertThrowsError(try g.castBallot(cit("young", age: 2), for: "a", week: 8), "too new")
-        XCTAssertThrowsError(try g.castBallot(GovCitizen(account: "bot", country: "NO", ageWeeks: 30, simulated: true), for: "a", week: 8))
-        XCTAssertThrowsError(try g.castBallot(GovCitizen(account: "far", country: "SE", ageWeeks: 30), for: "a", week: 8), "other country")
-        XCTAssertThrowsError(try g.castBallot(GovCitizen(account: "barred", country: "NO", ageWeeks: 30, barredFromVoting: true), for: "a", week: 8))
+        XCTAssertThrowsError(try g.castBallot(GovCitizen(account: "bot", ageWeeks: 30, simulated: true), for: "a", week: 8))
+        XCTAssertThrowsError(try g.castBallot(GovCitizen(account: "barred", ageWeeks: 30, barredFromVoting: true), for: "a", week: 8))
         XCTAssertEqual(g.election?.ballots["a"], 1)
         XCTAssertEqual(g.election?.ballots.values.reduce(0, +), 1)
     }
@@ -194,7 +193,7 @@ final class GovernmentTests: XCTestCase {
         XCTAssertThrowsError(try g.stand(cit("a"), manifesto: "", promises: [], fee: 1, week: 0), "no election yet")
         g.advance(week: 0, canStand: anyone)
         XCTAssertThrowsError(try g.stand(cit("a", age: 7), manifesto: "", promises: [], fee: 1, week: 1), "must be eight weeks old")
-        XCTAssertThrowsError(try g.stand(GovCitizen(account: "x", country: "NO", ageWeeks: 30, barredFromOffice: true), manifesto: "", promises: [], fee: 1, week: 1))
+        XCTAssertThrowsError(try g.stand(GovCitizen(account: "x", ageWeeks: 30, barredFromOffice: true), manifesto: "", promises: [], fee: 1, week: 1))
         try g.stand(cit("a"), manifesto: "", promises: [], fee: 9_000, week: 1)
         XCTAssertThrowsError(try g.stand(cit("a"), manifesto: "", promises: [], fee: 9_000, week: 2)) { XCTAssertEqual($0 as? GovError, .alreadyStanding) }
         try g.withdraw(account: "a", week: 3)

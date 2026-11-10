@@ -40,7 +40,7 @@ struct AccountantStep: View {
             let chosen: Int? = officeID == nil ? (accountantID ?? offers.first { (o: AccountantOffer) -> Bool in o.isDefault }?.id) : nil
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Accountant").capsLabel()
-                Text("Your company keeps its books with one. The fee is paid each month and you can change it later in Atlas.")
+                Text("Your company keeps its books with one. The fee is paid each month and you can change it later in the company's Manage page.")
                     .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 AccountantChoiceList(offers: offers, currency: currency, chosenID: chosen) { (o: AccountantOffer) -> Void in
                     officeID = nil

@@ -2,12 +2,11 @@ import SwiftUI
 import GameCore
 import Countries
 import Businesses
-import Events
 import Simulation
 
-struct MarketWorldPage: View {
+struct WorldCountriesPage: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.outsidePalette) private var P
+    @Binding var tab: WorldTab
     var open: (MarketRoute) -> Void
 
     var body: some View {
@@ -16,10 +15,10 @@ struct MarketWorldPage: View {
             let mine: [MarketUI.CountryLine] = countries.filter { (c: MarketUI.CountryLine) -> Bool in c.yourCompanies > 0 || c.isHome }
             let rest: [MarketUI.CountryLine] = countries.filter { (c: MarketUI.CountryLine) -> Bool in c.yourCompanies == 0 && !c.isHome }
             let regions: [String] = Array(Set(rest.map { (c: MarketUI.CountryLine) -> String in c.region })).sorted()
-            ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
+            CivicPage(spacing: Theme.Space.m) {
+                CivicHeader(title: "World", subtitle: "Every country, its cities and where to open a company")
+                WorldTabBar(tab: $tab)
                 hero(e, mine)
-                WorldPricesCard()
-                rankings(e)
                 MarketLabel(title: "Where you are")
                 countryList(mine)
                 ForEach(regions, id: \.self) { (r: String) in
@@ -27,6 +26,8 @@ struct MarketWorldPage: View {
                     countryList(rest.filter { (c: MarketUI.CountryLine) -> Bool in c.region == r })
                 }
             }
+            .outsideScreen(.civic)
+            .accessibilityIdentifier("world-countries")
         }
     }
 
@@ -35,22 +36,7 @@ struct MarketWorldPage: View {
         let abroad: Int = mine.filter { (c: MarketUI.CountryLine) -> Bool in !c.isHome && c.yourCompanies > 0 }.count
         let value: String = abroad == 0 ? "Home only" : (abroad + 1).countText("country", plural: "countries")
         let context: String = sites == 0 ? "" : "\(sites.countText("company", plural: "companies")) \u{00B7} home \(e.homeCountry.name)"
-        return MarketHero(label: "Where you are", value: value, context: context, identifier: "market-world-hero")
-    }
-
-    private func rankings(_ e: GameEngine) -> some View {
-        let st: RichList.Standing? = store.memo("mk.rich") { (g: GameEngine) -> RichList.Standing in g.richListStanding }
-        let rich: String = st?.rank.map { (r: Int) -> String in "#\(r)" } ?? "Not placed"
-        return VStack(spacing: 0) {
-            MarketLabel(title: "Rankings")
-            LedgerRow(leading: .glyph(Glyph.richList), leadingTint: P.inkSoft, title: "Rankings",
-                      value: rich, valueNote: "rich list", identifier: "world-rankings",
-                      action: { open(.rankings) })
-            Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
-            LedgerRow(leading: .glyph(Glyph.reports), leadingTint: P.inkSoft, title: "Records", identifier: "world-records", action: { open(.records) })
-            Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
-            LedgerRow(leading: .glyph(Glyph.people), leadingTint: P.inkSoft, title: "People and reputation", identifier: "world-around", action: { open(.aroundYou) })
-        }
+        return MarketHero(label: "Where you are", value: value, context: context, identifier: "world-countries-hero")
     }
 
     private func countryList(_ list: [MarketUI.CountryLine]) -> some View {
@@ -70,6 +56,23 @@ struct MarketWorldPage: View {
         return LedgerRow(title: c.flag + "  " + c.name + (c.isHome && c.yourCompanies > 0 ? " \u{00B7} home" : ""),
                          subtitle: "\(pop) people \u{00B7} \(c.currency) \u{00B7} \(tax)", value: value, valueNote: note, lineLimit: 1,
                          identifier: "world-country-\(c.id)", action: { open(.country(c.id)) })
+    }
+}
+
+struct WorldPeoplePage: View {
+    @Binding var tab: WorldTab
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                CivicHeader(title: "World", subtitle: "Who you know and how you are seen")
+                WorldTabBar(tab: $tab)
+            }
+            .padding(.horizontal, Theme.Space.page).padding(.top, 6)
+            WorldAroundView()
+        }
+        .outsideScreen(.civic)
+        .accessibilityIdentifier("world-people")
     }
 }
 
@@ -104,7 +107,7 @@ struct CountryPage: View {
                 .navigationDestination(item: $abroadFor) { (id: Int) in AbroadOptionsView(companyID: id, country: countryCode) }
                 .navigationDestination(item: $next) { (r: MarketRoute) in MarketDestination(route: r) }
             } else {
-                EmptyState(glyph: Glyph.world, title: "Unknown country").appScreen(title: "Country", subtitle: "Market \u{00B7} World")
+                EmptyState(glyph: Glyph.world, title: "Unknown country").appScreen(title: "Country", subtitle: "World \u{00B7} Countries")
             }
         }
     }
@@ -112,7 +115,7 @@ struct CountryPage: View {
     private func hero(_ c: Country, _ here: [Company]) -> some View {
         let pop: String = c.populationMillions >= 10 ? String(format: "%.0f million", c.populationMillions) : String(format: "%.1f million", c.populationMillions)
         return MarketHero(label: "Your companies here", value: here.isEmpty ? "None yet" : "\(here.count)",
-                          context: "\(pop) people \u{00B7} \(c.currencyCode)", identifier: "country-hero")
+                          context: "\(pop) people \u{00B7} \(c.currencyCode)", identifier: "world-country-hero")
     }
 
     private func figures(_ c: Country) -> some View {
@@ -135,7 +138,7 @@ struct CountryPage: View {
                     if pair.offset > 0 { Hairline() }
                     let co: Company = pair.element
                     LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: co.type, glyph: Glyph.home)), title: co.name,
-                              subtitle: "\(e.tradeName(co)) \u{00B7} \(e.cityName(co))", lineLimit: 1, identifier: "country-company-\(co.id)",
+                              subtitle: "\(e.tradeName(co)) \u{00B7} \(e.cityName(co))", lineLimit: 1, identifier: "world-country-company-\(co.id)",
                               action: co.status == .open && co.type != "hold" ? { next = .company(co.id) } : nil)
                 }
             }
@@ -153,7 +156,7 @@ struct CountryPage: View {
                     let g: RivalGroups.Group = pair.element
                     LedgerRow(leading: .thumb(ThumbSpec(kind: .logo, key: "group|\(g.id)", glyph: Glyph.group, initials: g.name, shape: .square)),
                               title: g.name, subtitle: "\(g.branches) sites \u{00B7} \(g.strategyName)", value: e.homeCurrency.tidyShort(g.revenue),
-                              valueNote: "sales a year", lineLimit: 1, identifier: "country-group-\(g.id)", action: { next = .group(g.id) })
+                              valueNote: "sales a year", lineLimit: 1, identifier: "world-country-group-\(g.id)", action: { next = .group(g.id) })
                 }
             }
         }
@@ -178,7 +181,7 @@ struct CountryPage: View {
 
     @ViewBuilder private func openAction(_ e: GameEngine, _ c: Country) -> some View {
         if c.code == e.state.homeCountryCode {
-            PrimaryAction(title: "Open a company here", identifier: "country-open-company") { store.push(.newCompany) }
+            PrimaryAction(title: "Open a company here", identifier: "world-country-open-company") { store.push(.newCompany) }
         } else {
             let can: [Company] = MarketData.expanders(e, country: c.code)
             if can.count > 1 {
@@ -191,125 +194,138 @@ struct CountryPage: View {
                 }
                 .menuStyle(.button)
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                .accessibilityIdentifier("country-open-company")
+                .accessibilityIdentifier("world-country-open-company")
             } else {
                 PrimaryAction(title: "Open a company here", blockedReason: can.isEmpty ? "No company of yours can start here yet" : nil,
-                              identifier: "country-open-company") { if let co = can.first { abroadFor = co.id } }
+                              identifier: "world-country-open-company") { if let co = can.first { abroadFor = co.id } }
             }
         }
     }
 }
 
-struct MarketRankingsPage: View {
+struct WorldAroundView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.outsidePalette) private var P
-    @State private var part: Part = .rich
-
-    enum Part: String, CaseIterable, Hashable { case rich = "Rich list", companies = "Companies", awards = "Awards" }
+    private func report(_ r: WorldAround.ActionResult?) {
+        switch r {
+        case .ok(let msg)?: Haptics.success(); store.show(msg, tone: "good")
+        case .refused(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+        case nil: store.show("No game is open.", tone: "warn")
+        }
+    }
 
     var body: some View {
-        Group {
-            if let e = store.engine {
-                let st: RichList.Standing = e.richListStanding
-                ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
-                    hero(e, st)
-                    SegmentedPill(items: Part.allCases, title: { (p: Part) -> String in p.rawValue }, selection: $part,
-                                  identifier: { (p: Part) -> String in "rankings-\(p.rawValue)" })
-                    switch part {
-                    case .rich: richList(st)
-                    case .companies: CompanyRankingSection()
-                    case .awards: awards(e)
-                    }
-                }
-                .appScreen(title: "Rankings", subtitle: "Market \u{00B7} World")
-            }
-        }
-    }
-
-    private func movement(_ st: RichList.Standing) -> String {
-        guard let r = st.rank, let p = st.previous, p != r else { return "" }
-        return p > r ? "up \(p - r) since last month" : "down \(r - p) since last month"
-    }
-
-    private func hero(_ e: GameEngine, _ st: RichList.Standing) -> some View {
-        let value: String = st.rank.map { (r: Int) -> String in "#\(r.formatted())" } ?? "Not placed"
-        var parts: [String] = ["Net worth " + store.short(max(0, st.netWorth))]
-        let move: String = movement(st)
-        if !move.isEmpty { parts.append(move) }
-        if let b = st.best { parts.append("best #\(b)") }
-        let up: Bool = (st.previous ?? 0) > (st.rank ?? 0)
-        return MarketHero(label: "Rich list of \(e.homeCountry.name)", value: value, context: parts.joined(separator: " \u{00B7} "),
-                          contextTint: move.isEmpty ? nil : (up ? P.gain : P.loss), identifier: "rankings-hero")
-    }
-
-    @ViewBuilder private func richList(_ st: RichList.Standing) -> some View {
-        let top: [RichList.Person] = st.top.sorted { (a: RichList.Person, b: RichList.Person) -> Bool in a.rank < b.rank }
-        let shown: Set<Int> = Set(top.map { (p: RichList.Person) -> Int in p.rank })
-        let near: [RichList.Person] = st.around.filter { (p: RichList.Person) -> Bool in !shown.contains(p.rank) }
-        VStack(spacing: 0) {
-            ForEach(Array(top.enumerated()), id: \.element.id) { (pair: (offset: Int, element: RichList.Person)) in
-                if pair.offset > 0 { Hairline().padding(.leading, 44 + 32 + Theme.Space.m * 2) }
-                personRow(pair.element)
-            }
-        }
-        if !near.isEmpty {
-            MarketLabel(title: (st.rank ?? 101) <= 100 ? "Around you" : "The way in")
-            VStack(spacing: 0) {
-                ForEach(Array(near.enumerated()), id: \.element.id) { (pair: (offset: Int, element: RichList.Person)) in
-                    if pair.offset > 0 { Hairline().padding(.leading, 44 + 32 + Theme.Space.m * 2) }
-                    personRow(pair.element)
-                }
-            }
-        }
-        if let r = st.rank, r > 100 {
-            Text("Number 100 has \(store.short(st.hundredth)): \(store.short(max(0, st.hundredth - st.netWorth))) to go.").textStyle(.caption)
-        } else if st.rank == nil {
-            Text("Not placed: net worth below zero").textStyle(.caption)
-        }
-    }
-
-    private func personRow(_ p: RichList.Person) -> some View {
-        HStack(spacing: Theme.Space.m) {
-            Text(p.isYou && p.rank == 0 ? "\u{00B7}" : "\(p.rank)").textStyle(.figure, tint: p.isYou ? P.accent : P.inkSoft).frame(width: 44, alignment: .leading)
-            PlayerAvatar(name: p.name, isYou: p.isYou, size: 32)
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(p.name).textStyle(.headline, tint: p.isYou ? P.accent : nil).lineLimit(1)
-                Text(p.isYou ? "You" : p.source.capitalized).textStyle(.caption).lineLimit(1)
-            }
-            Spacer(minLength: Theme.Space.s)
-            Text(store.short(max(0, p.wealth))).textStyle(.headline, numeric: true)
-        }
-        .padding(.vertical, Theme.Space.m)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(p.isYou ? "rankings-you" : "rankings-person-\(p.rank)")
-    }
-
-    @ViewBuilder private func awards(_ e: GameEngine) -> some View {
-        let years = Array(e.awardYears.reversed())
-        MarketLabel(title: "Business awards", note: "\(Awards.wonCount(e.state)) won")
-        if years.isEmpty {
-            Text("First awards at the end of the year").textStyle(.caption)
-        } else {
-            ForEach(Array(years.prefix(4)), id: \.year) { y in
-                MarketLabel(title: "\(y.year)")
-                VStack(spacing: 0) {
-                    ForEach(Array(y.results.enumerated()), id: \.offset) { i, r in
-                        if i > 0 { Hairline().padding(.leading, 36 + Theme.Space.m) }
-                        HStack(alignment: .top, spacing: Theme.Space.m) {
-                            ThumbnailView(kind: .trophy, key: ArtLibrary.awardKey(r.kind), size: 36, shape: .square, glyph: Glyph.achievements)
-                                .opacity(r.won ? 1 : 0.4)
-                            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                                Text(Awards.name(r.kind)).textStyle(.headline, tint: r.won ? P.accent : nil)
-                                Text(r.won ? "\(r.company): \(r.why)" : "Won by \(r.other). You were in the running.").textStyle(.caption)
-                                    .fixedSize(horizontal: false, vertical: true)
+        if var e = store.engine {
+            let img = e.worldImage()
+            let people = e.peopleYouKnow()
+            let favours = e.favours().filter { $0.status == .open }
+            let infl = e.mapInfluence()
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    CardSection("Seen as") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(img.label).textStyle(.headline, tint: Theme.accent, weight: .semibold)
+                            Text(img.text.tidyMoney).textStyle(.body, tint: Theme.inkSoft)
+                            Text("Opens: " + img.opens).textStyle(.caption, tint: Theme.inkFaint)
+                            Text("Risks: " + img.risks).textStyle(.caption, tint: Theme.inkFaint)
+                            CardLine()
+                            ForEach(img.groups) { g in
+                                HStack { Text(g.name).textStyle(.body); Spacer(); Text(g.word).textStyle(.body, tint: Theme.inkSoft) }
                             }
-                            Spacer(minLength: Theme.Space.s)
-                            Text(r.won ? "Won" : "").textStyle(.caption, tint: P.gain)
                         }
-                        .padding(.vertical, Theme.Space.m)
+                    }
+                    CardSection("People you know") {
+                        if people.isEmpty {
+                            Text("You know nobody in business yet. Open a company and people will find you.").textStyle(.body, tint: Theme.inkSoft)
+                        } else {
+                            VStack(spacing: 0) {
+                                ForEach(Array(people.enumerated()), id: \.element.id) { i, c in
+                                    if i > 0 { CardLine() }
+                                    HStack(alignment: .firstTextBaseline) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(c.name).textStyle(.body)
+                                            Text(c.role.rawValue + " · " + c.organisation).font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                        }
+                                        Spacer(minLength: 8)
+                                        if c.relationship >= 64 {
+                                            Button("Ask a favour") {
+                                                report(store.act { $0.askForFavour(contactID: c.id) })
+                                            }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).accessibilityLabel("Ask \(c.name) for a favour")
+                                        }
+                                        Text(c.word).textStyle(.caption)
+                                    }.padding(.vertical, 8)
+                                }
+                            }
+                        }
+                    }
+                    if !favours.isEmpty {
+                        CardSection("Favours and promises") {
+                            VStack(spacing: 0) {
+                                ForEach(Array(favours.enumerated()), id: \.element.id) { i, f in
+                                    if i > 0 { CardLine() }
+                                    HStack(alignment: .firstTextBaseline) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(f.name).textStyle(.body)
+                                            Text((f.kind == .owed ? "Owes you: " : f.kind == .promise ? "You promised: " : "You owe them: ") + f.text).font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                        }
+                                        Spacer(minLength: 8)
+                                        if f.kind != .owe {
+                                            Button(f.kind == .owed ? "Call in" : "Keep it") {
+                                                let calling = f.kind == .owed
+                                                report(store.act { calling ? $0.callInFavour(favourID: f.id) : $0.keepPromise(favourID: f.id) })
+                                            }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).accessibilityLabel((f.kind == .owed ? "Call in the favour from " : "Keep your promise to ") + f.name)
+                                        }
+                                    }.padding(.vertical, 8)
+                                }
+                            }
+                        }
+                    }
+                    CardSection("What you own") {
+                        VStack(spacing: 0) {
+                            ForEach(Array(e.mapOwnership().enumerated()), id: \.element.id) { i, n in
+                                if i > 0 { CardLine() }
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(n.name).textStyle(.body)
+                                        Text(n.trade + (n.ownership < 100 ? " · you own \(Int(saturating: n.ownership.rounded()))%" : "")).font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                    }
+                                    Spacer()
+                                    Text(store.short(n.value)).textStyle(.body, tint: Theme.inkSoft, numeric: true)
+                                }.padding(.leading, CGFloat((n.depth - 1) * 18)).padding(.vertical, 8)
+                            }
+                        }
+                    }
+                    CardSection("Where you are") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(e.mapPresence()) { p in
+                                Text(p.flag + " " + p.name).textStyle(.body, weight: .semibold)
+                                ForEach(p.cities.filter { $0.companies > 0 }) { c in
+                                    HStack { Text(c.name).textStyle(.body); Spacer()
+                                        Text("\(c.companies) · " + c.trades.joined(separator: ", ")).font(.caption).foregroundStyle(Theme.ivoryFaint) }
+                                }
+                            }
+                        }
+                    }
+                    CardSection("Circles of influence") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            circle("Inside", infl.inner)
+                            circle("Allies", infl.allies)
+                            circle("Rivals and the wary", infl.others)
+                        }
                     }
                 }
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
+                .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private func circle(_ title: String, _ names: [String]) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).textStyle(.body)
+            Spacer()
+            Text(names.isEmpty ? "None yet" : names.prefix(3).joined(separator: ", ") + (names.count > 3 ? " +\(names.count - 3)" : ""))
+                .textStyle(.caption).multilineTextAlignment(.trailing)
         }
     }
 }

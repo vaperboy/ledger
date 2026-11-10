@@ -2,11 +2,6 @@ import SwiftUI
 import Countries
 import Simulation
 
-struct ReportRef: Hashable {
-    var kind: ReportKind
-    var id: Int
-}
-
 struct ReportFormat {
     var short: (Double) -> String
     var money: (Double) -> String

@@ -27,7 +27,7 @@ struct RuleEntry: Sendable {
 public enum Gate: String, CaseIterable, Sendable {
     case hiring, marketing, ownerMoney, bank, newCompany, management, accounting, insurance, suppliers, property
     case group, rivals, ventures, luxury, atlas
-    case weather, airstay, techpro, marketplace, reviews, venturesFeed
+    case weather, airstay, techpro, marketplace, reviews
     case ownerHours
 
     var rule: UnlockRule { Gates.entry(.gate(self)).rule }
@@ -85,8 +85,6 @@ public enum Gates {
                   text: "Unlocks with your first profitable month or your first loss"),
         RuleEntry(feature: .gate(.ventures), title: "Ventures", rule: .anyOf([.profitableQuarters(1), .week(26)]),
                   text: "Unlocks after your first profitable quarter, or in week 26"),
-        RuleEntry(feature: .gate(.venturesFeed), title: "Ventures feed", rule: .anyOf([.profitableQuarters(1), .week(26)]),
-                  text: "Unlocks after your first profitable quarter, or in week 26", roadmap: false),
         RuleEntry(feature: .gate(.luxury), title: "Luxury", rule: .rich, text: "Unlocks when you are rich"),
         RuleEntry(feature: .gate(.ownerHours), title: "Owner hours", rule: .week(13), text: "", roadmap: false),
         RuleEntry(feature: .unlock("board"), title: "Board", rule: .boardSeat,

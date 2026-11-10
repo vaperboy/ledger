@@ -188,7 +188,7 @@ final class UnlockGatesTests: XCTestCase {
         months(2)
         XCTAssertEqual(vis(e, .ventures), .locked(text))
         months(3)
-        for g in [Gate.ventures, .venturesFeed] { XCTAssertEqual(vis(e, g), .open, g.rawValue) }
+        XCTAssertEqual(vis(e, .ventures), .open)
     }
 
     func testVenturesProgressCountsClosedMonthsAndWeekFallbackOpensThem() throws {

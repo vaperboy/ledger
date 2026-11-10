@@ -72,7 +72,7 @@ final class ReconciliationTests: XCTestCase {
     func testCompanyValueIsCountedOnceInNetWorth() throws {
         var (e, id) = try firm(days: 21)
         let nw = e.netWorth
-        XCTAssertEqual(nw.total, nw.personal + nw.stocks + nw.crypto + nw.funds + nw.companies + nw.luxury - nw.debt - nw.pendingTax, accuracy: max(1, abs(nw.total) * 0.001), "total is the sum of its parts")
+        XCTAssertEqual(nw.total, nw.personal + nw.crypto + nw.funds + nw.companies + nw.luxury - nw.debt - nw.pendingTax, accuracy: max(1, abs(nw.total) * 0.001), "total is the sum of its parts")
         let before = nw.total
         e.update { s, _, _ in Ledger.move(&s, .me, -10_000_000, why: "Into company"); Ledger.moveRaw(&s, .company(id), 10_000_000) }
         let after = e.netWorth

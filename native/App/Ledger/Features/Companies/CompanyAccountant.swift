@@ -4,9 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-struct AtlasAccountantSection: View {
+struct CompanyAccountantScreen: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.outsidePalette) private var P
     var companyID: Int
     @State private var pending: PendingAction?
 
@@ -15,15 +14,25 @@ struct AtlasAccountantSection: View {
             let cur: Currency = e.currency(for: co)
             let choices: [AdviserOption] = e.adviserChoices(companyID: companyID, kind: .accountant)
             let now: AdviserOption? = choices.first { (a: AdviserOption) -> Bool in a.isCurrent }
-            ShopSection(title: "On offer", trailing: now.map { (a: AdviserOption) -> String in "Now " + cur.tidyShort(a.monthlyFee) + " a month" } ?? "") {
-                if choices.isEmpty { LoadingState(text: "Finding accountants") }
-                ForEach(choices) { (a: AdviserOption) in
-                    ShopChoiceRow(title: a.name, subtitle: subtitle(a, cur), trailing: "\u{2605} " + String(format: "%.1f", a.rating), selected: a.isCurrent,
-                                  identifier: "atlas-accountant-\(a.id)") { ask(a, now, cur) }
-                }
+            PhonePageScroll(spacing: Theme.Space.l) {
+                LedgerSection(title: "On offer", trailing: {
+                    Text(now.map { (a: AdviserOption) -> String in "Now " + cur.tidyShort(a.monthlyFee) + " a month" } ?? "").textStyle(.caption)
+                }, content: {
+                    if choices.isEmpty { LoadingState(text: "Finding accountants") }
+                    ForEach(choices) { (a: AdviserOption) in
+                        LedgerRow(leading: .glyph(Glyph.reports), title: a.name, subtitle: subtitle(a, cur),
+                                  value: "\u{2605} " + String(format: "%.1f", a.rating), pill: a.isCurrent ? "Yours" : nil, pillTone: .good,
+                                  identifier: "accountant-\(a.id)") { ask(a, now, cur) }
+                    }
+                })
+                Text("Keeps the books for \(co.name). The fee is paid monthly from company cash.")
+                    .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
             .confirmAction($pending)
             .task { store.act { $0.prepareAdvisers(companyID: companyID) } }
+            .appScreen(title: "Accountant", subtitle: co.name)
+        } else {
+            EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 
@@ -31,7 +40,6 @@ struct AtlasAccountantSection: View {
         var text: String = cur.tidyShort(a.monthlyFee) + " a month"
         if let err = a.errorRate { text += " \u{00B7} books wrong " + String(format: "%.0f", err * 100) + "% of the time" }
         if a.ownFirmID != nil { text += " \u{00B7} your own firm" }
-        if a.isCurrent { text = "Yours \u{00B7} " + text }
         return text
     }
 

@@ -11,7 +11,7 @@ struct AtlasApp: View {
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
 
-    private enum Step: Equatable { case home, checkout, activated, advisers }
+    private enum Step: Equatable { case home, checkout, activated }
 
     @State private var step: Step = .home
     @State private var companyID = 0
@@ -42,7 +42,6 @@ struct AtlasApp: View {
                 case .home: homeView(e, co)
                 case .checkout: checkoutView(e, co)
                 case .activated: activatedView(e, co)
-                case .advisers: advisersView(co)
                 }
             } else {
                 EmptyState(glyph: Glyph.atlas, title: "Nothing to insure", message: "Start a company to insure it.")
@@ -59,7 +58,6 @@ struct AtlasApp: View {
         case .home: dismiss()
         case .checkout: step = .home
         case .activated: step = .home
-        case .advisers: step = .home
         }
     }
 
@@ -99,7 +97,6 @@ struct AtlasApp: View {
             if let o {
                 coverageHero(co, o)
                 policiesSection(e, co, o)
-                adviserRow(e, co)
             }
         }
         .accessibilityIdentifier("atlas-home")
@@ -123,23 +120,6 @@ struct AtlasApp: View {
                 }
                 .padding(.top, Theme.Space.xs)
             }
-        }
-    }
-
-    private func adviserRow(_ e: GameEngine, _ co: Company) -> some View {
-        let now: AdviserOption? = e.adviserChoices(companyID: co.id, kind: .accountant).first { (a: AdviserOption) -> Bool in a.isCurrent }
-        return ShopSection(title: "Advisers") {
-            LedgerRow(leading: .glyph(Glyph.atlas), title: "Accountant", subtitle: now?.name ?? "Choose who keeps the books",
-                      value: now.map { (a: AdviserOption) -> String in money(a.monthlyFee, co) + "/mo" } ?? "", identifier: "atlas-advisers") {
-                step = .advisers
-            }
-        }
-    }
-
-    private func advisersView(_ co: Company) -> some View {
-        ShopPage {
-            ShopPageTitle(title: "Your accountant", subtitle: "Keeps the books for \(co.name). The fee is paid monthly from company cash.")
-            AtlasAccountantSection(companyID: co.id)
         }
     }
 

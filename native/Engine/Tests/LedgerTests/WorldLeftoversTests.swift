@@ -32,7 +32,7 @@ final class WorldLeftoversTests: XCTestCase {
         let co = try XCTUnwrap(e.state.company(id))
         let m = try XCTUnwrap(MarketMap.market(of: co, e.state, data: e.data))
         XCTAssertEqual(MarketMap.knowledge(e.state, m).level, .dataAnalyst)
-        let board = e.rankingBoard(scope: .country, metric: .revenue)
+        let board = CompanyRanking.board(e.state, data: e.data, scope: .country, metric: .revenue)
         let you = try XCTUnwrap(board.you)
         XCTAssertGreaterThan(you.rank, 1)
         XCTAssertGreaterThan(board.total, 100)

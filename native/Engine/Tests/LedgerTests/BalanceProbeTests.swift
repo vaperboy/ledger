@@ -248,7 +248,7 @@ final class BalanceGuardTests: XCTestCase {
 extension BalanceProbeTests {
     func testPrintInvestmentOutcomes() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_INVEST"] != nil else { return }
-        for kind in [Brokerage.Kind.stock, .crypto, .fund] {
+        for kind in [Brokerage.Kind.crypto, .fund] {
             var multiples: [Double] = []
             for seed in [31, 32, 33, 34, 35] {
                 var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
