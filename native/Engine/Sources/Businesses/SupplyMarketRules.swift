@@ -83,6 +83,7 @@ public enum SupplyRecordRules {
     }
 
     public static func wellKnownOrder(_ a: SupplyListing, _ b: SupplyListing) -> Bool {
+        if a.isFriend != b.isFriend { return a.isFriend }
         let sa = isUnproven(a.record) ? 0 : score(a.record), sb = isUnproven(b.record) ? 0 : score(b.record)
         if abs(sa - sb) > 0.02 { return sa > sb }
         if a.record.lifetimeUnits != b.record.lifetimeUnits { return a.record.lifetimeUnits > b.record.lifetimeUnits }
@@ -151,7 +152,7 @@ public struct SupplyListing: Identifiable, Equatable, Sendable {
     }
 
     public var word: DeliveryWord { SupplyRecordRules.word(record) }
-    public var priceFactor: Double { SupplyCatalogue.tierPrice[min(2, max(0, priceTier))] }
+    public var priceFactor: Double { FriendTies.price(SupplyCatalogue.tierPrice[min(2, max(0, priceTier))], friend: isFriend) }
 }
 
 public enum SupplyAvailability: Equatable, Sendable {
@@ -231,7 +232,7 @@ public enum SupplyChoice {
 
     public static func weight(_ l: SupplyListing) -> Double {
         let share = Double(l.committedUnits) / Double(max(1, SupplyGuards.effectiveCapacity(l)))
-        return (l.word == .unproven ? 1.25 : 1) * (1.2 - min(1, share))
+        return FriendTies.weight((l.word == .unproven ? 1.25 : 1) * (1.2 - min(1, share)), friend: l.isFriend)
     }
 
     public static func draw(_ pool: [SupplyListing], seed: String, excluding: Set<String> = []) -> SupplyListing? {
@@ -333,7 +334,8 @@ public enum SupplyMarketBooks {
     }
 
     @discardableResult
-    public static func settleSupply(_ s: inout GameState, supplierCompanyID: Int?, buyerCompanyID: Int?, units: Int, unitPrice: Double, unitCost: Double, buyerSaving: Double = 0) -> Double? {
+    public static func settleSupply(_ s: inout GameState, supplierCompanyID: Int?, buyerCompanyID: Int?, units: Int, unitPrice: Double, unitCost: Double, buyerSaving: Double = 0, friend: Bool = false) -> Double? {
+        let unitPrice = FriendTies.price(unitPrice, friend: friend)
         guard supplierCompanyID != nil || buyerCompanyID != nil, supplierCompanyID != buyerCompanyID else { return nil }
         if let sid = supplierCompanyID {
             guard units > 0, unitPrice >= 0, unitCost >= 0, s.company(sid)?.status == .open else { return nil }

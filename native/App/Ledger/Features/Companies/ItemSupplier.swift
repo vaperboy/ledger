@@ -138,7 +138,7 @@ struct SupplierPopup: View {
                 }
             }
             if l.leadDays > 0 { delivery.append("\(l.leadDays) days") }
-            return SupplierChoice(id: "l:" + l.id, name: l.ownerName, badge: "Player", price: price, trust: l.record.ordersTotal == 0 ? nil : l.record.deliveredShare,
+            return SupplierChoice(id: "l:" + l.id, name: l.ownerName, badge: l.isFriend ? "Friend" : "Player", price: price, trust: l.record.ordersTotal == 0 ? nil : l.record.deliveredShare,
                                   delivery: delivery.isEmpty ? "" : "Delivery: " + delivery.joined(separator: " \u{00B7} "), cost: l.priceFactor * (r?.landedFactor ?? 1),
                                   current: contract?.listingID == l.id, blocked: a.message.map { Self.short($0) }, action: .listing(l))
         }

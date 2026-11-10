@@ -77,6 +77,7 @@ public enum EventEngine {
             fire(&s, companyIndex: i, e, ctx: c, data: data, context: fc)
         }
         EventPack.spawn(&s, companyIndex: i, data: data, context: fc)
+        SupplyNews.spawn(&s, companyIndex: i, data: data)
     }
 
     static func goodEventMinimumWeeks(_ s: GameState, companyIndex i: Int) -> Int {

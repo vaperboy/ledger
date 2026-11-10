@@ -135,7 +135,7 @@ struct HomeWorldStrip: View {
         var people: [Item] = []
         for ev in events {
             let friend: Bool = NewsFeedStore.shared.service.isFriend(ev.playerID)
-            guard let text = PlayerNewsRules.sentence(ev, namesVisible: friend) else { continue }
+            guard PlayerNewsRules.canSee(ev, viewerIsFriend: friend), let text = PlayerNewsRules.sentence(ev, namesVisible: friend) else { continue }
             people.append(Item(id: ev.id, glyph: friend ? Glyph.people : Glyph.news, text: text, tag: (friend ? "Friend" : "Player") + " · " + Self.ago(day: ev.day), tint: Theme.accent, target: .world))
             if people.count == 3 { break }
         }
@@ -156,5 +156,73 @@ struct HomeWorldStrip: View {
         if m < 60 { return "\(max(1, m)) minutes" }
         let h: Int = m / 60
         return h == 1 ? "1 hour" : "\(h) hours"
+    }
+}
+
+struct HomeRecapCard: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(OnlineSession.self) private var online
+
+    private var friends: [WorldRecapFriend] {
+        online.friendActivity.activity.map { (a: FriendActivityItem) -> WorldRecapFriend in
+            WorldRecapFriend(id: a.id, kind: a.kind, text: a.sentence, at: a.at)
+        }
+    }
+
+    var body: some View {
+        if let e = store.engine, let card = e.worldRecap(friends: friends) {
+            content(card)
+        }
+    }
+
+    private func tint(_ tone: String) -> Color {
+        tone == "good" ? Theme.gain : (tone == "bad" ? Theme.loss : Theme.inkSoft)
+    }
+
+    private func open(_ card: WorldRecapCard) {
+        Haptics.tap()
+        if card.home == .news { store.openApp(.news, request: .newsPlayers) } else { store.openApp(.stats) }
+    }
+
+    private func dismiss() {
+        Haptics.tap()
+        _ = store.act { (e: inout GameEngine) -> Bool in
+            e.dismissWorldRecap()
+            return true
+        }
+    }
+
+    private func content(_ card: WorldRecapCard) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            HStack(spacing: Theme.Space.s) {
+                Text("This week in the world").textStyle(.label, tint: Theme.inkFaint)
+                Spacer(minLength: Theme.Space.s)
+                Button { dismiss() } label: {
+                    LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: Theme.inkFaint).frame(width: 44, height: 28).contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel("Dismiss the weekly recap")
+                .accessibilityIdentifier("home-recap-dismiss")
+            }
+            Button { open(card) } label: {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    ForEach(card.lines) { (l: WorldRecapCard.Line) in
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                            Circle().fill(tint(l.tone)).frame(width: 6, height: 6).accessibilityHidden(true)
+                            Text(l.text).textStyle(.caption, tint: Theme.ink).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityHint(card.home == .news ? "Opens the news" : "Opens your stats")
+        }
+        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassSurface()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("home-recap")
     }
 }

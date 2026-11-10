@@ -45,6 +45,7 @@ struct HomeSummary<Companies: View>: View {
             }
             HomeSeasonPromo(compact: trim >= 2)
             if trim < 2 {
+                HomeRecapCard()
                 HomeWorldStrip()
                 if fills { Self.gap }
             }

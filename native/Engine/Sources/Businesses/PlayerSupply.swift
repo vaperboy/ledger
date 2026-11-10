@@ -29,10 +29,11 @@ public enum PlayerSupply {
         public var leadDays: Int
         public var country: String
         public var landedFactor: Double
+        public var friend: Bool = false
         public var id: String { base.id }
     }
 
-    public static func priceFactor(_ c: Contract) -> Double { SupplyCatalogue.tierPrice[min(2, max(0, c.priceTier))] * max(1, c.landedFactor) }
+    public static func priceFactor(_ c: Contract) -> Double { FriendTies.price(SupplyCatalogue.tierPrice[min(2, max(0, c.priceTier))] * max(1, c.landedFactor), friend: c.friend) }
 
     public static func reliability(of r: DeliveryRecord) -> Double {
         if SupplyRecordRules.isUnproven(r) { return 0.93 }
@@ -45,14 +46,14 @@ public enum PlayerSupply {
         Contract(base: SupplyContract(id: j["id"].string, buyerCompanyID: j["b"].int, lineID: j["ln"].string, listingID: j["li"].string, supplierOwnerID: j["ow"].string,
                                       supplierName: j["nm"].string, unitsPerWeek: j["u"].int, startDay: j["d0"].int),
                  priceTier: j["pt"].int, qualityTier: j["qt"].int, reliability: j["rel"].isNull ? 0.93 : j["rel"].double, termsDays: j["tm"].int, leadDays: j["ld"].int,
-                 country: j["cc"].string, landedFactor: j["lf"].isNull ? 1 : j["lf"].double)
+                 country: j["cc"].string, landedFactor: j["lf"].isNull ? 1 : j["lf"].double, friend: j["fr"].bool)
     }
 
     static func json(_ c: Contract) -> JSONValue {
         .object(["id": .string(c.base.id), "b": .number(Double(c.base.buyerCompanyID)), "ln": .string(c.base.lineID), "li": .string(c.base.listingID), "ow": .string(c.base.supplierOwnerID),
                  "nm": .string(c.base.supplierName), "u": .number(Double(c.base.unitsPerWeek)), "d0": .number(Double(c.base.startDay)), "pt": .number(Double(c.priceTier)),
                  "qt": .number(Double(c.qualityTier)), "rel": .number(c.reliability), "tm": .number(Double(c.termsDays)), "ld": .number(Double(c.leadDays)),
-                 "cc": .string(c.country), "lf": .number(c.landedFactor)])
+                 "cc": .string(c.country), "lf": .number(c.landedFactor), "fr": .bool(c.friend)])
     }
 
     public static func contracts(_ s: GameState) -> [Contract] { record(s)["c"].array.map { contract($0) } }
@@ -72,7 +73,7 @@ public enum PlayerSupply {
         let spend = max(0, weeklyMarketSpend.isFinite ? weeklyMarketSpend : 0)
         let row = SupplyLanded.compare([l], buyerCountry: co.countryCode, marketUnitPrice: spend / Double(base.unitsPerWeek), units: base.unitsPerWeek, priceLevel: level).first
         let c = Contract(base: base, priceTier: l.priceTier, qualityTier: l.qualityTier, reliability: reliability(of: l.record), termsDays: l.termsDays, leadDays: l.leadDays,
-                         country: l.country, landedFactor: max(1, row?.landedFactor ?? 1))
+                         country: l.country, landedFactor: max(1, row?.landedFactor ?? 1), friend: l.isFriend)
         var rec = record(s)
         var list = rec["c"].array.filter { !($0["b"].int == base.buyerCompanyID && $0["ln"].string == base.lineID) }
         list.append(json(c))
@@ -132,7 +133,7 @@ public enum PlayerSupply {
 
     static func offer(_ c: Contract, line: SupplyCatalogue.Line) -> SupplyCatalogue.Offer {
         SupplyCatalogue.Offer(id: "P:" + c.base.id, name: c.base.supplierName, owner: c.base.supplierName, tier: min(2, max(0, c.qualityTier)), priceFactor: priceFactor(c),
-                              reliability: c.reliability, termsDays: c.termsDays, leadDays: line.leadDays + c.leadDays, relationshipWord: "Player supplier")
+                              reliability: c.reliability, termsDays: c.termsDays, leadDays: line.leadDays + c.leadDays, relationshipWord: c.friend ? "Friend supplier" : "Player supplier")
     }
 
     static func recordJSON(_ r: DeliveryRecord) -> JSONValue {
