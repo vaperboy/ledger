@@ -186,7 +186,7 @@ final class ContentValidationTests: XCTestCase {
             if !kinds.contains(c["kind"].string) { p.append("\(file): \(label) has kind \"\(c["kind"].string)\"; use theme, namePlate, backdrop, tradePlate, richListFlair or saveSlot") }
             if !["store", "box", "collection"].contains(c["source"].string) { p.append("\(file): \(label) has source \"\(c["source"].string)\"; use store, box or collection") }
             if c["source"].string == "collection" && !colRewards.contains(c["id"].string) { p.append("\(file): \(label) is a collection reward but no collection in artifacts.json names it") }
-            if c["source"].string == "store" && Pricing.item(c["id"].string) == nil && GoldCosmetics.storePrice(ContentFile.rarity(c["rarity"].string)) == nil { p.append("\(file): \(label) is a legendary store item and needs a price in pricing/prices.json") }
+            if c["source"].string == "store" && GoldPrices.item(c["id"].string) == nil && GoldCosmetics.storePrice(ContentFile.rarity(c["rarity"].string)) == nil { p.append("\(file): \(label) is a legendary store item and needs a price in pricing/prices.json") }
         }
         for r in Self.rarities where r != "legendary" && !list.contains(where: { (c: JSONValue) -> Bool in c["rarity"].string == r && c["source"].string != "collection" && c["kind"].string != "saveSlot" }) {
             p.append("\(file): box drops need at least one \(r) cosmetic")

@@ -12,13 +12,13 @@ public struct GoldCosmetic: Equatable, Sendable, Identifiable {
 
 public enum GoldCosmetics {
     public static func storePrice(_ rarity: BoxRarity) -> Int? {
-        Pricing.cosmetic(rarity: rarity)
+        GoldPrices.cosmetic(rarity: rarity)
     }
 
     public static let all: [GoldCosmetic] = ContentFile.load("cosmetics", "gold_cosmetics")["cosmetics"].array.map { (e: JSONValue) -> GoldCosmetic in
         let rarity: BoxRarity = ContentFile.rarity(e["rarity"].string)
         let source: GoldCosmetic.Source = GoldCosmetic.Source(rawValue: e["source"].string) ?? .store
-        let price: Int? = Pricing.item(e["id"].string) ?? (source == .store ? GoldCosmetics.storePrice(rarity) : nil)
+        let price: Int? = GoldPrices.item(e["id"].string) ?? (source == .store ? GoldCosmetics.storePrice(rarity) : nil)
         let item: SeasonReward = SeasonReward(id: e["id"].string, tier: 0, premium: false, kind: SeasonReward.Kind(rawValue: e["kind"].string) ?? .badge,
                                               title: e["title"].string, detail: e["detail"].string, colors: ContentFile.colors(e["colors"]),
                                               season: 0, theme: ItemThemes.id(e), founderEdition: e["founderEdition"].bool, accountBound: e["bound"].bool || source == .store)

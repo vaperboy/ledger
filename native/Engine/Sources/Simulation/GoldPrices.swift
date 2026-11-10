@@ -1,7 +1,7 @@
 import Foundation
 import GameCore
 
-public enum Pricing {
+public enum GoldPrices {
     static let table: JSONValue = ContentFile.load("pricing", "prices")
 
     public static var goldPerNok: Int { table["goldPerNok"].int }

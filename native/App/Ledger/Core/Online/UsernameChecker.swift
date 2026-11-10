@@ -63,5 +63,5 @@ struct UsernameStatusLine: View {
 }
 
 enum UsernameCost {
-    static var change: Int { Pricing.service("usernameChange") }
+    static var change: Int { GoldPrices.service("usernameChange") }
 }

@@ -14,7 +14,7 @@ struct CompanyRenameHost: ViewModifier {
     @State private var shortNeed = 0
     @State private var showPacks = false
 
-    static var skipPrice: Int { Pricing.service("companyNameSkip") }
+    static var skipPrice: Int { GoldPrices.service("companyNameSkip") }
 
     func body(content: Content) -> some View {
         content
