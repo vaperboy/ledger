@@ -407,3 +407,193 @@ begin
   perform public.update_my_profile(p_display_name => 'Sneaky Name');
   if (select display_name from public.profiles where id = a) <> 'tiger_7' then raise exception 'display name changed outside the claim'; end if;
 end $$;
+
+create function pg_temp.mk_item(k text, nm text, ttl text) returns jsonb language sql as $$
+  select jsonb_build_object('id', nm, 'kind', k, 'title', ttl, 'family', 'car_s', 'ref', 'car_s', 'age', 4, 'km', 60000, 'seen', 0.7, 'cond', 0.5, 'base', 400000);
+$$;
+
+create function pg_temp.notes(uid uuid, kind text) returns int language sql as $$
+  select count(*)::int from public.settlements s where s.recipient_id = $1 and s.kind = $2;
+$$;
+
+do $$
+declare a uuid := pg_temp.id('a'); b uuid := pg_temp.id('c'); c uuid := pg_temp.id('n'); l jsonb; d jsonb; r jsonb; lid uuid; did uuid;
+begin
+  perform pg_temp.as_user(a);
+  l := public.market_list(pg_temp.mk_item('car', 'it-1', 'Old estate car'), 50000, 'NOK');
+  lid := (l ->> 'id')::uuid;
+  perform pg_temp.expect_error('select public.market_list(pg_temp.mk_item(''car'', ''it-1'', ''Old estate car''), 50000, ''NOK'')', 'already_listed');
+  perform pg_temp.expect_error('select public.market_list(pg_temp.mk_item(''spaceship'', ''it-2'', ''Rocket''), 50000, ''NOK'')', 'invalid_item');
+  perform pg_temp.expect_error('select public.market_list(pg_temp.mk_item(''car'', ''it-3'', ''Cheap car''), 0, ''NOK'')', 'invalid_price');
+  if exists (select 1 from jsonb_array_elements(public.market_browse('car', 60)) e where e ->> 'id' = lid::text) then raise exception 'seller sees own listing in browse'; end if;
+
+  perform pg_temp.as_user(b);
+  update public.profiles set last_seen_at = now() where id = a;
+  r := public.market_browse('car', 60);
+  if not exists (select 1 from jsonb_array_elements(r) e where e ->> 'id' = lid::text and (e ->> 'sellerOnline')::boolean and e ->> 'sellerName' = (select display_name from public.profiles where id = a)) then raise exception 'listing or seller presence missing: %', r; end if;
+  update public.profiles set last_seen_at = now() - interval '1 hour' where id = a;
+  if (select (e ->> 'sellerOnline')::boolean from jsonb_array_elements(public.market_browse('car', 60)) e where e ->> 'id' = lid::text) then raise exception 'seller shown online after an hour'; end if;
+
+  d := public.market_buy(lid);
+  did := (d ->> 'id')::uuid;
+  if d ->> 'status' <> 'pending' or (d ->> 'price')::numeric <> 50000 then raise exception 'buy request wrong: %', d; end if;
+  perform pg_temp.expect_error('select public.market_buy(''' || lid || '''::uuid)', 'deal_open');
+  perform pg_temp.expect_error('select public.market_offer(''' || lid || '''::uuid, 40000)', 'deal_open');
+  if pg_temp.notes(a, 'market_notice') <> 1 then raise exception 'seller was not notified of the request'; end if;
+  perform pg_temp.as_user(c);
+  perform pg_temp.expect_error('select public.market_respond(''' || did || '''::uuid, ''accept'', null)', 'not_found');
+  perform pg_temp.as_user(a);
+  r := public.market_mine();
+  if jsonb_array_length(r -> 'incoming') <> 1 or r -> 'incoming' -> 0 ->> 'otherName' <> (select display_name from public.profiles where id = b) then raise exception 'incoming deal missing: %', r; end if;
+  r := public.market_respond(did, 'accept', null);
+  if r ->> 'status' <> 'accepted' then raise exception 'accept failed: %', r; end if;
+  if (select amount from public.settlements where recipient_id = a and kind = 'market_sale') <> 50000 then raise exception 'seller was not paid'; end if;
+  if not exists (select 1 from public.settlements where recipient_id = b and kind = 'market_purchase' and amount = 0 and meta -> 'item' ->> 'id' = 'it-1' and (meta ->> 'price')::numeric = 50000) then raise exception 'buyer item settlement missing'; end if;
+  if (select status from public.market_listings where id = lid) <> 'sold' then raise exception 'listing not sold'; end if;
+  perform pg_temp.as_user(c);
+  perform pg_temp.expect_error('select public.market_buy(''' || lid || '''::uuid)', 'not_found');
+  perform pg_temp.expect_error('select public.market_respond(''' || did || '''::uuid, ''accept'', null)', 'not_found');
+end $$;
+
+do $$
+declare a uuid := pg_temp.id('a'); l jsonb;
+begin
+  perform pg_temp.as_user(a);
+  l := public.market_list(pg_temp.mk_item('boat', 'it-5', 'Small boat'), 9000, 'NOK');
+  perform pg_temp.as_user((select id from cast_ids where k = 'b'));
+  perform pg_temp.expect_error('select public.market_buy(''' || (l ->> 'id') || '''::uuid)', 'own_listing');
+  perform pg_temp.as_user(a);
+  perform public.market_cancel((l ->> 'id')::uuid);
+end $$;
+
+do $$
+declare a uuid := pg_temp.id('a'); b uuid := pg_temp.id('c'); c uuid := pg_temp.id('n'); l jsonb; d jsonb; r jsonb; lid uuid; did uuid; did2 uuid;
+begin
+  perform pg_temp.as_user(a);
+  l := public.market_list(pg_temp.mk_item('van', 'it-10', 'Work van'), 1000, 'NOK');
+  lid := (l ->> 'id')::uuid;
+  perform pg_temp.as_user(b);
+  perform pg_temp.expect_error('select public.market_offer(''' || lid || '''::uuid, 1000)', 'offer_not_lower');
+  perform pg_temp.expect_error('select public.market_offer(''' || lid || '''::uuid, 100)', 'offer_too_low');
+  d := public.market_offer(lid, 800);
+  did := (d ->> 'id')::uuid;
+  perform pg_temp.expect_error('select public.market_offer(''' || lid || '''::uuid, 850)', 'offer_used');
+  perform pg_temp.expect_error('select public.market_buy(''' || lid || '''::uuid)', 'deal_open');
+  r := (select e from jsonb_array_elements(public.market_browse(null, 60)) e where e ->> 'id' = lid::text);
+  if not (r ->> 'offerUsed')::boolean or r -> 'myDeal' ->> 'status' <> 'pending' then raise exception 'listing does not show my offer: %', r; end if;
+
+  perform pg_temp.as_user(c);
+  d := public.market_offer(lid, 700);
+  did2 := (d ->> 'id')::uuid;
+
+  perform pg_temp.as_user(a);
+  perform pg_temp.expect_error('select public.market_respond(''' || did || '''::uuid, ''discuss'', 1000)', 'price_not_lower');
+  perform pg_temp.expect_error('select public.market_respond(''' || did || '''::uuid, ''bogus'', null)', 'invalid_action');
+  r := public.market_respond(did, 'discuss', 900);
+  if r ->> 'status' <> 'discussing' then raise exception 'discuss failed: %', r; end if;
+  perform pg_temp.expect_error('select public.market_respond(''' || did || '''::uuid, ''discuss'', 850)', 'already_discussing');
+  r := public.market_respond(did2, 'decline', null);
+  if r ->> 'status' <> 'declined' then raise exception 'decline failed: %', r; end if;
+
+  perform pg_temp.as_user(c);
+  perform pg_temp.expect_error('select public.market_offer(''' || lid || '''::uuid, 750)', 'offer_used');
+  if pg_temp.notes(c, 'market_refund') <> 1 then raise exception 'declined buyer got no refund notice'; end if;
+  perform pg_temp.as_user(b);
+  perform pg_temp.expect_error('select public.market_answer(''' || did2 || '''::uuid, true)', 'not_found');
+  if (select status from public.market_offers where id = did) <> 'discussing' then raise exception 'offer lost its discussion'; end if;
+  r := public.market_answer(did, true);
+  if r ->> 'status' <> 'accepted' or (r ->> 'price')::numeric <> 900 then raise exception 'special price not honoured: %', r; end if;
+  if not exists (select 1 from public.settlements where recipient_id = a and kind = 'market_sale' and amount = 900) then raise exception 'seller not paid the special price'; end if;
+  if not exists (select 1 from public.settlements where recipient_id = b and kind = 'market_purchase' and (meta ->> 'price')::numeric = 900) then raise exception 'buyer settlement missing special price'; end if;
+end $$;
+
+do $$
+declare a uuid := pg_temp.id('a'); b uuid := pg_temp.id('c'); c uuid := pg_temp.id('n'); l jsonb; d jsonb; lid uuid; did uuid; did2 uuid; before_b int; before_c int;
+begin
+  perform pg_temp.as_user(a);
+  l := public.market_list(pg_temp.mk_item('equipment', 'it-20', 'Pizza oven'), 5000, 'NOK');
+  lid := (l ->> 'id')::uuid;
+  perform pg_temp.as_user(b);
+  did := (public.market_buy(lid) ->> 'id')::uuid;
+  perform pg_temp.as_user(c);
+  did2 := (public.market_offer(lid, 4000) ->> 'id')::uuid;
+  before_b := pg_temp.notes(b, 'market_refund');
+  before_c := pg_temp.notes(c, 'market_refund');
+  perform pg_temp.as_user(b);
+  d := public.market_withdraw(did);
+  if d ->> 'status' <> 'withdrawn' or pg_temp.notes(b, 'market_refund') <> before_b + 1 then raise exception 'withdraw did not refund'; end if;
+  perform pg_temp.expect_error('select public.market_withdraw(''' || did || '''::uuid)', 'not_found');
+  perform pg_temp.as_user(a);
+  perform pg_temp.expect_error('select public.market_cancel(''' || pg_temp.id('c') || '''::uuid)', 'not_found');
+  perform public.market_cancel(lid);
+  if (select status from public.market_listings where id = lid) <> 'cancelled' then raise exception 'listing not cancelled'; end if;
+  if pg_temp.notes(c, 'market_refund') <> before_c + 1 then raise exception 'cancel did not refund the open offer'; end if;
+  if not exists (select 1 from public.settlements where recipient_id = a and kind = 'market_unlist' and meta ->> 'itemID' = 'it-20') then raise exception 'seller not told to unlock the item'; end if;
+  perform public.market_cancel(lid);
+
+  l := public.market_list(pg_temp.mk_item('equipment', 'it-21', 'Mixer'), 3000, 'NOK');
+  lid := (l ->> 'id')::uuid;
+  perform pg_temp.as_user(b);
+  did := (public.market_buy(lid) ->> 'id')::uuid;
+  update public.market_listings set expires_at = now() - interval '1 minute' where id = lid;
+  perform private.market_expire();
+  if (select status from public.market_listings where id = lid) <> 'expired' or (select status from public.market_offers where id = did) <> 'closed' then raise exception 'expiry did not close the listing and its deal'; end if;
+  if not exists (select 1 from public.settlements where recipient_id = a and kind = 'market_unlist' and meta ->> 'itemID' = 'it-21') then raise exception 'expiry did not unlock for the seller'; end if;
+end $$;
+
+do $$
+declare a uuid := pg_temp.id('a'); b uuid := pg_temp.id('c'); bot uuid; i int; lid uuid; did uuid; r jsonb; ok int := 0; kinds text[] := array['car', 'van', 'plane', 'boat', 'equipment', 'luxury']; k text;
+begin
+  foreach k in array kinds loop
+    for i in 1..3 loop
+      select user_id into bot from public.bots where active order by abs(hashtext(k || i::text || user_id::text)) limit 1;
+      perform private.market_bot_list(bot, 'test:' || k || ':' || i, k);
+    end loop;
+  end loop;
+  perform pg_temp.as_user(b);
+  r := public.market_browse(null, 100);
+  foreach k in array kinds loop
+    if not exists (select 1 from jsonb_array_elements(r) e where e ->> 'kind' = k) then raise exception 'no listing of kind % from the world', k; end if;
+  end loop;
+  if exists (select 1 from jsonb_array_elements(r) e where (e -> 'item' ->> 'base')::numeric <= 0 or (e ->> 'price')::numeric <= 0) then raise exception 'bad generated prices'; end if;
+  if exists (select 1 from jsonb_array_elements(r) e where e::text ilike '%is_bot%' or e::text ilike '%fake%' or e::text ilike '%simulated%') then raise exception 'generated listings are labelled'; end if;
+
+  for lid in select m.id from public.market_listings m join public.profiles p on p.id = m.seller_id where p.is_bot and m.status = 'active' and m.kind in ('car', 'van') order by m.created_at, m.id limit 6 loop
+    did := (public.market_buy(lid) ->> 'id')::uuid;
+    if (select status from public.market_offers where id = did) <> 'pending' then raise exception 'bot answered at once'; end if;
+  end loop;
+  perform private.market_bot_respond();
+  if (select count(*) from public.market_offers where status = 'pending' and seller_id in (select user_id from public.bots)) <> 6 then raise exception 'bots answered before any human delay'; end if;
+  update public.market_offers set created_at = now() - interval '5 hours' where status = 'pending' and seller_id in (select user_id from public.bots);
+  perform private.market_bot_respond();
+  if exists (select 1 from public.market_offers where status = 'pending' and seller_id in (select user_id from public.bots)) then raise exception 'bots never answered'; end if;
+  select count(*) into ok from public.market_offers where buyer_id = b and status = 'accepted' and seller_id in (select user_id from public.bots);
+  if ok < 1 then raise exception 'no bot ever accepted a request'; end if;
+  if pg_temp.notes(b, 'market_purchase') <> ok + 2 then raise exception 'purchase settlements do not match accepted deals'; end if;
+  if exists (select 1 from public.settlements where kind in ('market_sale', 'market_notice', 'market_unlist') and recipient_id in (select user_id from public.bots)) then raise exception 'a generated seller was paid or notified'; end if;
+
+  select m.id into lid from public.market_listings m join public.profiles p on p.id = m.seller_id where p.is_bot and m.status = 'active' order by m.created_at, m.id limit 1;
+  did := (public.market_offer(lid, round((select price from public.market_listings where id = lid) * 0.8, 2)) ->> 'id')::uuid;
+  update public.market_offers set created_at = now() - interval '5 hours' where id = did;
+  perform private.market_bot_respond();
+  r := (select to_jsonb(o) from public.market_offers o where id = did);
+  if r ->> 'status' <> 'discussing' or (r ->> 'special_price')::numeric <= (r ->> 'price')::numeric then raise exception 'a middling offer did not get a counter price: %', r; end if;
+end $$;
+
+do $$
+declare a uuid := pg_temp.id('a'); b uuid := pg_temp.id('c'); r jsonb; lid uuid; did uuid;
+begin
+  insert into public.admins (user_id) values (a);
+  select m.id into lid from public.market_listings m join public.profiles p on p.id = m.seller_id
+   where p.is_bot and m.status = 'active' and not exists (select 1 from public.market_offers o where o.listing_id = m.id and o.buyer_id = b) order by m.created_at, m.id limit 1;
+  perform pg_temp.as_user(b);
+  did := (public.market_buy(lid) ->> 'id')::uuid;
+  perform pg_temp.as_user(a);
+  r := public.admin_remove_fake_players('Marketplace test');
+  if exists (select 1 from public.market_listings m join public.profiles p on p.id = m.seller_id where p.is_bot and m.status = 'active') then raise exception 'generated listings survived the removal'; end if;
+  if exists (select 1 from public.market_offers where status in ('pending', 'discussing') and seller_id in (select id from public.profiles where is_bot)) then raise exception 'generated deals survived the removal'; end if;
+  if not exists (select 1 from public.settlements where kind = 'market_refund' and recipient_id = b and meta ->> 'dealID' = did::text) then raise exception 'open deal with a removed seller was not refunded'; end if;
+  perform pg_temp.as_user(b);
+  if exists (select 1 from jsonb_array_elements(public.market_browse(null, 100)) e where e ->> 'sellerID' in (select id::text from public.profiles where is_bot)) then raise exception 'removed sellers still browseable'; end if;
+  if private.market_bot_stock() <> 0 then raise exception 'listings restocked after the removal'; end if;
+end $$;
