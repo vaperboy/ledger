@@ -18,7 +18,7 @@ struct CompaniesView: View {
             Group {
                 if let e = store.engine {
                     let healths: [(co: Company, h: CompanyHealth)] = store.memo("homeRows") { (g: GameEngine) -> [(co: Company, h: CompanyHealth)] in
-                        g.state.companies.filter { $$0.status.isLive }.map { (co: $0, h: g.companyHealth($0)) }
+                        g.state.companies.filter { $0.status.isLive }.map { (co: $0, h: g.companyHealth($0)) }
                     } ?? []
                     let rows = healths.sorted(by: order)
                     homeScreen(e, rows: rows)

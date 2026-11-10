@@ -155,7 +155,7 @@ enum LookKit {
     }
 
     @MainActor static func company(_ store: GameStore) -> String {
-        store.engine?.state.companies.first { $$0.status.isLive }?.name ?? ""
+        store.engine?.state.companies.first { $0.status.isLive }?.name ?? ""
     }
 }
 
