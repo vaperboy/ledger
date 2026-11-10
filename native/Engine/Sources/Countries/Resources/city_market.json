@@ -1691,32 +1691,32 @@
     "dxb": {
      "metro": 5901.0,
      "tour": 2.6,
-     "rent": 2.05
+     "rent": 1.74
     },
     "auh": {
      "metro": 2274.0,
      "tour": 1.6,
-     "rent": 1.89
+     "rent": 1.61
     },
     "shj": {
      "metro": 2591.0,
      "tour": 1.0,
-     "rent": 1.19
+     "rent": 1.01
     },
     "aan": {
      "metro": 1009.0,
      "tour": 0.8,
-     "rent": 1.1
+     "rent": 0.94
     },
     "rak": {
      "metro": 484.0,
      "tour": 1.8,
-     "rent": 1.03
+     "rent": 0.88
     },
     "smallae": {
      "metro": 30.0,
      "tour": 0.6,
-     "rent": 0.79
+     "rent": 0.67
     }
    },
    "add": [
@@ -1724,7 +1724,7 @@
      "id": "ajm",
      "name": "Ajman",
      "pop": 540,
-     "rent": 1.06,
+     "rent": 0.9,
      "wage": 0.45,
      "dem": 1.21,
      "price": 0.75,
@@ -1735,7 +1735,7 @@
      "id": "fuj",
      "name": "Fujairah",
      "pop": 118,
-     "rent": 0.92,
+     "rent": 0.78,
      "wage": 0.43,
      "dem": 0.84,
      "price": 0.75,
@@ -1746,7 +1746,7 @@
      "id": "uaq",
      "name": "Umm Al Quwain",
      "pop": 80,
-     "rent": 0.88,
+     "rent": 0.75,
      "wage": 0.43,
      "dem": 0.75,
      "price": 0.74,

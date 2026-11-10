@@ -30,6 +30,7 @@ final class BalanceProbeTests: XCTestCase {
             if ProcessInfo.processInfo.environment["LEDGER_NOOWNER"] != nil { s.companies[s.companyIndex(id)!].ownerHours = 0 }
             if ProcessInfo.processInfo.environment["LEDGER_FIXEDHOURS"] != nil { s.rest["ownHrsFixed"] = true }
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
+            if let i = s.companyIndex(id) { s.companies[i].set("chose", 1) }
             if let co = s.company(id), let bd = data.catalog[co.type], (bd.ownerFTE == 0 || bd.standardStaff.reduce(0, { $0 + $1.count }) >= 4), !bd.hasTrait("noStaff"), co.managerID == nil, ProcessInfo.processInfo.environment["LEDGER_NOMGR"] == nil {
                 for _ in 0..<6 {
                     let c = ManagerModel.generateCandidate(company: s.company(id), type: bd.managerType, state: &s, data: data)

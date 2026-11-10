@@ -18,7 +18,7 @@ final class RoleTuningTests: XCTestCase {
             Payments.injectCash(&s, companyID: id, amount: 300_000_000)
             _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(optionalEquipment: true))
             if let i = s.companyIndex(id) {
-                s.companies[i].status = .open; s.companies[i].ownerHours = 40
+                s.companies[i].status = .open; s.companies[i].ownerHours = 40; s.companies[i].set("chose", 1)
                 var mkt = s.companies[i].value("mkt")
                 mkt["meta"] = .object(["b": .number(World(state: s, data: data).currency(s.companies[i]).scaledPrice(1500)), "since": .number(Double(s.week)), "lock": .number(Double(s.week))])
                 s.companies[i].set("mkt", mkt)
