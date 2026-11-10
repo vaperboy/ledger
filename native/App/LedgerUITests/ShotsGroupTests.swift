@@ -113,10 +113,7 @@ final class ShotsGroupTests: FeatureTourCase {
         if goTab("Ventures") || openPhoneApp("Ventures") {
             pause(1)
             snapPage("ventures", lower: 1)
-            for part in ["Running", "Portfolio", "Done"] where tapLabel(part, wait: 2) { pause(0.6); snap("ventures-\(part)") }
-            for seg in ["In progress", "Timeline", "Bids and offers"] {
-                if tapLabel("Running", wait: 2), tapID("segment-\(seg)", wait: 2) { pause(0.6); snap("ventures-running-\(seg)") }
-            }
+            for part in ["Projects", "Portfolio", "Bids", "Done"] where tapLabel(part, wait: 2) { pause(0.6); snap("ventures-\(part)") }
         } else { snap("ventures-missing") }
 
         // A holding: create one over both companies, then its landing, entity page and treasury

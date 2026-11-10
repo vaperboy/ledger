@@ -21,10 +21,6 @@ enum OnlineBackend {
 final class OnlineSession {
     enum State: Equatable { case guest, signingIn, signedIn(SignInProvider) }
 
-    /// Which side keeps its progress when a device's game meets an account that already has some.
-    enum ProgressChoice: String { case device, account }
-    struct MergePrompt: Equatable { var accountWeek: Int; var deviceWeek: Int }
-
     private(set) var state: State = .guest
     private(set) var profile: PlayerProfile?
     /// What the server last said about this account (nil before it answered, or for a guest).
@@ -35,9 +31,6 @@ final class OnlineSession {
     private(set) var accountID: String?
     /// The link reward the server just paid, shown once.
     private(set) var linkReward: LinkRewardResult?
-    /// Set when this device's game and the account's saved progress disagree and the player has not chosen yet.
-    private(set) var mergePrompt: MergePrompt?
-    private(set) var progressChoice: ProgressChoice?
     /// One plain line for the screen that started the last call; cleared by the next call.
     var problem: String?
     /// A calm note (not an error), such as "No profile was created".
@@ -45,7 +38,6 @@ final class OnlineSession {
 
     @ObservationIgnored let service: any OnlineService
     private static let adminKey = "ledger.online.adminAccounts"
-    private static func choiceKey(_ id: String) -> String { "ledger.online.progressChoice." + id }
 
     init(service: any OnlineService = OnlineBackend.shared) {
         self.service = service
@@ -71,7 +63,6 @@ final class OnlineSession {
         accountID = account.playerID
         state = .signedIn(account.provider)
         isAdmin = Self.rememberedAdmins().contains(account.playerID)
-        progressChoice = UserDefaults.standard.string(forKey: Self.choiceKey(account.playerID)).flatMap { ProgressChoice(rawValue: $0) }
     }
 
     /// Asks the server about this account and keeps its answer, the administrator answer included.
@@ -155,8 +146,6 @@ final class OnlineSession {
         isAdmin = false
         accountID = nil
         linkReward = nil
-        mergePrompt = nil
-        progressChoice = nil
     }
 
     /// Spends an administrator code. The server decides; on success the account's status is read again.
@@ -212,23 +201,11 @@ final class OnlineSession {
         }
     }
 
-    /// The player's answer when the account already holds more progress than this device's game.
-    func resolveMerge(_ choice: ProgressChoice, engine: GameEngine?) async {
-        progressChoice = choice
-        mergePrompt = nil
-        if let id = accountID { UserDefaults.standard.set(choice.rawValue, forKey: Self.choiceKey(id)) }
-        if choice == .device { await shareProgress(from: engine) }
-    }
-
     /// Sends the running game's companies, level and week to the own profile (quietly; nothing to do for a guest, before the profile exists,
-    /// or when it fails). When the account already holds clearly more progress, nothing is sent until the player has chosen which side stays.
+    /// or when it fails). The running game is the one the profile shows, so this needs no confirmation.
     func shareProgress(from engine: GameEngine?) async {
         guard isSignedIn, status?.adultConfirmed == true, let e = engine else { return }
         let week: Int = e.state.week
-        if let held = profile?.gameWeek, held > week + 4, progressChoice != .device {
-            if progressChoice == nil { mergePrompt = MergePrompt(accountWeek: held, deviceWeek: week) }
-            return
-        }
         let companies: [OnlineCompany] = e.state.companies.filter { $0.status == .open && $0.type != "hold" }.prefix(12).map { (co) -> OnlineCompany in
             let health: OnlineCompanyHealth
             if co.weeksNegative >= 4 { health = .struggling }

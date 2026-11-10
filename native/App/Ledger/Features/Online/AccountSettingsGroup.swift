@@ -11,7 +11,6 @@ struct AccountSettingsGroup: View {
     var body: some View {
         VStack(spacing: Theme.Space.l) {
             if online.isSignedIn { signedIn } else { guest }
-            if online.isSignedIn && !online.awaitingAdultConfirmation { mergeCard }
         }
         .confirmAction($pending)
     }
@@ -108,33 +107,5 @@ struct AccountSettingsGroup: View {
                 .disabled(working)
                 .accessibilityIdentifier("settings-export-data")
         }
-    }
-
-    @ViewBuilder private var mergeCard: some View {
-        if let m = online.mergePrompt {
-            OnlineGroup(title: "Two games, one profile",
-                        footer: "Your profile already holds progress up to week \(m.accountWeek). The game on this device is at week \(m.deviceWeek). Either way, the game itself is not changed.") {
-                mergeButton("Use this game for my profile", note: "Replaces the progress your profile shows", choice: .device,
-                            effect: "the level, week and companies your profile shows are replaced by this game's, and friends see the new figures.")
-                Hairline()
-                mergeButton("Keep my profile as it is", note: "This game does not update it until it passes week \(m.accountWeek)", choice: .account,
-                            effect: "this game stops updating your profile until it passes week \(m.accountWeek). Nothing on this device changes.")
-            }
-        } else if online.progressChoice == .account {
-            OnlineGroup(title: "Progress", footer: "This game is not updating your profile while the profile is ahead of it.") {
-                mergeButton("Use this game for my profile", note: "Replaces the progress your profile shows", choice: .device,
-                            effect: "the level, week and companies your profile shows are replaced by this game's, and friends see the new figures.")
-            }
-        }
-    }
-
-    private func mergeButton(_ title: String, note: String, choice: OnlineSession.ProgressChoice, effect: String) -> some View {
-        Button {
-            pending = PendingAction.online(title: title + "?", effect: effect, button: "Yes, do it", tone: .info, icon: "arrow.triangle.2.circlepath") {
-                Task { await online.resolveMerge(choice, engine: store.engine) }
-            }
-        } label: { OnlineLine(glyph: Glyph.person, title: title, note: note, chevron: true) }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("settings-merge-" + choice.rawValue)
     }
 }

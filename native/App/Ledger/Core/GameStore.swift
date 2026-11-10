@@ -261,7 +261,7 @@ final class GameStore: ObservableObject {
     private var lastPush: LastPush?
     /// Every tab's navigation stack (the Custom tab's root is its chosen destination). The tab roots bind to these; nothing else holds a stack.
     @Published private(set) var stacks: [AppTab: [NavRoute]] = [:]
-    /// The Custom tab's destination, kept in UserDefaults ("customTab"); Store until the player picks another.
+    /// The Custom tab's destination, kept in UserDefaults ("customTab"); Inbox until the player picks another.
     @Published var customTarget: CustomTabTarget = CustomTabTarget.stored()
     /// The "Change the Custom tab" popup.
     @Published var customPickerOpen = false

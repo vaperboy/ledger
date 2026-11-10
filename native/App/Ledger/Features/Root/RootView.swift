@@ -45,6 +45,7 @@ struct RootView: View {
 
 struct GameShell: View {
     @EnvironmentObject var store: GameStore
+    @Environment(OnlineSession.self) private var online
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
@@ -52,6 +53,7 @@ struct GameShell: View {
             if sizeClass == .regular { SidebarShell() } else { PhoneShell() }
         }
         .modifier(CoachTourHost())
+        .task(id: store.engine?.state.week ?? 0) { await online.shareProgress(from: store.engine) }
     }
 }
 

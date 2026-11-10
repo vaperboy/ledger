@@ -3,15 +3,14 @@ import GameCore
 import Simulation
 
 /// Where the player's Custom tab goes: a Phone app (Store, Market, Bank, Inbox, Reports, AirStay ...) or one company's page.
-/// Kept per install in UserDefaults under "customTab" (JSON); the Store until the player picks another.
+/// Kept per install in UserDefaults under "customTab" (JSON); the Inbox until the player picks another.
 enum CustomTabTarget: Codable, Hashable {
     case app(PhoneApp)
     case company(Int)
 
     static let defaultsKey = "customTab"
 
-    /// What the tab opens before a choice is made.
-    static let standard: CustomTabTarget = .app(.store)
+    static let standard: CustomTabTarget = .app(.inbox)
 
     /// Every Phone app the Custom tab can show. Ventures is its own tab, so it is not offered.
     static var apps: [PhoneApp] { PhoneApp.launcher.filter { $0 != .ventures } }
