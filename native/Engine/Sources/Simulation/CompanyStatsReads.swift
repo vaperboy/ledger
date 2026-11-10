@@ -39,8 +39,6 @@ public struct CompanyOverviewStats: Equatable, Sendable {
 }
 
 public extension GameEngine {
-    }
-
     func companyOverviewStats(companyID: Int, period: ReportPeriodKind = .year) -> CompanyOverviewStats? {
         guard let co = state.company(companyID) else { return nil }
         let b: [String: Double]

@@ -101,7 +101,6 @@ extension ManagerModel {
                     risk: t.risk, recommends: c.cash > p3,
                     reason: "It made \(cur.short(p3)) over three months and pays its owners nothing." + (c.cash > p3 ? "" : " Cash is thin, so I would wait."))
             }
-            }
             if let mid = c.managerID, let n = s.people[mid], loss3, s.week - c.int("mgrW0") >= 13, c.int("ceoBlk") <= s.week {
                 let director = seats(s, key: key).first { $0.role == "director" }.flatMap { s.people[$0.id] }
                 let t = decisionText("ceo", c, manager: n.name)
