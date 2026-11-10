@@ -87,6 +87,8 @@ struct StructureRow: View {
     var hasKids: Bool
     var expanded: Bool
     var actionID: String = ""
+    var logoID: String = ""
+    var tradeKey: String = ""
     var onToggle: () -> Void
     var onOpen: () -> Void
 
@@ -94,16 +96,20 @@ struct StructureRow: View {
         HStack(spacing: Theme.Space.xxs) {
             Button { Haptics.tap(); onOpen() } label: {
                 HStack(spacing: Theme.Space.s) {
-                    LedgerGlyph(glyph: StructureWords.glyph(node.kind), size: Theme.Icon.small, tint: P.accent)
-                        .frame(width: 22)
+                    mark
                         .accessibilityHidden(true)
-                    Text(node.name).textStyle(.body, weight: .medium).lineLimit(1)
-                    if case .decide(let n) = node.primaryAction { RedBubble(count: n, size: .small) }
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: Theme.Space.xs) {
+                            Text(node.name).textStyle(.headline).lineLimit(1)
+                            if case .decide(let n) = node.primaryAction { RedBubble(count: n, size: .small) }
+                        }
+                        StructureHealthPill(health: node.health).fixedSize()
+                    }
                     Spacer(minLength: Theme.Space.xs)
-                    StructureHealthPill(health: node.health).fixedSize()
                     Text(valueText).textStyle(.body, numeric: true).lineLimit(1).fixedSize()
+                    LedgerGlyph(glyph: Glyph.chevron, size: 12, tint: P.accent)
                 }
-                .frame(minHeight: 44)
+                .frame(minHeight: 64)
                 .contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle())
@@ -124,6 +130,17 @@ struct StructureRow: View {
         .padding(.leading, Theme.Space.m).padding(.trailing, hasKids ? Theme.Space.xxs : Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.card))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).strokeBorder(P.accent.opacity(0.25), lineWidth: 1))
+    }
+
+    @ViewBuilder private var mark: some View {
+        if !logoID.isEmpty {
+            LogoBadge(logoID: logoID, size: 40)
+        } else if !tradeKey.isEmpty {
+            ThumbnailView(kind: .trade, key: tradeKey, size: 40)
+        } else {
+            LedgerGlyph(glyph: StructureWords.glyph(node.kind), size: Theme.Icon.medium, tint: P.accent).frame(width: 40, height: 40)
+        }
     }
 }
 

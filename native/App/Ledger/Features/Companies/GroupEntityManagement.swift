@@ -74,7 +74,11 @@ struct GroupEntityManagement: View {
     private func commandRow(name: String, title: String, authority: String?, personID: Int?) -> some View {
         let person: Person? = personID.flatMap { (id: Int) -> Person? in engine.state.people[id] }
         return HStack(spacing: Theme.Space.m) {
-            StructureAvatar(name: name, role: person?.role, face: person?.faceKey, size: 36)
+            if personID == nil && title == "Owner" {
+                PlayerAvatar(name: name, isYou: true, size: 36)
+            } else {
+                StructureAvatar(name: name, role: person?.role, face: person?.faceKey, size: 36)
+            }
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(name).textStyle(.headline).lineLimit(1)
                 Text(title).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)

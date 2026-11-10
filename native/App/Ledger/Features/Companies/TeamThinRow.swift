@@ -12,12 +12,15 @@ struct ThinPersonRow: View {
     var roleKey: String? = nil
     var face: String? = nil
     var mood: String? = nil
+    var isYou = false
 
     static let portrait: CGFloat = 36
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
-            if name == nil {
+            if isYou, let name {
+                PlayerAvatar(name: name, isYou: true, size: Self.portrait)
+            } else if name == nil {
                 TeamInitials(name: nil, size: Self.portrait)
             } else {
                 ThumbnailView(kind: .person, key: roleKey ?? title, size: Self.portrait, initials: name, face: face)

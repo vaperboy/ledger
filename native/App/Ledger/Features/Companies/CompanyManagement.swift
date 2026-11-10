@@ -78,7 +78,7 @@ struct CompanyManagement: View {
         let tinted: Bool = r.lineTint != Theme.ivoryFaint
         if node.isOwner {
             HStack(spacing: 8) {
-                ThinPersonRow(name: r.name, title: "Owner", note: node.ownerNote, chevron: false, roleKey: "owner")
+                ThinPersonRow(name: r.name, title: "Owner", note: node.ownerNote, chevron: false, roleKey: "owner", isYou: true)
                 if let works = node.works, let toggle = node.toggleWorks { ownerToggle(works, toggle) }
             }
         } else if let target = node.sheet {
