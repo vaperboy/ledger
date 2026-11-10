@@ -100,8 +100,9 @@ public enum Unlocks {
         }
     }
 
-    /// The first-session ladder is over (first profitable month done); a game without a ladder is always past it.
-    static func ladderPast(_ s: GameState) -> Bool { !Gates.ladderOn(s) || Gates.goalDone(s, 7) }
+    static let weeksLadderPast = 13
+
+    static func ladderPast(_ s: GameState) -> Bool { !Gates.ladderOn(s) || Gates.goalDone(s, 7) || s.week >= weeksLadderPast }
 
     /// A player-level engagement page (`desk`, `focus`, `rivals`) has opened for any company of the player (recorded by the weekly sweep).
     public static func isOpen(_ s: GameState, _ id: String) -> Bool { playerHas(s, id) }

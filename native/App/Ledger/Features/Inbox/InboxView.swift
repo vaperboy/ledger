@@ -4,10 +4,8 @@ import Simulation
 import Events
 import Countries
 import Finance
+import Businesses
 
-/// One list of what reached you: open decisions first, then everything else, newest first. Things a manager, accountant or desk took
-/// care of stay out, unless a manager's choice was a costly or risky one. Each decision shows what every choice does before you commit
-/// and opens the company it concerns. Search and a company filter keep hundreds of messages usable.
 struct InboxView: View {
     private var P: OutsidePalette { .game }
     @EnvironmentObject var store: GameStore
@@ -36,29 +34,9 @@ struct InboxView: View {
 
     private var waitingCount: Int { store.openDecisionCount }
 
-    /// Shown in the list: what is addressed to the player and was not taken care of by someone else. A decision a manager took stays
-    /// when it cost money, risked a loss or was bad news: the owner may want to question it.
-    private func shown(_ m: Message) -> Bool {
-        if !m.isOwnerAddressed { return false }
-        let delegated: Bool = !m.handledBy.isEmpty || !m.value("mgrName").isNull
-        if !delegated { return true }
-        return questionable(m)
-    }
-
-    /// A manager's pick that spent money, took a fine or a loss, gambled, or answered bad news.
-    private func questionable(_ m: Message) -> Bool {
-        guard !m.options.isEmpty else { return false }
-        if m.tone == "bad" { return true }
-        let pick: Int = m.int("pick", -1)
-        guard m.options.indices.contains(pick) else { return false }
-        let fx: JSONValue = m.options[pick]["fx"]
-        return fx["cash"].double < 0 || fx["fine"].double != 0 || fx["loss"].double != 0 || !fx["gamble"].isNull
-    }
-
     private func filtered(_ e: GameEngine) -> [Message] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         return e.state.inbox.filter { m in
-            guard shown(m) else { return false }
             if let c = companyFilter, m.companyID != c { return false }
             if q.isEmpty { return true }
             let co = m.companyID != 0 ? (e.state.company(m.companyID)?.name ?? "") : ""
@@ -68,15 +46,10 @@ struct InboxView: View {
 
     // MARK: Blocks
 
-    /// One list: questions first, then the rest; newest first inside each.
     private func blocks(_ e: GameEngine, _ list: [Message]) -> [Block] {
-        // While the first-steps guide runs, information comes before questions.
-        let guide: Bool = store.tutorialActive
-        let sorted: [Message] = list.sorted { (a: Message, b: Message) -> Bool in
-            if isQuestion(a) != isQuestion(b) { return guide ? !isQuestion(a) : isQuestion(a) }
-            return a.week != b.week ? a.week > b.week : a.id > b.id
+        InboxLayout.sections(list, week: e.state.week, infoFirst: store.tutorialActive).map { (p: InboxSection) -> Block in
+            Block(id: p.id, title: p.title, messages: p.messages)
         }
-        return sorted.isEmpty ? [] : [Block(id: "all", title: "", messages: sorted)]
     }
 
     private func isQuestion(_ m: Message) -> Bool { m.status == "open" && m.isOwnerAddressed }
@@ -237,6 +210,10 @@ struct InboxView: View {
             if list.isEmpty && alerts.isEmpty { empty(e).mailRowStyle() }
             ForEach(alerts) { (a: PayrollAlert) in payrollRow(a).mailRowStyle() }
             ForEach(cut.blocks) { (b: Block) in
+                if !b.title.isEmpty {
+                    Text(b.title).textStyle(.caption, tint: P.inkFaint, weight: .semibold)
+                        .padding(.top, Theme.Space.m).mailRowStyle().listRowSeparator(.hidden)
+                }
                 ForEach(b.messages) { (m: Message) in
                     mailRow(m, week: week, inline: true, guide: guide).transition(.opacity)
                 }
@@ -255,7 +232,7 @@ struct InboxView: View {
 
     private func mailRow(_ m: Message, week: Int, inline: Bool, guide: [Int] = []) -> some View {
         let pinnedNow: Bool = pinned.contains(m.id)
-        let answer: ((Int) -> Void)? = inline ? { (i: Int) in ask(m, i, inline: true) } : nil
+        let answer: ((Int) -> Void)? = inline && m.isOwnerAddressed ? { (i: Int) in ask(m, i, inline: true) } : nil
         let marked: Bool = guide.contains(m.id)
         return InboxMailRow(message: m, week: week, pinned: pinnedNow, openDetail: {
             detailID = m.id
@@ -437,6 +414,30 @@ struct MessageCard: View {
                              tone: hold ? nil : .warning, run: run)
     }
 
+    private var link: (title: String, run: () -> Void)? {
+        guard let e = store.engine, let target = InboxLayout.target(message, in: e.state) else { return nil }
+        switch target {
+        case .company(let id, let key):
+            let name: String = e.state.company(id)?.name ?? "the company"
+            return ("Open " + name, { openCompanyLink(id, key) })
+        case .app(let key):
+            if key == "profile" { return ("Open your profile", { store.openProfile() }) }
+            guard let app = PhoneApp(rawValue: key), app.visibility(e) == .open else { return nil }
+            return ("Open " + app.title, { store.openApp(app) })
+        }
+    }
+
+    private func openCompanyLink(_ id: Int, _ key: String) {
+        switch key {
+        case "staff": store.openCompany(id, section: .staff)
+        case "properties": store.openCompany(id, section: .properties)
+        case "sales": store.openCompany(id, section: .salesMarket)
+        case "finances": store.openCompany(id, section: .finances)
+        case "club": store.openCompany(id, section: .club)
+        default: store.openCompany(id)
+        }
+    }
+
     private var glyph: String { message.inboxGlyph }
     private var tint: Color { message.inboxTint(P) }
     private var age: String {
@@ -498,6 +499,7 @@ struct MessageCard: View {
                     Text("Handled by " + message.handledBy).textStyle(.caption, tint: P.accent, weight: .medium)
                 }
             }
+            if let link { QuietButton(title: link.title) { link.run() } }
             if open { decision }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

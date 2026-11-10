@@ -36,19 +36,11 @@ extension PlayerGoals {
         public var protectionTokens: Int
         /// The cosmetic title earned so far; empty before the first milestone.
         public var title: String
-        /// The next milestone length and what it gives, in words; nil after the last one.
         public var nextMilestone: Int?
         public var nextPerk: String
         public var doneToday: Bool
         /// True when yesterday was missed and the streak is alive only because a token will be used on return.
         public var savedByProtection: Bool
-    }
-
-    static func perkWords(_ p: (days: Int, credit: Double, token: Bool, title: String)) -> String {
-        var w: [String] = ["the title \(p.title)"]
-        if p.credit > 0 { w.append("a small credit-score bump") }
-        if p.token { w.append("a streak protection token") }
-        return w.joined(separator: " and ")
     }
 
     /// Read-only streak facts at `now` (the phone's date). Nothing is written.
@@ -59,7 +51,7 @@ extension PlayerGoals {
         let live = streakNow(d, today: today, yesterday: yesterday)
         let next = streakPerkList.first { $0.days > live.count }
         return StreakInfo(count: live.count, best: max(d["best"].int, live.count), protectionTokens: d["prot"].int, title: d["title"].string,
-                          nextMilestone: next?.days, nextPerk: next.map(perkWords) ?? "", doneToday: d["last"].string == today,
+                          nextMilestone: next?.days, nextPerk: "", doneToday: d["last"].string == today,
                           savedByProtection: live.protected)
     }
 

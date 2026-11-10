@@ -2,7 +2,7 @@ import Foundation
 import GameCore
 
 /// The player's level: experience points earned from finished goals, the daily goal and weeks played. It lives in the save
-/// (`rest["lvl"]` = { xp, wk }), so every player keeps their own level. Level L needs `50 * L * (L - 1)` points in total.
+/// (`rest["lvl"]` = { xp, wk }), so every player keeps their own level.
 public enum PlayerLevel {
     public static let ladderXP = 60
     public static let dailyXP = 25
@@ -19,7 +19,7 @@ public enum PlayerLevel {
     }
 
     /// Total points needed to reach `level` (level 1 needs none).
-    public static func threshold(_ level: Int) -> Int { 50 * level * max(0, level - 1) }
+    public static func threshold(_ level: Int) -> Int { 25 * level * max(0, level - 1) }
 
     public static func level(forXP xp: Int) -> Int {
         var l = 1

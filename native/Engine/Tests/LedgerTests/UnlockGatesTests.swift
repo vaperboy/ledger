@@ -35,13 +35,16 @@ final class UnlockGatesTests: XCTestCase {
 
     func testGoalGatesHiddenBeforeAndOpenAfter() throws {
         let rows: [(Gate, Int, String)] = [
-            (.marketing, 3, "Unlocks after your first hire"), (.reviews, 3, "Unlocks after your first hire"),
-            (.ownerMoney, 4, "Unlocks after your first decision"),
-            (.bank, 7, "Unlocks after your first profitable month"), (.newCompany, 7, "Unlocks after your first profitable month"),
-            (.management, 7, "Unlocks after your first profitable month"), (.techpro, 7, "Unlocks after your first profitable month"),
-            (.accounting, 7, "Opens with your first profitable month"),
-            (.property, 9, "Unlocks after your first quarter of trading"), (.rivals, 9, "Unlocks after your first quarter of trading"),
-            (.airstay, 9, "Unlocks after your first quarter of trading"),
+            (.marketing, 3, "Unlocks after your first hire, or in week 6"), (.reviews, 3, "Unlocks after your first hire, or in week 6"),
+            (.ownerMoney, 4, "Unlocks after your first decision, or in week 8"),
+            (.bank, 7, "Unlocks after your first profitable month or loss, or in week 8"),
+            (.newCompany, 7, "Unlocks after your first profitable month, or in week 13"),
+            (.management, 7, "Unlocks after your first profitable month, or in week 13"),
+            (.techpro, 7, "Unlocks after your first profitable month, or in week 13"),
+            (.accounting, 7, "Opens with your first profitable month or loss, or in week 8"),
+            (.property, 9, "Unlocks after your first quarter of trading, or in week 17"),
+            (.rivals, 9, "Unlocks after your first quarter of trading, or in week 17"),
+            (.airstay, 9, "Unlocks after your first quarter of trading, or in week 17"),
         ]
         var e = try Self.fresh()
         for (g, n, text) in rows {
@@ -102,7 +105,7 @@ final class UnlockGatesTests: XCTestCase {
     }
 
     func testManagerFeaturesStayWithTheLadderAndTheChain() throws {
-        XCTAssertEqual(Gate.management.rule, .goal(7))
+        XCTAssertEqual(Gate.management.rule, .anyOf([.goal(7), .week(13)]))
         XCTAssertEqual(Gates.entry(.unlock("chain")).rule, .weeksTraded(Unlocks.weeksChain))
         XCTAssertEqual(Gates.entry(.unlock("board")).rule, .boardSeat)
     }
@@ -163,7 +166,7 @@ final class UnlockGatesTests: XCTestCase {
         _ = ChainsTests.start(&e, "cafe")
         XCTAssertEqual(vis(e, .group), .hidden)
         Self.doneUpTo(&e, 6)
-        XCTAssertEqual(vis(e, .group), .locked("Unlocks after your first profitable month"))
+        XCTAssertEqual(vis(e, .group), .locked("Unlocks after your first profitable month, or in week 13"))
         Self.doneUpTo(&e, 7)
         XCTAssertEqual(vis(e, .group), .open)
         XCTAssertEqual(Gate.atlas.lockText, Gate.insurance.lockText, "Atlas opens with the insurance gate")

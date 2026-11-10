@@ -40,6 +40,18 @@ public enum Tutorial {
         s.rest[key] = .object(["done": .bool(true)])
     }
 
+    public static let stepCount: Int = TutorialStep.allCases.count
+
+    public static func position(_ s: GameState) -> Int? {
+        guard let st = step(s), let i = TutorialStep.allCases.firstIndex(of: st) else { return nil }
+        return i + 1
+    }
+
+    public static func sync(_ s: inout GameState) {
+        guard step(s) != nil else { return }
+        if !s.companies.contains(where: { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }) { finish(&s) }
+    }
+
     /// The messages the player should open next while the tutorial runs: the newest few unread ones that are information, not a decision.
     public static func inboxGuide(_ s: GameState) -> [Int] {
         let info: [Message] = s.inbox.filter { (m: Message) -> Bool in !(m.status == "open" && m.isOwnerAddressed) && !m.isRead }
@@ -50,6 +62,7 @@ public enum Tutorial {
 
 public extension GameEngine {
     var tutorialStep: TutorialStep? { Tutorial.step(state) }
+    var tutorialPosition: Int? { Tutorial.position(state) }
     var tutorialComplete: Bool { Tutorial.isComplete(state) }
 
     /// The player did what the step asked (the app reports the steps that are only a screen being opened).

@@ -62,6 +62,7 @@ extension GameState {
         case "The tax office", "Your accountant": return "accounting"
         case "Weather service": return "weather"
         case "Supplier": return "techPro"
+        case "Trophy wall": return "profile"
         default: return ""
         }
     }
