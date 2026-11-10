@@ -14,6 +14,7 @@ enum GoldGood {
         case .cosmetic(let c): return c.price ?? 0
         case .avatar(let d): return d.price ?? 0
         case .service(_, let price): return price
+        case .username(let price): return price
         }
     }
 }
