@@ -7,7 +7,7 @@ public enum UnlockRule: Equatable, Sendable {
     case always
     case week(Int), goal(Int), profitableQuarters(Int), rich
     case firstSalesWeek, firstProfitMonth, firstLossEvent
-    case weeksTraded(Int), boardSeat, retainedProfit
+    case weeksTraded(Int), boardSeat
     case anyOf([UnlockRule])
 }
 
@@ -209,7 +209,7 @@ public enum Gates {
             guard let company else { return (0, "") }
             let w: Int = Unlocks.weeksTraded(s, company)
             return (ratio(Double(w), Double(n)), "\(min(w, n)) of \(n) weeks")
-        case .boardSeat, .retainedProfit: return (0, "")
+        case .boardSeat: return (0, "")
         case .anyOf(let rs):
             var best: (fraction: Double, detail: String) = (0, "")
             for x in rs {
@@ -245,7 +245,7 @@ public enum Gates {
         case .goal(let n): return n - goalsDone(s) <= 1
         case .firstSalesWeek, .firstProfitMonth, .firstLossEvent, .profitableQuarters: return s.week >= eventNearWeek
         case .anyOf(let rs): return rs.contains { (x: UnlockRule) -> Bool in near(x, s) }
-        case .rich, .always, .weeksTraded, .boardSeat, .retainedProfit: return false
+        case .rich, .always, .weeksTraded, .boardSeat: return false
         }
     }
 
