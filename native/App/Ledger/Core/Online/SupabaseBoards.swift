@@ -2,12 +2,6 @@ import Foundation
 import Businesses
 import Simulation
 
-// Leaderboards, accountant offices and the world rules over the Supabase functions of migration 0014. The server decides what a player
-// may see and what a figure may be; nothing here filters or trusts anything. Nothing runs unless `OnlineConfig.useServer` is true.
-
-// MARK: Leaderboards
-
-/// One other player as `read_leaderboards` returns them.
 struct LeaderboardRow: Decodable, Equatable {
     var playerID: String
     var name: String
@@ -24,33 +18,24 @@ extension SupabaseOnlineService {
     func leaderboardRows() async throws -> [LeaderboardRow] { try decode([LeaderboardRow].self, try await rpcData("read_leaderboards")) }
 }
 
-/// The boards over the server. A guest or a failed call changes nothing: publishing is best effort and reading gives nobody.
 actor SupabaseLeaderboardService: LeaderboardService {
     private let online: SupabaseOnlineService
-    /// The engine has no public initialiser for a submission, so the player's own latest one is the template the other rows are copied from.
-    private var template: LeaderboardSubmission?
 
     init(online: SupabaseOnlineService) { self.online = online }
 
     func publish(_ mine: LeaderboardSubmission) async {
-        template = mine
         guard mine.netWorth.isFinite, mine.tradingResult.isFinite else { return }
         try? await online.publishLeaderboard(netWorth: mine.netWorth, tradingResult: mine.tradingResult, week: mine.week)
     }
 
     func submissions() async -> [LeaderboardSubmission] {
-        guard let template, let rows = try? await online.leaderboardRows() else { return [] }
+        guard let rows = try? await online.leaderboardRows() else { return [] }
         return rows.map { (r: LeaderboardRow) -> LeaderboardSubmission in
-            var s: LeaderboardSubmission = template
-            s.playerID = r.playerID; s.name = r.name; s.week = r.week; s.netWorth = r.netWorth; s.tradingResult = r.tradingResult
-            return s
+            LeaderboardSubmission(playerID: r.playerID, name: r.name, week: r.week, netWorth: r.netWorth, tradingResult: r.tradingResult)
         }
     }
 }
 
-// MARK: Accountant offices
-
-/// One office as `list_accountant_offices` returns it. `rating` is nil until three clients have rated.
 struct ServerAccountantOffice: Decodable, Equatable {
     var id: String
     var officeName: String
@@ -80,9 +65,6 @@ extension SupabaseOnlineService {
     }
 }
 
-/// Offices other players run, over the server. The engine books the fee and the books' quality of an accountant on offer in the country, so
-/// each office is billed as the engine accountant whose rating is nearest the office's own (3 while it has fewer than three ratings; the
-/// cheaper one on a tie). The hiring fee itself moves through settlements on the server.
 struct SupabaseAccountantOfficeService: AccountantOfficeService {
     let online: SupabaseOnlineService
 
@@ -108,10 +90,6 @@ struct SupabaseAccountantOfficeService: AccountantOfficeService {
     }
 }
 
-// MARK: World rules
-
-/// `world_rules_read`: the administrator-set rules by key, and the exchange constants the server holds (the engine keeps the same ones in
-/// `ExchangeRules`, so a client can tell when the two have drifted).
 struct WorldRulesSnapshot: Decodable, Equatable, Sendable {
     struct Exchange: Decodable, Equatable, Sendable {
         var bandLow: Double
@@ -131,7 +109,6 @@ struct WorldRulesSnapshot: Decodable, Equatable, Sendable {
 }
 
 protocol WorldRulesService: Sendable {
-    /// The server's current rules; nil offline, as a guest, or when the call fails.
     func snapshot() async -> WorldRulesSnapshot?
 }
 
@@ -146,8 +123,6 @@ extension SupabaseOnlineService: WorldRulesService {
     }
 }
 
-/// Where a snapshot goes once the engine can take one. The engine has no rules-snapshot protocol yet, so `apply` stays nil and a fetched
-/// snapshot is only kept in `latest`; when the engine gets one, set `apply` once at start-up to hand the snapshot to it.
 enum WorldRulesSync {
     nonisolated(unsafe) static var apply: ((WorldRulesSnapshot) -> Void)?
     nonisolated(unsafe) private(set) static var latest: WorldRulesSnapshot?
@@ -160,8 +135,55 @@ enum WorldRulesSync {
 }
 
 extension OnlineBackend {
-    /// The same service the session uses (one refresh token, one place that refreshes it); the offline stand-in has no rules to give.
     static var worldRules: any WorldRulesService { (shared as? SupabaseOnlineService) ?? OfflineWorldRulesService() }
+}
+
+struct ServerPlayerEvent: Decodable, Equatable {
+    var id: String
+    var kind: String
+    var playerID: String
+    var playerName: String
+    var countryCode: String
+    var audience: String
+    var day: Int
+    var trade: String?
+    var city: String?
+    var company: String?
+    var count: Int?
+    var otherName: String?
+    var club: String?
+    var isFriend: Bool
+    var namesVisible: Bool
+
+    var event: PlayerEvent? {
+        guard let k = PlayerEventKind(rawValue: kind) else { return nil }
+        return PlayerEvent(id: id, kind: k, playerID: playerID, playerName: playerName, countryCode: countryCode, audience: PlayerEventAudience(rawValue: audience) ?? .friends,
+                           day: day, trade: trade, city: city, company: company, count: count, otherName: otherName, club: club)
+    }
+}
+
+final class SupabaseNewsFeedService: NewsFeedService, @unchecked Sendable {
+    private let online: SupabaseOnlineService
+    private let lock = NSLock()
+    private var named: Set<String> = []
+
+    init(online: SupabaseOnlineService) { self.online = online }
+
+    func isFriend(_ playerID: String) -> Bool { lock.withLock { named.contains(playerID) } }
+
+    func events(now: Date) async -> [PlayerEvent] {
+        guard let data = try? await online.rpcData("news_feed", ["p_filter": "everyone", "p_limit": 60]),
+              let rows = try? await online.decode([ServerPlayerEvent].self, data) else { return [] }
+        lock.withLock { named = Set(rows.filter { $0.namesVisible }.map { $0.playerID }) }
+        return rows.compactMap { $0.event }
+    }
+}
+
+enum NewsFeedBackend {
+    static func make() -> NewsFeedService {
+        guard let service = OnlineBackend.shared as? SupabaseOnlineService else { return MockNewsFeedService() }
+        return SupabaseNewsFeedService(online: service)
+    }
 }
 
 extension LeaderboardBackend {

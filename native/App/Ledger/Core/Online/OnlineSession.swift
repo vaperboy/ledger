@@ -1,56 +1,123 @@
 import Foundation
 import Observation
+import UIKit
 import GameCore
+import Events
 import Simulation
+import Businesses
 
-/// Which service the app talks to. A real server replaces the mock by returning its implementation here; nothing else changes.
 enum OnlineBackend {
-    /// The offline stand-in unless `OnlineConfig.useServer` is on, so launch makes no network calls by default.
     static func make() -> any OnlineService {
         guard OnlineConfig.useServer, let url = OnlineConfig.projectURL else { return MockOnlineService() }
         return SupabaseOnlineService(baseURL: url, apiKey: OnlineConfig.publishableKey, tokens: UnavailableIdentityTokenProvider())
     }
 
-    /// The one instance the session, the boards and the offices share, so only one place ever refreshes the sign-in token.
     static let shared: any OnlineService = make()
 }
 
-/// The player's online state for the views: guest, signing in or signed in, with their own profile. Injected with `.environment(online)`.
-/// Everything here is optional to the game: a guest or a failed call changes nothing about single-player.
+enum InviteLink {
+    static let scheme = "ledger"
+    static let host = "friend"
+
+    static func normalised(_ raw: String) -> String? {
+        let chars: [Character] = raw.uppercased().filter { $0.isLetter || $0.isNumber }
+        guard chars.count == 7 else { return nil }
+        return String(chars[0..<3]) + "-" + String(chars[3..<7])
+    }
+
+    static func webURL(code: String) -> URL? {
+        guard OnlineConfig.useServer, let base = OnlineConfig.projectURL, let c = normalised(code) else { return nil }
+        var comps = URLComponents(url: base.appendingPathComponent("functions/v1/invite"), resolvingAgainstBaseURL: false)
+        comps?.queryItems = [URLQueryItem(name: "c", value: c)]
+        return comps?.url
+    }
+
+    static func message(code: String) -> String {
+        let shown: String = normalised(code) ?? code
+        if let link = webURL(code: shown) { return "Come and play Ledger with me. Open \(link.absoluteString) or add my friend code \(shown) in the app." }
+        return "Come and play Ledger with me. Add my friend code \(shown) in the app."
+    }
+
+    static func code(from url: URL) -> String? {
+        if url.scheme == scheme, url.host == host { return normalised(url.lastPathComponent) }
+        if url.path.hasSuffix("/functions/v1/invite"), let c = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "c" })?.value {
+            return normalised(c)
+        }
+        return nil
+    }
+}
+
+enum AccountantHireIntent {
+    struct Pick: Codable, Equatable {
+        var officeID: String
+        var offerID: Int
+        var currency: String
+        var known: [Int]
+        var at: Date
+    }
+
+    private static let key = "ledger.online.accountantIntent"
+    private static let lifetime: TimeInterval = 3 * 86_400
+
+    static func choose(officeID: String, offerID: Int, currency: String, knownCompanies: [Int]) {
+        let pick = Pick(officeID: officeID, offerID: offerID, currency: currency, known: knownCompanies, at: Date())
+        if let data = try? JSONEncoder().encode(pick) { UserDefaults.standard.set(data, forKey: key) }
+    }
+
+    static func clear() { UserDefaults.standard.removeObject(forKey: key) }
+
+    static var current: Pick? {
+        guard let data = UserDefaults.standard.data(forKey: key), let pick = try? JSONDecoder().decode(Pick.self, from: data) else { return nil }
+        if Date().timeIntervalSince(pick.at) > lifetime { clear(); return nil }
+        return pick
+    }
+}
+
+@MainActor enum DeviceIdentity {
+    private static let key = "ledger.online.deviceID"
+
+    static var current: String {
+        if let id = UIDevice.current.identifierForVendor?.uuidString { return id }
+        if let saved = UserDefaults.standard.string(forKey: key) { return saved }
+        let made: String = UUID().uuidString
+        UserDefaults.standard.set(made, forKey: key)
+        return made
+    }
+}
+
 @MainActor @Observable
 final class OnlineSession {
     enum State: Equatable { case guest, signingIn, signedIn(SignInProvider) }
 
     private(set) var state: State = .guest
     private(set) var profile: PlayerProfile?
-    /// What the server last said about this account (nil before it answered, or for a guest).
     private(set) var status: AccountStatus?
-    /// The server's answer to "is this account an administrator", remembered per account so the entry shows offline. It is only ever set
-    /// from that answer, and the server checks the account again on every Admin call.
     private(set) var isAdmin = false
     private(set) var accountID: String?
-    /// The link reward the server just paid, shown once.
     private(set) var linkReward: LinkRewardResult?
-    /// One plain line for the screen that started the last call; cleared by the next call.
+    private(set) var pulse: WorldPulse?
+    private(set) var friendActivity: FriendActivity = .empty
+    private(set) var pendingInvite: String?
     var problem: String?
-    /// A calm note (not an error), such as "No profile was created".
     var notice: String?
 
     @ObservationIgnored let service: any OnlineService
+    @ObservationIgnored private var deviceRegistered = false
+    @ObservationIgnored private var sharedWeek: Int?
+    private static let boards: any LeaderboardService = LeaderboardBackend.make()
     private static let adminKey = "ledger.online.adminAccounts"
+    private static let inviteKey = "ledger.online.pendingInvite"
 
     init(service: any OnlineService = OnlineBackend.shared) {
         self.service = service
+        pendingInvite = UserDefaults.standard.string(forKey: Self.inviteKey)
     }
 
     var isSignedIn: Bool { if case .signedIn = state { return true }; return false }
     var provider: SignInProvider? { if case .signedIn(let p) = state { return p }; return nil }
-    /// Signed in, but the server has not created the profile yet (the first attempt failed).
     var awaitingAdultConfirmation: Bool { isSignedIn && status?.adultConfirmed == false }
-    /// What linking pays, once the server has said so.
     var linkRewardGold: Int { status?.linkRewardGold ?? 0 }
 
-    /// Restores a saved account at launch.
     func start() async {
         guard let account = await service.currentAccount() else { return }
         adopt(account)
@@ -65,7 +132,6 @@ final class OnlineSession {
         isAdmin = Self.rememberedAdmins().contains(account.playerID)
     }
 
-    /// Asks the server about this account and keeps its answer, the administrator answer included.
     func refreshStatus() async {
         guard isSignedIn, let s = try? await service.accountStatus() else { return }
         status = s
@@ -83,8 +149,6 @@ final class OnlineSession {
         UserDefaults.standard.set(Array(all), forKey: Self.adminKey)
     }
 
-    /// Signs in (or links, for a guest who adds an account later). Returns whether it worked. A new account gets its profile at once, sent with
-    /// the adult flag the terms already confirmed; a returning one gets its profile back and, if never paid, the reward.
     @discardableResult
     func signIn(with provider: SignInProvider) async -> Bool {
         problem = nil
@@ -109,7 +173,6 @@ final class OnlineSession {
         }
     }
 
-    /// The terms were accepted, which confirms 18 or older: the server creates the profile and the reward follows.
     @discardableResult
     func confirmAdult() async -> Bool {
         problem = nil
@@ -146,9 +209,12 @@ final class OnlineSession {
         isAdmin = false
         accountID = nil
         linkReward = nil
+        pulse = nil
+        friendActivity = .empty
+        deviceRegistered = false
+        sharedWeek = nil
     }
 
-    /// Spends an administrator code. The server decides; on success the account's status is read again.
     func redeemAdminCode(_ code: String) async -> AdminCodeResult? {
         problem = nil
         do {
@@ -161,7 +227,6 @@ final class OnlineSession {
         }
     }
 
-    /// Deletes the account and everything online. The saved game on this device is not touched.
     func deleteAccount() async {
         problem = nil
         do {
@@ -172,7 +237,6 @@ final class OnlineSession {
         }
     }
 
-    /// The player's data as a JSON file in the temporary folder, ready to share; nil on failure.
     func exportData() async -> URL? {
         problem = nil
         do {
@@ -191,7 +255,6 @@ final class OnlineSession {
         if let p = try? await service.myProfile() { profile = p }
     }
 
-    /// Saves a change to the own profile. Returns nil on success, otherwise the reason in one line.
     func update(_ change: ProfileUpdate) async -> String? {
         do {
             profile = try await service.updateMyProfile(change)
@@ -201,12 +264,30 @@ final class OnlineSession {
         }
     }
 
-    /// Sends the running game's companies, level and week to the own profile (quietly; nothing to do for a guest, before the profile exists,
-    /// or when it fails). The running game is the one the profile shows, so this needs no confirmation.
     func shareProgress(from engine: GameEngine?) async {
         guard isSignedIn, status?.adultConfirmed == true, let e = engine else { return }
+        if profile == nil { await refreshProfile() }
         let week: Int = e.state.week
-        let companies: [OnlineCompany] = e.state.companies.filter { $0.status == .open && $0.type != "hold" }.prefix(12).map { (co) -> OnlineCompany in
+        let behind: Bool = week < (profile?.gameWeek ?? 0)
+        var change = ProfileUpdate(badges: Self.badges(e))
+        if !behind {
+            change.companies = Self.companies(e)
+            change.level = e.playerLevel.level
+            change.gameWeek = week
+        }
+        _ = await update(change)
+        guard let id = accountID else { return }
+        await Self.boards.publish(e.leaderboardSubmission(playerID: id))
+    }
+
+    private static func badges(_ e: GameEngine) -> [String] {
+        let names: [String] = TrophyList.unlocked(e).map { (t: Trophies.Entry) -> String in String(t.name.prefix(40)) }.filter { (n: String) -> Bool in !n.isEmpty }
+        return Array(names.prefix(64))
+    }
+
+    private static func companies(_ e: GameEngine) -> [OnlineCompany] {
+        let week: Int = e.state.week
+        return e.state.companies.filter { $0.status == .open && $0.type != "hold" }.prefix(12).map { (co: Company) -> OnlineCompany in
             let health: OnlineCompanyHealth
             if co.weeksNegative >= 4 { health = .struggling }
             else if let opened = co.openedWeek, week - opened < 8 { health = .new }
@@ -215,6 +296,64 @@ final class OnlineSession {
             else { health = .steady }
             return OnlineCompany(id: "own.\(co.id)", name: co.name, trade: e.tradeName(co), city: e.cityName(co), countryCode: co.countryCode, health: health)
         }
-        _ = await update(ProfileUpdate(companies: companies, level: 1 + week / 14, gameWeek: week))
+    }
+
+    func runPresence(store: GameStore) async {
+        while !Task.isCancelled {
+            await syncWorld(store: store)
+            try? await Task.sleep(nanoseconds: 120 * 1_000_000_000)
+        }
+    }
+
+    func syncWorld(store: GameStore) async {
+        guard isSignedIn, status?.adultConfirmed == true else { return }
+        if !deviceRegistered { deviceRegistered = (try? await service.registerDevice(DeviceIdentity.current)) != nil }
+        if let p = try? await service.heartbeat() { pulse = p }
+        await bookSettlements(store: store)
+        await reconcileHire(store: store)
+        if let e = store.engine, sharedWeek != e.state.week {
+            sharedWeek = e.state.week
+            await shareProgress(from: e)
+        }
+        if let a = try? await service.friendActivity() { friendActivity = a }
+    }
+
+    private func bookSettlements(store: GameStore) async {
+        guard !store.isAdvancing, store.engine != nil, let rows = try? await service.pendingSettlements(), !rows.isEmpty else { return }
+        let items: [OnlineSettlement] = rows.map { (r: OnlineSettlementRow) -> OnlineSettlement in
+            OnlineSettlement(id: r.id, amount: r.amount, currency: r.currency, kind: r.kind, label: r.label, companyKey: r.meta?.companyKey,
+                             units: r.meta?.units, unitPrice: r.meta?.unitPrice)
+        }
+        guard let done = store.act({ (e: inout GameEngine) -> [String] in e.bookOnlineSettlements(items) }) else { return }
+        try? await service.acknowledgeSettlements(done)
+    }
+
+    private func reconcileHire(store: GameStore) async {
+        guard let pick = AccountantHireIntent.current, let e = store.engine else { return }
+        let fresh: [Company] = e.state.companies.filter { (c: Company) -> Bool in
+            !pick.known.contains(c.id) && c.status.isLive && c.value("acc")["id"].int == pick.offerID
+        }
+        guard let company = fresh.min(by: { (a: Company, b: Company) -> Bool in a.id < b.id }) else { return }
+        do {
+            try await AccountantOfficeBackend.make().hire(officeID: pick.officeID, companyKey: "own.\(company.id)", currency: pick.currency)
+            AccountantHireIntent.clear()
+        } catch OnlineError.offline {
+            return
+        } catch {
+            AccountantHireIntent.clear()
+        }
+    }
+
+    @discardableResult
+    func receive(url: URL) -> Bool {
+        guard let code = InviteLink.code(from: url) else { return false }
+        pendingInvite = code
+        UserDefaults.standard.set(code, forKey: Self.inviteKey)
+        return true
+    }
+
+    func dismissInvite() {
+        pendingInvite = nil
+        UserDefaults.standard.removeObject(forKey: Self.inviteKey)
     }
 }

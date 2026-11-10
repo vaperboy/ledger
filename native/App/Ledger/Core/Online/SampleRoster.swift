@@ -1,7 +1,5 @@
 import Foundation
 
-/// The made-up players the stand-in server starts with. Everything is derived from the table and the player's name, so the same
-/// roster appears on every launch and every device (no randomness).
 enum SampleRoster {
     private struct Row {
         var name: String, country: String, level: Int, privacy: PrivacyLevel, computer = false, week: Int
@@ -49,7 +47,6 @@ enum SampleRoster {
         Row(name: "Arjun Mehta", country: "IN", level: 11, privacy: .everyone, computer: true, week: 162),
         Row(name: "Noah Mitchell", country: "AU", level: 14, privacy: .everyone, week: 207),
         Row(name: "Thandi Dlamini", country: "ZA", level: 6, privacy: .onlyMe, week: 70),
-        // Five computer players with fixed companies and friends-only profiles, for judging whether they stand out from the others.
         Row(name: "Nora Haugen", country: "NO", level: 13, privacy: .friends, computer: true, week: 196,
             fixed: [("Haugen Bakery", "Bakery and pastry", "Bergen"), ("Haugen Plumbing", "Plumbing firm", "Oslo")]),
         Row(name: "Daniel Brooks", country: "UK", level: 16, privacy: .friends, computer: true, week: 238,
@@ -62,10 +59,8 @@ enum SampleRoster {
             fixed: [("Dubois Auto", "Car repair workshop", "Lyon")]),
     ]
 
-    /// The five test players (the last rows), so the stand-in can make them the owner's friends from the start.
     static let testPlayerIDs: [String] = (0..<5).map { String(format: "p%02d", rows.count - 5 + $0 + 1) }
 
-    /// Whether a player is a computer player. Only the stand-in's own behaviour reads this; no screen shows it.
     static func isComputer(_ id: String) -> Bool {
         guard id.hasPrefix("p"), let n = Int(id.dropFirst()), n >= 1, n <= rows.count else { return false }
         return rows[n - 1].computer
@@ -85,11 +80,9 @@ enum SampleRoster {
         "JP": ["Tokyo", "Osaka", "Fukuoka"], "BR": ["São Paulo", "Rio de Janeiro", "Curitiba"], "IN": ["Pune", "Jaipur", "Kochi"],
         "AU": ["Sydney", "Melbourne", "Perth"], "ZA": ["Cape Town", "Durban", "Pretoria"],
     ]
-    /// Trade names as the game's own trade list writes them, so a player's company can stand as a rival in the same trade.
     private static let trades: [String] = ["Bakery and pastry", "Café", "Dental clinic", "Physiotherapy clinic", "Hair salon", "Plumbing firm", "Gym",
                                            "Restaurant", "Convenience store", "Software and web agency", "Car repair workshop", "Cleaning company",
                                            "Clothing boutique", "Supermarket", "Photography and video", "Pet daycare and grooming"]
-    /// How a trade reads inside a company name.
     private static let shortWords: [String: String] = [
         "Bakery and pastry": "Bakery", "Physiotherapy clinic": "Physio", "Hair salon": "Hair Studio", "Convenience store": "Corner Shop",
         "Software and web agency": "Web Studio", "Car repair workshop": "Auto", "Cleaning company": "Cleaning", "Clothing boutique": "Boutique",
@@ -98,7 +91,6 @@ enum SampleRoster {
     private static let health: [OnlineCompanyHealth] = [.thriving, .growing, .growing, .steady, .steady, .steady, .struggling, .new]
     private static let badges: [String] = ["Early player", "Cash positive", "Debt free", "Hired fifty", "Opened abroad", "Five-star shop", "Season one", "First profit", "Ten years in"]
 
-    /// A repeatable pseudo-random stream from text (FNV-1a, not `hashValue`, which changes between launches).
     struct Stream {
         private var x: UInt64
         init(_ text: String) {
@@ -112,12 +104,11 @@ enum SampleRoster {
         }
     }
 
-    /// The profile code: six characters without look-alikes, shown as "K7M-4PQ".
     static func code(for id: String) -> String {
         let alphabet: [Character] = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
         var s = Stream("code:" + id)
-        let chars: [Character] = (0..<6).map { _ in alphabet[s.next(alphabet.count)] }
-        return String(chars[0..<3]) + "-" + String(chars[3..<6])
+        let chars: [Character] = (0..<7).map { _ in alphabet[s.next(alphabet.count)] }
+        return String(chars[0..<3]) + "-" + String(chars[3..<7])
     }
 
     static func players() -> [PlayerProfile] {

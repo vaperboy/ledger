@@ -52,6 +52,7 @@ struct AccountantStep: View {
                 AccountantChoiceList(offers: offers, currency: currency, chosenID: chosen) { (o: AccountantOffer) -> Void in
                     officeID = nil
                     accountantID = o.isDefault ? nil : o.id
+                    AccountantHireIntent.clear()
                 }
                 if !offices.isEmpty {
                     Text("Offices run by other players").capsLabel().padding(.top, Theme.Space.s)
@@ -63,6 +64,8 @@ struct AccountantStep: View {
                                               identifier: "accountant-" + office.id) {
                                     officeID = office.id
                                     accountantID = o.isDefault ? nil : o.id
+                                    AccountantHireIntent.choose(officeID: office.id, offerID: o.id, currency: office.currencyCode ?? currency.country.currencyCode,
+                                                                knownCompanies: store.engine?.state.companies.map { (c: Company) -> Int in c.id } ?? [])
                                 }
                             }
                         }

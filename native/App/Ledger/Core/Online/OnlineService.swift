@@ -1,18 +1,10 @@
 import Foundation
 
-// The contract between the app and the online side: accounts, profiles and friends. The app only ever talks to `OnlineService`;
-// `MockOnlineService` stands in for the real server until one exists, and has the same shape (async, Codable, errors by kind).
-// Other features (the supplier marketplace) add their own protocol in their own file and the mock conforms in an extension.
-
-/// How the player signed in. Guests have no provider and no server profile.
 enum SignInProvider: String, Codable, CaseIterable, Sendable {
     case apple, google
     var title: String { self == .apple ? "Apple" : "Google" }
 }
 
-/// Who can see what on a profile, as the server enforces it (the view only shows what it was given):
-/// Public: everyone sees name, level, badges and company count, friends also see the companies and how they are doing.
-/// Friends: everyone sees name, level and badges; only friends see the company count and the companies. Private: the name only, to everyone.
 enum PrivacyLevel: String, Codable, CaseIterable, Sendable {
     case everyone, friends, onlyMe
     var title: String {
@@ -31,7 +23,6 @@ enum PrivacyLevel: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// How a company is doing, in words (never figures: other players do not see another player's books).
 enum OnlineCompanyHealth: String, Codable, CaseIterable, Sendable {
     case new, struggling, steady, growing, thriving
     var title: String {
@@ -45,30 +36,23 @@ enum OnlineCompanyHealth: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// A company as other players see it: a name, what it does and where, and how it is doing in words.
 struct OnlineCompany: Codable, Hashable, Identifiable, Sendable {
     var id: String
     var name: String
-    /// A trade in plain words ("Bakery", "Dental clinic").
     var trade: String
     var city: String
     var countryCode: String
     var health: OnlineCompanyHealth
 }
 
-/// The viewer's relationship to a profile.
 enum FriendRelation: String, Codable, Sendable {
     case none, you, friend, requestSent, requestReceived, blocked
 }
 
-/// A player as the viewer is allowed to see them. A nil `level`, `companyCount`, `companies`, `gameWeek` or `tradesCompleted` is hidden from this
-/// viewer by the player's privacy level. `gameWeek` is the week the player's own game has reached (players are on different dates).
 struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
     var id: String
-    /// The shareable code, "K7M-4PQ2".
     var code: String
     var displayName: String
-    /// Index into the avatar colours (0..<`PlayerProfile.avatarColourCount`).
     var avatarColour: Int
     var countryCode: String
     var level: Int?
@@ -79,8 +63,8 @@ struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
     var gameWeek: Int?
     var tradesCompleted: Int?
     var relation: FriendRelation
-    /// The profile icon the player wears (`AvatarCatalog` id); nil shows the initials on the avatar colour.
     var avatarIcon: String? = nil
+    var lastSeen: Double? = nil
 
     static let avatarColourCount = 8
     var initials: String {
@@ -90,7 +74,6 @@ struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
-/// What the player may change on their own profile; nil leaves a field as it is.
 struct ProfileUpdate: Codable, Sendable {
     var displayName: String?
     var avatarColour: Int?
@@ -109,14 +92,12 @@ struct ProfileUpdate: Codable, Sendable {
     }
 }
 
-/// The signed-in account (what the provider vouched for; no password ever reaches the app).
 struct OnlineAccount: Codable, Hashable, Sendable {
     var playerID: String
     var provider: SignInProvider
     var createdAt: Date
 }
 
-/// A pending friend request in either direction.
 struct FriendRequest: Codable, Hashable, Identifiable, Sendable {
     var id: String { player.id }
     var player: PlayerProfile
@@ -145,10 +126,8 @@ enum ReportReason: String, Codable, CaseIterable, Sendable {
 
 enum OnlineError: Error, Equatable, LocalizedError, Sendable {
     case notSignedIn, notFound, blocked, alreadyFriends, requestPending, cannotTargetYourself, nameRejected(String), offline
-    /// A profile is only created after the 18+ confirmation.
     case adultRequired
     case notAdmin
-    /// A server rule said no; the text is the reason in plain words.
     case rejected(String)
     var errorDescription: String? {
         switch self {
@@ -167,53 +146,97 @@ enum OnlineError: Error, Equatable, LocalizedError, Sendable {
     }
 }
 
-/// What the server says about the signed-in account. Asked again after every sign-in, never taken from a stored flag.
 struct AccountStatus: Codable, Equatable, Sendable {
     var hasProfile: Bool
-    /// The 18+ confirmation: a yes or no and nothing else.
     var adultConfirmed: Bool
     var isAdmin: Bool
-    /// What linking pays (once per person) and whether this account has been paid.
     var linkRewardGold: Int
     var linkRewardClaimed: Bool
 }
 
-/// The one-time gold reward for linking. The server puts it in the gold wallet; `granted` is false when it was paid before.
 struct LinkRewardResult: Codable, Equatable, Sendable {
     var granted: Bool
     var gold: Int
     var reason: String
 }
 
-/// Everything the app asks of the online side. Methods that need an account throw `.notSignedIn` for a guest.
-/// Single-player never needs any of it: a failed or missing service must leave the offline game untouched.
-protocol OnlineService: AdminService, Sendable {
-    // Account and session
+struct WorldPulse: Decodable, Equatable, Sendable {
+    var online: Int
+    var players: Int
+}
+
+struct FriendActivityItem: Decodable, Equatable, Identifiable, Sendable {
+    var id: String
+    var playerID: String
+    var playerName: String
+    var kind: String
+    var count: Int?
+    var label: String?
+    var at: Double
+
+    var sentence: String {
+        switch kind {
+        case "joined": return "\(playerName) joined Ledger."
+        case "levelUp": return count.map { "\(playerName) reached level \($0)." } ?? "\(playerName) moved up a level."
+        case "exchangeListed": return "\(playerName) listed a company on the stock exchange."
+        case "auctionSold": return label.map { "\(playerName) sold \($0) at auction." } ?? "\(playerName) sold a piece at auction."
+        case "officeOpened": return "\(playerName) opened an accountant office."
+        case "tradeMilestone": return count.map { "\(playerName) completed \($0) trades." } ?? "\(playerName) reached a trading milestone."
+        default: return "\(playerName) was active."
+        }
+    }
+}
+
+struct FriendPresence: Decodable, Equatable, Sendable {
+    var playerID: String
+    var lastSeen: Double?
+    var online: Bool
+}
+
+struct FriendActivity: Decodable, Equatable, Sendable {
+    var activity: [FriendActivityItem]
+    var presence: [FriendPresence]
+    static let empty = FriendActivity(activity: [], presence: [])
+}
+
+struct OnlineSettlementRow: Decodable, Equatable, Sendable {
+    struct Meta: Decodable, Equatable, Sendable {
+        var companyKey: String?
+        var units: Int?
+        var unitPrice: Double?
+    }
+    var id: String
+    var amount: Double
+    var currency: String
+    var kind: String
+    var label: String
+    var meta: Meta?
+}
+
+protocol OnlineWorldService: Sendable {
+    func heartbeat() async throws -> WorldPulse
+    func registerDevice(_ device: String) async throws
+    func friendActivity() async throws -> FriendActivity
+    func pendingSettlements() async throws -> [OnlineSettlementRow]
+    func acknowledgeSettlements(_ ids: [String]) async throws
+}
+
+protocol OnlineService: AdminService, OnlineWorldService, Sendable {
     func currentAccount() async -> OnlineAccount?
-    /// Signs in with Apple or Google (the mock simulates it). It makes no profile: that waits for the 18+ confirmation.
     func signIn(with provider: SignInProvider) async throws -> OnlineAccount
     func accountStatus() async throws -> AccountStatus
-    /// Creates the profile once the player has confirmed they are 18 or older. Only that yes is sent and stored.
     func createProfile(adultConfirmed: Bool) async throws -> PlayerProfile
-    /// Asks the server for the one-time link reward.
     func claimLinkReward() async throws -> LinkRewardResult
-    /// Same as `signIn`, named for a guest who adds an account later.
-    func linkAccount(with provider: SignInProvider) async throws -> OnlineAccount
     func signOut() async
-    /// Removes the account, its profile, friendships and requests. Not reversible.
     func deleteAccount() async throws
-    /// Everything the server holds about the player, as JSON.
     func exportMyData() async throws -> Data
 
-    // Profiles
     func myProfile() async throws -> PlayerProfile
     func updateMyProfile(_ update: ProfileUpdate) async throws -> PlayerProfile
     func profile(id: String) async throws -> PlayerProfile
     func profile(code: String) async throws -> PlayerProfile
-    /// By display name (substring) or profile code; never returns the player or players who blocked them.
     func searchPlayers(query: String) async throws -> [PlayerProfile]
 
-    // Friends
     func friends() async throws -> FriendsOverview
     func sendFriendRequest(to playerID: String) async throws
     func acceptFriendRequest(from playerID: String) async throws

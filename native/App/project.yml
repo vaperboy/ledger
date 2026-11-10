@@ -46,6 +46,12 @@ targets:
     dependencies:
       - package: LedgerEngine
         product: LedgerEngine
+    info:
+      path: InfoPlists/Ledger.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: com.example.ledger.invite
+            CFBundleURLSchemes: [ledger]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.ledger          # change to your own before App Store submission

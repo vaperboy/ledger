@@ -1,8 +1,5 @@
 import Foundation
 
-// The pure side of the Supabase client: building requests, decoding the server's JSON and mapping its errors. No network, no state.
-
-/// A signed-in session as GoTrue returned it (kept in the Keychain).
 struct SupabaseSession: Codable, Equatable, Sendable {
     var accessToken: String
     var refreshToken: String
@@ -12,11 +9,9 @@ struct SupabaseSession: Codable, Equatable, Sendable {
     var isAnonymous: Bool
     var provider: SignInProvider?
 
-    /// True when the access token is expired or within `skew` seconds of it.
     func needsRefresh(now: Date = Date(), skew: TimeInterval = 60) -> Bool { expiresAt.timeIntervalSince(now) <= skew }
 }
 
-/// GoTrue's token endpoint answer (sign in with an ID token, anonymous sign-up, refresh).
 struct SupabaseTokenResponse: Decodable {
     struct User: Decodable {
         struct Meta: Decodable { var provider: String? }
@@ -44,10 +39,7 @@ struct SupabaseTokenResponse: Decodable {
 }
 
 enum SupabaseWire {
-    // MARK: Requests
 
-    /// A request to `base` + `path` with the project key, and the user's access token when there is one.
-    /// The publishable key is not a JWT, so it goes in `apikey` only; `Authorization` carries the user's token.
     static func request(base: URL, path: String, method: String = "GET", query: [URLQueryItem] = [], body: Data? = nil,
                         apiKey: String, accessToken: String? = nil, prefer: String? = nil) -> URLRequest {
         var comps = URLComponents(url: base, resolvingAgainstBaseURL: false) ?? URLComponents()
@@ -64,20 +56,15 @@ enum SupabaseWire {
         return req
     }
 
-    /// PostgREST filter that matches a friendship row between two players in either direction.
     static func pairFilter(_ a: String, _ b: String) -> URLQueryItem {
         URLQueryItem(name: "or", value: "(and(requester_id.eq.\(a),addressee_id.eq.\(b)),and(requester_id.eq.\(b),addressee_id.eq.\(a)))")
     }
 
-    /// The server's name for a privacy level (the app's own names are `everyone` / `onlyMe`).
     static func privacyWire(_ p: PrivacyLevel) -> String {
         switch p { case .everyone: return "public"; case .friends: return "friends"; case .onlyMe: return "private" }
     }
 
-    // MARK: JSON
-
     private static func parseDate(_ s: String) -> Date? {
-        // Postgres writes microseconds; ISO8601DateFormatter is only dependable with milliseconds, so trim to three digits.
         let trimmed: String = s.replacingOccurrences(of: #"(\.\d{3})\d+"#, with: "$1", options: .regularExpression)
         let withFraction = ISO8601DateFormatter()
         withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -101,9 +88,6 @@ enum SupabaseWire {
 
     static func makeEncoder() -> JSONEncoder { JSONEncoder() }
 
-    // MARK: Errors
-
-    /// Maps an HTTP failure from PostgREST or GoTrue to the app's error kinds. The RPC functions raise short codes as the message.
     static func mapError(status: Int, body: Data) -> OnlineError {
         let json: [String: Any] = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any] ?? [:]
         let message: String = ((json["message"] ?? json["msg"] ?? json["error_description"]) as? String) ?? ""
@@ -114,7 +98,9 @@ enum SupabaseWire {
             let why: String = message.drop(while: { $0 != ":" }).dropFirst().trimmingCharacters(in: .whitespaces)
             return .nameRejected(why.isEmpty ? "That name is not allowed." : why)
         }
-        switch message {
+        let key: String = message.split(separator: ":", maxSplits: 1).first.map(String.init) ?? message
+        let amount: String = message.contains(":") ? message.drop(while: { $0 != ":" }).dropFirst().trimmingCharacters(in: .whitespaces) : ""
+        switch key {
         case "not_signed_in": return .notSignedIn
         case "not_found": return .notFound
         case "blocked": return .blocked
@@ -145,9 +131,29 @@ enum SupabaseWire {
         case "already_rated": return .rejected("You have already rated this accountant.")
         case "too_early": return .rejected("Rate an accountant after a week of working together.")
         case "new_account": return .rejected("Shared deals open after the account is four weeks old.")
-        // No dedicated case for open supply contracts yet: the message is shown as is.
         case "open_contracts": return .nameRejected("Close your open supply contracts before deleting the account.")
-        default: break
+        case "price_outside_market": return .rejected("That price is far from what the market pays.")
+        case "too_many_orders": return .rejected("You have too many open orders. Cancel some first.")
+        case "outside_band": return .rejected("That price is outside the range around the company's value.")
+        case "too_many": return .rejected("You do not hold that many shares.")
+        case "too_small": return .rejected("The company is too small for this.")
+        case "invalid_order", "invalid_amount", "invalid_listing", "invalid_reserve", "invalid_units", "invalid_progress": return .rejected("Check the figures and try again.")
+        case "not_reportable", "invalid_event": return .rejected("That cannot be reported.")
+        case "rate_limited": return .rejected("Too many requests. Try again later.")
+        case "start_price_too_low": return .rejected("The starting price is too low.")
+        case "too_low": return .rejected(amount.isEmpty ? "The bid is too low." : "The lowest bid now is \(amount).")
+        case "not_enough_cash": return .rejected(amount.isEmpty ? "You cannot cover that bid." : "That is \(amount) more than you can bid for now.")
+        case "seller_cannot_bid": return .rejected("You cannot bid on your own piece or one listed by a linked account.")
+        case "already_leading": return .rejected("You already lead this auction.")
+        case "not_live": return .rejected("This auction has ended.")
+        case "has_bids": return .rejected("Someone has bid, so the listing cannot be taken back.")
+        case "already_listed": return .rejected("This is already on offer.")
+        case "not_yours": return .rejected("That is not yours.")
+        case "linked_account", "linked_parties", "linked_to_founder": return .rejected("Deals between accounts of the same person are not allowed.")
+        case "listing_full": return .rejected("That supplier has no room left.")
+        case "capacity_below_commitments": return .rejected("Capacity cannot go below what is already contracted.")
+        default:
+            if key.hasPrefix("listing_") { return .rejected("That offer is not available.") }
         }
         if code == "23514", (message + hint).contains("display_name") { return .nameRejected("Use 2 to 20 letters, numbers and . - _ ' only.") }
         if code == "23505", (message + hint).contains("friendships") { return .requestPending }
@@ -159,8 +165,5 @@ enum SupabaseWire {
         return .offline
     }
 
-    // MARK: Profiles
-
-    /// Decodes one profile as `view_profile` returns it; hidden fields arrive as null (or are missing) and stay nil.
     static func decodeProfile(_ data: Data) throws -> PlayerProfile { try makeDecoder().decode(PlayerProfile.self, from: data) }
 }

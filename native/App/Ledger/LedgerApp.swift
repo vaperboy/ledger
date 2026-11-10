@@ -52,6 +52,10 @@ struct LedgerApp: App {
                 .environment(online)
                 .task { entitlements.start() }
                 .task { OnlineWiring.install(); await online.start(); await OnlineDirectoryCache.refresh(from: online.service); store.syncPlayerCompanies() }
+                .task(id: online.isSignedIn && scenePhase == .active) {
+                    if online.isSignedIn && scenePhase == .active { await online.runPresence(store: store) }
+                }
+                .onOpenURL { url in if online.receive(url: url) { store.openApp(.profile) } }
                 // Dark everywhere, except while a light outside app is on screen: then the status bar text turns dark too.
                 .preferredColorScheme(statusBar.light ? .light : .dark)
                 .tint(Theme.gold)
