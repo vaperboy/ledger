@@ -12,6 +12,11 @@ struct ShakeEffect: GeometryEffect {
         get { count }
         set { count = newValue }
     }
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        let dx: CGFloat = travel * sin(count * CGFloat.pi * 4)
+        return ProjectionTransform(CGAffineTransform(translationX: dx, y: 0))
+    }
 }
 
 struct ShakeOnChange: ViewModifier {
