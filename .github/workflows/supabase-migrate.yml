@@ -1,11 +1,33 @@
 name: Supabase migrate
 
-# Applies supabase/migrations to the linked project. Needs repo secrets SUPABASE_ACCESS_TOKEN and SUPABASE_DB_PASSWORD.
 on:
   workflow_dispatch:
 
 jobs:
+  sql-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - run: psql -v ON_ERROR_STOP=1 -q -c "create database t"
+      - run: psql -v ON_ERROR_STOP=1 -q -d t -f supabase/tests/bootstrap.sql
+      - run: for f in supabase/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -q -1 -d t -f "$f" || exit 1; done
+      - run: psql -v ON_ERROR_STOP=1 -q -1 -d t -f supabase/tests/online_rules.sql
+
   migrate:
+    needs: sql-tests
     runs-on: ubuntu-latest
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -17,3 +39,4 @@ jobs:
           version: 2.48.3
       - run: supabase link --project-ref ktcjbitrwuieuxthrqhu
       - run: supabase db push --yes
+      - run: supabase functions deploy invite --no-verify-jwt
