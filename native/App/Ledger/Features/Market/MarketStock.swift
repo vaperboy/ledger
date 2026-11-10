@@ -57,11 +57,8 @@ struct MarketStockPage: View {
             if row.mine > 0 { ValueRow(label: "Your shares", value: row.mine.formatted() + " \u{00B7} " + cur.tidyShort(row.value), tint: P.accent) }
             Text("The closing price moves at most \(Int(ExchangeRules.dayMoveShare * 100))% a day and stays within \(Int(ExchangeRules.bandShare * 100))% of the value per share.")
                 .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-            if row.kind == "own", let id = Int(row.id.dropFirst(3)) {
-                if let b = row.blocked {
-                    Text(b.tidyText).textStyle(.caption, tint: P.caution).fixedSize(horizontal: false, vertical: true)
-                }
-                QuietButton(title: "Results, blackout and dividends", fullWidth: true) { next = .listing(id) }
+            if row.kind == "own", let b = row.blocked {
+                Text(b.tidyText).textStyle(.caption, tint: P.caution).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
