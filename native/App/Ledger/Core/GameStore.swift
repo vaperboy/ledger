@@ -560,13 +560,15 @@ final class GameStore: ObservableObject {
     }
 
     func tabLockReason(_ t: AppTab) -> String? {
-        guard t == .projects, let e = engine, !Gates.isOpen(.ventures, e.state, data: e.data) else { return nil }
+        guard t == .projects, let e = engine else { return nil }
+        if !LevelGates.isOpen(.ventures, e.state) { return LevelGates.lockLine(.ventures) }
+        guard !Gates.isOpen(.ventures, e.state, data: e.data) else { return nil }
         return Gate.ventures.lockText ?? "Not unlocked yet"
     }
 
     func tellTabLocked(_ t: AppTab, reason: String) {
         var text: String = reason
-        if let item = engine?.unlockRoadmap().first(where: { (i: UnlockRoadmapItem) -> Bool in i.id == "gate." + Gate.ventures.rawValue }), !item.detail.isEmpty {
+        if !reason.hasPrefix("Unlocks at level"), let item = engine?.unlockRoadmap().first(where: { (i: UnlockRoadmapItem) -> Bool in i.id == "gate." + Gate.ventures.rawValue }), !item.detail.isEmpty {
             text += "\n" + item.detail
         }
         var n = Toast(title: t.title + " is locked", text: text, tone: "n")
@@ -592,6 +594,7 @@ final class GameStore: ObservableObject {
         let c: String = chosen.tidyText
         let r: String = result.tidyText
         outcomeCapture?.told = true
+        if r.isEmpty { Haptics.success(); return }
         outcomes.append(OutcomeNote(chosen: c, result: r.isEmpty ? "Done: " + c : r))
     }
 
@@ -605,7 +608,6 @@ final class GameStore: ObservableObject {
         SoundCues.play(.paymentOut)
         outcome(chosen: action.button, result: c.lines.joined(separator: "\n"))
     }
-
     func dismissOutcome() { if !outcomes.isEmpty { outcomes.removeFirst() } }
 
     func dismissNotice() { if !notices.isEmpty { notices.removeFirst() } }
@@ -705,8 +707,9 @@ final class GameStore: ObservableObject {
     }
 
     func popToRoot(_ t: AppTab) {
+        let deep: Bool = !(stacks[t] ?? []).isEmpty
         clearStack(t)
-        rootTokens[t] = rootToken(t) + 1
+        if deep || t != tab { rootTokens[t] = rootToken(t) + 1 }
         appRequest = nil
     }
 

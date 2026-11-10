@@ -146,7 +146,19 @@ final class StoreSession {
 
     private static let levelCardsKey = "ledger.cards.levelGranted"
 
+    private static let levelGoldKey = "ledger.level.goldPaid"
+
+    private func receiveLevelGold(_ level: Int) {
+        let paid: Int = UserDefaults.standard.integer(forKey: Self.levelGoldKey)
+        guard level > paid else { return }
+        let gold: Int = LevelRewards.due(from: paid, to: level).reduce(0) { (sum: Int, r: LevelRewards.Reward) -> Int in sum + r.gold }
+        UserDefaults.standard.set(level, forKey: Self.levelGoldKey)
+        guard gold > 0 else { return }
+        Task { state = await store.grantFromSeason(boxes: 0, gold: gold) }
+    }
+
     func receiveLevel(_ level: Int) {
+        receiveLevelGold(level)
         let done: Set<String> = Set(UserDefaults.standard.stringArray(forKey: Self.levelCardsKey) ?? [])
         let due: [CardCatalog.LevelReward] = CardCatalog.levelRewards(upTo: level).filter { (r: CardCatalog.LevelReward) -> Bool in !done.contains(r.defID) }
         guard !due.isEmpty else { return }

@@ -25,7 +25,7 @@ struct ConfirmPopup: View {
     }
 
     private var tone: PopupTone {
-        if let t = action.tone { return t }
+        if let t = action.tone { return t == .danger && !action.destructive ? .warning : t }
         if action.destructive { return .danger }
         return action.amount != nil ? .investment : .info
     }

@@ -48,6 +48,7 @@ struct PurchaseButton: View {
 
 struct PurchaseNoticeCard: View {
     var notice: PurchaseNotice
+    @Environment(PurchaseManager.self) private var purchases
     @Environment(\.popupClose) private var popupClose
     @Environment(\.dismiss) private var systemDismiss
 
@@ -72,9 +73,20 @@ struct PurchaseNoticeCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("purchase-notice")
         .popupFooter {
-            Button { close() } label: { Text("Done") }
-                .buttonStyle(PopupPrimaryCapsuleStyle(tone: tone == .danger ? .neutral : tone))
-                .accessibilityIdentifier("purchase-notice-done")
+            if let item = notice.retry {
+                VStack(spacing: Theme.Space.s) {
+                    Button { close(); Task { await purchases.buy(item) } } label: { Text("Retry payment") }
+                        .buttonStyle(PopupPrimaryCapsuleStyle(tone: .neutral))
+                        .accessibilityIdentifier("purchase-notice-retry")
+                    Button { close() } label: { Text("No thanks").textStyle(.caption, tint: Theme.inkFaint).frame(minHeight: 36) }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("purchase-notice-dismiss")
+                }
+            } else {
+                Button { close() } label: { Text("Done") }
+                    .buttonStyle(PopupPrimaryCapsuleStyle(tone: tone == .danger ? .neutral : tone))
+                    .accessibilityIdentifier("purchase-notice-done")
+            }
         }
     }
 }

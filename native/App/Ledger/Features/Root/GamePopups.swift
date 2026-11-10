@@ -71,7 +71,12 @@ struct NoticePopup: View {
 
     private var heading: String {
         if !notice.title.isEmpty { return notice.title }
-        return notice.tone == "bad" ? "Problem" : "Notice"
+        switch notice.tone {
+        case "bad": return "Problem"
+        case "good": return "Done"
+        case "warn": return "Heads up"
+        default: return "Notice"
+        }
     }
 
     var body: some View {
@@ -116,8 +121,26 @@ struct NoticePopup: View {
         }
     }
 
+    private var plainTone: PopupTone {
+        switch notice.tone {
+        case "good": return .success
+        case "bad": return .danger
+        case "warn": return .warning
+        default: return .info
+        }
+    }
+
+    private var plainIcon: String {
+        switch notice.tone {
+        case "good": return "checkmark"
+        case "bad": return "exclamationmark.triangle"
+        case "warn": return "exclamationmark.circle"
+        default: return "info.circle"
+        }
+    }
+
     private var plain: some View {
-        GamePopup(title: heading, showsClose: false, category: .compact, tone: .danger, icon: "exclamationmark.triangle", onClose: { store.dismissNotice() }) {
+        GamePopup(title: heading, showsClose: false, category: .compact, tone: plainTone, icon: plainIcon, onClose: { store.dismissNotice() }) {
             PopupBody {
                 if !notice.text.isEmpty { Text(notice.text.tidyMoney).popupText(.body) }
                 PopupOptionButton(title: "Done", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }

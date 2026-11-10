@@ -71,9 +71,9 @@ final class LevelGatesTests: XCTestCase {
         e.update { s, _, _ in PlayerLevel.award(&s, PlayerLevel.threshold(3)) }
         let ids: [String] = e.pendingNotices().map { $0.id }
         XCTAssertEqual(ids.first, "level.auctions")
-        XCTAssertEqual(Set(ids), ["level.auctions", "level.exchange", "level.chain"])
+        XCTAssertEqual(Set(ids), ["level.auctions", "level.exchange", "level.chain", "level.ventures"])
         e.markNoticeSeen(id: "level.auctions")
-        XCTAssertEqual(Set(e.pendingNotices().map { $0.id }), ["level.exchange", "level.chain"])
+        XCTAssertEqual(Set(e.pendingNotices().map { $0.id }), ["level.exchange", "level.chain", "level.ventures"])
         var other = try fresh()
         let carried: ProfileProgress = ProfileProgress(xp: PlayerLevel.threshold(3), seen: nil)
         other.update { s, _, _ in PlayerLevel.adopt(&s, profile: carried) }

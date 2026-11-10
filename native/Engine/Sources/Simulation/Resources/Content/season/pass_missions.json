@@ -1,0 +1,16 @@
+{
+ "about": "Season pass missions. loginXP: pass XP for opening the game on a real day. period: day, week or month (a day is a real calendar day, a week is 7 days, a month is 30 days). metric: advance (days played), decision (decisions answered), event (events answered), answered (any inbox item answered), dailyGoal (the Home daily goal done), weekReport (weeks closed). target: how many of the metric finish it. xp: pass XP paid once per period. Keep the sums small: the pass is built to take a dedicated player about 90 of the 182 days.",
+ "loginXP": 10,
+ "missions": [
+  {"id": "d.advance", "period": "day", "title": "Play 3 days", "metric": "advance", "target": 3, "xp": 10},
+  {"id": "d.decision", "period": "day", "title": "Answer 2 decisions", "metric": "decision", "target": 2, "xp": 10},
+  {"id": "d.event", "period": "day", "title": "Answer 2 events", "metric": "event", "target": 2, "xp": 10},
+  {"id": "d.goal", "period": "day", "title": "Finish the daily goal", "metric": "dailyGoal", "target": 1, "xp": 10},
+  {"id": "d.answered", "period": "day", "title": "Answer 6 inbox items", "metric": "answered", "target": 6, "xp": 10},
+  {"id": "w.decision", "period": "week", "title": "Answer 10 decisions", "metric": "decision", "target": 10, "xp": 40},
+  {"id": "w.event", "period": "week", "title": "Answer 10 events", "metric": "event", "target": 10, "xp": 40},
+  {"id": "w.advance", "period": "week", "title": "Play 14 days", "metric": "advance", "target": 14, "xp": 40},
+  {"id": "m.decision", "period": "month", "title": "Answer 50 decisions", "metric": "decision", "target": 50, "xp": 120},
+  {"id": "m.goal", "period": "month", "title": "Finish 20 daily goals", "metric": "dailyGoal", "target": 20, "xp": 120}
+ ]
+}

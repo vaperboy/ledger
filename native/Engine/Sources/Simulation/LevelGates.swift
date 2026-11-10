@@ -3,7 +3,7 @@ import GameCore
 import Businesses
 
 public enum LevelFeature: String, CaseIterable, Sendable {
-    case auctions, exchange, jointVentures, government, politics, chain, franchise, abroad
+    case auctions, exchange, ventures, jointVentures, government, politics, chain, franchise, abroad
 }
 
 public enum LevelGates {

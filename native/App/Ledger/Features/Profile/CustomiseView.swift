@@ -57,6 +57,7 @@ struct CustomiseView: View {
     @State private var shortNeed = 0
     @State private var showPacks = false
     @State private var note = ""
+    @State private var flash: String?
 
     private let columns: [GridItem] = [GridItem(.adaptive(minimum: 92), spacing: Theme.Space.s)]
 
@@ -65,8 +66,7 @@ struct CustomiseView: View {
         VStack(spacing: Theme.Space.m) {
             ProfileCard(compact: true)
             chips
-            Text(note.isEmpty ? part.hint : note).textStyle(.caption, tint: note.isEmpty ? Theme.inkSoft : Theme.accent)
-                .frame(maxWidth: .infinity, alignment: .leading).lineLimit(2)
+            slotHeader
             ScrollView {
                 content(cabinet).padding(.bottom, Theme.Space.l)
             }
@@ -84,12 +84,66 @@ struct CustomiseView: View {
         }
     }
 
+    private func worn(_ kinds: [SeasonReward.Kind]) -> String {
+        let names: [String] = kinds.compactMap { (k: SeasonReward.Kind) -> String? in
+            guard let id = season.pass.equipped[k.rawValue] else { return nil }
+            return SeasonRewards.item(id)?.title ?? GoldCosmetics.cosmetic(id)?.item.title
+        }
+        return names.isEmpty ? "Nothing" : names.joined(separator: ", ")
+    }
+
+    private var currentName: String {
+        switch part {
+        case .icon: return AvatarCatalog.def(avatars.equipped ?? "")?.title ?? "Default icon"
+        case .card: return season.pass.equipped[SeasonPass.profileCardKey].flatMap { (id: String) -> String? in CardCatalog.def(forItem: id)?.name } ?? "Nothing"
+        case .plate, .backdrop, .flair: return worn(part.kinds)
+        case .badge: return Cosmetics.badge(savedBadge).title
+        case .showcase: return "\(local.showcase.count) of \(ProfileLocal.showcaseSlots) artifacts"
+        }
+    }
+
+    private var slotHeader: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Text("Changing").textStyle(.label, tint: Theme.inkFaint)
+                Text(part.title).textStyle(.headline)
+                Spacer(minLength: Theme.Space.s)
+                if let f = flash {
+                    HStack(spacing: 4) {
+                        LedgerGlyph(glyph: Glyph.check, size: 12, tint: Theme.gain)
+                        Text(f).textStyle(.caption, tint: Theme.gain).lineLimit(1)
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                }
+            }
+            HStack(spacing: Theme.Space.xs) {
+                Text("Now").textStyle(.caption, tint: Theme.inkFaint)
+                Text(currentName).textStyle(.body, weight: .medium).lineLimit(1)
+                if flash == nil { Text("Pick another below to replace it.").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8) }
+            }
+            Text(note.isEmpty ? part.hint : note).textStyle(.caption, tint: note.isEmpty ? Theme.inkSoft : Theme.accent)
+                .frame(maxWidth: .infinity, alignment: .leading).lineLimit(2)
+        }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassSurface()
+        .animation(.smooth(duration: 0.25), value: flash)
+        .onChange(of: currentName) { _, new in
+            flash = "Now wearing " + new
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                flash = nil
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     private var chips: some View {
         ScrollView(.horizontal) {
             HStack(spacing: Theme.Space.s) {
                 ForEach(Part.allCases) { (p: Part) in
                     let on: Bool = p == part
-                    Button { Haptics.choose(); part = p; note = "" } label: {
+                    Button { Haptics.choose(); part = p; note = ""; flash = nil } label: {
                         Text(p.title).textStyle(.body, tint: on ? Theme.ink : Theme.inkSoft, weight: on ? .semibold : .regular)
                             .padding(.horizontal, Theme.Space.l).frame(minHeight: 44)
                             .background(Capsule().fill(on ? Theme.accentWash : Theme.inset))
