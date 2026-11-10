@@ -177,7 +177,7 @@ final class SupplyCatalogueTests: XCTestCase {
             var (e, id) = try open(trade)
             for g in e.supplyLines(companyID: id) {
                 for r in g.rows {
-                    guard let o = r.offers.first(where: { $0.quality == "Solid" && !$0.isCurrent && $0.blocked == nil && $0.name != "Market supplier" }), case .catalogue = o.change else { continue }
+                    guard let o = r.offers.first(where: { $0.quality == "Solid" && !$0.isCurrent && $0.blocked == nil && $0.name != "Standard supplier" }), case .catalogue = o.change else { continue }
                     XCTAssertEqual(e.chooseSupply(companyID: id, change: o.change), .ok, "\(trade) \(r.id)")
                 }
             }
@@ -187,5 +187,13 @@ final class SupplyCatalogueTests: XCTestCase {
             XCTAssertGreaterThan(co.books.month["cogs"] ?? co.books.month["oth"] ?? 0, 0, "\(trade) books costs")
             XCTAssertTrue(e.supplyLines(companyID: id).flatMap { $0.rows }.contains { $0.weekly != nil && $0.weeklyBefore != nil }, trade)
         }
+    }
+
+    func testAServiceListOnlyAppearsForAServiceThatIsSold() throws {
+        let (e, id) = try open("barber")
+        let sold = e.salesItems(companyID: id)
+        let rows = e.supplyLines(companyID: id).flatMap { $0.rows }
+        XCTAssertEqual(rows.contains { $0.id == "mat" }, sold.isEmpty || sold.contains { $0.isService })
+        XCTAssertEqual(rows.contains { $0.id == "pack" }, sold.isEmpty || sold.contains { !$0.isService })
     }
 }

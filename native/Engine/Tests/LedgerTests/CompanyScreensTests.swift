@@ -60,7 +60,6 @@ final class CompanyScreensTests: XCTestCase {
         var o = e.coverageOverview(companyID: id)!
         XCTAssertNil(o.insurer)
         XCTAssertEqual(o.policies.count, 6)
-        XCTAssertNotNil(o.accountant)
         XCTAssertEqual(e.toggleInsurancePolicy(companyID: id, product: "prop"), .done)
         XCTAssertEqual(e.coverageOverview(companyID: id)?.insurer?.name, "Atlas Insurance")
         let insurers = e.adviserChoices(companyID: id, kind: .insurer)

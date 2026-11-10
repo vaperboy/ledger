@@ -104,7 +104,7 @@ public enum SupplyCatalogue {
     public static func reliabilityWord(_ r: Double) -> String { r < 0.9 ? "Patchy" : r < 0.96 ? "Steady" : "Dependable" }
 
     public static func offers(_ s: GameState, _ co: Company, _ bd: Trade, line: Line, data: GameData) -> [Offer] {
-        var out = [Offer(id: "market", name: "Market supplier", owner: "", tier: 1, priceFactor: 1, reliability: 0.97, termsDays: 0, leadDays: line.leadDays, relationshipWord: nil)]
+        var out = [Offer(id: "market", name: "Standard supplier", owner: "", tier: 1, priceFactor: 1, reliability: 0.97, termsDays: 0, leadDays: line.leadDays, relationshipWord: nil)]
         guard line.tiers, !line.automatic, line.input != "goods", line.input != "repair" else { return out }
         let vs = EquipmentMarket.vendors(for: "line:\(co.type):\(line.id)", count: 3, family: bd.family, seed: s.seed, countryCode: co.countryCode,
                                          countries: data.countries, nouns: Suppliers.nouns(data)).sorted { $0.quality < $1.quality }

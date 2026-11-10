@@ -52,6 +52,7 @@ protocol StoreService: Sendable {
     func buyBoxBundle(_ bundleID: String, paidBoxesAllowed: Bool) async throws -> StoreState
     func buyCosmetic(_ id: String, owned: Set<String>) async throws -> StoreState
     func buyAvatar(_ id: String, owned: Set<String>) async throws -> StoreState
+    func spendGold(_ amount: Int) async throws -> StoreState
     func openBoxes(_ kind: BoxKind, count: Int, owned: Set<String>, paidBoxesAllowed: Bool) async throws -> BoxOpening
     func grantFromSeason(boxes: Int, gold: Int) async -> StoreState
     func grantCard(defID: String, roll: Double) async -> StoreState

@@ -67,6 +67,6 @@ struct BoardTable: View {
         let name: String = engine.state.player.name
         let others: Double = engine.boardVoters(key: key).filter { (v: ManagerModel.Voter) -> Bool in v.type == "owner" }.reduce(0) { (a: Double, v: ManagerModel.Voter) -> Double in a + v.percent }
         let mine: Int = Int(saturating: max(0, min(100, 100 - others)).rounded())
-        return line(first: true, lead: { avatar(initials(name)) }, title: name, sub: "Owner \u{00B7} \(mine)%", chip: ownerWorksHere ? "Works here" : "")
+        return line(first: true, lead: { PlayerAvatar(name: name, isYou: true, size: 32) }, title: name, sub: "Owner \u{00B7} \(mine)%", chip: ownerWorksHere ? "Works here" : "")
     }
 }

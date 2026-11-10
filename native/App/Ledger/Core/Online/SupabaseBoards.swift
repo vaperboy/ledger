@@ -36,60 +36,6 @@ actor SupabaseLeaderboardService: LeaderboardService {
     }
 }
 
-struct ServerAccountantOffice: Decodable, Equatable {
-    var id: String
-    var officeName: String
-    var ownerName: String
-    var city: String
-    var countryCode: String
-    var currency: String
-    var hireFee: Double
-    var isMine: Bool
-    var rating: Double?
-    var ratingCount: Int
-    var hires: Int
-    var activeClients: Int
-}
-
-extension SupabaseOnlineService {
-    func accountantOfficeRows(countryCode: String) async throws -> [ServerAccountantOffice] {
-        try decode([ServerAccountantOffice].self, try await rpcData("list_accountant_offices", ["p_country": countryCode]))
-    }
-
-    func hireAccountantOffice(officeID: String, companyKey: String, currency: String) async throws {
-        _ = try await rpcData("hire_accountant_office", ["p_office": officeID, "p_company_key": companyKey, "p_currency": currency])
-    }
-
-    func rateAccountantHire(hireID: String, stars: Int) async throws {
-        _ = try await rpcData("rate_accountant_hire", ["p_hire": hireID, "p_stars": stars])
-    }
-}
-
-struct SupabaseAccountantOfficeService: AccountantOfficeService {
-    let online: SupabaseOnlineService
-
-    func offices(countryCode: String, offers: [AccountantOffer]) async -> [AccountantOffice] {
-        guard !offers.isEmpty, let rows = try? await online.accountantOfficeRows(countryCode: countryCode) else { return [] }
-        return rows.compactMap { (r: ServerAccountantOffice) -> AccountantOffice? in
-            guard !r.isMine, let offer = Self.billedAs(rating: r.rating, in: offers) else { return nil }
-            return AccountantOffice(id: r.id, officeName: r.officeName, ownerName: r.ownerName, city: r.city, offerID: offer.id,
-                                    rating: r.rating, ratingCount: r.ratingCount, hireFee: r.hireFee, currencyCode: r.currency)
-        }
-    }
-
-    func hire(officeID: String, companyKey: String, currency: String) async throws {
-        try await online.hireAccountantOffice(officeID: officeID, companyKey: companyKey, currency: currency)
-    }
-
-    static func billedAs(rating: Double?, in offers: [AccountantOffer]) -> AccountantOffer? {
-        let target: Double = rating ?? 3
-        return offers.min { (a: AccountantOffer, b: AccountantOffer) -> Bool in
-            let da: Double = abs(a.rating - target), db: Double = abs(b.rating - target)
-            return da != db ? da < db : a.monthlyFee < b.monthlyFee
-        }
-    }
-}
-
 struct WorldRulesSnapshot: Decodable, Equatable, Sendable {
     struct Exchange: Decodable, Equatable, Sendable {
         var bandLow: Double
@@ -190,12 +136,5 @@ extension LeaderboardBackend {
     static func online() -> any LeaderboardService {
         guard let service = OnlineBackend.shared as? SupabaseOnlineService else { return OfflineLeaderboardService() }
         return SupabaseLeaderboardService(online: service)
-    }
-}
-
-enum AccountantOfficeBackend {
-    static func make() -> any AccountantOfficeService {
-        guard let service = OnlineBackend.shared as? SupabaseOnlineService else { return MockAccountantOfficeService() }
-        return SupabaseAccountantOfficeService(online: service)
     }
 }

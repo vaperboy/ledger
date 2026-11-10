@@ -59,9 +59,10 @@ public extension GameEngine {
         let inputs = supplierInputs(companyID: companyID)
         let sold = salesItems(companyID: companyID)
         let sellsProducts = sold.isEmpty || sold.contains { !$0.isService }
+        let sellsServices = sold.isEmpty || sold.contains { $0.isService }
         var rows: [SupplyRow] = []
         var used = Set<String>()
-        for line in SupplyCatalogue.lines(co, bd) where !line.automatic && (line.id != "pack" || sellsProducts) {
+        for line in SupplyCatalogue.lines(co, bd) where !line.automatic && (line.id != "pack" || sellsProducts) && (line.id != "mat" || sellsServices) && (line.input != "goods" || sellsProducts) {
             let input = line.input.flatMap { id in inputs.first { $0.id == id } }
             if let i = input { used.insert(i.id) }
             rows.append(supplyRow(co, bd, line, input))

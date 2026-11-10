@@ -24,7 +24,7 @@ extension CompanySection {
 }
 
 enum CompanyTab: String, CaseIterable, Hashable {
-    case overview = "Overview", team = "Team", manage = "Manage", sales = "Sales", supply = "Supply", stats = "Stats"
+    case overview = "Overview", team = "Team", manage = "Manage", sales = "Sales", stats = "Stats"
     var id: String { rawValue.lowercased() }
 }
 
@@ -88,7 +88,7 @@ struct CompanyDetailView: View {
             .appScreen(title: co.name, subtitle: ([e.tradeName(co), e.cityName(co)] + [contextLine(co, e)].compactMap { $0 }).joined(separator: " \u{00B7} ").tidyText) {
                 HStack(spacing: Theme.Space.s) {
                     if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
-                    companyMark(co, e, size: 36)
+                    CompanyCustomiseButton(companyID: co.id)
                 }
             }
             .onAppear { applyPart(tabs) }
@@ -99,11 +99,6 @@ struct CompanyDetailView: View {
         } else {
             EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
-    }
-
-    @ViewBuilder private func companyMark(_ co: Company, _ e: GameEngine, size: CGFloat) -> some View {
-        let logo: String = e.companyLogoID(companyID: co.id)
-        if logo.isEmpty { ThumbnailView(kind: .trade, key: co.type, size: size) } else { LogoBadge(logoID: logo, size: size) }
     }
 
     private func tabPill(_ tabs: [CompanyTab]) -> some View {
@@ -140,16 +135,14 @@ struct CompanyDetailView: View {
         case .team:
             CompanyTeam(engine: e, company: co)
         case .manage:
-            CompanyLookRow(company: co)
             if a.contains(.operations) {
                 CompanyOperations(engine: e, company: co, part: $opsPart)
             } else {
                 CompanyClub(engine: e, company: co)
             }
+            CompanyCloseButton(engine: e, company: co)
         case .sales:
             salesContent(co, e)
-        case .supply:
-            CompanySupply(engine: e, company: co)
         case .stats:
             let parts: [StatsPart] = StatsPart.allCases
             if parts.count > 1 {
@@ -217,7 +210,7 @@ struct CompanyDetailView: View {
         var out: [CompanyTab] = [.overview]
         if a.contains(.staff) { out.append(.team) }
         if a.contains(.operations) || a.contains(.club) { out.append(.manage) }
-        if a.contains(.operations) { out.append(.sales); out.append(.supply) }
+        if a.contains(.operations) { out.append(.sales) }
         out.append(.stats)
         return out
     }

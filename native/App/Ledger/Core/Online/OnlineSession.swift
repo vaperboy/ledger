@@ -54,32 +54,6 @@ enum InviteLink {
     }
 }
 
-enum AccountantHireIntent {
-    struct Pick: Codable, Equatable {
-        var officeID: String
-        var offerID: Int
-        var currency: String
-        var known: [Int]
-        var at: Date
-    }
-
-    private static let key = "ledger.online.accountantIntent"
-    private static let lifetime: TimeInterval = 3 * 86_400
-
-    static func choose(officeID: String, offerID: Int, currency: String, knownCompanies: [Int]) {
-        let pick = Pick(officeID: officeID, offerID: offerID, currency: currency, known: knownCompanies, at: Date())
-        if let data = try? JSONEncoder().encode(pick) { UserDefaults.standard.set(data, forKey: key) }
-    }
-
-    static func clear() { UserDefaults.standard.removeObject(forKey: key) }
-
-    static var current: Pick? {
-        guard let data = UserDefaults.standard.data(forKey: key), let pick = try? JSONDecoder().decode(Pick.self, from: data) else { return nil }
-        if Date().timeIntervalSince(pick.at) > lifetime { clear(); return nil }
-        return pick
-    }
-}
-
 @MainActor enum DeviceIdentity {
     private static let key = "ledger.online.deviceID"
 
@@ -379,7 +353,6 @@ final class OnlineSession {
             return
         } catch {}
         await bookSettlements(store: store)
-        await reconcileHire(store: store)
         if let e = store.engine, sharedWeek != e.state.week {
             sharedWeek = e.state.week
             await shareProgress(from: e)
@@ -396,22 +369,6 @@ final class OnlineSession {
         }
         guard let done = store.act({ (e: inout GameEngine) -> [String] in e.bookOnlineSettlements(items) }) else { return }
         try? await service.acknowledgeSettlements(done)
-    }
-
-    private func reconcileHire(store: GameStore) async {
-        guard let pick = AccountantHireIntent.current, let e = store.engine else { return }
-        let fresh: [Company] = e.state.companies.filter { (c: Company) -> Bool in
-            !pick.known.contains(c.id) && c.status.isLive && c.value("acc")["id"].int == pick.offerID
-        }
-        guard let company = fresh.min(by: { (a: Company, b: Company) -> Bool in a.id < b.id }) else { return }
-        do {
-            try await AccountantOfficeBackend.make().hire(officeID: pick.officeID, companyKey: "own.\(company.id)", currency: pick.currency)
-            AccountantHireIntent.clear()
-        } catch OnlineError.offline {
-            return
-        } catch {
-            AccountantHireIntent.clear()
-        }
     }
 
     @discardableResult

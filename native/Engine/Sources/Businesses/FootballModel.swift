@@ -410,9 +410,8 @@ public enum FootballModel {
               let i = s.companyIndex(id) else { return nil }
         s.companies[i].status = .open
         s.companies[i].openedWeek = s.week
-        CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: data)
         var docs = s.companies[i].value("docs")
-        for d in ["registration", "accountant_agreement", "vat"] { docs[d] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))]) }
+        for d in ["registration", "vat"] { docs[d] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))]) }
         s.companies[i].set("docs", docs)
         let L = leagueInfo(country)
         let N = L?.clubs ?? 16

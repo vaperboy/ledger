@@ -234,10 +234,8 @@ public extension GameEngine {
         let holders = co.value("holders").array.filter { $0["pct"].double > 0 }
         add(.company, "ownership", "own", "Ownership", "You hold \(Int(saturating: co.ownership.rounded()))%" + (holders.isEmpty ? "" : "; others: " + holders.map { "\($0["name"].string) \(Int(saturating: $0["pct"].double.rounded()))%" }.joined(separator: ", ")), "Current")
         if co.shareCapital > 0 { add(.company, "ownership", "capital", "Share capital", legal["shares"]["count"].isNull ? "" : "\(Int(legal["shares"]["count"].double)) shares", "Paid in", amount: co.shareCapital) }
-        let acc = co.value("acc")
-        if !acc["id"].isNull { add(.company, "registration", "accagr", "Accountant agreement", acc["name"].string, co.value("docs")["accountant_agreement"]["st"].string == "ok" ? "In force" : "Pending", week: acc["w0"].int) }
         let w = World(state: state, data: data)
-        for (id, d) in co.value("docs").object.sorted(by: { $0.key < $1.key }) where id != "accountant_agreement" && !["chain", "fran", "trademark", "ops_manual"].contains(id) {
+        for (id, d) in co.value("docs").object.sorted(by: { $0.key < $1.key }) where !["chain", "fran", "trademark", "ops_manual"].contains(id) {
             guard let def = Documents.definition(id, country: country, tables: data.catalog.tables) else { continue }
             let st = d["st"].string
             let isTax = id.hasPrefix("vat") || id == "tax"

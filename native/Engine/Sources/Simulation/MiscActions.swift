@@ -5,7 +5,8 @@ import Finance
 import Businesses
 
 public extension GameEngine {
-    enum RenameResult: Equatable, Sendable { case ok, tooShort, nameTaken, notEnoughCash, partOfChain, unknown }
+    enum RenameResult: Equatable, Sendable { case ok, tooShort, nameTaken, notEnoughCash, partOfChain, cooldown, unknown }
+    static let renameCooldownWeeks = 26
     enum CloseResult: Equatable, Sendable { case ok, unknown, notOpen, restricted(String) }
 
     func renameCost(companyID: Int) -> Double {
@@ -19,13 +20,19 @@ public extension GameEngine {
         return jsRound(context.currency(co.countryCode, state).scaledPrice(40000) * co.size / 1000) * 1000
     }
 
-    @discardableResult mutating func renameCompany(companyID: Int, to newName: String) -> RenameResult {
+    func renameCooldownLeft(companyID: Int) -> Int {
+        guard let co = state.company(companyID), let last = co.value("nameLog").array.last else { return 0 }
+        return max(0, last["w"].int + Self.renameCooldownWeeks - state.week)
+    }
+
+    @discardableResult mutating func renameCompany(companyID: Int, to newName: String, skipCooldown: Bool = false) -> RenameResult {
         let n = newName.trimmingCharacters(in: .whitespaces)
         var r = RenameResult.unknown
         let cost = renameCost(companyID: companyID)
         update { s, _, _ in
             guard let i = s.companyIndex(companyID) else { return }
             if Chains.chain(s, of: s.companies[i]) != nil { r = .partOfChain; return }
+            if !skipCooldown, let last = s.companies[i].value("nameLog").array.last, last["w"].int + Self.renameCooldownWeeks > s.week { r = .cooldown; return }
             if n.count < 2 || n == s.companies[i].name { r = .tooShort; return }
             if s.companies.contains(where: { $0.status.isLive && $0.id != companyID && $0.name.lowercased() == n.lowercased() }) { r = .nameTaken; return }
             guard Payments.companyPays(&s, companyID: companyID, amount: cost, category: "oth", label: "New name and signs") else { r = .notEnoughCash; return }
@@ -214,12 +221,6 @@ public extension GameEngine {
         var r = false
         update { s, d, _ in r = CompanySetup.giveUpPremises(&s, companyID: companyID, data: d) }
         return r
-    }
-    func accountantChoices(companyID: Int) -> [(id: Int, name: String, fee: Double, rating: Double, current: Bool)] {
-        guard let co = state.company(companyID) else { return [] }
-        var tmp = state
-        let pool = Providers.pool(for: co.countryCode, state: &tmp, countries: data.countries).accountants
-        return pool.map { ($0["id"].int, $0["name"].string, $0["fee"].double, $0["rating"].double, $0["id"].int == co.value("acc")["id"].int) }
     }
 
     static func dayString(_ date: Date) -> String {

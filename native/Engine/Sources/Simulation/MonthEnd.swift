@@ -118,7 +118,7 @@ public enum MonthEnd {
             && co.monthlyHistory.suffix(12).reduce(0, { $0 + $1.revenue }) >= threshold {
             var flags = co.value("flags"); flags["vatAsk"] = 1; co.set("flags", flags)
             s.companies[i] = co
-            s.addMessage(from: co.value("acc")["name"].isNull ? co.name : co.value("acc")["name"].string,
+            s.addMessage(from: co.name,
                          title: "VAT registration needed at \(co.name)",
                          body: "Your sales have passed the VAT threshold. You now have to register and charge VAT. Apply under Documents.",
                          companyID: co.id, tone: "bad", sev: 3)

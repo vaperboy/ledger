@@ -203,7 +203,6 @@ struct CompanyOverview: View {
     var openTab: (CompanyTab) -> Void = { _ in }
     var openOps: (OpsPart) -> Void = { _ in }
     var openMoney: (CompanyMoneyPart) -> Void = { _ in }
-    @State private var months = 12
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
@@ -211,21 +210,13 @@ struct CompanyOverview: View {
         let h: CompanyHealth = store.memo("coHealth\(co.id)") { $0.companyHealth(co) } ?? engine.companyHealth(co)
         let ops: OperationsFigures? = engine.operationsFigures(companyID: co.id)
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                CompanyCardBanner(company: co)
-                hero(co, h, ops)
-                strip(co, h, ops)
-                structureStrip(co)
-            }
-            CompanyLiveFigures(engine: engine, company: co)
+            hero(co, h)
             let list: [CompanyIssue] = issues(co, h, ops)
             if list.isEmpty {
                 if co.status == .open { allClear(h) }
             } else {
                 FixFirstCard(issues: list)
             }
-            sectionRows(co, h, ops)
-            performance(co, h)
         }
     }
 
@@ -244,57 +235,10 @@ struct CompanyOverview: View {
 
     private func goMoney(_ part: CompanyMoneyPart) { Haptics.choose(); openMoney(part) }
 
-    @ViewBuilder private func hero(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
-        if co.status == .open, let pw = ops?.profitPerWeek {
-            let delta: Double? = ops?.profitChangePerWeek
-            let tint: Color? = (delta ?? 0) >= 0 ? P.gain : P.loss
-            CompanyHero(label: "Profit a week", value: store.money(abs(pw), in: co), tint: pw < 0 ? P.loss : (pw > 0.5 ? P.gain : nil),
-                        changeTint: tint, context: delta == nil ? "last full month" : "",
-                        trend: Array(h.profitSeries.suffix(12)), live: pw,
-                        liveFormat: { (v: Double) -> String in store.money(abs(v), in: co) }, gain: pw,
-                        compareBefore: delta.map { (d: Double) -> Double in pw - d }, compareAgainst: "last month")
-        } else {
-            CompanyHero(label: "Cash", value: store.money(co.cash, in: co), tint: co.cash < 0 ? P.loss : nil,
-                        context: verdict(co, h), trend: Array(h.cashSeries.suffix(12)), live: co.cash,
-                        liveFormat: { (v: Double) -> String in store.money(v, in: co) })
-        }
-    }
-
-    @ViewBuilder private func strip(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
-        let heroIsCash: Bool = !(co.status == .open && ops?.profitPerWeek != nil)
-        let margin: String = h.marginTTM.map { String(format: "%.0f%%", $0 * 100) } ?? "\u{2013}"
-        let runway: String = h.runwayWeeks != nil ? "lasts \(RunwayText.of(h))" : (h.profitTTM > 0 ? "self-funding" : "")
-        let short: Bool = h.runwayWeeks.map { $0 < 8 } ?? false
-        let cashTint: Color = co.cash < 0 ? P.loss : (short ? P.warn : P.ink)
-        let cashCell = KeyFigures.Item(label: "Cash", value: store.short(co.cash, in: co), tint: cashTint, sub: runway, live: co.cash)
-        let revCell = KeyFigures.Item(label: "Revenue 12 mo", value: store.short(h.revenueTTM, in: co), live: h.revenueTTM)
-        let marginCell = KeyFigures.Item(label: "Margin", value: margin, tint: (h.marginTTM ?? 0) < 0 ? P.loss : P.ink)
-        let healthCell = KeyFigures.Item(label: "Health", value: h.label, tint: HealthChip.tint(h.label))
-        FigureRow(items: heroIsCash ? [revCell, marginCell, healthCell] : [cashCell, revCell, marginCell], combineCells: true)
-    }
-
-    @ViewBuilder private func structureStrip(_ co: Company) -> some View {
-        let line: String = structureLine(co)
-        if !line.isEmpty {
-            Text(line).textStyle(.caption, tint: P.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("overview-structure-strip")
-        }
-    }
-
-    private func structureLine(_ co: Company) -> String {
-        guard co.status.isLive else { return "" }
-        var parts: [String] = []
-        if let pos = engine.branchParent(companyID: co.id), let chain = engine.chainSummary(id: pos.chainID) {
-            parts.append("Part of " + chain.name)
-        }
-        if co.status != .setup {
-            let gm: GroupManagement? = store.memo("groupMgmt") { (e: GameEngine) -> GroupManagement in e.groupManagement() }
-            parts.append("run by " + ChainWords.runnerName(gm, companyID: co.id))
-        }
-        parts.append(ChainWords.lowered(ChainWords.ownerText(engine, companyID: co.id, showFull: true)))
-        let joined: String = parts.joined(separator: " \u{00B7} ")
-        return joined.prefix(1).uppercased() + joined.dropFirst()
+    private func hero(_ co: Company, _ h: CompanyHealth) -> some View {
+        CompanyHero(label: "Cash", value: store.money(co.cash, in: co), tint: co.cash < 0 ? P.loss : nil,
+                    context: verdict(co, h), trend: Array(h.cashSeries.suffix(12)), live: co.cash,
+                    liveFormat: { (v: Double) -> String in store.money(v, in: co) })
     }
 
     private func verdict(_ co: Company, _ h: CompanyHealth) -> String {
@@ -361,63 +305,4 @@ struct CompanyOverview: View {
         if people > 0 { out.append(CompanyIssue(id: "people", glyph: Glyph.team, tint: P.warn, title: "\(people) \(people == 1 ? "person needs" : "people need") attention", sub: "Problems, notice or sickness", action: "Open Team") { go(.staff) }) }
         return out
     }
-
-    @ViewBuilder private func sectionRows(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
-        let a: [CompanySection] = CompanyDetailView.availableSections(co, engine)
-        let sells: Bool = a.contains(.operations)
-        PageGroup("The business") {
-            if sells {
-                let items: Int = engine.salesItems(companyID: co.id).count
-                let week: Double = co.lastWeekRevenue
-                LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Sales", subtitle: items == 0 ? "Nothing on sale yet" : "\(items.countText("item")) on sale",
-                          value: week > 0 ? store.short(week, in: co) : "", valueNote: week > 0 ? "last week" : "", identifier: "overview-open-sales") { openPage(.sales) }
-                RowRule()
-                let use: String = ops?.capacityUse.map { "\(Int(saturating: ($0 * 100).rounded()))%" } ?? ""
-                let turnedAway: Bool = h.demandCoverage > 1.05
-                let note: String = h.bottleneck.map { b in turnedAway ? "Turning customers away: \(b.lowercased()) is full" : "Room to grow: demand is the limit" } ?? ""
-                LedgerRow(leading: .glyph(Glyph.capacity), leadingTint: turnedAway ? P.warn : P.inkSoft, title: "Manage", subtitle: note, value: use, valueNote: use.isEmpty ? "" : "capacity used",
-                          identifier: "overview-open-manage") { openPage(.run) }
-                RowRule()
-            }
-            let rated: String = h.rating > 0 ? StandingWords.ratingText(h.rating) : ""
-            LedgerRow(leading: .glyph(Glyph.stats), leadingTint: P.inkSoft, title: "Stats", subtitle: "Reputation " + StandingWords.reputation(co.reputation).lowercased(),
-                      value: rated, valueNote: rated.isEmpty ? "" : "rating", identifier: "overview-open-stats") { openPage(.stats) }
-            if sells {
-                RowRule()
-                LedgerRow(leading: .glyph(Glyph.person), leadingTint: P.inkSoft, title: "Customers", identifier: "overview-open-customers") { openPage(.customers) }
-            }
-            if CompanyDetailView.hasProjects(co, engine) {
-                RowRule()
-                LedgerRow(leading: .glyph(Glyph.reports), leadingTint: P.inkSoft, title: "Projects", identifier: "overview-open-projects") { openPage(.projects) }
-            }
-        }
-    }
-
-    private func performance(_ co: Company, _ h: CompanyHealth) -> some View {
-        let rev = Array(h.revenueSeries.suffix(months)), prof = Array(h.profitSeries.suffix(months))
-        let monthsBinding = Binding<Int>(get: { months }, set: { months = $0 })
-        let spans: [Int] = [6, 12, 24]
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("By month").textStyle(.label, tint: P.inkFaint)
-                Spacer()
-                Menu {
-                    ForEach(spans, id: \.self) { (s: Int) in Button(spanTitle(s)) { monthsBinding.wrappedValue = s } }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(spanTitle(months)).textStyle(.caption, tint: P.accent)
-                        LedgerGlyph(glyph: Glyph.chevronDown, size: 10, tint: P.accent)
-                    }
-                    .frame(minHeight: 44)
-                }
-                .accessibilityIdentifier("overview-chart-span")
-            }
-            ChartFrame(key: [("Revenue", Theme.accent), ("Profit", Theme.gain)], height: 120, isEmpty: rev.count < 2,
-                       emptyText: "The chart starts after the first full month.") {
-                RevenueProfitChart(revenue: rev, profit: prof, format: { store.short($0, in: co) }, height: 120)
-            }
-        }
-    }
-
-    private func spanTitle(_ s: Int) -> String { s == 6 ? "6 months" : s == 12 ? "1 year" : "2 years" }
 }

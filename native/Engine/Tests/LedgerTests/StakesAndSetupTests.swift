@@ -96,13 +96,12 @@ final class StakesAndSetupTests: XCTestCase {
         XCTAssertEqual(e.state.cash, cash0, accuracy: 0.5, "neither you nor the company is paid")
     }
 
-    func testFoundedStartupIsRegisteredHasAnAccountantAndASupportHire() throws {
+    func testFoundedStartupIsRegisteredAndHasASupportHire() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 3)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "funds") }
         let cash0 = e.state.cash
         guard case .ok(let sid) = e.foundStartup(name: "Regco", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 4) else { return XCTFail("found") }
         let co = try XCTUnwrap(e.state.company(sid))
-        XCTAssertFalse(co.value("acc").isNull, "an accountant is appointed")
         XCTAssertTrue(co.staff.contains { $0.role == "ittech" }, "the first support hire is part of the founding team")
         let fee = e.homeCountry.registrationFee
         XCTAssertGreaterThan(fee, 0)

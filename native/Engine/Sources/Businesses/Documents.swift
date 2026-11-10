@@ -28,12 +28,11 @@ public enum Documents {
 
     public static func needed(_ co: Company, _ bd: Trade, _ w: World) -> [String] {
         let country = w.country(co)
-        var need = bd.documents.filter { !($0 == "vat" && Vat.isExempt(co, w)) }
+        var need = bd.documents.filter { $0 != "accountant_agreement" && !($0 == "vat" && Vat.isExempt(co, w)) }
         for knob in bd.knobs {
             for o in Knobs.activeOptions(co, knob) { for d in o.requiredDocs where !need.contains(d) { need.append(d) } }
         }
         if !co.value("foreignOf").isNull && !need.contains("foreign_entity") { need.append("foreign_entity") }
-        if !need.contains("accountant_agreement") { need.append("accountant_agreement") }
         if !need.contains("vat") && !Vat.isExempt(co, w) { need.append("vat") }
         return need.filter { !isSkipped($0, country: country) }
     }
@@ -50,7 +49,6 @@ public enum Documents {
         if !local.isNull && bd.documentQuantities[id] == nil {
             c = local.double * w.rates.rate(country) * (abroad ? 1.8 : 1)
         }
-        if id == "accountant_agreement" { c = 0 }
         let fx = w.rates.rate(country)
         return jsRound(Currency.nicePrice(c / fx) * fx)
     }
@@ -73,7 +71,7 @@ public enum Documents {
         return Int(saturating: weeks)
     }
 
-    public enum ApplyResult: Equatable { case ok, alreadyHeld, notEnoughCash, pickAccountant }
+    public enum ApplyResult: Equatable { case ok, alreadyHeld, notEnoughCash }
 
     public static func apply(_ id: String, companyID: Int, state s: inout GameState, data: GameData) -> ApplyResult {
         guard let i = s.companyIndex(companyID) else { return .alreadyHeld }
@@ -82,7 +80,6 @@ public enum Documents {
         guard let bd = w.trade(co), let dd = definition(id, country: w.country(co), tables: data.catalog.tables) else { return .alreadyHeld }
         let existing = co.value("docs")[id]["st"].string
         if !existing.isEmpty && existing != "lapsed" && existing != "rejected" { return .alreadyHeld }
-        if id == "accountant_agreement" && co.value("acc").isNull { return .pickAccountant }
         let fee = cost(id, company: co, bd, w)
         if fee > 0 && co.cash < fee { return .notEnoughCash }
         let weeks = Double(waitWeeks(id, definition: dd, company: co, w))
@@ -104,9 +101,9 @@ public enum Documents {
     }
 
     static func refusalChance(_ id: String, company co: Company) -> Double {
-        let routine: Set<String> = ["registration", "vat", "accountant_agreement", "police", "privacy"]
+        let routine: Set<String> = ["registration", "vat", "police", "privacy"]
         let base = routine.contains(id) ? 0.04 : 0.10
-        return min(0.3, base + co.value("acc")["err"].double * 0.5)
+        return min(0.3, base)
     }
 
     static let refusalReasons = ["Some details did not match the register.", "A supporting paper was missing or unclear.", "The inspector asked for changes before approving.", "The form was signed but the address could not be checked."]

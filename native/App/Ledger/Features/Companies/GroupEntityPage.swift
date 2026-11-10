@@ -29,8 +29,13 @@ struct GroupEntityPage: View {
     }
 
     @ViewBuilder private func screen(_ e: GameEngine, _ s: GroupSection) -> some View {
-        ScrollScreen(spacing: Theme.Space.xl, top: Theme.Space.l) { content(e, s) }
-            .environment(\.insideCard, true)
+        if s == .overview {
+            FixedScreen(spacing: Theme.Space.l, top: Theme.Space.l, minScale: 0.7) { content(e, s) }
+                .environment(\.insideCard, true)
+        } else {
+            ScrollScreen(spacing: Theme.Space.xl, top: Theme.Space.l) { content(e, s) }
+                .environment(\.insideCard, true)
+        }
     }
 
     private func visibleSections(_ e: GameEngine) -> [GroupSection] { GroupSection.allCases }
@@ -59,11 +64,12 @@ struct GroupEntityPage: View {
                 .accessibilityIdentifier("group-back")
                 VStack(alignment: .leading, spacing: 0) {
                     Text(entity.name).textStyle(.headline).lineLimit(1)
-                    Text(entity.kind).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+                    Text(entity.kind + " \u{00B7} Group view").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
+                CompanyCustomiseButton(companyID: entity.companyID)
             }
             HStack(alignment: .bottom, spacing: Theme.Space.m) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
@@ -89,13 +95,11 @@ struct GroupEntityPage: View {
     @ViewBuilder private func content(_ e: GameEngine, _ s: GroupSection) -> some View {
         switch s {
         case .overview:
-            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
                 GroupEntityOverview(engine: e, entity: entity)
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    Text("Grow").textStyle(.label, tint: Theme.inkFaint)
-                    EntityExpansionView(companyID: entity.companyID)
-                    TradeAssociationRows(engine: e, entity: entity)
-                }
+                Text("Group view: ownership, people, board and money. Day-to-day running is in the company itself.")
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                GroupEntityActions(entity: entity)
             }
         case .management: GroupEntityManagement(engine: e, entity: entity)
         case .board: GroupBoardroom(engine: e, entity: entity)
@@ -131,11 +135,14 @@ struct GroupEntityOverview: View {
         let facts: [Stat] = list.filter { (s: Stat) -> Bool in !Stat.moneyLabels.contains(s.label) }
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
             FigureRow(items: money.map { (s: Stat) -> KeyFigures.Item in KeyFigures.Item(label: s.label, value: s.value, tint: s.tint, sub: "this month") }, columns: 3, size: .figure, combineCells: true)
-            VStack(spacing: Theme.Space.s) {
-                ForEach(Array(facts.enumerated()), id: \.element.id) { (n: Int, s: Stat) in
-                    if n > 0 { Hairline() }
-                    ValueRow(label: s.label, value: s.value, tint: s.tint)
-                        .accessibilityElement(children: .combine)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.m), GridItem(.flexible(), spacing: Theme.Space.m)], alignment: .leading, spacing: Theme.Space.m) {
+                ForEach(facts) { (s: Stat) in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(s.label).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+                        Text(s.value).textStyle(.body, tint: s.tint, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
                 }
             }
         }
@@ -179,5 +186,38 @@ struct GroupEntityOverview: View {
         guard let key = engine.boardKey(companyID: entity.companyID) else { return "None" }
         let v = engine.boardVoters(key: key).first(where: { (x: ManagerModel.Voter) -> Bool in x.type == "ceo" })
         return v?.name ?? "None"
+    }
+}
+
+struct GroupEntityActions: View {
+    @EnvironmentObject var store: GameStore
+    var entity: GroupEntity
+    @State private var grow = false
+
+    var body: some View {
+        HStack(spacing: Theme.Space.s) {
+            Button { Haptics.tap(); grow = true } label: { Text("Grow") }
+                .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
+                .accessibilityIdentifier("group-grow")
+            Button { Haptics.tap(); store.openCompany(entity.companyID) } label: { Text("Open company") }
+                .buttonStyle(SecondaryButtonStyle(size: .compact))
+                .accessibilityIdentifier("group-open-company")
+            Spacer(minLength: 0)
+        }
+        .navigationDestination(isPresented: $grow) { GroupGrowScreen(entity: entity) }
+    }
+}
+
+struct GroupGrowScreen: View {
+    @EnvironmentObject var store: GameStore
+    var entity: GroupEntity
+
+    var body: some View {
+        SettingsPage(title: "Grow", subtitle: entity.name) {
+            if let e = store.engine {
+                EntityExpansionView(companyID: entity.companyID)
+                TradeAssociationRows(engine: e, entity: entity)
+            }
+        }
     }
 }

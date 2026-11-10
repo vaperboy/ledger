@@ -85,11 +85,6 @@ public enum OnlineSettlements {
                 }
                 return
             }
-        case "accountant_hire_fee":
-            if let company {
-                Payments.companyPays(&s, companyID: company, amount: -amount, category: "acc", label: item.label.isEmpty ? "Accountant office" : item.label)
-                return
-            }
         default:
             break
         }

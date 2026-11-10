@@ -7,7 +7,7 @@ import Simulation
 
 enum OpsPart: String, CaseIterable, Hashable {
     case setup = "Operations", premises = "Premises"
-    case equipment = "Equipment", insurance = "Insurance and law firm", licences = "Licences", accountant = "Accountant"
+    case supply = "Suppliers", equipment = "Equipment", insurance = "Insurance and law firm", licences = "Licences"
 }
 
 extension Glyph {
@@ -54,7 +54,8 @@ struct CompanyOperations: View {
         return PageGroup("Run the place") {
             upkeepRow
             RowRule()
-            accountantRow
+            LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Suppliers", subtitle: "Who supplies what you sell and what the company needs",
+                      identifier: "manage-suppliers") { part = .supply }
             if !licences.isEmpty {
                 let held: Int = licences.filter { $0.form.status == "ok" }.count
                 RowRule()
@@ -80,12 +81,6 @@ struct CompanyOperations: View {
         return LedgerRow(leading: .glyph(Glyph.opsWrench), leadingTint: P.inkSoft, title: "Upkeep", subtitle: stockNote,
                          value: OpsWords.name(OpsWords.maintenance, company.maintenance), valueNote: OpsWords.name(OpsWords.stock, company.int("stockPol", 1)).lowercased() + " stock",
                          identifier: "manage-upkeep") { sheet = .upkeep }
-    }
-
-    private var accountantRow: some View {
-        let now: String? = engine.coverageOverview(companyID: company.id)?.accountant?.name
-        return LedgerRow(leading: .glyph(Glyph.reports), leadingTint: P.inkSoft, title: "Accountant", subtitle: now ?? "Choose who keeps the books",
-                         identifier: "manage-accountant") { part = .accountant }
     }
 
     private var equipmentApplies: Bool {

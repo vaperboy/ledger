@@ -24,7 +24,7 @@ public extension GameEngine {
     func delegationLines() -> [DelegationLine] {
         state.companies.filter { $0.status.isLive }.map { co -> DelegationLine in
             let mgr: Bool = Delegation.hasManager(co)
-            let payroll: String = mgr ? "Manager" : Delegation.hasAccountant(co) ? "Accountant" : "You (a reminder)"
+            let payroll: String = mgr ? "Manager" : "You (a reminder)"
             let asst: Bool = ManagerModel.assistantSkill(co, duty: "comp", people: state.people) != nil
             let complaints: String = mgr ? "Manager" : asst ? "Assistant manager" : Delegation.staffAnswerComplaints(state, co) ? "Staff" : "You"
             return DelegationLine(id: co.id, name: co.name, top: Delegation.topRank(state, co, data: data).title, payroll: payroll,

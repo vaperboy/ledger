@@ -91,15 +91,9 @@ public enum CompanyCosts {
         }
     }
 
-    public static func accountant(_ co: Company, _ w: World) -> Double {
-        let c = w.currency(co)
-        var fee: Double
-        if !co.value("acc").isNull { fee = co.value("acc")["fee"].double }
-        else { fee = 0 }
-        if w.state.hasHeadOffice("acc") { fee *= 0.8 }
-        let heads = Double(co.staff.count + (co.managerID != nil ? 1 : 0))
-        let sz = max(1, pow(heads / 8, 0.6))
-        return fee * sz * w.inflationIndex * 12 / 52
+    public static func filings(_ co: Company, _ w: World) -> Double {
+        let monthly = w.currency(co).scaledPrice(180) * max(1, pow(co.size, 0.5))
+        return monthly * w.inflationIndex * 12 / 52
     }
 
     public static func insurancePremium(_ co: Company, product k: String, rate: Double, _ w: World) -> Double {

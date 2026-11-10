@@ -83,7 +83,10 @@ struct GroupStructureTab: View {
         let own: Bool = n.kind == .chain || n.kind == .company
         let target: GroupEntity? = entity(for: n, list)
         let actionID: String = own ? (target.map { (g: GroupEntity) -> String in "group-entity-\(g.id)" } ?? "") : ""
+        let markCompany: Company? = (target?.companyID ?? n.companyID).flatMap { (id: Int) -> Company? in engine.state.company(id) }
+        let logo: String = markCompany.map { (c: Company) -> String in engine.companyLogoID(companyID: c.id) } ?? ""
         return StructureRow(node: n, valueText: store.short(n.value), hasKids: hasKids, expanded: expanded.contains(n.id), actionID: actionID,
+                            logoID: logo, tradeKey: logo.isEmpty ? (markCompany?.type ?? "") : "",
                             onToggle: { toggle(n.id) }, onOpen: { perform(n, own: own, target: target) })
             .padding(.leading, CGFloat(r.depth) * Theme.Space.l)
     }

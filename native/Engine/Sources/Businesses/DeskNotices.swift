@@ -15,8 +15,6 @@ public extension Delegation {
         guard desks.contains(audience) else { return nil }
         if audience == "finance" {
             if let emp = co.staff.first(where: { $0.role == "acct" }) { return Desk(name: s.people[emp.id]?.name ?? "The accountant", title: "accountant") }
-            let acc = co.value("acc")
-            if !acc.isNull, !acc["id"].isNull { return Desk(name: acc["name"].string.isEmpty ? "The accountant" : acc["name"].string, title: "accountant") }
         }
         let title: [String: String] = ["mgr": "manager", "region": "regional manager", "chainmgr": "chain manager", "ceo56": "CEO", "mdir": "director", "md": "managing director"]
         let chain = ManagerModel.decisionChain(s, co, data: data)

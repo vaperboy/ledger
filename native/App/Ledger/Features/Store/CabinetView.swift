@@ -397,13 +397,18 @@ struct CardThumb: View {
 struct CompanyCardView: View {
     var name: String
     var def: CardDef?
+    var logoID: String = ""
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
         HStack(spacing: Theme.Space.m) {
-            Image(systemName: def?.logo ?? "briefcase.fill")
-                .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.white.opacity(0.92))
-                .frame(width: 40, height: 40).background(Circle().fill(Color.white.opacity(0.16)))
+            if logoID.isEmpty {
+                Image(systemName: def?.logo ?? "briefcase.fill")
+                    .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.white.opacity(0.92))
+                    .frame(width: 40, height: 40).background(Circle().fill(Color.white.opacity(0.16)))
+            } else {
+                LogoBadge(logoID: logoID, size: 40)
+            }
             Text(name).textStyle(.headline, tint: def == nil ? Theme.ink : Color.white).lineLimit(1)
             Spacer(minLength: 0)
             if let def { RarityTag(rarity: def.rarity) }
@@ -415,18 +420,6 @@ struct CompanyCardView: View {
         }
         .clipShape(shape)
         .accessibilityElement(children: .combine)
-    }
-}
-
-struct CompanyCardBanner: View {
-    @EnvironmentObject var store: GameStore
-    var company: Company
-    private let session = StoreSession.shared
-
-    var body: some View {
-        if let e = store.engine, let d = e.companyCard(company.id, cabinet: session.state.cabinet) {
-            CompanyCardView(name: company.name, def: d)
-        }
     }
 }
 

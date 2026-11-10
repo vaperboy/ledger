@@ -133,7 +133,6 @@ struct CompanyStatsFigures: View {
         if s.shareCapital > 0.5 {
             rows.append(RecordLine(label: "Share capital", value: cur.tidyShort(s.shareCapital), sub: s.shareCount.map { String(Int($0)) + " shares" } ?? ""))
         }
-        if let acc = s.accountant { rows.append(RecordLine(label: "Accountant", value: acc)) }
         rows.append(RecordLine(label: "Equity (assets less debts)", value: cur.tidyShort(s.equity), tint: s.equity < 0 ? Theme.loss : nil))
         if !ownsAll { rows.append(RecordLine(label: "Estimated value", value: cur.tidyShort(s.estimatedValue), sub: "not cash")) }
         return LedgerSection("Company record") {

@@ -16,7 +16,6 @@ public enum Delegation {
         }
     }
 
-    public static func hasAccountant(_ co: Company) -> Bool { !co.value("acc").isNull }
     public static func hasManager(_ co: Company) -> Bool { co.managerID != nil }
 
     public static func autoRehire(_ s: GameState, _ co: Company) -> Bool { hasManager(co) }

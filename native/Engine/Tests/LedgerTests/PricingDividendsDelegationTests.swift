@@ -104,7 +104,7 @@ final class PricingDividendsDelegationTests: XCTestCase {
         guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil) else { throw XCTSkip("no start") }
         let co = try XCTUnwrap(e.state.company(out.companyID))
         let docs = co.value("docs").object
-        XCTAssertTrue(docs.filter { $0.key != "accountant_agreement" }.isEmpty, "no document is applied for the player: \(docs.keys.sorted())")
+        XCTAssertTrue(docs.isEmpty, "no document is applied for the player: \(docs.keys.sorted())")
         XCTAssertTrue(co.value("prem").isNull, "no place is rented by itself")
         XCTAssertTrue(co.staff.isEmpty)
     }

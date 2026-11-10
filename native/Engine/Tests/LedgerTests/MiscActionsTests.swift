@@ -16,4 +16,17 @@ final class MiscActionsTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)?.status, .sold)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
+
+    func testARenameWaitsForTheCooldownUnlessItIsSkipped() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
+        e.update { s, _, _ in Ledger.move(&s, .me, 40_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("start") }
+        XCTAssertEqual(e.renameCooldownLeft(companyID: id), 0)
+        XCTAssertEqual(e.renameCompany(companyID: id, to: "Blue Door Cafe"), .ok)
+        XCTAssertGreaterThan(e.renameCooldownLeft(companyID: id), 0)
+        XCTAssertEqual(e.renameCompany(companyID: id, to: "Red Door Cafe"), .cooldown)
+        XCTAssertEqual(e.state.company(id)?.name, "Blue Door Cafe")
+        XCTAssertEqual(e.renameCompany(companyID: id, to: "Red Door Cafe", skipCooldown: true), .ok)
+        XCTAssertEqual(e.state.company(id)?.name, "Red Door Cafe")
+    }
 }

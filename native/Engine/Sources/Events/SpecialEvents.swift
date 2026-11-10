@@ -29,8 +29,8 @@ enum SpecialEvents {
             let y = co.books.year
             let weekOfYear = max(8, Double(GameCalendar.date(week: s.week).month * 4 + 1))
             let yearProfit = max(0, (y["rev"] ?? 0) - Books.expenses(y)) * (52 / weekOfYear)
-            let aq = co.value("acc").isNull ? 0.45 : co.value("acc")["q"].double
-            let err = co.value("acc").isNull ? 0.15 : co.value("acc")["err"].double
+            let aq = 0.45
+            let err = 0.15
             let authority = fc.country(of: co, s).pack["authorities"]["tax"].string
             if s.random.chance(err * 1.8 + (1 - aq) * 0.25) {
                 let pen = jsRound(max(cur.scaledPrice(6000), yearProfit * 0.04) * (1.3 - aq))
@@ -38,7 +38,7 @@ enum SpecialEvents {
                 s.addMessage(from: authority, title: "Audit finished for \(co.name)", body: "The auditors found errors. Adjustment and penalty: \(cur.display(pen)).", companyID: co.id, tone: "bad")
                 s.note("Tax audit at \(co.name): errors found, \(cur.display(pen)) to pay.", tone: "bad", companyID: co.id)
             } else {
-                s.addMessage(from: authority, title: "Audit finished for \(co.name)", body: "No issues. " + (co.value("acc").isNull ? "" : co.value("acc")["name"].string + " kept the books clean."), companyID: co.id, tone: "good")
+                s.addMessage(from: authority, title: "Audit finished for \(co.name)", body: "No issues.", companyID: co.id, tone: "good")
                 s.note("Tax audit at \(co.name): all clear.", tone: "good", companyID: co.id)
             }
         case "g_inspect":

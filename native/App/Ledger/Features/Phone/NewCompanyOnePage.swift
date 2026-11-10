@@ -9,7 +9,7 @@ import Simulation
     let size: Double? = d.size(e)
     let fund: Double = plan.intoCompany
     let nm: String? = d.name.isEmpty ? nil : d.name
-    let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, size: size, name: nm, pick: d.pick, choices: d.choices, accountantID: d.accountantID) }
+    let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, size: size, name: nm, pick: d.pick, choices: d.choices) }
     switch r {
     case .success(let out)?:
         Haptics.success()
@@ -40,13 +40,11 @@ struct NewCompanySetupView: View {
     var tradeID: String
     var cityID: String
     @State private var name = ""
-    @State private var accountantID: Int?
     @State private var channel: SalesChannel = .consumers
     @State private var goReview = false
 
     private func draft(_ t: Trade, _ e: GameEngine) -> NewCompanyDraft {
         var d = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: name.trimmingCharacters(in: .whitespaces), pick: nil, choices: SetupChoices())
-        d.accountantID = accountantID
         if let s = d.size(e) { d.choices = e.suggestedChoices(tradeID: tradeID, cityID: cityID, size: s) }
         d.choices.channel = channel
         return d
@@ -61,7 +59,6 @@ struct NewCompanySetupView: View {
                     costBlock(plan)
                     LedgerField(placeholder: t.name, text: $name, identifier: "new-company-name", hint: "Company name. Leave it empty and one is chosen for you.")
                     SalesChannelPicker(tradeID: tradeID, channel: $channel)
-                    AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID)
                     NavigationLink { NewCompanyDetailedSetupView(tradeID: tradeID, cityID: cityID) } label: {
                         LedgerRow(leading: .glyph(Glyph.settings), title: "Customise", subtitle: "City, premises and each item", chevron: true)
                     }

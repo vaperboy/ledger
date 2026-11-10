@@ -27,7 +27,9 @@ struct ProjectsView: View {
                     .toolbar(.hidden, for: .navigationBar)
                     .safeAreaInset(edge: .top, spacing: 0) { ReturnLine(tab: .projects) }
                     .companyRouteDestinations()
-                    .centerSheet(isPresented: $foundOpen, title: "", category: .medium, tone: .investment) { FoundStartupSheet() }
+                    .navigationDestination(isPresented: $foundOpen) {
+                        SettingsPage(title: "Found a startup", subtitle: "Pick a sector, who builds it and the seed money", tab: .projects) { FoundStartupSheet() }
+                    }
                     .onAppear { if store.takeVenturesRequest() { part = .portfolio } }
                     .onChange(of: store.appRequest) { _, _ in if store.takeVenturesRequest() { part = .portfolio } }
                     .onChange(of: store.rootToken(.projects)) { _, _ in part = .projects }

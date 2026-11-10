@@ -44,8 +44,7 @@ final class PlaytestReworkTours: XCTestCase {
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
             e.nextDay()
         }
-        if accountant { e.update { s, d, _ in CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: d) } }
-        else { e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].raw["acc"] = .null; s.companies[i].staff.removeAll { $0.role == "acct" } } } }
+        if !accountant { e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].staff.removeAll { $0.role == "acct" } } } }
         if manager { hireManager(&e, id) }
         run(&e, weeks: weeks)
         return (e, id)
@@ -453,9 +452,7 @@ final class PlaytestReworkTours: XCTestCase {
         m.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(20_000_000), why: "Test capital") }
         guard case .success(let b) = m.startCompany(tradeID: "cafe", cityID: m.state.player.cityID, quickSetup: true) else { return }
         run(&m, weeks: 8)
-        m.update { s, d, _ in
-            for id in [a, b] { CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: d) }
-        }
+        m.update { s, _, _ in for id in [a, b] { giveFinanceDesk(&s, id) } }
         m.update { s, d, c in
             for id in [a, b] { Payday.reportShort(&s, s.company(id)!, due: 5000, short: 1000, serious: false, data: d, context: c) }
         }

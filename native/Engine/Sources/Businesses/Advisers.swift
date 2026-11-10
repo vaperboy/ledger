@@ -5,9 +5,9 @@ import Finance
 
 public enum Advisers {
     public enum Kind: String, CaseIterable, Sendable {
-        case accountant = "acc", law, insurer = "ins"
-        var ownTrade: String { switch self { case .accountant: return "acctfirm"; case .law: return "law"; case .insurer: return "insco" } }
-        var field: String { self == .insurer ? "insr" : self == .accountant ? "acc" : "law" }
+        case law, insurer = "ins"
+        var ownTrade: String { switch self { case .law: return "law"; case .insurer: return "insco" } }
+        var field: String { self == .insurer ? "insr" : "law" }
     }
 
     public enum Result: Equatable, Sendable { case done, removed, unknown, needInsurer }
@@ -15,7 +15,7 @@ public enum Advisers {
     public static func pool(_ s: inout GameState, companyID: Int, kind: Kind, data: GameData) -> [JSONValue] {
         guard let co = s.company(companyID) else { return [] }
         let p = Providers.pool(for: co.countryCode, state: &s, countries: data.countries)
-        switch kind { case .accountant: return p.accountants; case .law: return p.lawyers; case .insurer: return p.insurers }
+        switch kind { case .law: return p.lawyers; case .insurer: return p.insurers }
     }
 
     public static func current(_ co: Company, _ kind: Kind) -> JSONValue { co.value(kind.field) }
@@ -35,8 +35,6 @@ public enum Advisers {
         let cur = data.countries[oc.countryCode].map { Currency(country: $0, rates: ExchangeRates()) }
         func rnl(_ v: Double) -> Double { cur?.roundedStep(v, about: 100) ?? (v / 100).rounded() * 100 }
         switch kind {
-        case .accountant:
-            p["tier"] = ""; p["fee"] = .number(rnl(1400 * (0.7 + q * 1.9) * wage * 0.85)); p["err"] = .number(max(0.015, 0.14 - q * 0.12))
         case .law:
             p["fee"] = .number(rnl(3500 * (0.7 + q * 2.4) * wage * 0.85))
         case .insurer:
@@ -48,13 +46,9 @@ public enum Advisers {
     @discardableResult
     public static func pick(_ s: inout GameState, companyID: Int, kind: Kind, providerID: Int, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID) else { return .unknown }
-        if providerID == 0 && kind != .accountant { s.companies[i].set(kind.field, .null); return .removed }
-        guard let a = pool(&s, companyID: companyID, kind: kind, data: data).first(where: { $0["id"].int == providerID }) ?? (kind == .accountant ? pool(&s, companyID: companyID, kind: kind, data: data).dropFirst().first : nil) else { return .unknown }
+        if providerID == 0 { s.companies[i].set(kind.field, .null); return .removed }
+        guard let a = pool(&s, companyID: companyID, kind: kind, data: data).first(where: { $0["id"].int == providerID }) else { return .unknown }
         switch kind {
-        case .accountant:
-            if s.companies[i].value("acc")["id"].int == a["id"].int { return .done }
-            s.companies[i].set("acc", .object(["id": a["id"], "name": a["name"], "tier": a["tier"], "fee": a["fee"], "q": a["q"], "err": a["err"], "rating": a["rating"], "w0": .number(Double(s.week))]))
-            markAccountantDocument(&s, i)
         case .law:
             s.companies[i].set("law", .object(["id": a["id"], "name": a["name"], "fee": a["fee"], "q": a["q"], "rating": a["rating"], "w0": .number(Double(s.week))]))
         case .insurer:
@@ -69,21 +63,12 @@ public enum Advisers {
         let p = ownProvider(s, kind: kind, firm: oc, data: data)
         let w0 = JSONValue.number(Double(s.week)), own = JSONValue.number(Double(oc.id))
         switch kind {
-        case .accountant:
-            s.companies[i].set("acc", .object(["id": p["id"], "name": p["name"], "tier": p["tier"], "fee": p["fee"], "q": p["q"], "err": p["err"], "rating": p["rating"], "own": own, "w0": w0]))
-            markAccountantDocument(&s, i)
         case .law:
             s.companies[i].set("law", .object(["id": p["id"], "name": p["name"], "fee": p["fee"], "q": p["q"], "rating": p["rating"], "own": own, "w0": w0]))
         case .insurer:
             s.companies[i].set("insr", .object(["id": p["id"], "name": p["name"], "premM": p["premM"], "payM": p["payM"], "rating": p["rating"], "own": own]))
         }
         return .done
-    }
-
-    static func markAccountantDocument(_ s: inout GameState, _ i: Int) {
-        var docs = s.companies[i].value("docs")
-        docs["accountant_agreement"] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))])
-        s.companies[i].set("docs", docs)
     }
 
     @discardableResult
@@ -126,15 +111,12 @@ public enum Advisers {
     public static func premiumFactor(_ co: Company) -> Double { co.value("insr").isNull ? 1 : co.value("insr")["premM"].double }
     public static func payoutReliability(_ co: Company) -> Double { co.value("insr").isNull ? 0.93 : co.value("insr")["payM"].double }
 
-    static func weekly(_ s: inout GameState, _ i: Int, accountantFee amt: Double) {
+    static func weekly(_ s: inout GameState, _ i: Int) {
         let co = s.companies[i]
         if !co.value("law").isNull {
             let f = co.value("law")["fee"].double * 12 / 52 * (s.hasHeadOffice("law") ? 0.85 : 1)
             Payments.companyPays(&s, companyID: co.id, amount: f, category: "oth")
             if let o = ownerFirm(s, co.value("law")), f > 0 { Payments.companyReceives(&s, companyID: o, amount: f, category: "rev", label: "Legal fees from \(co.name)") }
-        }
-        if amt > 0, let o = ownerFirm(s, co.value("acc")), o != co.id {
-            Payments.companyReceives(&s, companyID: o, amount: amt, category: "rev", label: "Accounting for \(co.name)")
         }
     }
 

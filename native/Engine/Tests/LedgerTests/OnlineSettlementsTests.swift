@@ -67,20 +67,6 @@ final class OnlineSettlementsTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    func testAHiringFeeIsAnAccountingExpenseOfTheCompany() throws {
-        let g = try game()
-        var e = g.engine
-        let id = g.company
-        let co0: Double = try XCTUnwrap(e.state.company(id)).cash
-        let me0: Double = e.state.cash
-        e.update { s, d, _ in
-            OnlineSettlements.book(&s, [OnlineSettlement(id: "h1", amount: -3000, currency: "GBP", kind: "accountant_hire_fee", label: "Accountant office: Holt", companyKey: "own.\(id)")], data: d)
-        }
-        XCTAssertLessThan(try XCTUnwrap(e.state.company(id)).cash, co0)
-        XCTAssertEqual(e.state.cash, me0)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
     func testASupplySaleForAClosedCompanyFallsBackToPersonalCash() throws {
         var e = try game().engine
         let me0: Double = e.state.cash

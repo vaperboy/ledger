@@ -5,12 +5,14 @@ enum GoldGood {
     case boxBundle(BoxBundle)
     case cosmetic(GoldCosmetic)
     case avatar(AvatarDef)
+    case service(String, Int)
 
     var price: Int {
         switch self {
         case .boxBundle(let b): return b.price
         case .cosmetic(let c): return c.price ?? 0
         case .avatar(let d): return d.price ?? 0
+        case .service(_, let price): return price
         }
     }
 }
@@ -36,6 +38,8 @@ enum StorePurchase {
             return GoldOffer(title: "Buy \(c.item.title)?", effect: "you get \(c.item.title) (\(c.rarity.title)). \(c.item.detail)", price: c.price ?? 0, icon: "paintpalette")
         case .avatar(let d):
             return GoldOffer(title: "Buy \(d.title)?", effect: "you get the \(d.title) profile icon. You can wear it straight away.", price: d.price ?? 0, icon: "person.crop.circle")
+        case .service(let title, let price):
+            return GoldOffer(title: title + "?", effect: "the wait is skipped.", price: price, icon: "forward.end")
         }
     }
 
