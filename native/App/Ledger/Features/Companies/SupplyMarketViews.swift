@@ -114,14 +114,14 @@ struct SupplySignBlock: View {
                 if weeklyMarketSpend > 0 {
                     let saving: Double = weeklyMarketSpend - weeklyMarketSpend * listing.priceFactor * (landed?.landedFactor ?? 1)
                     HStack(spacing: Theme.Space.s) {
-                        Text("Against the market supplier").popupText(.caption)
+                        Text("Against the standard supplier").popupText(.caption)
                         Spacer(minLength: 0)
                         ArrowAmount(gain: saving, amount: abs(saving), format: { (v: Double) -> String in currency.tidyShort(v) + " a week" }, step: .caption)
                     }
                 }
                 if let message { Text(message).popupText(.risk) }
                 PopupOptionButton(title: "Use \(listing.ownerName)", highlighted: true) { sign() }
-                Text("If they stop supplying, \(lineTitle.lowercased()) goes back to a market supplier at market price.").popupText(.caption)
+                Text("If they stop supplying, \(lineTitle.lowercased()) goes back to the standard supplier at its price.").popupText(.caption)
             }
         }
         .onAppear { if units < Double(listing.minOrder) { units = Double(min(max(listing.minOrder, 20), max(listing.minOrder, room))) } }
@@ -137,7 +137,7 @@ struct SupplySignBlock: View {
         switch r {
         case .signed:
             Haptics.success()
-            store.outcome(chosen: "\(listing.ownerName) for \(lineTitle)", result: "\(listing.ownerName) now supplies \(lineTitle.lowercased()), \(Int(units)) units a week. A market supplier is the backup.")
+            store.outcome(chosen: "\(listing.ownerName) for \(lineTitle)", result: "\(listing.ownerName) now supplies \(lineTitle.lowercased()), \(Int(units)) units a week.")
             onSigned()
         case .refused(let why):
             Haptics.warning()

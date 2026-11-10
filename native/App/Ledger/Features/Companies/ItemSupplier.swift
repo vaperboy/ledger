@@ -196,7 +196,7 @@ struct SupplierPopup: View {
         let others: [SupplierChoice] = sheet.choices.filter { (c: SupplierChoice) -> Bool in !c.current }
         let usable: [SupplierChoice] = ranked(others.filter { (c: SupplierChoice) -> Bool in c.blocked == nil })
         let unavailable: [SupplierChoice] = others.filter { (c: SupplierChoice) -> Bool in c.blocked != nil }
-        let suggested: SupplierChoice? = now ?? usable.first { (c: SupplierChoice) -> Bool in if case .listing = c.action { return false } else { return true } }
+        let suggested: SupplierChoice? = now == nil ? usable.first { (c: SupplierChoice) -> Bool in if case .listing = c.action { return false } else { return true } } : nil
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text(sheet.subtitle).popupText(.subtitle)
             if let g = sheet.governed { Text(g.tidyText).popupText(.risk) }
@@ -238,7 +238,7 @@ struct SupplierPopup: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .centerSheetTitle(sheet.title)
-        .popupFooter { footer(suggested, now: now != nil) }
+        .popupFooter { footer(suggested) }
         .accessibilityIdentifier("item-supplier-chooser")
         .task { market.sync(store) }
     }
@@ -247,10 +247,10 @@ struct SupplierPopup: View {
         Text(text).popupText(.rowLabel).padding(.top, Theme.Space.xs)
     }
 
-    @ViewBuilder private func footer(_ suggested: SupplierChoice?, now: Bool) -> some View {
+    @ViewBuilder private func footer(_ suggested: SupplierChoice?) -> some View {
         if asking, let s = suggested {
-            PopupFooter(cancel: "Decide later", action: now ? "Keep \(s.name.tidyText)" : "Use \(s.name.tidyText)", onCancel: { onClose() },
-                        onAction: { if now { keepCurrent() } else { choose(s) } }, cancelID: "item-supplier-done", actionID: "item-supplier-keep")
+            PopupFooter(cancel: "Decide later", action: "Use \(s.name.tidyText)", onCancel: { onClose() },
+                        onAction: { choose(s) }, cancelID: "item-supplier-done", actionID: "item-supplier-keep")
         } else {
             PopupOptionButton(title: asking ? "Decide later" : "Done", identifier: "item-supplier-done") { onClose() }
         }
@@ -307,17 +307,10 @@ struct SupplierPopup: View {
         }
     }
 
-    private func keepCurrent() {
-        Haptics.tap()
-        store.tutorialAdvance(from: .pickSupplier)
-        onClose()
-    }
-
     private func choose(_ c: SupplierChoice) {
         switch c.action {
         case .vendor: open(c)
-        case .offer(let o): chooseOffer(o)
-        case .listing: open(c)
+        case .offer, .listing: open(c)
         }
     }
 
@@ -327,7 +320,36 @@ struct SupplierPopup: View {
         ordering = c
     }
 
-    private func orderView(_ c: SupplierChoice, _ sheet: SupplierSheet) -> some View {
+    @ViewBuilder private func orderView(_ c: SupplierChoice, _ sheet: SupplierSheet) -> some View {
+        if case .offer(let o) = c.action {
+            offerView(c, o)
+        } else {
+            unitsView(c, sheet)
+        }
+    }
+
+    private func offerView(_ c: SupplierChoice, _ o: SupplyOfferRow) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack {
+                Text("Price").popupText(.rowLabel)
+                Spacer(minLength: Theme.Space.s)
+                Text(c.price).popupText(.rowValue)
+            }
+            if !c.delivery.isEmpty { Text(c.delivery).popupText(.caption) }
+            TrustBar(trust: c.trust)
+            if !o.detail.isEmpty { Text(o.detail.tidyText).popupText(.caption) }
+            if let message { Text(message).popupText(.risk) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .centerSheetTitle("Use \(c.name.tidyText)?")
+        .popupFooter {
+            PopupFooter(cancel: "Back", action: "Confirm", onCancel: { ordering = nil; message = nil }, onAction: { chooseOffer(o) },
+                        cancelID: "supply-order-back", actionID: "supply-order-confirm")
+        }
+        .accessibilityIdentifier("supply-offer")
+    }
+
+    private func unitsView(_ c: SupplierChoice, _ sheet: SupplierSheet) -> some View {
         let free: Int = max(0, c.free ?? Int.max)
         let upper: Double = Double(max(1, min(free, 1_000_000)))
         let count: Int = Int(units)
@@ -382,7 +404,7 @@ struct SupplierPopup: View {
         switch r {
         case .signed:
             Haptics.success()
-            store.outcome(chosen: "\(l.ownerName) for \(sheet.lineTitle)", result: "\(l.ownerName) now supplies \(sheet.lineTitle.lowercased()), \(Int(units)) units a month. A market supplier is the backup.")
+            store.outcome(chosen: "\(l.ownerName) for \(sheet.lineTitle)", result: "\(l.ownerName) now supplies \(sheet.lineTitle.lowercased()), \(Int(units)) units a month.")
             onClose()
         case .refused(let why):
             Haptics.warning()
@@ -392,7 +414,7 @@ struct SupplierPopup: View {
 
     private func endView(_ sheet: SupplierSheet, fee: Double) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Ending the supply costs a fee of two weeks of the order: " + sheet.currency.tidyShort(fee) + ". \(sheet.lineTitle) then goes back to a market supplier.").popupText(.subtitle)
+            Text("Ending the supply costs a fee of two weeks of the order: " + sheet.currency.tidyShort(fee) + ". \(sheet.lineTitle) then goes back to the standard supplier.").popupText(.subtitle)
             if let message { Text(message).popupText(.risk) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

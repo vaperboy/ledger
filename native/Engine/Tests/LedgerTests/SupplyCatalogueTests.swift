@@ -188,4 +188,12 @@ final class SupplyCatalogueTests: XCTestCase {
             XCTAssertTrue(e.supplyLines(companyID: id).flatMap { $0.rows }.contains { $0.weekly != nil && $0.weeklyBefore != nil }, trade)
         }
     }
+
+    func testAServiceListOnlyAppearsForAServiceThatIsSold() throws {
+        let (e, id) = try open("barber")
+        let sold = e.salesItems(companyID: id)
+        let rows = e.supplyLines(companyID: id).flatMap { $0.rows }
+        XCTAssertEqual(rows.contains { $0.id == "mat" }, sold.isEmpty || sold.contains { $0.isService })
+        XCTAssertEqual(rows.contains { $0.id == "pack" }, sold.isEmpty || sold.contains { !$0.isService })
+    }
 }

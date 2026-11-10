@@ -292,7 +292,7 @@ public struct SupplyFallback: Equatable, Sendable {
     public var reason: SupplyEnd
     public let title = "Your supplier stopped supplying"
     public var body: String {
-        "\(contract.supplierName) \(reason.phrase). The contract ended at once and this line now comes from a market supplier at market price."
+        "\(contract.supplierName) \(reason.phrase). The contract ended at once and this line now comes from the standard supplier at its price."
     }
 }
 
