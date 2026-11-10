@@ -119,8 +119,8 @@ struct TechProOwnedView: View {
 
     private func itemThumb(_ o: EquipmentMarket.Owned) -> some View {
         let group: String = o.kind == "soft" ? "software" : "equipment"
-        let key: String = ArtLibrary.itemKey(group: group, familyKey: o.equipmentID, seed: o.equipmentID) ?? ""
-        return ShopThumb(glyph: o.kind == "veh" ? Glyph.vehicle : (o.kind == "soft" ? Glyph.software : Glyph.hardware), item: key)
+        let key: String = ArtAsset.cellFallback(o.equipmentID, group: group, seed: o.equipmentID)
+        return ShopThumb(photo: o.kind == "veh" ? "" : ArtAsset.equipment(o.equipmentID), glyph: o.kind == "veh" ? Glyph.vehicle : (o.kind == "soft" ? Glyph.software : Glyph.hardware), item: key)
     }
 
     private func single(_ o: EquipmentMarket.Owned) -> EquipmentMarket.UnitRow? {

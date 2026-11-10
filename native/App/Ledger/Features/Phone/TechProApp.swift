@@ -355,8 +355,7 @@ struct TechProApp: View {
             let model: String = e.data.catalog[co.type]?.equipment.first(where: { (x: EquipmentSpec) -> Bool in x.id == n.equipmentID })?.vehicleModels?.first ?? ""
             return ArtLibrary.itemKey(group: "vehicle", familyKey: model, seed: n.equipmentID) ?? ""
         }
-        let group: String = n.kind == "soft" ? "software" : "equipment"
-        return ArtLibrary.itemKey(group: group, familyKey: n.equipmentID, seed: n.equipmentID) ?? ""
+        return ArtAsset.cellFallback(n.equipmentID, group: n.kind == "soft" ? "software" : "equipment", seed: n.equipmentID + "|" + co.type)
     }
 
     private func tile(_ e: GameEngine, _ co: Company, _ n: EquipmentMarket.Need) -> some View {
@@ -366,7 +365,7 @@ struct TechProApp: View {
             Haptics.tap()
             showItem(n.equipmentID)
         } label: {
-            TechTile(photo: n.isVehicle ? vehiclePhoto(e, co, n) : "", glyph: TechCategory.of(n).glyph, title: n.name, from: from, deal: n.dealPercent,
+            TechTile(photo: n.isVehicle ? vehiclePhoto(e, co, n) : ArtAsset.equipment(n.equipmentID), glyph: TechCategory.of(n).glyph, title: n.name, from: from, deal: n.dealPercent,
                      label: st.text, tint: st.tint, item: tileItem(e, co, n))
         }
         .buttonStyle(PressableStyle())

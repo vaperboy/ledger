@@ -36,7 +36,7 @@ extension OnlineCompanyHealth {
 
 extension PlayerProfile {
     var subline: String {
-        var parts: [String] = [OnlineCountry.name(countryCode)]
+        var parts: [String] = countryCode.isEmpty ? [] : [OnlineCountry.name(countryCode)]
         if let l = level { parts.append("Level \(l)") }
         if let t = lastSeen { parts.append(Self.seenText(t)) }
         return parts.joined(separator: " · ")

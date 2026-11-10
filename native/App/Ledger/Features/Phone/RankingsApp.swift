@@ -72,34 +72,68 @@ struct RankingsBoards: View {
     private func rows(_ list: [LeaderboardEntry], _ top: Double, _ cur: Currency) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(list.enumerated()), id: \.element.id) { (pair: (offset: Int, element: LeaderboardEntry)) in
-                if pair.offset > 0 { Hairline().padding(.leading, 44) }
+                if pair.offset > 0 { Hairline().padding(.leading, 92) }
                 row(pair.element, top, cur)
             }
         }
     }
 
-    private func row(_ x: LeaderboardEntry, _ top: Double, _ cur: Currency) -> some View {
+    @ViewBuilder private func row(_ x: LeaderboardEntry, _ top: Double, _ cur: Currency) -> some View {
+        if x.isYou {
+            rowBody(x, top, cur)
+        } else {
+            NavigationLink { profileCard(x) } label: { rowBody(x, top, cur) }
+                .buttonStyle(PressableStyle())
+        }
+    }
+
+    private func rowBody(_ x: LeaderboardEntry, _ top: Double, _ cur: Currency) -> some View {
+        let privacy: PrivacyLevel = x.isYou ? .everyone : BoardProfiles.privacy(playerID: x.id, name: x.name)
+        let figure: Bool = ProfileVisibility.showsBoardFigure(privacy)
         let text: String = kind == .netWorth ? cur.tidyShort(x.value) : MarketFormat.money(x.value, cur)
         return HStack(spacing: Theme.Space.m) {
             Text("\(x.rank)").textStyle(.figure, tint: x.isYou ? P.accent : P.inkSoft, numeric: true).frame(width: 36, alignment: .leading)
+            avatar(x, 44)
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(x.isYou ? "You" : x.name).textStyle(.headline, tint: x.isYou ? P.accent : nil).lineLimit(1)
                     Spacer(minLength: Theme.Space.s)
-                    Text(text).textStyle(.headline, tint: kind == .tradingResult ? P.change(x.value) : nil, numeric: true).lineLimit(1).minimumScaleFactor(0.7)
+                    if figure {
+                        Text(text).textStyle(.headline, tint: kind == .tradingResult ? P.change(x.value) : nil, numeric: true).lineLimit(1).minimumScaleFactor(0.7)
+                    }
                 }
-                ProgressLine(fraction: max(0, min(1, x.value / top)), tint: x.isYou ? P.accent : P.inkFaint.opacity(0.6), height: 3)
+                if figure {
+                    ProgressLine(fraction: max(0, min(1, x.value / top)), tint: x.isYou ? P.accent : P.inkFaint.opacity(0.6), height: 3)
+                }
             }
         }
         .padding(.vertical, Theme.Space.m)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(x.isYou ? "board-you" : "board-row-\(x.rank)")
+    }
+
+    @ViewBuilder private func avatar(_ x: LeaderboardEntry, _ size: CGFloat) -> some View {
+        if !x.isYou, let p = OnlineDirectoryCache.players.first(where: { (q: PlayerProfile) -> Bool in q.id == x.id }) {
+            PlayerAvatar(player: p, size: size)
+        } else {
+            PlayerAvatar(name: x.name, isYou: x.isYou, size: size)
+        }
+    }
+
+    @ViewBuilder private func profileCard(_ x: LeaderboardEntry) -> some View {
+        if BoardProfiles.isRival(x.id) {
+            PlayerProfileView(playerID: x.id, preset: BoardProfiles.rivalProfile(id: x.id, name: x.name))
+        } else {
+            PlayerProfileView(playerID: x.id)
+        }
     }
 
     private func yourRow(_ y: LeaderboardEntry, _ v: LeaderboardView, _ cur: Currency) -> some View {
         let text: String = kind == .netWorth ? cur.tidyShort(y.value) : MarketFormat.money(y.value, cur)
         return HStack(spacing: Theme.Space.m) {
             Text("\(y.rank)").textStyle(.figure, tint: P.accent, numeric: true)
+            PlayerAvatar(name: store.engine?.state.player.name ?? "", isYou: true, size: 32)
             Text("You").textStyle(.headline, tint: P.accent)
             Spacer(minLength: Theme.Space.s)
             Text(text).textStyle(.headline, numeric: true)

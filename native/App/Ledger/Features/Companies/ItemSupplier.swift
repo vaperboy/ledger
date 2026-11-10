@@ -52,6 +52,8 @@ private struct SupplierChoice: Identifiable {
     var need: Int = 0
     var start: Int = 0
     var logoID: String = ""
+    var ownerName: String = ""
+    var ownerCode: String = ""
 }
 
 private struct SupplierSheet {
@@ -79,6 +81,7 @@ struct SupplierPopup: View {
     var subject: SupplierSubject
     var asking: Bool = false
     var onClose: () -> Void
+    var onOpenOwner: ((String) -> Void)? = nil
     @State private var rank: SupplierRank = .cheapest
     @State private var message: String?
     @State private var ordering: SupplierChoice?
@@ -165,11 +168,11 @@ struct SupplierPopup: View {
             if l.leadDays > 0 { delivery.append("\(l.leadDays) days") }
             let room: Int = max(0, SupplyGuards.effectiveCapacity(l) - l.committedUnits)
             let weeklyStart: Int = min(max(l.minOrder, 20), max(l.minOrder, room))
-            return SupplierChoice(id: "l:" + l.id, name: l.ownerName, badge: l.isFriend ? "Friend" : "Player", price: price, trust: l.record.ordersTotal == 0 ? nil : l.record.deliveredShare,
+            return SupplierChoice(id: "l:" + l.id, name: l.companyName.isEmpty ? l.ownerName : l.companyName, badge: l.isFriend ? "Friend" : "Player", price: price, trust: l.record.ordersTotal == 0 ? nil : l.record.deliveredShare,
                                   delivery: delivery.isEmpty ? "" : "Delivery: " + delivery.joined(separator: " \u{00B7} "), cost: l.priceFactor * (r?.landedFactor ?? 1),
                                   current: contract?.listingID == l.id, blocked: a.message.map { Self.short($0) }, action: .listing(l),
                                   unit: r?.unitPrice ?? 0, free: Int(Double(room) * weeksPerMonth), start: Int((Double(weeklyStart) * weeksPerMonth).rounded()),
-                                  logoID: l.logoID)
+                                  logoID: l.logoID, ownerName: l.ownerName, ownerCode: l.profileCode)
         }
     }
 
@@ -257,41 +260,64 @@ struct SupplierPopup: View {
     }
 
     private func row(_ c: SupplierChoice, _ sheet: SupplierSheet, locked: Bool) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                if case .listing = c.action { LogoBadge(logoID: c.logoID, size: 28) }
-                Text(c.name.tidyText).popupText(.body).lineLimit(1)
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                SupplierLogo(logoID: c.logoID, name: c.name, size: 64)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(c.name.tidyText).popupText(.rowValue).lineLimit(2).multilineTextAlignment(.leading)
+                    Text(c.badge).popupText(.caption)
+                        .padding(.horizontal, Theme.Space.s).padding(.vertical, 2)
+                        .background(Capsule().fill(P.ink.opacity(0.1)))
+                }
                 Spacer(minLength: Theme.Space.s)
-                Text(c.badge).popupText(.caption)
-                    .padding(.horizontal, Theme.Space.s).padding(.vertical, 2)
-                    .background(Capsule().fill(P.ink.opacity(0.1)))
             }
-            HStack(alignment: .center, spacing: Theme.Space.s) {
-                Text(c.price).popupText(.rowValue).lineLimit(1).minimumScaleFactor(0.8)
-                Spacer(minLength: Theme.Space.s)
-                if c.current {
+            if !c.ownerName.isEmpty {
+                SupplierOwnerLine(name: c.ownerName, onOpen: ownerAction(c))
+            }
+            VStack(spacing: Theme.Space.xxs) {
+                factLine("Price", c.price)
+                if !c.delivery.isEmpty { factLine("Lead time", c.delivery.replacingOccurrences(of: "Delivery: ", with: "")) }
+                HStack(alignment: .center, spacing: Theme.Space.s) {
+                    Text("Reliability").popupText(.caption)
+                    Spacer(minLength: Theme.Space.s)
+                    TrustBar(trust: c.trust)
+                }
+                if let free = c.free, c.blocked == nil, !c.current {
+                    factLine("Room", "\(free) units a month")
+                }
+            }
+            if let why = c.blocked { Text(why).popupText(.caption).lineLimit(2) }
+            if c.current {
+                HStack(spacing: Theme.Space.s) {
+                    Chip(text: "In use", tint: P.accent)
+                    Spacer(minLength: Theme.Space.s)
                     if case .vendor = c.action {
                         Button("Change order") { Haptics.tap(); open(c) }
                             .buttonStyle(SecondaryButtonStyle(size: .compact))
                             .accessibilityIdentifier("supply-edit-\(c.id)")
                     }
-                    Chip(text: "In use", tint: P.accent)
-                } else if c.blocked == nil && !locked {
-                    Button("Use") { Haptics.tap(); choose(c) }
-                        .buttonStyle(PrimaryButtonStyle(size: .compact))
-                        .accessibilityIdentifier("supply-use-\(c.id)")
                 }
+            } else if c.blocked == nil && !locked {
+                Button("Use this supplier") { Haptics.tap(); choose(c) }
+                    .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
+                    .accessibilityIdentifier("supply-use-\(c.id)")
             }
-            HStack(alignment: .center, spacing: Theme.Space.s) {
-                TrustBar(trust: c.trust)
-                Spacer(minLength: Theme.Space.s)
-                if !c.delivery.isEmpty { Text(c.delivery).popupText(.caption).lineLimit(1).minimumScaleFactor(0.8) }
-            }
-            if let free = c.free, c.blocked == nil, !c.current { Text("Room for \(free) units a month").popupText(.caption) }
-            if let why = c.blocked { Text(why).popupText(.caption).lineLimit(2) }
         }
-        .padding(.vertical, Theme.Space.xs)
+        .padding(.vertical, Theme.Space.s)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func ownerAction(_ c: SupplierChoice) -> (() -> Void)? {
+        guard !c.ownerCode.isEmpty, let open = onOpenOwner else { return nil }
+        return { open(c.ownerCode) }
+    }
+
+    private func factLine(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            Text(label).popupText(.caption)
+            Spacer(minLength: Theme.Space.s)
+            Text(value).popupText(.body).multilineTextAlignment(.trailing).lineLimit(2)
+        }
     }
 
     private func goodsTier(_ co: Company) -> some View {

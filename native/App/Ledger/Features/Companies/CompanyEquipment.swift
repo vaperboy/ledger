@@ -86,7 +86,7 @@ struct CompanyEquipmentScreen: View {
 
     private func itemRow<T: View>(_ title: String, _ subtitle: String, pill: String, tone: AcctPill.Tone, equipmentID: String = "", @ViewBuilder trailing: () -> T) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
-            SlotImage(asset: ArtAsset.equipment(equipmentID), glyph: Glyph.settings, size: 40)
+            SlotImage(asset: ArtAsset.equipment(equipmentID), glyph: Glyph.settings, size: 56)
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(title.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
                 if !subtitle.isEmpty { Text(subtitle.tidyText).textStyle(.caption).lineLimit(2).multilineTextAlignment(.leading) }
@@ -199,16 +199,17 @@ struct CompanyEquipmentScreen: View {
         let cur: Currency = e.currency(for: co)
         if !list.isEmpty {
             PageGroup(title: "Missing but needed", trailing: { Text("Buy in TechPro").textStyle(.caption) }) {
-                ForEach(Array(list.enumerated()), id: \.element.id) { n, x in
-                    if n > 0 { RowRule(inset: 0) }
-                    let have: Int = Int((x.have + x.leased).rounded())
-                    let none: Bool = x.have + x.leased < 1
-                    let en: String = enables(e, x.equipmentID)
-                    itemRow(x.name, en.isEmpty ? EquipmentMarket.kindName(x.kind) : en,
-                            pill: none ? (x.required ? "Blocks trading" : "Missing") : "\(have) of \(Int(x.need))", tone: none && x.required ? .bad : .warn, equipmentID: x.equipmentID) {
-                        Text(priceText(x, cur)).textStyle(.caption, numeric: true)
+                ShopGrid {
+                    ForEach(list) { (x: EquipmentMarket.Need) in
+                        let have: Int = Int((x.have + x.leased).rounded())
+                        let none: Bool = x.have + x.leased < 1
+                        EquipmentNeedTile(equipmentID: x.equipmentID, name: x.name, price: priceText(x, cur),
+                                          state: none ? (x.required ? "Blocks trading" : "Missing") : "\(have) of \(Int(x.need))",
+                                          tone: none && x.required ? .bad : .warn,
+                                          item: ArtAsset.cellFallback(x.equipmentID, group: x.kind == "soft" ? "software" : "equipment", seed: x.equipmentID + "|" + co.type))
                     }
                 }
+                .padding(.vertical, Theme.Space.s)
             }
         }
     }
@@ -372,5 +373,26 @@ struct CompanyEquipmentScreen: View {
             if store.act({ $0.endEquipmentLease(companyID: companyID, equipmentID: eq) }) == true { Haptics.warning(); store.show("Lease of \(name) ended.", tone: "n") }
             else { store.show("There is no lease of \(name) to end.", tone: "warn") }
         }
+    }
+}
+
+struct EquipmentNeedTile: View {
+    @Environment(\.outsidePalette) private var P
+    var equipmentID: String
+    var name: String
+    var price: String
+    var state: String
+    var tone: AcctPill.Tone
+    var item: String = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            ShopPhoto(name: ArtAsset.equipment(equipmentID), glyph: Glyph.settings, height: 150, cornerRadius: Theme.Radius.medium, item: item)
+                .overlay(alignment: .topLeading) { AcctPill(text: state, tone: tone).padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs).background(Capsule().fill(P.surface)).padding(Theme.Space.s) }
+            Text(name.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
+            Text(price).textStyle(.caption, numeric: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .combine)
     }
 }

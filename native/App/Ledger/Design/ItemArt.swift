@@ -119,6 +119,10 @@ enum ArtAsset {
     }
 
     static func equipment(_ id: String) -> String { "equipment." + id }
+
+    static func cellFallback(_ equipmentID: String, group: String, seed: String) -> String {
+        exists(equipment(equipmentID)) ? "" : (ArtLibrary.itemKey(group: group, familyKey: equipmentID, seed: seed) ?? "")
+    }
 }
 
 struct SlotImage: View {

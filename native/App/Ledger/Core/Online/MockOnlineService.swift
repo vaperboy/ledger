@@ -349,19 +349,7 @@ actor MockOnlineService: OnlineService {
         return .none
     }
 
-    private func view(_ p: PlayerProfile) -> PlayerProfile {
-        var v = p
-        v.relation = relation(p.id)
-        let friend: Bool = v.relation == .friend
-        func nameOnly() { v.level = nil; v.badges = []; v.companyCount = nil; v.companies = nil; v.gameWeek = nil; v.tradesCompleted = nil }
-        if v.relation == .blocked { nameOnly(); return v }
-        switch p.privacy {
-        case .everyone: if !friend { v.companies = nil }
-        case .friends: if !friend { v.companyCount = nil; v.companies = nil; v.tradesCompleted = nil }
-        case .onlyMe: nameOnly()
-        }
-        return v
-    }
+    private func view(_ p: PlayerProfile) -> PlayerProfile { ProfileVisibility.apply(p, relation: relation(p.id)) }
 
     private func requests(_ table: [String: Date]) -> [FriendRequest] {
         table.compactMap { (id: String, at: Date) -> FriendRequest? in
