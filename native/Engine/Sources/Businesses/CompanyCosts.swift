@@ -150,7 +150,7 @@ public enum CompanyCosts {
         var fuel = 0.0
         for (n, v) in vehicles.enumerated() {
             let kind = data.catalog.tables.vehicles[v["model"].string]?.kind ?? ""
-            let depRate: Double = ["plane": 0.05, "bus": 0.1, "truck": 0.12, "plant": 0.1, "van": 0.15, "car": 0.16, "bike": 0.2][kind] ?? 0.15
+            let depRate: Double = ["plane": 0.05, "ship": 0.05, "bus": 0.1, "truck": 0.12, "plant": 0.1, "van": 0.15, "car": 0.16, "bike": 0.2][kind] ?? 0.15
             let d = min(v["bv"].double, v["cost"].double * depRate / 52)
             vehicles[n]["bv"] = .number(v["bv"].double - d)
             books.add("dep", d)

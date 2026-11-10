@@ -175,7 +175,7 @@ final class UnlockGatesTests: XCTestCase {
     }
 
     func testVenturesNeedOneProfitableQuarterOrWeek26() throws {
-        var e = try ChainsTests.engine()
+        var e = try ChainsTests.engine(ladder: true)
         let id = ChainsTests.start(&e, "cafe")
         func months(_ n: Int) {
             e.update { s, _, _ in
@@ -192,7 +192,7 @@ final class UnlockGatesTests: XCTestCase {
     }
 
     func testVenturesProgressCountsClosedMonthsAndWeekFallbackOpensThem() throws {
-        var e = try ChainsTests.engine()
+        var e = try ChainsTests.engine(ladder: true)
         let id = ChainsTests.start(&e, "cafe")
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
@@ -231,7 +231,7 @@ final class UnlockGatesTests: XCTestCase {
     }
 
     func testFirstYearDemandIsHigherEarlyOnAndTheAuthorityWaitsForAYear() throws {
-        var e = try ChainsTests.engine()
+        var e = try ChainsTests.engine(ladder: true)
         let id = ChainsTests.start(&e, "cafe")
         let f = e.data.balance.firstYear
         XCTAssertFalse(f.competitionAuthorityActive(e.state))
