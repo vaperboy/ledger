@@ -55,10 +55,15 @@ struct CustomTabPicker: View {
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
         return VStack(alignment: .leading, spacing: 12) {
             LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(CustomTabTarget.apps) { (app: PhoneApp) in appCell(app) }
+                ForEach(unlockedApps) { (app: PhoneApp) in appCell(app) }
             }
             if hasCompanies { companyEntry }
         }
+    }
+
+    private var unlockedApps: [PhoneApp] {
+        guard let e = store.engine else { return [] }
+        return CustomTabTarget.apps.filter { (app: PhoneApp) -> Bool in app.visibility(e) == .open }
     }
 
     private func appCell(_ app: PhoneApp) -> some View {

@@ -273,21 +273,3 @@ struct AnnualReportsScreen: View {
         sharing = ShareFiles(urls: [url])
     }
 }
-
-struct AnnualReportsLink: View {
-    @EnvironmentObject var store: GameStore
-
-    var body: some View {
-        if let e = store.engine, Gates.reviewOpen(e.state) {
-            VStack(spacing: 0) {
-                Hairline()
-                NavigationLink {
-                    AnnualReportsScreen()
-                } label: {
-                    LedgerRow(leading: .glyph(Glyph.reports), title: "Reviews and annual reports", subtitle: "Quarterly targets, and the year in one page", chevron: true, identifier: "stats-annual")
-                }
-                .buttonStyle(AcctPressStyle())
-            }
-        }
-    }
-}

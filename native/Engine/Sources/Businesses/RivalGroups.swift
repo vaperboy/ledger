@@ -41,11 +41,10 @@ public enum RivalGroups {
     }
 
     public static func group(_ s: GameState, id: String?) -> Group? {
-        guard let id = id, !id.isEmpty, id != "0", let g = s.rest["g27"]?["g"][id], !g.isNull else { return nil }
-        return read(g)
+        nil
     }
 
-    static func all(_ s: GameState) -> [JSONValue] { (s.rest["g27"]?["g"] ?? .null).object.sorted(by: { $0.key < $1.key }).map { $0.value } }
+    static func all(_ s: GameState) -> [JSONValue] { [] }
 
     public static func groups(_ s: GameState, country cc: String) -> [Group] {
         all(s).filter { !$0["gone"].bool && $0["cs"].array.contains { $0.string == cc } }.map(read).sorted { $0.revenue > $1.revenue }

@@ -65,6 +65,7 @@ extension AuctionError: LocalizedError {
 public enum AuctionRules {
     public static let feePercent = 10
     public static let antiSnipeWindow: Double = 120
+    public static let bidExtension: Double = 15
     public static let maxExtensions = 12
     public static let minimumStartPrice = 1
 
@@ -83,8 +84,7 @@ public enum AuctionRules {
 
     public static func extendedEnd(endsAt: Double, extensions: Int, bidAt time: Double) -> (end: Double, extended: Bool) {
         guard extensions < maxExtensions, endsAt - time <= antiSnipeWindow else { return (endsAt, false) }
-        let end: Double = time + antiSnipeWindow
-        return end > endsAt ? (end, true) : (endsAt, false)
+        return (endsAt + bidExtension, true)
     }
 
     public static func listingProblem(startPrice: Int, reserve: Int?, buyNow: Int? = nil) -> String? {
@@ -163,7 +163,7 @@ extension AuctionRules {
             "The piece leaves your cabinet while it is on sale, for \(duration.title).",
             "Bids are in cash. A bidder's cash is set aside while they lead and is free again when they are beaten.",
             feeText,
-            "A bid in the last \(Int(antiSnipeWindow / 60)) minutes pushes the end out to \(Int(antiSnipeWindow / 60)) minutes after that bid, at most \(maxExtensions) times."
+            "A bid in the last \(Int(antiSnipeWindow / 60)) minutes adds \(Int(bidExtension)) seconds, at most \(maxExtensions) times."
         ]
         if reserve != nil { lines.append("Bidders are told only whether your reserve has been met, not what it is. Below it the piece is not sold and comes back to you.") }
         if buyNow != nil { lines.append("Anyone can buy it at once for the buy-now price until a bid reaches that price. Then the auction ends and you are paid.") }

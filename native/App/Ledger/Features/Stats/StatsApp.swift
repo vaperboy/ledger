@@ -5,28 +5,10 @@ import Simulation
 
 struct StatsApp: View {
     @EnvironmentObject var store: GameStore
-    enum Tab: String, CaseIterable, Hashable { case overview = "Overview", reports = "Reports", money = "Money" }
-    @State private var tab: Tab = .overview
 
     var body: some View {
         Group {
-            if let e = store.engine {
-                VStack(spacing: 0) {
-                    SegmentedPill(items: Tab.allCases, title: { (t: Tab) -> String in t.rawValue }, selection: $tab,
-                                  identifier: { (t: Tab) -> String in "stats-tab-\(t.rawValue)" })
-                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xs)
-                        .frame(maxWidth: 760).frame(maxWidth: .infinity)
-                    switch tab {
-                    case .overview: StatsOverview()
-                    case .reports:
-                        ReportsContent(engine: e)
-                            .safeAreaInset(edge: .bottom, spacing: 0) { AnnualReportsLink().background(Theme.page) }
-                    case .money: ActivityView()
-                    }
-                }
-            } else {
-                Color.clear
-            }
+            if store.engine != nil { StatsOverview() } else { Color.clear }
         }
         .appScreen(title: "Stats", subtitle: PhoneApp.stats.subtitle)
         .accessibilityIdentifier("stats-app")
@@ -35,8 +17,6 @@ struct StatsApp: View {
 
 struct StatsOverview: View {
     @EnvironmentObject var store: GameStore
-    @State private var companyID = 0
-    @State private var months = 12
 
     private struct Fact: Identifiable {
         var id: String
@@ -50,10 +30,8 @@ struct StatsOverview: View {
             let companies: [Company] = e.state.companies.filter { (c: Company) -> Bool in c.isOpenOrClosed }
             PhonePageScroll(spacing: Theme.Space.xl) {
                 facts(e)
-                if !companies.isEmpty {
-                    profits(e, companies)
-                    overTime(e, companies)
-                }
+                if !companies.isEmpty { profits(e, companies) }
+                more(e)
             }
             .accessibilityIdentifier("stats-overview")
         }
@@ -84,6 +62,35 @@ struct StatsOverview: View {
         }
     }
 
+    private func more(_ e: GameEngine) -> some View {
+        LedgerSection("More") {
+            VStack(spacing: 0) {
+                NavigationLink {
+                    ReportsContent(engine: e).appScreen(title: "Reports")
+                } label: {
+                    LedgerRow(leading: .glyph(Glyph.reports), title: "Reports", chevron: true, density: .compact, identifier: "stats-reports")
+                }
+                .buttonStyle(AcctPressStyle())
+                Hairline()
+                NavigationLink {
+                    ActivityView().appScreen(title: "Where the money went")
+                } label: {
+                    LedgerRow(leading: .glyph(Glyph.list), title: "Where the money went", chevron: true, density: .compact, identifier: "stats-money")
+                }
+                .buttonStyle(AcctPressStyle())
+                if Gates.reviewOpen(e.state) {
+                    Hairline()
+                    NavigationLink {
+                        AnnualReportsScreen()
+                    } label: {
+                        LedgerRow(leading: .glyph(Glyph.reports), title: "Annual reports", chevron: true, density: .compact, identifier: "stats-annual")
+                    }
+                    .buttonStyle(AcctPressStyle())
+                }
+            }
+        }
+    }
+
     private func profits(_ e: GameEngine, _ companies: [Company]) -> some View {
         LedgerSection("Profit by company") {
             VStack(spacing: 0) {
@@ -98,36 +105,5 @@ struct StatsOverview: View {
             }
         }
         .accessibilityIdentifier("stats-profit")
-    }
-
-    private func overTime(_ e: GameEngine, _ companies: [Company]) -> some View {
-        let co: Company = companies.first(where: { (c: Company) -> Bool in c.id == companyID }) ?? companies[0]
-        let h: CompanyHealth = store.memo("coHealth\(co.id)") { $0.companyHealth(co) } ?? e.companyHealth(co)
-        let rev: [Double] = Array(h.revenueSeries.suffix(months))
-        let prof: [Double] = Array(h.profitSeries.suffix(months))
-        return LedgerSection(title: "By month", trailing: {
-            HStack(spacing: Theme.Space.m) {
-                if companies.count > 1 {
-                    Menu {
-                        ForEach(companies) { (c: Company) in
-                            Button(c.name) { Haptics.choose(); companyID = c.id }
-                        }
-                    } label: { Text(co.name).textStyle(.caption, tint: Theme.accent).lineLimit(1).frame(minHeight: 44) }
-                        .accessibilityIdentifier("stats-chart-company")
-                }
-                Menu {
-                    ForEach([6, 12, 24], id: \.self) { (m: Int) in
-                        Button(m == 6 ? "6 months" : (m == 12 ? "1 year" : "2 years")) { Haptics.choose(); months = m }
-                    }
-                } label: { Text(months == 6 ? "6 months" : (months == 12 ? "1 year" : "2 years")).textStyle(.caption, tint: Theme.accent).frame(minHeight: 44) }
-                    .accessibilityIdentifier("stats-chart-span")
-            }
-        }, content: {
-            ChartFrame(key: [("Revenue", Theme.accent), ("Profit", Theme.gain)], height: 120, isEmpty: rev.count < 2,
-                       emptyText: "The chart starts after the first full month.") {
-                RevenueProfitChart(revenue: rev, profit: prof, format: { (v: Double) -> String in store.short(v, in: co) }, height: 120)
-            }
-        })
-        .accessibilityIdentifier("stats-by-month")
     }
 }

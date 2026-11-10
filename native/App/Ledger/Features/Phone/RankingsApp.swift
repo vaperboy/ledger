@@ -7,25 +7,10 @@ import Simulation
 
 struct RankingsApp: View {
     @EnvironmentObject var store: GameStore
-    enum Tab: String, CaseIterable, Hashable { case boards = "Leaderboards", fame = "Hall of Fame" }
-    @State private var tab: Tab = .boards
 
     var body: some View {
         Group {
-            if store.engine != nil {
-                VStack(spacing: 0) {
-                    SegmentedPill(items: Tab.allCases, title: { (t: Tab) -> String in t.rawValue }, selection: $tab,
-                                  identifier: { (t: Tab) -> String in "rankings-tab-\(t.rawValue)" })
-                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xs)
-                        .frame(maxWidth: 760).frame(maxWidth: .infinity)
-                    switch tab {
-                    case .boards: RankingsBoards()
-                    case .fame: HallOfFameView()
-                    }
-                }
-            } else {
-                Color.clear
-            }
+            if store.engine != nil { RankingsBoards() } else { Color.clear }
         }
         .appScreen(title: "Rankings", subtitle: PhoneApp.rankings.subtitle)
         .accessibilityIdentifier("rankings-app")
@@ -64,6 +49,7 @@ struct RankingsBoards: View {
                     Text(kind == .netWorth ? "Net worth counts companies you cannot sell in a day for less."
                                            : "Trading result is what you made on the exchange: shares sold and shares still held, fees included.")
                         .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    RankingRecords()
                 } else {
                     ProgressView().tint(P.inkSoft).frame(maxWidth: .infinity).padding(.top, Theme.Space.xl)
                 }

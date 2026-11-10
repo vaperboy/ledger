@@ -171,7 +171,6 @@ public enum Awards {
 
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         CompanySale.weekly(&s, data: data, context: fc)
-        RivalBids.weekly(&s, data: data, context: fc)
         yearly(&s, data: data, context: fc)
         RichList.monthly(&s, data: data, context: fc)
         Trophies.check(&s, data: data, context: fc)

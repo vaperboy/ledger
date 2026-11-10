@@ -64,8 +64,6 @@ public enum Press {
     }
 
     static let questions: [(cond: (GameState) -> Bool, q: String, answers: [(label: String, key: String, quote: String)])] = [
-        ({ s in s.companies.filter { $0.status == .open }.count >= 1 && s.rest["nem28"] != nil }, "A rival owner says you will not last. What do you say to that?",
-         [("Let the results speak", "trust", "We keep our heads down and do good work. Results speak."), ("We will be number one", "bold", "By this time next year, we will be the ones they chase."), ("Our people are why we last", "care", "Our people are the reason we will be here in twenty years.")]),
         ({ s in s.companies.contains { $0.status == .open && $0.monthlyHistory.suffix(3).reduce(0) { $0 + $1.profit } < 0 } }, "One of your companies is losing money. What went wrong?",
          [("Admit the mistakes", "trust", "We got some things wrong, and we are fixing them."), ("It is an investment", "bold", "Every big business loses money on the way up."), ("We will not cut jobs", "care", "We will turn it around without laying people off.")]),
         ({ s in s.companies.filter { $0.status == .open }.count >= 2 }, "You have grown fast. What is next?",

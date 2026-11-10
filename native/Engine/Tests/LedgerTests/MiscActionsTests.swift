@@ -12,8 +12,6 @@ final class MiscActionsTests: XCTestCase {
         XCTAssertEqual(e.renameCompany(companyID: id, to: "Blue Door Cafe"), .ok)
         XCTAssertEqual(e.state.company(id)?.name, "Blue Door Cafe")
         XCTAssertEqual(e.closeCompany(companyID: id, weeks: 2), .notOpen, "a company not yet open cannot be closed")
-        e.setCreditCheck(companyID: id, on: true)
-        XCTAssertEqual(e.state.company(id)?.value("flags")["ccheck"].double, 1)
         XCTAssertTrue(e.windUpCompany(companyID: id))
         XCTAssertEqual(e.state.company(id)?.status, .sold)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)

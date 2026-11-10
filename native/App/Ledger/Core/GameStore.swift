@@ -727,7 +727,7 @@ final class GameStore: ObservableObject {
         if var e = engine, e.noteVisit(app: key) { engine = e }
     }
 
-    func openBank(_ account: BankAccountID, tab: BankTab = .account, applyLoan: Double? = nil) {
+    func openBank(_ account: BankAccountID, tab: BankTab = .loans, applyLoan: Double? = nil) {
         openApp(.bank, request: .bank(BankRequest(account: account, tab: tab, applyLoan: applyLoan)))
     }
 
@@ -808,7 +808,7 @@ final class GameStore: ObservableObject {
             let short: Double = max(0, -(engine?.state.cash ?? 0))
             openBank(.personal, tab: .loans, applyLoan: short > 0 ? (short / 100).rounded(.up) * 100 : nil)
         case .openInvest: openMarket(tab: .invest)
-        case .openTax: openBank(.personal, tab: .bills)
+        case .openTax: openBank(.personal, tab: .statements)
         case .newCompany: push(.newCompany)
         }
     }

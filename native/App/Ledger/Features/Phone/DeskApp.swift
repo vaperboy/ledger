@@ -269,3 +269,18 @@ struct WeeklyPlanCard: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+struct EffectArrow: View {
+    var effect: Int
+    var size: CGFloat = 16
+
+    var body: some View {
+        if effect == 0 {
+            Color.clear.frame(width: size, height: size)
+        } else {
+            GlyphView(glyph: effect > 0 ? Glyph.moveUp : Glyph.moveDown, size: size, weight: 1.8, tint: effect > 0 ? Theme.gain : Theme.loss)
+                .accessibilityElement()
+                .accessibilityLabel(effect > 0 ? "Good for you" : "Against you")
+        }
+    }
+}

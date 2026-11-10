@@ -262,7 +262,6 @@ public enum VolumeContracts {
         let tk = Pricing.ticket(co, bd, w)
         let vr = w.country(co).usesSalesTax ? 0 : Vat.rate(co, bd, w)
         let bs = bd.businessShare, cs = 1 - bs
-        let careful = co.value("flags")["ccheck"].bool
         let slump = s.economy.demand < 0.97
         var remaining = units
         for c in list {
@@ -287,7 +286,7 @@ public enum VolumeContracts {
                 Payments.companyPays(&s, companyID: co.id, amount: cashList, category: nil)
                 let reliability = c["cr"].isNull ? 0.8 : c["cr"].double
                 var h = HashedRandom("\(s.seed):vctp:\(s.week):\(c["id"].int)")
-                let odds = (0.004 + 0.03 * (1 - reliability)) * (1 + Double(pay) / 8) * (slump ? 2 : 1) * (careful ? 0.3 : 1)
+                let odds = (0.004 + 0.03 * (1 - reliability)) * (1 + Double(pay) / 8) * (slump ? 2 : 1)
                 var r = Receivable(amount: jsRound(cashNet), dueWeek: s.week + pay, willDefault: h.next() < odds)
                 r.set("ct", c["id"].int)
                 var recv = s.companies[i].receivables

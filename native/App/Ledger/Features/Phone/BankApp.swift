@@ -4,12 +4,12 @@ import Countries
 import Simulation
 
 enum BankTab: String, CaseIterable, Hashable {
-    case account = "Account", loans = "Loans", deposits = "Deposits", bills = "Bills", statements = "Statements"
+    case loans = "Loans", statements = "Statements"
 }
 
 struct BankRequest: Equatable {
     var account: BankAccountID
-    var tab: BankTab = .account
+    var tab: BankTab = .loans
     var applyLoan: Double? = nil
 }
 
@@ -33,19 +33,13 @@ struct BankApp: View {
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
-    @State private var account: BankAccountID?
-    @State private var tab: BankTab = .account
+    @State private var tab: BankTab = .loans
 
     var body: some View {
         Group {
-            if let account {
-                BankAccountScreen(id: account, tab: $tab)
-            } else {
-                BankAccountsScreen { id, to in tab = to; account = id }
-            }
+            BankAccountScreen(id: .personal, tab: $tab)
         }
         .navigationBarBackButtonHidden(true)
-            .swipeBackEnabled(canStep: { account != nil }, step: { back() })
         .toolbar(.hidden, for: .navigationBar)
         .ledgerBackground()
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -63,27 +57,13 @@ struct BankApp: View {
     }
 
     private var header: some View {
-        let t: (String, String) = titles
-        let label: String = account == nil ? "Back to Phone" : "Back to accounts"
-        return AppHeader(title: t.0, subtitle: t.1, onBack: { back() }, backLabel: label)
-    }
-
-    private var titles: (String, String) {
-        guard let e = store.engine else { return ("Bank", "") }
-        guard let account else { return ("Bank", "Your money in one place") }
-        let d = e.bankAccount(account)
-        return (d?.name ?? "Account", d?.detail ?? "")
-    }
-
-    private func back() {
-        if account != nil { Motion.animate(Motion.quickAnimation) { account = nil } } else { dismiss() }
+        AppHeader(title: "Bank", subtitle: "", onBack: { dismiss() }, backLabel: "Back to Phone")
     }
 
     private func take() {
         guard let r = store.takeBankRequest() else { return }
         if let amount = r.applyLoan { store.pendingLoanApply = amount }
         tab = r.tab
-        account = r.account
     }
 }
 

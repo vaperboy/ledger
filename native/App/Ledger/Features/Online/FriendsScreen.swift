@@ -203,19 +203,7 @@ struct FriendsScreen: View {
 
     private func sendGift(_ item: ArtifactItem, to friend: PlayerProfile) {
         giftOpen = false
-        Task { @MainActor in
-            guard FriendPlayModel.shared.canGift else { failure = "You have already sent a gift today."; return }
-            guard await StoreSession.shared.giveAway(item) else { failure = StoreSession.shared.problem; return }
-            do {
-                try await online.service.sendGift(to: friend.id, item: item, fromName: online.profile?.displayName ?? "A friend")
-                FriendPlayModel.shared.markGift()
-                failure = nil
-                store.tell("Gift sent", "\(ArtifactCatalog.def(item.defID)?.name ?? "A piece") is on its way to \(friend.displayName).", tone: "good")
-            } catch {
-                await StoreSession.shared.receiveGift(item)
-                failure = (error as? LocalizedError)?.errorDescription ?? "The gift could not be sent. It is back in your cabinet."
-            }
-        }
+        Task { @MainActor in failure = await GiftSender.send(item, to: friend, online: online, store: store) }
     }
 
     private func companyLine(_ p: PlayerProfile) -> String {

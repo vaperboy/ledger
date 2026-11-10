@@ -354,7 +354,7 @@ public enum CompanyWeek {
                 let relationship = list.first { $0["id"].int == a.id }?["rel"].double ?? 0
                 let late = SupplyTerms.customerLateness(s, companyID: co.id, accountID: a.id, relationship: relationship)
                 var h = HashedRandom("\(s.seed):cbad:\(s.week):\(co.id):\(a.id)")
-                let odds = 0.012 * (s.economy.demand < 0.97 ? 2 : 1) * (co.value("flags")["ccheck"].bool ? 0.3 : 1)
+                let odds = 0.012 * (s.economy.demand < 0.97 ? 2 : 1)
                 let cashPart = a.rev * gRatio * cashShare, creditPart = a.rev * bRatio * bd.businessShare
                 acctCash += cashPart; acctCredit += creditPart
                 acctInvoices.append((a.id, jsRound(cashPart + creditPart), s.week + bd.paymentTermsWeeks + late, late, h.next() < odds))
@@ -394,7 +394,7 @@ public enum CompanyWeek {
         if bd.businessShare > 0 && rev > 0 {
             let extra = s.random.chance(0.18) ? s.random.int(1, 4) : 0
             let t = bd.paymentTermsWeeks + extra
-            let defaultOdds = 0.012 * (s.economy.demand < 0.97 ? 2 : 1) * (co.value("flags")["ccheck"].bool ? 0.3 : 1)
+            let defaultOdds = 0.012 * (s.economy.demand < 0.97 ? 2 : 1)
             var recv = co.receivables
             var trade = Receivable(amount: max(0, jsRound(grossB2B * bd.businessShare - acctCredit - heldCredit)), dueWeek: s.week + t, willDefault: s.random.chance(defaultOdds))
             if trade.amount > 0 {
@@ -404,11 +404,6 @@ public enum CompanyWeek {
             }
             recv.append(trade)
             co.receivables = recv
-            if co.value("flags")["ccheck"].bool {
-                s.companies[i] = co
-                Payments.companyPays(&s, companyID: co.id, amount: grossB2B * bd.businessShare * 0.004, category: "oth")
-                co = s.companies[i]
-            }
         }
         let goodsTerm = ctx.cogsIsAccounting ? nil : SupplyTerms.goodsTerm(s, co, data: data)
         var termOwed = 0.0

@@ -15,7 +15,6 @@ struct CompanyCustomers: View {
             mood
             segments
             accounts
-            creditCheck
             CompanyContracts(engine: engine, company: company)
         }
     }
@@ -116,24 +115,6 @@ struct CompanyCustomers: View {
                         EntityCard { AccountRow(engine: engine, company: company, account: a) }
                     }
                 }
-            }
-        }
-    }
-
-    @ViewBuilder private var creditCheck: some View {
-        if let t = engine.tradeInfo(companyID: company.id), t.businessShare > 0, company.status.isLive {
-            let on = company.value("flags")["ccheck"].bool
-            PageGroup(title: "Credit check", trailing: { Text(on ? "on" : "off").font(.system(size: 11)).foregroundStyle(on ? Theme.gain : Theme.ivoryFaint) }) {
-                Toggle(isOn: Binding(get: { on }, set: { v in
-                    _ = store.act { $0.setCreditCheck(companyID: company.id, on: v) }
-                    store.show(v ? "Buyers' credit is checked before you sell on account." : "Credit checks switched off.", tone: "n")
-                })) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Check buyers before selling on account").textStyle(.body)
-                        Text("Costs about 0.4% of business invoices; about 70% fewer go unpaid.")
-                            .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
-                    }
-                }.tint(Theme.gold)
             }
         }
     }

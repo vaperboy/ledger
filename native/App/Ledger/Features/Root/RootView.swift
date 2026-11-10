@@ -70,7 +70,7 @@ struct PhoneShell: View {
     }
 
     private var selection: Binding<String> {
-        Binding<String>(get: { store.tab.rawValue }, set: { raw in if let t = AppTab(rawValue: raw) { store.selectTab(t, resetRoot: false) } })
+        Binding<String>(get: { store.tab.rawValue }, set: { raw in if let t = AppTab(rawValue: raw) { store.selectTab(t) } })
     }
 
     var body: some View {

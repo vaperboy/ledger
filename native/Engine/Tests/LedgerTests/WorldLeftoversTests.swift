@@ -45,43 +45,6 @@ final class WorldLeftoversTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    func testRivalGroupPoachSupplierBidAndPriceFixingFine() throws {
-        var (e, id) = try engineWith(trade: "cafe", weeks: 10)
-        _ = ChainsTests.start(&e, "kiosk"); _ = ChainsTests.start(&e, "barber")
-        var gid = ""
-        e.update { s, data, _ in
-            RivalGroups.ensureCountry(&s, "UK", data: data)
-            gid = RivalGroups.groups(s, country: "UK").first!.id
-            s.rest["g27"]?["g"][gid]["types"] = .array(["cafe"]); s.rest["g27"]?["g"][gid]["cs"] = .array(["UK"])
-            s.rest["g27"]?["g"][gid]["cash"] = 900_000_000; s.rest["g27"]?["g"][gid]["rev"] = 900_000_000
-            s.rest["g27"]?["g"][gid]["strat"] = "acq"
-            if let i = s.companyIndex(id) {
-                s.companies[i].set("flags", .object(["coll": 1, "pw": .object(["rid": 0, "end": 99999])]))
-                s.companies[i].monthlyHistory = (0..<4).map { MonthRecord(monthIndex: $0, revenue: 400_000, profit: 90_000, cash: 1_000_000) }
-            }
-        }
-        var moved = 0
-        e.update { s, data, _ in
-            var h = HashedRandom("test")
-            for kind in ["buysup", "bid"] {
-                if let i = s.companyIndex(id) { s.companies[i].openedWeek = -200; s.companies[i].foundedWeek = -200 }
-                if RivalGroups.move(&s, gid, kind, &h, data: data) { moved += 1 }
-            }
-        }
-        XCTAssertGreaterThanOrEqual(moved, 1, "at least the supplier or the bid should go through")
-        if let bid = e.state.inbox.first(where: { $0.actionID == "g27bid" && $0.status == "open" }) {
-            XCTAssertTrue(e.answer(messageID: bid.id, option: 0))
-            XCTAssertEqual(e.state.company(id)?.status, .sold)
-            XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-            return
-        }
-        let cash0 = e.state.company(id)?.books.total["fine"] ?? 0
-        var days = 0
-        while (e.state.company(id)?.books.total["fine"] ?? 0) <= cash0, days < 6 * 52 * 7 { e.nextDay(); days += 1 }
-        XCTAssertGreaterThan(e.state.company(id)?.books.total["fine"] ?? 0, cash0, "a price understanding is fined")
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-    }
-
     func testWorldAroundYouAndKeyAccountProfile() throws {
         var (e, id) = try engineWith(trade: "cafe", weeks: 8)
         let img = e.worldImage()

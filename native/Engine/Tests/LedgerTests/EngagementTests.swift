@@ -43,7 +43,7 @@ final class EngagementTests: XCTestCase {
 
     func testPagesStayClosedInTheFirstSessionAndOpenLater() throws {
         var (e, id) = try game(open: false)
-        XCTAssertFalse(e.deskOpen); XCTAssertFalse(e.weeklyPlanOpen); XCTAssertFalse(e.rivalsOpen)
+        XCTAssertFalse(e.deskOpen); XCTAssertFalse(e.weeklyPlanOpen)
         XCTAssertFalse(e.deskWaiting(realDay: 20_000))
         e.update { s, _, ctx in
             if let i = s.companyIndex(id) { s.companies[i].openedWeek = s.week - 40 }
@@ -51,7 +51,7 @@ final class EngagementTests: XCTestCase {
         }
         XCTAssertEqual(e.state.rest["ldr"] != nil, e.deskOpen == false, "the ladder holds the pages back")
         Self.openPages(&e, id)
-        XCTAssertTrue(e.deskOpen); XCTAssertTrue(e.weeklyPlanOpen); XCTAssertTrue(e.rivalsOpen)
+        XCTAssertTrue(e.deskOpen); XCTAssertTrue(e.weeklyPlanOpen)
     }
 
     func testDeskDataIsWellFormedAndVariedByTrade() throws {
@@ -184,98 +184,6 @@ final class EngagementTests: XCTestCase {
         XCTAssertEqual(WeeklyFocus.strength(4), WeeklyFocus.effect * (1 + WeeklyFocus.perkStep), accuracy: 1e-12)
         XCTAssertEqual(WeeklyFocus.strength(400), WeeklyFocus.effect * (1 + WeeklyFocus.perkStep * Double(WeeklyFocus.perkTiers)), accuracy: 1e-12)
         XCTAssertLessThanOrEqual(WeeklyFocus.strength(400), 0.06)
-    }
-
-    func testRivalMovesAreDeterministicChangeTheRivalAndShowAsCards() throws {
-        var (e, id) = try game()
-        var tl1: JSONValue = .null
-        e.update { s, data, _ in
-            XCTAssertFalse(Rivals.rivals(s, for: s.company(id)!).isEmpty)
-            let snapshot = s
-            var changed = false
-            for _ in 0..<260 {
-                s.week += 1
-                let before = Rivals.rivals(s, for: s.company(id)!).map { "\($0.size)|\($0.priceFactor)|\($0.fortune)|\($0.marketing)" }
-                let n0 = s.rest["rvs"]?["tl"].array.count ?? 0
-                RivalStories.weekly(&s, data: data)
-                if (s.rest["rvs"]?["tl"].array.count ?? 0) > n0 {
-                    let after = Rivals.rivals(s, for: s.company(id)!).map { "\($0.size)|\($0.priceFactor)|\($0.fortune)|\($0.marketing)" }
-                    if before != after { changed = true }
-                }
-            }
-            XCTAssertTrue(changed, "a move really changes the rival's record")
-            tl1 = s.rest["rvs"]?["tl"] ?? .null
-            var t = snapshot
-            for _ in 0..<260 { t.week += 1; RivalStories.weekly(&t, data: data) }
-            XCTAssertEqual(t.rest["rvs"]?["tl"], tl1)
-        }
-        let moves = tl1.array
-        XCTAssertGreaterThan(moves.count, 2)
-        XCTAssertTrue(moves.allSatisfy { [-1, 1].contains($0["e"].int) && !$0["t"].string.isEmpty && !$0["rn"].string.isEmpty })
-        let markets = e.rivalMarkets()
-        let card = try XCTUnwrap(markets.first?.cards.first)
-        XCTAssertFalse(card.name.isEmpty); XCTAssertFalse(card.trade.isEmpty)
-        XCTAssertTrue(["Thriving", "Steady", "Under pressure", "Struggling"].contains(card.health))
-        XCTAssertTrue(["Well ahead of you", "A little ahead of you", "About level with you", "A little behind you", "Well behind you", "Too early to compare"].contains(card.standing), card.standing)
-        XCTAssertTrue([-1, 0, 1].contains(card.trend))
-    }
-
-    func testBuyingAStrugglingRivalMovesRealMoneyAndKeepsTheBooksBalanced() throws {
-        var (e, id) = try game()
-        var rid = 0
-        e.update { s, data, _ in
-            let co = s.company(id)!
-            let k = Rivals.key(co)
-            rid = Rivals.rivals(s, key: k)[0].id
-            Rivals.mutate(&s, key: k, id: rid) { $0["fort"] = .number(0.1) }
-            for _ in 0..<80 where !s.inbox.contains(where: { $0.actionID == RivalStories.buyAction }) { s.week += 1; RivalStories.offerSale(&s, data: data) }
-        }
-        let ask = try XCTUnwrap(e.openDecisions.first { $0.actionID == RivalStories.buyAction })
-        XCTAssertEqual(ask.options.count, 2)
-        XCTAssertLessThan(ask.options[0]["fx"]["cash"].double, 0, "the price is shown as a spend")
-        var liquid0 = 0.0, companies0 = 0
-        e.update { s, _, _ in liquid0 = Payments.liquid(s); companies0 = s.companies.count }
-        XCTAssertTrue(e.answer(messageID: ask.id, option: 0))
-        e.update { s, _, _ in
-            XCTAssertEqual(s.companies.count, companies0 + 1, "the rival is now a company of yours")
-            XCTAssertLessThan(Payments.liquid(s), liquid0)
-            XCTAssertFalse(Rivals.rivals(s, for: s.company(id)!).contains { $0.id == rid })
-            XCTAssertTrue(Ledger.gaps(s).isEmpty)
-        }
-    }
-
-    func testPriceWarChoiceHasRealConsequences() throws {
-        var (e, id) = try game()
-        e.update { s, data, _ in
-            let co = s.company(id)!
-            let k = Rivals.key(co)
-            Rivals.mutate(&s, key: k, id: Rivals.rivals(s, key: k)[0].id) { $0["size"] = 1.4 }
-            for _ in 0..<200 where !s.inbox.contains(where: { $0.actionID == RivalStories.warAction }) {
-                s.week += 1
-                let r = Rivals.rivals(s, key: k)[0]
-                RivalStories.offerWar(&s, co: s.company(id)!, rival: r, data: data)
-            }
-        }
-        let ask = try XCTUnwrap(e.openDecisions.first { $0.actionID == RivalStories.warAction })
-        XCTAssertEqual(ask.options.count, 3)
-        XCTAssertTrue(e.answer(messageID: ask.id, option: 0))
-        e.update { s, _, _ in
-            let camp = s.company(id)!.value("camp16")
-            XCTAssertEqual(camp["pct"].int, RivalStories.matchPercent)
-        }
-    }
-
-    func testRivalDecisionsAreRare() throws {
-        var (e, _) = try game()
-        e.update { s, data, _ in
-            var offers = 0
-            for _ in 0..<104 {
-                s.week += 1
-                RivalStories.weekly(&s, data: data)
-                for k in s.inbox.indices where s.inbox[k].status == "open" && RivalStories.handlesAnswer(s.inbox[k].actionID) { offers += 1; s.inbox[k].set("status", "done") }
-            }
-            XCTAssertLessThanOrEqual(offers, 104 / RivalStories.decisionGap + 1)
-        }
     }
 
     func testDeskReminderIsTheExistingIdleReminderAndOnlyOnceTheDeskIsOpen() throws {

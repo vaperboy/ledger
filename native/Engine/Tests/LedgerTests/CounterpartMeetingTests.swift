@@ -12,22 +12,6 @@ final class CounterpartMeetingTests: XCTestCase {
         return (e, id)
     }
 
-    private func addRival(_ e: inout GameEngine, _ id: Int) -> Int {
-        var rid = 0
-        e.update { s, _, _ in
-            let co = s.company(id)!
-            let k = Rivals.key(co)
-            var mk = s.rest["mk"] ?? .object([:])
-            var m = mk[k].isNull ? JSONValue.object([:]) : mk[k]
-            var riv = m["riv"].array
-            if riv.isEmpty { riv = [.object(["id": 41, "name": "Rival Cafe", "owner": "R. Owner", "size": 1.0, "rel": 30, "known": true])] }
-            riv[0]["meet"] = .number(-99)
-            rid = riv[0]["id"].int
-            m["riv"] = .array(riv); mk[k] = m; s.rest["mk"] = mk
-        }
-        return rid
-    }
-
     private func setWeek(_ e: inout GameEngine, _ delta: Int) { e.update { s, _, _ in s.week += delta } }
 
     func testSupplierLunch() throws {
@@ -57,38 +41,6 @@ final class CounterpartMeetingTests: XCTestCase {
         XCTAssertEqual(e.lunchWithSupplier(vendorID: "V-UK-3"), .cash)
         XCTAssertEqual(e.state.cash, cash)
         XCTAssertNil(e.state.rest["vr"]?["V-UK-3"]["meet"].isNull == false ? 1 : nil)
-    }
-
-    func testRivalLunch() throws {
-        var (e, id) = try game()
-        let rid = addRival(&e, id)
-        let co = try XCTUnwrap(e.state.company(id))
-        let before = try XCTUnwrap(Rivals.rivals(e.state, for: co).first { $0.id == rid }).relationship
-        let cost = e.homeCurrency.scaledPrice(4000)
-        let cash0 = e.state.cash
-        let wk = e.state.week
-        XCTAssertEqual(e.meetRival(companyID: id, rivalID: rid), .ok)
-        XCTAssertEqual(cash0 - e.state.cash, jsRound(cost), accuracy: 0.5)
-        var h = HashedRandom("\(e.state.seed):lunch:\(wk):\(rid)")
-        let gain = 4 + (h.next() * 6).rounded(.down)
-        let after = try XCTUnwrap(Rivals.rivals(e.state, for: co).first { $0.id == rid })
-        XCTAssertEqual(after.relationship, min(100, min(100, before + gain) + 4))
-        XCTAssertEqual(after.memory.first?.text, "Had lunch with you.")
-        XCTAssertEqual(after.memory.first?.change, 4)
-        XCTAssertEqual(e.meetRival(companyID: id, rivalID: rid), .wait)
-        setWeek(&e, 3); XCTAssertEqual(e.meetRival(companyID: id, rivalID: rid), .wait)
-        setWeek(&e, 1); XCTAssertEqual(e.meetRival(companyID: id, rivalID: rid), .ok)
-        XCTAssertEqual(e.meetRival(companyID: id, rivalID: 9999), .missing)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
-    func testRivalLunchNeedsCash() throws {
-        var (e, id) = try game()
-        let rid = addRival(&e, id)
-        e.update { s, _, _ in Ledger.move(&s, .me, -(s.cash - 100), why: "Spend") }
-        let cash = e.state.cash
-        XCTAssertEqual(e.meetRival(companyID: id, rivalID: rid), .cash)
-        XCTAssertEqual(e.state.cash, cash)
     }
 
     func testAccountDinner() throws {

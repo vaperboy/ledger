@@ -51,33 +51,6 @@ final class DemandWiringTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)?.num("ig", 1), 1, "without a hold the price follows the market")
     }
 
-    func testRivalThatClosedDoesNotComeBackAsTheSameBusiness() throws {
-        var (e, id) = try engineWithCafe(weeks: 6)
-        e.update { s, data, _ in
-            guard let co = s.company(id), let bd = data.catalog[co.type] else { return XCTFail("no company") }
-            let k = Rivals.key(co)
-            var mk = s.rest["mk"] ?? .object([:])
-            XCTAssertFalse(mk[k].isNull)
-            mk[k]["n"] = 1; mk[k]["riv"] = .array([])
-            s.rest["mk"] = mk
-            Rivals.ensure(&s, key: k, trade: bd, countryCode: co.countryCode, data: data)
-            let first = Rivals.rivals(s, key: k)
-            XCTAssertEqual(first.count, 1)
-            guard !first.isEmpty else { return }
-            Rivals.removeRival(&s, key: k, id: first[0].id)
-            XCTAssertTrue(Rivals.rivals(s, key: k).isEmpty)
-            Rivals.ensure(&s, key: k, trade: bd, countryCode: co.countryCode, data: data)
-            XCTAssertTrue(Rivals.rivals(s, key: k).isEmpty, "a vacated market is not refilled at once")
-            s.week = Int(s.rest["mk"]![k]["vac"].double) + 1
-            Rivals.ensure(&s, key: k, trade: bd, countryCode: co.countryCode, data: data)
-            let second = Rivals.rivals(s, key: k)
-            XCTAssertEqual(second.count, 1)
-            guard !second.isEmpty else { return }
-            XCTAssertNotEqual(second[0].name, first[0].name)
-            XCTAssertNotEqual(second[0].id, first[0].id)
-        }
-    }
-
     func testCampaignIsPaidForAndStoresNoCustomerPromise() throws {
         var (e, id) = try engineWithCafe(weeks: 2)
         XCTAssertEqual(e.setCampaign(companyID: id, channel: "flyer", weeklyBudget: 20_000), .done)

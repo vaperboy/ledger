@@ -54,8 +54,6 @@ struct MarketApp: View {
 
 enum MarketRoute: Hashable, Identifiable {
     case company(Int)
-    case rival(companyID: Int, rivalID: Int)
-    case group(String)
     case position(String)
     case buy(assetID: String?, owner: MarketUI.Owner?)
     case sell(String)
@@ -68,8 +66,6 @@ enum MarketRoute: Hashable, Identifiable {
     var id: String {
         switch self {
         case .company(let id): return "company.\(id)"
-        case .rival(let c, let r): return "rival.\(c).\(r)"
-        case .group(let id): return "group.\(id)"
         case .position(let id): return "position.\(id)"
         case .buy(let a, let o): return "buy.\(a ?? "").\(o?.id ?? "")"
         case .sell(let id): return "sell.\(id)"
@@ -89,8 +85,6 @@ struct MarketDestination: View {
         Group {
             switch route {
             case .company(let id): CompanyInMarketPage(companyID: id)
-            case .rival(let c, let r): RivalProfilePage(companyID: c, rivalID: r)
-            case .group(let id): RivalGroupProfileView(groupID: id)
             case .position(let id): PositionPage(positionID: id)
             case .buy(let a, let o): MarketTradeFlow(side: .buy, assetID: a, owner: o, positionID: nil)
             case .sell(let id): MarketTradeFlow(side: .sell, assetID: nil, owner: nil, positionID: id)

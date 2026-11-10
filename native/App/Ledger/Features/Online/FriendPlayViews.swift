@@ -111,3 +111,19 @@ struct GiftChoices: View {
         .task { await StoreSession.shared.load() }
     }
 }
+
+@MainActor enum GiftSender {
+    static func send(_ item: ArtifactItem, to friend: PlayerProfile, online: OnlineSession, store: GameStore) async -> String? {
+        guard FriendPlayModel.shared.canGift else { return "You have already sent a gift today." }
+        guard await StoreSession.shared.giveAway(item) else { return StoreSession.shared.problem }
+        do {
+            try await online.service.sendGift(to: friend.id, item: item, fromName: online.profile?.displayName ?? "A friend")
+            FriendPlayModel.shared.markGift()
+            store.tell("Gift sent", "\(ArtifactCatalog.def(item.defID)?.name ?? "A piece") is on its way to \(friend.displayName).", tone: "good")
+            return nil
+        } catch {
+            await StoreSession.shared.receiveGift(item)
+            return (error as? LocalizedError)?.errorDescription ?? "The gift could not be sent. It is back in your cabinet."
+        }
+    }
+}

@@ -92,7 +92,7 @@ struct MarketOverviewPage: View {
 
     private func follow(_ t: MarketUI.Signal.Target) {
         switch t {
-        case .rival(let c, let r): open(.rival(companyID: c, rivalID: r))
+        case .rival(let c, _): open(.company(c))
         case .company(let id): open(.company(id))
         case .asset(let id): open(.buy(assetID: id, owner: nil))
         case .country(let code): open(.country(code))

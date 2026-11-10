@@ -56,39 +56,6 @@ final class MarketEventsTests: XCTestCase {
         XCTAssertEqual(ev.first?.tone, "bad")
     }
 
-    func testRivalForSaleAndLostShare() throws {
-        var (e, id) = try engineWithCafe()
-        var key = ""
-        e.update { s, data, _ in
-            key = Rivals.key(s.company(id)!)
-            s.week += MarketEvents.dedupeWeeks
-            var mk0 = s.rest["mk"]!
-            mk0[key]["riv"] = .array(mk0[key]["riv"].array.map { var r = $0; r["listed"] = .bool(false); return r })
-            s.rest["mk"] = mk0
-            MarketEvents.weekly(&s, data: data)
-            var mk = s.rest["mk"]!
-            var riv = mk[key]["riv"].array
-            XCTAssertFalse(riv.isEmpty)
-            riv[0]["listed"] = .bool(true)
-            mk[key]["riv"] = .array(riv)
-            s.rest["mk"] = mk
-            s.week += 1
-            MarketEvents.weekly(&s, data: data)
-            s.week += 1
-            let rid = String(riv[0]["id"].int)
-            var m = s.rest["mev"]!
-            m["seen"]["share"][rid] = .number(m["seen"]["share"][rid].double + 0.05)
-            s.rest["mev"] = m
-            MarketEvents.weekly(&s, data: data)
-        }
-        let k = kinds(e)
-        XCTAssertTrue(k.contains(.acquisitionOpportunity))
-        XCTAssertTrue(k.contains(.competitorLostShare))
-        let lost = e.marketEvents(limit: 100).first { $0.kind == .competitorLostShare }
-        XCTAssertEqual(lost?.tone, "good")
-        XCTAssertLessThan(lost?.amount ?? 0, -0.01)
-    }
-
     func testRecognitionCarriesEmployeeID() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
         e.update { s, _, _ in
@@ -179,16 +146,5 @@ final class MarketEventsTests: XCTestCase {
         var got = false
         for _ in 0..<14 { t.nextDay(); if let p = t.largestPaymentToday(companyID: tid) { XCTAssertGreaterThan(p.amount, 0); got = true } }
         XCTAssertTrue(got)
-    }
-
-    func testMarketTrendShape() throws {
-        let (e, id) = try engineWithCafe(weeks: 8)
-        let t = e.marketTrend(companyID: id)
-        XCTAssertEqual(t.points.count, 30)
-        XCTAssertTrue(t.points.allSatisfy { $0.isFinite && $0 > 0.5 && $0 < 1.5 })
-        let key = Rivals.key(try XCTUnwrap(e.state.company(id)))
-        XCTAssertEqual(t.points.last ?? 0, e.state.rest["mk"]?[key]["pi"].double ?? -1, accuracy: 0.05)
-        XCTAssertTrue(t.priceIndexChangeThisMonth.isFinite)
-        XCTAssertEqual(e.marketTrend(companyID: 123456).points.count, 0)
     }
 }

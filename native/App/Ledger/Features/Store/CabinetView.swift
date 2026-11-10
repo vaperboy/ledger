@@ -4,21 +4,21 @@ import Simulation
 
 struct CabinetView: View {
     private let session = StoreSession.shared
-    @State private var selling: ArtifactItem?
+    @State private var detail: ArtifactItem?
 
     var body: some View {
         let cabinet: Cabinet = session.state.cabinet
         PhonePageScroll(spacing: Theme.Space.l) {
+            storage(cabinet)
             collections(cabinet)
-            pieces(cabinet)
         }
-        .appScreen(title: "Artifacts", subtitle: "Pieces and collections")
+        .appScreen(title: "Artifacts", subtitle: "What you own")
         .task { await session.load() }
-        .centerSheet(item: $selling, title: "Sell a piece") { (item: ArtifactItem) in PieceSaleCard(item: item) }
+        .centerSheet(item: $detail, title: "") { (item: ArtifactItem) in ArtifactDetailCard(item: item, onDone: { detail = nil }) }
     }
 
     private func collections(_ cabinet: Cabinet) -> some View {
-        OnlineGroup(title: "Collections", footer: "Own at least one piece of every artifact in a collection to receive its cosmetic, once.") {
+        OnlineGroup(title: "Collections", footer: "Own every artifact in a collection to receive its cosmetic, once.") {
             ForEach(Array(ArtifactCatalog.collections.enumerated()), id: \.element.id) { (i: Int, col: ArtifactCollection) in
                 if i > 0 { Hairline() }
                 let p = cabinet.progress(col)
@@ -35,11 +35,6 @@ struct CabinetView: View {
                         }
                     }
                     ProgressView(value: Double(p.have), total: Double(p.total)).tint(done ? Theme.gain : Theme.accent)
-                    Text(col.blurb + " Reward: " + (GoldCosmetics.cosmetic(col.rewardID)?.item.title ?? "a cosmetic") + ".").textStyle(.caption)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(col.members.map { (id: String) -> String in
-                        (cabinet.owns(id) ? "Have " : "Missing ") + (ArtifactCatalog.def(id)?.name ?? id)
-                    }.joined(separator: ", ")).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.vertical, Theme.Space.s)
                 .accessibilityElement(children: .combine)
@@ -47,45 +42,175 @@ struct CabinetView: View {
         }
     }
 
-    @ViewBuilder private func pieces(_ cabinet: Cabinet) -> some View {
-        let canSell: Bool = StoreGate.access(countryCode: nil) != .hidden
-        OnlineGroup(title: "Your artifacts and cards", footer: cabinet.items.isEmpty ? "Artifacts and cards come from boxes, the Season Pass, levelling and auctions." : (canSell ? "Tap a piece to sell it at once or in the Auctions app. Cash goes to your personal account. Wear cards in Customise." : "")) {
-            if cabinet.items.isEmpty {
-                Text("Nothing here yet.").textStyle(.body, tint: Theme.inkSoft).frame(minHeight: 52, alignment: .leading)
+    @ViewBuilder private func storage(_ cabinet: Cabinet) -> some View {
+        let items: [ArtifactItem] = cabinet.sorted
+        let rows: [[ArtifactItem]] = stride(from: 0, to: items.count, by: 3).map { (i: Int) -> [ArtifactItem] in Array(items[i..<min(i + 3, items.count)]) }
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("In storage").textStyle(.label, tint: Theme.inkFaint).padding(.leading, Theme.Space.xs)
+            if items.isEmpty {
+                Text("Nothing here yet. Artifacts and cards come from boxes, the Season Pass, levelling and auctions.")
+                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).padding(Theme.Space.m)
             } else {
-                ForEach(Array(cabinet.sorted.enumerated()), id: \.element.id) { (i: Int, item: ArtifactItem) in
-                    if i > 0 { Hairline() }
-                    if canSell {
-                        Button { selling = item } label: { ArtifactRow(item: item, trailing: "Sell") }.buttonStyle(PressableStyle())
-                    } else {
-                        ArtifactRow(item: item)
-                    }
+                VStack(spacing: Theme.Space.m) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { (_: Int, row: [ArtifactItem]) in shelf(row) }
                 }
+                .padding(Theme.Space.m)
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Color(hex: 0x1D1812)))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Color(hex: 0x4A3A28), lineWidth: 2))
+                .accessibilityIdentifier("artifact-storage")
             }
         }
     }
-}
 
-struct PieceSaleCard: View {
-    var item: ArtifactItem
-    private let session = StoreSession.shared
-    @State private var desk = PieceDesk()
-
-    var body: some View {
-        let rarity: BoxRarity = ArtifactCatalog.def(item.defID)?.rarity ?? .common
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            ArtifactRow(item: item)
-            line("Market value", session.money(AuctionMarket.suggestedStart(rarity, priceLevel: session.priceLevel)))
-            line("Sell now", session.money(session.quickPrice(item)))
-            Text(AuctionRules.quickSaleText + " An auction can pay more, but takes time and a " + String(AuctionRules.feePercent) + "% fee.")
-                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-            PieceActions(item: item, desk: desk)
-            if let why = session.problem { Text(why).textStyle(.body, tint: Theme.loss) }
+    private func shelf(_ row: [ArtifactItem]) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .bottom, spacing: Theme.Space.s) {
+                ForEach(row) { (item: ArtifactItem) in crate(item) }
+                ForEach(0..<(3 - row.count), id: \.self) { (_: Int) in Color.clear.frame(maxWidth: .infinity) }
+            }
+            LinearGradient(colors: [Color(hex: 0x6B5236), Color(hex: 0x3E2F1F)], startPoint: .top, endPoint: .bottom)
+                .frame(height: 8).clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
         }
     }
 
-    private func line(_ title: String, _ value: String) -> some View {
-        HStack { Text(title).textStyle(.body); Spacer(); Text(value).textStyle(.body, numeric: true) }
+    private func crate(_ item: ArtifactItem) -> some View {
+        let def: ArtifactDef? = ArtifactCatalog.def(item.defID)
+        let card: CardDef? = CardCatalog.def(forItem: item.id)
+        let rarity: BoxRarity = def?.rarity ?? card?.rarity ?? .common
+        return Button { Haptics.tap(); detail = item } label: {
+            VStack(spacing: Theme.Space.xs) {
+                ZStack {
+                    if let card { CardThumb(def: card, width: 84) }
+                    else if let def { ItemArt(artifact: def, size: 64) }
+                    else { RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset).frame(width: 64, height: 64) }
+                }
+                .frame(height: 70)
+                .shadow(color: rarity.tint.opacity(rarity == .common ? 0 : 0.5), radius: 8)
+                Text(card?.name ?? def?.name ?? "Artifact").textStyle(.caption, tint: Theme.ink).lineLimit(2).multilineTextAlignment(.center).minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, Theme.Space.xs)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel(card?.name ?? def?.name ?? "Artifact")
+        .accessibilityIdentifier("artifact-" + item.id)
+    }
+}
+
+struct ArtifactDetailCard: View {
+    var item: ArtifactItem
+    var onDone: () -> Void
+    @EnvironmentObject var store: GameStore
+    @Environment(OnlineSession.self) private var online
+    @ObservedObject private var season = SeasonModel.shared
+    @ObservedObject private var local = ProfileLocal.shared
+    private let session = StoreSession.shared
+    @State private var desk = PieceDesk()
+    @State private var mode: Mode = .info
+    @State private var friends: [PlayerProfile] = []
+    @State private var pending: PendingAction?
+    @State private var problem: String?
+
+    enum Mode { case info, gift, company }
+
+    var body: some View {
+        let def: ArtifactDef? = ArtifactCatalog.def(item.defID)
+        let card: CardDef? = CardCatalog.def(forItem: item.id)
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            switch mode {
+            case .info: info(def, card)
+            case .gift: giftList
+            case .company: companyList
+            }
+            if let problem { Text(problem).textStyle(.body, tint: Theme.loss) }
+        }
+        .confirmAction($pending)
+        .centerSheetTitle(card?.name ?? def?.name ?? "Artifact")
+    }
+
+    @ViewBuilder private func info(_ def: ArtifactDef?, _ card: CardDef?) -> some View {
+        HStack(spacing: Theme.Space.l) {
+            if let card { CardThumb(def: card, width: 110) } else if let def { ItemArt(artifact: def, size: 96) }
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                if let r = def?.rarity ?? card?.rarity { RarityTag(rarity: r) }
+                Text(ArtifactCatalog.label(item)).textStyle(.caption)
+                if item.isFirstOwner { Text("First owner").textStyle(.caption, tint: Theme.gold, weight: .semibold) }
+            }
+            Spacer(minLength: 0)
+        }
+        if let note = def?.note, !note.isEmpty { Text(note).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
+        useButtons(card)
+        if !item.isBound {
+            Button { Haptics.tap(); mode = .gift; Task { await loadFriends() } } label: { Text("Gift to a friend").frame(maxWidth: .infinity) }
+                .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
+                .accessibilityIdentifier("artifact-gift")
+        }
+        PieceActions(item: item, desk: desk).environment(\.popupClose, { onDone() })
+    }
+
+    @ViewBuilder private func useButtons(_ card: CardDef?) -> some View {
+        if let card, card.kind == .profile {
+            let on: Bool = season.pass.equipped[SeasonPass.profileCardKey] == item.id
+            Button { Haptics.success(); season.equipProfileCardAsking(on ? nil : item.id, pending: $pending) } label: { Text(on ? "Active on your profile" : "Set as profile active").frame(maxWidth: .infinity) }
+                .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
+                .accessibilityIdentifier("artifact-set-active")
+        } else if let card, card.kind == .company {
+            Button { Haptics.tap(); mode = .company } label: { Text("Use for a company").frame(maxWidth: .infinity) }
+                .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
+                .accessibilityIdentifier("artifact-use-company")
+        } else {
+            let at: Int? = local.showcase.firstIndex(of: item.id)
+            Button { toggleShowcase() } label: { Text(at == nil ? "Show on your profile" : "Remove from your profile").frame(maxWidth: .infinity) }
+                .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
+                .accessibilityIdentifier("artifact-showcase")
+        }
+    }
+
+    private func toggleShowcase() {
+        var list: [String] = local.showcase
+        if let i = list.firstIndex(of: item.id) { list.remove(at: i); problem = nil }
+        else if list.count < ProfileLocal.showcaseSlots { list.append(item.id); problem = nil }
+        else { Haptics.warning(); problem = "The profile showcase holds \(ProfileLocal.showcaseSlots). Take one off first."; return }
+        Haptics.choose()
+        local.setShowcase(list)
+    }
+
+    private var giftList: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(friends.isEmpty ? "You have no friends to send it to yet." : "Pick a friend. It leaves your storage.").textStyle(.caption)
+            ForEach(friends) { (f: PlayerProfile) in
+                ChoiceCard(title: f.displayName, selected: false) {
+                    Task {
+                        problem = await GiftSender.send(item, to: f, online: online, store: store)
+                        if problem == nil { onDone() }
+                    }
+                }
+            }
+            Button("Back") { mode = .info }.buttonStyle(TertiaryButtonStyle())
+        }
+    }
+
+    private var companyList: some View {
+        let list: [Company] = store.engine?.state.companies.filter { (c: Company) -> Bool in c.status.isLive } ?? []
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Which company wears it?").textStyle(.caption)
+            ForEach(list) { (c: Company) in
+                ChoiceCard(title: c.name, selected: false) {
+                    let cabinet: Cabinet = session.state.cabinet
+                    let id: String = item.id
+                    _ = store.act { (e: inout GameEngine) -> Void in _ = e.applyCompanyCard(itemID: id, companyID: c.id, cabinet: cabinet) }
+                    Haptics.success()
+                    onDone()
+                }
+            }
+            Button("Back") { mode = .info }.buttonStyle(TertiaryButtonStyle())
+        }
+    }
+
+    private func loadFriends() async {
+        guard online.isSignedIn else { friends = []; return }
+        friends = (try? await online.service.friends())?.friends ?? []
     }
 }
 

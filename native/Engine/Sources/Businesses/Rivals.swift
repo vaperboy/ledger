@@ -30,7 +30,7 @@ public enum Rivals {
     public static func rivals(_ s: GameState, for co: Company) -> [Rival] { rivals(s, key: key(co)) }
 
     public static func rivals(_ s: GameState, key: String) -> [Rival] {
-        (s.rest["mk"]?[key]["riv"].array ?? []).map { read($0, week: s.week) }
+        []
     }
 
     static func read(_ r: JSONValue, week: Int) -> Rival {
@@ -69,13 +69,13 @@ public enum Rivals {
     }
 
     public static func strengthFactor(_ m: JSONValue, week: Int) -> Double {
-        let riv = m["riv"].array
+        let riv: [JSONValue] = []
         guard !riv.isEmpty else { return 1 }
         let p = riv.reduce(0) { $0 + $1["size"].double * appeal($1, week: week) } / Double(riv.count)
         return clamp(1 - 0.25 * (p - 1), 0.88, 1.1)
     }
 
-    public static func vacant(_ m: JSONValue, week: Int) -> Bool { m["riv"].array.isEmpty && m["vac"].double > Double(week) }
+    public static func vacant(_ m: JSONValue, week: Int) -> Bool { false }
 
     public static func hiringPressure(_ s: GameState, _ co: Company) -> Double {
         guard let h = s.rest["mk"]?[key(co)]["hire"], !h.isNull, Double(s.week) < h["until"].double else { return 1 }
@@ -252,24 +252,6 @@ public enum Rivals {
     }
 
     public static func weekly(_ s: inout GameState, data: GameData) {
-        var byMarket: [String: [Int]] = [:]
-        for (i, c) in s.companies.enumerated() where c.status == .open && c.type != "club" { byMarket[key(c), default: []].append(i) }
-        for k in byMarket.keys.sorted() {
-            guard let idx = byMarket[k], let first = idx.first, let bd = data.catalog[s.companies[first].type] else { continue }
-            let newcomers = ensure(&s, key: k, trade: bd, countryCode: s.companies[first].countryCode, data: data)
-            if let nc = newcomers.first, (s.rest["mk"]?[k]["gone"].int ?? 0) > 0 {
-                let city = data.countries.city(s.companies[first].cityID, preferring: s.companies[first].countryCode)?.city.name ?? "town"
-                for i in idx { s.note("\(nc) opens in \(city), a new \(bd.name.lowercased()) competitor.", tone: "n", companyID: s.companies[i].id) }
-            }
-            RivalGroups.assign(&s, key: k, type: s.companies[first].type, countryCode: s.companies[first].countryCode, data: data)
-            if !noPrice.contains(bd.family) { behave(&s, key: k, idx: idx, bd: bd, data: data) }
-            remember(&s, key: k, idx: idx, data: data)
-        }
-        if s.week / 52 != (s.week - 1) / 52 { fortuneYear(&s, data: data) }
-        for i in s.companies.indices { priceWarWeek(&s, i, data: data) }
-        collusionWeek(&s, data: data)
-        if GameCalendar.isMonthEnd(week: s.week) { monthly(&s) }
-        RivalGroups.weekly(&s, data: data)
         WorldAround.weekly(&s, data: data)
         Threat.weekly(&s, data: data)
     }

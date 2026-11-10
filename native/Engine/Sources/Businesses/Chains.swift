@@ -500,7 +500,6 @@ public enum Chains {
         IntercompanySupply.weekly(&s, data: data)
         SupplyTerms.weekly(&s, data: data, context: fc)
         AccountSupply.weekly(&s)
-        RivalAbsorb.weekly(&s)
         ManagerModel.groupWeekly(&s, data: data, context: fc, marketing: marketing)
     }
 }

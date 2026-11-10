@@ -52,7 +52,6 @@ public enum Stories {
     public static func weekly(_ s: inout GameState, data: GameData) {
         for ci in s.companies.indices where s.companies[ci].status == .open { staffWeek(&s, ci, data: data) }
         quietDefaults(&s, data: data)
-        nemesisWeek(&s, data: data)
         if GameCalendar.year(week: s.week) != GameCalendar.year(week: s.week - 1) { top50(&s, data: data) }
     }
 
@@ -191,115 +190,6 @@ public enum Stories {
             let msg = s.inbox[k]
             answer(&s, message: msg, option: 2, data: data)
         }
-    }
-
-    public struct Nemesis: Equatable, Sendable {
-        public var owner: String, groupID: String, groupName: String, since: Int, wins: Int, losses: Int, bankrupt: Bool
-        public var log: [(week: Int, kind: String, text: String)]
-        public static func == (a: Nemesis, b: Nemesis) -> Bool { a.groupID == b.groupID && a.wins == b.wins && a.losses == b.losses && a.log.count == b.log.count }
-    }
-    public static func nemesis(_ s: GameState) -> Nemesis? {
-        guard let nm = s.rest["nem28"], !nm.isNull else { return nil }
-        let g = RivalGroups.group(s, id: nm["g"].string)
-        return Nemesis(owner: nm["n"].string, groupID: nm["g"].string, groupName: g?.name ?? "", since: nm["since"].int, wins: nm["w"].int, losses: nm["l"].int,
-                       bankrupt: g?.gone ?? !nm["gone"].isNull, log: nm["log"].array.map { ($0["w"].int, $0["k"].string, $0["t"].string) })
-    }
-
-    static let lossLines = ["Better luck next time, {me}.", "{city} is my town. You will learn.", "Nothing personal. Just business.", "You make it easy for me, {me}."]
-    static let winLines = ["Fine. You held on this time.", "Not bad, {me}. Not bad at all.", "Enjoy it while it lasts.", "I underestimated you. It will not happen twice.", "Well played. See you next round."]
-
-    static func pickNemesis(_ s: inout GameState, data: GameData) {
-        guard (s.rest["nem28"] ?? .null).isNull, s.week >= 10 else { return }
-        let live = s.companies.filter { $0.status == .open }
-        guard !live.isEmpty else { return }
-        let w = World(state: s, data: data)
-        let matters = live.count >= 3 || live.contains { c in data.catalog[c.type].map { MarketMap.noticed(s, c, $0, w) } ?? false }
-        guard matters else { return }
-        func score(_ g: RivalGroups.Group) -> Double {
-            Double(RivalGroups.members(s, groupID: g.id).count) * 3 + (live.contains { g.trades.contains($0.type) } ? 2 : 0)
-                + (["acq", "expand", "cost"].contains(g.strategy) ? 1.5 : 0) + log10(max(1e6, g.revenue)) / 4
-        }
-        let pool = RivalGroups.groups(s, country: s.homeCountryCode).filter { !$0.inTrouble }
-        guard let g = pool.max(by: { score($0) < score($1) }), score(g) >= 3 else { return }
-        s.rest["nem28"] = .object(["g": .string(g.id), "n": .string(g.owner), "since": .number(Double(s.week)), "w": 0, "l": 0, "log": .array([]), "pend": .array([]), "msg": -99, "seen": .number(Double(s.week))])
-        let co = live.first { g.trades.contains($0.type) } ?? live[0]
-        let trade = (data.catalog[co.type]?.name ?? "business").lowercased()
-        let city = w.city(co)?.name ?? "this town"
-        s.addMessage(kind: "info", from: "\(g.owner), \(g.name)", title: "A message from \(g.owner)",
-                     body: "\"I hear you are in \(trade) in \(city) now. Welcome to my market. Most newcomers do not last a year.\"", tone: "bad")
-        Press.add(&s, priority: 5, head: "\(g.owner) takes aim at \(s.player.name)", deck: "The owner of \(g.name) has a new rival.")
-    }
-
-    static func tally(_ s: inout GameState, _ kind: String, _ text: String, data: GameData) {
-        guard var nm = s.rest["nem28"], !nm.isNull else { return }
-        if kind == "w" { nm["w"] = .number(nm["w"].double + 1) } else if kind == "l" { nm["l"] = .number(nm["l"].double + 1) }
-        var log = nm["log"].array
-        log.insert(.object(["w": .number(Double(s.week)), "k": .string(kind), "t": .string(text)]), at: 0)
-        if log.count > 30 { log.removeLast(log.count - 30) }
-        nm["log"] = .array(log)
-        let owner = nm["n"].string, score = "\(nm["w"].int)\u{2013}\(nm["l"].int)"
-        let talk = kind != "d" && s.week - nm["msg"].int >= 6 && roll(s, "nem:\(nm["w"].int):\(nm["l"].int)") < 0.7
-        if talk { nm["msg"] = .number(Double(s.week)) }
-        s.rest["nem28"] = nm
-        guard kind != "d" else { return }
-        Press.add(&s, priority: 4, head: kind == "w" ? "\(s.player.name) gets the better of \(owner)" : "\(owner) wins another round against \(s.player.name)", deck: "\(text) The score: \(score).")
-        if talk {
-            let g = RivalGroups.group(s, id: nm["g"].string)
-            let w = World(state: s, data: data)
-            let city = s.companies.first { $0.status == .open }.flatMap { c in w.city(c)?.name } ?? "This town"
-            let lines = kind == "w" ? winLines : lossLines
-            let line = lines[min(lines.count - 1, Int(roll(s, "line") * Double(lines.count)))].replacingOccurrences(of: "{me}", with: first(s.player.name)).replacingOccurrences(of: "{city}", with: city)
-            s.addMessage(kind: "info", from: owner + (g.map { ", " + $0.name } ?? ""), title: kind == "w" ? "\(owner) is not pleased" : "\(owner) has something to say", body: "\"\(line)\"",
-                         tone: kind == "w" ? "good" : "bad")
-        }
-    }
-
-    static func nemesisWeek(_ s: inout GameState, data: GameData) {
-        pickNemesis(&s, data: data)
-        guard var nm = s.rest["nem28"], !nm.isNull, let g = RivalGroups.group(s, id: nm["g"].string) else { return }
-        var rounds: [(String, String)] = []
-        if g.gone && nm["gone"].isNull { nm["gone"] = .number(Double(s.week)); rounds.append(("w", "\(g.name) went bankrupt. You outlasted \(nm["n"].string).")) }
-        func byName(_ t: String) -> Company? { s.companies.first { !$0.name.isEmpty && t.contains($0.name) && ($0.status == .open || $0.status == .sold) } }
-        var pend = nm["pend"].array
-        let seen = nm["seen"].int
-        for mv in g.moves where mv.week > seen && mv.week <= s.week {
-            let t = mv.text
-            if t.hasPrefix("Hired ") { rounds.append(("l", "They hired your manager away.")) }
-            else if t.hasPrefix("Tried to hire "), let co = byName(t) { pend.append(.object(["k": "poach", "co": .number(Double(co.id)), "mgr": .number(Double(co.managerID ?? 0)), "w": .number(Double(s.week + 3))])) }
-            else if t.hasPrefix("Cut prices"), let co = s.companies.first(where: { $0.status == .open && g.trades.contains($0.type) }) {
-                pend.append(.object(["k": "uc", "co": .number(Double(co.id)), "r0": .number(co.lastWeekRevenue), "w": .number(Double(s.week + 8))]))
-            }
-            else if t.hasPrefix("Opened "), let co = byName(t) { pend.append(.object(["k": "beside", "co": .number(Double(co.id)), "r0": .number(co.lastWeekRevenue), "w": .number(Double(s.week + 26))])) }
-            else if t.hasPrefix("Bid "), let co = byName(t) { pend.append(.object(["k": "bid", "co": .number(Double(co.id)), "w": .number(Double(s.week + 4))])) }
-            else if t.hasPrefix("Bought the supplier") { rounds.append(("l", "They bought one of your suppliers.")) }
-            else if t.hasPrefix("Sold ") && t.hasSuffix(" to you") { rounds.append(("w", "You bought one of their sites.")) }
-            else if t.hasPrefix("Bought ") && t.hasSuffix(" from you") { rounds.append(("d", "You sold them a company.")) }
-            else if t.hasPrefix("Bought ") { rounds.append(("l", "They bought a business in your market before you did.")) }
-        }
-        var keep: [JSONValue] = []
-        for p in pend {
-            if s.week < p["w"].int { keep.append(p); continue }
-            guard let co = s.company(p["co"].int) else { continue }
-            let now = co.lastWeekRevenue
-            switch p["k"].string {
-            case "poach": if co.managerID != nil && co.managerID == p["mgr"].int { rounds.append(("w", "Your manager at \(co.name) turned them down.")) }
-            case "uc": let ok = now >= p["r0"].double * 0.93; rounds.append((ok ? "w" : "l", ok ? "\(co.name) kept its customers through their price cut." : "Their price cut took customers from \(co.name)."))
-            case "beside": let ok = now >= p["r0"].double * 0.95; rounds.append((ok ? "w" : "l", ok ? "\(co.name) is doing fine with them next door." : "Their new site next to \(co.name) hurts."))
-            case "bid": if co.status == .sold { rounds.append(("d", "You sold \(co.name) to them.")) } else { rounds.append(("w", "You turned down their bid for \(co.name).")) }
-            default: break
-            }
-        }
-        nm["pend"] = .array(keep)
-        nm["seen"] = .number(Double(s.week))
-        s.rest["nem28"] = nm
-        if GameCalendar.year(week: s.week) != GameCalendar.year(week: s.week - 1) {
-            let b = CompanyRanking.board(s, data: data, scope: .country, metric: .revenue)
-            if let me = b.you, let them = b.entries.first(where: { $0.groupID == g.id }) {
-                rounds.append(me.rank < them.rank ? ("w", "You finished the year ahead of \(g.name) (No. \(me.rank) against No. \(them.rank)).")
-                                                   : ("l", "\(g.name) finished the year ahead of you (No. \(them.rank) against No. \(me.rank))."))
-            }
-        }
-        for r in rounds { tally(&s, r.0, r.1, data: data) }
     }
 
     public struct TopFifty: Equatable, Sendable {

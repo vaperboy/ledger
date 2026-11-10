@@ -7,7 +7,7 @@ extension PhoneApp {
         case .market: return "The Market shows your customers and the wider economy, and the Exchange trades every stock, raw material and public company. Look here before you set prices or spend on a new idea."
         case .inbox: return "The Inbox holds every decision, offer and warning waiting for you. Answer here: the day cannot move on while a question is open."
         case .news: return "News tells you what is happening in the world, among other players and in government, with the weather alongside. Headlines can lift or hurt your sales, so read them before big choices."
-        case .competition: return "Competition follows your rivals, shows what customers say about you and them, and lets you open a site beside a rival."
+        case .competition: return "Reviews shows what customers say about your companies."
         case .atlas: return "Atlas sells insurance for your companies. Cover costs a little each month and pays out when something goes wrong."
         case .techPro: return "TechPro sells software, equipment and vehicles. Buy what makes a company faster or cheaper to run."
         case .airStay: return "AirStay lists offices, shops and storage to rent. Pick the place a company works from and see the rent before you commit."

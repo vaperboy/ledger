@@ -12,7 +12,7 @@ public enum Ambitions {
     public static let paths: [Path] = [
         Path(id: "titan", name: "Industrial titan", detail: "Build a chain of companies that feed each other: materials, production, transport, sales. Lower costs and steadier supply, but one weak link hurts the whole group."),
         Path(id: "dynasty", name: "Family dynasty", detail: "Own your companies outright, keep control, pay yourself well and never go bust. Slower, but nobody can take it from you."),
-        Path(id: "dominator", name: "Market dominator", detail: "Be the biggest name in your markets: win share, buy rivals, outlast price wars. Watch the competition authority."),
+        Path(id: "dominator", name: "Market dominator", detail: "Be the biggest name in your markets: win share, outlast price wars. Watch the competition authority."),
         Path(id: "champion", name: "Hidden champion", detail: "Small, excellent and very profitable. Few companies, the best reviews and margins nobody else gets."),
         Path(id: "financier", name: "Financier", detail: "Make money with money: public listings, investments and stakes. Leverage works both ways."),
         Path(id: "global", name: "Global group", detail: "Plant your flag in many countries. More markets, more currencies, more rules to follow."),
@@ -127,8 +127,8 @@ public enum Ambitions {
         case ("dynasty", 0): return [m("d1a", "Own all of two profitable companies", F.full, 2), m("d1b", "Your share of profit reaches \(ms(500e3)) a year", F.yourProfit, K(500e3)), m("d1c", "Three years without a bankruptcy", min(3, (Double(s.week) - max(0, s.stats.raw["bustW"]?.double ?? -999)) / 52), 3), m("d1d", "Keep at least two thirds of every company", b(F.control && !F.live.isEmpty).0, 1)]
         case ("dynasty", 1): return [m("d2a", "Own all of four profitable companies", F.full, 4), m("d2b", "Your share of profit reaches \(ms(5e6)) a year", F.yourProfit, K(5e6)), m("d2c", "Ten years in business", F.years, 10), m("d2d", "Net worth of \(ms(100e6))", F.nw, K(100e6))]
         case ("dynasty", _): let yrs = 25 + 10 * lg; return [m("d3a", "Your share of profit reaches \(ms(40e6 * f)) a year", F.yourProfit, K(40e6 * f)), m("d3b", "Net worth of \(ms(1e9 * f))", F.nw, K(1e9 * f)), m("d3c", "\(Int(yrs)) years in business", F.years, yrs), m("d3d", "Still two thirds of every company (four or more)", b(F.control && F.live.count >= 4).0, 1)]
-        case ("dominator", 0): return [m("m1a", "15% of one market", F.marketShare.best * 100, 15), m("m1b", "No. 1 in one market", F.marketShare.no1, 1), m("m1c", "Buy a rival", a["buy"].double, 1)]
-        case ("dominator", 1): return [m("m2a", "No. 1 in three markets", F.marketShare.no1, 3), m("m2b", "30% of one market", F.marketShare.best * 100, 30), m("m2c", "Win a price war", a["pw"].double, 1), m("m2d", "Buy three rivals", a["buy"].double, 3)]
+        case ("dominator", 0): return [m("m1a", "15% of one market", F.marketShare.best * 100, 15), m("m1b", "No. 1 in one market", F.marketShare.no1, 1), m("m1c", "No. 1 in two markets", F.marketShare.no1, 2)]
+        case ("dominator", 1): return [m("m2a", "No. 1 in three markets", F.marketShare.no1, 3), m("m2b", "30% of one market", F.marketShare.best * 100, 30), m("m2c", "Win a price war", a["pw"].double, 1), m("m2d", "No. 1 in four markets", F.marketShare.no1, 4)]
         case ("dominator", _): return [m("m3a", "No. 1 in \(Int(6 * f)) markets", F.marketShare.no1, 6 * f), m("m3b", "45% of one market", F.marketShare.best * 100, 45), m("m3c", f > 1 ? "No. 1 among groups in your industries" : "Top 3 among groups in your industries", F.rank("ind") <= (f > 1 ? 1 : 3) ? 1 : 0, 1)]
         case ("champion", 0): return [m("h1a", "A company rated 4.3 or better (50+ reviews)", F.rating(4.3, 50), 1), m("h1b", "A 20% profit margin over a year", F.marginBest(K(1e6)) * 100, 20), m("h1c", "Profit of \(ms(300000)) per person working for you", F.profitPerPerson, K(300000))]
         case ("champion", 1): return [m("h2a", "A company rated 4.6 or better (200+ reviews)", F.rating(4.6, 200), 1), m("h2b", "A 30% margin with sales over \(ms(10e6))", F.marginBest(K(10e6)) * 100, 30), m("h2c", "A company abroad", b(F.abroad).0, 1), m("h2d", "Profit of \(ms(700000)) per person", F.profitPerPerson, K(700000))]
@@ -148,7 +148,7 @@ public enum Ambitions {
         switch k {
         case "titan": return "Group trade: your suppliers work \([5, 8, 12][l])% cheaper for your own companies."
         case "dynasty": return "Loyalty: rivals find it harder to poach your managers, and lenders trust you (\([0.2, 0.35, 0.5][l]) points lower interest)."
-        case "dominator": return "Deal maker: rivals sell to you about \([5, 8, 12][l])% cheaper."
+        case "dominator": return "Deal maker."
         case "champion": return "Craft: quality settles \([2, 3, 4][l]) points higher in all your companies."
         case "financier": return "Credit: you borrow \([0.3, 0.5, 0.8][l]) points cheaper."
         default: return "Global reach: setting up abroad costs \([20, 35, 50][l])% less."

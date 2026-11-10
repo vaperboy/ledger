@@ -7,22 +7,6 @@ import Businesses
 import Simulation
 
 final class OwnershipExpansionTests: XCTestCase {
-    func testBuyingARivalMovesMoneyThroughTheLedger() throws {
-        var e = try ChainsTests.engine("UK")
-        let cafe = ChainsTests.start(&e, "cafe")
-        ChainsTests.play(&e, days: 56)
-        let co = try XCTUnwrap(e.state.company(cafe))
-        let rival = try XCTUnwrap(Rivals.rivals(e.state, for: co).first)
-        let price = e.rivalValue(companyID: cafe, rivalID: rival.id)
-        let cash0 = e.state.cash
-        guard case .ok(let id) = e.buyRival(companyID: cafe, rivalID: rival.id, price: price) else { return XCTFail("not bought") }
-        XCTAssertLessThan(e.state.cash, cash0 - price + 1, "the price leaves your account")
-        let bought = try XCTUnwrap(e.state.company(id))
-        XCTAssertEqual(bought.ownership, 100)
-        XCTAssertGreaterThan(bought.cash, 0, "start-up money was injected through Payments")
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        XCTAssertFalse(Rivals.rivals(e.state, for: try XCTUnwrap(e.state.company(cafe))).contains { $0.id == rival.id })
-    }
 
     func testExpandingAbroadCostsMoneyAndLinksTheSubsidiary() throws {
         var e = try ChainsTests.engine("UK")

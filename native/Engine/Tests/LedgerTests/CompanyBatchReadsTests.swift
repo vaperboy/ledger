@@ -54,28 +54,6 @@ final class CompanyBatchReadsTests: XCTestCase {
         return (e, ids)
     }
 
-    func testReviewReadsForOwnAndRivals() throws {
-        var (e, ids) = try engineWith(["cafe"])
-        guard let id = ids["cafe"] else { return XCTFail("start") }
-        for _ in 0..<(7 * 12) { e.nextDay() }
-        let co = e.state.company(id)!
-        let own = e.reviewSummary(co, limit: max(1, co.value("rv41").array.count))
-        XCTAssertEqual(own.count, Reviews.count(co))
-        XCTAssertEqual(own.histogram.reduce(0, +), co.value("rv41").array.count)
-        XCTAssertTrue(own.lines.allSatisfy { (1...5).contains($0.stars) })
-        let groups = e.reviewBoard()
-        let mine = groups.first { $0.rows.contains { $0.companyID == id } }
-        XCTAssertNotNil(mine, "the review board has a group for the company's market")
-        let rivalRows = (mine?.rows ?? []).filter { !$0.mine }
-        for r in rivalRows {
-            guard let rid = r.rivalID, let d = e.rivalDetail(companyID: id, rivalID: rid) else { XCTFail("rival detail"); continue }
-            XCTAssertEqual(d.reviewRating, r.rating, accuracy: 1e-9, "the board and the rival's sheet show the same rating")
-            XCTAssertEqual(d.reviewCount, r.count)
-            XCTAssertLessThanOrEqual(d.reviews.count, 5)
-            XCTAssertTrue(d.reviews.allSatisfy { (1...5).contains($0.stars) })
-        }
-    }
-
     func testEverySwitchableWayToSellStatesItsCost() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 11)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }

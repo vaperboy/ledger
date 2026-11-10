@@ -21,7 +21,6 @@ final class LaunchReadsTests: XCTestCase {
             _ = e.tradeName(co); _ = e.cityName(co)
             _ = e.decisionChain(companyID: co.id)
             _ = e.projectBoard(companyID: co.id)
-            if co.status == .open { _ = e.rivalRows(co) }
             _ = e.financeOverview(companyID: co.id)
             _ = e.supplierInputs(companyID: co.id)
             if let k = e.boardKey(companyID: co.id) { _ = e.boardOpenDecisions(key: k); _ = e.boardSeats(key: k); _ = e.boardIsActive(key: k) }
@@ -35,7 +34,7 @@ final class LaunchReadsTests: XCTestCase {
         _ = e.chainSummaries; _ = e.groupManagement(); _ = e.boardDecisionsWaiting
         _ = e.foundedStartups; _ = e.startupStakes; _ = e.startupPitchesOnOffer
         _ = e.privateEquityOffersOnTable; _ = e.privateEquityFunds; _ = e.bigMeetingOffer; _ = e.bigMeetingStakes; _ = e.groupStakes
-        _ = e.rivalGroupsAround(); _ = e.delegationLines()
+        _ = e.delegationLines()
         _ = e.financeOverview()
         _ = e.sinceYouLeft(lastSeenDay: e.lastSeenDay ?? 0)
         _ = e.careerStatus; _ = e.careerNextGoals; _ = e.careerCosmetics

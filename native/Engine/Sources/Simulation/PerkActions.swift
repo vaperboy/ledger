@@ -69,7 +69,6 @@ public extension GameEngine {
         return r
     }
 
-    var nemesis: Stories.Nemesis? { Stories.nemesis(state) }
     var topFifty: Stories.TopFifty? { Stories.topFifty(state) }
     func staffStory(companyID: Int, staffID: Int) -> [(week: Int, text: String)] { Stories.story(state, companyID: companyID, staffID: staffID) }
     var retirementHall: [(name: String, text: String, week: Int)] { Stories.hall(state) }

@@ -6,7 +6,6 @@ import Finance
 public enum Engagement {
     public static func weekly(_ s: inout GameState, data: GameData) {
         WeeklyFocus.weekly(&s, data: data)
-        RivalStories.weekly(&s, data: data)
         TradeAssociations.weekly(&s, data: data)
     }
 

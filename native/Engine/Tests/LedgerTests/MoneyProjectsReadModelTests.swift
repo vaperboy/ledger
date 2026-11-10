@@ -59,37 +59,4 @@ final class MoneyProjectsReadModelTests: XCTestCase {
         XCTAssertEqual(p.interestLeft, l.monthlyPayment * 60 - amount, accuracy: l.monthlyPayment)
         XCTAssertNil(e.loanPayoff(loanID: -1))
     }
-
-    func testAcquisitionPlanAgreesWithThePurchase() throws {
-        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 777)
-        var id = 0
-        e.update { s, data, ctx in
-            Ledger.move(&s, .me, 400_000_000, why: "Test funds")
-            if case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, data: data, context: ctx) { id = i }
-            let est = CompanySetup.estimate(tradeID: "cafe", cityID: s.player.cityID, size: 1, state: s, data: data)
-            _ = Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6 + 3_000_000)
-            _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
-        }
-        for _ in 0..<(8 * 7) { e.nextDay() }
-        let r = try XCTUnwrap(e.rivalRows(try XCTUnwrap(e.state.company(id))).first).rival
-        let price = (e.rivalValue(companyID: id, rivalID: r.id) * 1.5 / 1000).rounded() * 1000
-        let plan = try XCTUnwrap(e.acquisitionPlan(companyID: id, rivalID: r.id, price: price))
-        let merge = try XCTUnwrap(plan.choices.first { $0.kind == .merge })
-        XCTAssertEqual(merge.extraCost, e.absorbRivalExtraCost(how: .merge, price: price))
-        XCTAssertEqual(merge.cashNeeded, price + merge.extraCost)
-        let own = try XCTUnwrap(plan.choices.first { $0.kind == .own })
-        XCTAssertEqual(own.extraCost, e.rivalStartupMoney(companyID: id, rivalID: r.id))
-
-        var poor = e
-        poor.update { s, _, _ in
-            let target = own.cashNeeded - 1000
-            Ledger.move(&s, .me, target - s.cash, why: "Test")
-        }
-        let poorPlan = try XCTUnwrap(poor.acquisitionPlan(companyID: id, rivalID: r.id, price: price))
-        XCTAssertEqual(poorPlan.choices.first { $0.kind == .own }?.affordable, false)
-        XCTAssertEqual(poor.buyRival(companyID: id, rivalID: r.id, price: price), .notEnoughCash)
-
-        XCTAssertEqual(own.affordable, true)
-        guard case .ok = e.buyRival(companyID: id, rivalID: r.id, price: price) else { return XCTFail("the purchase should work") }
-    }
 }

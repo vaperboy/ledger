@@ -174,7 +174,6 @@ public extension GameEngine {
         return r
     }
 
-    mutating func setCreditCheck(companyID: Int, on: Bool) { setFlag(companyID, "ccheck", on) }
 
     mutating func setInflationHold(companyID: Int, hold: Bool) {
         update { s, _, _ in

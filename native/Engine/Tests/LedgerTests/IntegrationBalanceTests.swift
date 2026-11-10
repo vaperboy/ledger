@@ -44,34 +44,6 @@ final class IntegrationBalanceTests: XCTestCase {
         guard e.hasMarketAdvisor(companyID: id) else { throw XCTSkip("no staff to give the duty") }
     }
 
-    func testAddItemEstimateMatchesWhatTheDemandDoes() throws {
-        var (e, id) = try engine(weeks: 70)
-        try giveAdvisorDuty(&e, id)
-        let own: Bool = SalesItems.isService(try XCTUnwrap(e.data.catalog[try XCTUnwrap(e.state.company(id)).type]))
-        for svc in [own] {
-            let opt = try XCTUnwrap(e.newItemOptions(companyID: id, isService: svc).options.first)
-            let estimate = try XCTUnwrap(opt.profitChange)
-            XCTAssertGreaterThan(estimate, 0)
-            var s = e.state
-            let d = e.data
-            let i = s.companyIndex(id)!
-            let co0 = s.companies[i]
-            let bd = d.catalog[co0.type]!
-            let rivals = Rivals.rivals(s, for: co0).count
-            let category = svc != SalesItems.isService(bd)
-            let lift = MarketPressure.addedLift(co0, category: category, rivalCount: rivals)
-            XCTAssertEqual(lift, (category ? 0.05 : 0.02) / (1 + 0.25 * Double(rivals)), accuracy: 1e-12, "the documented figure")
-            let w0 = World(state: s, data: d)
-            let before = DemandModel.compute(co0, bd, w0).customers
-            s.companies[i].set("lift27", .array([.object(["w0": .number(Double(s.week - 20)), "f": .number(lift)])]))
-            let after = DemandModel.compute(s.companies[i], bd, World(state: s, data: d)).customers
-            let ticket = SalesItems.marketTicket(co0, bd, w0)
-            let cap = CapacityModel.compute(co0, bd, w0).capacity
-            let real = (min(after, cap) - min(before, cap)) * ticket * (1 - bd.costOfSales)
-            XCTAssertEqual(real, estimate, accuracy: max(1e-6, estimate * 0.03), "simulated weekly profit change \(real) vs estimate \(estimate)")
-        }
-    }
-
     func testEightWeekRunAfterAddingAnItemMatchesTheEstimate() throws {
         var (e, id) = try engine(weeks: 70)
         try giveAdvisorDuty(&e, id)
@@ -97,75 +69,6 @@ final class IntegrationBalanceTests: XCTestCase {
         XCTAssertGreaterThan(avg, 0)
         XCTAssertEqual(avg, estimate, accuracy: estimate * 0.3, "8-week run \(avg) vs estimate \(estimate)")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
-    func testAddingAnItemRampsTheLiftInAndKeepsIt() throws {
-        var (e, id) = try engine()
-        XCTAssertEqual(e.addSalesItem(companyID: id, name: "Test special", isService: false), .applied)
-        let co = e.state.company(id)!
-        let week = e.state.week
-        let f = MarketPressure.totalLift(co)
-        XCTAssertGreaterThan(f, 0)
-        XCTAssertEqual(MarketPressure.liftFactor(co, week: week), 1, accuracy: 1e-12)
-        XCTAssertEqual(MarketPressure.liftFactor(co, week: week + 2), 1 + f / 2, accuracy: 1e-12)
-        XCTAssertEqual(MarketPressure.liftFactor(co, week: week + 4), 1 + f, accuracy: 1e-12)
-        XCTAssertEqual(MarketPressure.liftFactor(co, week: week + 40), 1 + f, accuracy: 1e-12, "kept")
-        let (e2, id2) = try engine()
-        XCTAssertEqual(MarketPressure.demandMultiplier(e2.state.company(id2)!, week: e2.state.week + 9), 1)
-        for n in 0..<10 { e.addSalesItem(companyID: id, name: "Extra \(n)", isService: false) }
-        XCTAssertLessThanOrEqual(MarketPressure.totalLift(e.state.company(id)!), MarketPressure.liftCap + 1e-12)
-    }
-
-    private func stateBeforeALaunch(_ e: GameEngine, _ id: Int) throws -> (GameState, Int, String) {
-        var s = e.state
-        let d = e.data
-        let key = Rivals.key(s.company(id)!)
-        guard !(s.rest["mk"]?[key]["riv"].array ?? []).isEmpty else { throw XCTSkip("no rivals yet") }
-        let bd = d.catalog[s.company(id)!.type]!
-        for wk in (s.week + 1)...(s.week + 1500) {
-            s.week = wk
-            var probe = s
-            Rivals.behave(&probe, key: key, idx: [probe.companyIndex(id)!], bd: bd, data: d)
-            if MarketPressure.pressure(probe.company(id)!, week: wk, kind: .launch) > 0 { return (s, wk, key) }
-            s = probe
-        }
-        throw XCTSkip("no launch in 1500 weeks")
-    }
-
-    func testCompetitorLaunchTakesDemandThenFades() throws {
-        let (e, id) = try cafe()
-        let (s0, wk, key) = try stateBeforeALaunch(e, id)
-        let d = e.data
-        let bd = d.catalog[s0.company(id)!.type]!
-        var s = s0
-        Rivals.behave(&s, key: key, idx: [s.companyIndex(id)!], bd: bd, data: d)
-        let co = s.company(id)!
-        let p0 = MarketPressure.pressure(co, week: wk)
-        XCTAssertGreaterThan(p0, 0)
-        XCTAssertLessThan(MarketPressure.demandMultiplier(co, week: wk), 1)
-        var last = p0
-        for k in 1...5 {
-            let p = MarketPressure.pressure(co, week: wk + k)
-            XCTAssertLessThan(p, last)
-            last = p
-        }
-        XCTAssertEqual(MarketPressure.pressure(co, week: wk + 6), 0, accuracy: 1e-12)
-        XCTAssertEqual(MarketPressure.demandMultiplier(co, week: wk + 6), 1, accuracy: 1e-12)
-        let w = World(state: s, data: d)
-        var gone = s
-        gone.companies[gone.companyIndex(id)!].set("pr27", .null)
-        let withIt = Pricing.demandEffect(co, bd, w), without = Pricing.demandEffect(gone.company(id)!, bd, World(state: gone, data: d))
-        XCTAssertLessThan(withIt, without)
-        let ev = MarketEvents.events(s, limit: 5).first { $0.kind == .competitorLaunch }
-        XCTAssertFalse(ev?.consequence.isEmpty ?? true)
-        var amounts: [Double] = []
-        for level in [3.0, -3.0] {
-            var t = s0
-            t.companies[t.companyIndex(id)!].priceLevel = level
-            Rivals.behave(&t, key: key, idx: [t.companyIndex(id)!], bd: bd, data: d)
-            amounts.append(MarketPressure.pressure(t.company(id)!, week: wk, kind: .launch))
-        }
-        XCTAssertGreaterThan(amounts[0], amounts[1], "dearer than the rival: a bigger penalty")
     }
 
     func testRivalGroupEntryAddsCountryPressure() throws {
@@ -226,76 +129,6 @@ final class IntegrationBalanceTests: XCTestCase {
         let ev = e.marketEvents(limit: 5)
         XCTAssertEqual(ev.first?.consequence, "Sam signed it.")
         XCTAssertTrue(ev.last?.consequence.contains("inbox") ?? false)
-    }
-
-    func testAcknowledgingRecognitionLiftsMoodOnlyOnce() throws {
-        var (e, id) = try engine()
-        guard let pid = e.state.company(id)?.staff.first?.id else { throw XCTSkip("no staff") }
-        e.update { s, _, _ in MarketEvents.log(&s, .recognition, title: "Anna: 1 year with us", detail: "x", companyID: id, tone: "good", employeeID: pid) }
-        let ev = try XCTUnwrap(e.marketEvents(limit: 5).first)
-        XCTAssertFalse(ev.consequence.isEmpty)
-        XCTAssertFalse(ev.acknowledged)
-        let happyBefore = e.state.company(id)!.staff.first { $0.id == pid }!.happyUntilWeek
-        e.week()
-        XCTAssertEqual(e.state.company(id)!.staff.first { $0.id == pid }!.happyUntilWeek, happyBefore)
-        let notes = e.state.rest["rep"]?["ev"].array.count ?? 0
-        XCTAssertEqual(e.acknowledgeRecognition(eventID: ev.id), .applied)
-        let after = e.state.company(id)!.staff.first { $0.id == pid }!.happyUntilWeek
-        XCTAssertGreaterThanOrEqual(after, e.state.week + MarketEvents.thanksWeeks)
-        XCTAssertGreaterThan(e.state.rest["rep"]?["ev"].array.count ?? 0, notes, "logged")
-        XCTAssertTrue(e.marketEvents(limit: 50).first { $0.id == ev.id }!.acknowledged)
-        if case .refused = e.acknowledgeRecognition(eventID: ev.id) {} else { XCTFail("only once") }
-        if case .refused = e.acknowledgeRecognition(eventID: 9999) {} else { XCTFail("unknown event") }
-    }
-
-    private func marketWithStrongRivals(_ e: GameEngine, _ id: Int, size: Double, aggression: Double) throws -> (GameState, String) {
-        var s = e.state
-        let key = Rivals.key(s.company(id)!)
-        guard var mk = s.rest["mk"], !mk[key]["riv"].array.isEmpty else { throw XCTSkip("no rivals yet") }
-        var riv = mk[key]["riv"].array
-        for j in riv.indices { riv[j]["size"] = .number(size); riv[j]["fort"] = 1; riv[j]["camp16"] = .null; riv[j]["pm16"] = 1; riv[j]["ig16"] = 1; riv[j]["hold16"] = .bool(true) }
-        mk[key]["riv"] = .array(riv); mk[key]["aggr"] = .number(aggression); mk[key]["pi"] = 1; mk[key]["pil16"] = 1
-        s.rest["mk"] = mk
-        return (s, key)
-    }
-
-    private func play(_ s: inout GameState, key: String, id: Int, d: GameData, weeks: Int) {
-        let bd = d.catalog[s.company(id)!.type]!
-        for _ in 0..<weeks {
-            s.week += 1
-            Rivals.behave(&s, key: key, idx: [s.companyIndex(id)!], bd: bd, data: d)
-        }
-    }
-
-    func testRivalsCutBackWhenYouUndercutForTwoWeeks() throws {
-        let (e, id) = try cafe()
-        var (s, key) = try marketWithStrongRivals(e, id, size: 1.3, aggression: 0.9)
-        let d = e.data
-        s.companies[s.companyIndex(id)!].priceLevel = -3
-        play(&s, key: key, id: id, d: d, weeks: 1)
-        XCTAssertEqual(MarketPressure.pressure(s.company(id)!, week: s.week, kind: .response), 0, "one week of low prices is not enough")
-        play(&s, key: key, id: id, d: d, weeks: 2)
-        let co = s.company(id)!
-        XCTAssertGreaterThan(MarketPressure.pressure(co, week: s.week, kind: .response), 0, "a strong, aggressive rival fights back")
-        XCTAssertTrue(MarketEvents.events(s, limit: 20).contains { $0.kind == .priceResponse && !$0.consequence.isEmpty })
-        XCTAssertLessThan(Rivals.rivals(s, key: key)[0].priceFactor, 1.0001)
-        XCTAssertGreaterThan(co.value("mods").array.filter { $0["k"].string == "cogsup" }.count, 0)
-        XCTAssertEqual(MarketPressure.pressure(co, week: s.week + 9, kind: .response), 0, accuracy: 1e-12)
-    }
-
-    func testWeakRivalsIgnoreYouAndNearMarketPricesChangeNothing() throws {
-        let (e, id) = try cafe()
-        let d = e.data
-        var (weak, key) = try marketWithStrongRivals(e, id, size: 0.3, aggression: 0.1)
-        weak.companies[weak.companyIndex(id)!].priceLevel = -3
-        play(&weak, key: key, id: id, d: d, weeks: 6)
-        XCTAssertEqual(MarketPressure.pressure(weak.company(id)!, week: weak.week, kind: .response), 0)
-        XCTAssertFalse(MarketEvents.events(weak, limit: 50).contains { $0.kind == .priceResponse })
-        var (strong, key2) = try marketWithStrongRivals(e, id, size: 1.3, aggression: 0.9)
-        play(&strong, key: key2, id: id, d: d, weeks: 12)
-        XCTAssertEqual(MarketPressure.pressure(strong.company(id)!, week: strong.week, kind: .response), 0)
-        XCTAssertFalse(MarketEvents.events(strong, limit: 50).contains { $0.kind == .priceResponse })
-        XCTAssertTrue(strong.company(id)!.value("ucw").isNull, "no count is even kept")
     }
 
     func testBrandValueGrowsWithEachPartAndIsUsedInPrices() throws {

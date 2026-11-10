@@ -60,7 +60,7 @@ struct PopupGallery: View {
                     .font(.system(size: 16))
                 Hairline()
             }
-            Text("The seller's manager stays for a year. Two rivals are bidding.").font(.system(size: 15)).foregroundStyle(Theme.inkSoft)
+            Text("The seller's manager stays for a year. Two buyers are bidding.").font(.system(size: 15)).foregroundStyle(Theme.inkSoft)
         }
         .popupFooter {
             Button("Make an offer") { detail = false }.buttonStyle(PopupPrimaryCapsuleStyle(tone: .investment)).accessibilityIdentifier("gallery-offer")

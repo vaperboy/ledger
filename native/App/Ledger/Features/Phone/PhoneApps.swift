@@ -25,7 +25,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .techPro: return "TechPro"
         case .store: return "Store"
         case .auctions: return "Auctions"
-        case .competition: return "Competition"
+        case .competition: return "Reviews"
         case .rankings: return "Rankings"
         case .world: return "World"
         case .inbox: return "Inbox"
@@ -73,7 +73,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .techPro: return "Software, hardware, tools and vehicles"
         case .store: return "Gold, boxes and cosmetics"
         case .auctions: return "Bid on artifacts and cards, or sell your own"
-        case .competition: return "Rivals, reviews and how you stand against the field"
+        case .competition: return "What customers say about your companies"
         case .rankings: return "Leaderboards and the Hall of Fame"
         case .world: return "One president, one treasury, every country"
         case .inbox: return "Decisions, offers and warnings"
@@ -163,7 +163,6 @@ extension PhoneApp {
     func visibility(_ e: GameEngine) -> GateVisibility {
         if self == .desk { return e.deskOpen ? .open : .hidden }
         if self == .competition {
-            if e.rivalsOpen { return .open }
             return Gates.visibility(.reviews, e.state, data: e.data)
         }
         if self == .auctions {

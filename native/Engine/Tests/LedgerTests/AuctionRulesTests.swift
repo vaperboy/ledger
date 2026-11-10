@@ -48,7 +48,7 @@ final class AuctionRulesTests: XCTestCase {
         XCTAssertFalse(AuctionRules.extendedEnd(endsAt: end, extensions: 0, bidAt: end - 121).extended)
         let e = AuctionRules.extendedEnd(endsAt: end, extensions: 0, bidAt: end - 30)
         XCTAssertTrue(e.extended)
-        XCTAssertEqual(e.end, end - 30 + 120)
+        XCTAssertEqual(e.end, end + AuctionRules.bidExtension)
         XCTAssertFalse(AuctionRules.extendedEnd(endsAt: end, extensions: AuctionRules.maxExtensions, bidAt: end - 30).extended, "capped")
     }
 

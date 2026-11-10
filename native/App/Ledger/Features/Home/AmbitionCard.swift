@@ -9,7 +9,7 @@ struct AmbitionCard: View {
     private static let lines: [String: String] = [
         "titan": "Companies that supply each other; steadier costs.",
         "dynasty": "Own outright, keep control, never go bust.",
-        "dominator": "Be the biggest in your markets; buy rivals.",
+        "dominator": "Be the biggest in your markets.",
         "champion": "Few companies, excellent and very profitable.",
         "financier": "Make money with money: public listings, investments, stakes.",
         "global": "Companies in many countries.",
