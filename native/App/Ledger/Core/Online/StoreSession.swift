@@ -32,7 +32,6 @@ final class StoreSession {
         market = backend.auctions
     }
 
-    var isVisualOnly: Bool { store.isVisualOnly }
     var gold: Int { state.wallet.balance }
     var available: Int { state.wallet.available }
     var cash: Int { purse?()?.cash ?? 0 }
@@ -48,40 +47,32 @@ final class StoreSession {
 
     private func message(_ error: Error) -> String { (error as? LocalizedError)?.errorDescription ?? "That did not work. Try again." }
 
-    @discardableResult
-    func buyPack(_ pack: GoldPack) async -> Bool {
-        problem = nil
-        do { state = try await store.buyPack(pack.id); return true } catch { problem = message(error); return false }
-    }
-
-    @discardableResult
-    func buySeasonBundle() async -> Bool {
-        problem = nil
-        do { state = try await store.buySeasonBundle(); return true } catch { problem = message(error); return false }
-    }
-
-    @discardableResult
-    func buyBoxBundle(_ bundle: BoxBundle, paidBoxesAllowed: Bool) async -> Bool {
-        problem = nil
-        do { state = try await store.buyBoxBundle(bundle.id, paidBoxesAllowed: paidBoxesAllowed); return true } catch { problem = message(error); return false }
-    }
-
-    @discardableResult
-    func buyCosmetic(_ c: GoldCosmetic) async -> Bool {
+    func deliver(_ item: PurchaseItem, transactionID: String) async -> PurchaseDeliveryResult? {
         problem = nil
         do {
-            state = try await store.buyCosmetic(c.id, owned: SeasonModel.shared.pass.owned)
-            SeasonModel.shared.grantOwned(c.id)
-            return true
-        } catch { problem = message(error); return false }
+            let result: PurchaseDeliveryResult = try await store.deliver(item, transactionID: transactionID)
+            state = result.state
+            return result
+        } catch { problem = message(error); return nil }
     }
 
+    func revoke(transactionID: String) async { state = await store.revoke(transactionID: transactionID) }
+
     @discardableResult
-    func buyAvatar(_ d: AvatarDef) async -> Bool {
+    func buy(_ good: GoldGood, paidBoxesAllowed: Bool) async -> Bool {
         problem = nil
+        guard available >= good.price else { problem = StoreError.notEnoughGold(missing: good.price - available).errorDescription; return false }
         do {
-            state = try await store.buyAvatar(d.id, owned: AvatarModel.shared.owned)
-            AvatarModel.shared.grant(d.id)
+            switch good {
+            case .boxBundle(let b):
+                state = try await store.buyBoxBundle(b.id, paidBoxesAllowed: paidBoxesAllowed)
+            case .cosmetic(let c):
+                state = try await store.buyCosmetic(c.id, owned: SeasonModel.shared.pass.owned)
+                SeasonModel.shared.grantOwned(c.id)
+            case .avatar(let d):
+                state = try await store.buyAvatar(d.id, owned: AvatarModel.shared.owned)
+                AvatarModel.shared.grant(d.id)
+            }
             return true
         } catch { problem = message(error); return false }
     }

@@ -90,10 +90,7 @@ struct BoxView: View {
             BoxBatchCard(opened: o, paidBoxesAllowed: paidAllowed, onShort: { short(for: 10) }, onNew: { opened = $0 }, onRevealed: seen)
         }
         .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") {
-            ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; showPacks = true }, onPick: { (p: GoldPack) in
-                shortOfGold = false
-                StorePurchase.afterPopup { pending = StorePurchase.pack(p) }
-            })
+            ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; showPacks = true })
         }
         .navigationDestination(isPresented: $showPacks) { StoreApp() }
     }
@@ -135,6 +132,15 @@ struct BoxView: View {
             if plan.needsGold { shortNeed = plan.cost; shortOfGold = true }
             return
         }
+        guard plan.cost > 0 else { start(count, plan); return }
+        let what: String = count == 1 ? "a \(kind.title.lowercased())" : "\(count) \(kind.title.lowercased())es"
+        let from: Int = min(count, plan.stock)
+        let effect: String = from > 0 ? "you open \(what) now, \(from) from your stock and the rest bought." : "you open \(what) now."
+        let offer = GoldOffer(title: "Open \(count == 1 ? "a box" : "\(count) boxes")?", effect: effect, price: plan.cost, icon: "shippingbox")
+        StorePurchase.ask(offer: offer, pending: $pending, onShort: { (_: Int) in shortNeed = plan.cost; shortOfGold = true }) { start(count, plan) }
+    }
+
+    private func start(_ count: Int, _ plan: BoxPlan) {
         working = true
         Task {
             let out = await session.openBoxes(kind, count: count, paidBoxesAllowed: paidAllowed)
@@ -776,7 +782,6 @@ struct BoxBatchCard: View {
 struct ShortOfGoldCard: View {
     var needed: Int = 0
     var onPacks: () -> Void
-    var onPick: (GoldPack) -> Void
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func close() { if let c = popupClose { c() } else { systemDismiss() } }
@@ -791,27 +796,23 @@ struct ShortOfGoldCard: View {
                 .textStyle(.body).multilineTextAlignment(.center)
             Text("Value deals").capsLabel(Theme.inkFaint).frame(maxWidth: .infinity, alignment: .leading)
             ForEach(deals(short: short, first: first)) { (p: GoldPack) in
-                Button { onPick(p) } label: {
-                    HStack(spacing: Theme.Space.m) {
-                        StoreCoinHeap(tier: (GoldStore.packs.firstIndex(where: { $0.id == p.id }) ?? 0) + 1).scaleEffect(0.8)
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: Theme.Space.s) {
-                                Text(p.name).textStyle(.headline)
-                                if p.id == StorePurchase.bestPack?.id { StoreTag(text: "Best value") }
-                            }
-                            Text("\(StoreText.gold(GoldStore.totalGold(p, firstPurchase: first)))\(short > 0 && GoldStore.totalGold(p, firstPurchase: first) >= short ? ", covers it" : "")")
-                                .textStyle(.caption, tint: Theme.ink)
+                HStack(spacing: Theme.Space.m) {
+                    StoreCoinHeap(tier: (GoldStore.packs.firstIndex(where: { $0.id == p.id }) ?? 0) + 1).scaleEffect(0.8)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: Theme.Space.s) {
+                            Text(p.name).textStyle(.headline)
+                            if p.id == StorePurchase.bestPack?.id { StoreTag(text: "Best value") }
                         }
-                        Spacer(minLength: Theme.Space.s)
-                        Text(GoldStore.priceText(cents: p.priceCents)).textStyle(.headline, tint: Theme.accent, numeric: true)
+                        Text("\(StoreText.gold(GoldStore.totalGold(p, firstPurchase: first)))\(short > 0 && GoldStore.totalGold(p, firstPurchase: first) >= short ? ", covers it" : "")")
+                            .textStyle(.caption, tint: Theme.ink)
                     }
-                    .padding(Theme.Space.m)
-                    .background(StoreSurface(tint: Theme.gold, glow: p.id == StorePurchase.bestPack?.id, radius: Theme.Radius.card))
-                    .storeSheen(radius: Theme.Radius.card, enabled: p.id == StorePurchase.bestPack?.id)
-                    .contentShape(Rectangle())
-                    .accessibilityElement(children: .combine)
+                    Spacer(minLength: Theme.Space.s)
+                    PurchaseButton(item: .goldPack(p.id), minHeight: 36, leave: { close() })
                 }
-                .buttonStyle(PressableStyle())
+                .padding(Theme.Space.m)
+                .background(StoreSurface(tint: Theme.gold, glow: p.id == StorePurchase.bestPack?.id, radius: Theme.Radius.card))
+                .storeSheen(radius: Theme.Radius.card, enabled: p.id == StorePurchase.bestPack?.id)
+                .accessibilityElement(children: .contain)
             }
             Text("Gold from the Season Pass counts too. You confirm the price before anything is bought.").textStyle(.caption).multilineTextAlignment(.center)
         }

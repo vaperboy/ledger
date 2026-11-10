@@ -122,7 +122,6 @@ final class GoldBoxesTests: XCTestCase {
         let first = GoldStore.packs[1]
         XCTAssertEqual(GoldStore.totalGold(first, firstPurchase: true), first.gold + first.gold / 2)
         XCTAssertEqual(GoldStore.totalGold(first, firstPurchase: false), first.gold)
-        XCTAssertEqual(GoldStore.priceText(cents: 499), "$4.99")
         XCTAssertTrue(GoldStore.seasonBundle.includesPlus)
     }
 

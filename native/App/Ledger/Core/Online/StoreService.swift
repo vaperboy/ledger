@@ -12,6 +12,12 @@ struct StoreState: Codable, Equatable, Sendable {
     func count(_ kind: BoxKind) -> Int { boxes[kind.rawValue] ?? 0 }
 }
 
+struct PurchaseDeliveryResult: Sendable {
+    var state: StoreState
+    var delivered: Bool
+    var gold: Int
+}
+
 struct BoxOpening: Sendable {
     var kind: BoxKind
     var results: [BoxResult]
@@ -26,7 +32,7 @@ struct QuickSale: Sendable {
 }
 
 enum StoreError: Error, Equatable, LocalizedError, Sendable {
-    case notEnoughGold(missing: Int), noBox, paidBoxesUnavailable, alreadyOwned, unknownItem, notAvailable, offline
+    case notEnoughGold(missing: Int), noBox, paidBoxesUnavailable, alreadyOwned, unknownItem, offline
     var errorDescription: String? {
         switch self {
         case .notEnoughGold(let n): return "You need \(n) more gold."
@@ -34,17 +40,15 @@ enum StoreError: Error, Equatable, LocalizedError, Sendable {
         case .paidBoxesUnavailable: return "Paid boxes are not offered where you are."
         case .alreadyOwned: return "You already have this."
         case .unknownItem: return "That item is not in the store."
-        case .notAvailable: return "Buying gold is not available in this build."
         case .offline: return "Could not reach the store."
         }
     }
 }
 
 protocol StoreService: Sendable {
-    var isVisualOnly: Bool { get }
     func state() async -> StoreState
-    func buyPack(_ packID: String) async throws -> StoreState
-    func buySeasonBundle() async throws -> StoreState
+    func deliver(_ item: PurchaseItem, transactionID: String) async throws -> PurchaseDeliveryResult
+    func revoke(transactionID: String) async -> StoreState
     func buyBoxBundle(_ bundleID: String, paidBoxesAllowed: Bool) async throws -> StoreState
     func buyCosmetic(_ id: String, owned: Set<String>) async throws -> StoreState
     func buyAvatar(_ id: String, owned: Set<String>) async throws -> StoreState
@@ -74,7 +78,7 @@ enum StoreBackend {
 
     static func make() -> (store: any StoreService, auctions: any AuctionService) {
         let vault = GoldVault()
-        return (MockStoreService(vault: vault), MockAuctionService(vault: vault))
+        return (LocalStoreService(vault: vault), MockAuctionService(vault: vault))
     }
 }
 

@@ -23,6 +23,72 @@
       "productID" : "com.ledger.founder",
       "referenceName" : "Founder's Edition",
       "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "6740000005",
+      "localizations" : [
+        { "description" : "200 gold for the Store. Gold buys cosmetics, boxes and extra slots. It never turns into in-game money.", "displayName" : "Pouch of gold", "locale" : "en_US" }
+      ],
+      "productID" : "com.ledger.gold.pouch",
+      "referenceName" : "Pouch of gold",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6740000006",
+      "localizations" : [
+        { "description" : "550 gold for the Store. Gold buys cosmetics, boxes and extra slots. It never turns into in-game money.", "displayName" : "Purse of gold", "locale" : "en_US" }
+      ],
+      "productID" : "com.ledger.gold.purse",
+      "referenceName" : "Purse of gold",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "6740000007",
+      "localizations" : [
+        { "description" : "1,200 gold for the Store. Gold buys cosmetics, boxes and extra slots. It never turns into in-game money.", "displayName" : "Chest of gold", "locale" : "en_US" }
+      ],
+      "productID" : "com.ledger.gold.chest",
+      "referenceName" : "Chest of gold",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "19.99",
+      "familyShareable" : false,
+      "internalID" : "6740000008",
+      "localizations" : [
+        { "description" : "2,600 gold for the Store. Gold buys cosmetics, boxes and extra slots. It never turns into in-game money.", "displayName" : "Vault of gold", "locale" : "en_US" }
+      ],
+      "productID" : "com.ledger.gold.vault",
+      "referenceName" : "Vault of gold",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "49.99",
+      "familyShareable" : false,
+      "internalID" : "6740000009",
+      "localizations" : [
+        { "description" : "7,000 gold for the Store. Gold buys cosmetics, boxes and extra slots. It never turns into in-game money.", "displayName" : "Hoard of gold", "locale" : "en_US" }
+      ],
+      "productID" : "com.ledger.gold.hoard",
+      "referenceName" : "Hoard of gold",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "14.99",
+      "familyShareable" : false,
+      "internalID" : "6740000010",
+      "localizations" : [
+        { "description" : "1,000 gold, 3 Cabinet boxes and the premium Season Pass track for the current season.", "displayName" : "Season bundle", "locale" : "en_US" }
+      ],
+      "productID" : "com.ledger.season.bundle",
+      "referenceName" : "Season bundle",
+      "type" : "Consumable"
     }
   ],
   "settings" : {

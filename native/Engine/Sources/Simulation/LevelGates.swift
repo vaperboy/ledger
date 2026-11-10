@@ -58,6 +58,33 @@ public enum LevelGates {
         table.filter { (r: Row) -> Bool in r.level == level(f) }.map { (r: Row) -> LevelFeature in r.feature }
     }
 
+    public struct Entry: Equatable, Sendable, Identifiable {
+        public var feature: LevelFeature
+        public var title: String
+        public var gives: String
+        public var id: String { feature.rawValue }
+    }
+
+    public struct Rung: Equatable, Sendable, Identifiable {
+        public var level: Int
+        public var xpRequired: Int
+        public var xpFromPrevious: Int
+        public var unlocks: [Entry]
+        public var id: Int { level }
+    }
+
+    public static var highestUnlockLevel: Int { table.map { (r: Row) -> Int in r.level }.max() ?? 1 }
+
+    public static func unlocks(atLevel l: Int) -> [Entry] {
+        table.filter { (r: Row) -> Bool in r.level == l }.map { (r: Row) -> Entry in Entry(feature: r.feature, title: r.title, gives: r.gives) }
+    }
+
+    public static func ladder() -> [Rung] {
+        (1...(highestUnlockLevel + 1)).map { (l: Int) -> Rung in
+            Rung(level: l, xpRequired: PlayerLevel.threshold(l), xpFromPrevious: l > 1 ? PlayerLevel.threshold(l) - PlayerLevel.threshold(l - 1) : 0, unlocks: unlocks(atLevel: l))
+        }
+    }
+
     static func noticeID(_ f: LevelFeature) -> String { "level." + f.rawValue }
 
     static func reached(level l: Int) -> [String] {

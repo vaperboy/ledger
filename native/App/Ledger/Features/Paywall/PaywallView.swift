@@ -5,6 +5,7 @@ struct PaywallView: View {
     let request: PaywallRequest
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
+    @Environment(PurchaseManager.self) private var purchases
     @Environment(AdCoordinator.self) private var ads
 
     var body: some View {
@@ -33,7 +34,7 @@ struct PaywallView: View {
                 Text("Try Pro for a day: watch an ad")
             }
             .buttonStyle(PopupTextActionStyle(tint: PopupTone.prestige.color))
-            .disabled(ads.isShowing || ent.isBusy)
+            .disabled(ads.isShowing || purchases.isBusy)
             .accessibilityIdentifier("paywall-pass")
         }
     }

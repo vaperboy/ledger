@@ -3,6 +3,7 @@ import Simulation
 
 struct ProPlansView: View {
     @Environment(Entitlements.self) private var ent
+    @Environment(PurchaseManager.self) private var purchases
 
     private struct Spec {
         var product: LedgerProduct
@@ -53,6 +54,7 @@ struct ProPlansView: View {
             } else {
                 group("Subscriptions", [Self.yearly, Self.monthly])
             }
+            if !ent.isPlus { seasonOffer }
             if !ent.ownsPro && !ent.isPlus { group("One-time purchases", [Self.pro, Self.founder]) }
             comparison
             if !ent.isPlus {
@@ -60,16 +62,15 @@ struct ProPlansView: View {
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
                     .accessibilityIdentifier("plans-disclosure")
             }
-            if let note = ent.message { Text(note).textStyle(.caption).padding(.horizontal, Theme.Space.m) }
             footer
         }
     }
 
     private var footer: some View {
         HStack(spacing: 14) {
-            Button { Task { await ent.restore() } } label: { Text("Restore purchases") }
+            Button { Task { await purchases.restore() } } label: { Text("Restore purchases") }
                 .buttonStyle(PlainTextButtonStyle(tint: Theme.ivoryMuted))
-                .disabled(ent.isBusy)
+                .disabled(purchases.isBusy)
                 .accessibilityIdentifier("plans-restore")
             Link("Terms", destination: LedgerLinks.terms).textStyle(.caption)
             Link("Privacy", destination: LedgerLinks.privacy).textStyle(.caption)
@@ -83,6 +84,23 @@ struct ProPlansView: View {
             Text(title).textStyle(.headline).padding(.horizontal, Theme.Space.m)
             ForEach(specs, id: \.product) { (s: Spec) in card(s) }
         }
+    }
+
+    private var seasonOffer: some View {
+        let b: SeasonBundle = GoldStore.seasonBundle
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Just this season").textStyle(.headline)
+            Text("\(StoreText.gold(b.gold)), \(StorePurchase.boxText(b)) and the premium Season Pass track until this season ends. Nothing renews.")
+                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer(minLength: 0)
+                PurchaseButton(item: .seasonBundle, title: "Get the bundle", minHeight: 44, identifier: "plan-season-bundle")
+            }
+        }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
+        .accessibilityElement(children: .contain)
     }
 
     private var ownedRow: some View {
@@ -124,7 +142,7 @@ struct ProPlansView: View {
 
     private func card(_ s: Spec) -> some View {
         let best: Bool = s.product == .plusYearly
-        let price: String = ent.price(s.product)
+        let price: String = purchases.price(.plan(s.product)) ?? ""
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(spacing: Theme.Space.s) {
                 Text(s.billing).textStyle(.caption, tint: s.product.isPlus ? Theme.accent : Theme.ink, weight: .semibold).fixedSize(horizontal: false, vertical: true)
@@ -149,14 +167,7 @@ struct ProPlansView: View {
                     if let extra = extraLine(s.product, price) { Text(extra).textStyle(.caption, tint: Theme.gain).fixedSize(horizontal: false, vertical: true) }
                 }
                 Spacer(minLength: Theme.Space.s)
-                Button { Haptics.tap(); Task { await ent.purchase(s.product) } } label: {
-                    Text(buttonTitle(s.product)).textStyle(.headline, tint: Theme.accentInk)
-                        .padding(.horizontal, Theme.Space.l).frame(minHeight: 44)
-                        .background(Capsule().fill(Theme.accent))
-                }
-                .buttonStyle(PressableStyle())
-                .disabled(ent.isBusy || price.isEmpty)
-                .accessibilityIdentifier("plan-\(s.product.rawValue)")
+                PurchaseButton(item: .plan(s.product), title: buttonTitle(s.product), showsPrice: false, minHeight: 44, identifier: "plan-\(s.product.rawValue)")
             }
         }
         .padding(Theme.Space.m)
@@ -176,14 +187,13 @@ struct ProPlansView: View {
 
     private func extraLine(_ p: LedgerProduct, _ price: String) -> String? {
         guard p.isPlus else { return nil }
-        if ent.trialEligible, let trial = ent.trialLength(p) { return "\(trial) free, then \(priceLine(p, price))" }
-        if p == .plusYearly, !ent.yearlySaving.isEmpty { return ent.yearlySaving + " against paying monthly" }
+        if purchases.trialEligible, let trial = purchases.trialLength(p) { return "\(trial) free, then \(priceLine(p, price))" }
+        if p == .plusYearly, !purchases.yearlySaving.isEmpty { return purchases.yearlySaving + " against paying monthly" }
         return nil
     }
 
     private func buttonTitle(_ p: LedgerProduct) -> String {
-        if ent.isBusy { return "Working..." }
-        if p.isPlus { return ent.trialEligible ? "Try free" : "Subscribe" }
+        if p.isPlus { return purchases.trialEligible ? "Try free" : "Subscribe" }
         return "Buy"
     }
 

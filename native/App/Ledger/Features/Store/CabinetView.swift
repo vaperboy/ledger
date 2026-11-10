@@ -283,7 +283,7 @@ struct LookView: View {
         .centerSheet(isPresented: $showColours, title: "Colours and badge", size: .tall) { WardrobeView() }
         .task {
             await session.load()
-            if let e = store.engine { avatars.note(rank: e.careerStatus.rank.index, badges: e.careerCosmetics) }
+            if let e = store.engine { avatars.note(rank: e.careerStatus.rank.index, badges: e.careerCosmetics, level: e.playerLevel.level) }
         }
     }
 

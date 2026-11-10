@@ -7,12 +7,14 @@ struct LedgerApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var statusBar = StatusBarScheme.shared
     @State private var entitlements: Entitlements
+    @State private var purchases: PurchaseManager
     @State private var ads: AdCoordinator
     @State private var online = OnlineSession()
 
     init() {
         let ent = Entitlements()
         _entitlements = State(initialValue: ent)
+        _purchases = State(initialValue: PurchaseManager(entitlements: ent))
         _ads = State(initialValue: AdCoordinator(entitlements: ent))
         let ivory = UIColor(red: 0.937, green: 0.914, blue: 0.875, alpha: 1)
         let faint = UIColor(red: 0.424, green: 0.416, blue: 0.384, alpha: 1), gold = UIColor(red: 0.812, green: 0.694, blue: 0.522, alpha: 1)
@@ -44,11 +46,13 @@ struct LedgerApp: App {
             } else {
             RootView()
                 .modifier(PaywallHost())
+                .modifier(PurchaseHost())
                 .environmentObject(store)
                 .environment(entitlements)
+                .environment(purchases)
                 .environment(ads)
                 .environment(online)
-                .task { entitlements.start() }
+                .task { purchases.start() }
                 .task { OnlineWiring.install(); await online.start(); await OnlineDirectoryCache.refresh(from: online.service); store.syncPlayerCompanies() }
                 .task(id: online.isSignedIn && scenePhase == .active) {
                     if online.isSignedIn && scenePhase == .active { await online.runPresence(store: store) }
@@ -59,7 +63,7 @@ struct LedgerApp: App {
                 .toggleStyle(LedgerToggleStyle())
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background { store.scheduleReminders(); store.noteLeaving(); Task { await online.shareProgress(from: store.engine) } }
-                    if phase == .active { store.syncPlayerCompanies(); Reminders.cancelAll(); store.showReturnRecap(); Task { await entitlements.refresh() } }
+                    if phase == .active { store.syncPlayerCompanies(); Reminders.cancelAll(); store.showReturnRecap(); Task { await purchases.refreshEntitlements() } }
                 }
             }
         }

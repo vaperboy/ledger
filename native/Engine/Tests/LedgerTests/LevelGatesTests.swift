@@ -97,4 +97,25 @@ final class LevelGatesTests: XCTestCase {
             XCTAssertLessThanOrEqual(PlayerLevel.threshold(LevelGates.level(f)), 104 * PlayerLevel.weekXP + 10 * PlayerLevel.ladderXP, f.rawValue)
         }
     }
+
+    func testTheLadderListsEveryLevelWithItsXPAndEveryFeatureExactlyOnce() {
+        let rungs: [LevelGates.Rung] = LevelGates.ladder()
+        XCTAssertEqual(rungs.map { $0.level }, Array(1...(LevelGates.highestUnlockLevel + 1)))
+        for r in rungs {
+            XCTAssertEqual(r.xpRequired, PlayerLevel.threshold(r.level))
+            if r.level > 1 { XCTAssertEqual(r.xpFromPrevious, r.xpRequired - rungs[r.level - 2].xpRequired) }
+        }
+        XCTAssertEqual(rungs[0].xpRequired, 0)
+        let listed: [LevelFeature] = rungs.flatMap { $0.unlocks.map { $0.feature } }
+        XCTAssertEqual(Set(listed), Set(LevelFeature.allCases))
+        XCTAssertEqual(listed.count, LevelFeature.allCases.count)
+        for r in rungs { for u in r.unlocks { XCTAssertEqual(LevelGates.level(u.feature), r.level); XCTAssertEqual(u.title, LevelGates.title(u.feature)) } }
+    }
+
+    func testTheLadderKeepsTheButtonsAtTheirLevels() {
+        let at: (Int) -> [LevelFeature] = { (l: Int) -> [LevelFeature] in LevelGates.unlocks(atLevel: l).map { $0.feature } }
+        XCTAssertTrue(at(LevelGates.level(.chain)).contains(.chain))
+        XCTAssertTrue(at(LevelGates.level(.franchise)).contains(.franchise))
+        XCTAssertTrue(at(LevelGates.level(.abroad)).contains(.abroad))
+    }
 }

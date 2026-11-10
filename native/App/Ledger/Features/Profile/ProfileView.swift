@@ -1,5 +1,4 @@
 import SwiftUI
-import PhotosUI
 import GameCore
 import Events
 import Finance
@@ -11,7 +10,7 @@ struct ProfileView: View {
     @Environment(OnlineSession.self) private var online
     @ObservedObject private var local = ProfileLocal.shared
     @ObservedObject private var season = SeasonModel.shared
-    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var showLadder = false
     @State private var editingName = false
     @State private var nameDraft = ""
     @State private var friends: [PlayerProfile] = []
@@ -31,18 +30,12 @@ struct ProfileView: View {
                     runSection(e)
                     if online.isSignedIn, let p = online.profile { privacySection(p) }
                 }
+                .levelLadderPopup(isPresented: $showLadder, engine: e)
             }
         }
         .appScreen(title: "Profile", subtitle: "")
         .confirmAction($pending)
         .task(id: online.isSignedIn) { await syncOnline(); await loadFriends() }
-        .onChange(of: pickedPhoto) { _, item in
-            guard let item else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self) { local.setPhoto(data: data) }
-                pickedPhoto = nil
-            }
-        }
     }
 
     private func shownName(_ e: GameEngine) -> String { local.name.isEmpty ? e.state.player.name : local.name }
@@ -53,26 +46,30 @@ struct ProfileView: View {
         let look: [String: String] = season.pass.equipped
         let accent: Color = LookKit.accent(look) ?? Theme.gold
         return VStack(spacing: Theme.Space.s) {
-            NavigationLink { LookView() } label: {
+            NavigationLink { AvatarPickerView() } label: {
                 ProfilePicture(name: shownName(e), size: 84).overlay(Circle().strokeBorder(accent, lineWidth: 2))
             }
             .buttonStyle(PressableStyle())
-            .accessibilityLabel("Change look")
+            .accessibilityLabel("Change profile icon")
             .accessibilityIdentifier("profile-avatar")
-            HStack(spacing: Theme.Space.s) {
-                PhotosPicker(selection: $pickedPhoto, matching: .images) {
-                    Text("Change photo").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minHeight: 44)
-                }
-                .accessibilityIdentifier("profile-photo")
-                if local.photo != nil {
-                    Button("Remove") { Haptics.tap(); local.removePhoto() }
-                        .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
-                }
+            NavigationLink { AvatarPickerView() } label: {
+                Text("Change icon").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minHeight: 44)
             }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("profile-icon")
             if editingName { nameEditor(e) } else { nameLine(e, look: look) }
             LookTradeChip(look: look, company: LookKit.company(store))
-            Text("Level \(info.level) · \(rank)").textStyle(.caption, tint: Theme.inkSoft)
-            ProgressLine(fraction: info.progress, tint: accent, height: 3).frame(maxWidth: 160)
+            Button { Haptics.tap(); showLadder = true } label: {
+                VStack(spacing: Theme.Space.xs) {
+                    Text("Level \(info.level) · \(rank)").textStyle(.caption, tint: Theme.inkSoft)
+                    ProgressLine(fraction: info.progress, tint: accent, height: 3).frame(maxWidth: 160)
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Level \(info.level), \(rank). Shows every level and what it unlocks.")
+            .accessibilityIdentifier("profile-level")
             NavigationLink { LookView() } label: {
                 Text("Change look").textStyle(.caption, tint: Theme.accent).frame(minHeight: 44)
             }

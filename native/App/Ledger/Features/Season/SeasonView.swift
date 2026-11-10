@@ -6,8 +6,10 @@ struct SeasonView: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
     @ObservedObject private var model = SeasonModel.shared
+    @State private var showPlans = false
 
     private var pass: SeasonPass { model.pass }
+    private var premium: Bool { model.premiumOpen(plus: ent.isPlus) }
     private var accent: Color { tint(for: "theme") ?? Theme.accent }
 
     var body: some View {
@@ -15,7 +17,7 @@ struct SeasonView: View {
             VStack(alignment: .leading, spacing: 18) {
                 summaryCard
                 trackSection
-                if !ent.isPlus { plusLine }
+                if !premium { plusLine }
                 earnSection
                 collectionSection
             }
@@ -25,11 +27,12 @@ struct SeasonView: View {
         }
         .ledgerBackground()
         .onAppear { model.refreshSeason() }
+        .centerSheet(isPresented: $showPlans, title: "Ledger plans", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
     }
 
     private var summaryCard: some View {
         let left: Int = pass.daysLeft(today: model.today)
-        let open: Int = pass.claimableCount(isPlus: ent.isPlus)
+        let open: Int = pass.claimableCount(isPlus: premium)
         let todayXP: Int = pass.xpLeftToday(today: model.today)
         return VStack(alignment: .leading, spacing: 10) {
             Text("Season \(pass.seasonNumber)").capsLabel(accent)
@@ -37,7 +40,7 @@ struct SeasonView: View {
             ProgressView(value: pass.tierProgress).tint(accent)
             Text(left == 1 ? "Ends tomorrow" : "\(left) days left in this season").textStyle(.caption)
             Text(todayXP == 0 ? "You have earned the most XP a day gives. More tomorrow." : "Up to \(todayXP) more XP can be earned today.").textStyle(.caption)
-            if let ending = pass.endingNote(today: model.today, isPlus: ent.isPlus) {
+            if let ending = pass.endingNote(today: model.today, isPlus: premium) {
                 Text(ending).textStyle(.caption, tint: Theme.warn).fixedSize(horizontal: false, vertical: true)
             } else if let missed = pass.missedNote, left > SeasonPass.seasonDays - 7 {
                 Text(missed).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
@@ -60,16 +63,16 @@ struct SeasonView: View {
             HStack {
                 Text("Rewards").capsLabel()
                 Spacer(minLength: 8)
-                Text("Free and Ledger Plus").textStyle(.caption)
+                Text("Free and premium").textStyle(.caption)
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 8) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("").frame(height: 18)
                         rowLabel("Free")
-                        rowLabel("Plus")
+                        rowLabel("Premium")
                     }
-                    .frame(width: 44)
+                    .frame(width: 60)
                     ForEach(1...SeasonPass.tierCount, id: \.self) { t in column(t) }
                 }
                 .padding(.vertical, 2)
@@ -78,7 +81,7 @@ struct SeasonView: View {
     }
 
     private func rowLabel(_ s: String) -> some View {
-        Text(s).textStyle(.caption).frame(width: 44, height: 92, alignment: .leading)
+        Text(s).textStyle(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 60, height: 92, alignment: .leading)
     }
 
     private func column(_ t: Int) -> some View {
@@ -94,8 +97,8 @@ struct SeasonView: View {
     @ViewBuilder private func cell(_ track: SeasonPass.Track, _ t: Int) -> some View {
         if let r = SeasonRewards.reward(track, tier: t) {
             let claimed: Bool = pass.isClaimed(track, tier: t)
-            let ready: Bool = pass.canClaim(track, tier: t, isPlus: ent.isPlus)
-            let locked: Bool = track == .premium && !ent.isPlus
+            let ready: Bool = pass.canClaim(track, tier: t, isPlus: premium)
+            let locked: Bool = track == .premium && !premium
             Button { tap(track, t) } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 4) {
@@ -107,7 +110,7 @@ struct SeasonView: View {
                     }
                     Text(r.title).textStyle(.caption, tint: Theme.ink).lineLimit(3).fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
-                    Text(claimed ? "Claimed" : ready ? "Claim" : locked ? "Plus" : "Tier \(t)").textStyle(.caption, tint: ready ? accent : Theme.inkFaint)
+                    Text(claimed ? "Claimed" : ready ? "Claim" : locked ? "Premium" : "Tier \(t)").textStyle(.caption, tint: ready ? accent : Theme.inkFaint)
                 }
                 .padding(8)
                 .frame(width: 96, height: 92, alignment: .topLeading)
@@ -116,20 +119,20 @@ struct SeasonView: View {
                 .opacity(claimed || ready || t <= pass.tier ? 1 : 0.72)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("\(track == .premium ? "Plus" : "Free") tier \(t): \(r.title). \(claimed ? "Claimed" : ready ? "Ready to claim" : locked ? "Included in Ledger Plus" : "Not reached yet")")
+            .accessibilityLabel("\(track == .premium ? "Premium" : "Free") tier \(t): \(r.title). \(claimed ? "Claimed" : ready ? "Ready to claim" : locked ? "Locked, part of the premium track" : "Not reached yet")")
         } else {
             Color.clear.frame(width: 96, height: 92)
         }
     }
 
     private func tap(_ track: SeasonPass.Track, _ t: Int) {
-        if track == .premium && !ent.isPlus { openPaywall(); return }
-        guard pass.canClaim(track, tier: t, isPlus: ent.isPlus) else { return }
-        if case .claimed(let r) = model.claim(track, tier: t, isPlus: ent.isPlus) { announce([r]) }
+        if track == .premium && !premium { showPlans = true; return }
+        guard pass.canClaim(track, tier: t, isPlus: premium) else { return }
+        if case .claimed(let r) = model.claim(track, tier: t, isPlus: premium) { announce([r]) }
     }
 
     private func claimAll() {
-        let got: [SeasonReward] = model.claimAll(isPlus: ent.isPlus)
+        let got: [SeasonReward] = model.claimAll(isPlus: premium)
         if !got.isEmpty { announce(got) }
     }
 
@@ -147,17 +150,13 @@ struct SeasonView: View {
         }
     }
 
-    private func openPaywall() {
-        ent.paywall = PaywallRequest(title: "Season Pass: Plus rewards", feature: nil)
-    }
-
     private var plusLine: some View {
-        Button { openPaywall() } label: {
+        Button { Haptics.tap(); showPlans = true } label: {
             HStack(spacing: 10) {
                 LedgerGlyph(glyph: Glyph.lock, size: 16, tint: accent)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Included in Ledger Plus").textStyle(.headline)
-                    Text("The Plus row adds themes, plates, backdrops and an extra save slot. Nothing here changes how the game plays.").textStyle(.caption)
+                    Text("Unlock premium track").textStyle(.headline)
+                    Text("The premium row adds themes, plates, backdrops and an extra save slot. It comes with Ledger Plus, or open it for this season with the season bundle. Nothing here changes how the game plays.").textStyle(.caption)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)

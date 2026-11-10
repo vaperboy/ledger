@@ -4,29 +4,34 @@ import Simulation
 
 struct HomeLevelBar: View {
     var engine: GameEngine
+    @State private var showLadder = false
 
     var body: some View {
         let info: PlayerLevel.Info = engine.playerLevel
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack(spacing: Theme.Space.s) {
-                Text("Level \(info.level)").textStyle(.caption, tint: Theme.ink, numeric: true, weight: .semibold)
-                ProgressLine(fraction: info.progress, tint: Theme.gold, height: 3)
-                Text("\(info.xpIntoLevel) / \(info.xpForNext) XP").textStyle(.caption, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
+        Button { Haptics.tap(); showLadder = true } label: {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                HStack(spacing: Theme.Space.s) {
+                    Text("Level \(info.level)").textStyle(.caption, tint: Theme.ink, numeric: true, weight: .semibold)
+                    ProgressLine(fraction: info.progress, tint: Theme.gold, height: 3)
+                    Text("\(info.xpIntoLevel) / \(info.xpForNext) XP").textStyle(.caption, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
+                    LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+                }
+                .frame(minHeight: 24)
+                HomeNextUnlock(engine: engine)
             }
-            .frame(minHeight: 24)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Level \(info.level), \(Int(saturating: (info.progress * 100).rounded())) percent to level \(info.level + 1)")
-            .accessibilityIdentifier("home-level")
-            HomeNextUnlock(engine: engine)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(PressableStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Level \(info.level), \(Int(saturating: (info.progress * 100).rounded())) percent to level \(info.level + 1)")
+        .accessibilityHint("Shows every level and what it unlocks")
+        .accessibilityIdentifier("home-level")
+        .levelLadderPopup(isPresented: $showLadder, engine: engine)
     }
 }
 
 struct HomeMissionStrip: View {
     @EnvironmentObject var store: GameStore
-    @Environment(Entitlements.self) private var ent
-    @Environment(AdCoordinator.self) private var ads
-    @ObservedObject private var season = SeasonModel.shared
     @AppStorage("ledger.home.missionsHiddenWeek") private var hiddenWeek: Int = -1
     var engine: GameEngine
 
@@ -34,7 +39,6 @@ struct HomeMissionStrip: View {
         if hiddenWeek != engine.state.week {
             HStack(alignment: .top, spacing: Theme.Space.s) {
                 missionCard
-                seasonCard
                 Button { Haptics.tap(); hiddenWeek = engine.state.week } label: {
                     Image(systemName: "xmark").font(.caption2.weight(.semibold)).foregroundStyle(Theme.inkFaint)
                         .frame(width: 28, height: 28).contentShape(Rectangle())
@@ -81,44 +85,117 @@ struct HomeMissionStrip: View {
         .coachAnchor(.goalCard)
         .accessibilityIdentifier("home-mission-card")
     }
+}
 
+struct HomeSeasonPromo: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(Entitlements.self) private var ent
+    @Environment(AdCoordinator.self) private var ads
+    @ObservedObject private var season = SeasonModel.shared
+    @State private var showPlans = false
     @State private var watching = false
+    var compact: Bool = false
 
-    private var seasonCard: some View {
+    private func next(_ track: SeasonPass.Track, after tier: Int) -> SeasonReward? {
+        guard tier < SeasonPass.tierCount else { return nil }
+        return ((tier + 1)...SeasonPass.tierCount).lazy.compactMap { (t: Int) -> SeasonReward? in SeasonRewards.reward(track, tier: t) }.first
+    }
+
+    var body: some View {
         let pass: SeasonPass = season.pass
-        let open: Int = pass.claimableCount(isPlus: ent.isPlus)
-        return card {
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text("Season Pass").textStyle(.label, tint: Theme.inkFaint)
-                Text(pass.isComplete ? "All tiers reached" : "Tier \(pass.tier) of \(SeasonPass.tierCount)").textStyle(.body, tint: Theme.ink, numeric: true).lineLimit(1)
-                ProgressLine(fraction: pass.tierProgress, height: 3)
-                if !pass.isComplete, let next = SeasonRewards.reward(.free, tier: pass.tier + 1) {
-                    Text("Next: \(next.title)").textStyle(.caption).lineLimit(1)
-                }
-                if open > 0 {
-                    action(open == 1 ? "Claim 1 reward" : "Claim \(open) rewards", id: "home-season-claim") { claimSeason() }
-                } else if ads.canOfferSeasonBonus {
-                    action("Watch an ad: +\(SeasonPass.adBonusXP) XP", id: "home-season-ad") { watchAd() }
-                }
+        let premium: Bool = season.premiumOpen(plus: ent.isPlus)
+        let open: Int = pass.claimableCount(isPlus: premium)
+        let left: Int = pass.daysLeft(today: season.today)
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Text("Battle Pass").textStyle(.label, tint: Theme.gold)
+                Text("Season \(pass.seasonNumber)").textStyle(.caption)
+                Spacer(minLength: Theme.Space.s)
+                if open > 0 { StoreTag(text: open == 1 ? "1 reward ready" : "\(open) rewards ready", tint: Theme.gain) }
+                else if !premium { StoreTag(text: "Premium locked", tint: Theme.inkFaint) }
+                else { Text(left == 1 ? "Ends tomorrow" : "\(left) days left").textStyle(.caption) }
             }
+            HStack(alignment: .firstTextBaseline) {
+                Text(pass.isComplete ? "All \(SeasonPass.tierCount) tiers reached" : "Tier \(pass.tier) of \(SeasonPass.tierCount)").textStyle(.headline, numeric: true)
+                Spacer(minLength: Theme.Space.s)
+                if !pass.isComplete { Text("\(pass.xpIntoTier) / \(SeasonPass.xpPerTier) XP").textStyle(.caption, numeric: true) }
+            }
+            ProgressLine(fraction: pass.tierProgress, tint: Theme.gold, height: 5)
+            if !compact {
+                preview(pass, premium: premium)
+                if ads.canOfferSeasonBonus && open == 0 { adAction }
+            }
+            buttons(open: open, premium: premium)
         }
-        .onTapGesture { Haptics.tap(); store.openSeason() }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
+        .centerSheet(isPresented: $showPlans, title: "Ledger plans", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home-season-card")
     }
 
-    private func action(_ text: String, id: String, _ run: @escaping () -> Void) -> some View {
-        Button(action: run) {
-            Text(text).textStyle(.caption, tint: Theme.accent, weight: .semibold).lineLimit(1).minimumScaleFactor(0.8)
+    @ViewBuilder private func preview(_ pass: SeasonPass, premium: Bool) -> some View {
+        let free: SeasonReward? = next(.free, after: pass.tier)
+        let paid: SeasonReward? = next(.premium, after: pass.tier)
+        if free != nil || paid != nil {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                if let free { rewardLine("Next free reward", free, locked: false) }
+                if let paid { rewardLine(premium ? "Next premium reward" : "Premium reward", paid, locked: !premium) }
+            }
+        }
+    }
+
+    private func rewardLine(_ label: String, _ r: SeasonReward, locked: Bool) -> some View {
+        HStack(spacing: Theme.Space.s) {
+            ItemArt(reward: r, size: 28).opacity(locked ? 0.6 : 1)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(label + ", tier \(r.tier)").textStyle(.caption, tint: Theme.inkFaint)
+                Text(r.title).textStyle(.body, tint: locked ? Theme.inkSoft : Theme.ink).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            if locked { LedgerGlyph(glyph: Glyph.lock, size: 12, tint: Theme.inkFaint) }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var adAction: some View {
+        Button { watchAd() } label: {
+            Text("Watch an ad: +\(SeasonPass.adBonusXP) XP").textStyle(.caption, tint: Theme.accent, weight: .semibold).lineLimit(1)
                 .frame(minHeight: 32, alignment: .leading)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
         .disabled(watching)
-        .accessibilityIdentifier(id)
+        .accessibilityIdentifier("home-season-ad")
     }
 
-    private func claimSeason() {
-        let got: [SeasonReward] = season.claimAll(isPlus: ent.isPlus)
+    private func buttons(open: Int, premium: Bool) -> some View {
+        HStack(spacing: Theme.Space.s) {
+            if open > 0 {
+                Button { claim(premium: premium) } label: {
+                    Text(open == 1 ? "Claim 1 reward" : "Claim \(open) rewards").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
+                .accessibilityIdentifier("home-season-claim")
+                Button { Haptics.tap(); store.openSeason() } label: { Text("See pass").frame(maxWidth: .infinity) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
+                    .accessibilityIdentifier("home-season-see")
+            } else {
+                Button { Haptics.tap(); store.openSeason() } label: { Text("See pass").frame(maxWidth: .infinity) }
+                    .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
+                    .accessibilityIdentifier("home-season-see")
+            }
+            if !premium && !compact {
+                Button { Haptics.tap(); showPlans = true } label: { Text("Unlock premium track").frame(maxWidth: .infinity) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
+                    .accessibilityIdentifier("home-season-unlock")
+            }
+        }
+    }
+
+    private func claim(premium: Bool) {
+        let got: [SeasonReward] = season.claimAll(isPlus: premium)
         guard !got.isEmpty else { return }
         Haptics.success()
         let text: String = got.count <= 3 ? got.map(\.title).joined(separator: ", ") : "\(got.count) rewards, including \(got[0].title)"
