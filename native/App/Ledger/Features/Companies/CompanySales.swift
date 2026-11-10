@@ -11,7 +11,7 @@ struct CompanySales: View {
     @State private var showMarketing = false
     @State private var showHowSell = false
     @State private var priceFor: SalesItemPick?
-    @State private var supplierFor: SalesItemPick?
+    @State private var supplierFor: SupplierSubject?
     @State private var pendingPrice: String?
     @State private var addingService: Bool?
     @State private var showHire = false
@@ -43,8 +43,8 @@ struct CompanySales: View {
                              if let id { itemChosen(id) }
                          })
         }
-        .centerSheet(item: $supplierFor, category: .medium, tone: .info, onDismiss: { if let id = pendingPrice { pendingPrice = nil; showPrice(id) } }) { (p: SalesItemPick) in
-            ItemSupplierChooser(companyID: company.id, itemID: p.id, asking: true, onClose: { pendingPrice = p.id; supplierFor = nil })
+        .centerSheet(item: $supplierFor, category: .detail, tone: .info, onDismiss: { if let id = pendingPrice { pendingPrice = nil; showPrice(id) } }) { (s: SupplierSubject) in
+            SupplierPopup(companyID: company.id, subject: s, asking: true, onClose: { supplierFor = nil }).environmentObject(store)
         }
         .centerSheet(item: $priceFor, category: .detail, tone: .investment) { (p: SalesItemPick) in
             ItemPriceSheet(companyID: company.id, itemID: p.id, onClose: { priceFor = nil })
@@ -66,8 +66,9 @@ struct CompanySales: View {
     }
 
     private func itemChosen(_ id: String) {
-        if ItemSupplierChooser.hasChoice(engine: store.engine ?? engine, companyID: company.id, itemID: id) {
-            supplierFor = SalesItemPick(id: id)
+        if let ask = (store.engine ?? engine).supplyAsk(companyID: company.id, itemID: id) {
+            pendingPrice = id
+            supplierFor = SupplierSubject(ask, itemID: id)
         } else {
             store.tutorialAdvance(from: .pickSupplier)
             showPrice(id)

@@ -9,7 +9,6 @@ enum SupplyMarketWords {
     static func price(_ tier: Int) -> String { ["Under market price", "Market price", "Above market price"][min(2, max(0, tier))] }
     static func quality(_ tier: Int) -> String { SupplyMarketCatalogue.qualityTiers[min(2, max(0, tier))] + " quality" }
     static func lead(_ days: Int) -> String { days <= 0 ? "Continuous" : days == 1 ? "Next day" : "\(days) days lead" }
-    static func terms(_ days: Int) -> String { days == 0 ? "Paid on delivery" : "Paid after \(days) days" }
     static func percent(_ share: Double) -> String { "\(Int((share * 100).rounded()))%" }
     static func place(_ l: SupplyListing) -> String { l.country.isEmpty ? l.city : "\(l.city), \(l.country)" }
 
@@ -106,7 +105,7 @@ struct SupplyListingCard: View {
                 Text("\(listing.companyName) · \(listing.tradeName) · \(SupplyMarketWords.place(listing))").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
                 Text("\(listing.lineName) · \(SupplyMarketWords.price(listing.priceTier)) · \(SupplyMarketWords.quality(listing.qualityTier))")
                     .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
-                Text("\(SupplyGuards.effectiveCapacity(listing)) units/week · \(SupplyMarketWords.lead(listing.leadDays)) · minimum \(listing.minOrder) · \(SupplyMarketWords.terms(listing.termsDays))")
+                Text("\(SupplyGuards.effectiveCapacity(listing)) units/week · \(SupplyMarketWords.lead(listing.leadDays)) · minimum \(listing.minOrder)")
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
                 if let landed, let currency { LandedCostLines(row: landed, currency: currency, priced: landedPriced) }
                 if let limit = SupplyGuards.limitText(listing) { Text(limit).textStyle(.caption, tint: Theme.caution) }

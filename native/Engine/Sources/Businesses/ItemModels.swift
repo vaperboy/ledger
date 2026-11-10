@@ -194,6 +194,7 @@ public enum ItemModels {
         /// What one unit costs from this supplier.
         public var buyPrice: Double
         public var leadDays: Int
+        public var reliability: Double
     }
 
     static func supplierDiscount(_ s: GameState, _ r: Record) -> Double {
@@ -210,13 +211,30 @@ public enum ItemModels {
 
     static func line(_ v: Suppliers.Vendor, _ r: Record) -> SupplyLine {
         let d = Suppliers.relationshipDiscount(v.relationship)
-        return SupplyLine(vendorID: v.id, vendorName: v.name, relationshipWord: v.relationshipWord, discount: d, listCost: r.cost, buyPrice: r.cost * (1 - d), leadDays: r.leadDays)
+        return SupplyLine(vendorID: v.id, vendorName: v.name, relationshipWord: v.relationshipWord, discount: d, listCost: r.cost, buyPrice: r.cost * (1 - d), leadDays: r.leadDays,
+                          reliability: min(0.995, max(0.8, 0.85 + (v.rating - 2.6) / 2.2 * 0.14)))
     }
 
     /// The suppliers that could supply this item (the company's goods suppliers), each with the price this item would cost from them.
     public static func offers(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> [SupplyLine] {
-        guard let co = s.company(companyID), let r = record(co, itemID: itemID) else { return [] }
+        guard needsSupplier(s, companyID: companyID, itemID: itemID, data: data), let co = s.company(companyID),
+              let r = record(co, itemID: itemID) ?? provisional(s, co, itemID: itemID, data: data) else { return [] }
         return Suppliers.candidates(s, company: co, scope: "goods", data: data).map { line($0, r) }
+    }
+
+    public static func needsSupplier(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> Bool {
+        guard let co = s.company(companyID), let bd = data.catalog[co.type], Suppliers.hasGoods(bd, co),
+              let it = SalesItems.items(co, bd).first(where: { $0.id == itemID }) else { return false }
+        if let r = record(co, itemID: itemID) { return r.model == .stk || r.model == .made }
+        return !it.isService
+    }
+
+    static func provisional(_ s: GameState, _ co: Company, itemID: String, data: GameData) -> Record? {
+        guard let bd = data.catalog[co.type], let it = SalesItems.items(co, bd).first(where: { $0.id == itemID }) else { return nil }
+        let market = SalesItems.marketTicket(co, bd, World(state: s, data: data)) * it.ratio
+        var r = Record(id: itemID, model: it.isService ? .svc : .stk)
+        r.cost = fallbackCost(market: market, bd)
+        return r
     }
 
     /// One word for the list row.
@@ -237,12 +255,9 @@ public enum ItemModels {
     /// Turn a titles-only item into a record: STK for goods, SVC for services, cost from the trade's cost-of-sales share. No stock. Idempotent.
     @discardableResult
     public static func migrateItem(_ s: inout GameState, companyID: Int, itemID: String, data: GameData) -> Bool {
-        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return false }
+        guard let i = s.companyIndex(companyID) else { return false }
         let co = s.companies[i]
-        guard record(co, itemID: itemID) == nil, let it = SalesItems.items(co, bd).first(where: { $0.id == itemID }) else { return false }
-        let market = SalesItems.marketTicket(co, bd, World(state: s, data: data)) * it.ratio
-        var r = Record(id: itemID, model: it.isService ? .svc : .stk)
-        r.cost = fallbackCost(market: market, bd)
+        guard record(co, itemID: itemID) == nil, let r = provisional(s, co, itemID: itemID, data: data) else { return false }
         put(&s, i, r)
         return true
     }

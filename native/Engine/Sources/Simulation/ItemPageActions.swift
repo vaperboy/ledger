@@ -34,18 +34,19 @@ public extension GameEngine {
         return ItemPageData(item: it, record: rec, modelLabel: rec?.model.label ?? (it.isService ? "Service" : "Product"), unitCost: live.cost, live: live,
                             fairValue: fair, saleProbability: ItemModels.saleProbability(price: p, fair: fair),
                             supply: rec == nil ? nil : ItemModels.supply(state, companyID: companyID, itemID: itemID, data: data),
-                            offers: rec == nil ? [] : ItemModels.offers(state, companyID: companyID, itemID: itemID, data: data), statusWord: word)
+                            offers: ItemModels.offers(state, companyID: companyID, itemID: itemID, data: data), statusWord: word)
     }
 
-    /// Choose which supplier supplies one item (a record is needed; an old titles-only item has none).
+    /// Choose which supplier supplies one item; an item with no record yet gets one.
     @discardableResult
     mutating func setItemSupplier(companyID: Int, itemID: String, vendorID: String?) -> SettingResult {
         let data = self.data
         return applySetting(refuse: { s in
             if let why = SalesItems.refusal(s, companyID: companyID, itemID: itemID, data: data) { return why }
-            guard let co = s.company(companyID), ItemModels.record(co, itemID: itemID) != nil else { return "This item has no stock to supply." }
+            guard ItemModels.needsSupplier(s, companyID: companyID, itemID: itemID, data: data) else { return "This item needs no supplier." }
             return nil
-        }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
+        }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
+            ItemModels.migrateItem(&s, companyID: companyID, itemID: itemID, data: d)
             ItemModels.setSupplier(&s, companyID: companyID, itemID: itemID, vendorID: vendorID)
             Tutorial.advance(&s, from: .pickSupplier)
         }

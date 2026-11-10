@@ -4,8 +4,7 @@ import GameCore
 /// What a supplier's offer really costs the buyer, and whether the buyer has any use for it.
 ///
 /// Landed cost: the price of the goods plus freight and customs from the supplier's country to the buyer's (`TransportCost`). A cheap supplier far
-/// away can cost more than a dearer one next door. Only goods that move (stock, materials, packaging, parts, supplies, fuel) travel; services and
-/// utilities (cleaning, laundry, software, repairs, power) are delivered without freight.
+/// away can cost more than a dearer one next door. Only goods that move (stock, materials, packaging, parts, supplies, fuel) travel; services (cleaning, laundry, repairs) are delivered without freight.
 ///
 /// Needs: a trade can supply only lines of the fixed supply catalogue (`SupplyMarketCatalogue`), and only to trades that really use them (a
 /// bakery's bread goes to cafes, restaurants and shops, not to a car repairer). No custom products exist.
@@ -125,11 +124,6 @@ public enum SupplyNeeds {
             }
         case "laundry":
             return supplierTrade == "cleaning" && (["hotel", "restaurant", "cafe", "gym", "nightclub", "casino"].contains(buyerTrade) || buyerFamily == "club")
-        case "software":
-            if supplierTrade == "gamestudio" { return ["pcbang", "casino", "fun", "nightclub"].contains(buyerTrade) }
-            return ["webdev", "startup"].contains(supplierTrade)
-        case "power":
-            return ["power", "oilgas"].contains(supplierTrade)
         case "fuel":
             return supplierTrade == "oilgas" && (vehicleTrades.contains(buyerTrade) || buyerFamily == "logi")
         default:

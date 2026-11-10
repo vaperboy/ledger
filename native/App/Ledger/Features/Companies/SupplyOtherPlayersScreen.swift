@@ -27,11 +27,13 @@ struct SupplyOtherPlayersScreen: View {
 
     var body: some View {
         if let e = store.engine {
-            let cos: [Company] = e.state.companies.filter { $0.status == .open && (companyID == nil || $0.id == companyID) }
+            let cos: [Company] = e.state.companies.filter { (c: Company) -> Bool in
+                c.status == .open && (companyID == nil || c.id == companyID) && SupplyMarketCatalogue.canSupply(tradeID: c.type)
+            }
             ScrollScreen(spacing: Theme.Space.xl) {
                 intro
                 if cos.isEmpty {
-                    EmptyState(glyph: Glyph.suppliers, title: "No open company", message: "Open a company that makes something other players buy.")
+                    EmptyState(glyph: Glyph.suppliers, title: "No company that can supply", message: "Open a company that makes something other players buy.")
                 }
                 ForEach(cos, id: \.id) { (co: Company) in section(e, co) }
             }
@@ -95,7 +97,7 @@ struct SupplyOtherPlayersScreen: View {
                 Chip(text: l.paused ? "Paused" : "Live", tint: l.paused ? Theme.caution : Theme.gain)
             }
             Text("\(state) · \(SupplyMarketWords.price(l.priceTier)) · \(SupplyMarketWords.quality(l.qualityTier))").textStyle(.caption, tint: Theme.inkSoft)
-            Text("\(SupplyGuards.effectiveCapacity(l)) units/week · \(SupplyMarketWords.lead(l.leadDays)) · minimum \(l.minOrder) · \(SupplyMarketWords.terms(l.termsDays))").textStyle(.caption, tint: Theme.inkFaint)
+            Text("\(SupplyGuards.effectiveCapacity(l)) units/week · \(SupplyMarketWords.lead(l.leadDays)) · minimum \(l.minOrder)").textStyle(.caption, tint: Theme.inkFaint)
             if let limit = SupplyGuards.limitText(l) { Text(limit).textStyle(.caption, tint: Theme.caution) }
             Text(orders.isEmpty ? "No orders yet." : "\(orders.count) recent \(orders.count == 1 ? "order" : "orders"), latest from \(orders[0].buyerName).").textStyle(.caption, tint: Theme.inkSoft)
             DeliveryRecordView(record: l.record)
@@ -141,7 +143,6 @@ struct ListingEditorPopup: View {
     }
 
     private static let durations: [Int] = SupplyMarketCatalogue.durations
-    private static let terms: [Int] = SupplyMarketCatalogue.termOptions
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -167,10 +168,6 @@ struct ListingEditorPopup: View {
             }
             stepper("Lead time", $lead, 1...10, 1, suffix: " days")
             stepper("Minimum order", $minimum, 5...max(5, capacity), 5, suffix: " units")
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text("Terms").popupText(.rowLabel)
-                SegmentedPill(items: Self.terms, title: { (d: Int) -> String in d == 0 ? "On delivery" : "\(d) days" }, selection: $draft.termsDays)
-            }
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 Text("The offer lasts").popupText(.rowLabel)
                 SegmentedPill(items: Self.durations, title: { (d: Int) -> String in d == 1 ? "1 day" : "\(d) days" }, selection: $draft.durationDays)

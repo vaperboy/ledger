@@ -144,3 +144,25 @@ struct CompanySupplierRecordPage: View {
         }
     }
 }
+
+struct SupplierRow: View {
+    var name: String
+    var detail: String
+    var value: String = ""
+    var valueTint: Color? = nil
+    var valueNote: String = ""
+    var badge: String? = nil
+    var badgeTone: AcctPill.Tone = .neutral
+    var current: Bool = false
+    var warning: Bool = false
+    var identifier: String = ""
+    var action: (() -> Void)? = nil
+    @Environment(\.outsidePalette) private var P
+
+    var body: some View {
+        LedgerRow(leading: .glyph(current ? Glyph.check : Glyph.suppliers), leadingTint: current ? P.accent : P.inkFaint,
+                  title: name, subtitle: detail, value: value, valueTint: valueTint, valueNote: valueNote, pill: current ? "In use" : badge, pillTone: current ? .good : badgeTone,
+                  lineLimit: 3, identifier: identifier, action: action)
+            .overlay(alignment: .bottomLeading) { if warning { Rectangle().fill(P.warn).frame(width: 2).padding(.vertical, Theme.Space.s) } }
+    }
+}

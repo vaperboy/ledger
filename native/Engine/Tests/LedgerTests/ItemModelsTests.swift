@@ -121,10 +121,9 @@ final class ItemModelsTests: XCTestCase {
         var (e, id) = try engine()
         let it = e.salesItems(companyID: id)[0]
         let old = e.itemPage(companyID: id, itemID: it.id)!
-        XCTAssertNil(old.record); XCTAssertTrue(old.offers.isEmpty); XCTAssertNil(old.supply)
+        XCTAssertNil(old.record); XCTAssertFalse(old.offers.isEmpty); XCTAssertNil(old.supply)
         XCTAssertEqual(old.statusWord, "On sale")
         XCTAssertGreaterThan(old.saleProbability, 0)
-        XCTAssertEqual(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: "V-UK-0"), .refused("This item has no stock to supply."))
         e.update { s, d, _ in ItemModels.migrate(&s, companyID: id, data: d) }
         let page = e.itemPage(companyID: id, itemID: it.id)!
         XCTAssertNotNil(page.record)
@@ -135,5 +134,25 @@ final class ItemModelsTests: XCTestCase {
         let v = page.offers[0].vendorID
         if case .refused(let why) = e.setItemSupplier(companyID: id, itemID: it.id, vendorID: v) { XCTFail(why) }
         XCTAssertEqual(e.itemPage(companyID: id, itemID: it.id)!.supply?.vendorID, v)
+    }
+
+    func testChoosingASupplierForAnItemWithoutARecordCreatesIt() throws {
+        var (e, id) = try engine()
+        let it = e.salesItems(companyID: id)[0]
+        XCTAssertEqual(e.supplyAsk(companyID: id, itemID: it.id), .item)
+        let v = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.offers.first).vendorID
+        XCTAssertNil(ItemModels.record(try XCTUnwrap(e.state.company(id)), itemID: it.id))
+        if case .refused(let why) = e.setItemSupplier(companyID: id, itemID: it.id, vendorID: v) { XCTFail(why) }
+        XCTAssertNotNil(ItemModels.record(try XCTUnwrap(e.state.company(id)), itemID: it.id))
+        XCTAssertEqual(e.itemPage(companyID: id, itemID: it.id)?.supply?.vendorID, v)
+    }
+
+    func testAServiceNeedsNoItemSupplier() throws {
+        var (e, id) = try engine("barber", weeks: 3)
+        let it = try XCTUnwrap(e.salesItems(companyID: id).first { $0.isService })
+        XCTAssertTrue(try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.isEmpty)
+        XCTAssertEqual(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: "V-UK-0"), .refused("This item needs no supplier."))
+        let hasMaterials = e.supplyLines(companyID: id).flatMap { $0.rows }.contains { $0.id == "mat" && $0.canSwitch }
+        XCTAssertEqual(e.supplyAsk(companyID: id, itemID: it.id), hasMaterials ? .line("mat") : nil)
     }
 }

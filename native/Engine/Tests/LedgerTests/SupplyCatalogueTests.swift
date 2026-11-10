@@ -46,24 +46,51 @@ final class SupplyCatalogueTests: XCTestCase {
         XCTAssertNotNil(e.data.catalog["hold"])
     }
 
-    func testGymBuysCleaningLaundryUtilitiesPartsAndShopStock() throws {
+    func testGymBuysCleaningLaundryPartsAndShopStock() throws {
         let (e, id) = try open("gym")
         let titles = e.supplyLines(companyID: id).flatMap { $0.rows }.map { $0.title }
-        for want in ["Drinks, snacks and protein stock", "Cleaning and hygiene supplies", "Towels and laundry", "Electricity and water", "Machine servicing and parts", "Booking and access software"] {
+        for want in ["Drinks, snacks and protein stock", "Cleaning and hygiene supplies", "Towels and laundry", "Machine servicing and parts"] {
             XCTAssertTrue(titles.contains(want), "gym lacks \(want): \(titles)")
         }
         let groups = e.supplyLines(companyID: id).map { $0.name }
-        XCTAssertTrue(groups.contains("Linen and laundry") && groups.contains("Utilities"), "\(groups)")
+        XCTAssertTrue(groups.contains("Linen and laundry"), "\(groups)")
         let laundry = try line(e, id, "laundry")
         XCTAssertGreaterThanOrEqual(laundry.offers.count, 2)
         XCTAssertEqual(laundry.offers.filter { $0.isCurrent }.count, 1)
+    }
+
+    func testUtilitiesAndSoftwareAreNeverASupplierChoice() throws {
+        var (e, id) = try open("gym")
+        let ids = e.supplyLines(companyID: id).flatMap { $0.rows }.map { $0.id }
+        XCTAssertFalse(ids.contains("power") || ids.contains("software"), "\(ids)")
+        XCTAssertEqual(e.chooseSupply(companyID: id, change: .catalogue(line: "power", offer: "market")), .notAllowed)
+        XCTAssertEqual(e.chooseSupply(companyID: id, change: .catalogue(line: "software", offer: "market")), .notAllowed)
+        let co = try XCTUnwrap(e.state.company(id)); let bd = try XCTUnwrap(e.data.catalog[co.type])
+        for l in SupplyCatalogue.lines(co, bd) where l.automatic {
+            XCTAssertEqual(SupplyCatalogue.offers(e.state, co, bd, line: l, data: e.data).map { $0.id }, ["market"], l.id)
+        }
+        XCTAssertTrue(SupplyCatalogue.lines(co, bd).contains { $0.id == "power" && $0.automatic })
+        ChainsTests.play(&e, days: 14)
+        XCTAssertNotNil(SupplyCatalogue.weeklySpend(try XCTUnwrap(e.state.company(id)), line: "power"))
+        for kind in IntercompanySupply.automaticKinds {
+            XCTAssertFalse(IntercompanySupply.kindsFor(co).contains { $0.id == kind }, kind)
+            XCTAssertFalse(e.supplierInputs(companyID: id).contains { $0.id == kind }, kind)
+        }
+    }
+
+    func testNothingIsAskedBeforeTheFirstItemIsChosen() throws {
+        var (e, id) = try open("cafe")
+        e.update { s, _, _ in if let i = s.companyIndex(id) { SalesItems.markFirstChoicePending(&s, i) } }
+        XCTAssertTrue(e.supplyLines(companyID: id).isEmpty)
+        let pick = try XCTUnwrap(e.firstItemChoices(companyID: id).first)
+        XCTAssertFalse(e.chooseFirstItem(companyID: id, itemID: pick.id).isRefused)
+        XCTAssertFalse(e.supplyLines(companyID: id).isEmpty)
     }
 
     func testServiceTradesAndVenuesShowLists() throws {
         for trade in ["barber", "dental", "law", "hotel", "plumber", "taxi", "bank", "resrent"] {
             let (e, id) = try open(trade)
             XCTAssertFalse(e.supplyLines(companyID: id).isEmpty, "\(trade) shows no suppliers")
-            XCTAssertTrue(e.hasSupplyLines(companyID: id))
         }
     }
 
@@ -104,10 +131,9 @@ final class SupplyCatalogueTests: XCTestCase {
         var (market, idm) = try open("gym")
         var (cod, idc) = try open("gym")
         var (inv, idi) = try open("gym")
-        let sw = try line(cod, idc, "software")
+        let sw = try line(cod, idc, "laundry")
         let basic = try XCTUnwrap(sw.offers.first { $0.quality == "Basic" })
         let solid = try XCTUnwrap(sw.offers.first { $0.quality == "Solid" && !$0.name.hasPrefix("Market") })
-        XCTAssertEqual(basic.terms, "Paid on delivery"); XCTAssertTrue(solid.terms.hasPrefix("Paid after"))
         cod.chooseSupply(companyID: idc, change: basic.change); inv.chooseSupply(companyID: idi, change: solid.change)
         for _ in 0..<7 { ChainsTests.play(&market, days: 1); ChainsTests.play(&cod, days: 1); ChainsTests.play(&inv, days: 1) }
         // paying on delivery moves cash out of the week; on invoice it is owed and booked as an expense
