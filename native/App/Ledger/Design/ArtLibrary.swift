@@ -62,6 +62,16 @@ enum ArtLibrary {
         return k + "-" + premisesBand(squareMetres: squareMetres ?? 0)
     }
 
+    static func premisesPicture(kind: String?, squareMetres: Double?, variant: Int, seed: String) -> String {
+        let own: String = premisesKey(kind: kind, squareMetres: squareMetres)
+        guard let k = kind, premisesKinds.contains(k) else { return own }
+        let bands: [String] = ["small", "medium", "large", "xlarge"].map { (b: String) -> String in k + "-" + b }.filter { (b: String) -> Bool in b != own }
+        let extras: [String] = ((premisesFamilies[k] ?? []).map { (f: String) -> String in "items:" + f } + bands)
+            .sorted { (a: String, b: String) -> Bool in stableHash(seed + a) < stableHash(seed + b) }
+        let pool: [String] = [own] + extras
+        return pool[max(0, variant) % pool.count]
+    }
+
     static let luxuryCells: [String: (sheet: Sheet, cell: String)] = [
         "c15": (.cars, "b2-2"), "c1": (.cars, "b2-1"), "c11": (.cars, "b1-3"), "c10": (.cars, "b1-2"), "c7": (.cars, "b1-1"),
         "c8": (.cars, "b6-3"), "c9": (.cars, "b6-2"), "c2": (.cars, "b5-1"), "c4": (.cars, "b3-1"), "c3": (.cars, "b3-2"),

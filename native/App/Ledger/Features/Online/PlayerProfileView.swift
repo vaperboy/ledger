@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlayerProfileView: View {
     var playerID: String
+    var preset: PlayerProfile?
     @Environment(OnlineSession.self) private var online
     @State private var profile: PlayerProfile?
     @State private var failure: String?
@@ -9,6 +10,12 @@ struct PlayerProfileView: View {
     @State private var pending: PendingAction?
     @State private var reporting: ReportTarget?
     @State private var reportSent = false
+
+    init(playerID: String, preset: PlayerProfile? = nil) {
+        self.playerID = playerID
+        self.preset = preset
+        _profile = State(initialValue: preset)
+    }
 
     var body: some View {
         PhonePageScroll(spacing: Theme.Space.l) {
@@ -19,7 +26,7 @@ struct PlayerProfileView: View {
                 } else {
                     detailGroups(p)
                 }
-                actions(p)
+                if preset == nil { actions(p) }
             } else if let failure {
                 Text(failure).textStyle(.body, tint: Theme.inkSoft).frame(maxWidth: .infinity).padding(.top, Theme.Space.xl)
             } else {
@@ -27,7 +34,7 @@ struct PlayerProfileView: View {
             }
         }
         .appScreen(title: profile?.displayName ?? "Player", subtitle: profile?.subline ?? "")
-        .task { await load() }
+        .task { if preset == nil { await load() } }
         .confirmAction($pending)
         .centerSheet(item: $reporting, title: "Report player", category: .medium) { (t: ReportTarget) in
             ReportSheet(target: t) { reason, note in

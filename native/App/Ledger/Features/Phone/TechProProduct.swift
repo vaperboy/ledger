@@ -113,9 +113,9 @@ struct TechProProduct: View {
     }
 
     private func hero(_ e: GameEngine, _ need: EquipmentMarket.Need) -> some View {
-        var photo: String = ""
+        var photo: String = need.isVehicle ? "" : ArtAsset.equipment(equipmentID)
         let group: String = need.kind == "soft" ? "software" : "equipment"
-        var item: String = ArtLibrary.itemKey(group: group, familyKey: equipmentID, seed: equipmentID) ?? ""
+        var item: String = ArtAsset.cellFallback(equipmentID, group: group, seed: equipmentID)
         if offerKey.hasPrefix("v"), let o = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.VehicleOffer) -> Bool in x.id == offerRest }) {
             photo = TechPhotos.vehicle(model: o.modelID)
             item = ArtLibrary.itemKey(group: "vehicle", familyKey: o.modelID, seed: equipmentID + "#" + String(o.index)) ?? ""

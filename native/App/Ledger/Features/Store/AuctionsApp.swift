@@ -87,6 +87,29 @@ struct AuctionArt: View {
     }
 }
 
+struct AuctionHero: View {
+    var item: ArtifactItem
+    var height: CGFloat
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+        GeometryReader { (g: GeometryProxy) in
+            ZStack {
+                Theme.inset
+                if let card = CardCatalog.def(forItem: item.id) {
+                    CardThumb(def: card, width: min(g.size.width * 0.82, height * 0.9 / 0.62))
+                } else {
+                    AuctionArt(item: item, size: height * 0.88)
+                }
+            }
+            .frame(width: g.size.width, height: g.size.height)
+        }
+        .frame(height: height)
+        .clipShape(shape)
+        .accessibilityHidden(true)
+    }
+}
+
 struct AuctionRow: View {
     var auction: Auction
     var now: Double
@@ -118,12 +141,13 @@ struct AuctionTile: View {
         let card: CardDef? = CardCatalog.def(forItem: auction.item.id)
         let left: Double = auction.endsAt - now
         let stance: String? = AuctionLook.stance(auction)
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             ZStack(alignment: .topTrailing) {
-                AuctionArt(item: auction.item, size: 72).frame(maxWidth: .infinity).frame(height: 88)
+                AuctionHero(item: auction.item, height: 230)
                 Text(StoreText.timeLeft(left)).textStyle(.caption, tint: left < 120 ? Theme.loss : Theme.ink, numeric: true)
-                    .padding(.horizontal, Theme.Space.s).padding(.vertical, 2)
+                    .padding(.horizontal, Theme.Space.s).padding(.vertical, 4)
                     .background(Capsule().fill(Theme.surfaceRaised))
+                    .padding(Theme.Space.s)
             }
             Text(card?.name ?? def?.name ?? "Artifact").textStyle(.headline).lineLimit(1).minimumScaleFactor(0.8)
             HStack(spacing: Theme.Space.xs) {
@@ -131,9 +155,9 @@ struct AuctionTile: View {
                 Spacer(minLength: 0)
                 if let s = stance { Text(s).textStyle(.caption, tint: AuctionLook.stanceTint(s), weight: .semibold) }
             }
-            Text(AuctionLook.priceLine(auction)).textStyle(.caption, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
+            Text(AuctionLook.priceLine(auction)).textStyle(.title, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
         }
-        .padding(Theme.Space.m)
+        .padding(Theme.Space.s)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surfaceRaised))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
         .contentShape(Rectangle())
@@ -168,7 +192,7 @@ struct LiveAuctionsList: View {
                 if list.isEmpty {
                     Text("No auctions match.").textStyle(.body, tint: Theme.inkSoft).frame(maxWidth: .infinity)
                 } else {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.m), GridItem(.flexible(), spacing: Theme.Space.m)], spacing: Theme.Space.m) {
+                    LazyVStack(spacing: Theme.Space.l) {
                         ForEach(list) { (a: Auction) in
                             Button { Haptics.tap(); opened = OpenAuction(id: a.id) } label: { AuctionTile(auction: a, now: now) }
                                 .buttonStyle(PressableStyle())
@@ -265,17 +289,14 @@ struct AuctionPopup: View {
         let card: CardDef? = CardCatalog.def(forItem: a.item.id)
         let live: Bool = a.isLive(at: now)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack(spacing: Theme.Space.l) {
-                AuctionArt(item: a.item, size: 84)
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    Text(card?.name ?? def?.name ?? "Artifact").textStyle(.title).lineLimit(2)
-                    HStack(spacing: Theme.Space.xs) {
-                        if let r = def?.rarity ?? card?.rarity { RarityTag(rarity: r) }
-                        Text(ArtifactCatalog.label(a.item)).textStyle(.caption)
-                    }
-                    Text("Seller: " + name(a.seller)).textStyle(.caption)
+            AuctionHero(item: a.item, height: 240)
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text(card?.name ?? def?.name ?? "Artifact").textStyle(.title).lineLimit(2)
+                HStack(spacing: Theme.Space.xs) {
+                    if let r = def?.rarity ?? card?.rarity { RarityTag(rarity: r) }
+                    Text(ArtifactCatalog.label(a.item)).textStyle(.caption)
                 }
-                Spacer(minLength: 0)
+                Text("Seller: " + name(a.seller)).textStyle(.caption)
             }
             if let note = def?.note, !note.isEmpty { Text(note).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
             Hairline()
