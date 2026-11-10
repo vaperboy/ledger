@@ -93,9 +93,9 @@ public struct GovMoneySupply: Codable, Equatable, Sendable {
         guard amount > 0, amount.isFinite else { throw GovError.badAmount("An amount above zero is needed.") }
         let t = total
         let single = Int((rules.printSingleLimit * 100).rounded()), window = Int((rules.printWindowLimit * 100).rounded())
-        if amount > t * rules.printSingleLimit { throw GovError.overLimit("One printing may not exceed \(single)% of the money supply.") }
+        if amount > t * rules.printSingleLimit { throw GovError.overLimit("One addition of new money may not exceed \(single)% of the money supply.") }
         let recent = mints.filter { week - $0.week < rules.printWindowWeeks }.reduce(0) { $0 + $1.amount }
-        if recent + amount > t * rules.printWindowLimit { throw GovError.overLimit("No more than \(window)% of the supply may be printed in \(rules.printWindowWeeks) weeks.") }
+        if recent + amount > t * rules.printWindowLimit { throw GovError.overLimit("No more than \(window)% of the money supply may be added in \(rules.printWindowWeeks) weeks.") }
     }
 
     mutating func append(_ m: GovMint) { mints.append(m) }

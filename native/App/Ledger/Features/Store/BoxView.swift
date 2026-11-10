@@ -204,12 +204,7 @@ struct BoxResultCard: View {
 
     var body: some View {
         Group {
-            if let item = desk.auctioning {
-                ListingCard(item: item) { (listed: Bool) in
-                    if listed { desk.markListed(item) }
-                    desk.auctioning = nil
-                }
-            } else if showInfo {
+            if showInfo {
                 VStack(spacing: Theme.Space.m) {
                     LootBoxInfoContent(kind: kind)
                     Button { Motion.animate(.easeInOut(duration: 0.2)) { showInfo = false } } label: { Text("Back to the box").frame(maxWidth: .infinity) }
@@ -398,13 +393,11 @@ struct BoxResultCard: View {
 
 enum PieceFate: Equatable {
     case sold(Int)
-    case listed
 }
 
 @MainActor @Observable
 final class PieceDesk {
     private(set) var fates: [String: PieceFate] = [:]
-    var auctioning: ArtifactItem?
     private(set) var busy = false
     @ObservationIgnored private let session = StoreSession.shared
 
@@ -424,19 +417,19 @@ final class PieceDesk {
         busy = false
     }
 
-    func markListed(_ item: ArtifactItem) { fates[item.id] = .listed }
 }
 
 struct PieceActions: View {
     var item: ArtifactItem
     var desk: PieceDesk
+    @EnvironmentObject var store: GameStore
+    @Environment(\.popupClose) private var popupClose
     private let session = StoreSession.shared
 
     var body: some View {
         if let fate = desk.fates[item.id] {
             switch fate {
             case .sold(let price): Text("Sold for \(session.money(price)). The cash is in your account.").textStyle(.caption, tint: Theme.gain).multilineTextAlignment(.center)
-            case .listed: Text("Up for auction. Follow it under My auctions.").textStyle(.caption, tint: Theme.gain).multilineTextAlignment(.center)
             }
         } else if session.canSellForCash && StoreGate.access(countryCode: nil) != .hidden {
             HStack(spacing: Theme.Space.s) {
@@ -444,7 +437,7 @@ struct PieceActions: View {
                     .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
                     .disabled(desk.busy)
                     .accessibilityIdentifier("piece-sell")
-                Button { desk.auctioning = item } label: { Text("Auction").frame(maxWidth: .infinity) }
+                Button { Haptics.tap(); popupClose?(); store.openApp(.auctions, request: .auctionListing(item.id)) } label: { Text("Auction").frame(maxWidth: .infinity) }
                     .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
                     .disabled(desk.busy)
                     .accessibilityIdentifier("piece-auction")
@@ -549,17 +542,7 @@ struct BoxBatchCard: View {
 
     var body: some View {
         Group {
-            if let item = desk.auctioning {
-                ScrollView {
-                    ListingCard(item: item) { (listed: Bool) in
-                        if listed { desk.markListed(item) }
-                        desk.auctioning = nil
-                    }
-                    .padding(.horizontal, PopupLayout.inset).padding(.bottom, PopupLayout.inset)
-                }
-            } else {
-                main
-            }
+            main
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .centerSheetLocked(!shown)
@@ -714,7 +697,6 @@ struct BoxBatchCard: View {
     private func fateLine(_ fate: PieceFate?) -> String? {
         switch fate {
         case .sold(let price): return "Sold, " + session.money(price)
-        case .listed: return "On auction"
         case nil: return nil
         }
     }

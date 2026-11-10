@@ -104,7 +104,13 @@ enum EmblemCatalog {
         "stamp": "checkmark.rectangle.fill", "map": "globe.europe.africa.fill", "scroll": "scroll.fill", "charter": "doc.richtext.fill",
     ]
 
+    static func card(_ d: CardDef) -> EmblemSpec {
+        EmblemSpec(symbol: d.logo.isEmpty ? "rectangle.on.rectangle.fill" : d.logo, badge: d.isAnimated ? "sparkles" : nil, top: d.colors[0], bottom: d.colors[d.colors.count - 1],
+                   ink: mix(d.colors[0], 0xFFFFFF, 0.65), motif: d.isAnimated ? .stars : (d.kind == .company ? .rings : .dots), shape: .tile)
+    }
+
     static func artifact(_ id: String) -> EmblemSpec? {
+        if let c = CardCatalog.def(id) { return card(c) }
         guard let def = ArtifactCatalog.def(id), let look = collectionLook[def.collection] else { return nil }
         return EmblemSpec(symbol: artifactSymbols[id] ?? "seal.fill", top: look.top, bottom: look.bottom, ink: look.ink, motif: look.motif, shape: .medal)
     }
@@ -152,6 +158,9 @@ enum EmblemCatalog {
     static func box(_ id: String) -> EmblemSpec {
         switch id {
         case "grand": return EmblemSpec(symbol: "shippingbox.fill", badge: "sparkles", top: 0xC2A24A, bottom: 0x4E3A10, ink: 0xFFF0BF, motif: .rays, shape: .tile)
+        case "cardElite": return EmblemSpec(symbol: "rectangle.on.rectangle.fill", badge: "sparkles", top: 0xC2A24A, bottom: 0x4E3A10, ink: 0xFFF0BF, motif: .stars, shape: .tile)
+        case "cardPremium": return EmblemSpec(symbol: "rectangle.on.rectangle.fill", top: 0x8C6FD6, bottom: 0x2A1E4F, ink: 0xE4DAFA, motif: .rings, shape: .tile)
+        case "cardBasic": return EmblemSpec(symbol: "rectangle.on.rectangle.fill", top: 0x4C7C96, bottom: 0x1B3040, ink: 0xD2E6F2, motif: .dots, shape: .tile)
         case "cabinet": return EmblemSpec(symbol: "shippingbox.fill", top: 0x4C6EA8, bottom: 0x1B2C4F, ink: 0xD2E0FA, motif: .grid, shape: .tile)
         default: return EmblemSpec(symbol: "gift.fill", top: 0x4F8A80, bottom: 0x1E403B, ink: 0xCFF0E8, motif: .dots, shape: .tile)
         }

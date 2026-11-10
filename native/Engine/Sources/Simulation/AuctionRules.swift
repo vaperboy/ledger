@@ -385,7 +385,11 @@ public enum AuctionMarket {
             let rarity: BoxRarity = rr < 0.55 ? .common : rr < 0.85 ? .rare : rr < 0.97 ? .epic : .legendary
             let pool: [ArtifactDef] = ArtifactCatalog.defs(of: rarity)
             let def: ArtifactDef = pool[min(pool.count - 1, Int(roll(key + "|def") * Double(pool.count)))]
-            let item = ArtifactItem(defID: def.id, serial: ArtifactCatalog.serial(of: def, roll: roll(key + "|ser")))
+            var item = ArtifactItem(defID: def.id, serial: ArtifactCatalog.serial(of: def, roll: roll(key + "|ser")))
+            let cardPool: [CardDef] = CardCatalog.all.filter { $0.rarity == rarity }
+            if roll(key + "|card") < 0.25, !cardPool.isEmpty {
+                item = CardCatalog.item(cardPool[min(cardPool.count - 1, Int(roll(key + "|cdef") * Double(cardPool.count)))], roll: roll(key + "|ser"))
+            }
             let startPrice: Int = tidy(Double(basePrice(rarity)) * priceLevel * (0.7 + roll(key + "|sp") * 0.7))
             let reserve: Int? = roll(key + "|hasres") < 0.3 ? tidy(Double(startPrice) * (1.4 + roll(key + "|rs") * 1.2)) : nil
             let buyNow: Int? = roll(key + "|hasbn") < 0.3 ? max(tidy(Double(startPrice) * (2.2 + roll(key + "|bn") * 1.6)), reserve ?? 0) : nil

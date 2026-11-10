@@ -212,6 +212,7 @@ struct CompanyOverview: View {
         let ops: OperationsFigures? = engine.operationsFigures(companyID: co.id)
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
+                CompanyCardBanner(company: co)
                 hero(co, h, ops)
                 strip(co, h, ops)
                 structureStrip(co)

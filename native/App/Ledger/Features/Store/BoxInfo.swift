@@ -17,10 +17,11 @@ struct LootInfoButton: View {
 
 struct LootBoxInfoSheet: View {
     var kind: BoxKind
+    var others: [BoxKind] = []
 
     var body: some View {
         ScrollView {
-            LootBoxInfoContent(kind: kind)
+            LootBoxInfoContent(kind: kind, others: others)
                 .padding(.horizontal, PopupLayout.inset).padding(.bottom, PopupLayout.inset)
         }
     }
@@ -28,6 +29,7 @@ struct LootBoxInfoSheet: View {
 
 struct LootBoxInfoContent: View {
     var kind: BoxKind
+    var others: [BoxKind] = []
     private let session = StoreSession.shared
 
     static let rules: [String] = [
@@ -35,6 +37,7 @@ struct LootBoxInfoContent: View {
         "Gold has no cash value, cannot be cashed out and never turns into in-game money. A box can also hold a cash prize in the game's money, paid into your personal account, and numbered artifacts you can sell at once or at auction for cash.",
         "These are the exact odds used for every opening. They do not change with how much you spend or how often you open.",
         "A cosmetic you already own is replaced by an artifact of the same rarity, so no opening is wasted.",
+        "Card packs hold only profile cards and company cards. Cards are numbered like artifacts, can be sold at auction, and a company card is used by one company at a time. A pricier pack has a better chance of rare, epic and animated cards. The odds above are exact and do not change with how much you spend.",
         "Loot boxes are for players aged 18 or older, which you confirmed when you accepted the terms. They are not offered where the law restricts them.",
         "Refunds for gold purchases follow Apple's refund policy and the consumer law where you live.",
         "Spend only what you are comfortable with.",
@@ -45,6 +48,12 @@ struct LootBoxInfoContent: View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Odds, \(kind.title)").capsLabel(Theme.inkFaint)
                 BoxOddsTable(kind: kind)
+            }
+            ForEach(others, id: \.self) { (other: BoxKind) in
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("Odds, \(other.title)").capsLabel(Theme.inkFaint)
+                    BoxOddsTable(kind: other)
+                }
             }
             if kind.isPaid {
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {

@@ -12,12 +12,18 @@ public enum BoxKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case free
     case cabinet
     case grand
+    case cardBasic
+    case cardPremium
+    case cardElite
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .free: return "Season box"
         case .cabinet: return "Cabinet box"
         case .grand: return "Grand box"
+        case .cardBasic: return "Card pack"
+        case .cardPremium: return "Premium card pack"
+        case .cardElite: return "Elite card pack"
         }
     }
     public var price: Int {
@@ -25,14 +31,21 @@ public enum BoxKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .free: return 0
         case .cabinet: return 120
         case .grand: return 400
+        case .cardBasic: return 80
+        case .cardPremium: return 240
+        case .cardElite: return 700
         }
     }
     public var isPaid: Bool { price > 0 }
+    public var isCardPack: Bool { self == .cardBasic || self == .cardPremium || self == .cardElite }
+    public static var standard: [BoxKind] { allCases.filter { !$0.isCardPack } }
+    public static var cardPacks: [BoxKind] { allCases.filter { $0.isCardPack } }
 }
 
 public enum BoxPrizeClass: Equatable, Sendable {
     case cosmetic, artifact, gold(Int)
     case money(Int)
+    case profileCard, companyCard
 }
 
 public struct BoxRow: Equatable, Sendable {
@@ -113,7 +126,36 @@ public enum BoxOdds {
                     r(.rare, .cosmetic, 1300), r(.rare, .artifact, 1900), r(.rare, .gold(80), 400), r(.rare, .money(2_000), 200),
                     r(.epic, .cosmetic, 450), r(.epic, .artifact, 700), r(.epic, .gold(150), 100), r(.epic, .money(5_000), 150),
                     r(.legendary, .cosmetic, 100), r(.legendary, .artifact, 150), r(.legendary, .money(5_000), 50)]
+        case .cardBasic:
+            return cards(common: 3650, rare: 1100, epic: 200, legendary: 50)
+        case .cardPremium:
+            return cards(common: 1800, rare: 1800, epic: 1000, legendary: 400)
+        case .cardElite:
+            return cards(common: 500, rare: 1700, epic: 1600, legendary: 1200)
         }
+    }
+
+    private static func cards(common: Int, rare: Int, epic: Int, legendary: Int) -> [BoxRow] {
+        [r(.common, .profileCard, common), r(.common, .companyCard, common),
+         r(.rare, .profileCard, rare), r(.rare, .companyCard, rare),
+         r(.epic, .profileCard, epic), r(.epic, .companyCard, epic),
+         r(.legendary, .profileCard, legendary), r(.legendary, .companyCard, legendary)]
+    }
+
+    public static func animatedPercent(_ kind: BoxKind) -> Double {
+        var total = 0.0
+        for row in rows(kind) {
+            let k: CardDef.Kind
+            switch row.prize {
+            case .profileCard: k = .profile
+            case .companyCard: k = .company
+            default: continue
+            }
+            let pool: [CardDef] = CardCatalog.defs(k, row.rarity)
+            guard !pool.isEmpty else { continue }
+            total += row.percent * Double(pool.filter { $0.isAnimated }.count) / Double(pool.count)
+        }
+        return total
     }
 
     public static func rarityPercent(_ kind: BoxKind) -> [(rarity: BoxRarity, percent: Double)] {
@@ -164,6 +206,8 @@ public enum BoxOdds {
             case .artifact: what = "artifact"
             case .gold(let g): what = "\(g) gold"
             case .money(let m): what = "cash prize (\(m) in the reference economy, scaled to your country's money)"
+            case .profileCard: what = "profile card"
+            case .companyCard: what = "company card"
             }
             return ("\(row.rarity.title) \(what)", row.percent)
         }
@@ -204,6 +248,10 @@ public enum BoxOdds {
             else { content = .cosmetic(pool[min(pool.count - 1, Int(itemRoll * Double(pool.count)))].id) }
         case .artifact:
             content = .artifact(artifact(row.rarity, itemRoll, serialRoll))
+        case .profileCard:
+            content = .artifact(card(.profile, row.rarity, itemRoll, serialRoll))
+        case .companyCard:
+            content = .artifact(card(.company, row.rarity, itemRoll, serialRoll))
         }
         var next: BoxPity = pity
         if kind.isPaid { next.record(row.rarity) }
@@ -221,6 +269,11 @@ public enum BoxOdds {
             results.append(out.result)
         }
         return (results, next)
+    }
+
+    private static func card(_ kind: CardDef.Kind, _ rarity: BoxRarity, _ itemRoll: Double, _ serialRoll: Double) -> ArtifactItem {
+        let pool: [CardDef] = CardCatalog.defs(kind, rarity)
+        return CardCatalog.item(pool[min(pool.count - 1, Int(itemRoll * Double(pool.count)))], roll: serialRoll)
     }
 
     private static func artifact(_ rarity: BoxRarity, _ itemRoll: Double, _ serialRoll: Double) -> ArtifactItem {

@@ -84,6 +84,8 @@ struct PhoneAppContent: View {
             TechProApp()
         case .store:
             StoreApp()
+        case .auctions:
+            LevelGuard(feature: .auctions) { AuctionsApp() }
         case .competition:
             CompetitionApp()
         case .rankings:

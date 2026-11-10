@@ -11,7 +11,7 @@ struct GovernmentNewsSection: View {
         let read: WorldRead? = engine.worldRead()
         let list: [GovNews] = read.map { (r: WorldRead) -> [GovNews] in Array(r.gov.news.prefix(40)) } ?? []
         VStack(alignment: .leading, spacing: 0) {
-            Text("Source: the government. Rates, printed money, elections, terms of office and the courts, as it announces them.")
+            Text("Source: the government. Rates, inflation, elections, terms of office and the courts, as it announces them.")
                 .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 12)
             if let lead = list.first {
                 leadStory(lead)

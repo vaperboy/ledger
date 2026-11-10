@@ -4,6 +4,7 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
     public enum Kind: String, Sendable {
         case badge, theme, namePlate, backdrop, saveSlot, advisorLine, richListFlair, tradePlate
         case box, gold
+        case profileCard, companyCard
         public var isEquippable: Bool { self == .theme || self == .namePlate || self == .backdrop || self == .richListFlair || self == .tradePlate }
         public var label: String {
             switch self {
@@ -17,6 +18,8 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
             case .tradePlate: return "Trade-name plate"
             case .box: return "Box"
             case .gold: return "Gold"
+            case .profileCard: return "Profile card"
+            case .companyCard: return "Company card"
             }
         }
     }
@@ -46,6 +49,14 @@ public enum SeasonRewards {
                      detail: "Free to open in the Store; it holds a cosmetic, an artifact, a little gold or, rarely, cash. Odds are shown before you open it.", amount: count)
     }
 
+    private static func k(_ defID: String, _ tier: Int, _ prem: Bool) -> SeasonReward {
+        let d: CardDef? = CardCatalog.def(defID)
+        let company: Bool = d?.kind == .company
+        return SeasonReward(id: defID, tier: tier, premium: prem, kind: company ? .companyCard : .profileCard, title: d?.name ?? "Card",
+                            detail: (company ? "A numbered company card with its own colours and logo. " : "A numbered profile card for your profile page. ") + "It joins your cabinet, can be sold at auction, and is set in Your look.",
+                            colors: d?.colors ?? [])
+    }
+
     private static func g(_ id: String, _ tier: Int, _ prem: Bool, _ gold: Int) -> SeasonReward {
         SeasonReward(id: id, tier: tier, premium: prem, kind: .gold, title: "\(gold) gold",
                      detail: "Gold buys cosmetics, boxes and comfort in the Store. It never buys in-game money.", amount: gold)
@@ -68,6 +79,7 @@ public enum SeasonRewards {
         r("flair.pin", 27, false, .richListFlair, "Rich-list pin", "A small champagne pin beside your name on the rich list.", [0xD6B889]),
         r("badge.s1.gold", 29, false, .badge, "Gold badge", "Awarded for reaching tier 29."),
         r("badge.s1.complete", 30, false, .badge, "Season 1 finisher", "Every tier reached in season 1."),
+        k("card.p.slate", 6, false), k("card.c.burgundy", 12, false), k("card.p.ember", 20, false), k("card.c.copper", 28, false),
         b("box.f4", 4, false, 1), g("gold.f8", 8, false, 10), b("box.f10", 10, false, 1), g("gold.f14", 14, false, 15),
         b("box.f16", 16, false, 1), g("gold.f22", 22, false, 20), b("box.f26", 26, false, 1)
     ]
@@ -88,6 +100,7 @@ public enum SeasonRewards {
         r("theme.ocean", 27, true, .theme, "Ocean theme", "A blue tint on the usual palette.", [0x7FAAD6, 0x1D2A3B]),
         r("trade.gilded", 28, true, .tradePlate, "Gilded trade plate", "A gilded plate for your trade names.", [0xE0BC5E, 0x7A5A1C]),
         r("badge.s1.crown", 30, true, .badge, "Season 1 crown", "The premium finisher badge of season 1."),
+        k("card.c.brass", 8, true), k("card.p.gilt", 14, true), k("card.c.silver", 22, true), k("card.p.aurora", 26, true),
         b("box.p4", 4, true, 1), g("gold.p7", 7, true, 20), b("box.p10", 10, true, 2), g("gold.p13", 13, true, 30),
         b("box.p16", 16, true, 2), g("gold.p19", 19, true, 40), b("box.p25", 25, true, 2), g("gold.p29", 29, true, 50)
     ]

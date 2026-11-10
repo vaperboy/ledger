@@ -135,6 +135,7 @@ struct CompanyDetailView: View {
         case .team:
             if a.contains(.staff) { CompanyTeam(engine: e, company: co) } else { CompanyHolding(engine: e, company: co) }
         case .manage:
+            CompanyCardLink(company: co)
             if a.contains(.operations) {
                 CompanyOperations(engine: e, company: co, part: $opsPart)
             } else {

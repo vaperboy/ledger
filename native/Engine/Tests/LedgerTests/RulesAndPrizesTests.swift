@@ -10,7 +10,7 @@ final class RulesAndPrizesTests: XCTestCase {
     }
 
     func testBoxMoneyIsRareCappedAndDisclosed() {
-        for kind in BoxKind.allCases {
+        for kind in BoxKind.standard {
             XCTAssertGreaterThan(BoxOdds.largestMoney(kind), 0, "\(kind)")
             XCTAssertLessThanOrEqual(BoxOdds.largestMoney(kind), BoxOdds.moneyCap)
             XCTAssertTrue(BoxOdds.isFair(kind))

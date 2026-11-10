@@ -78,6 +78,9 @@ extension BoxKind {
         case .free: return "A small gift: usually a cosmetic or an artifact, sometimes a little gold or cash."
         case .cabinet: return "Cosmetics, numbered artifacts you can sell for cash, and now and then a cash prize."
         case .grand: return "Better odds of rare and epic pieces, with bigger cash prizes. Gold prizes stay small."
+        case .cardBasic: return "Profile cards and company cards, mostly plain colours. A rare animated card is possible but unlikely."
+        case .cardPremium: return "A fair chance of rare and epic cards, and a real chance of an animated one."
+        case .cardElite: return "The best odds of epic and legendary animated cards. Every card is numbered and can be sold at auction."
         }
     }
 }

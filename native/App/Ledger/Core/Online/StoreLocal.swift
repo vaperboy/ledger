@@ -16,5 +16,6 @@ struct LocalStoreService: StoreService {
         try await vault.openBoxes(kind, count: count, owned: owned, paidBoxesAllowed: paidBoxesAllowed)
     }
     func grantFromSeason(boxes: Int, gold: Int) async -> StoreState { await vault.grantFromSeason(boxes: boxes, gold: gold) }
+    func grantCard(defID: String, roll: Double) async -> StoreState { await vault.grantCard(defID, roll: roll) }
     func quickSell(itemIDs: [String], priceLevel: Double) async throws -> QuickSale { try await vault.quickSell(itemIDs, priceLevel: priceLevel) }
 }

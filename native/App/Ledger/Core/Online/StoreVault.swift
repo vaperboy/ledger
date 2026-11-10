@@ -146,6 +146,20 @@ actor GoldVault {
         return state()
     }
 
+    func grantCard(_ defID: String, roll: Double) -> StoreState {
+        guard let d = CardCatalog.def(defID) else { return state() }
+        var item: ArtifactItem = CardCatalog.item(d, roll: roll)
+        let edition: Int = ArtifactCatalog.edition(d.rarity)
+        var tries = 0
+        while cabinet.contains(item.id) && tries < edition {
+            item = ArtifactItem(defID: d.id, serial: item.serial % edition + 1)
+            tries += 1
+        }
+        cabinet.add(item)
+        save()
+        return state()
+    }
+
     func quickSell(_ ids: [String], priceLevel: Double) throws -> QuickSale {
         var cash = 0
         var sold: [ArtifactItem] = []

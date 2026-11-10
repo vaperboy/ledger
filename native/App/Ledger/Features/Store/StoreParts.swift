@@ -110,6 +110,9 @@ struct BoxOddsTable: View {
     }
 
     private var valueNote: String {
+        if kind.isCardPack {
+            return "A card pack holds one card and no gold or cash. About \(String(format: "%.1f", BoxOdds.animatedPercent(kind)))% of these packs hold an animated card. The pack costs \(StoreText.gold(kind.price)); the cards are numbered and can be sold at auction for cash."
+        }
         let avg: Double = BoxOdds.expectedGold(kind)
         let avgText: String = String(format: "%.1f", avg)
         let money: String = BoxOdds.moneyPercent(kind) > 0
