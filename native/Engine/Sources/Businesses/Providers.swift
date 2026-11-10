@@ -31,10 +31,6 @@ public enum Providers {
             var p: [String: JSONValue] = ["id": .number(Double(s.makeID())), "name": .string(providerName(kind: kind, country: country, &s.random)),
                                           "rating": .number(rt), "reviews": .number(reviews), "q": .number(0.4 + q * 0.52)]
             switch kind {
-            case "acc":
-                p["tier"] = ""
-                p["fee"] = .number(roundTo(1400 * (0.7 + q * 1.9) * s.random.range(0.85, 1.2), step: 100))
-                p["err"] = .number(max(0.015, 0.14 - q * 0.12))
             case "law":
                 p["fee"] = .number(roundTo(3500 * (0.7 + q * 2.4) * s.random.range(0.85, 1.2), step: 100))
             default:
@@ -47,10 +43,9 @@ public enum Providers {
         return out.sorted { $0.rating > $1.rating }.map { $0.value }
     }
 
-    public static func pool(for code: String, state s: inout GameState, countries: CountryBook) -> (accountants: [JSONValue], lawyers: [JSONValue], insurers: [JSONValue]) {
+    public static func pool(for code: String, state s: inout GameState, countries: CountryBook) -> (lawyers: [JSONValue], insurers: [JSONValue]) {
         var poolc = s.rest["poolc"] ?? .object([:])
         if poolc[code].isNull, let country = countries[code] {
-            var acc = generate(kind: "acc", count: 6, country: country, state: &s)
             var law = generate(kind: "law", count: 6, country: country, state: &s)
             let ins = generate(kind: "ins", count: 6, country: country, state: &s)
             let w = country.wageLevel == 0 ? 1 : country.wageLevel
@@ -60,12 +55,12 @@ public enum Providers {
                     list[i]["fee"] = .number(currency.roundedStep(list[i]["fee"].double * w, about: 100))
                 }
             }
-            scaleFee(&acc); scaleFee(&law)
+            scaleFee(&law)
             poolc = poolc.object.isEmpty ? .object([:]) : poolc
-            poolc[code] = .object(["acc": .array(acc), "law": .array(law), "ins": .array(ins)])
+            poolc[code] = .object(["law": .array(law), "ins": .array(ins)])
             s.rest["poolc"] = poolc
         }
         let p = (s.rest["poolc"] ?? .object([:]))[code]
-        return (p["acc"].array, p["law"].array, p["ins"].array)
+        return (p["law"].array, p["ins"].array)
     }
 }

@@ -85,16 +85,6 @@ final class OnlineWorldTests: XCTestCase {
         XCTAssertTrue(InviteLink.message(code: "K7M-4PQ2").contains("K7M-4PQ2"))
     }
 
-    func testAnAccountantChoiceIsRememberedUntilCleared() {
-        AccountantHireIntent.clear()
-        XCTAssertNil(AccountantHireIntent.current)
-        AccountantHireIntent.choose(officeID: "o1", offerID: 3, currency: "GBP", knownCompanies: [1, 2])
-        XCTAssertEqual(AccountantHireIntent.current?.officeID, "o1")
-        XCTAssertEqual(AccountantHireIntent.current?.known, [1, 2])
-        AccountantHireIntent.clear()
-        XCTAssertNil(AccountantHireIntent.current)
-    }
-
     func testTheStandInNeverLetsAFreshGameLowerTheProfile() async throws {
         let s = service()
         _ = try await s.signIn(with: .apple)

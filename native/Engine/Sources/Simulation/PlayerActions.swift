@@ -11,12 +11,12 @@ public extension GameEngine {
     enum ActionResult: Equatable { case done, refused(String) }
 
     mutating func startCompany(tradeID: String, cityID: String, size: Double? = nil, name: String? = nil, countryCode: String? = nil,
-                               accountantID: Int? = nil, quickSetup: Bool = true, allowRetired: Bool = false) -> Result<Int, CompanySetup.StartError> {
+                               quickSetup: Bool = true, allowRetired: Bool = false) -> Result<Int, CompanySetup.StartError> {
         var result: Result<Int, CompanySetup.StartError> = .failure(.notAllowedHere)
         guard let trade = data.catalog[tradeID],
               SpecialFamilies.isStartable(trade) || (allowRetired && SpecialFamilies.isRetired(trade) && CompanyWeek.isSupported(trade)) else { return .failure(.notYetAvailable) }
         update { s, data, ctx in
-            result = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, size: size, name: name, countryCode: countryCode, accountantID: accountantID, data: data, context: ctx)
+            result = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, size: size, name: name, countryCode: countryCode, data: data, context: ctx)
             if case .success(let id) = result {
                 if quickSetup && Tutorial.isComplete(s) { _ = CompanySetup.quickSetup(&s, companyID: id, data: data) }
                 s.note("You started \(s.company(id)?.name ?? "a company").", tone: "good", companyID: id)

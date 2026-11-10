@@ -258,8 +258,8 @@ final class PlaytestToursTests: XCTestCase {
             ex(c == .done, "insurance cancelled (got \(c))")
             ex(e.coverageOverview(companyID: id)?.policies.first { $0.id == pol.id }?.isOn == false, "policy shows as off")
         } else { ex(false, "coverage overview offers policies for a cafe", sev: 3) }
-        let offers = e.adviserOffers(companyID: id, kind: .accountant)
-        ex(!offers.isEmpty, "accountants are on offer", sev: 3)
+        let offers = e.adviserOffers(companyID: id, kind: .law)
+        ex(!offers.isEmpty, "law firms are on offer", sev: 3)
         weeks(&e, 4)
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }

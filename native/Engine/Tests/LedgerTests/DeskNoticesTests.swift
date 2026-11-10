@@ -6,6 +6,11 @@ import Businesses
 @testable import Businesses
 @testable import Simulation
 
+func giveFinanceDesk(_ s: inout GameState, _ id: Int) {
+    guard let i = s.companyIndex(id) else { return }
+    s.companies[i].staff.append(StaffMember(raw: ["id": .number(900_000 + Double(id)), "role": .string("acct")]))
+}
+
 final class DeskNoticesTests: XCTestCase {
     private func game() throws -> (GameEngine, Int, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
@@ -31,9 +36,7 @@ final class DeskNoticesTests: XCTestCase {
 
     func testPayrollShortGoesToTheAccountantOncePerWeek() throws {
         var (e, a, b) = try game()
-        e.update { s, d, _ in
-            for id in [a, b] { CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: d) }
-        }
+        e.update { s, _, _ in for id in [a, b] { giveFinanceDesk(&s, id) } }
         e.update { s, d, c in
             for id in [a, b] { Payday.reportShort(&s, s.company(id)!, due: 5000, short: 1000, serious: false, data: d, context: c) }
         }
@@ -47,7 +50,7 @@ final class DeskNoticesTests: XCTestCase {
 
     func testPayrollShortReachesTheOwnerWhenSeriousOrUnattended() throws {
         var (e, a, _) = try game()
-        e.update { s, _, _ in if let i = s.companyIndex(a) { s.companies[i].raw["acc"] = .null; s.companies[i].staff.removeAll { $0.role == "acct" } } }
+        e.update { s, _, _ in if let i = s.companyIndex(a) { s.companies[i].staff.removeAll { $0.role == "acct" } } }
         e.update { s, d, c in Payday.reportShort(&s, s.company(a)!, due: 5000, short: 1000, serious: false, data: d, context: c) }
         var m = try XCTUnwrap(e.state.inbox.first { $0.actionID == "pay29s" })
         XCTAssertEqual(m.status, "open", "nobody answers for the desk")
@@ -62,7 +65,7 @@ final class DeskNoticesTests: XCTestCase {
 
     func testDeskResolverFindsAnAccountant() throws {
         var (e, a, _) = try game()
-        e.update { s, d, _ in CompanySetup.chooseAccountant(&s, companyID: a, accountantID: nil, data: d) }
+        e.update { s, _, _ in giveFinanceDesk(&s, a) }
         let co = e.state.company(a)!
         XCTAssertNotNil(Delegation.desk("finance", in: co, state: e.state, data: e.data))
         XCTAssertNil(Delegation.desk("owner", in: co, state: e.state, data: e.data))

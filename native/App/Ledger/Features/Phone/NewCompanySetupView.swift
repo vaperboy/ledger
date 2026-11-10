@@ -11,7 +11,6 @@ struct NewCompanyDraft: Equatable {
     var name: String
     var pick: NewCompanyPlan.Pick?
     var choices = SetupChoices()
-    var accountantID: Int? = nil
 
     func size(_ e: GameEngine) -> Double? {
         guard let t = e.data.catalog[tradeID] else { return nil }
@@ -42,7 +41,6 @@ struct NewCompanyDetailedSetupView: View {
     @State private var goReview = false
     @State private var choices = SetupChoices()
     @State private var channel: SalesChannel = .consumers
-    @State private var accountantID: Int?
 
     init(tradeID: String, cityID: String) {
         self.tradeID = tradeID
@@ -55,7 +53,7 @@ struct NewCompanyDetailedSetupView: View {
             let basePlan: NewCompanyPlan? = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: "", pick: nil, choices: choices).plan(e)
             let pick: NewCompanyPlan.Pick? = currentPick(basePlan)
             let chosen: SetupChoices = withChannel(choices)
-            let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: chosen, accountantID: accountantID)
+            let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: chosen)
             let plan: NewCompanyPlan? = draft.plan(e)
             let costs: StartUpCostBreakdown? = draft.costs(e)
             let monthly: MonthlyFixedCostEstimate? = draft.monthly(e)
@@ -65,7 +63,6 @@ struct NewCompanyDetailedSetupView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     fields(t, country, costs)
                     SalesChannelPicker(tradeID: tradeID, channel: $channel)
-                    AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID)
                     if let plan { premisesBlock(plan) }
                     if let plan { PlanStatement(plan: plan, cur: e.homeCurrency, choices: $choices, onAlternative: { alt in applyAlternative(alt) }) }
                     if let monthly { monthlyCard(monthly) }

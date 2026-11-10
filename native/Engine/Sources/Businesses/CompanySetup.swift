@@ -251,7 +251,7 @@ public enum CompanySetup {
     }
 
     public static func create(_ s: inout GameState, tradeID: String, cityID: String, size: Double? = nil, name: String? = nil,
-                              countryCode: String? = nil, accountantID: Int? = nil, data: GameData, context: FinanceContext) -> Result<Int, StartError> {
+                              countryCode: String? = nil, data: GameData, context: FinanceContext) -> Result<Int, StartError> {
         guard let bd = data.catalog[tradeID] else { return .failure(.notAllowedHere) }
         let code = countryCode ?? s.homeCountryCode
         guard let country = data.countries[code], let city = country.city(cityID) ?? country.cities.first else { return .failure(.notAllowedHere) }
@@ -294,7 +294,6 @@ public enum CompanySetup {
         Payments.recordInvestment(&s, companyID: id, amount: country.shareCapitalMinimum)
         s.companies[i].shareCapital = country.shareCapitalMinimum
         s.companies[i].addTransaction(week: s.week, amount: country.shareCapitalMinimum, label: "Share capital paid in")
-        chooseAccountant(&s, companyID: id, accountantID: accountantID, data: data)
         if abroad { Payments.playerPays(&s, abroadFee, label: "Local representative, travel and legal counsel abroad", companyID: id) }
         let used = CapacityModel.ownerHoursCommitted(s, except: id)
         let hours = max(0, (min(s.companies[i].ownerHours, 80 - used, max(10, 55 - used)) / 5).rounded(.down) * 5)
@@ -318,16 +317,6 @@ public enum CompanySetup {
         }
         s.companies[i].set("prem", .object(["kind": "home", "m2": 0, "rent": 0, "owned": false, "val": 0, "loan": 0]))
         return true
-    }
-
-    public static func chooseAccountant(_ s: inout GameState, companyID: Int, accountantID: Int?, data: GameData) {
-        guard let i = s.companyIndex(companyID) else { return }
-        let pool = Providers.pool(for: s.companies[i].countryCode, state: &s, countries: data.countries).accountants
-        guard let a = pool.first(where: { $0["id"].int == accountantID }) ?? (pool.count > 1 ? pool[1] : pool.first) else { return }
-        s.companies[i].set("acc", .object(["id": a["id"], "name": a["name"], "tier": a["tier"], "fee": a["fee"], "q": a["q"], "err": a["err"], "rating": a["rating"], "w0": .number(Double(s.week))]))
-        var docs = s.companies[i].value("docs")
-        docs["accountant_agreement"] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))])
-        s.companies[i].set("docs", docs)
     }
 
     public struct Estimate: Equatable {
@@ -359,7 +348,7 @@ public enum CompanySetup {
         let w = World(state: tmp, data: data)
         var r = Estimate()
         var vehicleFull = 0.0, monthlyRent = 0.0
-        for d in Documents.needed(co, bd, w) where d != "vat_not_applicable" && d != "accountant_agreement" { r.documents += Documents.cost(d, company: co, bd, w) }
+        for d in Documents.needed(co, bd, w) where d != "vat_not_applicable" { r.documents += Documents.cost(d, company: co, bd, w) }
         let need = standardEquipment(bd, size: size)
         for e in bd.equipment {
             let q = need[e.id] ?? (e.isRequired ? 1 : 0)

@@ -13,18 +13,6 @@ final class SupabaseBoardsTests: XCTestCase {
         XCTAssertEqual(rows[0].tradingResult, -5_000)
     }
 
-    func testOfficeWithoutRatingKeepsItNil() throws {
-        let rows = try decode([ServerAccountantOffice].self, """
-        [{"id":"o1","officeName":"Holt Books","ownerID":"u1","ownerName":"Ana","city":"Leeds","countryCode":"GB","currency":"GBP","hireFee":250.00,
-          "isMine":false,"rating":null,"ratingCount":1,"hires":3,"activeClients":2},
-         {"id":"o2","officeName":"Marsh Accounts","ownerID":"u2","ownerName":"Ben","city":"Bristol","countryCode":"GB","currency":"GBP","hireFee":0,
-          "isMine":false,"rating":4.3,"ratingCount":3,"hires":3,"activeClients":3}]
-        """)
-        XCTAssertNil(rows[0].rating)
-        XCTAssertEqual(rows[1].rating, 4.3)
-        XCTAssertEqual(rows[0].hireFee, 250)
-    }
-
     func testWorldRulesSnapshotDecodes() throws {
         let s = try decode(WorldRulesSnapshot.self, """
         {"rules":{"band.exchange_low":0.75,"tax.step":0.01},

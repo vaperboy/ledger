@@ -292,7 +292,7 @@ public enum Chains {
         let r = CompanySetup.create(&s, tradeID: ch["type"].string, cityID: cityID, size: size, name: "New store \(s.nextID + 1)", countryCode: first.countryCode, data: data, context: fc)
         guard case .success(let id) = r, let i = s.companyIndex(id) else { return r }
         var docs = s.companies[i].value("docs")
-        for (k, d) in first.value("docs").object where d["st"].string == "ok" && k != "chain" && k != "accountant_agreement" && docs[k].isNull { docs[k] = d }
+        for (k, d) in first.value("docs").object where d["st"].string == "ok" && k != "chain" && docs[k].isNull { docs[k] = d }
         s.companies[i].set("docs", docs)
         s.companies[i].ownerHours = 0
         _ = CompanySetup.quickSetup(&s, companyID: id, data: data)

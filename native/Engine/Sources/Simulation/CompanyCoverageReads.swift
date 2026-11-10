@@ -30,7 +30,6 @@ public struct AdviserOption: Equatable, Sendable, Identifiable {
 public struct CoverageOverview: Equatable, Sendable {
     public var insurer: AdviserOption?
     public var lawFirm: AdviserOption?
-    public var accountant: AdviserOption?
     public var policies: [InsurancePolicyRow]
     public var activeCount: Int { policies.filter { $0.isOn }.count }
     public var weeklyPremiums: Double { policies.filter { $0.isOn }.reduce(0) { $0 + $1.weeklyPremium } }
@@ -81,6 +80,6 @@ public extension GameEngine {
             policies.append(InsurancePolicyRow(id: StockInsurance.product, name: "Stock", blurb: "Pays for stock lost to fire, water damage, theft or damage in transit, less an excess. About 1.2% of the stock held a year.",
                                                isOn: StockInsurance.isInsured(co), weeklyPremium: premium))
         }
-        return CoverageOverview(insurer: current(.insurer), lawFirm: current(.law), accountant: current(.accountant), policies: policies)
+        return CoverageOverview(insurer: current(.insurer), lawFirm: current(.law), policies: policies)
     }
 }

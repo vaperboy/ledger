@@ -18,7 +18,6 @@ struct TradeDetailView: View {
     @State private var buying = false
     @State private var pending: PendingAction?
     @State private var choices = SetupChoices()
-    @State private var accountantID: Int?
     @State private var channel: SalesChannel = .consumers
 
     init(tradeID: String, startUnderBrand: Bool = false) {
@@ -50,7 +49,6 @@ struct TradeDetailView: View {
                             premises(t, plan, cur)
                             PlanStatement(plan: plan, cur: cur, choices: $choices, onAlternative: { alt in applyAlternative(alt, t) })
                             SalesChannelPicker(tradeID: tradeID, channel: $channel)
-                            AccountantStep(countryCode: e.state.homeCountryCode, currency: cur, accountantID: $accountantID)
                             risks(plan)
                             PrimaryAction(title: "Review and start · \(cur.tidyShort(plan.neededNow))",
                                           blockedReason: plan.registrationShortfall > 0 ? "Your cash is \(cur.tidyShort(plan.registrationShortfall)) short for registration and share capital." : nil) {
@@ -201,9 +199,8 @@ struct TradeDetailView: View {
         let sz = size
         var chosen = choices
         chosen.channel = channel
-        let accountant = accountantID
         return PendingAction(title: "Start \(t.name) in \(cityName)?", message: msg.tidyMoney, button: "Start it", amount: plan.total, currency: cur) {
-            let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, choices: chosen, accountantID: accountant) }
+            let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, choices: chosen) }
             switch r {
             case .success(let out)?:
                 Haptics.success()

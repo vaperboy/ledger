@@ -14,7 +14,7 @@ final class CompanyCountryRulesTests: XCTestCase {
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 900_000_000, why: "Test funds")
             let city = data.countries[other]!.cities[0].id
-            if case .success(let id) = CompanySetup.create(&s, tradeID: "cafe", cityID: city, size: 1, name: "Abroad Cafe", countryCode: other, accountantID: nil, data: data, context: ctx) { made = id }
+            if case .success(let id) = CompanySetup.create(&s, tradeID: "cafe", cityID: city, size: 1, name: "Abroad Cafe", countryCode: other, data: data, context: ctx) { made = id }
         }
         if made == 0 { throw XCTSkip("no foreign cafe") }
         return (e, made, other)

@@ -33,7 +33,6 @@ public struct CompanyOverviewStats: Equatable, Sendable {
     public var otherShareholders: [String]
     public var shareCount: Double?
     public var shareCapital: Double
-    public var accountant: String?
     public var equity: Double
     public var estimatedValue: Double
     public var localName: LocalFame.Reading? = nil
@@ -61,7 +60,6 @@ public extension GameEngine {
             let pct = h["pct"].double
             return pct > 0 ? "\(h["name"].string.isEmpty ? "Shareholder" : h["name"].string) \(Int(saturating: pct.rounded()))%" : nil
         }
-        let acc = co.value("acc")
         let periodName: String
         switch period { case .month: periodName = "This month"; case .year: periodName = "This year"; case .week: periodName = "This week" }
         var stats = CompanyOverviewStats(companyID: companyID, name: co.name, cash: co.cash, runwayWeeks: weekly > 0 && co.cash > 0 ? co.cash / weekly : nil,
@@ -72,7 +70,7 @@ public extension GameEngine {
                                     legalFormShort: forms["limitedShort"] ?? "",
                                     incorporatedSince: legal["since"].isNull ? nil : GameCalendar.dateString(week: legal["since"].int), ownershipPercent: co.ownership,
                                     otherShareholders: holders, shareCount: legal["shares"]["count"].isNull ? nil : legal["shares"]["count"].double, shareCapital: co.shareCapital,
-                                    accountant: acc["name"].isNull ? nil : acc["name"].string, equity: CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: state.loans),
+                                    equity: CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: state.loans),
                                     estimatedValue: Valuation.companyValue(co, state: state, trades: data.catalog))
         stats.localName = LocalFame.reading(state, co, data: data)
         return stats

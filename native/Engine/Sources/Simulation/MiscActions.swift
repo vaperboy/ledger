@@ -216,12 +216,6 @@ public extension GameEngine {
         update { s, d, _ in r = CompanySetup.giveUpPremises(&s, companyID: companyID, data: d) }
         return r
     }
-    func accountantChoices(companyID: Int) -> [(id: Int, name: String, fee: Double, rating: Double, current: Bool)] {
-        guard let co = state.company(companyID) else { return [] }
-        var tmp = state
-        let pool = Providers.pool(for: co.countryCode, state: &tmp, countries: data.countries).accountants
-        return pool.map { ($0["id"].int, $0["name"].string, $0["fee"].double, $0["rating"].double, $0["id"].int == co.value("acc")["id"].int) }
-    }
 
     static func dayString(_ date: Date) -> String {
         let c = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: date)

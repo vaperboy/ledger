@@ -166,12 +166,11 @@ final class FinanceOverviewTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(Valuation.companyValue(co, state: e.state, trades: e.data.catalog), 0, "a limited company is never worth less than nothing")
     }
 
-    func testPayrollRunsByItselfOnTheFifteenthWithOrWithoutAnAccountant() throws {
-        func run(accountant: Bool) throws -> (asks: Int, paidThisMonth: Bool, late: Bool) {
+    func testPayrollRunsByItselfOnTheFifteenthOnItsOwn() throws {
+        func run() throws -> (asks: Int, paidThisMonth: Bool, late: Bool) {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
             e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
             guard case .success(let cid) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID) else { XCTFail(); return (0, false, true) }
-            e.update { s, d, _ in if accountant { CompanySetup.chooseAccountant(&s, companyID: cid, accountantID: nil, data: d) } }
             for _ in 0..<(16 * 7) { e.nextDay() }
             let t = Payday.dayNumber(week: e.state.week, day: e.state.day)
             let c = GameCalendar.civilFromDays(t)
@@ -179,12 +178,10 @@ final class FinanceOverviewTests: XCTestCase {
             let cfg = Payday.config(co, today: t)
             return (e.state.inbox.filter { $0.actionID.hasPrefix("pay29") }.count, cfg.paidMonth == c.year * 12 + c.month - 1, cfg.lateSince != nil)
         }
-        for accountant in [true, false] {
-            let r = try run(accountant: accountant)
-            XCTAssertEqual(r.asks, 0, "payroll is never put to the owner (accountant: \(accountant))")
-            XCTAssertTrue(r.paidThisMonth, "this month's payroll has been paid on its own (accountant: \(accountant))")
-            XCTAssertFalse(r.late, "a funded company is never late with payroll (accountant: \(accountant))")
-        }
+        let r = try run()
+        XCTAssertEqual(r.asks, 0, "payroll is never put to the owner")
+        XCTAssertTrue(r.paidThisMonth, "this month's payroll has been paid on its own")
+        XCTAssertFalse(r.late, "a funded company is never late with payroll")
     }
 }
 

@@ -42,22 +42,19 @@ public enum CompanyWeek {
         }
     }
 
-    static func accountantFee(_ s: inout GameState, _ i: Int, data: GameData) {
-        let w = World(state: s, data: data)
-        let amt = CompanyCosts.accountant(s.companies[i], w)
-        Payments.companyPays(&s, companyID: s.companies[i].id, amount: amt, category: "oth")
-        Advisers.weekly(&s, i, accountantFee: amt)
+    static func adviserFees(_ s: inout GameState, _ i: Int) {
+        Advisers.weekly(&s, i)
     }
 
     static func setupWeek(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) {
         CompanyCosts.rent(&s, companyIndex: i, data: data)
-        accountantFee(&s, i, data: data)
+        adviserFees(&s, i)
         OpeningChecklist.tryAutoOpen(&s, companyIndex: i, data: data)
     }
 
     static func closedWeek(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) {
         CompanyCosts.rent(&s, companyIndex: i, data: data)
-        accountantFee(&s, i, data: data)
+        adviserFees(&s, i)
         let w = World(state: s, data: data)
         let fixed = bd.fixedWeekly * pow(s.companies[i].size, 0.6) * 0.5
         _ = w
@@ -464,7 +461,7 @@ public enum CompanyWeek {
         co = s.companies[i]
         let fixed = SupplyCatalogue.settleOverhead(&s, i, bd, base: CompanyCosts.fixedOverhead(co, bd, w), util: ctx.util, data: data)
         Vat.input(&s, companyIndex: i, net: fixed, data: data)
-        accountantFee(&s, i, data: data)
+        adviserFees(&s, i)
         let w2 = World(state: s, data: data)
         let co2 = s.companies[i]
         var premium = 0.0

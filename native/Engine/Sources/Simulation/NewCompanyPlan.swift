@@ -284,10 +284,10 @@ public extension GameEngine {
     }
 
     mutating func startCompanyChoosingPremises(tradeID: String, cityID: String, size: Double?, name: String?, pick: NewCompanyPlan.Pick?,
-                                               choices requested: SetupChoices = SetupChoices(), accountantID: Int? = nil) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
+                                               choices requested: SetupChoices = SetupChoices()) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
         let choices: SetupChoices = tutorialLimited(requested)
         if let channel = choices.channel, !SalesChannel.canChoose(channel, tradeID: tradeID) { return .failure(.notAllowedHere) }
-        let r = startCompany(tradeID: tradeID, cityID: cityID, size: size, name: name, accountantID: accountantID, quickSetup: false)
+        let r = startCompany(tradeID: tradeID, cityID: cityID, size: size, name: name, quickSetup: false)
         guard case .success(let id) = r else {
             if case .failure(let e) = r { return .failure(e) }
             return .failure(.notAllowedHere)

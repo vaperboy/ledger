@@ -126,7 +126,6 @@ public enum Startups {
         s.companies[i].ownerHours = 0
         Payments.recordInvestment(&s, companyID: id, amount: seed)
         Payments.playerPays(&s, fee, label: "Registration of \(nm)", companyID: id)
-        CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: data)
         s.companies[i].set("cap", .object(["total": .number(Double(CapTable.initialShares)), "me": .number(Double(CapTable.initialShares))]))
         let wanted = who == "c4" ? 4 : who == "c2" ? 2 : 0
         var hired = 0
