@@ -41,7 +41,7 @@ public enum Trophies {
         func profitable(_ c: Company) -> Bool { c.monthlyHistory.contains { $0.profit > 0 } }
         func quarterProfit(_ c: Company) -> Bool { let h = c.monthlyHistory.suffix(3); return h.count == 3 && h.allSatisfy { $0.profit > 0 } }
         func age(_ c: Company) -> Int { s.week - (c.openedWeek ?? c.foundedWeek) }
-        var portfolio: Double { netWorth.stocks + netWorth.crypto + netWorth.funds }
+        var portfolio: Double { netWorth.crypto + netWorth.funds }
         func money(_ v: Double) -> Double { cur.scaledPrice(v) }
         func words(_ v: Double) -> String { v >= 1e9 ? "\(Int(v / 1e9)) billion" : "\(Int(v / 1e6)) million" }
     }

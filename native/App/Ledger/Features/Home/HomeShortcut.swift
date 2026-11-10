@@ -30,7 +30,7 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
         case .inbox: return PhoneApp.inbox.glyph
         case .goals: return Glyph.goals
         case .news: return PhoneApp.news.glyph
-        case .ventures: return PhoneApp.ventures.glyph
+        case .ventures: return Glyph.ventures
         }
     }
 
@@ -45,12 +45,12 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
         switch self {
         case .bank: store.openApp(.bank)
         case .hire: store.openHiring()
-        case .reports: store.openApp(.reports)
+        case .reports: store.openApp(.stats)
         case .market: store.openMarket()
         case .inbox: store.openApp(.inbox)
         case .goals: store.openGoals()
         case .news: store.openApp(.news)
-        case .ventures: store.openApp(.ventures)
+        case .ventures: store.openVentures()
         }
     }
 

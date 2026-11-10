@@ -18,7 +18,7 @@ struct UpdateMarks: Codable, Equatable {
 }
 
 enum UpdateFeed {
-    static let messageApps: [PhoneApp] = [.inbox, .bank, .market, .news, .weather, .airStay, .techPro, .atlas, .marketplace]
+    static let messageApps: [PhoneApp] = [.inbox, .bank, .market, .news, .airStay, .techPro, .atlas, .marketplace]
 
     static func app(of m: Message) -> PhoneApp {
         let f: String = m.from.lowercased()
@@ -27,7 +27,7 @@ enum UpdateFeed {
         if has(["techpro"]) { return .techPro }
         if has(["atlas", "insurer"]) { return .atlas }
         if has(["marketplace"]) { return .marketplace }
-        if has(["weather"]) { return .weather }
+        if has(["weather"]) { return .news }
         if has(["bank", "creditor"]) { return .bank }
         if has(["payroll", "tax", "accountant", "finance manager"]) { return .bank }
         if has(["market", "competition", "consumer authority", "tourism", "industry association", "business broker", "customers"]) { return .market }
@@ -73,11 +73,9 @@ enum UpdateFeed {
         case .market:
             return freshMarket(e, marks: marks).count + freshMessages(e, app, marks: marks).count
         case .news:
-            return freshNews(e, marks: marks).count + freshMessages(e, app, marks: marks).count
-        case .weather:
             let seenSig: String? = marks.texts["weather"]
             let unseen: Bool = seenSig != nil && seenSig != weatherSignature(e)
-            return (unseen ? e.bigWeatherWarnings().count : 0) + freshMessages(e, app, marks: marks).count
+            return freshNews(e, marks: marks).count + (unseen ? e.bigWeatherWarnings().count : 0) + freshMessages(e, app, marks: marks).count
         case .marketplace:
             return freshListings(e, marks: marks) + freshMessages(e, app, marks: marks).count
         case .bank, .airStay, .techPro, .atlas:
@@ -146,12 +144,13 @@ extension GameStore {
         var s: UpdateMarks = seenMarks
         refreshVisit(app, before: s)
         switch app {
-        case .market:
-            s.ints["market"] = UpdateFeed.maxMarketID(e)
+        case .market: s.ints["market"] = UpdateFeed.maxMarketID(e)
+        case .competition:
+            s.ints["reviews"] = e.state.week
             for co in e.state.companies where co.status == .open && co.type != "hold" { s.texts["rv.\(co.id)"] = rivalIDList(e, co) }
-        case .reviews: s.ints["reviews"] = e.state.week
-        case .news: s.texts["news"] = UpdateFeed.newsSignature(e)
-        case .weather: s.texts["weather"] = UpdateFeed.weatherSignature(e)
+        case .news:
+            s.texts["news"] = UpdateFeed.newsSignature(e)
+            s.texts["weather"] = UpdateFeed.weatherSignature(e)
         case .marketplace: s.ints["marketplace"] = MarketplaceBridge.newestPostedDay(e)
         default: break
         }

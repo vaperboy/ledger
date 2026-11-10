@@ -115,9 +115,9 @@ final class CareerSimHarness: XCTestCase {
             let v = idxValue
             if v > 0 { e.sellInvestment(.fund, symbol: "idx", fraction: min(1, short * 1.003 / v)) }
             if e.state.cash < target {
-                let held = e.quotes(.stock).filter { $0.quantity > 0 }
+                let held = e.quotes(.crypto).filter { $0.quantity > 0 }
                 let tot = held.reduce(0) { $0 + $1.value }
-                if tot > 0 { for q in held { e.sellInvestment(.stock, symbol: q.symbol, fraction: min(1, (target - e.state.cash) * 1.01 / tot)) } }
+                if tot > 0 { for q in held { e.sellInvestment(.crypto, symbol: q.symbol, fraction: min(1, (target - e.state.cash) * 1.01 / tot)) } }
             }
         }
         var lastMonthlyAction = -100
@@ -129,7 +129,7 @@ final class CareerSimHarness: XCTestCase {
             if day % 28 == 27 { r.samples.append((day, e.netWorth.total))
                 if ProcessInfo.processInfo.environment["LEDGER_DEBUG"] != nil {
                     let nw = e.netWorth
-                    var line = "DBG \(career) d\(day) cash=\(Dk(e.state.cash))k idx=\(Dk(idxValue))k funds=\(Dk(nw.funds))k stocks=\(Dk(nw.stocks))k debt=\(Dk(nw.debt))k tax=\(Dk(nw.pendingTax))k nw=\(Dk(nw.total))k |"
+                    var line = "DBG \(career) d\(day) cash=\(Dk(e.state.cash))k idx=\(Dk(idxValue))k funds=\(Dk(nw.funds))k crypto=\(Dk(nw.crypto))k debt=\(Dk(nw.debt))k tax=\(Dk(nw.pendingTax))k nw=\(Dk(nw.total))k |"
                     for c in e.state.companies where c.type != "hold" { line += " \(c.type):\(c.status.rawValue) cash=\(Dk(c.cash))k mo=\(c.monthlyHistory.last.map { "\(Dk($0.revenue))/\(Dk($0.profit))" } ?? "-") props=\(c.properties.count)" }
                     print(line)
                 }
@@ -187,12 +187,12 @@ final class CareerSimHarness: XCTestCase {
                 }
             }
             if career == "trader" {
-                let qs = e.quotes(.stock).filter { !$0.isDelisted && $0.history.count >= 14 }
+                let qs = e.quotes(.crypto).filter { !$0.isDelisted && $0.history.count >= 14 }
                 let ranked = qs.sorted { ($0.price / $0.history[$0.history.count - 14]) > ($1.price / $1.history[$1.history.count - 14]) }
                 let top = Set(ranked.prefix(3).map { $0.symbol })
-                for q in qs where q.quantity > 0 && !top.contains(q.symbol) { e.sellInvestment(.stock, symbol: q.symbol, fraction: 1) }
+                for q in qs where q.quantity > 0 && !top.contains(q.symbol) { e.sellInvestment(.crypto, symbol: q.symbol, fraction: 1) }
                 let spare = liquid() - reserve * 2 - e.netWorth.pendingTax * 1.25
-                if spare > cur.scaledPrice(1500) { for sym in top.sorted() { _ = e.buyInvestment(.stock, symbol: sym, amount: spare * 0.99 / 3) } }
+                if spare > cur.scaledPrice(1500) { for sym in top.sorted() { _ = e.buyInvestment(.crypto, symbol: sym, amount: spare * 0.99 / 3) } }
             } else {
                 let keep = reserve * 2 + (career == "landlord" ? est(target) * 0.3 : 0)
                 let spare = liquid() - keep - e.netWorth.pendingTax * 1.25

@@ -26,7 +26,6 @@ public enum PortfolioOwner: Hashable, Sendable {
 
 public enum MarketAssetKind: String, Sendable, CaseIterable {
     case indexFund, bondFund, moneyMarketFund, crypto
-    case stock
     case managedFund
     case fixedDeposit
     case startupStake, privateEquity, groupStake, companyStake
@@ -37,7 +36,6 @@ public enum MarketAssetKind: String, Sendable, CaseIterable {
         case .bondFund: return "Bond fund"
         case .moneyMarketFund: return "Money-market fund"
         case .crypto: return "Crypto"
-        case .stock: return "Shares"
         case .managedFund: return "Fund manager"
         case .fixedDeposit: return "Fixed deposit"
         case .startupStake: return "Startup stake"
@@ -121,7 +119,6 @@ enum MarketBook {
         switch kind {
         case .fund: return Markets.fundHistory(s, sym)
         case .crypto: return (s.rest["crypto"]?[sym]["h"].array ?? []).map { $0.double }
-        case .stock: return (s.rest["stocks"]?[sym]["h"].array ?? []).map { $0.double }
         }
     }
 
@@ -150,21 +147,19 @@ enum MarketBook {
         var out: [PortfolioPosition] = []
         let inv = s.rest["inv"] ?? .null
         let me = PortfolioOwner.player
-        func add(_ kind: Brokerage.Kind, _ key: String, _ assetKind: (String) -> MarketAssetKind, _ name: (String) -> String, _ risk: (String) -> MarketRisk, buyable: Bool) {
+        func add(_ kind: Brokerage.Kind, _ key: String, _ assetKind: (String) -> MarketAssetKind, _ name: (String) -> String, _ risk: (String) -> MarketRisk) {
             for (sym, pos) in inv[key].object.sorted(by: { $0.key < $1.key }) where pos["q"].double > 1e-9 {
                 let px = Brokerage.price(s, kind, sym)
                 let q = pos["q"].double
                 let h = history(s, kind: kind, sym)
                 let dead = kind == .crypto && s.rest["crypto"]?[sym]["dead"].bool == true
-                out.append(make(s, id: "me:\(kind.rawValue):\(sym)", owner: me, ownerName: "You", kind: assetKind(sym), assetID: buyable ? "\(kind.rawValue):\(sym)" : nil,
+                out.append(make(s, id: "me:\(kind.rawValue):\(sym)", owner: me, ownerName: "You", kind: assetKind(sym), assetID: "\(kind.rawValue):\(sym)",
                                 name: name(sym), symbol: sym, units: q, price: px, cost: pos["cost"].double, value: q * px,
-                                week: weekMove(s, history: h, units: q, lastBuy: lastBuy(pos)), history: h, risk: risk(sym),
-                                note: kind == .stock ? "Shares can be sold; new purchases are not offered." : nil, delisted: dead))
+                                week: weekMove(s, history: h, units: q, lastBuy: lastBuy(pos)), history: h, risk: risk(sym), delisted: dead))
             }
         }
-        add(.fund, "funds", fundKind, { fundNames[$0] ?? $0 }, fundRisk, buyable: true)
-        add(.crypto, "crypto", { _ in .crypto }, { s.rest["crypto"]?[$0]["n"].string ?? $0 }, { cryptoRisk(s.rest["crypto"]?[$0] ?? .null) }, buyable: true)
-        add(.stock, "stocks", { _ in .stock }, { s.rest["stocks"]?[$0]["n"].string ?? $0 }, { _ in .high }, buyable: false)
+        add(.fund, "funds", fundKind, { fundNames[$0] ?? $0 }, fundRisk)
+        add(.crypto, "crypto", { _ in .crypto }, { s.rest["crypto"]?[$0]["n"].string ?? $0 }, { cryptoRisk(s.rest["crypto"]?[$0] ?? .null) })
         if let a = FinanceManager.account(s), a.balance > 0 || a.cost > 0 {
             out.append(make(s, id: "me:managed:fm", owner: me, ownerName: "You", kind: .managedFund, assetID: "managed:fm", name: "Managed by \(a.name)", symbol: a.mandate.title,
                             units: 1, price: a.balance, cost: a.cost, value: a.balance,
@@ -251,7 +246,7 @@ enum MarketBook {
         HoldingModel.backfillCostBasis(&s)
         if var inv = s.rest["inv"], !inv.isNull {
             var changed = false
-            for (key, kind) in [("funds", Brokerage.Kind.fund), ("crypto", .crypto), ("stocks", .stock)] {
+            for (key, kind) in [("funds", Brokerage.Kind.fund), ("crypto", .crypto)] {
                 var bag = inv[key]
                 for (sym, pos) in bag.object where pos["q"].double > 0 && (pos["cost"].isNull || pos["cost"].double <= 0) {
                     var p = pos

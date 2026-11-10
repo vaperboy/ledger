@@ -424,7 +424,6 @@ public extension GameEngine {
         return (f, PriceMoves.forecastText(f, state, key: "p\(companyID):\(Int(saturating: jsRound(d * 100))):\(cp)", campaign: cp > 0))
     }
 
-    func rankingBoard(scope: CompanyRanking.Scope, metric: CompanyRanking.Metric) -> CompanyRanking.Board { CompanyRanking.board(state, data: data, scope: scope, metric: metric) }
     func yourRanking(scope: CompanyRanking.Scope = .country, metric: CompanyRanking.Metric = .revenue) -> (rank: Int, of: Int)? {
         CompanyRanking.yourRank(state, data: data, scope: scope, metric: metric)
     }

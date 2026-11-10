@@ -24,6 +24,8 @@ struct NewsView: View {
                         PlayerNewsSection(engine: e)
                     case .government:
                         GovernmentNewsSection(engine: e)
+                    case .weather:
+                        WeatherSection(engine: e)
                     }
                 }
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
@@ -33,6 +35,8 @@ struct NewsView: View {
             .outsideScreen(P)
             .accessibilityIdentifier("news-app")
             .navigationDestination(isPresented: $showPaper) { paperPage(e) }
+            .onAppear { take() }
+            .onChange(of: store.appRequest) { _, _ in take() }
         }
     }
 
@@ -71,8 +75,12 @@ struct NewsView: View {
     }
 
     enum NewsSection: String, CaseIterable, Identifiable {
-        case world = "World and economy", players = "Players", government = "Government"
+        case world = "World and economy", players = "Players", government = "Government", weather = "Weather"
         var id: String { rawValue }
+    }
+
+    private func take() {
+        if store.takeNewsPlayersRequest() { section = .players }
     }
 
     private var sectionPicker: some View {
@@ -83,7 +91,7 @@ struct NewsView: View {
 
     private var sectionChips: some View {
         HStack(spacing: 8) {
-            ForEach(NewsSection.allCases) { (s: NewsSection) in
+            ForEach(NewsSection.allCases.filter { (s: NewsSection) -> Bool in s != .weather || weatherOpen }) { (s: NewsSection) in
                 Button { section = s } label: {
                     Text(s.rawValue).textStyle(.caption, tint: section == s ? P.accentInk : P.inkSoft, weight: .semibold)
                         .padding(.horizontal, 12).padding(.vertical, 7)
@@ -95,6 +103,11 @@ struct NewsView: View {
                 .accessibilityAddTraits(section == s ? .isSelected : [])
             }
         }
+    }
+
+    private var weatherOpen: Bool {
+        guard let e = store.engine else { return false }
+        return Gates.isOpen(.weather, e.state, data: e.data)
     }
 
     private func sourceNote(_ text: String) -> some View {

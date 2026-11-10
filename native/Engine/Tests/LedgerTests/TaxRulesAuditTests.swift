@@ -186,7 +186,7 @@ final class TaxRulesAuditTests: XCTestCase {
         e.update { s, _, _ in
             let cur = Currency(country: ch, rates: ExchangeRates(drift: s.exchangeRates.values))
             let min = Brokerage.minimumPurchase(cur)
-            XCTAssertEqual(Brokerage.buy(&s, .stock, "FOOD", amount: min - 1, currency: cur), .tooSmall)
+            XCTAssertEqual(Brokerage.buy(&s, .fund, "idx", amount: min - 1, currency: cur), .tooSmall)
         }
     }
 }

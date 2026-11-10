@@ -75,7 +75,8 @@ final class CountryNeutralityTests: XCTestCase {
         }
         let uk = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 4)
         let de = try GameEngine.newGame(countryCode: "DE", playerName: "T", seed: 4)
-        XCTAssertNotEqual(uk.quotes(.stock).map { $0.name }, de.quotes(.stock).map { $0.name })
+        func names(_ e: GameEngine) -> [String] { (e.state.rest["stocks"]?.object ?? [:]).sorted { $0.key < $1.key }.map { $0.value["n"].string } }
+        XCTAssertNotEqual(names(uk), names(de))
     }
 
     func testNoCurrencyStandsStill() throws {

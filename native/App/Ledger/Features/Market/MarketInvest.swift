@@ -18,7 +18,6 @@ struct MarketInvestPage: View {
             let chosen: MarketUI.Owner? = owners.first { (o: MarketUI.OwnerInfo) -> Bool in o.id == ownerKey }?.owner
             let p: MarketUI.Portfolio = all.only(chosen)
             ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
-                hero(p, chosen, cur, owners)
                 if owners.count > 1 {
                     SegmentedPill(items: ["all"] + owners.map { (o: MarketUI.OwnerInfo) -> String in o.id },
                                   title: { (k: String) -> String in k == "all" ? "All" : (owners.first { (o: MarketUI.OwnerInfo) -> Bool in o.id == k }?.name ?? k) },
@@ -36,20 +35,6 @@ struct MarketInvestPage: View {
                     .background(P.ground.opacity(0.96))
             }
         }
-    }
-
-    private func hero(_ p: MarketUI.Portfolio, _ owner: MarketUI.Owner?, _ cur: Currency, _ owners: [MarketUI.OwnerInfo]) -> some View {
-        let name: String? = owner.flatMap { (o: MarketUI.Owner) -> String? in owners.first { (x: MarketUI.OwnerInfo) -> Bool in x.owner == o }?.name }
-        var parts: [String] = []
-        if p.cost > 0.5 {
-            parts.append(MarketFormat.money(p.pnl, cur) + (p.pnlShare.map { (s: Double) -> String in " (" + MarketFormat.percent(s) + ")" } ?? "") + " in all")
-        }
-        if let w = p.weekMove { parts.append(MarketFormat.money(w, cur) + " this week") }
-        let context: String = parts.joined(separator: " \u{00B7} ")
-        let series: [Double] = owner == nil ? (store.engine.map { (g: GameEngine) -> [Double] in MarketData.investedHistory(g) } ?? []) : []
-        return MarketHero(label: name.map { (n: String) -> String in "Invested by \(n)" } ?? "Invested", value: cur.tidyShort(p.value), context: context,
-                          contextTint: p.cost > 0.5 ? P.change(p.pnl) : nil, series: series,
-                          seriesTint: (series.last ?? 0) >= (series.first ?? 0) ? P.gain : P.loss, identifier: "invest-hero")
     }
 
     @ViewBuilder private func positions(_ p: MarketUI.Portfolio, _ cur: Currency) -> some View {
@@ -144,7 +129,7 @@ struct PositionPage: View {
         case .privateEquity: Text("Sells whole, at a discount").textStyle(.caption)
         case .fund:
             if case .holding = p.owner { Text("Selling costs 0.66%").textStyle(.caption) }
-        case .shares, .deposit, .groupStake, .partnership, .managed:
+        case .deposit, .groupStake, .partnership, .managed:
             if let n = p.sellNote { Text(n.tidyText).textStyle(.caption).lineLimit(1) }
         }
     }

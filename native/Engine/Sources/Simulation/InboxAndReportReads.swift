@@ -33,8 +33,8 @@ public struct InboxSection: Equatable, Sendable {
 }
 
 public enum InboxLayout {
-    public static let appKeys: Set<String> = ["bank", "inbox", "news", "weather", "luxury", "ventures", "reports", "activity", "market", "reviews", "airStay",
-                                              "techPro", "atlas", "marketplace", "desk", "rivals", "season", "friends", "profile"]
+    public static let appKeys: Set<String> = ["bank", "stats", "atlas", "market", "luxury", "marketplace", "airStay", "techPro", "store", "competition", "rankings",
+                                              "world", "inbox", "news", "desk", "profile", "season", "settings"]
     static let staffActions: Set<String> = ["staffx", "mgrraise", "mgrpoach", "g27poach", "mfind11"]
     static let premisesActions: Set<String> = ["prop", "mprop"]
     static let clubActions: Set<String> = ["club24", "fb24"]

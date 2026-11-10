@@ -237,7 +237,6 @@ public enum RoleEffects {
     public static let marketingGain = 0.15
     public static let marketingGainOwnerAway = 0.30
     public static let ownerAwayHours = 20.0
-    public static let developerWeeksFactor = 0.75
     public static let accountantInspection = 0.10
     public static let cleanerInspection = 0.08
     public static let receptionistGain = 0.08
@@ -247,7 +246,6 @@ public enum RoleEffects {
         "guard": Extra(id: "guard", effect: "Cuts losses from theft and shrinkage by 45 percent."),
         "marketer": Extra(id: "marketer", effect: "Campaigns reach 15 percent more people, 30 percent while you work somewhere else."),
         "advisor": Extra(id: "advisor", effect: "Shows what a new product or service would do to profit and market share."),
-        "dev": Extra(id: "dev", effect: "Development projects take a quarter less time."),
         "acct": Extra(id: "acct", effect: "Inspections find fewer faults (10 points lower chance)."),
         "cleaner": Extra(id: "cleaner", effect: "Inspections find fewer faults (8 points lower chance)."),
         "recept": Extra(id: "recept", effect: "The front door brings 8 percent more awareness."),
@@ -263,7 +261,6 @@ public enum RoleEffects {
         case "project", "prod": out = ["acct", "marketer", "guard", "cleaner"]
         default: out = ["acct", "marketer", "recept"]
         }
-        if ["startup", "webdev", "mktg", "engcons"].contains(bd.id) { out.insert("dev", at: 0) }
         if !["hold", "fin", "energy"].contains(bd.family) { out.append("advisor") }
         return out
     }
@@ -293,7 +290,6 @@ public enum RoleEffects {
         if filled(co, "recept") { f += receptionistGain }
         return f
     }
-    public static func developmentWeeks(_ weeks: Int, _ co: Company) -> Int { filled(co, "dev") ? max(1, Int(saturating: (Double(weeks) * developerWeeksFactor).rounded(.up))) : weeks }
     public static func inspectionRelief(_ co: Company) -> Double { (filled(co, "acct") ? accountantInspection : 0) + (filled(co, "cleaner") ? cleanerInspection : 0) }
     public static func theftGrowthFactor(_ co: Company) -> Double { filled(co, "guard") ? 0.5 : 1 }
 

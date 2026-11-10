@@ -1,11 +1,16 @@
 import SwiftUI
 import GameCore
+import Events
 import Businesses
 import Simulation
 
 struct PlayerNewsSection: View {
     var engine: GameEngine
     @Environment(\.outsidePalette) private var P
+    @Environment(OnlineSession.self) private var online
+    @EnvironmentObject private var store: GameStore
+    @State private var requests = 0
+    private let session = StoreSession.shared
     @ObservedObject private var feed: NewsFeedStore = NewsFeedStore.shared
     @State private var events: [PlayerEvent] = []
     @State private var filter: PlayerNewsFilter = .everyone
@@ -28,6 +33,7 @@ struct PlayerNewsSection: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Source: public events from other players. Nothing here comes from a player who keeps their profile private.")
                 .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 12)
+            worthALook
             filterBar
             let list = rows
             if list.isEmpty {
@@ -39,8 +45,10 @@ struct PlayerNewsSection: View {
                     row(r.event, r.text)
                 }
             }
+            if filter == .everyone || filter == .friends { friendActivity }
+            footer
         }
-        .task { await load() }
+        .task(id: online.isSignedIn) { await load() }
         .accessibilityIdentifier("news-players")
     }
 
@@ -105,8 +113,59 @@ struct PlayerNewsSection: View {
         return d == 0 ? "Today" : d == 1 ? "Yesterday" : "\(d) days ago"
     }
 
+    @ViewBuilder private var worthALook: some View {
+        let lines: [String] = alerts
+        if !lines.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(lines, id: \.self) { (l: String) in
+                    Text(l).textStyle(.caption, tint: P.accent, weight: .semibold).fixedSize(horizontal: false, vertical: true)
+                }
+                if requests > 0 {
+                    Button { store.openProfile() } label: { Text("Open your profile to answer").textStyle(.caption, tint: P.accent) }.buttonStyle(PressableStyle())
+                }
+            }
+            .padding(.bottom, 10)
+        }
+    }
+
+    private var alerts: [String] {
+        var out: [String] = []
+        if requests > 0 { out.append(requests == 1 ? "1 friend request is waiting." : "\(requests) friend requests are waiting.") }
+        if let snap = session.auctions {
+            for a in snap.auctions where a.isLive(at: snap.now) && a.secondsLeft(at: snap.now) < 86_400 && (a.seller == GoldVault.meID || a.leader == GoldVault.meID) {
+                let name: String = ArtifactCatalog.def(a.item.defID)?.name ?? "A piece"
+                out.append(a.seller == GoldVault.meID ? "Your auction for \(name) ends within a day." : "You lead the auction for \(name), ending within a day.")
+            }
+        }
+        return Array(out.prefix(3))
+    }
+
+    @ViewBuilder private var friendActivity: some View {
+        ForEach(Array(online.friendActivity.activity.prefix(8).enumerated()), id: \.element.id) { (i: Int, a: FriendActivityItem) in
+            Rectangle().fill(P.hairline).frame(height: 1)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("FRIENDS").font(.system(size: 9.5, weight: .semibold)).tracking(1).foregroundStyle(P.accent)
+                Text(a.sentence).font(.serifTitle(16)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var footer: some View {
+        var text: String = "Only public events, and friends' events as their privacy allows."
+        if let p = online.pulse { text = "\(p.online) of \(p.players) players are online now. " + text }
+        if !OnlineConfig.useServer { text += " This build uses a stand-in server, so other players are samples." }
+        return Text(text).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+    }
+
     private func load() async {
         events = await feed.service.events(now: Date())
+        if online.isSignedIn {
+            requests = (try? await online.service.friends().incoming.count) ?? 0
+            await online.syncWorld(store: store)
+        } else { requests = 0 }
+        await session.refreshAuctions()
         loaded = true
     }
 }

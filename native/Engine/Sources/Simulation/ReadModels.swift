@@ -39,9 +39,9 @@ public extension GameEngine {
     func quotes(_ kind: Brokerage.Kind) -> [Quote] {
         let inv = state.rest["inv"] ?? .null
         switch kind {
-        case .stock, .crypto:
-            let book = state.rest[kind == .stock ? "stocks" : "crypto"]?.object ?? [:]
-            let held = inv[kind == .stock ? "stocks" : "crypto"]
+        case .crypto:
+            let book = state.rest["crypto"]?.object ?? [:]
+            let held = inv["crypto"]
             return book.keys.sorted().map { sym in
                 let q = book[sym]!
                 let h = q["h"].array.map { $0.double }

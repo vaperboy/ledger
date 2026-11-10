@@ -34,14 +34,13 @@ struct ReturnInfo: Equatable {
 enum AppRequest: Equatable {
     case message(Int)
     case bank(BankRequest)
-    case report(ReportRef)
     case market(companyID: Int)
     case marketTab(MarketUI.Tab)
-    case reviews(companyID: Int)
     case airStay(companyID: Int)
     case techPro(companyID: Int, equipmentID: String)
     case atlas(companyID: Int)
     case ventures
+    case newsPlayers
 }
 
 struct Toast: Identifiable, Equatable {
@@ -112,7 +111,6 @@ final class GameStore: ObservableObject {
         return v
     }
     var netWorthNow: NetWorth? { memo("nw") { $0.netWorth } }
-    var netWorthBreakdownNow: NetWorthBreakdown? { memo("nwb") { $0.netWorthBreakdown() } }
     var dayHistoryNow: DayHistory? { memo("hist") { $0.dayHistory } }
     func netWorthSeriesNow(days: Int) -> [Double] { memo("nws\(days)") { $0.netWorthSeries(days: days) } ?? [] }
     var suggestionsNow: [Suggestion] { memo("sugg8") { $0.suggestions(limit: 8) } ?? [] }
@@ -196,7 +194,6 @@ final class GameStore: ObservableObject {
     @Published private(set) var stacks: [AppTab: [NavRoute]] = [:]
     @Published var customTarget: CustomTabTarget = CustomTabTarget.stored()
     @Published var customPickerOpen = false
-    var marketNewsPending = false
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
     @Published private(set) var appRequest: AppRequest?
     @Published private(set) var loadProblem: String?
@@ -691,9 +688,18 @@ final class GameStore: ObservableObject {
 
     func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
         if var e = engine, e.noteVisit(app: app.rawValue) { engine = e }
-        if app == .ventures, tab == .projects, depth(.projects) == 0 { appRequest = .ventures; return }
-        appRequest = app == .ventures ? nil : request
+        appRequest = request
         push(.app(app))
+    }
+
+    func openVentures() {
+        if tab != .projects { selectTab(.projects, resetRoot: false) }
+        clearStack(.projects)
+        appRequest = .ventures
+    }
+
+    func noteVisit(_ key: String) {
+        if var e = engine, e.noteVisit(app: key) { engine = e }
     }
 
     func openBank(_ account: BankAccountID, tab: BankTab = .account, applyLoan: Double? = nil) {
@@ -717,6 +723,11 @@ final class GameStore: ObservableObject {
         appRequest = nil
         return true
     }
+    func takeNewsPlayersRequest() -> Bool {
+        guard case .newsPlayers? = appRequest else { return false }
+        appRequest = nil
+        return true
+    }
     func takeMessageRequest() -> Int? {
         guard case .message(let id)? = appRequest else { return nil }
         appRequest = nil
@@ -737,11 +748,6 @@ final class GameStore: ObservableObject {
         appRequest = nil
         return t
     }
-    func takeReviewsRequest() -> Int? {
-        guard case .reviews(let id)? = appRequest else { return nil }
-        appRequest = nil
-        return id
-    }
     func takeAirStayRequest() -> Int? {
         guard case .airStay(let id)? = appRequest else { return nil }
         appRequest = nil
@@ -757,12 +763,6 @@ final class GameStore: ObservableObject {
         appRequest = nil
         return id
     }
-    func takeReportRequest() -> ReportRef? {
-        guard case .report(let r)? = appRequest else { return nil }
-        appRequest = nil
-        return r
-    }
-
     private func resetNavigation() {
         tab = .company
         stacks = [:]; rootTokens = [:]; appRequest = nil

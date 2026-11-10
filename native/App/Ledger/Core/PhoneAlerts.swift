@@ -19,7 +19,7 @@ enum PhoneAlerts {
         var out: [PhoneAlert] = []
         for w in engine.bigWeatherWarnings() {
             let names: String = w.companyIDs.compactMap { engine.state.company($0)?.name }.joined(separator: ", ")
-            out.append(PhoneAlert(id: "weather-\(w.countryCode)", app: .weather, source: "Weather", title: w.title, detail: "Can hit: " + names, companyID: w.companyIDs.first ?? 0))
+            out.append(PhoneAlert(id: "weather-\(w.countryCode)", app: .news, source: "Weather", title: w.title, detail: "Can hit: " + names, companyID: w.companyIDs.first ?? 0))
         }
         let open: [Message] = engine.ownerDecisions.filter { engine.severityLevel(of: $0) >= 3 }
         let bad: [Message] = open.filter { $0.tone == "bad" }

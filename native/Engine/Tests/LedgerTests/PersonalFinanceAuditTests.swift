@@ -55,17 +55,17 @@ final class PersonalFinanceAuditTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    func testStockAndCryptoFeesAndGainsTaxBase() throws {
+    func testFundAndCryptoFeesAndGainsTaxBase() throws {
         var e = try game()
         e.update { s, _, _ in
             let c0 = s.cash
-            XCTAssertEqual(Brokerage.buy(&s, .stock, "FOOD", amount: 1_000_000), .ok)
+            XCTAssertEqual(Brokerage.buy(&s, .fund, "idx", amount: 1_000_000), .ok)
             XCTAssertEqual(c0 - s.cash, 1_001_000, accuracy: 1, "0.1 % broker fee")
-            var st = s.rest["stocks"]!
-            var f = st["FOOD"]; f["p"] = .number(f["p"].double * 1.1); st["FOOD"] = f
-            s.rest["stocks"] = st
+            var px = s.rest["fundPx"] ?? .object([:])
+            px["idx"] = .number(Brokerage.price(s, .fund, "idx") * 1.1)
+            s.rest["fundPx"] = px
             let g0 = s.tax.gains, c1 = s.cash
-            let v = Brokerage.sell(&s, .stock, "FOOD", fraction: 1)
+            let v = Brokerage.sell(&s, .fund, "idx", fraction: 1)
             XCTAssertEqual(s.cash - c1, v - max(29, v * 0.001), accuracy: 1)
             XCTAssertEqual(s.tax.gains - g0, v - max(29, v * 0.001) - 1_001_000, accuracy: 1, "gain = proceeds less fee less cost (the buy fee is in the cost)")
             XCTAssertGreaterThan(s.tax.gains - g0, 80_000)

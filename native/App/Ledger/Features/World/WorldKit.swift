@@ -58,9 +58,7 @@ extension OutsidePalette {
         gain: Color(hex: 0x2B6B45), loss: Color(hex: 0xA8322B), caution: Color(hex: 0x86601E), isLight: true)
 }
 
-struct CountryRead {
-    var code: String
-    var name: String
+struct WorldRead {
     var gov: Government
     var world: GovernmentWorld
     var week: Int
@@ -76,11 +74,10 @@ struct CountryRead {
 }
 
 extension GameEngine {
-    func countryRead() -> CountryRead? {
+    func worldRead() -> WorldRead? {
         let w: GovernmentWorld = GovernmentBridge.world(state)
-        let cc: String = state.homeCountryCode
-        guard let g = w.countries[cc] else { return nil }
-        return CountryRead(code: cc, name: homeCountry.name, gov: g, world: w, week: state.week, cur: homeCurrency)
+        guard let g = w.government else { return nil }
+        return WorldRead(gov: g, world: w, week: state.week, cur: homeCurrency)
     }
 
     func supportTrades() -> [Trade] {
@@ -105,12 +102,11 @@ extension GameStore {
         return true
     }
 
-    func ensureCountry() {
-        guard let e = engine, GovernmentBridge.world(e.state).countries[e.state.homeCountryCode] == nil else { return }
+    func ensureWorld() {
+        guard let e = engine, GovernmentBridge.world(e.state).government == nil else { return }
         govRun { (s: inout GameState, _: GameData, c: FinanceContext) -> Void in
-            let cc: String = s.homeCountryCode
-            let supply: Double = max(1, c.currency(cc, s).scaledPrice(1_000_000_000))
-            GovernmentBridge.ensure(&s, country: cc, admins: [], startingSupply: supply)
+            let supply: Double = max(1, c.homeCurrency(s).scaledPrice(1_000_000_000))
+            GovernmentBridge.ensure(&s, admins: [], startingSupply: supply)
         }
     }
 }

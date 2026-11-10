@@ -68,17 +68,6 @@ extension FeatureToursTests {
             return problems.isEmpty ? .pass("popups: " + d.seen.joined(separator: ",")) : .fail(problems.prefix(3).joined(separator: "; "))
         }
         step("reward: Claim closes the popup and keeps the screen") { reward }
-        step("report: 'Full report' opens the Reports app and Back returns") {
-            guard goTab("Home"), tapID("next-day", wait: 3) else { return .skip("no next-day button") }
-            guard popupUp(8), tapID("report-open", wait: 3) else { var n = 0; while n < 6 && popupUp(1) { closePopup(); n += 1 }; return .skip("no report with Full report after a day") }
-            _ = waitPopupGone(3)
-            var n = 0
-            while n < 4 && popupUp(1) { closePopup(prefer: ["report-continue"]); n += 1 }
-            let page: TourSig = signature()
-            let h: R = health("reports app")
-            guard page.back, tapBack() else { return .fail("Full report did not open a page with Back: \(page.text)") }
-            return h
-        }
         step("home: health after the days played") { health("Home after days", title: false) }
     }
 
@@ -184,20 +173,20 @@ extension FeatureToursTests {
                   prepare: { openPhoneApp("AirStay") && tapPrefix("stay-listing-", wait: 5) }) { driveUntilPopup(["stay-rent", "stay-continue"]) }
         let checkout: [String] = ["tp-view-basket", "tp-checkout", "tp-continue", "tp-pay"]
         func fillBasket() -> Bool {
-            guard openPhoneApp("TechPro Store") else { return false }
+            guard openPhoneApp("TechPro") else { return false }
             _ = tapID("tp-shop-now", wait: 3)
             guard tapPrefix("tp-tile-", wait: 5) else { return false }
             return tapID("tp-add", wait: 4)
         }
         roundTrip("techpro: checkout Pay -> confirm, Cancel keeps checkout", closeWith: ["confirm-cancel"], prepare: { fillBasket() }) { driveUntilPopup(checkout) }
         roundTrip("techpro: checkout Pay -> confirm, Pay never pops to a root", closeWith: ["confirm-go"], leavesScreen: true, prepare: { fillBasket() }) { driveUntilPopup(checkout) }
-        roundTrip("atlas: cancel a policy -> confirm, Cancel keeps Atlas", closeWith: ["confirm-cancel"], prepare: { openPhoneApp("Atlas Insurance") }) {
+        roundTrip("atlas: cancel a policy -> confirm, Cancel keeps Atlas", closeWith: ["confirm-cancel"], prepare: { openPhoneApp("Insurance") }) {
             driveUntilPopup(["prefix:atlas-cancel-"])
         }
-        roundTrip("atlas: cancel a policy -> confirm, Cancel policy never pops to a root", closeWith: ["confirm-go"], leavesScreen: true, prepare: { openPhoneApp("Atlas Insurance") }) {
+        roundTrip("atlas: cancel a policy -> confirm, Cancel policy never pops to a root", closeWith: ["confirm-go"], leavesScreen: true, prepare: { openPhoneApp("Insurance") }) {
             driveUntilPopup(["prefix:atlas-cancel-"])
         }
-        roundTrip("atlas: get a quote -> confirm, Cancel keeps Atlas", closeWith: ["confirm-cancel"], prepare: { openPhoneApp("Atlas Insurance") }) {
+        roundTrip("atlas: get a quote -> confirm, Cancel keeps Atlas", closeWith: ["confirm-cancel"], prepare: { openPhoneApp("Insurance") }) {
             driveUntilPopup(["atlas-get-quote", "atlas-confirm"])
         }
     }
@@ -378,7 +367,7 @@ extension FeatureToursTests {
             return h
         }
         step("weather: city switcher opens and closes") {
-            guard openPhoneApp("Weather"), tapID("weather-city-switcher", wait: 4) else { return .skip("no city switcher") }
+            guard openPhoneApp("News"), tapID("news-section-weather", wait: 3), tapID("weather-city-switcher", wait: 4) else { return .skip("no city switcher") }
             if popupUp(2) { closePopup(); return waitPopupGone(3) ? .pass("popup") : .fail("did not close") }
             return .pass("in place: \(signature().text)")
         }

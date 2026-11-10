@@ -61,24 +61,6 @@ final class OtherActionsTests: XCTestCase {
         XCTAssertEqual(e.state.people[p]?.value("trial").double, 1)
     }
 
-    func testDevelopmentProjectRunsAndPays() throws {
-        var (e, id) = try cafe()
-        let list = e.developmentProjects(companyID: id)
-        XCTAssertFalse(list.isEmpty)
-        let first = list[0].project
-        XCTAssertEqual(e.startDevelopment(companyID: id, project: first.id), .ok)
-        XCTAssertEqual(e.startDevelopment(companyID: id, project: first.id), .busy)
-        e.update { s, _, _ in
-            var r = s.companies[s.companyIndex(id)!].value("rd56"); r["run"]["wEnd"] = .number(Double(s.week)); s.companies[s.companyIndex(id)!].set("rd56", r)
-        }
-        e.update { s, d, _ in
-            guard let i = s.companyIndex(id), let bd = d.catalog[s.companies[i].type] else { return }
-            Development.weekly(&s, i, bd, data: d)
-        }
-        XCTAssertNil(Development.running(e.state.company(id)!))
-        XCTAssertEqual(e.startDevelopment(companyID: id, project: first.id), e.state.company(id)!.value("rd56")["done"].array.isEmpty ? .ok : .recent)
-    }
-
     func testDailyGoalAndAmbition() throws {
         var (e, _) = try cafe()
         let g = e.dailyGoal(now: Date(timeIntervalSince1970: 1_800_000_000))

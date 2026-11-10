@@ -65,10 +65,5 @@ final class TradeQuoteTests: XCTestCase {
             e.sellInvestment(kind, symbol: sym, fraction: 1)
             XCTAssertEqual(e.state.cash - cash1, sq.cashChange, accuracy: 1)
         }
-        XCTAssertNotNil(e.buyQuote(.stock, symbol: "X", amount: 1).refusal)
-        let sym = try XCTUnwrap(e.quotes(.stock).first { !$0.isDelisted }).symbol
-        XCTAssertNotNil(e.buyQuote(.stock, symbol: sym, amount: 100_000).refusal, "buying shares is not offered")
-        XCTAssertEqual(e.buyInvestment(.stock, symbol: sym, amount: 100_000), .delisted)
-        XCTAssertEqual(e.quotes(.stock).first { $0.symbol == sym }?.quantity ?? 0, 0)
     }
 }

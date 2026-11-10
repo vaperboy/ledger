@@ -219,7 +219,7 @@ final class PlayBot {
                     if reckless, e.state.week % 8 == 0, let role = e.hireableRoles(companyID: id).first { hireWorker(id, role: role) }
                 }
                 if e.state.week % 4 == 0 { fillVacancies(id) }
-                if reckless && liquid > cur.scaledPrice(50_000) { _ = e.buyInvestment(.stock, symbol: e.quotes(.stock).first?.symbol ?? "", amount: liquid * 0.8) }
+                if reckless && liquid > cur.scaledPrice(50_000) { _ = e.buyInvestment(.crypto, symbol: e.quotes(.crypto).first?.symbol ?? "", amount: liquid * 0.8) }
             }
         }
     }

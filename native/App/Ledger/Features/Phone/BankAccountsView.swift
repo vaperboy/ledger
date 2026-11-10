@@ -19,7 +19,6 @@ struct BankAccountsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     totalCard(all)
-                    BankWealthCard(engine: e)
                     BankHomeRing(all: all, engine: e)
                     roundButtons(all)
                     billsLink(all, e)

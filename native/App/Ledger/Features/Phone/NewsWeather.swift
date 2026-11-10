@@ -4,51 +4,30 @@ import Businesses
 import Simulation
 import Countries
 
-struct WeatherApp: View {
+struct WeatherSection: View {
     @EnvironmentObject var store: GameStore
+    var engine: GameEngine
     @State private var chosen: String? = nil
 
     var body: some View {
-        if let e = store.engine {
-            let cc: String = chosen ?? countries(e).first ?? e.state.homeCountryCode
-            let kind: String = e.weatherForecast(countryCode: cc).now.kind
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    WeatherHeader()
-                    WeatherWarningCards(engine: e)
-                    WeatherCityBar(engine: e, countries: countries(e), selection: Binding(get: { cc }, set: { chosen = $0 }))
-                    WeatherNowCard(engine: e, country: cc)
-                    WeatherWeeksCard(engine: e, country: cc)
-                    WeatherHourlyCard(engine: e, country: cc)
-                    WeatherCompaniesCard(engine: e, country: cc)
-                }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
-            }
-            .scrollIndicators(.hidden)
-            .outsideScreen(OutsidePalette.weather(kind: kind))
-            .accessibilityIdentifier("weather-app")
+        let list: [String] = countries(engine)
+        let cc: String = chosen ?? list.first ?? engine.state.homeCountryCode
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            WeatherWarningCards(engine: engine)
+            WeatherCityBar(engine: engine, countries: list, selection: Binding(get: { cc }, set: { chosen = $0 }))
+            WeatherNowCard(engine: engine, country: cc)
+            WeatherWeeksCard(engine: engine, country: cc)
+            WeatherHourlyCard(engine: engine, country: cc)
+            WeatherCompaniesCard(engine: engine, country: cc)
         }
+        .onAppear { store.noteVisit("weather") }
+        .accessibilityIdentifier("weather-app")
     }
 
     private func countries(_ e: GameEngine) -> [String] {
         var out: [String] = [e.state.homeCountryCode]
         for co in e.state.companies where co.status == .open && !out.contains(co.countryCode) { out.append(co.countryCode) }
         return out
-    }
-}
-
-struct WeatherHeader: View {
-    @Environment(\.outsidePalette) private var P
-    var body: some View {
-        HStack(spacing: 12) {
-            OutsideBack()
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Weather").textStyle(.title).accessibilityAddTraits(.isHeader)
-                Text("Conditions, forecast and warnings").textStyle(.caption)
-            }
-            Spacer(minLength: 0)
-        }
     }
 }
 
@@ -87,7 +66,7 @@ struct WeatherWarningCards: View {
                 Text("Can hit: " + names.joined(separator: ", ")).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
         }
-        .newMarker(.weather, "w" + w.title, style: .capsule, important: true, alignment: .topTrailing)
+        .newMarker(.news, "w" + w.title, style: .capsule, important: true, alignment: .topTrailing)
     }
 }
 

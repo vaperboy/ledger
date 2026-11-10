@@ -225,28 +225,6 @@ public extension GameEngine {
         return pool.map { ($0["id"].int, $0["name"].string, $0["fee"].double, $0["rating"].double, $0["id"].int == co.value("acc")["id"].int) }
     }
 
-    func developmentProjects(companyID: Int) -> [(project: Development.Project, cost: Double)] {
-        guard let co = state.company(companyID) else { return [] }
-        let cur = context.currency(co.countryCode, state)
-        return Development.projects(for: co, data: data).map { ($0, Development.cost($0, for: co, currency: cur)) }
-    }
-    mutating func startDevelopment(companyID: Int, project: String) -> Development.StartResult {
-        var r = Development.StartResult.notPossible
-        update { s, d, _ in r = Development.start(&s, companyID: companyID, project: project, data: d) }
-        return r
-    }
-
-    func developmentPlan(companyID: Int, project: String) -> Development.Plan? {
-        guard let co = state.company(companyID) else { return nil }
-        return Development.plan(for: co, project: project, state: state, data: data)
-    }
-    @discardableResult
-    mutating func cancelDevelopment(companyID: Int) -> Double? {
-        var r: Double?
-        update { s, _, _ in r = Development.cancel(&s, companyID: companyID) }
-        return r
-    }
-
     static func dayString(_ date: Date) -> String {
         let c = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: date)
         return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"

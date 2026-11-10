@@ -286,7 +286,6 @@ final class HiringRebuildTests: XCTestCase {
         let pid = try hireOne(&e, id, role: "barista")
         let co0 = e.state.company(id)!
         XCTAssertEqual(RoleEffects.awarenessFactor(co0), 1)
-        XCTAssertEqual(RoleEffects.developmentWeeks(8, co0), 8)
         XCTAssertEqual(RoleEffects.inspectionRelief(co0), 0)
         XCTAssertTrue(e.setDuty(companyID: id, employeeID: pid, duty: "marketer"))
         var co = e.state.company(id)!
@@ -296,8 +295,6 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertEqual(RoleEffects.awarenessFactor(co), 1 + RoleEffects.marketingGainOwnerAway, "more while the owner works elsewhere")
         XCTAssertTrue(e.setDuty(companyID: id, employeeID: pid, duty: "cleaner"))
         XCTAssertEqual(RoleEffects.inspectionRelief(e.state.company(id)!), RoleEffects.cleanerInspection)
-        var dev = Company(raw: [:]); var st = StaffMember(raw: [:]); st.set("role", "dev"); dev.staff = [st]
-        XCTAssertEqual(RoleEffects.developmentWeeks(8, dev), 6)
     }
 
     func testTermsSummaryGivesTheWholePage() throws {

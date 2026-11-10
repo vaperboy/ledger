@@ -1,115 +1,37 @@
 import SwiftUI
 import GameCore
-import Countries
+import Events
 import Businesses
 import Simulation
 
-struct MarketStandingPage: View {
+struct RankingsApp: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.outsidePalette) private var P
-    @State private var part: Part = .worth
-
-    enum Part: String, CaseIterable, Hashable { case worth = "Net worth", boards = "Leaderboards" }
+    enum Tab: String, CaseIterable, Hashable { case boards = "Leaderboards", fame = "Hall of Fame" }
+    @State private var tab: Tab = .boards
 
     var body: some View {
-        if store.engine != nil {
-            VStack(spacing: 0) {
-                SegmentedPill(items: Part.allCases, title: { (p: Part) -> String in p.rawValue }, selection: $part,
-                              identifier: { (p: Part) -> String in "standing-part-\(p.rawValue)" })
-                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s)
-                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
-                switch part {
-                case .worth: MarketWealthPart()
-                case .boards: MarketBoardsPart()
-                }
-            }
-        }
-    }
-}
-
-struct MarketWealthPart: View {
-    @EnvironmentObject var store: GameStore
-    @Environment(\.outsidePalette) private var P
-
-    var body: some View {
-        if let e = store.engine {
-            let cur: Currency = e.homeCurrency
-            let w: WealthStatement = store.memo("mk.wealth") { $0.wealth } ?? e.wealth
-            let assets: [WealthLine] = w.lines.filter { (l: WealthLine) -> Bool in l.amount > 0 }
-            let takes: [WealthLine] = w.lines.filter { (l: WealthLine) -> Bool in l.amount < 0 }
-            let top: Double = max(1, assets.reduce(0) { (a: Double, l: WealthLine) -> Double in a + l.amount })
-            ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
-                hero(w, cur)
-                if !assets.isEmpty { composition(assets, top, cur) }
-                liquid(w)
-                MarketLabel(title: "What it is made of")
+        Group {
+            if store.engine != nil {
                 VStack(spacing: 0) {
-                    ForEach(Array(w.lines.enumerated()), id: \.element.id) { (pair: (offset: Int, element: WealthLine)) in
-                        if pair.offset > 0 { Hairline() }
-                        line(pair.element, index: pair.offset, assets: assets, top: top, cur)
+                    SegmentedPill(items: Tab.allCases, title: { (t: Tab) -> String in t.rawValue }, selection: $tab,
+                                  identifier: { (t: Tab) -> String in "rankings-tab-\(t.rawValue)" })
+                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xs)
+                        .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                    switch tab {
+                    case .boards: RankingsBoards()
+                    case .fame: HallOfFameView()
                     }
                 }
-                if !takes.isEmpty { Text("Loans and tax come off the total.").textStyle(.caption) }
-                if w.discount > 0.5 {
-                    ExchangeCard {
-                        Text("Why it is not the number on Home").textStyle(.label, tint: P.inkFaint)
-                        Text(discountWords(w, cur)).textStyle(.body).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
+            } else {
+                Color.clear
             }
         }
-    }
-
-    private func discountWords(_ w: WealthStatement, _ cur: Currency) -> String {
-        let a: String = "The rankings count what you could really get. Companies you run and stakes you hold cannot be sold in a day, so they count for less: "
-        let b: String = cur.tidyShort(w.discount) + " less than their paper value. Before that, you are worth " + cur.tidyShort(w.plain.total) + "."
-        return a + b
-    }
-
-    private func hero(_ w: WealthStatement, _ cur: Currency) -> some View {
-        let series: [Double] = store.netWorthSeriesNow(days: 90)
-        return MarketHero(label: "Net worth", value: cur.tidyShort(w.total), context: w.summary, series: series,
-                          seriesTint: (series.last ?? 0) >= (series.first ?? 0) ? P.gain : P.loss, identifier: "wealth-hero")
-    }
-
-    private func composition(_ assets: [WealthLine], _ total: Double, _ cur: Currency) -> some View {
-        GeometryReader { geo in
-            HStack(spacing: 2) {
-                ForEach(Array(assets.enumerated()), id: \.element.id) { (pair: (offset: Int, element: WealthLine)) in
-                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(swatch(pair.offset))
-                        .frame(width: max(4, geo.size.width * CGFloat(pair.element.amount / total) - 2))
-                }
-            }
-        }
-        .frame(height: 14)
-        .accessibilityHidden(true)
-    }
-
-    private func swatch(_ index: Int) -> Color { P.accent.opacity(max(0.22, 1 - 0.17 * Double(index))) }
-
-    private func liquid(_ w: WealthStatement) -> some View {
-        ProgressLine(fraction: w.liquidShare, tint: P.gain, label: "Money and shares you could sell this week", value: Currency.percent(w.liquidShare, decimals: 0), height: 6)
-    }
-
-    private func line(_ l: WealthLine, index: Int, assets: [WealthLine], top: Double, _ cur: Currency) -> some View {
-        let at: Int? = assets.firstIndex { (a: WealthLine) -> Bool in a.id == l.id }
-        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                if let at { RoundedRectangle(cornerRadius: 2, style: .continuous).fill(swatch(at)).frame(width: 10, height: 10) }
-                Text(l.title.tidyText).textStyle(.headline).lineLimit(2)
-                Spacer(minLength: Theme.Space.s)
-                Text((l.amount < 0 ? "\u{2212}" : "") + cur.tidyShort(abs(l.amount))).textStyle(.headline, tint: l.amount < 0 ? P.loss : nil, numeric: true)
-            }
-            if !l.words.isEmpty { Text(l.words.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
-            if l.amount > 0 { ProgressLine(fraction: l.amount / top, tint: P.accent.opacity(0.7), height: 2) }
-        }
-        .padding(.vertical, Theme.Space.m)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("wealth-line-\(l.id)")
+        .appScreen(title: "Rankings", subtitle: PhoneApp.rankings.subtitle)
+        .accessibilityIdentifier("rankings-app")
     }
 }
 
-struct MarketBoardsPart: View {
+struct RankingsBoards: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
     @Environment(\.outsidePalette) private var P
@@ -138,7 +60,7 @@ struct MarketBoardsPart: View {
                     } else if let y = view.you, y.rank <= view.top.count {
                         Text("You are in the top \(view.top.count).").textStyle(.caption)
                     }
-                    Text(kind == .netWorth ? "Net worth is counted as in the breakdown: companies you cannot sell in a day count for less."
+                    Text(kind == .netWorth ? "Net worth counts companies you cannot sell in a day for less."
                                            : "Trading result is what you made on the exchange: shares sold and shares still held, fees included.")
                         .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 } else {

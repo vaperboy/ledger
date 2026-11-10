@@ -182,7 +182,7 @@ enum ArtLibrary {
         "cust": "t02", "emp": "t31", "profit": "t30", "year": "t24", "mgr": "t05", "branch": "t13", "div": "t25", "abroad": "t12",
         "ten": "t31", "hundred": "t31", "million": "t07", "tenm": "t25", "hm": "t26", "bn": "t28", "bank": "t25",
         "fam": "t12", "hold": "t29", "oil": "t14", "club": "t35", "listed": "t08", "su1": "t02", "sux": "t08", "pe1": "t25", "pe2": "t30",
-        "boty": "t03", "acq": "t06", "give": "t09", "g10": "t09", "stars": "t19", "st48": "t19", "tyall": "t01", "rd": "t17",
+        "boty": "t03", "acq": "t06", "give": "t09", "g10": "t09", "stars": "t19", "st48": "t19", "tyall": "t01",
         "ten10": "t10", "mgr10": "t10", "hq5": "t24", "abr50": "t12", "lx1": "t28", "lxj": "t13", "lxy": "t15", "lxe": "t09", "lxi": "t01",
         "lxm": "t03", "lxw": "t30", "lxc5": "t27", "no1": "t01", "top10": "t11", "team56": "t29",
         "yr5": "t27", "yr10": "t10", "yr25": "t34", "yr50": "t34", "rk50": "t32", "rk3": "t11", "rk1": "t01",

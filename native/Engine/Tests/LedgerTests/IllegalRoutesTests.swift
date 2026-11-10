@@ -156,27 +156,38 @@ final class IllegalRoutesTests: XCTestCase {
     func testWorldSurvivesSaveAndLoad() throws {
         var e = try engine()
         e.update { s, _, _ in
-            GovernmentBridge.ensure(&s, country: s.homeCountryCode, admins: ["boss"], startingSupply: 5_000_000)
-            _ = try? GovernmentBridge.act(&s, country: s.homeCountryCode) { g, _, w in try g.printMoney(admin: "boss", amount: 1_000, reason: "test run", week: w) }
+            GovernmentBridge.ensure(&s, admins: ["boss"], startingSupply: 5_000_000)
+            _ = try? GovernmentBridge.act(&s) { g, _, w in try g.printMoney(admin: "boss", amount: 1_000, reason: "test run", week: w) }
         }
         let world = try XCTUnwrap(e.state.governmentWorld)
         let data = try JSONEncoder().encode(e.state)
         let back = try JSONDecoder().decode(GameState.self, from: data)
         XCTAssertEqual(back.governmentWorld, e.state.governmentWorld)
-        XCTAssertEqual(world.countries.values.first?.supply.mints.count, 1)
+        XCTAssertEqual(world.government?.supply.mints.count, 1)
+    }
+
+    func testOneGovernmentServesTheWholeWorld() throws {
+        var e = try engine()
+        e.update { s, _, c in
+            GovernmentBridge.ensureHome(&s, admins: ["boss"], context: c)
+            GovernmentBridge.ensureHome(&s, admins: ["second"], context: c)
+        }
+        let g = try XCTUnwrap(e.state.governmentWorld?.government)
+        XCTAssertEqual(g.admins, ["boss", "second"])
+        XCTAssertTrue(Politics.mayVote(GovCitizen(account: "anyone", ageWeeks: 30)))
+        XCTAssertTrue(Politics.mayStand(GovCitizen(account: "anyone", ageWeeks: 30)))
     }
 
     func testDonationMovesMoneyFromPlayerToTreasury() throws {
         var e = try engine()
         try e.updateThrowing { s, _, _ in
-            let cc = s.homeCountryCode
-            GovernmentBridge.ensure(&s, country: cc, admins: ["boss"], startingSupply: 5_000_000)
+            GovernmentBridge.ensure(&s, admins: ["boss"], startingSupply: 5_000_000)
             Ledger.move(&s, .me, 10_000_000, why: "Test funds")
             let cash0 = s.cash
-            XCTAssertNoThrow(try GovernmentBridge.donate(&s, country: cc, amount: 250_000))
+            XCTAssertNoThrow(try GovernmentBridge.donate(&s, amount: 250_000))
             XCTAssertEqual(cash0 - s.cash, 250_000)
-            XCTAssertEqual(GovernmentBridge.world(s).countries[cc]?.treasury.balance, 250_000)
-            XCTAssertThrowsError(try GovernmentBridge.donate(&s, country: cc, amount: s.cash + 1), "not from an overdraft")
+            XCTAssertEqual(GovernmentBridge.world(s).government?.treasury.balance, 250_000)
+            XCTAssertThrowsError(try GovernmentBridge.donate(&s, amount: s.cash + 1), "not from an overdraft")
             XCTAssertTrue(Ledger.gaps(s).isEmpty, "\(Ledger.gaps(s))")
         }
     }
@@ -184,25 +195,23 @@ final class IllegalRoutesTests: XCTestCase {
     func testStandingTakesTheFeeOnceAndNeverReturnsIt() throws {
         var e = try engine()
         e.update { s, d, c in
-            let cc = s.homeCountryCode
-            GovernmentBridge.ensure(&s, country: cc, admins: ["boss"], startingSupply: 5_000_000)
+            GovernmentBridge.ensure(&s, admins: ["boss"], startingSupply: 5_000_000)
             s.week = 30
             GovernmentBridge.weekly(&s, data: d, context: c)
         }
-        XCTAssertNotNil(e.state.governmentWorld?.countries[e.state.homeCountryCode]?.election, "nominations opened")
+        XCTAssertNotNil(e.state.governmentWorld?.government?.election, "nominations opened")
         try e.updateThrowing { s, _, c in
-            let cc = s.homeCountryCode
-            let fee = GovernmentBridge.candidacyFee(s, country: cc, context: c)
+            let fee = GovernmentBridge.candidacyFee(s, context: c)
             XCTAssertGreaterThan(fee, 100_000, "very high")
             Ledger.move(&s, .me, fee * 3, why: "Test funds")
             let cash0 = s.cash
-            XCTAssertThrowsError(try GovernmentBridge.stand(&s, country: cc, manifesto: "m", promises: [CampaignPromise(kind: .gainsTax, value: 0.05)], context: c), "unrealistic")
+            XCTAssertThrowsError(try GovernmentBridge.stand(&s, manifesto: "m", promises: [CampaignPromise(kind: .gainsTax, value: 0.05)], context: c), "unrealistic")
             XCTAssertEqual(s.cash, cash0, "a refused candidacy costs nothing")
-            XCTAssertNoThrow(try GovernmentBridge.stand(&s, country: cc, manifesto: "m", promises: [CampaignPromise(kind: .gainsTax, value: 0.19)], context: c))
+            XCTAssertNoThrow(try GovernmentBridge.stand(&s, manifesto: "m", promises: [CampaignPromise(kind: .gainsTax, value: 0.19)], context: c))
             XCTAssertEqual(cash0 - s.cash, fee)
-            XCTAssertThrowsError(try GovernmentBridge.stand(&s, country: cc, manifesto: "m", promises: [], context: c), "already standing")
+            XCTAssertThrowsError(try GovernmentBridge.stand(&s, manifesto: "m", promises: [], context: c), "already standing")
             XCTAssertEqual(cash0 - s.cash, fee, "no second fee")
-            XCTAssertEqual(GovernmentBridge.world(s).countries[cc]?.treasury.balance, fee)
+            XCTAssertEqual(GovernmentBridge.world(s).government?.treasury.balance, fee)
             XCTAssertTrue(Ledger.gaps(s).isEmpty)
         }
     }
@@ -210,10 +219,9 @@ final class IllegalRoutesTests: XCTestCase {
     func testPrintingRaisesPricesOnlyAfterTheLag() throws {
         var e = try engine()
         try e.updateThrowing { s, d, c in
-            let cc = s.homeCountryCode
-            GovernmentBridge.ensure(&s, country: cc, admins: ["me"], startingSupply: 1_000_000)
+            GovernmentBridge.ensure(&s, admins: ["me"], startingSupply: 1_000_000)
             s.week = 10
-            XCTAssertNoThrow(try GovernmentBridge.act(&s, country: cc) { g, a, w in try g.printMoney(admin: a, amount: 50_000, reason: "stimulus", week: w) })
+            XCTAssertNoThrow(try GovernmentBridge.act(&s) { g, a, w in try g.printMoney(admin: a, amount: 50_000, reason: "stimulus", week: w) })
             let ix0 = s.economy.inflationIndex
             for w in 10..<(10 + GovInflation.lagWeeks) {
                 s.week = w
@@ -232,14 +240,13 @@ final class IllegalRoutesTests: XCTestCase {
         let id = try openCompany(&e)
         try e.updateThrowing { s, d, c in
             let i = s.companyIndex(id)!
-            let cc = s.companies[i].countryCode
-            GovernmentBridge.ensure(&s, country: cc, admins: ["boss"], startingSupply: 5_000_000)
+            GovernmentBridge.ensure(&s, admins: ["boss"], startingSupply: 5_000_000)
             Ledger.move(&s, .me, 5_000_000, why: "Test funds")
-            XCTAssertNoThrow(try GovernmentBridge.donate(&s, country: cc, amount: 1_000_000))
+            XCTAssertNoThrow(try GovernmentBridge.donate(&s, amount: 1_000_000))
             var w = GovernmentBridge.world(s)
-            var g = w.countries[cc]!
+            var g = w.government!
             g.supports.append(GovPriceSupport(id: 900, tradeID: s.companies[i].type, percent: 0.05, weeklyBudget: 40_000, weeks: 4, startWeek: 40, status: .active, proposer: "x"))
-            w.countries[cc] = g
+            w.government = g
             s.governmentWorld = w
             var b = s.companies[i].books
             b.week["rev"] = 100_000
@@ -249,7 +256,7 @@ final class IllegalRoutesTests: XCTestCase {
             GovernmentBridge.weekly(&s, data: d, context: c)
             let paid = s.companies[i].cash - co0
             XCTAssertEqual(paid, 5_000)
-            XCTAssertEqual(tr0 - (GovernmentBridge.world(s).countries[cc]?.treasury.balance ?? 0), paid, "what the company gets is what the treasury loses")
+            XCTAssertEqual(tr0 - (GovernmentBridge.world(s).government?.treasury.balance ?? 0), paid, "what the company gets is what the treasury loses")
             XCTAssertTrue(Ledger.gaps(s).isEmpty, "\(Ledger.gaps(s))")
         }
     }
@@ -259,8 +266,7 @@ final class IllegalRoutesTests: XCTestCase {
         let id = try openCompany(&e)
         e.update { s, d, c in
             let i = s.companyIndex(id)!
-            let cc = s.companies[i].countryCode
-            GovernmentBridge.ensure(&s, country: cc, admins: ["me"], startingSupply: 5_000_000)
+            GovernmentBridge.ensure(&s, admins: ["me"], startingSupply: 5_000_000)
             Ledger.move(&s, .company(id), 100_000_000, why: nil)
             s.week = 50
             var w = GovernmentBridge.world(s)
@@ -273,11 +279,10 @@ final class IllegalRoutesTests: XCTestCase {
 
     func testFineGoesToTheTreasuryAndNothingIsLost() throws {
         try audited(level: 2) { s, w, cashCo, _, i in
-            let cc = s.companies[i].countryCode
             let drop = cashCo - s.companies[i].cash
             XCTAssertEqual(drop, 80_000, "20 000 handed back and a fine of three times that")
-            XCTAssertEqual(w.countries[cc]?.treasury.balance, drop)
-            XCTAssertEqual(w.countries[cc]?.treasury.gap, 0)
+            XCTAssertEqual(w.government?.treasury.balance, drop)
+            XCTAssertEqual(w.government?.treasury.gap, 0)
             XCTAssertEqual(s.companies[i].status, .open)
             XCTAssertTrue(w.justice.convictions.isEmpty)
             XCTAssertTrue(Ledger.gaps(s).isEmpty, "\(Ledger.gaps(s))")
@@ -293,7 +298,6 @@ final class IllegalRoutesTests: XCTestCase {
 
     func testForcedClosureSeizesCashPaysNothingOutAndConvicts() throws {
         try audited(level: 4) { s, w, cashCo, cashMe, i in
-            let cc = s.companies[i].countryCode
             XCTAssertEqual(s.companies[i].status, .bust)
             XCTAssertLessThanOrEqual(s.companies[i].cash.magnitude, 1)
             XCTAssertLessThanOrEqual(s.cash, cashMe, "the owner receives nothing from the closure")
@@ -305,8 +309,8 @@ final class IllegalRoutesTests: XCTestCase {
             XCTAssertFalse(w.justice.barred("me", .vote, week: 51))
             let pf = conv[0].fine
             XCTAssertEqual(pf, 10_000, "half of what was taken")
-            XCTAssertEqual(w.countries[cc]?.treasury.balance ?? 0, cashCo + pf, accuracy: 1.5, "all of the company's cash and the fine went to the treasury")
-            XCTAssertEqual(w.countries[cc]?.treasury.gap, 0)
+            XCTAssertEqual(w.government?.treasury.balance ?? 0, cashCo + pf, accuracy: 1.5, "all of the company's cash and the fine went to the treasury")
+            XCTAssertEqual(w.government?.treasury.gap, 0)
             XCTAssertTrue(Ledger.gaps(s).isEmpty, "\(Ledger.gaps(s))")
         }
     }
@@ -326,23 +330,22 @@ final class IllegalRoutesTests: XCTestCase {
         let id = try openCompany(&e)
         try e.updateThrowing { s, d, c in
             let i = s.companyIndex(id)!
-            let cc = s.companies[i].countryCode
-            GovernmentBridge.ensure(&s, country: cc, admins: ["me"], startingSupply: 5_000_000)
+            GovernmentBridge.ensure(&s, admins: ["me"], startingSupply: 5_000_000)
             Ledger.move(&s, .company(id), 100_000_000, why: nil)
             s.week = 50
             var w = GovernmentBridge.world(s)
             GovernmentBridge.settle(&s, &w, audit: RouteAudit(level: 5, liability: 20_000, route: .counterfeitLabels), companyIndex: i, data: d, context: c)
             s.governmentWorld = w
             let conv = w.justice.convictions[0]
-            let cash0 = s.cash, tr0 = w.countries[cc]!.treasury.balance
-            XCTAssertNoThrow(try GovernmentBridge.quash(&s, country: cc, convictionID: conv.id))
+            let cash0 = s.cash, tr0 = w.government!.treasury.balance
+            XCTAssertNoThrow(try GovernmentBridge.quash(&s, convictionID: conv.id))
             let after = GovernmentBridge.world(s)
             XCTAssertEqual(s.cash - cash0, conv.fine)
-            XCTAssertEqual(tr0 - after.countries[cc]!.treasury.balance, conv.fine)
+            XCTAssertEqual(tr0 - after.government!.treasury.balance, conv.fine)
             XCTAssertTrue(after.justice.watchlist.isEmpty)
             XCTAssertFalse(after.justice.barred("me", .trade, week: 51))
             XCTAssertEqual(after.justice.count("me"), 0)
-            XCTAssertThrowsError(try GovernmentBridge.quash(&s, country: cc, convictionID: conv.id), "only once")
+            XCTAssertThrowsError(try GovernmentBridge.quash(&s, convictionID: conv.id), "only once")
             XCTAssertTrue(Ledger.gaps(s).isEmpty)
         }
     }
@@ -353,7 +356,7 @@ final class IllegalRoutesTests: XCTestCase {
         try e.updateThrowing { s, d, c in
             let i = s.companyIndex(id)!
             let cc = s.companies[i].countryCode
-            GovernmentBridge.ensure(&s, country: cc, admins: ["boss"], startingSupply: 5_000_000)
+            GovernmentBridge.ensure(&s, admins: ["boss"], startingSupply: 5_000_000)
             s.week = 5
             var w = GovernmentBridge.world(s)
             _ = w.justice.record(account: w.account, name: "You", kind: .fraud, summary: "x", fine: 0, country: cc, week: 5, tradeBanWeeks: 10, grave: false)

@@ -204,7 +204,7 @@ public extension GameEngine {
     }
 
     private var investmentsValue: Double {
-        [Brokerage.Kind.stock, .crypto, .fund].reduce(0) { sum, k in sum + quotes(k).reduce(0) { $0 + $1.value } }
+        [Brokerage.Kind.crypto, .fund].reduce(0) { sum, k in sum + quotes(k).reduce(0) { $0 + $1.value } }
     }
 
     private func alertNote(_ a: PayrollAlert, _ co: Company) -> String {

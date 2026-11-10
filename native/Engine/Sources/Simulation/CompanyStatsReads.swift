@@ -5,31 +5,6 @@ import Employees
 import Finance
 import Businesses
 
-public struct CompanyStake: Equatable, Sendable, Identifiable {
-    public var id: Int { companyID }
-    public var companyID: Int
-    public var name: String
-    public var estimatedValue: Double
-    public var ownershipPercent: Double
-    public var attributableEquity: Double
-    public var heldThrough: String?
-    public var guaranteedDebt: Double
-}
-
-public struct NetWorthBreakdown: Equatable, Sendable {
-    public var liquid: Double
-    public var investments: Double
-    public var luxury: Double
-    public var estimatedCompanyEquity: Double
-    public var stakes: [CompanyStake]
-    public var otherEstimatedHoldings: Double
-    public var personalDebt: Double
-    public var pendingTax: Double
-    public var guaranteedCompanyDebt: Double
-    public var total: Double
-    public var note: String
-}
-
 public struct ExpenseLine: Equatable, Sendable, Identifiable {
     public var id: String
     public var label: String
@@ -71,27 +46,6 @@ public struct CompanyOverviewStats: Equatable, Sendable {
 }
 
 public extension GameEngine {
-    func netWorthBreakdown() -> NetWorthBreakdown {
-        let s = state
-        let nw = Valuation.netWorth(s, trades: data.catalog)
-        var stakes: [CompanyStake] = []
-        var directSum = 0.0, guaranteed = 0.0
-        for co in s.companies where co.status.isLive {
-            let value = Valuation.companyValue(co, state: s, trades: data.catalog)
-            let held = co.holdingID != 0 ? s.company(co.holdingID) : nil
-            let attributable = co.holdingID == 0 ? value * co.ownership / 100 : 0
-            directSum += attributable
-            let g = s.loans.filter { $0.companyID == co.id && $0.isGuaranteed }.reduce(0) { $0 + $1.balance }
-            if co.holdingID == 0 { guaranteed += g }
-            stakes.append(CompanyStake(companyID: co.id, name: co.name, estimatedValue: value, ownershipPercent: co.ownership, attributableEquity: attributable,
-                                       heldThrough: held?.name, guaranteedDebt: g))
-        }
-        return NetWorthBreakdown(liquid: s.cash, investments: nw.investments, luxury: nw.luxury,
-                                 estimatedCompanyEquity: nw.companies, stakes: stakes, otherEstimatedHoldings: max(0, nw.companies - directSum), personalDebt: nw.debt,
-                                 pendingTax: nw.pendingTax, guaranteedCompanyDebt: guaranteed, total: nw.total,
-                                 note: "Companies are an estimate of what your share would fetch, not money you can spend. Loans you guaranteed for a company count against you only if the company fails.")
-    }
-
     func companyReserves(companyID: Int) -> CompanyReserves? {
         guard let co = state.company(companyID) else { return nil }
         let payroll = (co.payables["wages"] ?? 0) + Payroll.weeklyCost(co, country: context.country(of: co, state)) * 4.33

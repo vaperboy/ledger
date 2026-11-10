@@ -54,32 +54,6 @@ final class CompanyBatchReadsTests: XCTestCase {
         return (e, ids)
     }
 
-    func testDevelopmentIsNamedForTheTradeAndHiddenWhereGeneric() throws {
-        let (e, ids) = try engineWith(["cafe", "bakery", "webshop", "tutor", "construction"])
-        let expectNoun: [String: String] = ["cafe": "menu item", "bakery": "bake", "webshop": "product range", "tutor": "course"]
-        for (trade, noun) in expectNoun {
-            guard let id = ids[trade], let co = e.state.company(id) else { continue }
-            XCTAssertTrue(Development.isSpecific(co, data: e.data), trade)
-            XCTAssertEqual(Development.noun(for: co, data: e.data), noun, trade)
-            XCTAssertFalse(e.developmentProjects(companyID: id).isEmpty, trade)
-        }
-        XCTAssertFalse(ids.isEmpty, "at least one trade could be started")
-        if let id = ids["construction"], let co = e.state.company(id) {
-            XCTAssertFalse(Development.isSpecific(co, data: e.data), "project businesses only have generic projects")
-            XCTAssertNil(Development.noun(for: co, data: e.data))
-        }
-    }
-
-    func testEveryTradeFamilyIsEitherNamedOrHidden() throws {
-        let e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 11)
-        for (id, bd) in e.data.catalog.trades {
-            let co = Company(raw: ["id": .number(1), "type": .string(id)])
-            let specific = Development.isSpecific(co, data: e.data)
-            XCTAssertEqual(specific, Development.specificFamilies.contains(bd.family), id)
-            XCTAssertEqual(Development.noun(for: co, data: e.data) != nil, specific, id)
-        }
-    }
-
     func testReviewReadsForOwnAndRivals() throws {
         var (e, ids) = try engineWith(["cafe"])
         guard let id = ids["cafe"] else { return XCTFail("start") }

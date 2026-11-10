@@ -7,7 +7,7 @@ import Simulation
 
 enum OpsPart: String, CaseIterable, Hashable {
     case setup = "Operations", premises = "Premises"
-    case equipment = "Equipment", insurance = "Insurance and advisers", licences = "Licences"
+    case equipment = "Equipment", insurance = "Insurance and law firm", licences = "Licences", accountant = "Accountant"
 }
 
 extension Glyph {
@@ -53,6 +53,8 @@ struct CompanyOperations: View {
         let rental: Bool = engine.tradeInfo(companyID: company.id)?.family == "rent"
         return PageGroup("Run the place") {
             upkeepRow
+            RowRule()
+            accountantRow
             if !licences.isEmpty {
                 let held: Int = licences.filter { $0.form.status == "ok" }.count
                 RowRule()
@@ -78,6 +80,12 @@ struct CompanyOperations: View {
         return LedgerRow(leading: .glyph(Glyph.opsWrench), leadingTint: P.inkSoft, title: "Upkeep", subtitle: stockNote,
                          value: OpsWords.name(OpsWords.maintenance, company.maintenance), valueNote: OpsWords.name(OpsWords.stock, company.int("stockPol", 1)).lowercased() + " stock",
                          identifier: "manage-upkeep") { sheet = .upkeep }
+    }
+
+    private var accountantRow: some View {
+        let now: String? = engine.coverageOverview(companyID: company.id)?.accountant?.name
+        return LedgerRow(leading: .glyph(Glyph.reports), leadingTint: P.inkSoft, title: "Accountant", subtitle: now ?? "Choose who keeps the books",
+                         identifier: "manage-accountant") { part = .accountant }
     }
 
     private var equipmentApplies: Bool {
