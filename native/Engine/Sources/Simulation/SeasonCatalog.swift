@@ -32,6 +32,31 @@ public enum SeasonCatalog {
         return out
     }()
 
+    public static func eraDay(year: Int, month: Int, day: Int) -> Int {
+        var cal: Calendar = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC") ?? cal.timeZone
+        guard let date = cal.date(from: DateComponents(year: year, month: month, day: day, hour: 12)) else { return 0 }
+        return cal.ordinality(of: .day, in: .era, for: date) ?? 0
+    }
+
+    public static func eraDay(_ iso: String) -> Int? {
+        let parts: [Int] = iso.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return eraDay(year: parts[0], month: parts[1], day: parts[2])
+    }
+
+    public static let firstSeasonStart: Int? = eraDay(ContentFile.load("season", "season_1")["starts"].string)
+
+    public static func startDay(of number: Int) -> Int? {
+        guard let first = firstSeasonStart, number >= 1 else { return nil }
+        return first + (number - 1) * SeasonPass.seasonDays
+    }
+
+    public static func number(onDay day: Int) -> Int? {
+        guard let first = firstSeasonStart else { return nil }
+        return max(1, (day - first) / SeasonPass.seasonDays + 1)
+    }
+
     public static func def(_ number: Int) -> SeasonDef? { all.first { $0.number == number } }
 
     public static func active(_ number: Int) -> SeasonDef? {

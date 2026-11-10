@@ -164,7 +164,7 @@ struct CustomiseView: View {
                 } action: {
                     if !isOpen { Haptics.warning(); note = r.title + ": " + how; return }
                     Haptics.success()
-                    if worn { season.unequip(r.kind) } else { season.equip(r.id) }
+                    if worn { season.unequip(r.kind) } else { season.equipAsking(r.id, pending: $pending) }
                 }
             }
         }
@@ -197,7 +197,7 @@ struct CustomiseView: View {
                         CardThumb(def: d, width: 72)
                     } action: {
                         Haptics.success()
-                        season.equipProfileCard(current == item.id ? nil : item.id)
+                        season.equipProfileCardAsking(current == item.id ? nil : item.id, pending: $pending)
                     }
                 }
             }

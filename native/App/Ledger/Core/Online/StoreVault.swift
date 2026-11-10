@@ -147,12 +147,18 @@ actor GoldVault {
     }
 
     func grantCard(_ defID: String, roll: Double) -> StoreState {
-        guard let d = CardCatalog.def(defID) else { return state() }
-        var item: ArtifactItem = CardCatalog.item(d, roll: roll)
-        let edition: Int = ArtifactCatalog.edition(d.rarity)
+        var item: ArtifactItem
+        let edition: Int
+        if let d = CardCatalog.def(defID) {
+            item = CardCatalog.item(d, roll: roll)
+            edition = ArtifactCatalog.edition(d.rarity)
+        } else if let a = ArtifactCatalog.defs.first(where: { (x: ArtifactDef) -> Bool in x.id == defID }) {
+            item = ArtifactItem(defID: a.id, serial: ArtifactCatalog.serial(of: a, roll: roll))
+            edition = a.edition
+        } else { return state() }
         var tries = 0
         while cabinet.contains(item.id) && tries < edition {
-            item = ArtifactItem(defID: d.id, serial: item.serial % edition + 1)
+            item = ArtifactItem(defID: item.defID, serial: item.serial % edition + 1)
             tries += 1
         }
         cabinet.add(item)
@@ -180,7 +186,7 @@ actor GoldVault {
     }
 
     func receiveGift(_ item: ArtifactItem) -> (state: StoreState, completed: [ArtifactCollection]) {
-        let done: [ArtifactCollection] = cabinet.add(item)
+        let done: [ArtifactCollection] = cabinet.addAcquired(item)
         save()
         return (state(), done)
     }

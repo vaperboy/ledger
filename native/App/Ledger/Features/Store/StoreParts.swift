@@ -49,6 +49,19 @@ struct GoldAmount: View {
     }
 }
 
+struct LockNote: View {
+    var text: String
+
+    var body: some View {
+        HStack(spacing: Theme.Space.xs) {
+            Image(systemName: "lock.fill").font(.caption.weight(.semibold))
+            Text(text).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(Theme.inkSoft)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct ArtifactRow: View {
     var item: ArtifactItem
     var trailing: String = ""
@@ -63,6 +76,8 @@ struct ArtifactRow: View {
                 HStack(spacing: Theme.Space.xs) {
                     if let r = def?.rarity { RarityTag(rarity: r) }
                     Text(ArtifactCatalog.label(item)).textStyle(.caption)
+                    if item.isFirstOwner { Text("First owner").textStyle(.caption, tint: Theme.gold, weight: .semibold) }
+                    if item.isBound { Image(systemName: "lock.fill").font(.caption2).foregroundStyle(Theme.inkFaint).accessibilityLabel("Bound to your account") }
                 }
             }
             Spacer(minLength: Theme.Space.s)

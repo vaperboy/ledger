@@ -100,10 +100,14 @@ final class GameStore: ObservableObject {
     @Published private(set) var engine: GameEngine? {
         didSet {
             memoBox.removeAll(keepingCapacity: true)
-            if let e = engine, !isShowcase { ProfileStore.record(PlayerLevel.profile(of: e.state)) }
+            if let e = engine, !isShowcase {
+                ProfileStore.record(PlayerLevel.profile(of: e.state))
+                SeasonModel.shared.activate(save: Self.saveID(e.state))
+            }
         }
     }
     private var memoBox: [String: Any] = [:]
+    static func saveID(_ s: GameState) -> String { "seed" + String(s.seed) }
     func memo<T>(_ key: String, _ compute: (GameEngine) -> T) -> T? {
         guard let e = engine else { return nil }
         if let v = memoBox[key] as? T { return v }
@@ -136,7 +140,7 @@ final class GameStore: ObservableObject {
         let n: Int = PlayStreak.current(e.state, today: GameStore.calendarDay())
         return n >= PlayStreak.showFrom ? n : 0
     }
-    static func calendarDay() -> Int { Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0 }
+    static func calendarDay() -> Int { Calendar(identifier: .gregorian).ordinality(of: .day, in: .era, for: Date()) ?? 0 }
     func scheduleReminders() {
         guard let e = engine else { return }
         Reminders.schedule(SessionHooks.reminders(e.state))
@@ -306,6 +310,7 @@ final class GameStore: ObservableObject {
         do {
             var e = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, channel: channel, difficulty: difficulty)
             ProfileStore.adopt(into: &e)
+            if let old = engine, !isShowcase { SeasonModel.shared.succeed(save: Self.saveID(old.state), with: Self.saveID(e.state)) }
             engine = e
             loadProblem = nil
             resetNavigation()

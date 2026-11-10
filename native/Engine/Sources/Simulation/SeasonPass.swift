@@ -79,6 +79,8 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public var cashStreak: Int
     public var baseline: Snapshot?
     public var missedFree: Int?
+    public var activeSave: String?
+    public var otherLooks: [String: [String: String]]?
 
     public init(today: Int) {
         firstDay = today; season = 0; xp = 0; claimed = []; owned = []; equipped = [:]
@@ -202,6 +204,7 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         if t > tier { return .tierNotReached }
         if track == .premium && !isPlus { return .needsPlus }
         claimed.insert(Self.key(track, t)); owned.insert(r.id)
+        if r.kind == .xp { addBonus(r.amount) }
         if equipped[r.kind.rawValue] == nil && r.kind.isEquippable { equipped[r.kind.rawValue] = r.id }
         return .claimed(r)
     }
@@ -220,17 +223,83 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         (1...Self.tierCount).reduce(0) { n, t in n + [Track.free, .premium].filter { canClaim($0, tier: t, isPlus: isPlus) }.count }
     }
 
-    public mutating func equip(_ id: String) {
-        guard owned.contains(id), let r = SeasonRewards.item(id), r.kind.isEquippable else { return }
+    public enum EquipOutcome: Equatable, Sendable {
+        case equipped
+        case notOwned
+        case wornElsewhere(save: String)
+    }
+
+    public static let defaultSave = "current"
+
+    public var currentSave: String { activeSave ?? Self.defaultSave }
+
+    public mutating func activate(save: String) {
+        guard activeSave != nil else { activeSave = save; return }
+        let from: String = currentSave
+        guard save != from else { return }
+        var looks: [String: [String: String]] = otherLooks ?? [:]
+        if !equipped.isEmpty { looks[from] = equipped }
+        equipped = looks[save] ?? [:]
+        looks[save] = nil
+        otherLooks = looks.isEmpty ? nil : looks
+        activeSave = save
+    }
+
+    public mutating func succeed(save old: String, with new: String) {
+        guard old != new, old == currentSave else { return }
+        activeSave = new
+    }
+
+    public mutating func retire(save: String) {
+        if save == currentSave { equipped = [:]; return }
+        otherLooks?[save] = nil
+        if otherLooks?.isEmpty == true { otherLooks = nil }
+    }
+
+    public func wornElsewhere(_ itemID: String) -> String? {
+        (otherLooks ?? [:]).sorted { $0.key < $1.key }.first { $0.value.values.contains(itemID) }?.key
+    }
+
+    private mutating func release(_ itemID: String, from save: String) {
+        guard var look = otherLooks?[save] else { return }
+        for (k, v) in look where v == itemID { look[k] = nil }
+        otherLooks?[save] = look
+    }
+
+    @discardableResult
+    public mutating func equip(_ id: String, replacing: Bool = false) -> EquipOutcome {
+        guard owned.contains(id), let r = SeasonRewards.item(id), r.kind.isEquippable else { return .notOwned }
+        if let other = wornElsewhere(id) {
+            guard replacing else { return .wornElsewhere(save: other) }
+            release(id, from: other)
+        }
         equipped[r.kind.rawValue] = id
+        return .equipped
+    }
+
+    public mutating func unequip(_ kind: SeasonReward.Kind) { equipped[kind.rawValue] = nil }
+
+    public mutating func align(firstDay start: Int, today: Int) {
+        guard start != firstDay else { return }
+        firstDay = start
+        let idx: Int = Self.seasonIndex(firstDay: start, today: today)
+        if idx != season {
+            season = idx; xp = 0; claimed = []; xpDay = today; xpToday = 0; cashStreak = 0
+        }
     }
 
     public static let profileCardKey = "profileCard"
 
-    public mutating func equipProfileCard(_ itemID: String?) {
-        guard let itemID else { equipped[Self.profileCardKey] = nil; return }
-        guard CardCatalog.def(forItem: itemID)?.kind == .profile else { return }
+    @discardableResult
+    public mutating func equipProfileCard(_ itemID: String?, replacing: Bool = false) -> EquipOutcome {
+        guard let itemID else { equipped[Self.profileCardKey] = nil; return .equipped }
+        guard CardCatalog.def(forItem: itemID)?.kind == .profile else { return .notOwned }
+        if let other = wornElsewhere(itemID) {
+            guard replacing else { return .wornElsewhere(save: other) }
+            release(itemID, from: other)
+        }
         equipped[Self.profileCardKey] = itemID
+        return .equipped
     }
 
     public func profileCard(cabinet: Cabinet) -> CardDef? {

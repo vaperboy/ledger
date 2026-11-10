@@ -6,6 +6,7 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
         case badge, theme, namePlate, backdrop, saveSlot, advisorLine, richListFlair, tradePlate
         case box, gold
         case profileCard, companyCard
+        case artifact, xp
         public var isEquippable: Bool { self == .theme || self == .namePlate || self == .backdrop || self == .richListFlair || self == .tradePlate }
         public var label: String {
             switch self {
@@ -21,6 +22,8 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
             case .gold: return "Gold"
             case .profileCard: return "Profile card"
             case .companyCard: return "Company card"
+            case .artifact: return "Artifact"
+            case .xp: return "XP boost"
             }
         }
     }
@@ -36,6 +39,7 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
     public var theme: String = ItemThemes.classicID
     public var founderEdition: Bool = false
     public var accountBound: Bool = false
+    public var rarity: BoxRarity?
 }
 
 public enum SeasonRewards {
@@ -52,6 +56,11 @@ public enum SeasonRewards {
             r.founderEdition = e["founderEdition"].isNull ? founder : e["founderEdition"].bool
         }
         r.accountBound = e["bound"].bool
+        if r.kind == .profileCard || r.kind == .companyCard || r.kind == .artifact {
+            r.rarity = CardCatalog.def(r.id)?.rarity ?? ArtifactCatalog.defs.first(where: { (d: ArtifactDef) -> Bool in d.id == r.id })?.rarity
+        } else if !e["rarity"].isNull {
+            r.rarity = ContentFile.rarity(e["rarity"].string)
+        }
         return r
     }
 
@@ -63,6 +72,8 @@ public enum SeasonRewards {
         case "card": return k(e["card"].string, tier, prem)
         case "box": return b(id, tier, prem, e["amount"].int)
         case "gold": return g(id, tier, prem, e["amount"].int)
+        case "artifact": return a(e["artifact"].string, tier, prem)
+        case "xp": return x(id, tier, prem, e["amount"].int)
         default:
             return SeasonReward(id: id, tier: tier, premium: prem, kind: SeasonReward.Kind(rawValue: e["kind"].string) ?? .badge,
                                 title: e["title"].string, detail: e["detail"].string, colors: ContentFile.colors(e["colors"]))
@@ -84,6 +95,17 @@ public enum SeasonRewards {
         return SeasonReward(id: defID, tier: tier, premium: prem, kind: company ? .companyCard : .profileCard, title: d?.name ?? "Card",
                             detail: (company ? "A numbered company card with its own colours and logo. " : "A numbered profile card for your profile page. ") + "It joins your cabinet, can be sold at auction, and is set in Your look.",
                             colors: d?.colors ?? [])
+    }
+
+    private static func a(_ defID: String, _ tier: Int, _ prem: Bool) -> SeasonReward {
+        let d: ArtifactDef? = ArtifactCatalog.defs.first { $0.id == defID }
+        return SeasonReward(id: defID, tier: tier, premium: prem, kind: .artifact, title: d?.name ?? "Artifact",
+                            detail: (d?.note ?? "") + " It joins your cabinet as a numbered piece and can be sold at auction.")
+    }
+
+    private static func x(_ id: String, _ tier: Int, _ prem: Bool, _ xp: Int) -> SeasonReward {
+        SeasonReward(id: id, tier: tier, premium: prem, kind: .xp, title: "\(xp) XP boost",
+                     detail: "Added to your Season Pass XP at once. It lifts you towards the next tier and ignores the daily cap.", amount: xp)
     }
 
     private static func g(_ id: String, _ tier: Int, _ prem: Bool, _ gold: Int) -> SeasonReward {

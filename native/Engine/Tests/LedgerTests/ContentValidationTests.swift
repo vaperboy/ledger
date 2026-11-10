@@ -194,7 +194,8 @@ final class ContentValidationTests: XCTestCase {
 
         var sids: Set<String> = []
         let cardIDs: Set<String> = Set(CardCatalog.all.map { $0.id })
-        let sKinds: Set<String> = ["badge", "theme", "namePlate", "backdrop", "saveSlot", "advisorLine", "richListFlair", "tradePlate", "card", "box", "gold"]
+        let artifactIDs: Set<String> = Set(ArtifactCatalog.defs.map { $0.id })
+        let sKinds: Set<String> = ["badge", "theme", "namePlate", "backdrop", "saveSlot", "advisorLine", "richListFlair", "tradePlate", "card", "artifact", "xp", "box", "gold"]
         XCTAssertFalse(SeasonCatalog.all.isEmpty)
         for n in SeasonCatalog.all.map({ (d: SeasonDef) -> Int in d.number }) {
         let sfile: String = "Engine/Sources/Simulation/Resources/Content/season/season_\(n).json"
@@ -213,9 +214,13 @@ final class ContentValidationTests: XCTestCase {
             let kind: String = r["kind"].string
             if !sKinds.contains(kind) { p.append("\(sfile): \(label) has kind \"\(kind)\"") }
             if kind == "card" && !cardIDs.contains(r["card"].string) { p.append("\(sfile): \(label) names card \"\(r["card"].string)\", which does not exist in cards.json") }
-            if (kind == "box" || kind == "gold") && r["amount"].int <= 0 { p.append("\(sfile): \(label) needs an amount above 0") }
-            if kind != "card" && kind != "box" && kind != "gold" { need(r, ["title", "detail"], sfile, label, &p) }
-            if kind != "card" && kind != "box" && kind != "gold" && !r["colors"].isNull { checkHex(r["colors"].array, sfile, label, &p) }
+            if kind == "artifact" && !artifactIDs.contains(r["artifact"].string) { p.append("\(sfile): \(label) names artifact \"\(r["artifact"].string)\", which does not exist in artifacts.json") }
+            if kind == "artifact" && r["id"].string != r["artifact"].string { p.append("\(sfile): \(label) is an artifact reward, so its id must be the artifact id") }
+            if (kind == "box" || kind == "gold" || kind == "xp") && r["amount"].int <= 0 { p.append("\(sfile): \(label) needs an amount above 0") }
+            let plain: Bool = !["card", "artifact", "xp", "box", "gold"].contains(kind)
+            if plain { need(r, ["title", "detail"], sfile, label, &p) }
+            if !r["rarity"].isNull { checkRarity(r, "rarity", sfile, label, &p) }
+            if plain && !r["colors"].isNull { checkHex(r["colors"].array, sfile, label, &p) }
         }
         }
         XCTAssertEqual(sids.count, SeasonRewards.all.count)

@@ -7,6 +7,7 @@ struct SeasonView: View {
     @Environment(Entitlements.self) private var ent
     @ObservedObject private var model = SeasonModel.shared
     @State private var showPlans = false
+    @State private var pending: PendingAction?
 
     private var pass: SeasonPass { model.pass }
     private var premium: Bool { model.premiumOpen(plus: ent.isPlus) }
@@ -27,6 +28,7 @@ struct SeasonView: View {
         }
         .ledgerBackground()
         .onAppear { model.refreshSeason() }
+        .confirmAction($pending)
         .centerSheet(isPresented: $showPlans, title: "Ledger plans", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
     }
 
@@ -147,6 +149,8 @@ struct SeasonView: View {
         case .gold: return "\(r.title) added to your gold wallet in the Store."
         case .box: return "\(r.title) waiting in the Store, free to open."
         case .profileCard, .companyCard: return "\(r.title) added to your cabinet. Wear it in Customise."
+        case .artifact: return "\(r.title) added to your cabinet."
+        case .xp: return "\(r.title) added to your pass."
         default: return "\(r.title) added to your collection below."
         }
     }
@@ -187,7 +191,7 @@ struct SeasonView: View {
         }
     }
 
-    private var collection: [SeasonReward] { SeasonRewards.all.filter { pass.owned.contains($0.id) && $0.kind != .box && $0.kind != .gold && $0.kind != .profileCard && $0.kind != .companyCard } }
+    private var collection: [SeasonReward] { SeasonRewards.all.filter { pass.owned.contains($0.id) && $0.kind != .box && $0.kind != .gold && $0.kind != .profileCard && $0.kind != .companyCard && $0.kind != .artifact && $0.kind != .xp } }
 
     @ViewBuilder private var collectionSection: some View {
         if !collection.isEmpty {
@@ -203,7 +207,7 @@ struct SeasonView: View {
                         }
                         Spacer(minLength: 8)
                         if r.kind.isEquippable {
-                            Button(on ? "In use" : "Use") { model.equip(r.id) }
+                            Button(on ? "In use" : "Use") { model.equipAsking(r.id, pending: $pending) }
                                 .textStyle(.body, tint: on ? Theme.inkFaint : accent)
                                 .disabled(on)
                         }

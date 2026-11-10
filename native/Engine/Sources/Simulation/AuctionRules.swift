@@ -291,7 +291,7 @@ public struct AuctionBook: Codable, Equatable, Sendable {
                 var change = 0
                 if top.bidder == me {
                     change -= top.amount
-                    done = cabinet.add(a.item)
+                    done = cabinet.addAcquired(a.item)
                 }
                 if a.seller == me { change += top.amount - fee }
                 money += change
