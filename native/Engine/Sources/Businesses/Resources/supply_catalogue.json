@@ -1,5 +1,5 @@
 {
- "about": "What each trade buys from suppliers (SupplyCatalogue.swift). lines: the kinds of purchase. families: the default list of a trade family as [line, share, name]; a cogs line's share is of the cost of sales (goods takes what the others leave), an overhead line's share is of the weekly fixed overhead. trades: drop lines, change a share or name, or add lines. c: cogs or oth; i: the input id of an existing supplier switch (goods, repair, or an own-company supply kind); lead: days from order to delivery; terms: days a supplier typically gives to pay; crit: a short delivery cuts sales; var: spend follows how busy the place is; tiers 0: nothing to choose between outside suppliers.",
+ "about": "What each trade buys from suppliers (SupplyCatalogue.swift). lines: the kinds of purchase. families: the default list of a trade family as [line, share, name]; a cogs line's share is of the cost of sales (goods takes what the others leave), an overhead line's share is of the weekly fixed overhead. trades: drop lines, change a share or name, or add lines. c: cogs or oth; i: the input id of an existing supplier switch (goods, repair, or an own-company supply kind); lead: days from order to delivery; terms: days a supplier typically gives to pay; crit: a short delivery cuts sales; var: spend follows how busy the place is; tiers 0: nothing to choose between outside suppliers; auto: paid at the market cost, never a supplier choice (utilities, software).",
  "groups": [
   "Stock and ingredients",
   "Packaging and delivery",
@@ -65,10 +65,10 @@
    "name": "Electricity and water",
    "group": "Utilities",
    "category": "oth",
-   "input": "power",
    "lead": 0,
    "terms": 30,
-   "variable": true
+   "variable": true,
+   "auto": true
   },
   "repair": {
    "name": "Maintenance and parts",
@@ -89,9 +89,9 @@
    "name": "Software and services",
    "group": "Software and services",
    "category": "oth",
-   "input": "web",
    "lead": 0,
-   "terms": 30
+   "terms": 30,
+   "auto": true
   },
   "build": {
    "name": "Building materials",

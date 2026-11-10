@@ -10,8 +10,7 @@ struct CompanySales: View {
     var company: Company
     @State private var showMarketing = false
     @State private var openItem: SalesItemPick?
-    /// The item whose supplier is being asked for, right after it was picked or added.
-    @State private var supplierFor: SalesItemPick?
+    @State private var supplierFor: SupplierSubject?
     @State private var addingService: Bool?
     @State private var showHire = false
     @State private var showAddons = false
@@ -41,9 +40,8 @@ struct CompanySales: View {
                              if let id { itemChosen(id) }
                          })
         }
-        // Who supplies it? asked at once, with the best offer suggested; closing it goes on to the item's page to set the price.
-        .centerSheet(item: $supplierFor, category: .medium, tone: .info, onDismiss: { if let id = pendingPrice { pendingPrice = nil; openItem = SalesItemPick(id: id) } }) { (p: SalesItemPick) in
-            ItemSupplierChooser(companyID: company.id, itemID: p.id, asking: true, onClose: { pendingPrice = p.id; supplierFor = nil })
+        .centerSheet(item: $supplierFor, category: .detail, tone: .info, onDismiss: { if let id = pendingPrice { pendingPrice = nil; openItem = SalesItemPick(id: id) } }) { (s: SupplierSubject) in
+            SupplierPopup(companyID: company.id, subject: s, asking: true, onClose: { supplierFor = nil }).environmentObject(store)
         }
         .navigationDestination(item: $openItem) { (p: SalesItemPick) in ItemPageView(companyID: company.id, itemID: p.id) }
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "advisor") }
@@ -67,8 +65,9 @@ struct CompanySales: View {
 
     /// An item was picked or added: ask who supplies it when there is a choice, then open its page for the price.
     private func itemChosen(_ id: String) {
-        if ItemSupplierChooser.hasChoice(engine: store.engine ?? engine, companyID: company.id, itemID: id) {
-            supplierFor = SalesItemPick(id: id)
+        if let ask = (store.engine ?? engine).supplyAsk(companyID: company.id, itemID: id) {
+            pendingPrice = id
+            supplierFor = SupplierSubject(ask, itemID: id)
         } else {
             store.tutorialAdvance(from: .pickSupplier)
             openItem = SalesItemPick(id: id)

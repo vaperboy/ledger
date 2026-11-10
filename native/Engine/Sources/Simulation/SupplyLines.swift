@@ -22,7 +22,8 @@ public struct SupplyOfferRow: Identifiable, Equatable, Sendable {
     public var detail: String
     public var quality: String
     public var reliability: String
-    public var terms: String
+    public var trust: Double?
+    public var source: String
     public var lead: String
     /// What it would cost a week at this company's activity (nil when it is billed per job).
     public var weekly: Double?
@@ -54,6 +55,11 @@ public struct SupplyRow: Identifiable, Equatable, Sendable {
     public var canSwitch: Bool { offers.contains { !$0.isCurrent && $0.blocked == nil } }
 }
 
+public enum SupplyAsk: Equatable, Sendable {
+    case item
+    case line(String)
+}
+
 public struct SupplyGroup: Identifiable, Equatable, Sendable {
     public var id: String { name }
     public var name: String
@@ -63,16 +69,17 @@ public struct SupplyGroup: Identifiable, Equatable, Sendable {
 public extension GameEngine {
     /// What the company buys, grouped by what is supplied. Empty for a trade that buys nothing.
     func supplyLines(companyID: Int) -> [SupplyGroup] {
-        guard let co = state.company(companyID), co.status.isLive, let bd = data.catalog[co.type] else { return [] }
+        guard let co = state.company(companyID), co.status.isLive, let bd = data.catalog[co.type], !SalesItems.firstChoicePending(co) else { return [] }
         let inputs = supplierInputs(companyID: companyID)
+        let sold = salesItems(companyID: companyID)
+        let sellsProducts = sold.isEmpty || sold.contains { !$0.isService }
         var rows: [SupplyRow] = []
         var used = Set<String>()
-        for line in SupplyCatalogue.lines(co, bd) {
+        for line in SupplyCatalogue.lines(co, bd) where !line.automatic && (line.id != "pack" || sellsProducts) {
             let input = line.input.flatMap { id in inputs.first { $0.id == id } }
             if let i = input { used.insert(i.id) }
             rows.append(supplyRow(co, bd, line, input))
         }
-        // Inputs the catalogue does not name (a service one of your own companies could supply) get a row of their own.
         for i in inputs where !used.contains(i.id) { rows.append(supplyRowForInput(co, i)) }
         var order = SupplyCatalogue.groups
         for r in rows where !order.contains(r.group) { order.append(r.group) }
@@ -82,10 +89,13 @@ public extension GameEngine {
         }
     }
 
-    /// Whether the company has anything to show on its Suppliers screen.
-    func hasSupplyLines(companyID: Int) -> Bool {
-        guard let co = state.company(companyID), co.status.isLive else { return false }
-        return !supplyLines(companyID: companyID).isEmpty || !supplyLinks().filter { $0.supplierID == companyID }.isEmpty
+    func supplyAsk(companyID: Int, itemID: String) -> SupplyAsk? {
+        if !ItemModels.offers(state, companyID: companyID, itemID: itemID, data: data).isEmpty { return .item }
+        guard let co = state.company(companyID), co.value("sc")["mat"].isNull,
+              salesItems(companyID: companyID).first(where: { $0.id == itemID })?.isService == true,
+              let row = supplyLines(companyID: companyID).flatMap({ $0.rows }).first(where: { $0.id == "mat" }),
+              row.governed == nil, row.canSwitch else { return nil }
+        return .line("mat")
     }
 
     /// Switch the supplier of one row. Choosing an outside supplier of a kind your own company supplied ends that supply first.
@@ -104,6 +114,7 @@ public extension GameEngine {
             return switchSupplier(companyID: companyID, input: input, to: c)
         case .catalogue(let line, let offer):
             guard let co = state.company(companyID), let bd = data.catalog[co.type], let l = SupplyCatalogue.lines(co, bd).first(where: { $0.id == line }) else { return .unknown }
+            if l.automatic { return .notAllowed }
             if let k = l.input, k != "goods", k != "repair", IntercompanySupply.kind(k) != nil,
                IntercompanySupply.link(state, buyer: companyID, kind: k) != nil || AccountSupply.link(state, buyer: companyID, kind: k) != nil {
                 if switchSupplier(companyID: companyID, input: k, to: .outside) != .ok { return .governed }
@@ -123,20 +134,27 @@ public extension GameEngine {
     // MARK: Words
 
     private func supplyLeadWord(_ days: Int) -> String { days <= 0 ? "Continuous" : days == 1 ? "Next day" : "\(days) days" }
-    private func supplyTermsWord(_ days: Int) -> String { days == 0 ? "Paid on delivery" : "Paid after \(days) days" }
     private func supplyStarsWord(_ stars: String) -> String {
         guard stars.hasSuffix("stars"), let v = stars.split(separator: " ").first.flatMap({ Double($0) }) else { return "Not yet tested" }
         return v < 3.4 ? "Patchy" : v < 4.2 ? "Steady" : "Dependable"
+    }
+    private func supplyStarsTrust(_ stars: String) -> Double? {
+        guard stars.hasSuffix("stars"), let v = stars.split(separator: " ").first.flatMap({ Double($0) }) else { return nil }
+        return min(0.995, max(0.8, 0.85 + (v - 2.6) / 2.2 * 0.14))
     }
     private func supplyClassWord(_ co: Company) -> String {
         let c = co.value("src")["c"]
         return SupplyCatalogue.qualityWord(tier: c.isNull ? 1 : min(2, max(0, c.int)))
     }
+    private func supplyOwnShare(_ o: SupplierOption) -> Int? {
+        guard o.reliability.contains("% delivered") else { return nil }
+        return o.reliability.split(separator: "%").first.flatMap { Int($0) } ?? 100
+    }
     private func supplyOwnReliability(_ o: SupplierOption) -> String {
-        guard o.reliability.contains("% delivered") else { return "Not yet tested" }
-        let n = o.reliability.split(separator: "%").first.flatMap { Int($0) } ?? 100
+        guard let n = supplyOwnShare(o) else { return "Not yet tested" }
         return n >= 95 ? "Dependable" : n >= 80 ? "Steady" : "Patchy"
     }
+    private func supplySource(_ kind: SupplierProviderKind) -> String { kind == .outside || kind == .noneFixed ? "Market" : "Company" }
 
     // MARK: Rows
 
@@ -174,7 +192,7 @@ public extension GameEngine {
                 }
                 let goods: Bool = line.input == "goods"
                 offers.append(SupplyOfferRow(id: o.id, name: o.name, detail: detail, quality: goods ? supplyClassWord(co) : "Solid", reliability: supplyStarsWord(o.reliability),
-                                             terms: goods ? "As agreed with this supplier" : "Billed per job", lead: supplyLeadWord(line.leadDays), weekly: w,
+                                             trust: supplyStarsTrust(o.reliability), source: supplySource(o.kind), lead: supplyLeadWord(line.leadDays), weekly: w,
                                              weeklyVsNow: vs, isCurrent: o.isCurrent, blocked: o.blocked, change: .input(inp.id, o.change)))
             }
         } else {
@@ -187,8 +205,8 @@ public extension GameEngine {
                     var detail: String = "Whoever the market offers"
                     if !o.isMarket { detail = o.owner + (o.relationshipWord.map { " · " + $0 } ?? "") }
                     let rel: String = o.isMarket ? "Steady" : SupplyCatalogue.reliabilityWord(o.reliability)
-                    let terms: String = o.isMarket ? "Paid as bought" : supplyTermsWord(o.termsDays)
-                    offers.append(SupplyOfferRow(id: o.id, name: o.name, detail: detail, quality: SupplyCatalogue.qualityWord(tier: o.tier), reliability: rel, terms: terms,
+                    offers.append(SupplyOfferRow(id: o.id, name: o.name, detail: detail, quality: SupplyCatalogue.qualityWord(tier: o.tier), reliability: rel,
+                                                 trust: o.reliability, source: o.isMarket ? "Market" : o.id.hasPrefix("P:") ? "Player" : "Company",
                                                  lead: supplyLeadWord(o.leadDays), weekly: w, weeklyVsNow: vs, isCurrent: !linked && o.id == cur.id, blocked: nil,
                                                  change: .catalogue(line: line.id, offer: o.id)))
                 }
@@ -200,9 +218,9 @@ public extension GameEngine {
                 if let w, let n = shownNow { vs = w - n }
                 let outside: Bool = o.kind == .outside
                 offers.append(SupplyOfferRow(id: o.id, name: o.name, detail: outside ? "Whoever the market offers" : o.subtitle, quality: "Solid",
-                                             reliability: outside ? "Steady" : supplyOwnReliability(o), terms: outside ? "Paid as bought" : "Settled weekly between the books",
-                                             lead: supplyLeadWord(line.leadDays), weekly: w, weeklyVsNow: vs, isCurrent: o.isCurrent, blocked: o.blocked,
-                                             change: .input(input?.id ?? line.id, o.change)))
+                                             reliability: outside ? "Steady" : supplyOwnReliability(o), trust: outside ? 0.97 : supplyOwnShare(o).map { Double($0) / 100 },
+                                             source: supplySource(o.kind), lead: supplyLeadWord(line.leadDays), weekly: w, weeklyVsNow: vs, isCurrent: o.isCurrent,
+                                             blocked: o.blocked, change: .input(input?.id ?? line.id, o.change)))
             }
         }
         let now = offers.first { $0.isCurrent } ?? offers.first
@@ -221,11 +239,12 @@ public extension GameEngine {
             var w: Double?
             if let y = i.yearlySpend { w = y / 52 * (o.priceFactor ?? 1) }
             offers.append(SupplyOfferRow(id: o.id, name: o.name, detail: outside ? "Whoever the market offers" : o.subtitle, quality: "Solid",
-                                         reliability: outside ? "Steady" : supplyOwnReliability(o), terms: outside ? "Paid as bought" : "Settled weekly between the books",
-                                         lead: outside ? "As needed" : "Same week", weekly: w, weeklyVsNow: nil, isCurrent: o.isCurrent, blocked: o.blocked, change: .input(i.id, o.change)))
+                                         reliability: outside ? "Steady" : supplyOwnReliability(o), trust: outside ? 0.97 : supplyOwnShare(o).map { Double($0) / 100 },
+                                         source: supplySource(o.kind), lead: outside ? "As needed" : "Same week", weekly: w, weeklyVsNow: nil, isCurrent: o.isCurrent,
+                                         blocked: o.blocked, change: .input(i.id, o.change)))
         }
         let now = offers.first { $0.isCurrent } ?? offers.first
-        return SupplyRow(id: i.id, group: cat == "cogs" ? "Stock and ingredients" : "Software and services", title: i.title, kind: i.title, scale: i.what, current: now?.name ?? "Market",
+        return SupplyRow(id: i.id, group: cat == "cogs" ? "Stock and ingredients" : "Other supplies", title: i.title, kind: i.title, scale: i.what, current: now?.name ?? "Market",
                          quality: now?.quality ?? "Solid", reliability: now?.reliability ?? "Steady", weekly: i.yearlySpend.map { $0 / 52 }, weeklyBefore: nil,
                          note: nil, governed: i.governedBy, offers: offers)
     }

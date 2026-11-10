@@ -37,10 +37,11 @@ public enum SupplyCatalogue {
         public var variable: Bool
         /// False when there is nothing to choose between outside suppliers (the price comes from your own companies or the project).
         public var tiers: Bool
+        public var automatic: Bool
         public var isCogs: Bool { category == "cogs" }
     }
 
-    struct Template { var name: String; var group: String; var category: String; var input: String?; var lead: Int; var terms: Int; var critical: Bool; var variable: Bool; var tiers: Bool }
+    struct Template { var name: String; var group: String; var category: String; var input: String?; var lead: Int; var terms: Int; var critical: Bool; var variable: Bool; var tiers: Bool; var automatic: Bool }
     struct Catalogue {
         var groups: [String] = []
         var templates: [String: Template] = [:]
@@ -55,7 +56,7 @@ public enum SupplyCatalogue {
         c.groups = j["groups"].array.map { $0.string }
         for (k, v) in j["lines"].object {
             c.templates[k] = Template(name: v["name"].string, group: v["group"].string, category: v["category"].string, input: v["input"].isNull ? nil : v["input"].string,
-                                      lead: v["lead"].int, terms: v["terms"].int, critical: v["critical"].bool, variable: v["variable"].bool, tiers: v["tiers"].isNull ? true : v["tiers"].bool)
+                                      lead: v["lead"].int, terms: v["terms"].int, critical: v["critical"].bool, variable: v["variable"].bool, tiers: v["tiers"].isNull ? true : v["tiers"].bool, automatic: v["auto"].bool)
         }
         func entry(_ e: JSONValue) -> (id: String, share: Double, name: String) { (e.array[0].string, e.array[1].double, e.array[2].string) }
         for (k, v) in j["families"].object { c.families[k] = v.array.map(entry) }
@@ -96,7 +97,7 @@ public enum SupplyCatalogue {
                 else { guard bd.costOfSales >= 0.03, !ownCostModel(bd) else { continue } }
             }
             out.append(Line(id: e.id, name: e.name, kind: t.name, group: t.group, category: t.category, share: e.share, input: t.input, leadDays: t.lead, termsDays: t.terms,
-                            critical: t.critical, variable: t.variable, tiers: t.tiers))
+                            critical: t.critical, variable: t.variable, tiers: t.tiers, automatic: t.automatic))
         }
         // Stock takes what the other cost-of-sales lines leave.
         let others = out.filter { $0.isCogs && $0.id != "goods" }.reduce(0) { $0 + $1.share }
@@ -134,7 +135,7 @@ public enum SupplyCatalogue {
     /// The market plus up to three named suppliers of the line, cheapest and weakest first. Nothing named for a line with nothing to choose.
     public static func offers(_ s: GameState, _ co: Company, _ bd: Trade, line: Line, data: GameData) -> [Offer] {
         var out = [Offer(id: "market", name: "Market supplier", owner: "", tier: 1, priceFactor: 1, reliability: 0.97, termsDays: 0, leadDays: line.leadDays, relationshipWord: nil)]
-        guard line.tiers, line.input != "goods", line.input != "repair" else { return out }
+        guard line.tiers, !line.automatic, line.input != "goods", line.input != "repair" else { return out }
         let vs = EquipmentMarket.vendors(for: "line:\(co.type):\(line.id)", count: 3, family: bd.family, seed: s.seed, countryCode: co.countryCode,
                                          countries: data.countries, nouns: Suppliers.nouns(data)).sorted { $0.quality < $1.quality }
         let tiers: [[Int]] = [[], [1], [0, 2], [0, 1, 2]]
@@ -166,7 +167,7 @@ public enum SupplyCatalogue {
     /// Whether a line's price and quality come from the catalogue's offers (and so reach the books). Stock and repairs use their own switch;
     /// a kind one of your own companies supplies uses the saving of that supply.
     static func folded(_ s: GameState, _ co: Company, _ line: Line) -> Bool {
-        guard line.tiers, line.input != "goods", line.input != "repair" else { return false }
+        guard line.tiers, !line.automatic, line.input != "goods", line.input != "repair" else { return false }
         if let k = line.input, IntercompanySupply.link(s, buyer: co.id, kind: k) != nil || AccountSupply.link(s, buyer: co.id, kind: k) != nil { return false }
         return true
     }

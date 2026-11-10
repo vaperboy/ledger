@@ -13,9 +13,9 @@ public enum SupplyMarketCatalogue {
     public static let supplies: [String: [String]] = [
         "bakery": ["goods"], "brewery": ["goods"], "farm": ["goods"], "vineyard": ["goods"], "salmon": ["goods"],
         "factory": ["goods", "mat", "pack", "parts"], "furniture": ["goods", "mat"], "grocery": ["goods"], "hardware": ["supplies", "parts", "pack"],
-        "cleaning": ["clean", "laundry"], "carclean": ["clean"], "webdev": ["software"], "gamestudio": ["software"], "startup": ["software"],
+        "cleaning": ["clean", "laundry"], "carclean": ["clean"],
         "carrepair": ["parts", "repair"], "handy": ["repair", "parts"], "electrician": ["repair", "parts"], "plumber": ["repair", "parts"],
-        "power": ["power"], "oilgas": ["fuel", "power"],
+        "oilgas": ["fuel"],
     ]
 
     public struct Line: Equatable, Identifiable, Sendable {
@@ -38,6 +38,8 @@ public enum SupplyMarketCatalogue {
 
     /// Trades that can supply this line.
     public static func tradesSupplying(line id: String) -> [String] { supplies.filter { $0.value.contains(id) }.map { $0.key }.sorted() }
+
+    public static func canSupply(tradeID: String) -> Bool { !(supplies[tradeID] ?? []).isEmpty }
 
     public static let priceTiers: [String] = ["Basic", "Standard", "Premium"]
     public static let qualityTiers: [String] = SupplyCatalogue.qualityWords

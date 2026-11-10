@@ -76,8 +76,12 @@ public enum IntercompanySupply {
     }
     public static func link(_ s: GameState, buyer: Int, kind: String) -> Link? { links(s).first { $0.buyerID == buyer && $0.kindID == kind } }
 
+    public static let automaticKinds: Set<String> = ["power", "web"]
+
     /// Inputs this company buys that your own companies might supply. Original: `kindsFor`.
-    public static func kindsFor(_ co: Company) -> [Kind] { kinds.filter { $0.buyers[co.type] != nil && !$0.suppliers.contains(co.type) } }
+    public static func kindsFor(_ co: Company) -> [Kind] {
+        kinds.filter { !automaticKinds.contains($0.id) && $0.buyers[co.type] != nil && !$0.suppliers.contains(co.type) }
+    }
 
     /// Your companies that could supply this buyer. Original: `suppliersFor`.
     public static func suppliers(_ s: GameState, for co: Company, kind k: Kind) -> [Company] {
