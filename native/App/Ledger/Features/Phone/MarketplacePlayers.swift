@@ -4,7 +4,7 @@ import Countries
 import Businesses
 import Simulation
 
-enum MarketFormat {
+enum ListingFormat {
     static func money(_ v: Double, _ code: String) -> String {
         let n: String = v.formatted(.number.grouping(.automatic).precision(.fractionLength(0)))
         return n + " " + code
@@ -194,7 +194,7 @@ struct SellerLine: View {
             Circle().fill(online ? Color.green : P.inkFaint).frame(width: 10, height: 10)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).textStyle(.body, weight: .semibold)
-                Text(MarketFormat.lastSeen(lastSeen, online: online)).textStyle(.caption, tint: online ? P.accent : P.inkFaint)
+                Text(ListingFormat.lastSeen(lastSeen, online: online)).textStyle(.caption, tint: online ? P.accent : P.inkFaint)
             }
             Spacer(minLength: 0)
         }
@@ -208,9 +208,9 @@ struct PlayerListingTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            ShopPhoto(name: "", glyph: Glyph.marketplace, height: 150, cornerRadius: Theme.Radius.medium, item: MarketFormat.photoKey(listing.family, listing.itemID))
+            ShopPhoto(name: "", glyph: Glyph.marketplace, height: 150, cornerRadius: Theme.Radius.medium, item: ListingFormat.photoKey(listing.family, listing.itemID))
                 .padding(.bottom, Theme.Space.s)
-            Text(MarketFormat.money(listing.price, listing.currency)).textStyle(.figure, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
+            Text(ListingFormat.money(listing.price, listing.currency)).textStyle(.figure, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
             Text(listing.title.tidyText).textStyle(.body).lineLimit(2).multilineTextAlignment(.leading)
             HStack(spacing: Theme.Space.xxs) {
                 Circle().fill(listing.sellerOnline ? Color.green : P.inkFaint).frame(width: 7, height: 7)
@@ -247,13 +247,13 @@ struct PlayerListingPage: View {
     private func content(_ l: PlayerListing) -> some View {
         let item: JSONValue = l.item
         let cond: Double = item["seen"].isNull ? item["cond"].double : item["seen"].double
-        var facts: [(label: String, value: String)] = [(label: "Condition", value: MarketFormat.condition(cond))]
+        var facts: [(label: String, value: String)] = [(label: "Condition", value: ListingFormat.condition(cond))]
         if item["age"].int > 0 { facts.append((label: "Age", value: "\(item["age"].int) years")) }
         if item["km"].int > 0 { facts.append((label: "Distance", value: "\(item["km"].int.formatted()) km")) }
         return ShopPage {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                ShopPhoto(name: "", glyph: Glyph.marketplace, height: 280, item: MarketFormat.photoKey(l.family, l.itemID)).padding(.bottom, Theme.Space.m)
-                Text(MarketFormat.money(l.price, l.currency)).textStyle(.display)
+                ShopPhoto(name: "", glyph: Glyph.marketplace, height: 280, item: ListingFormat.photoKey(l.family, l.itemID)).padding(.bottom, Theme.Space.m)
+                Text(ListingFormat.money(l.price, l.currency)).textStyle(.display)
                 Text(l.title).textStyle(.title).accessibilityAddTraits(.isHeader).fixedSize(horizontal: false, vertical: true)
             }
             ShopSection(title: "Seller") { SellerLine(name: l.sellerName, online: l.sellerOnline, lastSeen: l.sellerLastSeen, colour: l.avatarColour ?? 0) }
@@ -270,7 +270,7 @@ struct PlayerListingPage: View {
         ShopSection(title: "Your request") {
             Text(d.statusText).textStyle(.body, weight: .semibold)
             if d.status == "discussing", let sp = d.specialPrice {
-                Text("\(d.otherName) will sell it to you for \(MarketFormat.money(sp, d.currency)).").textStyle(.body, tint: P.inkSoft)
+                Text("\(d.otherName) will sell it to you for \(ListingFormat.money(sp, d.currency)).").textStyle(.body, tint: P.inkSoft)
             } else {
                 Text("The money is held until \(d.otherName) answers. You get it back if the deal does not go through.").textStyle(.caption, tint: P.inkFaint)
                     .fixedSize(horizontal: false, vertical: true)
@@ -283,16 +283,16 @@ struct PlayerListingPage: View {
             Text("This is your listing.").textStyle(.caption, tint: P.inkFaint)
         } else if let d = l.openDeal {
             if d.status == "discussing" {
-                Button("Accept \(MarketFormat.money(d.specialPrice ?? d.price, d.currency))") { run { await model.answer(d, accept: true, store: store, online: online) } }
+                Button("Accept \(ListingFormat.money(d.specialPrice ?? d.price, d.currency))") { run { await model.answer(d, accept: true, store: store, online: online) } }
                     .buttonStyle(ShopFilledButtonStyle())
                 Button("No thanks") { run { await model.answer(d, accept: false, store: store, online: online) } }.buttonStyle(MarketEqualButtonStyle())
             } else {
                 Button("Withdraw request") { run { await model.withdraw(d, store: store, online: online) } }.buttonStyle(MarketEqualButtonStyle())
             }
         } else {
-            Button("Buy for \(MarketFormat.money(l.price, l.currency))") {
+            Button("Buy for \(ListingFormat.money(l.price, l.currency))") {
                 Haptics.tap()
-                pending = PendingAction(title: "Send buy request", message: "\(l.sellerName) gets your request and answers when they can. \(MarketFormat.money(l.price, l.currency)) is held from your cash until then.",
+                pending = PendingAction(title: "Send buy request", message: "\(l.sellerName) gets your request and answers when they can. \(ListingFormat.money(l.price, l.currency)) is held from your cash until then.",
                                         button: "Send request") { run { await model.buy(l, store: store, online: online) } }
             }
             .buttonStyle(ShopFilledButtonStyle())
@@ -381,8 +381,8 @@ struct MarketDealsView: View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             SellerLine(name: d.otherName, online: d.otherOnline, lastSeen: nil)
             Text(d.title).textStyle(.body, weight: .semibold)
-            Text(d.kind == "offer" ? "Offers \(MarketFormat.money(d.price, d.currency)) (asking \(MarketFormat.money(d.listingPrice, d.currency)))"
-                                   : "Wants to pay \(MarketFormat.money(d.price, d.currency))").textStyle(.body, tint: P.inkSoft)
+            Text(d.kind == "offer" ? "Offers \(ListingFormat.money(d.price, d.currency)) (asking \(ListingFormat.money(d.listingPrice, d.currency)))"
+                                   : "Wants to pay \(ListingFormat.money(d.price, d.currency))").textStyle(.body, tint: P.inkSoft)
             if d.status == "discussing" {
                 Text("Waiting for \(d.otherName) to answer your price.").textStyle(.caption, tint: P.inkFaint)
             } else {
@@ -401,7 +401,7 @@ struct MarketDealsView: View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text(d.title).textStyle(.body, weight: .semibold)
             Text(d.statusText).textStyle(.caption, tint: d.status == "discussing" ? P.accent : P.inkFaint)
-            Text(MarketFormat.money(d.finalPrice ?? d.specialPrice ?? d.price, d.currency)).textStyle(.body, tint: P.inkSoft, numeric: true)
+            Text(ListingFormat.money(d.finalPrice ?? d.specialPrice ?? d.price, d.currency)).textStyle(.body, tint: P.inkSoft, numeric: true)
             if d.status == "discussing" {
                 HStack(spacing: Theme.Space.xs) {
                     Button("Accept") { Task { await report(model.answer(d, accept: true, store: store, online: online)) } }.buttonStyle(ShopFilledButtonStyle())
@@ -451,7 +451,7 @@ struct MarketSellView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(l.title).textStyle(.body, weight: .semibold)
-                            Text(MarketFormat.money(l.price, l.currency)).textStyle(.caption, tint: P.inkFaint)
+                            Text(ListingFormat.money(l.price, l.currency)).textStyle(.caption, tint: P.inkFaint)
                         }
                         Spacer(minLength: 0)
                         Button("Take down") {
@@ -476,7 +476,7 @@ struct MarketSellView: View {
             ForEach(items) { (i: InventoryItem) in
                 Button { Haptics.tap(); onOpenItem(i.id) } label: {
                     HStack(spacing: Theme.Space.s) {
-                        ShopPhoto(name: "", glyph: Glyph.marketplace, height: 64, cornerRadius: Theme.Radius.small, item: MarketFormat.photoKey(i.family, i.id)).frame(width: 84)
+                        ShopPhoto(name: "", glyph: Glyph.marketplace, height: 64, cornerRadius: Theme.Radius.small, item: ListingFormat.photoKey(i.family, i.id)).frame(width: 84)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(i.title).textStyle(.body, weight: .semibold).lineLimit(2).multilineTextAlignment(.leading)
                             Text(statusText(i)).textStyle(.caption, tint: P.inkFaint)
@@ -495,7 +495,7 @@ struct MarketSellView: View {
     private func statusText(_ i: InventoryItem) -> String {
         if i.isListed { return "For sale" }
         if i.inRepair { return "In repair" }
-        return MarketFormat.condition(i.cond)
+        return ListingFormat.condition(i.cond)
     }
 }
 
@@ -558,7 +558,7 @@ struct InventoryItemPage: View {
         if let e = store.engine, let i = e.inventoryItem(itemID) {
             ShopPage {
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    ShopPhoto(name: "", glyph: Glyph.marketplace, height: 280, item: MarketFormat.photoKey(i.family, i.id)).padding(.bottom, Theme.Space.m)
+                    ShopPhoto(name: "", glyph: Glyph.marketplace, height: 280, item: ListingFormat.photoKey(i.family, i.id)).padding(.bottom, Theme.Space.m)
                     Text(store.short(i.value)).textStyle(.display)
                     Text(i.title).textStyle(.title).accessibilityAddTraits(.isHeader).fixedSize(horizontal: false, vertical: true)
                 }
@@ -576,7 +576,7 @@ struct InventoryItemPage: View {
     }
 
     private func facts(_ i: InventoryItem) -> [(label: String, value: String)] {
-        var f: [(label: String, value: String)] = [(label: "Condition", value: MarketFormat.condition(i.cond)), (label: "Paid", value: store.short(i.paid))]
+        var f: [(label: String, value: String)] = [(label: "Condition", value: ListingFormat.condition(i.cond)), (label: "Paid", value: store.short(i.paid))]
         if i.age > 0 { f.append((label: "Age", value: "\(i.age) years")) }
         if i.km > 0 { f.append((label: "Distance", value: "\(i.km.formatted()) km")) }
         return f

@@ -171,7 +171,7 @@ struct MarketplaceApp: View {
     }
 
     private var playersPage: some View {
-        let kind: String? = MarketFormat.kindFilter(playerKind)
+        let kind: String? = ListingFormat.kindFilter(playerKind)
         let list: [PlayerListing] = players.listings.filter { (l: PlayerListing) -> Bool in kind == nil || l.kind == kind }
         return ShopPage(spacing: Theme.Space.l) {
             if !online.isSignedIn {
