@@ -10,6 +10,7 @@ struct ProfileView: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
     @ObservedObject private var local = ProfileLocal.shared
+    @ObservedObject private var season = SeasonModel.shared
     @State private var pickedPhoto: PhotosPickerItem?
     @State private var editingName = false
     @State private var nameDraft = ""
@@ -49,8 +50,15 @@ struct ProfileView: View {
     private func identity(_ e: GameEngine) -> some View {
         let info: PlayerLevel.Info = e.playerLevel
         let rank: String = e.careerStatus.rank.title
+        let look: [String: String] = season.pass.equipped
+        let accent: Color = LookKit.accent(look) ?? Theme.gold
         return VStack(spacing: Theme.Space.s) {
-            ProfilePicture(name: shownName(e), size: 84)
+            NavigationLink { LookView() } label: {
+                ProfilePicture(name: shownName(e), size: 84).overlay(Circle().strokeBorder(accent, lineWidth: 2))
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Change look")
+            .accessibilityIdentifier("profile-avatar")
             HStack(spacing: Theme.Space.s) {
                 PhotosPicker(selection: $pickedPhoto, matching: .images) {
                     Text("Change photo").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minHeight: 44)
@@ -61,22 +69,25 @@ struct ProfileView: View {
                         .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
                 }
             }
-            if editingName { nameEditor(e) } else { nameLine(e) }
+            if editingName { nameEditor(e) } else { nameLine(e, look: look) }
+            LookTradeChip(look: look, company: LookKit.company(store))
             Text("Level \(info.level) · \(rank)").textStyle(.caption, tint: Theme.inkSoft)
-            ProgressLine(fraction: info.progress, tint: Theme.gold, height: 3).frame(maxWidth: 160)
-            NavigationLink { AvatarPickerView() } label: {
-                Text("Choose a profile icon").textStyle(.caption, tint: Theme.accent).frame(minHeight: 44)
+            ProgressLine(fraction: info.progress, tint: accent, height: 3).frame(maxWidth: 160)
+            NavigationLink { LookView() } label: {
+                Text("Change look").textStyle(.caption, tint: Theme.accent).frame(minHeight: 44)
             }
             .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("profile-icon")
+            .accessibilityIdentifier("profile-look")
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, Theme.Space.m)
+        .background(LookBackdrop(look: look))
     }
 
-    private func nameLine(_ e: GameEngine) -> some View {
+    private func nameLine(_ e: GameEngine, look: [String: String]) -> some View {
         Button { Haptics.tap(); nameDraft = shownName(e); editingName = true } label: {
             HStack(spacing: Theme.Space.xs) {
-                Text(shownName(e)).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+                LookNamePlate(look: look, name: shownName(e))
                 Image(systemName: "pencil").font(.caption.weight(.semibold)).foregroundStyle(Theme.inkFaint)
             }
             .frame(minHeight: 44)

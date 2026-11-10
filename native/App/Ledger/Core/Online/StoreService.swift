@@ -19,6 +19,12 @@ struct BoxOpening: Sendable {
     var completed: [ArtifactCollection]
 }
 
+struct QuickSale: Sendable {
+    var state: StoreState
+    var cash: Int
+    var sold: [ArtifactItem]
+}
+
 enum StoreError: Error, Equatable, LocalizedError, Sendable {
     case notEnoughGold(missing: Int), noBox, paidBoxesUnavailable, alreadyOwned, unknownItem, notAvailable, offline
     var errorDescription: String? {
@@ -44,6 +50,7 @@ protocol StoreService: Sendable {
     func buyAvatar(_ id: String, owned: Set<String>) async throws -> StoreState
     func openBoxes(_ kind: BoxKind, count: Int, owned: Set<String>, paidBoxesAllowed: Bool) async throws -> BoxOpening
     func grantFromSeason(boxes: Int, gold: Int) async -> StoreState
+    func quickSell(itemIDs: [String], priceLevel: Double) async throws -> QuickSale
 }
 
 struct AuctionsSnapshot: Sendable {

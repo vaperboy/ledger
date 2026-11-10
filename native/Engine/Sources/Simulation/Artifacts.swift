@@ -110,6 +110,19 @@ public struct Cabinet: Codable, Equatable, Sendable {
         return items.remove(at: i)
     }
 
+    @discardableResult
+    public mutating func quickSell(_ id: String, priceLevel: Double) -> Int? {
+        guard let item = items.first(where: { $0.id == id }), let def = ArtifactCatalog.def(item.defID) else { return nil }
+        remove(id)
+        return AuctionRules.quickSalePrice(def.rarity, priceLevel: priceLevel)
+    }
+
+    public func duplicates(among candidates: [ArtifactItem]) -> [ArtifactItem] {
+        var keeper: [String: ArtifactItem] = [:]
+        for item in items where keeper[item.defID].map({ item.serial < $0.serial }) ?? true { keeper[item.defID] = item }
+        return candidates.filter { c in contains(c.id) && keeper[c.defID]?.id != c.id }
+    }
+
     public var sorted: [ArtifactItem] {
         items.sorted { a, b in
             let ra: Int = ArtifactCatalog.def(a.defID)?.rarity.rank ?? 0

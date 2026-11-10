@@ -2,7 +2,6 @@ import SwiftUI
 import Businesses
 
 struct AccountSettingsGroup: View {
-    @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
     @State private var pending: PendingAction?
     @State private var exportURL: URL?
@@ -53,39 +52,12 @@ struct AccountSettingsGroup: View {
     }
 
     private var signedIn: some View {
-        OnlineGroup(title: "Account", footer: "Deleting the account removes your profile, friends and requests from the server. The game on this device is not touched.") {
+        OnlineGroup(title: "Account", footer: "") {
             OnlineLine(glyph: Glyph.person, title: "Linked with " + (online.provider?.title ?? ""), note: online.profile?.displayName ?? "")
             Hairline()
-            Button { store.openProfile() } label: { OnlineLine(glyph: Glyph.person, title: "Profile", note: "Your name, friend code and who can see you", chevron: true) }
-                .buttonStyle(PressableStyle())
-            Hairline()
-            Button { store.openApp(.friends) } label: { OnlineLine(glyph: Glyph.team, title: "Friends", note: "Requests, search and your friends", chevron: true) }
-                .buttonStyle(PressableStyle())
-            Hairline()
             exportRow
-            Hairline()
-            Button { askToDelete() } label: { OnlineLine(glyph: Glyph.warning, title: "Delete account", note: "Removes everything online", tint: Theme.loss, chevron: true) }
-                .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("settings-delete-account")
             if let problem = online.problem {
                 Text(problem).textStyle(.caption, tint: Theme.loss).padding(.bottom, Theme.Space.s)
-            }
-        }
-    }
-
-    private func askToDelete() {
-        let market: SupplyMarketStore = SupplyMarketStore.shared
-        let rule = SupplyGuards.accountDeletion(openContracts: market.service.openContractsAsSupplier(ownerID: market.service.ownerID))
-        guard rule.allowed else {
-            Haptics.warning()
-            store.tell("The account cannot be deleted yet", rule.reason ?? "", tone: "warn")
-            return
-        }
-        pending = PendingAction(title: "Delete your account?", message: "Your profile, friends and requests are removed for good, and your supply listings stop. Your game on this device is kept.",
-                                button: "Delete account", destructive: true, alwaysAsk: true, risk: "This cannot be undone.") {
-            Task {
-                await online.deleteAccount()
-                if !online.isSignedIn { market.accountDeleted(store) }
             }
         }
     }
@@ -106,6 +78,43 @@ struct AccountSettingsGroup: View {
                 .buttonStyle(PressableStyle())
                 .disabled(working)
                 .accessibilityIdentifier("settings-export-data")
+        }
+    }
+}
+
+struct DeleteAccountGroup: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(OnlineSession.self) private var online
+    @State private var pending: PendingAction?
+
+    var body: some View {
+        if online.isSignedIn {
+            OnlineGroup(title: "", footer: "Deleting the account removes your profile, friends and requests from the server. The game on this device is not touched.") {
+                Button { askToDelete() } label: { OnlineLine(glyph: Glyph.warning, title: "Delete account", note: "Removes everything online", tint: Theme.loss, chevron: true) }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("settings-delete-account")
+                if let problem = online.problem {
+                    Text(problem).textStyle(.caption, tint: Theme.loss).padding(.bottom, Theme.Space.s)
+                }
+            }
+            .confirmAction($pending)
+        }
+    }
+
+    private func askToDelete() {
+        let market: SupplyMarketStore = SupplyMarketStore.shared
+        let rule = SupplyGuards.accountDeletion(openContracts: market.service.openContractsAsSupplier(ownerID: market.service.ownerID))
+        guard rule.allowed else {
+            Haptics.warning()
+            store.tell("The account cannot be deleted yet", rule.reason ?? "", tone: "warn")
+            return
+        }
+        pending = PendingAction(title: "Delete your account?", message: "Your profile, friends and requests are removed for good, and your supply listings stop. Your game on this device is kept.",
+                                button: "Delete account", destructive: true, alwaysAsk: true, risk: "This cannot be undone.") {
+            Task {
+                await online.deleteAccount()
+                if !online.isSignedIn { market.accountDeleted(store) }
+            }
         }
     }
 }

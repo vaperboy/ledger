@@ -104,6 +104,25 @@ final class StoreSession {
         } catch { problem = message(error); return nil }
     }
 
+    var canSellForCash: Bool { purse?() != nil }
+
+    func quickPrice(_ item: ArtifactItem) -> Int {
+        AuctionRules.quickSalePrice(ArtifactCatalog.def(item.defID)?.rarity ?? .common, priceLevel: priceLevel)
+    }
+
+    @discardableResult
+    func quickSell(_ items: [ArtifactItem]) async -> Int? {
+        problem = nil
+        guard canSellForCash else { problem = "Open a game to sell for cash."; return nil }
+        do {
+            let out = try await store.quickSell(itemIDs: items.map(\.id), priceLevel: priceLevel)
+            state = out.state
+            let what: String = out.sold.count == 1 ? (ArtifactCatalog.def(out.sold[0].defID)?.name ?? "artifact") : "\(out.sold.count) artifacts"
+            cashHandler?(out.cash, "quick|" + UUID().uuidString, "Quick sale: " + what)
+            return out.cash
+        } catch { problem = message(error); return nil }
+    }
+
     func acknowledgeOpening() { pendingOpening = nil }
 
     func receiveSeason(_ r: SeasonReward) {

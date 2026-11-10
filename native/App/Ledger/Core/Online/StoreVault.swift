@@ -132,6 +132,19 @@ actor GoldVault {
         return state()
     }
 
+    func quickSell(_ ids: [String], priceLevel: Double) throws -> QuickSale {
+        var cash = 0
+        var sold: [ArtifactItem] = []
+        for id in ids {
+            guard let item = cabinet.items.first(where: { $0.id == id }), let price = cabinet.quickSell(id, priceLevel: priceLevel) else { continue }
+            cash += price
+            sold.append(item)
+        }
+        guard !sold.isEmpty else { throw AuctionError.notYours }
+        save()
+        return QuickSale(state: state(), cash: cash, sold: sold)
+    }
+
     private func now() -> Double { Date().timeIntervalSince1970 }
 
     private func snapshot(_ settled: [AuctionSettlement] = []) -> AuctionsSnapshot {

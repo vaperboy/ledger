@@ -219,7 +219,7 @@ struct SeasonView: View {
     }
 
     private func tint(for kind: String) -> Color? {
-        guard let id = pass.equipped[kind], let c = SeasonRewards.all.first(where: { $0.id == id })?.colors.first else { return nil }
+        guard let id = pass.equipped[kind], let c = SeasonRewards.item(id)?.colors.first else { return nil }
         return Color(hex: c)
     }
 }

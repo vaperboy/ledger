@@ -10,7 +10,6 @@ struct StoreApp: View {
     @State private var showPlans = false
     @State private var showRedeem = false
     @State private var showInfo = false
-    @AppStorage(LootBoxChoice.key) private var lootOff = false
 
     var body: some View {
         let paid: Bool = paidBoxesAllowed
@@ -33,7 +32,7 @@ struct StoreApp: View {
     }
 
     private var paidBoxesAllowed: Bool {
-        if case .open(let paid) = StoreGate.access(countryCode: online.profile?.countryCode) { return paid && !lootOff }
+        if case .open(let paid) = StoreGate.access(countryCode: online.profile?.countryCode) { return paid }
         return false
     }
 
@@ -54,7 +53,7 @@ struct StoreApp: View {
                     }
                 }
             } else {
-                Text(lootOff ? "Loot boxes are off. Cosmetics are on sale directly for gold below." : "Paid boxes are not offered where you are. Season boxes can still be opened.")
+                Text("Paid boxes are not offered where you are. Season boxes can still be opened.")
                     .textStyle(.body, tint: Theme.inkSoft).padding(.horizontal, Theme.Space.m)
             }
         }

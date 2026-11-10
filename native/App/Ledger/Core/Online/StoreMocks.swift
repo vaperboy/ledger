@@ -26,4 +26,5 @@ struct MockStoreService: StoreService {
         try await vault.openBoxes(kind, count: count, owned: owned, paidBoxesAllowed: paidBoxesAllowed)
     }
     func grantFromSeason(boxes: Int, gold: Int) async -> StoreState { await vault.grantFromSeason(boxes: boxes, gold: gold) }
+    func quickSell(itemIDs: [String], priceLevel: Double) async throws -> QuickSale { try await vault.quickSell(itemIDs, priceLevel: priceLevel) }
 }

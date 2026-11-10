@@ -134,6 +134,16 @@ public enum AuctionRules {
 }
 
 extension AuctionRules {
+    public static let quickSalePercent = 88
+
+    public static func quickSalePrice(_ rarity: BoxRarity, priceLevel: Double) -> Int {
+        max(1, AuctionMarket.suggestedStart(rarity, priceLevel: priceLevel) * quickSalePercent / 100)
+    }
+
+    public static var quickSaleText: String {
+        "A quick sale pays \(quickSalePercent)% of the market value at once, with no fee."
+    }
+
     public static var feeText: String {
         "A sale costs the seller a fee of \(feePercent)% of the price. The fee is taken out of the game for good."
     }

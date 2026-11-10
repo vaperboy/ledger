@@ -354,6 +354,7 @@ struct BidCard: View {
 
 struct ListingCard: View {
     var item: ArtifactItem
+    var onFinish: ((Bool) -> Void)? = nil
     private let session = StoreSession.shared
     @State private var startPrice = 0
     @State private var useReserve = false
@@ -364,7 +365,9 @@ struct ListingCard: View {
     @State private var seeded = false
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
-    private func close() { if let c = popupClose { c() } else { systemDismiss() } }
+    private func finish(_ listed: Bool) {
+        if let onFinish { onFinish(listed) } else if let c = popupClose { c() } else { systemDismiss() }
+    }
 
     var body: some View {
         let preview = AuctionRules.listingPreview(startPrice: startPrice, reserve: useReserve ? reserve : nil, buyNow: useBuyNow ? buyNow : nil, duration: duration)
@@ -392,10 +395,10 @@ struct ListingCard: View {
             }
         }
         .popupFooter {
-            PopupFooter(cancel: "Cancel", action: "Put it up for \(duration.title)", onCancel: { close() }, onAction: {
+            PopupFooter(cancel: "Cancel", action: "Put it up for \(duration.title)", onCancel: { finish(false) }, onAction: {
                 Task {
                     if await session.list(itemID: item.id, startPrice: startPrice, reserve: useReserve ? reserve : nil, buyNow: useBuyNow ? buyNow : nil, duration: duration) {
-                        Haptics.success(); close()
+                        Haptics.success(); finish(true)
                     }
                 }
             }, actionEnabled: preview.problem == nil)

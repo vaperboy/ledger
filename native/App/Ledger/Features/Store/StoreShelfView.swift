@@ -12,8 +12,14 @@ struct StoreShelfView: View {
         PhonePageScroll(spacing: Theme.Space.xl) {
             cosmeticsGroup.storeAppear(0)
             bundlesGroup.storeAppear(1)
-            Text("Wear what you own in the Cabinet. These change how things look and how many saves you can keep, never how the game plays.")
-                .textStyle(.caption).fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                NavigationLink { LookView() } label: { Text("Equip what you own in Your look").textStyle(.body, tint: Theme.accent, weight: .semibold).frame(minHeight: 44) }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("shelf-look")
+                Text("These change how things look and how many saves you can keep, never how the game plays.")
+                    .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, Theme.Space.m)
         }
         .appScreen(title: "Cosmetics", subtitle: "Bought with gold")
         .confirmAction($pending)
