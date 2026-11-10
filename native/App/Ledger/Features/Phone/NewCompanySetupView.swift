@@ -54,8 +54,7 @@ struct NewCompanyDetailedSetupView: View {
             let country = e.homeCountry
             let basePlan: NewCompanyPlan? = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: "", pick: nil, choices: choices).plan(e)
             let pick: NewCompanyPlan.Pick? = currentPick(basePlan)
-            var chosen: SetupChoices = choices
-            chosen.channel = channel
+            let chosen: SetupChoices = withChannel(choices)
             let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: chosen, accountantID: accountantID)
             let plan: NewCompanyPlan? = draft.plan(e)
             let costs: StartUpCostBreakdown? = draft.costs(e)
@@ -86,6 +85,12 @@ struct NewCompanyDetailedSetupView: View {
         } else {
             EmptyState(title: "This trade is not available.").appScreen(title: "Set up", tab: .company)
         }
+    }
+
+    private func withChannel(_ c: SetupChoices) -> SetupChoices {
+        var out: SetupChoices = c
+        out.channel = channel
+        return out
     }
 
     private func applyAlternative(_ alt: PlanAlternative) {
