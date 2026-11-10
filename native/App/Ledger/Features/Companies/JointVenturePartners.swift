@@ -118,7 +118,7 @@ struct JVInviteSheet: View {
             if let e = store.engine, let co = e.state.company(companyID) {
                 let cur: Currency = e.currency(for: co)
                 let fair: Double = e.jvFairPrice(companyID: companyID, pct: pct)
-                let price: Double = (fair * factor).rounded()
+                let price: Double = privatePrice(e, fair: fair)
                 if preview, let friend = picked, let terms = e.jvTerms(companyID: companyID, pct: pct, price: price) {
                     consequence(friend: friend, terms: terms, cur: cur)
                 } else {
@@ -133,6 +133,16 @@ struct JVInviteSheet: View {
             friends = await JointVentureCoordinator.shared.service.invitable()
             loaded = true
         }
+    }
+
+    private func band(_ e: GameEngine) -> ClosedRange<Double> {
+        let wide: ClosedRange<Double> = e.state.worldRules.ventureBand
+        return wide.lowerBound...min(1, wide.upperBound)
+    }
+
+    private func privatePrice(_ e: GameEngine, fair: Double) -> Double {
+        let b: ClosedRange<Double> = band(e)
+        return min(max((fair * factor).rounded(), (fair * b.lowerBound).rounded(.up)), (fair * b.upperBound).rounded(.down))
     }
 
     @ViewBuilder private func form(_ e: GameEngine, _ co: Company, _ cur: Currency, fair: Double, price: Double) -> some View {
@@ -150,14 +160,15 @@ struct JVInviteSheet: View {
         Text("Their stake").capsLabel()
         LedgerSlider(value: $pct, in: 5...40, step: 1, valueText: "\(Int(pct))% of the company")
         Text("Their private price").capsLabel()
-        LedgerSlider(value: $factor, in: JVRules.priceBand.lowerBound...JVRules.priceBand.upperBound, step: 0.05, valueText: cur.tidyDisplay(price))
+        LedgerSlider(value: $factor, in: band(e), step: 0.05, valueText: cur.tidyDisplay(price))
         HStack(spacing: 4) {
             if factor == 1 { Text("Fair price: \(cur.tidyDisplay(fair)).") } else {
-                StockArrow(up: factor > 1, good: factor > 1)
-                Text(factor > 1 ? "Above the fair price of \(cur.tidyDisplay(fair)): more for the company, a harder sell." : "Under the fair price of \(cur.tidyDisplay(fair)): a friendly deal that dilutes you.")
+                StockArrow(up: false, good: false)
+                Text("Under the fair price of \(cur.tidyDisplay(fair)): a friendly deal that dilutes you.")
             }
         }
         .popupText(.caption)
+        Text("A sample friend pays at most the fair price.").popupText(.caption)
         Text("Only they see this price. Other friends you invite get a price of their own.").popupText(.caption)
         Text("Role").capsLabel()
         SegmentedPill(items: ["Partner", "CFO"], title: { $0 }, selection: $role)
@@ -189,7 +200,7 @@ struct JVInviteSheet: View {
     private func send(_ friend: PlayerProfile) {
         guard let e = store.engine else { return }
         let fair: Double = e.jvFairPrice(companyID: companyID, pct: pct)
-        let price: Double = (fair * factor).rounded()
+        let price: Double = privatePrice(e, fair: fair)
         let id: Int = companyID
         let p: Double = pct
         let cfo: Bool = role == "CFO"

@@ -138,7 +138,7 @@ extension GateVisibility {
 extension PhoneApp {
     var gate: Gate? {
         switch self {
-        case .inbox, .reports, .settings, .friends, .desk, .rivals, .store, .profile: return nil
+        case .inbox, .reports, .settings, .friends, .desk, .rivals, .store, .profile, .market: return nil
         case .bank: return .bank
         case .weather: return .weather
         case .marketplace: return .marketplace
@@ -148,7 +148,7 @@ extension PhoneApp {
         case .atlas: return .insurance
         case .luxury: return .luxury
         case .ventures: return .venturesFeed
-        case .activity, .news, .market, .season: return .bank
+        case .activity, .news, .season: return .bank
         case .country: return nil
         }
     }

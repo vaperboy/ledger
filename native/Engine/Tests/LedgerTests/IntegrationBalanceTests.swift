@@ -360,7 +360,11 @@ final class IntegrationBalanceTests: XCTestCase {
         // Two identical games; only the awards differ (they do not touch the company's valuation). Same random numbers, so the offers
         // come at the same time and differ exactly by the brand premium.
         var (e, id) = try engine(weeks: 6)
-        e.update { s, _, _ in _ = CompanySale.startListing(&s, companyID: id, broker: true) }
+        e.update { s, _, _ in
+            s.companies[s.companyIndex(id)!].foundedWeek = s.week - 60
+            Ledger.set(&s, .company(id), to: 0)
+            _ = CompanySale.startListing(&s, companyID: id, broker: true)
+        }
         var plain = e
         var famous = e
         famous.update { s, _, _ in s.rest["aw56"] = .object(["won": .array((0..<10).map { _ in .object(["k": "boty"]) })]) }

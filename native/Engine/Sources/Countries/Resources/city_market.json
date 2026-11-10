@@ -163,23 +163,28 @@
    "cities": {
     "waw": {
      "metro": 3300,
-     "tour": 1.4
+     "tour": 1.4,
+     "dem": 1.64
     },
     "krk": {
      "metro": 1400,
-     "tour": 2.4
+     "tour": 2.4,
+     "dem": 1.43
     },
     "wro": {
      "metro": 1250,
-     "tour": 1.3
+     "tour": 1.3,
+     "dem": 1.39
     },
     "gdn": {
      "metro": 1100,
-     "tour": 1.9
+     "tour": 1.9,
+     "dem": 1.3
     },
     "poz": {
      "metro": 1100,
-     "tour": 1.0
+     "tour": 1.0,
+     "dem": 1.33
     },
     "smallpl": {
      "metro": 25.0,
@@ -193,7 +198,7 @@
      "pop": 670,
      "rent": 0.48,
      "wage": 0.5,
-     "dem": 1.26,
+     "dem": 1.39,
      "price": 0.55,
      "metro": 1100,
      "tour": 0.8
@@ -204,7 +209,7 @@
      "pop": 395,
      "rent": 0.45,
      "wage": 0.48,
-     "dem": 1.13,
+     "dem": 1.24,
      "price": 0.55,
      "metro": 520,
      "tour": 1.1
@@ -215,7 +220,7 @@
      "pop": 335,
      "rent": 0.44,
      "wage": 0.48,
-     "dem": 1.09,
+     "dem": 1.2,
      "price": 0.55,
      "metro": 450,
      "tour": 0.9
@@ -226,7 +231,7 @@
      "pop": 295,
      "rent": 0.43,
      "wage": 0.47,
-     "dem": 1.06,
+     "dem": 1.17,
      "price": 0.54,
      "metro": 400,
      "tour": 0.7
@@ -237,7 +242,7 @@
      "pop": 69,
      "rent": 0.29,
      "wage": 0.42,
-     "dem": 0.72,
+     "dem": 0.79,
      "price": 0.52,
      "metro": 90,
      "tour": 0.8
@@ -248,7 +253,7 @@
      "pop": 27,
      "rent": 0.31,
      "wage": 0.39,
-     "dem": 0.49,
+     "dem": 0.54,
      "price": 0.54,
      "metro": 40,
      "tour": 3.8,
@@ -1335,23 +1340,28 @@
    "cities": {
     "sp": {
      "metro": 22000,
-     "tour": 1.0
+     "tour": 1.0,
+     "dem": 2.15
     },
     "rio": {
      "metro": 13500,
-     "tour": 2.8
+     "tour": 2.8,
+     "dem": 2.0
     },
     "bsb": {
      "metro": 4800,
-     "tour": 0.6
+     "tour": 0.6,
+     "dem": 1.78
     },
     "ssa": {
      "metro": 4000,
-     "tour": 1.8
+     "tour": 1.8,
+     "dem": 1.73
     },
     "cur": {
      "metro": 3700,
-     "tour": 0.9
+     "tour": 0.9,
+     "dem": 1.66
     },
     "smallbr": {
      "metro": 30.0,
@@ -1365,7 +1375,7 @@
      "pop": 2700,
      "rent": 0.29,
      "wage": 0.25,
-     "dem": 1.59,
+     "dem": 1.75,
      "price": 0.5,
      "metro": 4100,
      "tour": 1.8
@@ -1376,7 +1386,7 @@
      "pop": 2300,
      "rent": 0.25,
      "wage": 0.21,
-     "dem": 1.55,
+     "dem": 1.71,
      "price": 0.49,
      "metro": 6000,
      "tour": 0.9
@@ -1387,7 +1397,7 @@
      "pop": 2200,
      "rent": 0.26,
      "wage": 0.22,
-     "dem": 1.54,
+     "dem": 1.69,
      "price": 0.49,
      "metro": 2700,
      "tour": 0.8
@@ -1398,7 +1408,7 @@
      "pop": 1650,
      "rent": 0.28,
      "wage": 0.23,
-     "dem": 1.47,
+     "dem": 1.62,
      "price": 0.49,
      "metro": 4100,
      "tour": 1.6
@@ -1409,7 +1419,7 @@
      "pop": 1330,
      "rent": 0.28,
      "wage": 0.22,
-     "dem": 1.42,
+     "dem": 1.56,
      "price": 0.49,
      "metro": 4300,
      "tour": 0.9
@@ -1420,7 +1430,7 @@
      "pop": 580,
      "rent": 0.24,
      "wage": 0.21,
-     "dem": 1.22,
+     "dem": 1.34,
      "price": 0.48,
      "metro": 1200,
      "tour": 2.8,
@@ -1432,7 +1442,7 @@
      "pop": 45,
      "rent": 0.14,
      "wage": 0.17,
-     "dem": 0.61,
+     "dem": 0.67,
      "price": 0.46,
      "metro": 45,
      "tour": 3.8
@@ -1443,7 +1453,7 @@
      "pop": 36,
      "rent": 0.13,
      "wage": 0.16,
-     "dem": 0.56,
+     "dem": 0.62,
      "price": 0.46,
      "metro": 36,
      "tour": 3.6,
@@ -1560,27 +1570,33 @@
    "cities": {
     "cdmx": {
      "metro": 22000,
-     "tour": 1.5
+     "tour": 1.5,
+     "dem": 2.07
     },
     "gdl": {
      "metro": 5300,
-     "tour": 1.2
+     "tour": 1.2,
+     "dem": 1.58
     },
     "mty": {
      "metro": 5300,
-     "tour": 0.8
+     "tour": 0.8,
+     "dem": 1.52
     },
     "pue": {
      "metro": 3300,
-     "tour": 1.2
+     "tour": 1.2,
+     "dem": 1.64
     },
     "tij": {
      "metro": 2200,
-     "tour": 0.9
+     "tour": 0.9,
+     "dem": 1.66
     },
     "cun": {
      "metro": 1000,
-     "tour": 4.0
+     "tour": 4.0,
+     "dem": 1.45
     },
     "smallmx": {
      "metro": 30.0,
@@ -1594,7 +1610,7 @@
      "pop": 1700,
      "rent": 0.52,
      "wage": 0.19,
-     "dem": 1.48,
+     "dem": 1.63,
      "price": 0.46,
      "metro": 2100,
      "tour": 0.6
@@ -1605,7 +1621,7 @@
      "pop": 1050,
      "rent": 0.78,
      "wage": 0.24,
-     "dem": 1.37,
+     "dem": 1.51,
      "price": 0.48,
      "metro": 1400,
      "tour": 0.9,
@@ -1617,7 +1633,7 @@
      "pop": 1000,
      "rent": 0.77,
      "wage": 0.23,
-     "dem": 1.35,
+     "dem": 1.49,
      "price": 0.47,
      "metro": 1300,
      "tour": 1.5
@@ -1628,7 +1644,7 @@
      "pop": 270,
      "rent": 0.6,
      "wage": 0.19,
-     "dem": 1.04,
+     "dem": 1.14,
      "price": 0.46,
      "metro": 700,
      "tour": 2.8
@@ -1639,7 +1655,7 @@
      "pop": 300,
      "rent": 0.61,
      "wage": 0.19,
-     "dem": 1.07,
+     "dem": 1.18,
      "price": 0.46,
      "metro": 300,
      "tour": 3.8
@@ -1650,7 +1666,7 @@
      "pop": 175,
      "rent": 0.54,
      "wage": 0.18,
-     "dem": 0.94,
+     "dem": 1.03,
      "price": 0.46,
      "metro": 175,
      "tour": 3.5,
@@ -1662,7 +1678,7 @@
      "pop": 47,
      "rent": 0.37,
      "wage": 0.16,
-     "dem": 0.62,
+     "dem": 0.68,
      "price": 0.45,
      "metro": 47,
      "tour": 4.0
@@ -1674,27 +1690,33 @@
    "cities": {
     "dxb": {
      "metro": 5901.0,
-     "tour": 2.6
+     "tour": 2.6,
+     "rent": 2.05
     },
     "auh": {
      "metro": 2274.0,
-     "tour": 1.6
+     "tour": 1.6,
+     "rent": 1.89
     },
     "shj": {
      "metro": 2591.0,
-     "tour": 1.0
+     "tour": 1.0,
+     "rent": 1.19
     },
     "aan": {
      "metro": 1009.0,
-     "tour": 0.8
+     "tour": 0.8,
+     "rent": 1.1
     },
     "rak": {
      "metro": 484.0,
-     "tour": 1.8
+     "tour": 1.8,
+     "rent": 1.03
     },
     "smallae": {
      "metro": 30.0,
-     "tour": 0.6
+     "tour": 0.6,
+     "rent": 0.79
     }
    },
    "add": [
@@ -1702,7 +1724,7 @@
      "id": "ajm",
      "name": "Ajman",
      "pop": 540,
-     "rent": 1.42,
+     "rent": 1.06,
      "wage": 0.45,
      "dem": 1.21,
      "price": 0.75,
@@ -1713,7 +1735,7 @@
      "id": "fuj",
      "name": "Fujairah",
      "pop": 118,
-     "rent": 1.22,
+     "rent": 0.92,
      "wage": 0.43,
      "dem": 0.84,
      "price": 0.75,
@@ -1724,7 +1746,7 @@
      "id": "uaq",
      "name": "Umm Al Quwain",
      "pop": 80,
-     "rent": 1.17,
+     "rent": 0.88,
      "wage": 0.43,
      "dem": 0.75,
      "price": 0.74,
@@ -1738,31 +1760,38 @@
    "cities": {
     "rom": {
      "metro": 4300,
-     "tour": 3.0
+     "tour": 3.0,
+     "dem": 1.7
     },
     "mil": {
      "metro": 4300,
-     "tour": 1.6
+     "tour": 1.6,
+     "dem": 1.52
     },
     "nap": {
      "metro": 3100,
-     "tour": 1.6
+     "tour": 1.6,
+     "dem": 1.41
     },
     "tor": {
      "metro": 1750,
-     "tour": 1.0
+     "tour": 1.0,
+     "dem": 1.39
     },
     "pal": {
      "metro": 1200,
-     "tour": 1.3
+     "tour": 1.3,
+     "dem": 1.31
     },
     "bol": {
      "metro": 1000,
-     "tour": 1.2
+     "tour": 1.2,
+     "dem": 1.2
     },
     "flr": {
      "metro": 1000,
-     "tour": 3.2
+     "tour": 3.2,
+     "dem": 1.18
     },
     "smallit": {
      "metro": 15.0,
@@ -1776,7 +1805,7 @@
      "pop": 560,
      "rent": 0.67,
      "wage": 0.58,
-     "dem": 1.22,
+     "dem": 1.29,
      "price": 0.72,
      "metro": 800,
      "tour": 1.5
@@ -1787,7 +1816,7 @@
      "pop": 315,
      "rent": 0.97,
      "wage": 0.66,
-     "dem": 1.08,
+     "dem": 1.14,
      "price": 0.75,
      "metro": 1200,
      "tour": 1.1
@@ -1798,7 +1827,7 @@
      "pop": 260,
      "rent": 0.93,
      "wage": 0.65,
-     "dem": 1.03,
+     "dem": 1.09,
      "price": 0.74,
      "metro": 500,
      "tour": 2.6
@@ -1809,7 +1838,7 @@
      "pop": 250,
      "rent": 0.93,
      "wage": 0.65,
-     "dem": 1.02,
+     "dem": 1.08,
      "price": 0.74,
      "metro": 850,
      "tour": 4.6
@@ -1820,7 +1849,7 @@
      "pop": 54,
      "rent": 0.66,
      "wage": 0.6,
-     "dem": 0.66,
+     "dem": 0.7,
      "price": 0.72,
      "metro": 110,
      "tour": 3.6
@@ -1831,7 +1860,7 @@
      "pop": 4,
      "rent": 0.55,
      "wage": 0.52,
-     "dem": 0.22,
+     "dem": 0.23,
      "price": 0.71,
      "metro": 4,
      "tour": 5.0,
@@ -2100,27 +2129,33 @@
    "cities": {
     "sgc": {
      "metro": 1260.0,
-     "tour": 2.8
+     "tour": 2.8,
+     "rent": 2.11
     },
     "sgw": {
      "metro": 484.0,
-     "tour": 0.8
+     "tour": 0.8,
+     "rent": 1.17
     },
     "sge": {
      "metro": 311.0,
-     "tour": 1.0
+     "tour": 1.0,
+     "rent": 1.31
     },
     "sgn": {
      "metro": 291.0,
-     "tour": 0.6
+     "tour": 0.6,
+     "rent": 1.09
     },
     "sgne": {
      "metro": 209.0,
-     "tour": 0.7
+     "tour": 0.7,
+     "rent": 1.24
     },
     "sgs": {
      "metro": 6.0,
-     "tour": 6.0
+     "tour": 6.0,
+     "rent": 2.33
     }
    },
    "add": []

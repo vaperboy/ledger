@@ -54,6 +54,14 @@ public enum CompanySale {
     }
 
     public static let brokerFee = 0.04
+    public static let youngWeeks = 52
+
+    static func saleWorth(_ s: GameState, _ co: Company, data: GameData, factor: Double) -> Double {
+        let value = max(0, Valuation.companyValue(co, state: s, trades: data.catalog))
+        let cash = min(value, max(0, co.cash))
+        let goodwillFactor = s.week - co.foundedWeek < youngWeeks ? min(1, factor) : factor
+        return cash * min(1, factor) + (value - cash) * goodwillFactor
+    }
 
     // MARK: Reading
 
@@ -323,8 +331,6 @@ public enum CompanySale {
             if offers.count < 4 {
                 let co = s.companies[i]
                 let currency = fc.currency(co.countryCode, s)
-                // A known name sells for more: up to 10 percent at brand score 100 (`BrandValues.salePremium`).
-                let v0 = max(currency.scaledPrice(20000), Valuation.companyValue(co, state: s, trades: data.catalog)) * BrandValues.salePremium(BrandValues.company(s, co).score)
                 let tr = traction(co, s)
                 let profit = CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week) > 0
                 let hostedInv = StaffPerks.hosted(s, "inv")   // investors you hosted: buyers come sooner and pay a little more
@@ -338,16 +344,18 @@ public enum CompanySale {
                                                 case "mbo": return route == "mbo" ? 0.62 + 0.18 * mboU : s.random.range(0.62, 0.8); case "angel": return s.random.range(0.78, 0.98); default: return s.random.range(0.8, 1) } }() * (broker ? 1.05 : 1) * (0.85 + tr * 0.3)
                     let name: String = k == "mbo" ? (s.people[co.managerID ?? 0]?.name ?? "Your manager") + ", your manager"
                         : k == "rival" ? "A rival in your trade" : k == "fund" ? "An investment fund" : k == "angel" ? "A private investor" : "A private buyer"
-                    let base = pct == 100 ? v0 : v0 * Double(pct) / 100 * co.ownership / 100
-                    let price = (base * f * (1 + 0.04 * hostedInv) / 1000).rounded() * 1000
-                    offers.append(.object(["id": .number(Double(s.makeID())), "k": .string(k), "name": .string(name), "price": .number(price), "note": .string(notes[k] ?? ""),
-                                           "exp": .number(Double(s.week + 6)), "ctr": .number(0)]))
-                    s.addMessage(from: name, title: "Offer for \(pct == 100 ? co.name : "\(pct)% of \(co.name)")", body: "\(name) offers \(currency.display(pct == 100 ? price * co.ownership / 100 : price)) for your stake.", companyID: co.id, tone: "good")
-                    if broker && !raw["heard"].bool {
-                        update(&s, companyID: id) { $0["heard"] = .number(1) }
-                        let m = co.value("mood").isNull ? 60 : co.num("mood")
-                        s.companies[i].set("mood", clamp(m - 8, 0, 100))
-                        s.note("Word is out that \(co.name) is for sale. Staff are uneasy and rivals are watching.", tone: "n", companyID: co.id)
+                    let worth = saleWorth(s, co, data: data, factor: f * BrandValues.salePremium(BrandValues.company(s, co).score) * (1 + 0.04 * hostedInv))
+                    let price = ((pct == 100 ? worth : worth * Double(pct) / 100 * co.ownership / 100) / 1000).rounded() * 1000
+                    if price > 0 {
+                        offers.append(.object(["id": .number(Double(s.makeID())), "k": .string(k), "name": .string(name), "price": .number(price), "note": .string(notes[k] ?? ""),
+                                               "exp": .number(Double(s.week + 6)), "ctr": .number(0)]))
+                        s.addMessage(from: name, title: "Offer for \(pct == 100 ? co.name : "\(pct)% of \(co.name)")", body: "\(name) offers \(currency.display(pct == 100 ? price * co.ownership / 100 : price)) for your stake.", companyID: co.id, tone: "good")
+                        if broker && !raw["heard"].bool {
+                            update(&s, companyID: id) { $0["heard"] = .number(1) }
+                            let m = co.value("mood").isNull ? 60 : co.num("mood")
+                            s.companies[i].set("mood", clamp(m - 8, 0, 100))
+                            s.note("Word is out that \(co.name) is for sale. Staff are uneasy and rivals are watching.", tone: "n", companyID: co.id)
+                        }
                     }
                 }
             }
@@ -375,14 +383,12 @@ public enum CompanySale {
 
     /// What a whole-company buyer would pay at most, by kind, in the units of the sale (the whole company, or the stake for a part sale).
     static func bidLimit(_ s: GameState, _ co: Company, pct: Int, kind: String, u: Double, data: GameData, context fc: FinanceContext) -> Double {
-        let currency = fc.currency(co.countryCode, s)
-        let v0 = max(currency.scaledPrice(20000), Valuation.companyValue(co, state: s, trades: data.catalog)) * BrandValues.salePremium(BrandValues.company(s, co).score)
         let tr = traction(co, s)
         let hostedInv = StaffPerks.hosted(s, "inv")
         let f: Double = { switch kind { case "rival": return 0.95 + 0.23 * u; case "group": return 0.95 + 0.25 * u; case "fund": return 0.82 + 0.2 * u
                                         case "angel": return 0.78 + 0.2 * u; default: return 0.8 + 0.2 * u } }()
-        let base = pct == 100 ? v0 : v0 * Double(pct) / 100 * co.ownership / 100
-        return base * f * (0.85 + tr * 0.3) * (1 + 0.04 * hostedInv)
+        let worth = saleWorth(s, co, data: data, factor: f * BrandValues.salePremium(BrandValues.company(s, co).score) * (0.85 + tr * 0.3) * (1 + 0.04 * hostedInv))
+        return pct == 100 ? worth : worth * Double(pct) / 100 * co.ownership / 100
     }
 
     /// Run an auction: set the lowest price you accept (`reserve`); three weekly rounds of bids from named bidders follow. Bidders are drawn by a
@@ -556,9 +562,10 @@ public enum CompanySale {
     /// What each active group would pay for the whole company now: about its value, a little either side by a hash of the group and the week.
     public static func groupBuyers(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> [GroupBuyer] {
         guard let co = s.company(companyID), co.status.isLive, co.type != "hold", !s.isBranch(co), !Shareholders.isBlocked(s, companyID: companyID), SaleListings.boardBlock(s, companyID: companyID) == nil else { return [] }
-        let v0 = max(0, Valuation.companyValue(co, state: s, trades: data.catalog)) * BrandValues.salePremium(BrandValues.company(s, co).score)
+        let premium = BrandValues.salePremium(BrandValues.company(s, co).score)
         return GroupStakes.groups(s, country: co.countryCode).filter { $0["dist"].int == 0 }.map { g in
-            GroupBuyer(id: g["id"].string, name: g["name"].string, price: (v0 * (0.9 + 0.15 * HashedRandom.first("grp:\(companyID):\(g["id"].string):\(s.week)")) / 1000).rounded() * 1000)
+            let f = (0.9 + 0.15 * HashedRandom.first("grp:\(companyID):\(g["id"].string):\(s.week)")) * premium
+            return GroupBuyer(id: g["id"].string, name: g["name"].string, price: (saleWorth(s, co, data: data, factor: f) / 1000).rounded() * 1000)
         }
     }
     /// Approach a group: it buys at its quote and the company becomes one of its sites. Returns the cash you get.

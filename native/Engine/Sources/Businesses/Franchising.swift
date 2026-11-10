@@ -384,7 +384,8 @@ public enum Franchising {
 
     // MARK: Master franchise abroad
 
-    public static func masterCap(_ c: Country) -> Double { clamp((c.populationMillions.squareRoot() * 2).rounded(), 4, 30) }
+    public static let masterSupportShare = 0.4
+    public static func masterCap(_ c: Country) -> Double { clamp(c.populationMillions.squareRoot().rounded(), 3, 8) }
 
     public enum MasterResult: Equatable, Sendable { case ok, noFranchise, bad, already, banned(String), cash }
 
@@ -427,8 +428,11 @@ public enum Franchising {
             masters[k] = m
         }
         f["masters"] = .array(masters)
-        if tot > 0 { receive(&s, s.companies[i].id, tot, "rev", "Master franchise royalties") }
-        return tot
+        if tot > 0 {
+            receive(&s, s.companies[i].id, tot, "rev", "Master franchise royalties")
+            pay(&s, s.companies[i].id, tot * masterSupportShare, "oth", "Master franchise support")
+        }
+        return tot * (1 - masterSupportShare)
     }
 
     // MARK: The franchisor's week
