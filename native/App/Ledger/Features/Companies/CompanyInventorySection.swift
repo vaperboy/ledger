@@ -37,7 +37,7 @@ struct CompanyInventorySection: View {
         return HStack(spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(i.title.tidyText).textStyle(.headline).lineLimit(2)
-                Text(MarketFormat.condition(i.cond) + " \u{00B7} worth " + store.short(i.value)).textStyle(.caption)
+                Text(ListingFormat.condition(i.cond) + " \u{00B7} worth " + store.short(i.value)).textStyle(.caption)
             }
             Spacer(minLength: Theme.Space.s)
             if isDealer {
