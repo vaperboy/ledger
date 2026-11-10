@@ -21,6 +21,13 @@ final class AppointmentServicesTests: XCTestCase {
         return (e, id)
     }
 
+    func traded(_ e: inout GameEngine, _ id: Int, units: Double) {
+        e.update { s, _, _ in
+            guard let i = s.companyIndex(id) else { return }
+            s.companies[i].set("lastW", .object(["units": .number(units), "rev": .number(0), "cogs": .number(0), "D": .number(units), "cap": .number(units * 2), "util": .number(0.5)]))
+        }
+    }
+
     func testRegistryHoldsExactlyTheSixTrades() {
         XCTAssertEqual(ItemTradeGroups.appointments, Set(trades))
         XCTAssertEqual(Set(AppointmentServices.tradeIDs), Set(trades))
@@ -169,11 +176,12 @@ final class AppointmentServicesTests: XCTestCase {
 
     func testRetailStockRunsDownAndIsReorderedWithALeadTime() throws {
         var (e, id) = try start("carclean", weeks: 6, setup: true)
+        traded(&e, id, units: 400)
         e.update { s, d, _ in AppointmentServices.install(&s, companyID: id, data: d) }
         var sawOrder = false, sawArrival = false
         var last: Int?
         for _ in 0..<40 {
-            e.w6week()
+            e.update { s, d, _ in if let i = s.companyIndex(id) { s.week += 1; AppointmentServices.weekly(&s, i, data: d) } }
             let co = try XCTUnwrap(e.state.company(id)), bd = try XCTUnwrap(e.data.catalog["carclean"])
             let it = try XCTUnwrap(SalesItems.items(co, bd).first { $0.name == "Car care products" })
             let r = try XCTUnwrap(ItemModels.record(co, itemID: it.id))

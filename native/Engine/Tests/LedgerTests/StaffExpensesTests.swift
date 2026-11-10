@@ -13,6 +13,7 @@ final class StaffExpensesTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("no company") }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
+        e.update { s, _, _ in if let i = s.companyIndex(id) { var f = s.companies[i].value("flags"); f["noquit"] = .bool(true); s.companies[i].set("flags", f) } }
         return (e, id)
     }
 
@@ -89,7 +90,7 @@ final class StaffExpensesTests: XCTestCase {
             _ = e.contractPropose(companyID: id, personID: w, proposal: .init(.benefits, amount: 1, choice: "exp:training"))
             for _ in 0..<14 { e.nextDay() }
             let back = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(e.state))
-            XCTAssertTrue(StaffExpenses.isOn(back.company(id)!.staff.first { $0.id == w }!, "training"))
+            XCTAssertTrue(StaffExpenses.isOn(try XCTUnwrap(back.company(id)?.staff.first { $0.id == w }), "training"))
             return e.state.cash
         }
         XCTAssertEqual(try run(), try run())

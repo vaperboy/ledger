@@ -217,7 +217,7 @@ public enum IndustrialItems {
                     if rec.stock == 0 { rec.since = week }
                     rec.stock += arriving
                 }
-                let sold = min(rec.stock, Int(saturating: perWeek.rounded()))
+                let sold = min(rec.stock, max(0, Int(saturating: (perWeek * Double(week + 1)).rounded(.down)) - Int(saturating: (perWeek * Double(week)).rounded(.down))))
                 rec.stock -= sold
                 if rec.stock == 0 { rec.since = nil }
                 let lead = Double(rec.leadDays) / 7
