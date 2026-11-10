@@ -65,13 +65,12 @@ struct ActiveVenture: Identifiable {
 
 struct VentureOption: Identifiable {
     enum Group: Int, CaseIterable {
-        case build, develop, expand, found
+        case build, develop, found
 
         var title: String {
             switch self {
             case .build: return "Build"
             case .develop: return "Develop"
-            case .expand: return "Expand"
             case .found: return "New ventures"
             }
         }
@@ -80,7 +79,6 @@ struct VentureOption: Identifiable {
             switch self {
             case .build: return "Buy land, build and sell the units."
             case .develop: return "Pay for a new product, menu or process."
-            case .expand: return "Open another outlet of a trade you run."
             case .found: return "Start something of your own."
             }
         }
@@ -89,7 +87,6 @@ struct VentureOption: Identifiable {
             switch self {
             case .build: return Glyph.home
             case .develop: return Glyph.goals
-            case .expand: return Glyph.group
             case .found: return Glyph.ventures
             }
         }
@@ -98,7 +95,6 @@ struct VentureOption: Identifiable {
             switch self {
             case .build: return "No developer company yet"
             case .develop: return "No company can develop anything now"
-            case .expand: return "No outlet to copy yet"
             case .found: return "Nothing to start yet"
             }
         }
@@ -107,7 +103,6 @@ struct VentureOption: Identifiable {
             switch self {
             case .build: return "Open a property developer and it can buy land, build and sell units from here."
             case .develop: return "Open a company first. Development needs a running company with a team."
-            case .expand: return "Open a company and let it trade for a while. A second outlet is offered once it runs."
             case .found: return "Ventures open as you level up."
             }
         }
@@ -202,7 +197,6 @@ struct VentureOption: Identifiable {
         }
         for co in e.state.companies where co.status == .open && co.type != "hold" {
             if let o = develop(e, co, store) { out.append(o) }
-            if let o = expand(e, co, store) { out.append(o) }
         }
         out.append(contentsOf: found(e, store))
         return out
@@ -244,16 +238,6 @@ struct VentureOption: Identifiable {
                              time: rangeText(weeks.min() ?? 0, weeks.max() ?? 0, unit: "weeks"), payoff: payoff,
                              risk: "Works fully in about \(percent(first.oddsFull))% of tries, partly in \(percent(first.oddsPartial))%, and not at all otherwise. The money is spent either way.",
                              status: status, tone: tone, rank: busy ? 2 : (ready ? 0 : 1), sortCost: low, action: .develop(co.id))
-    }
-
-    private static func expand(_ e: GameEngine, _ co: Company, _ store: GameStore) -> VentureOption? {
-        guard CompanyChain.isRelevant(co, e), let r = Expansion.readiness(e.state, data: e.data, companyID: co.id, cityID: co.cityID) else { return nil }
-        return VentureOption(id: "expand-\(co.id)", group: .expand, title: "Open another outlet", subtitle: co.name,
-                             cost: store.short(r.startCost, in: co) + ", keep \(store.short(r.rampReserve, in: co)) spare", time: "About " + r.rampWeeks.weeksText + " to carry itself",
-                             payoff: "Loses money for about the first \((r.rampWeeks / 2).weeksText), then pays only if customers find it",
-                             risk: r.advice.first ?? "",
-                             status: r.enoughCash ? "Ready" : "Needs cash", tone: r.enoughCash ? .good : .warn, rank: r.enoughCash ? 0 : 1, sortCost: r.startCost,
-                             action: .route(.companyAt(co.id, .chain)))
     }
 
     private static func found(_ e: GameEngine, _ store: GameStore) -> [VentureOption] {

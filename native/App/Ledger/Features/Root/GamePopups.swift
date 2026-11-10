@@ -75,7 +75,18 @@ struct NoticePopup: View {
     }
 
     var body: some View {
-        if notice.style == "luxury" { luxury } else if notice.style == "recap" { recap } else { plain }
+        if notice.style == "luxury" { luxury } else if notice.style == "recap" { recap } else if notice.style == "locked" { locked } else { plain }
+    }
+
+    private var locked: some View {
+        GamePopup(title: notice.title, showsClose: false, category: .compact, tone: .info, icon: "lock", onClose: { store.dismissNotice() }) {
+            PopupBody {
+                ForEach(notice.text.split(separator: "\n").map { String($0) }, id: \.self) { line in
+                    Text(line).popupText(.body).fixedSize(horizontal: false, vertical: true)
+                }
+                PopupOptionButton(title: "Got it", highlighted: true, identifier: "locked-ok") { store.dismissNotice() }
+            }
+        }
     }
 
     private var recap: some View {

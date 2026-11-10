@@ -55,7 +55,7 @@ final class OwnershipExpansionTests: XCTestCase {
     func testExpandingAbroadCostsMoneyAndLinksTheSubsidiary() throws {
         var e = try ChainsTests.engine("UK")
         let cafe = ChainsTests.start(&e, "cafe")
-        e.update { s, _, _ in s.companies[s.companyIndex(cafe)!].reputation = 60; s.companies[s.companyIndex(cafe)!].status = .open }
+        e.update { s, _, _ in s.companies[s.companyIndex(cafe)!].reputation = 60; s.companies[s.companyIndex(cafe)!].status = .open; PlayerLevel.award(&s, PlayerLevel.threshold(LevelGates.level(.abroad))) }
         let option = try XCTUnwrap(e.abroadOptions(companyID: cafe).first)
         let cash0 = e.state.cash
         guard case .success(let id) = e.expandAbroad(companyID: cafe, countryCode: option.countryCode) else { return XCTFail("no expansion") }

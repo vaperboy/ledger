@@ -37,6 +37,7 @@ public extension GameEngine {
     @discardableResult
     mutating func expandAbroad(companyID: Int, countryCode: String, cityID: String? = nil) -> Result<Int, Abroad.Failure> {
         var r: Result<Int, Abroad.Failure> = .failure(.notOpen)
+        guard levelOpen(.abroad) else { return r }
         update { s, d, ctx in r = Abroad.expand(&s, companyID: companyID, country: countryCode, cityID: cityID, data: d, context: ctx) }
         return r
     }

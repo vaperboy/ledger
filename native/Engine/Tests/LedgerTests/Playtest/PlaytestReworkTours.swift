@@ -501,11 +501,8 @@ final class PlaytestReworkTours: XCTestCase {
                 if open && r == nil { find(3, "group route shows as available while the company is listed, then sellToGroup silently returns nil") }
             }
         }
-        let reqs = e.franchiseRequirements(companyID: id)
-        ex(!reqs.isEmpty, "franchise requirements are listed", sev: 3)
         ex(e.sellMasterFranchise(companyID: id, country: "DE") == .noFranchise, "master franchise refused before the franchise exists")
         ex(e.saleRoutes(companyID: id).first { $0.id == "franchise" }?.available == false, "franchise route is shut before the franchise exists")
-        for r in reqs where !r.ok { _ = e.applyForChainDocument(companyID: id, document: r.id) }
         run(&e, weeks: 16)
         let lr = e.launchFranchise(companyID: id, entryFee: cur.scaledPrice(20_000), royalty: 0.06, support: 1)
         if !e.isFranchisor(companyID: id) {

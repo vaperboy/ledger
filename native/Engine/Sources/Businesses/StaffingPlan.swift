@@ -178,11 +178,36 @@ public enum StaffingPlan {
             let rows = permanentRows(s, co, bd, h, data: data)
             track(&s, i, rows)
             guard let boss = h else { continue }
+            if trimOne(&s, i, rows, boss, data: data) { continue }
             let owner = ownerTargets(co)
             let standing = Delegation.autoRehire(s, co) || (s.policy.autoRehire && boss.isBoss)
             guard standing || !owner.isEmpty, !co.staff.isEmpty || !owner.isEmpty else { continue }
             if !fillOne(&s, i, rows, boss, standing: standing, context: context, data: data) { seasonalStep(&s, i, boss, data: data) }
         }
+    }
+
+    static let idleUtilisation = 0.45
+    static let idleWeeksBeforeTrim = 8
+    static let idleKey = "lo"
+
+    private static func trimOne(_ s: inout GameState, _ ci: Int, _ rows: [Row], _ boss: Hirer, data: GameData) -> Bool {
+        let co = s.companies[ci]
+        guard co.managerID != nil, !boss.isBoss, boss.level >= 1 else { return false }
+        let lw = co.value("lastW")
+        let idle = !lw.isNull && lw["cap"].double > 0 && lw["util"].double < idleUtilisation
+        let before = co.value("stfPlan")[idleKey].int
+        let weeks = idle ? before + 1 : 0
+        if weeks != before { write(&s, ci) { d in d[idleKey] = weeks > 0 ? JSONValue.number(Double(weeks)) : nil } }
+        guard weeks >= idleWeeksBeforeTrim, let row = rows.filter({ $0.filled > $0.target }).max(by: { ($0.filled - $0.target, $1.role) < ($1.filled - $1.target, $0.role) }) else { return false }
+        let crew = ManagerHiring.heads(co, role: row.role).filter { $0.noticeWeeks <= 0 }
+        guard let leaver = crew.min(by: { (s.people[$0.id]?.skill ?? 0) < (s.people[$1.id]?.skill ?? 0) }),
+              let quote = Dismissal.quote(s, companyID: co.id, staffID: leaver.id, reason: .redundancy, data: data),
+              co.cash > quote.total * 2 else { return false }
+        let name = s.people[leaver.id]?.name ?? "A team member"
+        guard Dismissal.dismiss(&s, companyID: co.id, staffID: leaver.id, reason: .redundancy, data: data) != nil else { return false }
+        write(&s, ci) { d in d[idleKey] = nil }
+        s.note("\(co.name): \(boss.name) let \(name) go as a \(row.roleName.lowercased()): demand no longer needs the extra hand.", tone: "n", companyID: co.id)
+        return true
     }
 
     static func track(_ s: inout GameState, _ ci: Int, _ rows: [Row]) {

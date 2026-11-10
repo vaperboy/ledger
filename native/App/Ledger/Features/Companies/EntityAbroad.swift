@@ -18,10 +18,10 @@ struct EntityAbroadSection: View {
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID), co.status == .open, co.type != "hold", !co.value("franchise")["fran"].bool {
-            if let lock = e.unlockItem("abroad", companyID: companyID), !lock.unlocked {
-                LockedBlock(title: "Expand abroad", reason: lock.reason, progress: Double(Unlocks.monthsClosed(co)) / 12)
-            } else {
+            if e.levelOpen(.abroad) {
                 openSection(e, co, e.abroadOptions(companyID: companyID))
+            } else {
+                LevelLockCard(feature: .abroad)
             }
         }
     }

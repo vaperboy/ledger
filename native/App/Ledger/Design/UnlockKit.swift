@@ -27,12 +27,34 @@ extension GameStore {
         }
     }
 
+    func queueNotices() {
+        guard let e = engine else { return }
+        for n in e.pendingNotices() where !unlockQueue.contains(where: { (p: UnlockPrompt) -> Bool in p.id == n.id }) {
+            unlockQueue.append(UnlockPrompt(id: n.id, companyID: 0, featureID: n.id, title: n.title, line: n.line, target: hasNoticeTarget(n.target) ? n.target : ""))
+        }
+    }
+
+    private func noticeApp(_ target: String) -> PhoneApp? {
+        PhoneApp.launcher.first(where: { (a: PhoneApp) -> Bool in a.gate?.rawValue == target })
+    }
+
+    private func hasNoticeTarget(_ target: String) -> Bool {
+        noticeApp(target) != nil || ["government", "politics", "chain", "franchise", "abroad"].contains(target)
+    }
+
+    private func openNoticeTarget(_ target: String) {
+        if let app = noticeApp(target) { openApp(app); return }
+        switch target {
+        case "government", "politics": openApp(.country)
+        default:
+            guard let id = engine?.state.companies.first(where: { (c: Company) -> Bool in c.status.isLive && c.type != "hold" })?.id else { return }
+            openGroupEntity(companyID: id, section: "expansion")
+        }
+    }
+
     private static func unlockLine(_ id: String, _ name: String) -> String {
         switch id {
         case "board": return "Someone could now take a seat on the board of \(name)."
-        case "chain": return "\(name) has traded long enough to be turned into a chain."
-        case "franchise": return "\(name) has a proven concept: others can now open units under its name."
-        case "abroad": return "A profitable year makes a subsidiary abroad possible for \(name)."
         case "research": return "\(name) is old enough for its market to be researched."
         case "dividends": return "\(name) has retained profit it can pay out."
         default: return "\(name) can now use this."
@@ -47,13 +69,17 @@ extension GameStore {
     func dismissUnlock(_ p: UnlockPrompt) {
         let cid: Int = p.companyID
         let fid: String = p.featureID
-        act { (e: inout GameEngine) -> Bool in e.markUnlockShown(id: fid, companyID: cid); return true }
+        if cid == 0 {
+            act { (e: inout GameEngine) -> Bool in e.markNoticeSeen(id: fid); return true }
+        } else {
+            act { (e: inout GameEngine) -> Bool in e.markUnlockShown(id: fid, companyID: cid); return true }
+        }
         unlockQueue.removeAll(where: { (x: UnlockPrompt) -> Bool in x.id == p.id })
     }
 
     func goToUnlock(_ p: UnlockPrompt) {
         dismissUnlock(p)
-        openUnlockTarget(p.target, companyID: p.companyID)
+        if p.companyID == 0 { openNoticeTarget(p.target) } else { openUnlockTarget(p.target, companyID: p.companyID) }
     }
 
     func openUnlockTarget(_ target: String, companyID: Int) {
@@ -85,12 +111,19 @@ struct UnlockPopup: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             VStack(spacing: 6) {
-                Button { Haptics.tap(); store.goToUnlock(prompt) } label: {
-                    Text("Take me there").frame(maxWidth: .infinity)
+                if prompt.target.isEmpty {
+                    Button { Haptics.tap(); store.dismissUnlock(prompt) } label: {
+                        Text("Got it").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("unlock-skip")
+                } else {
+                    Button { Haptics.tap(); store.goToUnlock(prompt) } label: {
+                        Text("Take me there").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("unlock-go")
+                    Button { store.dismissUnlock(prompt) } label: { Text("Skip") }
+                        .buttonStyle(PlainTextButtonStyle()).accessibilityIdentifier("unlock-skip")
                 }
-                .buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("unlock-go")
-                Button { store.dismissUnlock(prompt) } label: { Text("Skip") }
-                    .buttonStyle(PlainTextButtonStyle()).accessibilityIdentifier("unlock-skip")
             }
             .padding(.top, 4)
         }

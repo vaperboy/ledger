@@ -207,7 +207,10 @@ public enum PlayerGoals {
         ("M10", "Survive a bad week", "Something will go wrong. Keep the lights on.", "", "", "You survived a bad week.", "Your credit score goes up a little"),
     ]
 
-    public static func startLadder(_ s: inout GameState) { s.rest["ldr"] = .object(["done": .object([:])]) }
+    public static func startLadder(_ s: inout GameState) {
+        s.rest["ldr"] = .object(["done": .object([:])])
+        UnlockNotices.seedGates(&s)
+    }
 
     static func ladderCondition(_ id: String, _ s: GameState) -> Bool {
         switch id {

@@ -7,7 +7,7 @@ public enum UnlockRule: Equatable, Sendable {
     case always
     case week(Int), goal(Int), profitableQuarters(Int), rich
     case firstSalesWeek, firstProfitMonth, firstLossEvent
-    case weeksTraded(Int), profitableYear, provenConcept, boardSeat, retainedProfit
+    case weeksTraded(Int), boardSeat, retainedProfit
     case anyOf([UnlockRule])
 }
 
@@ -91,11 +91,6 @@ public enum Gates {
         RuleEntry(feature: .gate(.ownerHours), title: "Owner hours", rule: .week(13), text: "", roadmap: false),
         RuleEntry(feature: .unlock("board"), title: "Board", rule: .boardSeat,
                   text: "Unlocks when a limited company has a manager or candidate who could take a seat, or it gets co-owners or a chain"),
-        RuleEntry(feature: .unlock("chain"), title: "Chain", rule: .weeksTraded(Unlocks.weeksChain),
-                  text: "Unlocks when the company has traded \(Unlocks.weeksChain) weeks"),
-        RuleEntry(feature: .unlock("franchise"), title: "Franchising", rule: .provenConcept,
-                  text: "Unlocks with a proven concept: \(Unlocks.weeksChain) weeks traded and four profitable quarters"),
-        RuleEntry(feature: .unlock("abroad"), title: "Expand abroad", rule: .profitableYear, text: "Unlocks after a profitable year (twelve closed months in profit)"),
         RuleEntry(feature: .unlock("research"), title: "Market research", rule: .weeksTraded(Unlocks.weeksResearch),
                   text: "Unlocks when the company is \(Unlocks.weeksResearch) weeks old"),
         RuleEntry(feature: .unlock("dividends"), title: "Dividends", rule: .retainedProfit, text: "Unlocks when the company has retained profit to pay out"),
@@ -104,6 +99,8 @@ public enum Gates {
         RuleEntry(feature: .unlock("focus"), title: "Weekly plan", rule: .weeksTraded(Unlocks.weeksFocus), text: "Unlocks when the company has traded \(Unlocks.weeksFocus) weeks and the first steps are done", roadmap: false),
         RuleEntry(feature: .unlock("rivals"), title: "Rivals", rule: .weeksTraded(Unlocks.weeksRivals), text: "Unlocks when the company has traded \(Unlocks.weeksRivals) weeks and the first steps are done", roadmap: false),
     ]
+
+    public static func title(_ g: Gate) -> String { entry(.gate(g)).title }
 
     static func entry(_ f: Feature) -> RuleEntry {
         table.first { (e: RuleEntry) -> Bool in e.feature == f } ?? RuleEntry(feature: f, title: "", rule: .always, text: "", roadmap: false)
@@ -183,12 +180,6 @@ public enum Gates {
         case .weeksTraded(let n):
             guard let company else { return false }
             return Unlocks.weeksTraded(s, company) >= n
-        case .profitableYear:
-            guard let company else { return false }
-            return (Unlocks.yearProfit(company) ?? 0) > 0
-        case .provenConcept:
-            guard let company else { return false }
-            return Franchising.provenConcept(s, company).ok
         case .boardSeat:
             guard let company else { return false }
             return Unlocks.boardPossible(s, company)
@@ -225,15 +216,6 @@ public enum Gates {
             guard let company else { return (0, "") }
             let w: Int = Unlocks.weeksTraded(s, company)
             return (ratio(Double(w), Double(n)), "\(min(w, n)) of \(n) weeks")
-        case .profitableYear:
-            guard let company else { return (0, "") }
-            let m: Int = Unlocks.monthsClosed(company)
-            return (ratio(Double(m), 12), "\(m) of 12 months closed")
-        case .provenConcept:
-            guard let company else { return (0, "") }
-            let p = Franchising.provenProgress(s, company)
-            let weeks: Int = max(0, p.weeks)
-            return (ratio(Double(min(weeks, 52)) / 52 + Double(p.quarters) / 4, 2), "\(weeks) of 52 weeks, \(p.quarters) of 4 profitable quarters")
         case .boardSeat, .retainedProfit: return (0, "")
         case .anyOf(let rs):
             var best: (fraction: Double, detail: String) = (0, "")
@@ -270,7 +252,7 @@ public enum Gates {
         case .goal(let n): return n - goalsDone(s) <= 1
         case .firstSalesWeek, .firstProfitMonth, .firstLossEvent, .profitableQuarters: return s.week >= eventNearWeek
         case .anyOf(let rs): return rs.contains { (x: UnlockRule) -> Bool in near(x, s) }
-        case .rich, .always, .weeksTraded, .profitableYear, .provenConcept, .boardSeat, .retainedProfit: return false
+        case .rich, .always, .weeksTraded, .boardSeat, .retainedProfit: return false
         }
     }
 

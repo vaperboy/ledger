@@ -19,11 +19,10 @@ final class UnlocksTests: XCTestCase {
         let id = ChainsTests.start(&e, "cafe")
         Self.opened(&e, id, weeksAgo: 0)
         let items = e.unlockState(companyID: id)
-        XCTAssertEqual(items.map { $0.id }, ["board", "chain", "franchise", "abroad", "research", "dividends", "marketplace", "desk", "focus", "rivals"])
-        let chain = try XCTUnwrap(items.first { $0.id == "chain" })
-        XCTAssertFalse(chain.unlocked)
-        XCTAssertTrue(chain.reason.hasPrefix("Unlocks when"), chain.reason)
-        XCTAssertFalse(try XCTUnwrap(items.first { $0.id == "research" }).unlocked)
+        XCTAssertEqual(items.map { $0.id }, ["board", "research", "dividends", "marketplace", "desk", "focus", "rivals"])
+        let research = try XCTUnwrap(items.first { $0.id == "research" })
+        XCTAssertFalse(research.unlocked)
+        XCTAssertTrue(research.reason.hasPrefix("Unlocks when"), research.reason)
         XCTAssertTrue(try XCTUnwrap(items.first { $0.id == "marketplace" }).unlocked)
         XCTAssertTrue(try XCTUnwrap(items.first { $0.id == "board" }).hiddenUntilUnlocked)
         XCTAssertFalse(items.filter { !["board", "desk", "focus", "rivals"].contains($0.id) }.contains { $0.hiddenUntilUnlocked })
@@ -34,9 +33,7 @@ final class UnlocksTests: XCTestCase {
         let id = ChainsTests.start(&e, "cafe")
         ChainsTests.season(&e, id)
         let items = e.unlockState(companyID: id)
-        for k in ["chain", "franchise", "abroad", "research"] {
-            XCTAssertTrue(try XCTUnwrap(items.first { $0.id == k }).unlocked, k)
-        }
+        XCTAssertTrue(try XCTUnwrap(items.first { $0.id == "research" }).unlocked)
     }
 
     func testNewUnlockIsAnnouncedExactlyOnce() throws {
@@ -49,7 +46,6 @@ final class UnlocksTests: XCTestCase {
         ChainsTests.play(&e, days: 7)
         let waiting = e.pendingUnlocks().filter { $0.companyID == id }
         XCTAssertTrue(waiting.contains { $0.id == "research" }, "\(waiting.map { $0.id })")
-        XCTAssertTrue(waiting.contains { $0.id == "chain" })
         XCTAssertFalse(waiting.contains { $0.id == "marketplace" })
         let first = try XCTUnwrap(waiting.first)
         XCTAssertNotNil(first.since)
@@ -71,11 +67,9 @@ final class UnlocksTests: XCTestCase {
         let b = ChainsTests.start(&e, "bakery")
         Self.opened(&e, b, weeksAgo: 0)
         let items = e.unlockState(companyID: b)
-        for k in ["chain", "research"] {
-            XCTAssertTrue(try XCTUnwrap(items.first { $0.id == k }).unlocked, "\(k) should follow the player")
-        }
+        XCTAssertTrue(try XCTUnwrap(items.first { $0.id == "research" }).unlocked, "research should follow the player")
         ChainsTests.play(&e, days: 14)
-        XCTAssertFalse(e.pendingUnlocks().contains { $0.companyID == b && ["chain", "franchise", "abroad", "research"].contains($0.id) }, "announced again for the new company")
+        XCTAssertFalse(e.pendingUnlocks().contains { $0.companyID == b && $0.id == "research" }, "announced again for the new company")
     }
 
     func testOldSaveIsSeededSilently() throws {
@@ -89,7 +83,7 @@ final class UnlocksTests: XCTestCase {
         ChainsTests.play(&e, days: 7)
         XCTAssertTrue(e.pendingUnlocks().isEmpty, "\(e.pendingUnlocks().map { $0.id })")
         XCTAssertNotNil(e.state.rest["unlkG"])
-        XCTAssertNotNil(try XCTUnwrap(e.unlockState(companyID: id).first { $0.id == "chain" }).since)
+        XCTAssertNotNil(try XCTUnwrap(e.unlockState(companyID: id).first { $0.id == "research" }).since)
     }
 
     func testBoardOpensForALimitedCompanyWithAManager() throws {

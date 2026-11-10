@@ -25,8 +25,13 @@ struct PhoneHome: View {
                     ForEach(PhoneApp.launcher) { app in
                         if gateState(app) != .hidden {
                             AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText, quietDot: app == .desk && store.deskWaitingNow) {
-                                Haptics.tap()
-                                path.append(.app(app))
+                                if let reason = gateState(app).lockText {
+                                    Haptics.warning()
+                                    store.tellLocked(app, reason: reason)
+                                } else {
+                                    Haptics.tap()
+                                    path.append(.app(app))
+                                }
                             }
                             .coachAnchor(.phoneBank, enabled: app == .bank)
                             .coachAnchor(.phoneInbox, enabled: app == .inbox)
