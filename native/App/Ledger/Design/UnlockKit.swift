@@ -45,7 +45,7 @@ extension GameStore {
     private func openNoticeTarget(_ target: String) {
         if let app = noticeApp(target) { openApp(app); return }
         switch target {
-        case "government", "politics": openApp(.country)
+        case "government", "politics": openApp(.world)
         default:
             guard let id = engine?.state.companies.first(where: { (c: Company) -> Bool in c.status.isLive && c.type != "hold" })?.id else { return }
             openGroupEntity(companyID: id, section: "expansion")
