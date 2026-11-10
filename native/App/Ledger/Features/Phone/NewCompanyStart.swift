@@ -68,6 +68,7 @@ struct TradeDetailView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
+            .keyboardDismissable()
             .appScreen(title: t.name, subtitle: way == .brand ? "Under a franchise brand" : t.category, tab: .company)
             .confirmAction($pending)
             .onAppear { if !sizeSet { size = e.affordableStartSize(tradeID: t.id, cityID: city) ?? CompanySetup.recommendedSize(t, city: country.cities.first { $0.id == city } ?? country.cities[0]); choices = e.suggestedChoices(tradeID: t.id, cityID: city, size: size); sizeSet = true } }
@@ -113,7 +114,7 @@ struct TradeDetailView: View {
                 Stepper(value: $size, in: t.minSize...t.maxSize, step: 0.5) { Text("Size \(size, specifier: "%.1f")").textStyle(.body) }
             }
             CardLine()
-            LedgerField(placeholder: "Company name (optional)", text: $name)
+            LedgerField(placeholder: "Company name (optional)", text: $name, onSubmit: { KeyboardDismiss.hide() })
         }
     }
 

@@ -39,11 +39,12 @@ extension GameStore {
     }
 
     private func hasNoticeTarget(_ target: String) -> Bool {
-        noticeApp(target) != nil || ["government", "politics", "chain", "franchise", "abroad"].contains(target)
+        noticeApp(target) != nil || target == Gate.ventures.rawValue || ["government", "politics", "chain", "franchise", "abroad"].contains(target)
     }
 
     private func openNoticeTarget(_ target: String) {
         if let app = noticeApp(target) { openApp(app); return }
+        if target == Gate.ventures.rawValue { openVentures(); return }
         switch target {
         case "government", "politics": openApp(.world)
         default:

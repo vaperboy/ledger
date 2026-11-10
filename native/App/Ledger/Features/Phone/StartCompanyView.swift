@@ -274,6 +274,8 @@ struct StartBrowseView: View {
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDismissable()
             .appScreen(title: "Every business", subtitle: "\(shown.count) shown", tab: .company)
             .task { estimator.warm(e, cityID: city) }
         }

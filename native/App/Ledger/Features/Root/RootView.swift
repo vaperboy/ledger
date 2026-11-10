@@ -65,7 +65,7 @@ struct PhoneShell: View {
         let waiting: Int = store.waitingCount
         return AppTab.allCases.map { (tab: AppTab) -> PillTabItem in
             PillTabItem(id: tab.rawValue, title: store.title(for: tab), glyph: store.glyph(for: tab), accent: tab.accent,
-                        badge: tab == .phone ? waiting : 0, changeable: tab == .custom)
+                        badge: tab == .phone ? waiting : 0, changeable: tab == .custom, locked: store.tabLockReason(tab) != nil)
         }
     }
 
@@ -141,7 +141,7 @@ struct SidebarShell: View {
                 }
                 Section {
                     ForEach(AppTab.allCases) { (tab: AppTab) in
-                        SidebarLabel(title: store.title(for: tab), symbol: tab.symbol)
+                        SidebarLabel(title: store.title(for: tab), symbol: store.tabLockReason(tab) != nil ? "lock" : tab.symbol)
                             .badge(tab == .phone ? store.waitingCount : 0)
                             .tag(tab)
                             .contextMenu {
@@ -160,8 +160,17 @@ struct SidebarShell: View {
 }
 
 struct TabContent: View {
+    @EnvironmentObject var store: GameStore
     var tab: AppTab
     var body: some View {
+        if store.tabLockReason(tab) != nil {
+            Color.clear.ledgerBackground()
+        } else {
+            unlocked
+        }
+    }
+
+    @ViewBuilder private var unlocked: some View {
         switch tab {
         case .company: CompaniesView()
         case .custom: CustomTabView()

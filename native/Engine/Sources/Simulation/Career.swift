@@ -87,7 +87,7 @@ public enum Career {
         Def(id: "k1", title: "Three profitable weeks in a row", body: "Your net worth rises three weeks running.", horizon: .short, reward: "Title: Steady Hand",
             progress: { ratio(Double($0.s.rest["miles"]?["s"].int ?? 0), 3) }, grant: { bump(&$0, aware: 3) }),
         Def(id: "k2", title: "A cash cushion of {amt}", body: "Hold {amt} in cash across your companies at once.", horizon: .short, reward: "Credit score up",
-            progress: { f in ratio(f.live.reduce(0) { $0 + $1.cash }, f.money(200_000)) }, grant: { bump(&$0, credit: 2) }, amount: 200_000),
+            progress: { f in ratio(f.live.map { $0.cash }.max() ?? 0, f.money(200_000)) }, grant: { bump(&$0, credit: 2) }, amount: 200_000),
         Def(id: "k3", title: "Regulars", body: "Get one company's reputation to 70.", horizon: .short, reward: "Logo badge: Star",
             progress: { f in ratio(f.live.map { $0.reputation }.max() ?? 0, 70) }, cosmetic: "logo.star"),
         Def(id: "k4", title: "A team of five", body: "Have five people on the payroll.", horizon: .short, reward: "Title: Boss",
@@ -134,7 +134,7 @@ public enum Career {
         Def(id: "k25", title: "A team of ten", body: "Have ten people on the payroll.", horizon: .medium, reward: "Title: Employer",
             progress: { f in ratio(Double(PlayerGoals.staffCount(f.s)), 10) }, grant: { bump(&$0, rep: 2) }),
         Def(id: "k26", title: "A war chest of {amt}", body: "Hold {amt} in cash across your companies at once.", horizon: .medium, reward: "Credit score up",
-            progress: { f in ratio(f.live.reduce(0) { $0 + $1.cash }, f.money(600_000)) }, grant: { bump(&$0, credit: 3) }, amount: 600_000),
+            progress: { f in ratio(f.live.map { $0.cash }.max() ?? 0, f.money(600_000)) }, grant: { bump(&$0, credit: 3) }, amount: 600_000),
         Def(id: "k20",title: "Thirty trophies", body: "A wall full of proof.", horizon: .long, reward: "Logo badge: Gold crest",
             progress: { f in ratio(Double(f.trophies.count), 30) }, cosmetic: "logo.crest"),
     ]

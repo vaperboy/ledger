@@ -71,6 +71,7 @@ struct NewCompanySetupView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
+            .keyboardDismissable()
             .safeAreaInset(edge: .bottom, spacing: 0) { startBar(plan) }
             .appScreen(title: "Start: \(t.name)", subtitle: "Step 2 of 3 · your company", tab: .company)
             .navigationDestination(isPresented: $goReview) { NewCompanyReviewView(draft: d) }

@@ -86,9 +86,8 @@ public extension GameEngine {
             o.monthRevenue += b.month["rev"] ?? 0; o.monthProfit += Books.profit(b.month)
             o.yearRevenue += b.year["rev"] ?? 0; o.yearProfit += Books.profit(b.year)
             o.lastYearProfit += Books.profit(b.lastYear)
-            o.cashAvailable += max(0, co.cash)
         }
-        if companyID == nil { o.cashAvailable += max(0, s.cash) }
+        o.cashAvailable = max(0, s.cash)
         (o.costsThisMonth, o.costTotalThisMonth) = breakdown(cos.map { $0.books.month })
         (o.costsThisYear, o.costTotalThisYear) = breakdown(cos.map { $0.books.year })
 

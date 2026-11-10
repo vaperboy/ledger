@@ -554,6 +554,21 @@ final class GameStore: ObservableObject {
         notices.append(t)
     }
 
+    func tabLockReason(_ t: AppTab) -> String? {
+        guard t == .projects, let e = engine, !Gates.isOpen(.ventures, e.state, data: e.data) else { return nil }
+        return Gate.ventures.lockText ?? "Not unlocked yet"
+    }
+
+    func tellTabLocked(_ t: AppTab, reason: String) {
+        var text: String = reason
+        if let item = engine?.unlockRoadmap().first(where: { (i: UnlockRoadmapItem) -> Bool in i.id == "gate." + Gate.ventures.rawValue }), !item.detail.isEmpty {
+            text += "\n" + item.detail
+        }
+        var n = Toast(title: t.title + " is locked", text: text, tone: "n")
+        n.style = "locked"
+        notices.append(n)
+    }
+
     func tellLuxury(name: String, price: String) {
         var t = Toast(title: name, text: "", tone: "good")
         t.style = "luxury"
@@ -673,6 +688,7 @@ final class GameStore: ObservableObject {
     private func clearStack(_ tab: AppTab) { stacks[tab] = [] }
 
     func selectTab(_ t: AppTab, resetRoot: Bool = true) {
+        if let reason = tabLockReason(t) { Haptics.warning(); tellTabLocked(t, reason: reason); return }
         if t == tab {
             popToRoot(t)
         } else {
@@ -696,6 +712,7 @@ final class GameStore: ObservableObject {
     }
 
     func openVentures() {
+        if let reason = tabLockReason(.projects) { Haptics.warning(); tellTabLocked(.projects, reason: reason); return }
         if tab != .projects { selectTab(.projects, resetRoot: false) }
         clearStack(.projects)
         appRequest = .ventures

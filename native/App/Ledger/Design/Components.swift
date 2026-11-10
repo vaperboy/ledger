@@ -625,3 +625,24 @@ struct SegmentedChoice<T: Hashable>: View {
         SegmentTrack(items: items, title: title, selection: $selection, identifier: { (_: T) -> String in "" }, badges: badges)
     }
 }
+
+struct KeyboardDismiss: ViewModifier {
+    static func hide() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .background(Color.clear.contentShape(Rectangle()).onTapGesture { Self.hide() })
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { Self.hide() }.accessibilityIdentifier("keyboard-done")
+                }
+            }
+    }
+}
+
+extension View {
+    func keyboardDismissable() -> some View { modifier(KeyboardDismiss()) }
+}

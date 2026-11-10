@@ -79,6 +79,7 @@ struct NewCompanyDetailedSetupView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
+            .keyboardDismissable()
             .safeAreaInset(edge: .bottom, spacing: 0) { registerBar(plan) }
             .appScreen(title: "Set up: \(shown)", subtitle: "Step 2 of 3 · customise", tab: .company)
             .navigationDestination(isPresented: $goReview) { NewCompanyReviewView(draft: draft) }
@@ -114,6 +115,7 @@ struct NewCompanyDetailedSetupView: View {
         SharpTable {
             fieldRow("Name", hint: "Leave empty and one is chosen for you") {
                 TextField(t.name, text: $name).textFieldStyle(.plain).multilineTextAlignment(.trailing)
+                    .submitLabel(.done).onSubmit { KeyboardDismiss.hide() }
                     .textStyle(.body)
             }
             fieldRow("City", hint: "") {

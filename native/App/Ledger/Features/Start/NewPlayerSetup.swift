@@ -6,7 +6,8 @@ import Businesses
 import Simulation
 
 struct NewPlayerSetup: View {
-    enum Step { case country, trade, name }
+    enum Step { case country, trade, detail, name, options }
+    enum Field { case company, player }
 
     var onClose: () -> Void
     var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ channel: SalesChannel, _ difficulty: Difficulty) -> Void
@@ -25,7 +26,11 @@ struct NewPlayerSetup: View {
     @State private var picked: StarterTrade?
     @State private var startCash: Double?
     @State private var countryQuery = ""
-    @FocusState private var nameFocused: Bool
+    @State private var countryPage = 0
+    @State private var tradePage = 0
+    @FocusState private var field: Field?
+    private static let countryRows = 6
+    private static let tradeRows = 5
     private static let sizeOrder: [Country] = GameEngine.countriesBySize()
     private var countries: [Country] { Self.sizeOrder }
 
@@ -39,19 +44,29 @@ struct NewPlayerSetup: View {
             switch step {
             case .country: countryStep
             case .trade: tradeStep
+            case .detail: detailStep
             case .name: nameStep
+            case .options: optionsStep
             }
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 12)
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
-        .centerSheet(item: $picked, category: .medium, tone: .investment) { (t: StarterTrade) in tradeSheet(t) }
+        .keyboardDismissable()
     }
 
     private var header: some View {
-        let title: String = step == .country ? "Where do you live?" : step == .trade ? "What do you open?" : "Name your company"
-        let number: Int = step == .country ? 1 : step == .trade ? 2 : 3
-        return AppHeader(title: title, subtitle: "Step \(number) of 3", onBack: { goBack() })
+        let title: String
+        let number: Int
+        switch step {
+        case .country: title = "Where do you live?"; number = 1
+        case .trade: title = "What do you open?"; number = 2
+        case .detail: title = picked?.name ?? "Your trade"; number = 3
+        case .name: title = "Name your company"; number = 4
+        case .options: title = "How you play"; number = 5
+        }
+        return AppHeader(title: title, subtitle: "Step \(number) of 5", onBack: { goBack() })
             .padding(.top, 24)
     }
 
@@ -59,37 +74,54 @@ struct NewPlayerSetup: View {
         switch step {
         case .country: onClose()
         case .trade: showAll = false; step = .country
-        case .name: step = .trade
+        case .detail: picked = nil; step = .trade
+        case .name: field = nil; step = .detail
+        case .options: step = .name
         }
     }
 
     private var countryStep: some View {
         let q: String = countryQuery.trimmingCharacters(in: .whitespaces).lowercased()
         let shown: [Country] = q.isEmpty ? countries : countries.filter { (c: Country) -> Bool in c.name.lowercased().contains(q) }
+        let pages: Int = max(1, (shown.count + Self.countryRows - 1) / Self.countryRows)
+        let page: Int = min(countryPage, pages - 1)
+        let slice: [Country] = Array(shown.dropFirst(page * Self.countryRows).prefix(Self.countryRows))
         return VStack(spacing: Theme.Space.s) {
             LedgerField(placeholder: "Search countries", text: $countryQuery, identifier: "country-search")
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    if shown.isEmpty { EmptyState(glyph: Glyph.world, title: "No country matches \u{201C}\(countryQuery)\u{201D}") }
-                    ForEach(Array(shown.enumerated()), id: \.element.id) { (i: Int, c: Country) in
-                        if i > 0 { Hairline().padding(.leading, 44) }
-                        Button { chooseCountry(c) } label: {
-                            HStack(spacing: Theme.Space.m) {
-                                Text(c.flag).font(.title2).frame(width: 32)
-                                Text(c.name).textStyle(.headline)
-                                Spacer(minLength: Theme.Space.s)
-                                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
-                            }
-                            .frame(minHeight: 56).contentShape(Rectangle())
+                .onChange(of: countryQuery) { _, _ in countryPage = 0 }
+            VStack(spacing: 0) {
+                if shown.isEmpty { EmptyState(glyph: Glyph.world, title: "No country matches \u{201C}\(countryQuery)\u{201D}") }
+                ForEach(Array(slice.enumerated()), id: \.element.id) { (i: Int, c: Country) in
+                    if i > 0 { Hairline().padding(.leading, 44) }
+                    Button { chooseCountry(c) } label: {
+                        HStack(spacing: Theme.Space.m) {
+                            Text(c.flag).font(.title2).frame(width: 32)
+                            Text(c.name).textStyle(.headline)
+                            Spacer(minLength: Theme.Space.s)
+                            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
                         }
-                        .buttonStyle(PressableStyle())
-                        .accessibilityIdentifier("country-" + c.code)
+                        .frame(height: 52).contentShape(Rectangle())
                     }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("country-" + c.code)
                 }
             }
-            .scrollIndicators(.hidden)
-            .scrollDismissesKeyboard(.interactively)
+            pager(page: $countryPage, pages: pages)
         }
+    }
+
+    private func pager(page: Binding<Int>, pages: Int) -> some View {
+        let cur: Int = min(page.wrappedValue, pages - 1)
+        return HStack {
+            Button("Previous") { Haptics.tap(); page.wrappedValue = max(0, cur - 1) }
+                .buttonStyle(TertiaryButtonStyle(size: .compact)).disabled(cur == 0)
+            Spacer()
+            Text("\(cur + 1) of \(pages)").textStyle(.caption, tint: Theme.inkFaint)
+            Spacer()
+            Button("Next") { Haptics.tap(); page.wrappedValue = min(pages - 1, cur + 1) }
+                .buttonStyle(TertiaryButtonStyle(size: .compact)).disabled(cur >= pages - 1)
+        }
+        .opacity(pages > 1 ? 1 : 0)
     }
 
     private func chooseCountry(_ c: Country) {
@@ -97,21 +129,37 @@ struct NewPlayerSetup: View {
         countryCode = c.code
         allTrades = []
         showAll = false
+        tradePage = 0
         step = .trade
     }
 
     private var tradeStep: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                if loading && allTrades.isEmpty { LoadingState(text: "Pricing the trades", rows: 6) }
-                if !allTrades.isEmpty { tradeTable }
-                if allTrades.count > starters.count {
-                    Button(showAll ? "Show fewer" : "All \(allTrades.count) trades") { Haptics.tap(); showAll.toggle() }
-                        .buttonStyle(TertiaryButtonStyle(fullWidth: true))
+        let rest: [StarterTrade] = allTrades.filter { !GameEngine.starterTradeIDs.contains($0.id) }
+        let shown: [StarterTrade] = showAll ? starters + rest : starters
+        let pages: Int = max(1, (shown.count + Self.tradeRows - 1) / Self.tradeRows)
+        let page: Int = min(tradePage, pages - 1)
+        let slice: [StarterTrade] = Array(shown.dropFirst(page * Self.tradeRows).prefix(Self.tradeRows))
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            if loading && allTrades.isEmpty { LoadingState(text: "Pricing the trades", rows: 5) }
+            if !allTrades.isEmpty {
+                HStack {
+                    Text("Trade").textStyle(.label, tint: Theme.inkFaint)
+                    Spacer()
+                    Text("Start-up").textStyle(.label, tint: Theme.inkFaint)
                 }
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(slice.enumerated()), id: \.element.id) { (i: Int, t: StarterTrade) in
+                        if i > 0 { Hairline() }
+                        tradeRow(t)
+                    }
+                }
+                pager(page: $tradePage, pages: pages)
+            }
+            if allTrades.count > starters.count {
+                Button(showAll ? "Show fewer" : "All \(allTrades.count) trades") { Haptics.tap(); showAll.toggle(); tradePage = 0 }
+                    .buttonStyle(TertiaryButtonStyle(fullWidth: true))
             }
         }
-        .scrollIndicators(.hidden)
         .task(id: countryCode) { await loadTrades() }
     }
 
@@ -122,25 +170,6 @@ struct NewPlayerSetup: View {
         let list: [StarterTrade] = await Task.detached { GameEngine.startableTrades(countryCode: code, all: true) }.value
         if code == countryCode { allTrades = list }
         loading = false
-    }
-
-    private var tradeTable: some View {
-        let rest: [StarterTrade] = allTrades.filter { !GameEngine.starterTradeIDs.contains($0.id) }
-        let shown: [StarterTrade] = showAll ? starters + rest : starters
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Trade").textStyle(.label, tint: Theme.inkFaint)
-                Spacer()
-                Text("Start-up").textStyle(.label, tint: Theme.inkFaint)
-            }
-            .padding(.bottom, Theme.Space.xs)
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(shown.enumerated()), id: \.element.id) { (i: Int, t: StarterTrade) in
-                    if i > 0 { Hairline() }
-                    tradeRow(t)
-                }
-            }
-        }
     }
 
     private func tradeRow(_ t: StarterTrade) -> some View {
@@ -154,7 +183,7 @@ struct NewPlayerSetup: View {
                 Text(costText(t)).textStyle(.headline, tint: t.startUpCost == nil ? Theme.inkFaint : Theme.ink, numeric: true).lineLimit(1)
                 LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
             }
-            .padding(.vertical, Theme.Space.m).frame(minHeight: 60).contentShape(Rectangle())
+            .padding(.vertical, Theme.Space.xs).frame(height: 56).contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("trade-" + t.id)
@@ -169,29 +198,31 @@ struct NewPlayerSetup: View {
         Haptics.choose()
         startCash = nil
         picked = t
+        step = .detail
     }
 
-    private func tradeSheet(_ t: StarterTrade) -> some View {
+    private var detailStep: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(t.line.tidyMoney).popupText(.body)
-            if let cost = t.startUpCost, let cur = currency {
-                PopupRow(label: "Start-up cost", value: cur.tidyShort(cost))
+            if let t = picked {
+                Text(t.line.tidyMoney).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                if let cost = t.startUpCost, let cur = currency {
+                    PopupRow(label: "Start-up cost", value: cur.tidyShort(cost))
+                }
+                if let cash = startCash, let cur = currency {
+                    Text("You start with \(cur.tidyShort(cash)).").textStyle(.caption)
+                }
+                Button("Open \(t.name)") { Haptics.tap(); open(t) }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("trade-open")
+                    .task(id: t.id) {
+                        let code: String = countryCode
+                        let id: String = t.id
+                        let cash: Double? = await Task.detached { GameEngine.startingCash(countryCode: code, tradeID: id) }.value
+                        startCash = cash
+                    }
             }
-            if let cash = startCash, let cur = currency {
-                Text("You start with \(cur.tidyShort(cash)).").popupText(.caption)
-            }
-            Button("Open \(t.name)") { Haptics.tap(); open(t) }
-                .buttonStyle(PopupPrimaryCapsuleStyle(tone: .investment))
-                .accessibilityIdentifier("trade-open")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .centerSheetTitle(t.name)
-        .task(id: t.id) {
-            let code: String = countryCode
-            let id: String = t.id
-            let cash: Double? = await Task.detached { GameEngine.startingCash(countryCode: code, tradeID: id) }.value
-            startCash = cash
-        }
     }
 
     private func open(_ t: StarterTrade) {
@@ -199,41 +230,42 @@ struct NewPlayerSetup: View {
         suggested = GameEngine.suggestedCompanyName(countryCode: countryCode, tradeID: t.id)
         companyName = suggested
         channel = .consumers
-        picked = nil
         step = .name
     }
 
     private var nameStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) { nameFields }
-            }
-            .scrollDismissesKeyboard(.interactively)
+            TextField("Company name", text: $companyName)
+                .textInputAutocapitalization(.words)
+                .focused($field, equals: .company)
+                .submitLabel(.next)
+                .onSubmit { field = .player }
+                .textStyle(.figure)
+                .padding(.vertical, Theme.Space.s)
+                .overlay(alignment: .bottom) { Hairline() }
+            TextField("Your name (optional)", text: $playerName)
+                .textInputAutocapitalization(.words)
+                .focused($field, equals: .player)
+                .submitLabel(.done)
+                .onSubmit { field = nil }
+                .textStyle(.figure)
+                .padding(.vertical, Theme.Space.s)
+                .overlay(alignment: .bottom) { Hairline() }
+            Button("Next") { Haptics.tap(); field = nil; step = .options }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .accessibilityIdentifier("setup-next")
+        }
+        .onAppear { field = .company }
+    }
+
+    private var optionsStep: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SalesChannelPicker(tradeID: tradeID, channel: $channel)
+            difficultyRow
             Button("Start") { Haptics.tap(); start() }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                 .accessibilityIdentifier("setup-start")
         }
-        .onAppear { nameFocused = true }
-    }
-
-    @ViewBuilder private var nameFields: some View {
-        TextField("Company name", text: $companyName)
-            .textInputAutocapitalization(.words)
-            .focused($nameFocused)
-            .submitLabel(.go)
-            .onSubmit { start() }
-            .textStyle(.figure)
-            .padding(.vertical, Theme.Space.s)
-            .overlay(alignment: .bottom) { Hairline() }
-        TextField("Your name (optional)", text: $playerName)
-            .textInputAutocapitalization(.words)
-            .submitLabel(.go)
-            .onSubmit { start() }
-            .textStyle(.figure)
-            .padding(.vertical, Theme.Space.s)
-            .overlay(alignment: .bottom) { Hairline() }
-        SalesChannelPicker(tradeID: tradeID, channel: $channel)
-        difficultyRow
     }
 
     private var difficultyRow: some View {

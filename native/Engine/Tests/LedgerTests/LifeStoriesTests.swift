@@ -92,4 +92,45 @@ final class LifeStoriesTests: XCTestCase {
         let res = e2.startCompany(tradeID: r.tradeID, cityID: city.id)
         _ = res
     }
+
+    func testEveryStoryStartsAndOpensTheFirstCompany() throws {
+        for cc in ["NO", "UK", "US", "JP", "MX", "PL", "LT"] {
+            for trade in ["cafe", "barber", "bakery"] {
+                let e: GameEngine
+                do {
+                    e = try GameEngine.newGame(countryCode: cc, playerName: "T", seed: 7, story: .fresh, tradeID: trade, companyName: "Test Co")
+                } catch {
+                    XCTFail("\(cc) \(trade): could not start a fresh game: \(error)")
+                    continue
+                }
+                let co = try XCTUnwrap(e.state.companies.first, "\(cc) \(trade)")
+                XCTAssertEqual(e.state.companies.count, 1, "\(cc) \(trade)")
+                XCTAssertEqual(co.status, .open, "\(cc) \(trade)")
+                XCTAssertEqual(co.type, trade, "\(cc) \(trade)")
+                XCTAssertEqual(co.cash, e.state.cash, accuracy: 0.01, "\(cc) \(trade): company cash mirrors the one account")
+                XCTAssertGreaterThan(e.state.cash, 0, "\(cc) \(trade)")
+            }
+        }
+    }
+
+    func testEveryStoryStartsForSeveralCountries() throws {
+        for cc in ["NO", "UK", "US", "JP", "MX", "PL", "LT"] {
+            for story in LifeStory.allCases {
+                let e: GameEngine
+                do {
+                    e = try GameEngine.newGame(countryCode: cc, playerName: "T", seed: 11, story: story, tradeID: story == .fresh ? "cafe" : nil, companyName: story == .fresh ? "Test Co" : nil)
+                } catch {
+                    XCTFail("\(cc) \(story): could not start a game: \(error)")
+                    continue
+                }
+                XCTAssertEqual(e.lifeStory, story, "\(cc)")
+                if story == .loan {
+                    XCTAssertTrue(e.state.companies.isEmpty, "\(cc): the loan start has no company yet")
+                    XCTAssertEqual(e.state.loans.count, 1, cc)
+                } else {
+                    XCTAssertEqual(e.state.companies.first?.status, .open, "\(cc) \(story): the first company is open")
+                }
+            }
+        }
+    }
 }

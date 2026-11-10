@@ -619,6 +619,7 @@ struct PillTabItem: Identifiable, Equatable {
     var accent: Color = Theme.accent
     var badge: Int = 0
     var changeable: Bool = false
+    var locked: Bool = false
 }
 
 struct PillTabBar: View {
@@ -647,7 +648,7 @@ struct PillTabBar: View {
                     if on { onReselect(item.id); flash(item.id) } else { selection = item.id }
                 } label: {
                     VStack(spacing: 3) {
-                        LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: on ? item.accent : Theme.inkSoft)
+                        LedgerGlyph(glyph: item.locked ? Glyph.lock : item.glyph, size: Theme.Icon.medium, tint: on ? item.accent : Theme.inkSoft)
                         Text(item.title).font(.system(size: 11, weight: on ? .medium : .regular)).foregroundStyle(on ? item.accent : Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .id(item.glyph + item.title)
@@ -674,7 +675,7 @@ struct PillTabBar: View {
                 .coachAnchor(.customTab, enabled: item.id == AppTab.custom.rawValue)
                 .accessibilityLabel(item.title)
                 .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
-                .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
+                .accessibilityValue(item.locked ? "Locked" : (item.badge > 0 ? "\(item.badge) waiting" : ""))
                 .accessibilityIdentifier("tab-\(item.title)")
                 .accessibilityAddTraits(traits)
             }

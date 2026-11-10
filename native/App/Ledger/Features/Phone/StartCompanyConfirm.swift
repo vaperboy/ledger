@@ -44,6 +44,8 @@ struct StartConfirmView: View {
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDismissable()
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 StartBar {
                     PrimaryAction(title: "Open the company", blockedReason: blocked(facts), identifier: "start-open") { open(e) }
@@ -73,6 +75,7 @@ struct StartConfirmView: View {
                 Text("Name").textStyle(.caption)
                 Spacer(minLength: Theme.Space.m)
                 TextField(f.name, text: $name).textFieldStyle(.plain).multilineTextAlignment(.trailing)
+                    .submitLabel(.done).onSubmit { KeyboardDismiss.hide() }
                     .accessibilityIdentifier("start-company-name")
             }
             CardLine()
