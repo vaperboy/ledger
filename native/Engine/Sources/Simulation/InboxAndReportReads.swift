@@ -22,6 +22,74 @@ public struct CompanyMovement: Identifiable, Equatable, Sendable {
     public var kind: Kind
 }
 
+public enum InboxTarget: Equatable, Sendable {
+    case company(Int, String)
+    case app(String)
+}
+
+public struct InboxSection: Equatable, Sendable {
+    public var id: String
+    public var title: String
+    public var messages: [Message]
+}
+
+public enum InboxLayout {
+    public static let appKeys: Set<String> = ["bank", "inbox", "news", "weather", "luxury", "ventures", "reports", "activity", "market", "reviews", "airStay",
+                                              "techPro", "atlas", "marketplace", "desk", "rivals", "season", "friends", "profile"]
+    static let staffActions: Set<String> = ["staffx", "mgrraise", "mgrpoach", "g27poach", "mfind11"]
+    static let premisesActions: Set<String> = ["prop", "mprop"]
+    static let clubActions: Set<String> = ["club24", "fb24"]
+
+    public static func isHandledForYou(_ m: Message) -> Bool {
+        !m.isOwnerAddressed || !m.handledBy.isEmpty || !m.value("mgrName").isNull
+    }
+
+    public static func sections(_ list: [Message], week: Int, infoFirst: Bool = false) -> [InboxSection] {
+        var needs: [Message] = []
+        var handled: [Message] = []
+        var recent: [Message] = []
+        var earlier: [Message] = []
+        for m in list {
+            if m.status == "open" && m.isOwnerAddressed { needs.append(m) }
+            else if isHandledForYou(m) { handled.append(m) }
+            else if m.week >= week { recent.append(m) }
+            else { earlier.append(m) }
+        }
+        let newest: (Message, Message) -> Bool = { (a: Message, b: Message) -> Bool in a.week != b.week ? a.week > b.week : a.id > b.id }
+        needs.sort { (a: Message, b: Message) -> Bool in
+            let ea: Int = a.expiresWeek ?? Int.max
+            let eb: Int = b.expiresWeek ?? Int.max
+            return ea != eb ? ea < eb : newest(a, b)
+        }
+        handled.sort(by: newest)
+        recent.sort(by: newest)
+        earlier.sort(by: newest)
+        let parts: [InboxSection] = infoFirst
+            ? [InboxSection(id: "week", title: "This week", messages: recent), InboxSection(id: "needs", title: "Needs you", messages: needs),
+               InboxSection(id: "earlier", title: "Earlier", messages: earlier), InboxSection(id: "handled", title: "Handled for you", messages: handled)]
+            : [InboxSection(id: "needs", title: "Needs you", messages: needs), InboxSection(id: "week", title: "This week", messages: recent),
+               InboxSection(id: "earlier", title: "Earlier", messages: earlier), InboxSection(id: "handled", title: "Handled for you", messages: handled)]
+        return parts.filter { (p: InboxSection) -> Bool in !p.messages.isEmpty }
+    }
+
+    public static func target(_ m: Message, in s: GameState) -> InboxTarget? {
+        if m.companyID != 0, s.company(m.companyID) != nil { return .company(m.companyID, companySection(m)) }
+        if m.actionID == PersonalFinance.dueAction { return .app("bank") }
+        let link: String = m.appLink == "accounting" ? "bank" : m.appLink
+        return appKeys.contains(link) ? .app(link) : nil
+    }
+
+    static func companySection(_ m: Message) -> String {
+        let id: String = m.actionID
+        if staffActions.contains(id) { return "staff" }
+        if premisesActions.contains(id) { return "properties" }
+        if id == VolumeContracts.action || id == "acct" { return "sales" }
+        if clubActions.contains(id) { return "club" }
+        if id.hasPrefix("pay29") { return "finances" }
+        return ""
+    }
+}
+
 /// Read-only helpers for the Inbox and Reports screens. Nothing here changes the game: every value is read from the state with
 /// the same rules the engine applies (expiry of messages, the yacht dinner, contracts and capacity).
 public extension GameEngine {

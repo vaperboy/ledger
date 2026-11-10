@@ -283,7 +283,7 @@ public enum PlayerGoals {
     /// The past tense of the first goal finished in the weeks `first...last` (for the story sentence of a report), nil if none.
     public static func ladderPastTense(_ s: GameState, firstWeek: Int, lastWeek: Int) -> String? {
         guard let d = s.rest["ldr"]?["done"] else { return nil }
-        let hit = ladderList.filter { !d[$0.id].isNull && d[$0.id]["w"].int >= firstWeek && d[$0.id]["w"].int <= lastWeek }
+        let hit = ladderList.filter { !d[$0.id].isNull && d[$0.id]["skip"].int == 0 && d[$0.id]["w"].int >= firstWeek && d[$0.id]["w"].int <= lastWeek }
         return hit.first?.past
     }
 
@@ -293,7 +293,10 @@ public enum PlayerGoals {
         guard s.rest["ldr"] != nil else { return [] }
         var finished: [String] = []
         for g in ladderList where s.rest["ldr"]?["done"][g.id].isNull ?? true {
-            guard ladderCondition(g.id, s) else { break }
+            guard ladderCondition(g.id, s) else {
+                if goalStale(g.id, s) { skipGoal(&s, g.id); continue }
+                break
+            }
             var l = s.rest["ldr"] ?? .object([:])
             var d = l["done"]; d[g.id] = .object(["w": .number(Double(s.week)), "u": .number(1)]); l["done"] = d
             s.rest["ldr"] = l
@@ -303,6 +306,23 @@ public enum PlayerGoals {
         }
         advancedSweep(&s)
         return finished
+    }
+
+    static let skippableGoals: Set<String> = ["M3", "M4", "M5", "M6", "M8"]
+    public static let staleWeeks = 12
+
+    static func goalStale(_ id: String, _ s: GameState) -> Bool {
+        guard skippableGoals.contains(id), let at = ladderList.firstIndex(where: { $0.id == id }), at > 0 else { return false }
+        let before: JSONValue = s.rest["ldr"]?["done"][ladderList[at - 1].id] ?? .null
+        return !before.isNull && s.week >= before["w"].int + staleWeeks
+    }
+
+    static func skipGoal(_ s: inout GameState, _ id: String) {
+        var l = s.rest["ldr"] ?? .object([:])
+        var d = l["done"]
+        d[id] = .object(["w": .number(Double(s.week)), "u": .number(0), "skip": .number(1)])
+        l["done"] = d
+        s.rest["ldr"] = l
     }
 
     /// Applies the effect of a claimed goal and returns the line for the report ("" when the goal changes nothing). The effects are real

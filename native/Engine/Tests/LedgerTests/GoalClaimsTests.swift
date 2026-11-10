@@ -59,17 +59,18 @@ final class GoalClaimsTests: XCTestCase {
 
     func testLevelMathAndPersistence() throws {
         XCTAssertEqual(PlayerLevel.level(forXP: 0), 1)
-        XCTAssertEqual(PlayerLevel.level(forXP: 99), 1)
-        XCTAssertEqual(PlayerLevel.level(forXP: 100), 2)
-        XCTAssertEqual(PlayerLevel.level(forXP: 300), 3)
+        XCTAssertEqual(PlayerLevel.level(forXP: 49), 1)
+        XCTAssertEqual(PlayerLevel.level(forXP: 50), 2)
+        XCTAssertEqual(PlayerLevel.level(forXP: 150), 3)
+        XCTAssertEqual(PlayerLevel.level(forXP: 500), 5)
         var e = try game()
         XCTAssertEqual(e.playerLevel.level, 1)
-        e.update { s, _, _ in PlayerLevel.award(&s, 150) }
+        e.update { s, _, _ in PlayerLevel.award(&s, 80) }
         let info = e.playerLevel
         XCTAssertEqual(info.level, 2)
-        XCTAssertEqual(info.xpIntoLevel, 50)
-        XCTAssertEqual(info.xpForNext, 200)
-        XCTAssertEqual(info.progress, 0.25, accuracy: 1e-9)
+        XCTAssertEqual(info.xpIntoLevel, 30)
+        XCTAssertEqual(info.xpForNext, 100)
+        XCTAssertEqual(info.progress, 0.3, accuracy: 1e-9)
         XCTAssertTrue(e.pendingCelebrations.contains { $0.title == "Level 2" })
         let back = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(e.state))
         XCTAssertEqual(PlayerLevel.info(back), info)

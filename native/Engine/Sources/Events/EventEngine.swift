@@ -81,10 +81,14 @@ public enum EventEngine {
             if !(p > 0) { p = 0 }
             if p <= 0 || !s.random.chance(p) { continue }
             if Sourcing.shields(s, companyID: co.id, eventID: id) {   // supplied from inside: outside supplier trouble does not reach it
-                if e.tone == "bad" { Threat.survived(&s, companyID: co.id, text: "supplier trouble at \(co.name) never reached it: its own supply chain absorbed it.") }
+                if e.tone == "bad" {
+                    Threat.survived(&s, companyID: co.id, text: "supplier trouble at \(co.name) never reached it: its own supply chain absorbed it.")
+                    s.addMessage(from: co.name, title: "Supplier trouble did not reach \(co.name)", body: "Its own supply chain absorbed it. Nothing needs doing.", companyID: co.id, tone: "good")
+                }
                 continue
             }
             if !e.options.isEmpty && s.companies[i].value("flags")["evCool"].double > 0 { continue }
+            if !e.options.isEmpty && !decisionRoom(s) { continue }
             if e.tone == "bad" && !takeBadSlot(&s, companyID: co.id, eventID: id) { continue }   // weeks 1-12: one bad event a week, the rest wait
             if !e.options.isEmpty { setFlag(&s, i, "evCool", cooldownWeeks(s, companyID: co.id, event: e)) }
             fire(&s, companyIndex: i, e, ctx: c, data: data, context: fc)
@@ -181,7 +185,14 @@ public enum EventEngine {
         let cur = Currency(country: fc.country(of: co, s), rates: fc.rates(s))
         // A special event with options runs its own code only when an option asks for it (effect key `special`).
         let optionsRunSpecial = e.options.contains { !$0.effects["special"].isNull }
-        if !optionsRunSpecial && SpecialEvents.handle(&s, companyIndex: i, e, ctx: ctx, data: data, context: fc) { return }
+        if !optionsRunSpecial {
+            let topBefore: Int = s.inbox.first?.id ?? -1
+            let notesBefore: Int = lastNote(s).count
+            if SpecialEvents.handle(&s, companyIndex: i, e, ctx: ctx, data: data, context: fc) {
+                ensureNotice(&s, company: co, topBefore: topBefore, notesBefore: notesBefore)
+                return
+            }
+        }
         var title = e.text.replacingOccurrences(of: "{n}", with: co.name)
         // The original always draws the equipment name, even when the text has no {eq}; keep the same number of random draws.
         let machine = pickEquipmentName(&s, companyIndex: i, data: data)
@@ -192,19 +203,24 @@ public enum EventEngine {
             return
         }
         if e.automatic {
-            apply(&s, companyIndex: i, resolve(e.automaticEffects, ctx, currency: cur), ctx: ctx, event: e, data: data, context: fc)
-            s.addMessage(from: co.name, title: title, body: "", companyID: co.id, tone: e.tone)
+            let effects: JSONValue = resolve(e.automaticEffects, ctx, currency: cur)
+            apply(&s, companyIndex: i, effects, ctx: ctx, event: e, data: data, context: fc)
+            s.addMessage(from: co.name, title: title, body: summary(effects, currency: cur, tone: e.tone), companyID: co.id, tone: e.tone)
             s.note(title, tone: e.tone, companyID: co.id)
             return
         }
-        if e.options.isEmpty { s.note(title, tone: e.tone, companyID: co.id); return }
+        if e.options.isEmpty {
+            s.addMessage(from: co.name, title: title, body: plainLine(tone: e.tone), companyID: co.id, tone: e.tone)
+            s.note(title, tone: e.tone, companyID: co.id)
+            return
+        }
         if e.lawyerHelps && co.value("law")["own"].bool { title += " Your law firm handles it, costs drop." }
         let options = e.options.map { JSONValue.option($0.label, $0.detail, effects: resolve($0.effects, ctx, currency: cur).object) }
         let decision = decider(co, options: options, state: s, data: data)
         if decision == .manager {
             let pick = choose(co, options: options, ctx: ctx, quality: ManagerModel.quality(co, bd(data, co), people: s.people), random: &s.random)
             let who = s.people[co.managerID ?? 0]?.name ?? "The manager"
-            s.addMessage(from: co.name, title: title, body: "", companyID: co.id, tone: e.tone, options: options)
+            s.addMessage(from: co.name, title: title, body: "\(who) chose: \(options[pick]["l"].string).", companyID: co.id, tone: e.tone, options: options)
             if let k = s.inbox.indices.first, true { s.inbox[k].set("status", "done"); s.inbox[k].set("pick", pick); s.inbox[k].set("mgrName", who); s.inbox[k].set("ev", e.id) }
             apply(&s, companyIndex: i, options[pick]["fx"], ctx: ctx, event: e, data: data, context: fc)
             if e.tone == "bad" { Threat.survived(&s, companyID: co.id, text: "\"\(title)\" at \(co.name). \(who) handled it: \(options[pick]["l"].string).") }
@@ -212,8 +228,8 @@ public enum EventEngine {
         } else {
             var shown = options
             if let extra = lateGameOption(e, options: options, ctx: ctx, company: co, state: s) { shown.append(extra) }
-            let id = s.addMessage(kind: "decision", from: co.name, title: title, body: "", companyID: co.id, tone: e.tone, status: "open", options: shown,
-                                  expiresWeek: s.week + e.expiresAfterWeeks)
+            let id = s.addMessage(kind: "decision", from: co.name, title: title, body: decisionBody(co, e, currency: cur), companyID: co.id, tone: e.tone,
+                                  status: "open", options: shown, expiresWeek: s.week + e.expiresAfterWeeks)
             if let k = s.inbox.firstIndex(where: { $0.id == id }) {
                 s.inbox[k].set("ev", e.id)
                 s.inbox[k].set("cat", e.category)
@@ -222,6 +238,63 @@ public enum EventEngine {
     }
 
     static func bd(_ data: GameData, _ co: Company) -> Trade { data.catalog[co.type]! }
+
+    static let decisionCap = 12
+
+    static func decisionRoom(_ s: GameState) -> Bool {
+        let waiting: Int = s.inbox.filter { (m: Message) -> Bool in m.status == "open" && m.kind == "decision" }.count
+        let companies: Int = s.companies.filter { (c: Company) -> Bool in c.status == .open && c.type != "hold" }.count
+        return waiting < min(decisionCap, 4 + companies)
+    }
+
+    static func plainLine(tone: String) -> String {
+        switch tone {
+        case "good": return "Good news. Nothing needs doing."
+        case "bad": return "Nothing needs deciding. It is in this week's report."
+        default: return "For your information. Nothing needs doing."
+        }
+    }
+
+    static func summary(_ fx: JSONValue, currency: Currency, tone: String) -> String {
+        let lines: [String] = EffectPreview.lines(fx, currency: currency)
+        return lines.isEmpty ? plainLine(tone: tone) : lines.joined(separator: ". ") + "."
+    }
+
+    static let insuranceNames: [String: String] = ["prop": "property", "liab": "liability", "prof": "professional", "cyber": "cyber", "bi": "business-interruption"]
+
+    static func insuranceLine(_ co: Company, _ e: GameEvent, currency: Currency) -> String {
+        guard let name = insuranceNames[e.category] else { return "" }
+        func risks(_ fx: JSONValue) -> Bool {
+            if fx.isNull { return false }
+            return fx["loss"].double != 0 || (e.category == "bi" && fx["close"].double != 0) || risks(fx["gamble"]["ok"]) || risks(fx["gamble"]["bad"])
+        }
+        guard e.options.contains(where: { (o: GameEvent.Option) -> Bool in risks(o.effects) }) else { return "" }
+        if co.value("ins")[e.category].bool {
+            return "Your \(name) insurance covers most of a loss, after an excess of \(currency.display(currency.scaledPrice(10000)))."
+        }
+        return "You have no \(name) insurance, so a loss comes out of the company's cash. Cover is switched on in Atlas Insurance."
+    }
+
+    static func decisionBody(_ co: Company, _ e: GameEvent, currency: Currency) -> String {
+        var parts: [String] = []
+        let line: String = insuranceLine(co, e, currency: currency)
+        if !line.isEmpty { parts.append(line) }
+        let weeks: Int = max(1, e.expiresAfterWeeks)
+        parts.append("Answer within \(weeks) week\(weeks == 1 ? "" : "s"), or the cheapest answer is taken.")
+        return parts.joined(separator: " ")
+    }
+
+    static func lastNote(_ s: GameState) -> (count: Int, text: String, tone: String) {
+        let lines: [JSONValue] = s.rest["rep"]?["ev"].array ?? []
+        return (lines.count, lines.last?["t"].string ?? "", lines.last?["tone"].string ?? "n")
+    }
+
+    static func ensureNotice(_ s: inout GameState, company co: Company, topBefore: Int, notesBefore: Int) {
+        if (s.inbox.first?.id ?? -1) != topBefore { return }
+        let now = lastNote(s)
+        guard now.count > notesBefore, !now.text.isEmpty else { return }
+        s.addMessage(from: co.name, title: now.text, body: plainLine(tone: now.tone), companyID: co.id, tone: now.tone)
+    }
 
     enum Decider { case owner, manager }
 

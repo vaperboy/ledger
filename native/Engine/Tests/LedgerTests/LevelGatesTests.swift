@@ -21,8 +21,9 @@ final class LevelGatesTests: XCTestCase {
 
     func testAFeatureOpensAtItsLevelAndProgressCountsExperience() throws {
         var e = try fresh()
-        give(&e, xp: 50)
-        XCTAssertEqual(LevelGates.progress(.auctions, e.state).xpToGo, PlayerLevel.threshold(2) - 50)
+        give(&e, xp: 25)
+        XCTAssertFalse(LevelGates.isOpen(.auctions, e.state))
+        XCTAssertEqual(LevelGates.progress(.auctions, e.state).xpToGo, PlayerLevel.threshold(2) - 25)
         XCTAssertEqual(LevelGates.progress(.auctions, e.state).fraction, 0.5, accuracy: 0.001)
         give(&e, xp: PlayerLevel.threshold(2))
         XCTAssertTrue(LevelGates.isOpen(.auctions, e.state))

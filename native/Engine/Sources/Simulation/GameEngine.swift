@@ -248,6 +248,7 @@ public struct GameEngine {
         checkMilestones(weekClosed: completed)
         routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })   // a hired rank takes what is theirs
         Tutorial.advance(&state, from: .nextDay)
+        Tutorial.sync(&state)
         let fresh = state.inbox.filter { !before.contains($0.id) }
         return DayOutcome(newMessages: fresh, completedWeek: completed, gameOver: state.isGameOver)
     }

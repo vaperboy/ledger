@@ -85,4 +85,39 @@ final class TutorialTests: XCTestCase {
         for m in e.state.inbox where guide.contains(m.id) { XCTAssertFalse(m.status == "open" && m.isOwnerAddressed) }
         XCTAssertFalse(guide.contains { id in e.state.inbox.first { $0.id == id }?.title == "A question" })
     }
+
+    func testStepsRunInTheOrderThePlayerMeetsThem() {
+        XCTAssertEqual(TutorialStep.allCases, [.openCompany, .pickSupplier, .setPrice, .nextDay, .openInbox, .readInbox, .claimGoal])
+        XCTAssertEqual(Tutorial.stepCount, 7)
+    }
+
+    func testThePositionCountsFromOneAndEndsWithTheTutorial() throws {
+        var e = try fresh()
+        XCTAssertEqual(e.tutorialPosition, 1)
+        e.tutorialAdvance(from: .openCompany)
+        XCTAssertEqual(e.tutorialPosition, 2)
+        e.tutorialFinish()
+        XCTAssertNil(e.tutorialPosition)
+    }
+
+    func testReplayStartsAgainFromTheFirstStepEvenAfterASkip() throws {
+        var e = try fresh()
+        e.tutorialFinish()
+        XCTAssertTrue(e.tutorialComplete)
+        e.tutorialRestart()
+        XCTAssertEqual(e.tutorialStep, .openCompany)
+        XCTAssertEqual(e.tutorialPosition, 1)
+    }
+
+    func testAStepThatCanNoLongerBeDoneDoesNotTrapThePlayer() throws {
+        var e = try fresh()
+        e.tutorialAdvance(from: .openCompany)
+        e.update { s, _, _ in Tutorial.sync(&s) }
+        XCTAssertEqual(e.tutorialStep, .pickSupplier, "a live company keeps the guide going")
+        e.update { s, _, _ in
+            s.companies.removeAll()
+            Tutorial.sync(&s)
+        }
+        XCTAssertTrue(e.tutorialComplete)
+    }
 }
