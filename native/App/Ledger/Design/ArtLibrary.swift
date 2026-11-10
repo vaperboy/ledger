@@ -37,6 +37,7 @@ enum ArtLibrary {
 
     #if canImport(UIKit)
     static func image(_ sheet: Sheet, _ cell: String) -> UIImage? {
+        if let own = droppedImage(sheet.rawValue + "." + cell) { return own }
         guard let file = manifest(sheet)[cell]?["file"] as? String, let root = cellsRoot else { return nil }
         let key = (sheet.rawValue + "/" + cell) as NSString
         if let hit = store.cache.object(forKey: key) { return hit }
@@ -56,11 +57,25 @@ enum ArtLibrary {
 
     private static let premisesKinds: Set<String> = ["home", "office", "shop", "kitchen", "industrial", "warehouse", "hotel", "clinic", "yard", "gym", "slope"]
 
-    static func premisesKey(kind: String?, squareMetres: Double?) -> String {
+    static func premisesKey(kind: String?, squareMetres: Double?, variant: Int = 0) -> String {
         let k = kind ?? "office"
-        guard premisesKinds.contains(k) else { return "none-" + premisesBand(squareMetres: squareMetres ?? 0) }
-        return k + "-" + premisesBand(squareMetres: squareMetres ?? 0)
+        let band = premisesBand(squareMetres: squareMetres ?? 0)
+        let base = premisesKinds.contains(k) ? k + "-" + band : "none-" + band
+        return variant > 0 ? base + "#" + String(variant) : base
     }
+
+    #if canImport(UIKit)
+    static func premisesImage(_ key: String) -> UIImage? {
+        let parts = key.split(separator: "#", maxSplits: 1).map(String.init)
+        let base = parts[0]
+        let n = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
+        var pool: [UIImage] = []
+        if let first = image(.premises, base) { pool.append(first) }
+        var v = 1
+        while let extra = droppedImage("premises." + base + "." + String(v)) { pool.append(extra); v += 1 }
+        return pool.isEmpty ? nil : pool[n % pool.count]
+    }
+    #endif
 
     static let luxuryCells: [String: (sheet: Sheet, cell: String)] = [
         "c15": (.cars, "b2-2"), "c1": (.cars, "b2-1"), "c11": (.cars, "b1-3"), "c10": (.cars, "b1-2"), "c7": (.cars, "b1-1"),

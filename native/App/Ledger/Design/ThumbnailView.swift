@@ -100,7 +100,7 @@ struct ThumbnailView: View {
         case .luxury:
             return ArtLibrary.luxuryImage(itemID: key)
         case .premisesPhoto:
-            return ArtLibrary.image(.premises, key)
+            return ArtLibrary.premisesImage(key)
         case .logo:
             if let own = ArtLibrary.droppedImage("logo." + key) { return own }
             return ArtLibrary.logoKey(for: key).flatMap { ArtLibrary.image(.logos, $0) }
