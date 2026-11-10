@@ -12,6 +12,7 @@ struct LocalStoreService: StoreService {
     func buyBoxBundle(_ bundleID: String, paidBoxesAllowed: Bool) async throws -> StoreState { try await vault.buyBoxBundle(bundleID, paidBoxesAllowed: paidBoxesAllowed) }
     func buyCosmetic(_ id: String, owned: Set<String>) async throws -> StoreState { try await vault.buyCosmetic(id, owned: owned) }
     func buyAvatar(_ id: String, owned: Set<String>) async throws -> StoreState { try await vault.buyAvatar(id, owned: owned) }
+    func spendGold(_ amount: Int) async throws -> StoreState { try await vault.spendGold(amount) }
     func openBoxes(_ kind: BoxKind, count: Int, owned: Set<String>, paidBoxesAllowed: Bool) async throws -> BoxOpening {
         try await vault.openBoxes(kind, count: count, owned: owned, paidBoxesAllowed: paidBoxesAllowed)
     }

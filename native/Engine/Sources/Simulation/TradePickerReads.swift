@@ -93,6 +93,7 @@ public extension GameEngine {
             lines.append(FinanceLine(id: "rent", label: "Rent", amount: option?.monthlyRent ?? plan.estimate.monthlyRent))
         }
         lines.append(FinanceLine(id: "running", label: "Running costs", amount: CompanyCosts.fixedOverhead(co, bd, w) * perMonth))
+        lines.append(FinanceLine(id: "accounting", label: "Filings and bookkeeping", amount: CompanyCosts.filings(co, w) * perMonth))
         lines.append(FinanceLine(id: "wages", label: "Wages", amount: plan.estimate.firstPayroll))
         lines = lines.filter { $0.amount > 0 }
         let staff = bd.standardStaff.enumerated().reduce(0.0) { $0 + ($1.offset == 0 && bd.ownerFTE >= 1 ? max(0, $1.element.count - 1) : $1.element.count) }

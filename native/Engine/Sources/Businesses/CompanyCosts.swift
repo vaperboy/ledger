@@ -91,6 +91,11 @@ public enum CompanyCosts {
         }
     }
 
+    public static func filings(_ co: Company, _ w: World) -> Double {
+        let monthly = w.currency(co).scaledPrice(180) * max(1, pow(co.size, 0.5))
+        return monthly * w.inflationIndex * 12 / 52
+    }
+
     public static func insurancePremium(_ co: Company, product k: String, rate: Double, _ w: World) -> Double {
         let base: Double
         if k == "prop" {
