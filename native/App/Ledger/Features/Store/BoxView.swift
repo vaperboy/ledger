@@ -177,10 +177,10 @@ struct BoxResultCard: View {
             if elapsed >= 1 { canSkip = true }
             Haptics.tap()
         }
-        reveal()
+        showResult()
     }
 
-    private func reveal() {
+    private func showResult() {
         if revealed { return }
         Motion.animate(.spring(response: 0.55, dampingFraction: 0.66)) { revealed = true }
         Motion.animate(.easeOut(duration: 0.7)) { ring = true }
@@ -227,7 +227,7 @@ struct BoxResultCard: View {
             if !shown && canSkip { Text("Tap to skip").textStyle(.caption) }
         }
         .contentShape(Rectangle())
-        .onTapGesture { if canSkip { reveal() } }
+        .onTapGesture { if canSkip { showResult() } }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(shown ? "Prize: \(r.rarity.title)" : "Opening the box")
     }
