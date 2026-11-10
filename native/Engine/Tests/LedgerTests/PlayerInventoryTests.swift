@@ -33,11 +33,11 @@ final class PlayerInventoryTests: XCTestCase {
         var (e, _) = try game()
         let cur = e.homeCurrencyCode
         let price = 80_000.0
-        let internal = e.internalAmount(price, currency: cur)
+        let paidInternal = e.internalAmount(price, currency: cur)
         let cash0 = e.state.cash
-        XCTAssertEqual(e.holdForDeal(dealID: "d1", amount: internal, label: "Held"), .applied)
-        XCTAssertEqual(e.state.cash, cash0 - internal, accuracy: 1)
-        XCTAssertEqual(e.inventoryHeld(dealID: "d1"), internal, accuracy: 0.01)
+        XCTAssertEqual(e.holdForDeal(dealID: "d1", amount: paidInternal, label: "Held"), .applied)
+        XCTAssertEqual(e.state.cash, cash0 - paidInternal, accuracy: 1)
+        XCTAssertEqual(e.inventoryHeld(dealID: "d1"), paidInternal, accuracy: 0.01)
         let row = OnlineSettlement(id: "s1", amount: 0, currency: cur, kind: "market_purchase", label: "You bought Test car.",
                                    meta: .object(["dealID": "d1", "price": .number(price), "item": wire(), "title": "Bought: Test car", "tone": "good"]))
         XCTAssertEqual(e.bookOnlineSettlements([row]), ["s1"])
@@ -45,10 +45,10 @@ final class PlayerInventoryTests: XCTestCase {
         XCTAssertEqual(e.inventoryItems.count, 1)
         let got = try XCTUnwrap(e.inventoryItem("w1"))
         XCTAssertEqual(got.kind, "car")
-        XCTAssertEqual(got.paid, internal, accuracy: 1)
+        XCTAssertEqual(got.paid, paidInternal, accuracy: 1)
         XCTAssertLessThan(got.cond, got.seen, "the real condition is below what it looked like")
         XCTAssertTrue(e.inventoryHeld(dealID: "d1") == 0)
-        XCTAssertEqual(e.state.cash, cash0 - internal, accuracy: 2, "paid once, not twice")
+        XCTAssertEqual(e.state.cash, cash0 - paidInternal, accuracy: 2, "paid once, not twice")
         XCTAssertTrue(e.state.inbox.contains { $0.body.contains("worse shape") }, "the buyer is told about the hidden condition")
         balanced(e, "purchase")
     }
