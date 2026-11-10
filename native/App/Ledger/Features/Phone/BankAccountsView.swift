@@ -16,7 +16,6 @@ struct BankAccountsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     totalCard(all)
-                    BankWealthCard(engine: e)
                     billsLink(all, e)
                     givingLink(e)
                     VStack(alignment: .leading, spacing: 8) {

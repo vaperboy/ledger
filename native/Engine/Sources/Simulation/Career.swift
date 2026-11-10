@@ -19,6 +19,10 @@ public enum Career {
         ("Executive", 5_000_000, 11), ("Magnate", 25_000_000, 14), ("Mogul", 100_000_000, 17), ("Tycoon", 1_000_000_000, 20)
     ].enumerated().map { Rank(index: $0.offset, title: $0.element.0, netWorth: $0.element.1, goals: $0.element.2) }
 
+    public static let hallOfFameRank: Int = ranks.count - 2
+
+    public static func inHallOfFame(_ rank: Rank) -> Bool { rank.index >= hallOfFameRank }
+
     public static func rankIndex(netWorth nw: Double, goalsDone: Int, currency cur: Currency) -> Int {
         ranks.last { nw >= cur.scaledPrice($0.netWorth) && goalsDone >= $0.goals }?.index ?? 0
     }
@@ -208,6 +212,7 @@ public enum Career {
 
 public extension GameEngine {
     var careerStatus: Career.RankStatus { Career.status(state, data: data, currency: homeCurrency) }
+    var inHallOfFame: Bool { Career.inHallOfFame(careerStatus.rank) }
     var careerNextGoals: [Career.Goal] { Career.nextGoals(state, data: data, currency: homeCurrency) }
     var careerGoals: [Career.Goal] { Career.goals(state, data: data, currency: homeCurrency) }
     var careerCosmetics: [String] { Career.cosmetics(state) }

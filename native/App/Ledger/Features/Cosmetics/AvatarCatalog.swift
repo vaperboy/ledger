@@ -9,6 +9,8 @@ struct AvatarDef: Identifiable, Equatable {
         case pro
         case badge(String)
         case collection(String)
+        case level(Int)
+        case season(String)
     }
 
     var id: String
@@ -27,6 +29,8 @@ struct AvatarDef: Identifiable, Equatable {
         case .pro: return "Ledger Pro"
         case .badge(let b): return "Earn the " + Cosmetics.badge(b).title.lowercased() + " badge in Goals"
         case .collection(let c): return "Complete the " + (ArtifactCatalog.collection(c)?.name ?? "") + " collection"
+        case .level(let n): return "Reach level \(n)"
+        case .season(let id): return "Claim " + (SeasonRewards.item(id)?.title ?? "the reward") + " in the Season Pass"
         }
     }
 }
@@ -76,6 +80,12 @@ enum AvatarCatalog {
         a("av.harbour", "Harbour light", .epic, .collection("harbour"), "water.waves", 0x2F7080, 0x143642, 0xBDEBF2, .waves),
         a("av.market", "Market bell", .epic, .collection("market"), "bell.fill", 0xB2677A, 0x57293A, 0xFAD2DC, .stripes),
         a("av.archive", "Town archive", .epic, .collection("archive"), "scroll.fill", 0x9C957F, 0x45423A, 0xF1ECDD, .grid),
+        a("av.lvl3", "Chain builder", .rare, .level(3), "link", 0x5F9A8C, 0x1C443C, 0xD2F4EA, .grid),
+        a("av.lvl5", "Franchisor", .rare, .level(5), "building.2.fill", 0xB08A58, 0x4A3416, 0xFFE9C6, .stripes),
+        a("av.lvl7", "Going abroad", .epic, .level(7), "globe.europe.africa.fill", 0x4E86B8, 0x16345A, 0xD4E8FB, .waves),
+        a("av.s1.first", "First steps", .common, .season("badge.s1.first"), "flag.fill", 0xB8985A, 0x4A3A18, 0xFFEFC8, .dots),
+        a("av.s1.finish", "Season 1 finisher", .rare, .season("badge.s1.complete"), "medal.fill", 0xC4A24E, 0x5A410E, 0xFFF0BE, .rings),
+        a("av.s1.crown", "Season 1 crown", .epic, .season("badge.s1.crown"), "seal.fill", 0xE0BC5E, 0x6B4A0A, 0xFFF4CC, .rays, badge: "star.fill"),
         a("av.flame", "Ember", .rare, .pro, "flame.fill", 0xD4743C, 0x5E230B, 0xFFE0C8, .rays),
         a("av.sparkle", "Sparkle", .rare, .pro, "sparkles", 0x8F7AD0, 0x2F2560, 0xE8E0FF, .stars),
         a("av.infinity", "Long game", .epic, .pro, "infinity", 0x4FA09C, 0x14433F, 0xCFF5F0, .rings),
@@ -101,12 +111,14 @@ final class AvatarModel: ObservableObject {
         static let equipped = "ledger.avatar.equipped"
         static let rank = "ledger.avatar.bestRank"
         static let badges = "ledger.avatar.badges"
+        static let level = "ledger.avatar.bestLevel"
     }
 
     @Published private(set) var owned: Set<String>
     @Published private(set) var equipped: String?
     @Published private(set) var bestRank: Int
     @Published private(set) var earnedBadges: Set<String>
+    @Published private(set) var bestLevel: Int
 
     private init() {
         let d = UserDefaults.standard
@@ -114,6 +126,7 @@ final class AvatarModel: ObservableObject {
         equipped = d.string(forKey: Key.equipped)
         bestRank = d.integer(forKey: Key.rank)
         earnedBadges = Set(d.stringArray(forKey: Key.badges) ?? [])
+        bestLevel = max(1, d.integer(forKey: Key.level))
     }
 
     func isUnlocked(_ def: AvatarDef, pro: Bool, cabinet: Cabinet) -> Bool {
@@ -121,6 +134,8 @@ final class AvatarModel: ObservableObject {
         case .free: return true
         case .gold: return owned.contains(def.id)
         case .rank(let i): return bestRank >= i
+        case .level(let n): return bestLevel >= n
+        case .season(let id): return SeasonModel.shared.pass.owned.contains(id)
         case .pro: return pro
         case .badge(let b): return earnedBadges.contains(b)
         case .collection(let c):
@@ -129,9 +144,10 @@ final class AvatarModel: ObservableObject {
         }
     }
 
-    func note(rank: Int, badges: [String]) {
+    func note(rank: Int, badges: [String], level: Int) {
         let d = UserDefaults.standard
         if rank > bestRank { bestRank = rank; d.set(rank, forKey: Key.rank) }
+        if level > bestLevel { bestLevel = level; d.set(level, forKey: Key.level) }
         let merged: Set<String> = earnedBadges.union(badges)
         if merged != earnedBadges { earnedBadges = merged; d.set(Array(merged), forKey: Key.badges) }
     }
@@ -188,107 +204,125 @@ struct AvatarPickerView: View {
     @Environment(OnlineSession.self) private var online
     @Environment(Entitlements.self) private var ent
     @ObservedObject private var avatars = AvatarModel.shared
+    @ObservedObject private var season = SeasonModel.shared
     private let session = StoreSession.shared
     @State private var selected: String = ""
     @State private var pending: PendingAction?
     @State private var shortOfGold = false
+    @State private var shortNeed = 0
     @State private var showPacks = false
-
-    private struct IconGroup: Identifiable {
-        var id: String
-        var title: String
-        var items: [AvatarDef]
-    }
-
-    private var sections: [IconGroup] {
-        func pick(_ title: String, _ f: (AvatarDef.Unlock) -> Bool) -> IconGroup {
-            IconGroup(id: title, title: title, items: AvatarCatalog.all.filter { f($0.unlock) })
-        }
-        return [
-            pick("Free") { (u: AvatarDef.Unlock) -> Bool in u == .free },
-            pick("Career ranks") { (u: AvatarDef.Unlock) -> Bool in if case .rank = u { return true }; return false },
-            pick("Badges and collections") { (u: AvatarDef.Unlock) -> Bool in
-                switch u { case .badge, .collection: return true; default: return false }
-            },
-            pick("Ledger Pro") { (u: AvatarDef.Unlock) -> Bool in u == .pro },
-            pick("Store") { (u: AvatarDef.Unlock) -> Bool in u == .gold },
-        ]
-    }
 
     var body: some View {
         let cabinet: Cabinet = session.state.cabinet
+        let open: [AvatarDef] = AvatarCatalog.all.filter { avatars.isUnlocked($0, pro: ent.isPro, cabinet: cabinet) }
+        let locked: [AvatarDef] = AvatarCatalog.all.filter { (d: AvatarDef) -> Bool in !open.contains(d) }
         PhonePageScroll(spacing: Theme.Space.l) {
-            preview(cabinet)
-            ForEach(sections) { (s: IconGroup) in
+            preview(open: open, cabinet: cabinet)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("Your icons").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
+                    ForEach(open) { (d: AvatarDef) in cell(d) }
+                }
+            }
+            if !locked.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text(s.title).capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
-                        ForEach(s.items) { (d: AvatarDef) in cell(d, cabinet: cabinet) }
+                    Text("Locked").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
+                    VStack(spacing: 0) {
+                        ForEach(Array(locked.enumerated()), id: \.element.id) { (i: Int, d: AvatarDef) in
+                            if i > 0 { Hairline() }
+                            lockedRow(d)
+                        }
                     }
                 }
             }
         }
         .appScreen(title: "Profile icon", subtitle: "What other players see")
         .confirmAction($pending)
-        .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") { ShortOfGoldCard(onPacks: { shortOfGold = false; showPacks = true }, onPick: { (_: GoldPack) in shortOfGold = false; showPacks = true }) }
+        .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") { ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; showPacks = true }) }
         .navigationDestination(isPresented: $showPacks) { StoreApp() }
         .task {
             await session.load()
-            if let e = store.engine { avatars.note(rank: e.careerStatus.rank.index, badges: e.careerCosmetics) }
+            if let e = store.engine { avatars.note(rank: e.careerStatus.rank.index, badges: e.careerCosmetics, level: e.playerLevel.level) }
             if selected.isEmpty { selected = avatars.equipped ?? AvatarCatalog.freeIcons[0].id }
         }
     }
 
-    private func cell(_ d: AvatarDef, cabinet: Cabinet) -> some View {
-        let open: Bool = avatars.isUnlocked(d, pro: ent.isPro, cabinet: cabinet)
+    private func cell(_ d: AvatarDef) -> some View {
         let on: Bool = selected == d.id
+        let worn: Bool = (avatars.equipped ?? "") == d.id
         return Button {
             Haptics.choose()
             selected = d.id
         } label: {
             VStack(spacing: 4) {
-                ItemArt(avatar: d.id, size: 52).opacity(open ? 1 : 0.45)
-                    .overlay(alignment: .bottomTrailing) {
-                        if !open { LedgerGlyph(glyph: Glyph.lock, size: 12, tint: Theme.ink).padding(4).background(Circle().fill(Theme.surfaceRaised)) }
-                    }
-                Text(d.title).textStyle(.caption, tint: open ? Theme.inkSoft : Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
+                ItemArt(avatar: d.id, size: 52)
+                Text(d.title).textStyle(.caption, tint: Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
+                Text(worn ? "In use" : " ").textStyle(.caption, tint: Theme.gain).lineLimit(1)
             }
-            .frame(maxWidth: .infinity, minHeight: 80)
+            .frame(maxWidth: .infinity, minHeight: 88)
             .padding(.vertical, Theme.Space.xs)
             .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(on ? Theme.accentWash : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
-        .accessibilityLabel(d.title + (open ? "" : ", locked. " + d.requirement))
+        .accessibilityLabel(d.title + (worn ? ", in use" : ""))
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    private func preview(_ cabinet: Cabinet) -> some View {
+    private func lockedRow(_ d: AvatarDef) -> some View {
+        let on: Bool = selected == d.id
+        return Button {
+            Haptics.choose()
+            selected = d.id
+        } label: {
+            HStack(spacing: Theme.Space.m) {
+                ItemArt(avatar: d.id, size: 44).saturation(0).opacity(0.45)
+                    .overlay(alignment: .bottomTrailing) {
+                        LedgerGlyph(glyph: Glyph.lock, size: 11, tint: Theme.ink).padding(3).background(Circle().fill(Theme.surfaceRaised))
+                    }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(d.title).textStyle(.body, tint: Theme.inkFaint)
+                    Text(d.requirement).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: Theme.Space.s)
+                if let price = d.price { GoldAmount(amount: price, style: .caption) }
+            }
+            .padding(.vertical, Theme.Space.s)
+            .frame(minHeight: 56)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(on ? Theme.accentWash : Color.clear))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel(d.title + ", locked. " + d.requirement)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    private func preview(open: [AvatarDef], cabinet: Cabinet) -> some View {
         let id: String = selected.isEmpty ? (avatars.equipped ?? AvatarCatalog.freeIcons[0].id) : selected
         let d: AvatarDef = AvatarCatalog.def(id) ?? AvatarCatalog.all[0]
-        let open: Bool = avatars.isUnlocked(d, pro: ent.isPro, cabinet: cabinet)
+        let owned: Bool = open.contains(d)
         let worn: Bool = (avatars.equipped ?? "") == d.id
         return VStack(spacing: Theme.Space.s) {
-            ItemArt(avatar: d.id, size: 96)
+            ItemArt(avatar: d.id, size: 96).saturation(owned ? 1 : 0).opacity(owned ? 1 : 0.5)
             Text(d.title).textStyle(.title)
             HStack(spacing: Theme.Space.xs) {
                 RarityTag(rarity: d.tier)
-                Text(open ? (worn ? "In use" : "Yours") : d.requirement).textStyle(.caption)
+                Text(owned ? (worn ? "In use" : "Yours") : d.requirement).textStyle(.caption)
             }
-            action(d, open: open, worn: worn)
+            action(d, owned: owned, worn: worn)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Theme.Space.m)
     }
 
-    @ViewBuilder private func action(_ d: AvatarDef, open: Bool, worn: Bool) -> some View {
-        if open {
+    @ViewBuilder private func action(_ d: AvatarDef, owned: Bool, worn: Bool) -> some View {
+        if owned {
             Button(worn ? "In use" : "Use this icon") { wear(d) }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(worn)
                 .accessibilityIdentifier("avatar-use")
         } else if let price = d.price {
-            Button("Buy for \(StoreText.gold(price))") { ask(d, price: price) }
+            Button("Buy for \(StoreText.gold(price))") { ask(d) }
                 .buttonStyle(PrimaryButtonStyle())
                 .accessibilityIdentifier("avatar-buy")
         }
@@ -300,13 +334,9 @@ struct AvatarPickerView: View {
         Task { _ = await online.update(ProfileUpdate(avatarIcon: d.id)) }
     }
 
-    private func ask(_ d: AvatarDef, price: Int) {
-        if session.available < price { shortOfGold = true; return }
-        pending = PendingAction(title: "Buy \(d.title)?", message: "Costs \(StoreText.gold(price)). You can wear it straight away.", button: "Buy",
-                                alwaysAsk: true, tone: .investment, icon: "person.crop.circle") {
-            Task {
-                if await session.buyAvatar(d) { wear(d) }
-            }
-        }
+    private func ask(_ d: AvatarDef) {
+        StorePurchase.ask(.avatar(d), pending: $pending, onShort: { (price: Int) in shortNeed = price; shortOfGold = true }, then: { (done: Bool) in
+            if done { wear(d) }
+        })
     }
 }

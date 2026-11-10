@@ -6,7 +6,6 @@ struct SupabaseSession: Codable, Equatable, Sendable {
     var expiresAt: Date
     var userID: String
     var createdAt: Date
-    var isAnonymous: Bool
     var provider: SignInProvider?
 
     func needsRefresh(now: Date = Date(), skew: TimeInterval = 60) -> Bool { expiresAt.timeIntervalSince(now) <= skew }
@@ -14,12 +13,16 @@ struct SupabaseSession: Codable, Equatable, Sendable {
 
 struct SupabaseTokenResponse: Decodable {
     struct User: Decodable {
-        struct Meta: Decodable { var provider: String? }
+        struct Meta: Decodable {
+            var provider: String?
+            var providers: [String]?
+        }
+        struct Identity: Decodable { var provider: String }
         var id: String
-        var isAnonymous: Bool?
         var createdAt: Date?
         var appMetadata: Meta?
-        enum CodingKeys: String, CodingKey { case id, isAnonymous = "is_anonymous", createdAt = "created_at", appMetadata = "app_metadata" }
+        var identities: [Identity]?
+        enum CodingKeys: String, CodingKey { case id, createdAt = "created_at", appMetadata = "app_metadata", identities }
     }
     var accessToken: String
     var refreshToken: String
@@ -32,9 +35,10 @@ struct SupabaseTokenResponse: Decodable {
 
     func session(now: Date = Date(), fallbackProvider: SignInProvider? = nil) -> SupabaseSession {
         let expiry: Date = expiresAt.map { Date(timeIntervalSince1970: $0) } ?? now.addingTimeInterval(expiresIn ?? 3600)
-        let provider: SignInProvider? = user.appMetadata?.provider.flatMap { SignInProvider(rawValue: $0) } ?? fallbackProvider
+        let names: [String] = (user.identities ?? []).map { $0.provider } + (user.appMetadata?.providers ?? []) + [user.appMetadata?.provider].compactMap { $0 }
+        let linked: SignInProvider? = names.compactMap { SignInProvider(rawValue: $0) }.first ?? fallbackProvider
         return SupabaseSession(accessToken: accessToken, refreshToken: refreshToken, expiresAt: expiry, userID: user.id,
-                               createdAt: user.createdAt ?? now, isAnonymous: user.isAnonymous ?? false, provider: provider)
+                               createdAt: user.createdAt ?? now, provider: linked)
     }
 }
 
@@ -161,8 +165,47 @@ enum SupabaseWire {
         if status == 401 || code == "bad_jwt" || code == "session_not_found" || code == "refresh_token_not_found"
             || code == "refresh_token_already_used" || message.localizedCaseInsensitiveContains("jwt expired") { return .notSignedIn }
         if status == 400 || status == 422, code == "invalid_credentials" || code == "bad_id_token" || code == "validation_failed" { return .notSignedIn }
+        if status == 400, (json["error"] as? String) == "invalid_grant" { return .notSignedIn }
         if status == 404 { return .notFound }
         return .offline
+    }
+
+    static func linkFailure(code: String, text: String, provider: SignInProvider) -> OnlineError? {
+        let lower: String = text.lowercased()
+        if code == "identity_already_exists" || lower.contains("already linked") || lower.contains("already been linked") {
+            return .rejected("That \(provider.title) account is already linked to another player.")
+        }
+        if code == "manual_linking_disabled" || lower.contains("manual linking") {
+            return .rejected("Linking accounts is not switched on for the server yet.")
+        }
+        if code == "provider_disabled" || lower.contains("provider is not enabled") || lower.contains("unsupported provider") || lower.contains("provider not enabled") {
+            return .rejected("\(provider.title) linking is not set up on the server yet. Try again later.")
+        }
+        if code == "access_denied" || lower.contains("access_denied") || lower.contains("access denied") {
+            return .cancelled
+        }
+        return nil
+    }
+
+    static func mapLinkError(status: Int, body: Data, provider: SignInProvider) -> OnlineError {
+        let json: [String: Any] = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any] ?? [:]
+        let text: String = ((json["msg"] ?? json["message"] ?? json["error_description"] ?? json["error"]) as? String) ?? ""
+        let code: String = (json["error_code"] as? String) ?? ""
+        return linkFailure(code: code, text: text, provider: provider) ?? mapError(status: status, body: body)
+    }
+
+    static func authorizationCode(from callback: URL, provider: SignInProvider) throws -> String {
+        var items: [URLQueryItem] = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        if let fragment = callback.fragment {
+            var comps = URLComponents()
+            comps.query = fragment
+            items += comps.queryItems ?? []
+        }
+        func value(_ name: String) -> String? { items.first(where: { $0.name == name })?.value }
+        if let code = value("code"), !code.isEmpty { return code }
+        let code: String = value("error_code") ?? value("error") ?? ""
+        let text: String = value("error_description") ?? ""
+        throw linkFailure(code: code, text: text, provider: provider) ?? OnlineError.rejected("Linking did not finish. Try again.")
     }
 
     static func decodeProfile(_ data: Data) throws -> PlayerProfile { try makeDecoder().decode(PlayerProfile.self, from: data) }

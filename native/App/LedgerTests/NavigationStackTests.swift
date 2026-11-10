@@ -90,16 +90,14 @@ final class NavigationStackTests: XCTestCase {
         XCTAssertEqual(store.path(for: .group), [.company(3)], "a company already under it is gone back to")
     }
 
-    func testVenturesSwitchesTheProjectsRootAndIsPushedElsewhere() {
+    func testOpeningVenturesSwitchesToTheProjectsTabAtItsRoot() {
         let store = GameStore()
-        store.tab = .projects
-        store.openApp(.ventures)
+        store.tab = .company
+        store.push(.company(1), on: .projects)
+        store.openVentures()
+        XCTAssertEqual(store.tab, .projects)
         XCTAssertTrue(store.path(for: .projects).isEmpty)
         XCTAssertTrue(store.takeVenturesRequest())
-        store.tab = .company
-        store.openApp(.ventures)
-        XCTAssertEqual(store.tab, .company)
-        XCTAssertEqual(store.path(for: .company), [.app(.ventures)])
         XCTAssertFalse(store.takeVenturesRequest())
     }
 

@@ -1,57 +1,4 @@
 import Foundation
-import Security
-
-struct IdentityToken: Sendable {
-    var token: String
-    var nonce: String?
-}
-
-protocol IdentityTokenProvider: Sendable {
-    func identityToken(for provider: SignInProvider) async throws -> IdentityToken
-}
-
-struct UnavailableIdentityTokenProvider: IdentityTokenProvider {
-    func identityToken(for provider: SignInProvider) async throws -> IdentityToken { throw OnlineError.notSignedIn }
-}
-
-protocol SessionStore: Sendable {
-    func load() -> SupabaseSession?
-    func save(_ session: SupabaseSession)
-    func clear()
-}
-
-struct KeychainSessionStore: SessionStore {
-    var service: String = "ledger.online.session"
-    var account: String = "supabase"
-
-    private var base: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account]
-    }
-
-    func load() -> SupabaseSession? {
-        var query: [String: Any] = base
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-        var out: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &out) == errSecSuccess, let data = out as? Data else { return nil }
-        return try? SupabaseWire.makeDecoder().decode(SupabaseSession.self, from: data)
-    }
-
-    func save(_ session: SupabaseSession) {
-        let enc = JSONEncoder()
-        enc.dateEncodingStrategy = .iso8601
-        guard let data = try? enc.encode(session) else { return }
-        let update: [String: Any] = [kSecValueData as String: data]
-        if SecItemUpdate(base as CFDictionary, update as CFDictionary) == errSecItemNotFound {
-            var add: [String: Any] = base
-            add[kSecValueData as String] = data
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            SecItemAdd(add as CFDictionary, nil)
-        }
-    }
-
-    func clear() { SecItemDelete(base as CFDictionary) }
-}
 
 protocol HTTPTransport: Sendable {
     func send(_ request: URLRequest) async throws -> (Data, Int)
@@ -68,33 +15,27 @@ actor SupabaseOnlineService: OnlineService {
     private let base: URL
     private let apiKey: String
     private let tokens: any IdentityTokenProvider
-    private let store: any SessionStore
     private let transport: any HTTPTransport
     private let decoder: JSONDecoder = SupabaseWire.makeDecoder()
-    private var refreshTask: Task<SupabaseSession, Error>?
 
-    init(baseURL: URL, apiKey: String, tokens: any IdentityTokenProvider, store: any SessionStore = KeychainSessionStore(),
-         transport: any HTTPTransport = URLSession.shared) {
-        self.base = baseURL; self.apiKey = apiKey; self.tokens = tokens; self.store = store; self.transport = transport
+    init(baseURL: URL, apiKey: String, tokens: any IdentityTokenProvider, transport: any HTTPTransport = URLSession.shared) {
+        self.base = baseURL; self.apiKey = apiKey; self.tokens = tokens; self.transport = transport
     }
 
-    func currentAccount() async -> OnlineAccount? {
-        guard var session = store.load(), !session.isAnonymous else { return nil }
-        if session.needsRefresh() {
-            do { session = try await refreshed(session) } catch OnlineError.notSignedIn { store.clear(); return nil } catch {}
-        }
-        return OnlineAccount(playerID: session.userID, provider: session.provider ?? .apple, createdAt: session.createdAt)
+    nonisolated var createsAccountsItself: Bool { true }
+
+    func currentAccount() async -> OnlineAccount? { try? await startSession(createIfMissing: false) }
+
+    func startSession(createIfMissing: Bool) async throws -> OnlineAccount {
+        account(from: try await tokens.establish(createIfMissing: createIfMissing))
     }
 
     func signIn(with provider: SignInProvider) async throws -> OnlineAccount {
-        let identity: IdentityToken = try await tokens.identityToken(for: provider)
-        var body: [String: Any] = ["provider": provider.rawValue, "id_token": identity.token]
-        if let nonce = identity.nonce { body["nonce"] = nonce }
-        let data: Data = try await raw(path: "/auth/v1/token", method: "POST", query: [URLQueryItem(name: "grant_type", value: "id_token")],
-                                       body: try JSONSerialization.data(withJSONObject: body), authorised: false)
-        let session: SupabaseSession = try decoder.decode(SupabaseTokenResponse.self, from: data).session(fallbackProvider: provider)
-        store.save(session)
-        return OnlineAccount(playerID: session.userID, provider: session.provider ?? provider, createdAt: session.createdAt)
+        account(from: try await tokens.link(provider))
+    }
+
+    private func account(from session: SupabaseSession) -> OnlineAccount {
+        OnlineAccount(playerID: session.userID, provider: session.provider, createdAt: session.createdAt)
     }
 
     func accountStatus() async throws -> AccountStatus { try decode(AccountStatus.self, try await rpcData("account_status")) }
@@ -105,14 +46,11 @@ actor SupabaseOnlineService: OnlineService {
 
     func claimLinkReward() async throws -> LinkRewardResult { try decode(LinkRewardResult.self, try await rpcData("claim_link_reward")) }
 
-    func signOut() async {
-        _ = try? await raw(path: "/auth/v1/logout", method: "POST")
-        store.clear()
-    }
+    func signOut() async {}
 
     func deleteAccount() async throws {
         _ = try await rpcData("delete_my_account")
-        store.clear()
+        await tokens.discard()
     }
 
     func exportMyData() async throws -> Data { try await rpcData("export_my_data") }
@@ -221,45 +159,22 @@ actor SupabaseOnlineService: OnlineService {
         try await raw(path: "/rest/v1/rpc/" + name, method: "POST", body: try JSONSerialization.data(withJSONObject: params))
     }
 
-    private func liveSession() async throws -> SupabaseSession {
-        guard let session = store.load(), !session.isAnonymous else { throw OnlineError.notSignedIn }
-        return session.needsRefresh() ? try await refreshed(session) : session
-    }
+    private func liveSession() async throws -> SupabaseSession { try await tokens.validSession() }
 
-    private func refreshed(_ old: SupabaseSession) async throws -> SupabaseSession {
-        if let task = refreshTask { return try await task.value }
-        let task = Task { () throws -> SupabaseSession in
-            let body: Data = try JSONSerialization.data(withJSONObject: ["refresh_token": old.refreshToken])
-            let data: Data = try await self.send(path: "/auth/v1/token", method: "POST",
-                                                 query: [URLQueryItem(name: "grant_type", value: "refresh_token")], body: body, token: nil, prefer: nil)
-            var fresh: SupabaseSession = try self.decoder.decode(SupabaseTokenResponse.self, from: data).session(fallbackProvider: old.provider)
-            if fresh.provider == nil { fresh.provider = old.provider }
-            self.store.save(fresh)
-            return fresh
-        }
-        refreshTask = task
-        defer { refreshTask = nil }
-        return try await task.value
-    }
-
-    private func raw(path: String, method: String, query: [URLQueryItem] = [], body: Data? = nil, prefer: String? = nil,
-                     authorised: Bool = true) async throws -> Data {
-        guard authorised else { return try await send(path: path, method: method, query: query, body: body, token: nil, prefer: prefer) }
+    private func raw(path: String, method: String, query: [URLQueryItem] = [], body: Data? = nil, prefer: String? = nil) async throws -> Data {
         let session: SupabaseSession = try await liveSession()
-        do {
-            return try await send(path: path, method: method, query: query, body: body, token: session.accessToken, prefer: prefer)
-        } catch OnlineError.notSignedIn {
-            let fresh: SupabaseSession = try await refreshed(session)
-            return try await send(path: path, method: method, query: query, body: body, token: fresh.accessToken, prefer: prefer)
+        var (data, status) = try await exchange(path: path, method: method, query: query, body: body, token: session.accessToken, prefer: prefer)
+        if status == 401 {
+            let fresh: SupabaseSession = try await tokens.renewed(rejected: session)
+            (data, status) = try await exchange(path: path, method: method, query: query, body: body, token: fresh.accessToken, prefer: prefer)
         }
-    }
-
-    private func send(path: String, method: String, query: [URLQueryItem], body: Data?, token: String?, prefer: String?) async throws -> Data {
-        let req: URLRequest = SupabaseWire.request(base: base, path: path, method: method, query: query, body: body, apiKey: apiKey,
-                                                   accessToken: token, prefer: prefer)
-        let data: Data, status: Int
-        do { (data, status) = try await transport.send(req) } catch { throw OnlineError.offline }
         guard (200..<300).contains(status) else { throw SupabaseWire.mapError(status: status, body: data) }
         return data
+    }
+
+    private func exchange(path: String, method: String, query: [URLQueryItem], body: Data?, token: String, prefer: String?) async throws -> (Data, Int) {
+        let req: URLRequest = SupabaseWire.request(base: base, path: path, method: method, query: query, body: body, apiKey: apiKey,
+                                                   accessToken: token, prefer: prefer)
+        do { return try await transport.send(req) } catch { throw OnlineError.offline }
     }
 }

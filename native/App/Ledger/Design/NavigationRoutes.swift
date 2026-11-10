@@ -7,7 +7,7 @@ enum NavRoute: Hashable {
     case newCompany, market
     case companyAt(Int, CompanySection)
     case companyPart(Int, CompanySection, String)
-    case applicants(Int, String)
+    case hire(Int)
     case app(PhoneApp)
     case entity(String, GroupSection)
     case suppliers
@@ -17,7 +17,7 @@ enum NavRoute: Hashable {
         case .company(let id): return "company.\(id)"
         case .companyAt(let id, let s), .companyPart(let id, let s, _): return CompanyDetailView.isLeaf(s) ? "company.\(id).\(s.rawValue)" : "company.\(id)"
         case .newCompany: return "newCompany"
-        case .applicants: return "applicants"
+        case .hire(let id): return "hire.\(id)"
         case .market: return "market"
         case .app(let app): return "app.\(app.rawValue)"
         case .entity(let id, _): return "entity.\(id)"
@@ -66,7 +66,7 @@ extension View {
 extension GameStore {
     @discardableResult func openLadderLink(_ link: String) -> Bool {
         if link == "inbox" { openApp(.inbox); return true }
-        if ["news", "market", "techPro", "reviews", "weather"].contains(link), let app = PhoneApp(rawValue: link) { openApp(app); return true }
+        if ["news", "market", "techPro", "competition"].contains(link), let app = PhoneApp(rawValue: link) { openApp(app); return true }
         if link == "achievements" { openProfile(); return true }
         if link == "newCompany" { push(.newCompany); return true }
         guard let id = ladderCompany(for: link) else {
@@ -75,7 +75,7 @@ extension GameStore {
         }
         switch link {
         case "sales": openCompany(id, section: .salesMarket)
-        case "hire": openApplicants(companyID: id, role: nil)
+        case "hire": openHire(companyID: id)
         case "marketing": openCompany(id, section: .marketing)
         case "money": openCompany(id, section: .finances)
         case "company": openCompany(id)

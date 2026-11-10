@@ -31,9 +31,8 @@ struct MarketApp: View {
     @ViewBuilder private func page(_ t: MarketUI.Tab) -> some View {
         let open: (MarketRoute) -> Void = { (r: MarketRoute) in route = r }
         switch t {
-        case .overview: MarketOverviewPage(open: open, show: { (x: MarketUI.Tab) in tab = x })
+        case .overview: MarketOverviewPage(open: open)
         case .companies: MarketCompaniesPage(open: open)
-        case .rivals: MarketRivalsPage(open: open)
         case .invest: MarketInvestPage(open: open)
         case .exchange:
             if store.levelOpen(.exchange) {
@@ -41,19 +40,12 @@ struct MarketApp: View {
             } else {
                 ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) { LevelLockCard(feature: .exchange) }
             }
-        case .standing: MarketStandingPage()
-        case .world: MarketWorldPage(open: open)
         }
     }
 
     private func take() {
-        let news: Bool = store.marketNewsPending
-        store.marketNewsPending = false
         if let t = store.takeMarketTabRequest() { tab = t; return }
-        guard let id = store.takeMarketRequest() else {
-            if news { tab = .overview }
-            return
-        }
+        guard let id = store.takeMarketRequest() else { return }
         guard id != 0, store.engine?.state.company(id) != nil else { tab = .overview; return }
         tab = .companies
         Task { @MainActor in route = .company(id) }
@@ -68,9 +60,7 @@ enum MarketRoute: Hashable, Identifiable {
     case buy(assetID: String?, owner: MarketUI.Owner?)
     case sell(String)
     case country(String)
-    case rankings
-    case records
-    case aroundYou
+    case exchange
     case fundManager
     case dataAnalyst
     case stock(String)
@@ -84,9 +74,7 @@ enum MarketRoute: Hashable, Identifiable {
         case .buy(let a, let o): return "buy.\(a ?? "").\(o?.id ?? "")"
         case .sell(let id): return "sell.\(id)"
         case .country(let c): return "country.\(c)"
-        case .rankings: return "rankings"
-        case .records: return "records"
-        case .aroundYou: return "around"
+        case .exchange: return "exchange"
         case .fundManager: return "fundManager"
         case .dataAnalyst: return "dataAnalyst"
         case .stock(let id): return "stock.\(id)"
@@ -107,9 +95,7 @@ struct MarketDestination: View {
             case .buy(let a, let o): MarketTradeFlow(side: .buy, assetID: a, owner: o, positionID: nil)
             case .sell(let id): MarketTradeFlow(side: .sell, assetID: nil, owner: nil, positionID: id)
             case .country(let c): CountryPage(countryCode: c)
-            case .rankings: MarketRankingsPage()
-            case .records: WorldRecordsView().appScreen(title: "Records", subtitle: "Market \u{00B7} World")
-            case .aroundYou: WorldAroundView().appScreen(title: "People and reputation", subtitle: "Market \u{00B7} World")
+            case .exchange: ExchangeDestination()
             case .fundManager:
                 ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.s) { FundManagerPage() }
                     .appScreen(title: "Fund manager", subtitle: "Market \u{00B7} Invest")
@@ -120,6 +106,16 @@ struct MarketDestination: View {
             }
         }
         .id(route)
+    }
+}
+
+private struct ExchangeDestination: View {
+    @State private var route: MarketRoute?
+
+    var body: some View {
+        MarketExchangePage(open: { (r: MarketRoute) in route = r })
+            .appScreen(title: "Exchange", subtitle: "Market")
+            .navigationDestination(item: $route) { (r: MarketRoute) in MarketDestination(route: r) }
     }
 }
 

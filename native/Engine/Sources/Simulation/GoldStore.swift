@@ -57,10 +57,6 @@ public enum GoldStore {
         return max(0, Int(((goldPerUnit(pack) / goldPerUnit(base) - 1) * 100).rounded()))
     }
 
-    public static func priceText(cents: Int) -> String {
-        String(format: "$%d.%02d", cents / 100, cents % 100)
-    }
-
     public static func price(_ box: BoxKind) -> Int { box.price }
 }
 

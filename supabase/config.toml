@@ -16,6 +16,7 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 enable_signup = true
 enable_anonymous_sign_ins = true
+enable_manual_linking = true
 
 [auth.external.apple]
 enabled = true

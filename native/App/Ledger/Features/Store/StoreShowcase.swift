@@ -33,7 +33,7 @@ struct StoreSeasonCard: View {
     var body: some View {
         let pass: SeasonPass = model.pass
         let left: Int = pass.daysLeft(today: model.today)
-        let ready: Int = pass.claimableCount(isPlus: ent.isPlus)
+        let ready: Int = pass.claimableCount(isPlus: model.premiumOpen(plus: ent.isPlus))
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
                 Text("Season \(pass.seasonNumber) Pass").capsLabel(Theme.accent)
@@ -137,29 +137,20 @@ struct PackTile: View {
     var pack: GoldPack
     var first: Bool
     var best: Bool
-    var action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            VStack(spacing: Theme.Space.xs) {
-                if best { StoreTag(text: "Best value") } else { Color.clear.frame(height: 18) }
-                StoreCoinHeap(tier: (GoldStore.packs.firstIndex(where: { $0.id == pack.id }) ?? 0) + 1)
-                Text(pack.name).textStyle(.headline).lineLimit(1)
-                Text(GoldStore.totalGold(pack, firstPurchase: first).formatted()).textStyle(.body, tint: Theme.ink, numeric: true)
-                Text(first ? "gold, bonus in" : "gold").textStyle(.caption)
-                Text(GoldStore.priceText(cents: pack.priceCents))
-                    .textStyle(.headline, tint: Theme.accentInk, numeric: true)
-                    .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs)
-                    .background(Capsule().fill(Theme.accent))
-            }
-            .padding(.horizontal, Theme.Space.xs).padding(.vertical, Theme.Space.s)
-            .frame(maxWidth: .infinity, minHeight: 168)
-            .background(StoreSurface(tint: Theme.gold, glow: best, radius: Theme.Radius.card))
-            .storeSheen(radius: Theme.Radius.card, enabled: best)
-            .contentShape(Rectangle())
-            .accessibilityElement(children: .combine)
+        VStack(spacing: Theme.Space.xs) {
+            if best { StoreTag(text: "Best value") } else { Color.clear.frame(height: 18) }
+            StoreCoinHeap(tier: (GoldStore.packs.firstIndex(where: { $0.id == pack.id }) ?? 0) + 1)
+            Text(pack.name).textStyle(.headline).lineLimit(1)
+            Text(GoldStore.totalGold(pack, firstPurchase: first).formatted()).textStyle(.body, tint: Theme.ink, numeric: true)
+            Text(first ? "gold, bonus in" : "gold").textStyle(.caption)
+            PurchaseButton(item: .goldPack(pack.id), minHeight: 34, identifier: "pack-" + pack.id)
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("pack-" + pack.id)
+        .padding(.horizontal, Theme.Space.xs).padding(.vertical, Theme.Space.s)
+        .frame(maxWidth: .infinity, minHeight: 168)
+        .background(StoreSurface(tint: Theme.gold, glow: best, radius: Theme.Radius.card))
+        .storeSheen(radius: Theme.Radius.card, enabled: best)
+        .accessibilityElement(children: .contain)
     }
 }

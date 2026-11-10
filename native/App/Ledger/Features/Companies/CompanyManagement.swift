@@ -78,7 +78,7 @@ struct CompanyManagement: View {
         let tinted: Bool = r.lineTint != Theme.ivoryFaint
         if node.isOwner {
             HStack(spacing: 8) {
-                ThinPersonRow(name: r.name, title: "Owner", note: (node.works == true) ? "works here" : "", chevron: false, roleKey: "owner")
+                ThinPersonRow(name: r.name, title: "Owner", note: node.ownerNote, chevron: false, roleKey: "owner")
                 if let works = node.works, let toggle = node.toggleWorks { ownerToggle(works, toggle) }
             }
         } else if let target = node.sheet {
@@ -111,6 +111,7 @@ struct CompanyManagement: View {
         var level: Int?
         var sheet: Sheet?
         var isOwner = false
+        var ownerNote = ""
         var works: Bool? = nil
         var toggleWorks: (() -> Void)? = nil
     }
@@ -129,8 +130,11 @@ struct CompanyManagement: View {
 
     private func orgNodes(_ cur: Currency) -> [OrgNode] {
         var out: [OrgNode] = []
-        let youLine: String = OwnerHours.works(company) ? "Runs it day to day." : "Final say on anything above the budget you set."
-        let canWork: Bool = company.managerID == nil
+        let managerName: String? = company.managerID.flatMap { (id: Int) -> String? in engine.state.people[id]?.name }
+        let crewRuns: Bool = OwnerHours.crewRuns(company)
+        let youLine: String = managerName != nil ? "Final say on anything above the budget you set." : crewRuns ? "The team covers the work, so you are free." : OwnerHours.works(company) ? "Runs it day to day." : "Final say on anything above the budget you set."
+        let ownerNote: String = managerName.map { (n: String) -> String in "Run by " + n } ?? (crewRuns ? "Team runs it" : (OwnerHours.works(company) ? "works here" : ""))
+        let canWork: Bool = company.managerID == nil && !crewRuns
         let working: Bool = OwnerHours.works(company)
         let cid: Int = company.id
         let toggle: () -> Void = {
@@ -138,7 +142,7 @@ struct CompanyManagement: View {
             store.settle(store.act { $0.setWorksHere(companyID: cid, works: !working) }, working ? "You no longer work here." : "You work here again.")
         }
         out.append(OrgNode(id: "you", glyph: Glyph.person, row: ManagementRow(name: engine.state.player.name, role: "Owner", scope: "company", line: youLine), level: nil, sheet: nil, isOwner: true,
-                           works: canWork ? working : nil, toggleWorks: canWork ? toggle : nil))
+                           ownerNote: ownerNote, works: canWork ? working : nil, toggleWorks: canWork ? toggle : nil))
         for b in chainAbove.reversed() {
             let title: String = GameEngine.bossTitle(b.kind, trade: nil)
             let budget: Budget = Budget(rawValue: min(2, max(0, b.level))) ?? .tight

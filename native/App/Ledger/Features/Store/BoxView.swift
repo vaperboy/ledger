@@ -35,7 +35,6 @@ struct BoxView: View {
     var kind: BoxKind
     var paidBoxesAllowed: Bool
     private let session = StoreSession.shared
-    @AppStorage(LootBoxChoice.key) private var lootOff = false
     @State private var opened: OpenedBox?
     @State private var revealedID: UUID?
     @State private var shortOfGold = false
@@ -45,7 +44,7 @@ struct BoxView: View {
     @State private var working = false
     @State private var pending: PendingAction?
 
-    private var paidAllowed: Bool { paidBoxesAllowed && !lootOff }
+    private var paidAllowed: Bool { paidBoxesAllowed }
     private var locked: Bool { working || opened != nil }
 
     var body: some View {
@@ -91,10 +90,7 @@ struct BoxView: View {
             BoxBatchCard(opened: o, paidBoxesAllowed: paidAllowed, onShort: { short(for: 10) }, onNew: { opened = $0 }, onRevealed: seen)
         }
         .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") {
-            ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; showPacks = true }, onPick: { (p: GoldPack) in
-                shortOfGold = false
-                StorePurchase.afterPopup { pending = StorePurchase.pack(p) }
-            })
+            ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; showPacks = true })
         }
         .navigationDestination(isPresented: $showPacks) { StoreApp() }
     }
@@ -123,7 +119,7 @@ struct BoxView: View {
     }
 
     private func statusLine(_ stock: Int) -> String {
-        if kind.isPaid && !paidAllowed { return lootOff ? "Loot boxes are off. Change this with the i." : "Paid boxes are not offered in your region." }
+        if kind.isPaid && !paidAllowed { return "Paid boxes are not offered in your region." }
         if stock > 0 { return stock == 1 ? "You have 1 box in stock." : "You have \(stock) boxes in stock." }
         if kind.isPaid { return "\(StoreText.gold(session.available)) available." }
         return "You have no Season boxes right now."
@@ -136,6 +132,15 @@ struct BoxView: View {
             if plan.needsGold { shortNeed = plan.cost; shortOfGold = true }
             return
         }
+        guard plan.cost > 0 else { start(count, plan); return }
+        let what: String = count == 1 ? "a \(kind.title.lowercased())" : "\(count) \(kind.title.lowercased())es"
+        let from: Int = min(count, plan.stock)
+        let effect: String = from > 0 ? "you open \(what) now, \(from) from your stock and the rest bought." : "you open \(what) now."
+        let offer = GoldOffer(title: "Open \(count == 1 ? "a box" : "\(count) boxes")?", effect: effect, price: plan.cost, icon: "shippingbox")
+        StorePurchase.ask(offer: offer, pending: $pending, onShort: { (_: Int) in shortNeed = plan.cost; shortOfGold = true }) { start(count, plan) }
+    }
+
+    private func start(_ count: Int, _ plan: BoxPlan) {
         working = true
         Task {
             let out = await session.openBoxes(kind, count: count, paidBoxesAllowed: paidAllowed)
@@ -191,23 +196,31 @@ struct BoxResultCard: View {
     @State private var start = Date()
     @State private var ring = false
     @State private var showInfo = false
-    @AppStorage(LootBoxChoice.key) private var lootOff = false
+    @State private var desk = PieceDesk()
 
     private var kind: BoxKind { opened.opening.kind }
     private func close() { if let c = popupClose { c() } else { systemDismiss() } }
     private var shown: Bool { revealed || reduceMotion }
 
     var body: some View {
-        if showInfo {
-            VStack(spacing: Theme.Space.m) {
-                LootBoxInfoContent(kind: kind)
-                Button { Motion.animate(.easeInOut(duration: 0.2)) { showInfo = false } } label: { Text("Back to the box").frame(maxWidth: .infinity) }
-                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+        Group {
+            if let item = desk.auctioning {
+                ListingCard(item: item) { (listed: Bool) in
+                    if listed { desk.markListed(item) }
+                    desk.auctioning = nil
+                }
+            } else if showInfo {
+                VStack(spacing: Theme.Space.m) {
+                    LootBoxInfoContent(kind: kind)
+                    Button { Motion.animate(.easeInOut(duration: 0.2)) { showInfo = false } } label: { Text("Back to the box").frame(maxWidth: .infinity) }
+                        .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                reveal
             }
-            .frame(maxWidth: .infinity)
-        } else {
-            reveal
         }
+        .task(id: opened.id) { await play() }
     }
 
     private var reveal: some View {
@@ -221,6 +234,7 @@ struct BoxResultCard: View {
                         if let tag = newTag(r) { StoreTag(text: tag.text, tint: tag.tint) }
                     }
                     content(r)
+                    prizeActions(r)
                     if r.guaranteed { Text("This was your guaranteed rare.").textStyle(.caption) }
                     ForEach(opened.opening.completed, id: \.id) { (c: ArtifactCollection) in
                         Text("Collection complete: \(c.name). Reward: \(GoldCosmetics.cosmetic(c.rewardID)?.item.title ?? "a cosmetic").")
@@ -233,7 +247,6 @@ struct BoxResultCard: View {
         .frame(maxWidth: .infinity)
         .overlay(alignment: .topTrailing) { LootInfoButton { Motion.animate(.easeInOut(duration: 0.2)) { showInfo = true } } }
         .centerSheetLocked(!shown)
-        .task(id: opened.id) { await play() }
         .popupFooter {
             PopupFooter(cancel: "Done", action: againTitle, onCancel: { if shown { close() } else { reveal(r) } }, onAction: { another() },
                         actionEnabled: canAgain && !working && shown)
@@ -336,12 +349,11 @@ struct BoxResultCard: View {
             let c: GoldCosmetic? = GoldCosmetics.cosmetic(id)
             Text(c?.item.title ?? "A cosmetic").textStyle(.title).multilineTextAlignment(.center).lineLimit(2)
             Text(c?.item.kind.label ?? "Cosmetic").textStyle(.caption).multilineTextAlignment(.center)
-            Text("Added to your wardrobe.").textStyle(.caption, tint: Theme.gain)
         case .artifact(let item):
             let def: ArtifactDef? = ArtifactCatalog.def(item.defID)
             Text(def?.name ?? "Artifact").textStyle(.title).multilineTextAlignment(.center).lineLimit(2)
             Text(ArtifactCatalog.label(item)).textStyle(.headline, tint: r.rarity.tint, numeric: true)
-            Text("Added to your cabinet. Sell it at auction for cash.").textStyle(.caption, tint: Theme.gain).multilineTextAlignment(.center)
+            Text("Added to your cabinet.").textStyle(.caption, tint: Theme.gain).multilineTextAlignment(.center)
         case .gold(let g, let doubled):
             GoldAmount(amount: g, style: .display)
             if doubled { Text("Doubled: this was a rare double.").textStyle(.caption, tint: Theme.gain) }
@@ -351,9 +363,16 @@ struct BoxResultCard: View {
         }
     }
 
+    @ViewBuilder private func prizeActions(_ r: BoxResult) -> some View {
+        switch r.content {
+        case .artifact(let item): PieceActions(item: item, desk: desk).frame(maxWidth: 320).padding(.top, Theme.Space.xs)
+        case .cosmetic(let id): EquipNowButton(id: id).frame(maxWidth: 320).padding(.top, Theme.Space.xs)
+        case .gold, .money: EmptyView()
+        }
+    }
+
     private var canAgain: Bool {
         let stock: Int = session.state.count(kind)
-        if kind.isPaid && lootOff { return false }
         if stock > 0 { return true }
         return kind.isPaid && paidBoxesAllowed
     }
@@ -377,6 +396,84 @@ struct BoxResultCard: View {
     }
 }
 
+enum PieceFate: Equatable {
+    case sold(Int)
+    case listed
+}
+
+@MainActor @Observable
+final class PieceDesk {
+    private(set) var fates: [String: PieceFate] = [:]
+    var auctioning: ArtifactItem?
+    private(set) var busy = false
+    @ObservationIgnored private let session = StoreSession.shared
+
+    func open(_ items: [ArtifactItem]) -> [ArtifactItem] {
+        items.filter { fates[$0.id] == nil && session.state.cabinet.contains($0.id) }
+    }
+
+    func sell(_ items: [ArtifactItem]) async {
+        let todo: [ArtifactItem] = open(items)
+        guard !busy, !todo.isEmpty else { return }
+        busy = true
+        let prices: [String: Int] = Dictionary(uniqueKeysWithValues: todo.map { ($0.id, session.quickPrice($0)) })
+        if await session.quickSell(todo) != nil {
+            for item in todo where !session.state.cabinet.contains(item.id) { fates[item.id] = .sold(prices[item.id] ?? 0) }
+            Haptics.success()
+        }
+        busy = false
+    }
+
+    func markListed(_ item: ArtifactItem) { fates[item.id] = .listed }
+}
+
+struct PieceActions: View {
+    var item: ArtifactItem
+    var desk: PieceDesk
+    private let session = StoreSession.shared
+
+    var body: some View {
+        if let fate = desk.fates[item.id] {
+            switch fate {
+            case .sold(let price): Text("Sold for \(session.money(price)). The cash is in your account.").textStyle(.caption, tint: Theme.gain).multilineTextAlignment(.center)
+            case .listed: Text("Up for auction. Follow it under My auctions.").textStyle(.caption, tint: Theme.gain).multilineTextAlignment(.center)
+            }
+        } else if session.canSellForCash && StoreGate.access(countryCode: nil) != .hidden {
+            HStack(spacing: Theme.Space.s) {
+                Button { Task { await desk.sell([item]) } } label: { Text("Sell for \(session.money(session.quickPrice(item)))").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity) }
+                    .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
+                    .disabled(desk.busy)
+                    .accessibilityIdentifier("piece-sell")
+                Button { desk.auctioning = item } label: { Text("Auction").frame(maxWidth: .infinity) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
+                    .disabled(desk.busy)
+                    .accessibilityIdentifier("piece-auction")
+            }
+        } else {
+            Text("Open a game to sell it for cash.").textStyle(.caption).multilineTextAlignment(.center)
+        }
+    }
+}
+
+struct EquipNowButton: View {
+    var id: String
+    @ObservedObject private var season = SeasonModel.shared
+
+    var body: some View {
+        if let r = SeasonRewards.item(id), r.kind.isEquippable {
+            if season.pass.equipped[r.kind.rawValue] == id {
+                Button {} label: { Text("Equipped").frame(maxWidth: .infinity) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true, passive: true))
+                    .disabled(true)
+            } else {
+                Button { Haptics.success(); season.equip(id) } label: { Text("Equip now").frame(maxWidth: .infinity) }
+                    .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
+                    .accessibilityIdentifier("equip-now")
+            }
+        }
+    }
+}
+
 struct HaulEntry: Identifiable {
     enum Kind { case cosmetic, artifact, gold, cash }
     var id: String
@@ -388,6 +485,7 @@ struct HaulEntry: Identifiable {
     var goldTotal = 0
     var cosmetic: GoldCosmetic?
     var artifact: ArtifactDef?
+    var item: ArtifactItem?
 
     static func group(_ results: [BoxResult]) -> [HaulEntry] {
         var order: [String] = []
@@ -400,7 +498,7 @@ struct HaulEntry: Identifiable {
                 entry = HaulEntry(id: "c|" + id, kind: .cosmetic, title: c?.item.title ?? "Cosmetic", rarity: r.rarity, detail: c?.item.kind.label ?? "Cosmetic", cosmetic: c)
             case .artifact(let item):
                 let def: ArtifactDef? = ArtifactCatalog.def(item.defID)
-                entry = HaulEntry(id: "a|" + item.defID, kind: .artifact, title: def?.name ?? "Artifact", rarity: r.rarity, detail: ArtifactCatalog.label(item), artifact: def)
+                entry = HaulEntry(id: "a|" + item.id, kind: .artifact, title: def?.name ?? "Artifact", rarity: r.rarity, detail: ArtifactCatalog.label(item), artifact: def, item: item)
             case .gold(let g, _):
                 entry = HaulEntry(id: "g|" + r.rarity.rawValue, kind: .gold, title: "Gold", rarity: r.rarity, goldTotal: g)
             case .money:
@@ -416,7 +514,8 @@ struct HaulEntry: Identifiable {
             }
         }
         return order.compactMap { map[$0] }.sorted { (a: HaulEntry, b: HaulEntry) -> Bool in
-            a.rarity.rank != b.rarity.rank ? a.rarity.rank > b.rarity.rank : a.title < b.title
+            if a.rarity.rank != b.rarity.rank { return a.rarity.rank > b.rarity.rank }
+            return a.title != b.title ? a.title < b.title : a.id < b.id
         }
     }
 
@@ -441,6 +540,8 @@ struct BoxBatchCard: View {
     @State private var working = false
     @State private var showInfo = false
     @State private var start = Date()
+    @State private var desk = PieceDesk()
+    @State private var pick: String?
 
     private var kind: BoxKind { opened.opening.kind }
     private var shown: Bool { revealed || reduceMotion }
@@ -448,11 +549,27 @@ struct BoxBatchCard: View {
 
     var body: some View {
         Group {
-            if showInfo { info } else if shown { results } else { shaking }
+            if let item = desk.auctioning {
+                ScrollView {
+                    ListingCard(item: item) { (listed: Bool) in
+                        if listed { desk.markListed(item) }
+                        desk.auctioning = nil
+                    }
+                    .padding(.horizontal, PopupLayout.inset).padding(.bottom, PopupLayout.inset)
+                }
+            } else {
+                main
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .centerSheetLocked(!shown)
         .task(id: opened.id) { await play() }
+    }
+
+    private var main: some View {
+        Group {
+            if showInfo { info } else if shown { results } else { shaking }
+        }
         .popupFooter {
             PopupFooter(cancel: "Done", action: againTitle, onCancel: { if shown { close() } else { reveal() } }, onAction: { again() },
                         actionEnabled: canAgain && !working && shown && !showInfo)
@@ -480,10 +597,19 @@ struct BoxBatchCard: View {
         }
     }
 
+    private var haulPieces: [ArtifactItem] {
+        opened.opening.results.compactMap { (r: BoxResult) -> ArtifactItem? in
+            if case .artifact(let item) = r.content { return item } else { return nil }
+        }
+    }
+
+    private var duplicates: [ArtifactItem] { desk.open(session.state.cabinet.duplicates(among: haulPieces)) }
+
     private var results: some View {
         let haul: BoxHaul = BoxHaul(opened.opening.results)
         let entries: [HaulEntry] = HaulEntry.group(opened.opening.results)
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 3)
+        let chosen: HaulEntry? = entries.first { $0.id == pick } ?? entries.first { $0.kind == .artifact || $0.kind == .cosmetic } ?? entries.first
         return VStack(spacing: Theme.Space.s) {
             HStack(alignment: .top) {
                 Text(summary(haul)).textStyle(.caption).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
@@ -491,16 +617,63 @@ struct BoxBatchCard: View {
                 LootInfoButton { Motion.animate(.easeInOut(duration: 0.2)) { showInfo = true } }.offset(x: 8, y: -10)
             }
             LazyVGrid(columns: columns, spacing: Theme.Space.s) {
-                ForEach(entries) { (e: HaulEntry) in tile(e) }
+                ForEach(entries) { (e: HaulEntry) in tile(e, chosen: e.id == chosen?.id) }
             }
             ForEach(opened.opening.completed, id: \.id) { (c: ArtifactCollection) in
                 Text("Collection complete: \(c.name). Reward: \(GoldCosmetics.cosmetic(c.rewardID)?.item.title ?? "a cosmetic").")
                     .textStyle(.caption, tint: Theme.gain).multilineTextAlignment(.center)
             }
+            if let chosen { panel(chosen) }
+            duplicatesRow
             Spacer(minLength: 0)
         }
         .padding(.horizontal, PopupLayout.inset)
         .transition(.opacity)
+    }
+
+    @ViewBuilder private var duplicatesRow: some View {
+        let dupes: [ArtifactItem] = duplicates
+        if !dupes.isEmpty && session.canSellForCash {
+            let total: Int = dupes.reduce(0) { $0 + session.quickPrice($1) }
+            Button { Task { await desk.sell(dupes) } } label: {
+                Text("Sell all duplicates (\(dupes.count)) for \(session.money(total))").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity)
+            }
+            .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
+            .disabled(desk.busy)
+            .accessibilityIdentifier("sell-duplicates")
+        }
+    }
+
+    private func panel(_ e: HaulEntry) -> some View {
+        let tint: Color = e.rarity.tint
+        return VStack(spacing: Theme.Space.s) {
+            HStack(spacing: Theme.Space.s) {
+                icon(e)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(e.title).textStyle(.headline).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(panelNote(e)).textStyle(.caption, tint: tint).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            switch e.kind {
+            case .artifact: if let item = e.item { PieceActions(item: item, desk: desk) }
+            case .cosmetic: if let c = e.cosmetic { EquipNowButton(id: c.id) }
+            case .gold, .cash: EmptyView()
+            }
+        }
+        .padding(Theme.Space.s)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset))
+    }
+
+    private func panelNote(_ e: HaulEntry) -> String {
+        switch e.kind {
+        case .artifact:
+            guard let item = e.item else { return e.line }
+            return e.rarity.title + ", " + ArtifactCatalog.label(item) + ". Market " + session.money(AuctionMarket.suggestedStart(e.rarity, priceLevel: session.priceLevel))
+        case .cosmetic: return e.rarity.title + " " + e.detail.lowercased() + ". In your wardrobe."
+        case .gold: return "Added to your gold."
+        case .cash: return "Paid into your personal account."
+        }
     }
 
     private func summary(_ h: BoxHaul) -> String {
@@ -510,25 +683,40 @@ struct BoxBatchCard: View {
         if h.gold > 0 { parts.append(StoreText.gold(h.gold)) }
         let cash: Int = opened.opening.results.filter { if case .money = $0.content { return true } else { return false } }.count
         if cash > 0 { parts.append(cash == 1 ? "1 cash prize" : "\(cash) cash prizes") }
-        return parts.joined(separator: ", ") + ". All of it is already yours."
+        return parts.joined(separator: ", ") + ". Tap a piece to sell, auction or wear it."
     }
 
-    private func tile(_ e: HaulEntry) -> some View {
+    private func tile(_ e: HaulEntry, chosen: Bool) -> some View {
         let tint: Color = e.rarity.tint
-        return VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: Theme.Space.xs) {
-                icon(e)
-                Spacer(minLength: 0)
-                if e.count > 1 { Text("x\(e.count)").textStyle(.headline, tint: tint, numeric: true) }
+        let fate: PieceFate? = e.item.flatMap { desk.fates[$0.id] }
+        return Button { Haptics.choose(); pick = e.id } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: Theme.Space.xs) {
+                    icon(e)
+                    Spacer(minLength: 0)
+                    if e.count > 1 { Text("x\(e.count)").textStyle(.headline, tint: tint, numeric: true) }
+                }
+                Text(e.title).textStyle(.caption, weight: .semibold).lineLimit(2).minimumScaleFactor(0.85).fixedSize(horizontal: false, vertical: true)
+                Text(fateLine(fate) ?? e.line).textStyle(.caption, tint: fate == nil ? tint : Theme.gain).lineLimit(1).minimumScaleFactor(0.7)
             }
-            Text(e.title).textStyle(.caption, weight: .semibold).lineLimit(2).minimumScaleFactor(0.85).fixedSize(horizontal: false, vertical: true)
-            Text(e.line).textStyle(.caption, tint: tint).lineLimit(1).minimumScaleFactor(0.7)
+            .padding(Theme.Space.s)
+            .frame(maxWidth: .infinity, minHeight: 68, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(tint.opacity(0.14)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(chosen ? Theme.ink : tint.opacity(0.7), lineWidth: chosen ? 2 : 1))
+            .opacity(fate == nil ? 1 : 0.7)
+            .contentShape(Rectangle())
         }
-        .padding(Theme.Space.s)
-        .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(tint.opacity(0.14)))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(tint.opacity(0.7), lineWidth: 1))
+        .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(chosen ? .isSelected : [])
+    }
+
+    private func fateLine(_ fate: PieceFate?) -> String? {
+        switch fate {
+        case .sold(let price): return "Sold, " + session.money(price)
+        case .listed: return "On auction"
+        case nil: return nil
+        }
     }
 
     @ViewBuilder private func icon(_ e: HaulEntry) -> some View {
@@ -594,7 +782,6 @@ struct BoxBatchCard: View {
 struct ShortOfGoldCard: View {
     var needed: Int = 0
     var onPacks: () -> Void
-    var onPick: (GoldPack) -> Void
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func close() { if let c = popupClose { c() } else { systemDismiss() } }
@@ -609,27 +796,23 @@ struct ShortOfGoldCard: View {
                 .textStyle(.body).multilineTextAlignment(.center)
             Text("Value deals").capsLabel(Theme.inkFaint).frame(maxWidth: .infinity, alignment: .leading)
             ForEach(deals(short: short, first: first)) { (p: GoldPack) in
-                Button { onPick(p) } label: {
-                    HStack(spacing: Theme.Space.m) {
-                        StoreCoinHeap(tier: (GoldStore.packs.firstIndex(where: { $0.id == p.id }) ?? 0) + 1).scaleEffect(0.8)
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: Theme.Space.s) {
-                                Text(p.name).textStyle(.headline)
-                                if p.id == StorePurchase.bestPack?.id { StoreTag(text: "Best value") }
-                            }
-                            Text("\(StoreText.gold(GoldStore.totalGold(p, firstPurchase: first)))\(short > 0 && GoldStore.totalGold(p, firstPurchase: first) >= short ? ", covers it" : "")")
-                                .textStyle(.caption, tint: Theme.ink)
+                HStack(spacing: Theme.Space.m) {
+                    StoreCoinHeap(tier: (GoldStore.packs.firstIndex(where: { $0.id == p.id }) ?? 0) + 1).scaleEffect(0.8)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: Theme.Space.s) {
+                            Text(p.name).textStyle(.headline)
+                            if p.id == StorePurchase.bestPack?.id { StoreTag(text: "Best value") }
                         }
-                        Spacer(minLength: Theme.Space.s)
-                        Text(GoldStore.priceText(cents: p.priceCents)).textStyle(.headline, tint: Theme.accent, numeric: true)
+                        Text("\(StoreText.gold(GoldStore.totalGold(p, firstPurchase: first)))\(short > 0 && GoldStore.totalGold(p, firstPurchase: first) >= short ? ", covers it" : "")")
+                            .textStyle(.caption, tint: Theme.ink)
                     }
-                    .padding(Theme.Space.m)
-                    .background(StoreSurface(tint: Theme.gold, glow: p.id == StorePurchase.bestPack?.id, radius: Theme.Radius.card))
-                    .storeSheen(radius: Theme.Radius.card, enabled: p.id == StorePurchase.bestPack?.id)
-                    .contentShape(Rectangle())
-                    .accessibilityElement(children: .combine)
+                    Spacer(minLength: Theme.Space.s)
+                    PurchaseButton(item: .goldPack(p.id), minHeight: 36, leave: { close() })
                 }
-                .buttonStyle(PressableStyle())
+                .padding(Theme.Space.m)
+                .background(StoreSurface(tint: Theme.gold, glow: p.id == StorePurchase.bestPack?.id, radius: Theme.Radius.card))
+                .storeSheen(radius: Theme.Radius.card, enabled: p.id == StorePurchase.bestPack?.id)
+                .accessibilityElement(children: .contain)
             }
             Text("Gold from the Season Pass counts too. You confirm the price before anything is bought.").textStyle(.caption).multilineTextAlignment(.center)
         }

@@ -76,6 +76,7 @@ public enum EventEngine {
             if !e.options.isEmpty { setFlag(&s, i, "evCool", cooldownWeeks(s, companyID: co.id, event: e)) }
             fire(&s, companyIndex: i, e, ctx: c, data: data, context: fc)
         }
+        EventPack.spawn(&s, companyIndex: i, data: data, context: fc)
     }
 
     static func goodEventMinimumWeeks(_ s: GameState, companyIndex i: Int) -> Int {

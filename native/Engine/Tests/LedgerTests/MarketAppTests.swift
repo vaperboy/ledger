@@ -100,7 +100,6 @@ final class MarketAppTests: XCTestCase {
     func testRefusals() throws {
         var e = try ChainsTests.engine("UK")
         XCTAssertNotNil(e.marketQuote(asset: "stock:TECH", owner: .player, amount: 10_000).refusal, "single-company shares are not offered")
-        XCTAssertFalse(e.marketAssets.contains { $0.kind == .stock })
         XCTAssertNotNil(e.marketQuote(asset: "fund:idx", owner: .player, amount: 1).refusal, "below the smallest order")
         XCTAssertNotNil(e.marketQuote(asset: "fund:nope", owner: .player, amount: 10_000).refusal)
         XCTAssertNotNil(e.marketQuote(asset: "fund:idx", owner: .player, amount: 1e15).refusal, "more than the accounts hold")

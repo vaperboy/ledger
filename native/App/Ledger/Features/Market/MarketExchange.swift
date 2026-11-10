@@ -94,7 +94,7 @@ struct MarketExchangePage: View {
     var open: (MarketRoute) -> Void
     @State private var part: Part = .market
 
-    enum Part: String, CaseIterable, Hashable { case market = "Shares", orders = "Orders", positions = "Positions" }
+    enum Part: String, CaseIterable, Hashable { case market = "Market", prices = "Prices", orders = "Orders", positions = "Positions" }
 
     var body: some View {
         if let e = store.engine {
@@ -107,6 +107,7 @@ struct MarketExchangePage: View {
                               selection: $part, identifier: { (p: Part) -> String in "exchange-part-\(p.rawValue)" })
                 switch part {
                 case .market: shares(e, cur, rows)
+                case .prices: ExchangePriceBoard()
                 case .orders: openOrders(e, cur, rows, orders)
                 case .positions: positions(e, cur, rows)
                 }

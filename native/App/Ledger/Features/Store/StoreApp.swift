@@ -4,13 +4,11 @@ import Simulation
 
 struct StoreApp: View {
     @Environment(OnlineSession.self) private var online
-    @Environment(Entitlements.self) private var ent
+    @Environment(PurchaseManager.self) private var purchases
     private let session = StoreSession.shared
-    @State private var pending: PendingAction?
     @State private var showPlans = false
     @State private var showRedeem = false
     @State private var showInfo = false
-    @AppStorage(LootBoxChoice.key) private var lootOff = false
 
     var body: some View {
         let paid: Bool = paidBoxesAllowed
@@ -25,15 +23,14 @@ struct StoreApp: View {
             footer
         }
         .appScreen(title: "Store", subtitle: "") { StoreGoldChip(amount: session.gold) }
-        .confirmAction($pending)
         .centerSheet(isPresented: $showPlans, title: "Ledger plans", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
         .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: .cabinet) }
-        .offerCodeRedemption(isPresented: $showRedeem) { _ in Task { await ent.restore() } }
-        .task { await session.load(); await ent.loadProducts() }
+        .offerCodeRedemption(isPresented: $showRedeem) { _ in Task { await purchases.codeRedeemed() } }
+        .task { await session.load(); await purchases.loadProducts() }
     }
 
     private var paidBoxesAllowed: Bool {
-        if case .open(let paid) = StoreGate.access(countryCode: online.profile?.countryCode) { return paid && !lootOff }
+        if case .open(let paid) = StoreGate.access(countryCode: online.profile?.countryCode) { return paid }
         return false
     }
 
@@ -54,7 +51,7 @@ struct StoreApp: View {
                     }
                 }
             } else {
-                Text(lootOff ? "Loot boxes are off. Cosmetics are on sale directly for gold below." : "Paid boxes are not offered where you are. Season boxes can still be opened.")
+                Text("Paid boxes are not offered where you are. Season boxes can still be opened.")
                     .textStyle(.body, tint: Theme.inkSoft).padding(.horizontal, Theme.Space.m)
             }
         }
@@ -83,11 +80,11 @@ struct StoreApp: View {
             Text("Gold packs").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
             LazyVGrid(columns: columns, spacing: Theme.Space.s) {
                 ForEach(GoldStore.packs) { (pack: GoldPack) in
-                    PackTile(pack: pack, first: first, best: pack.id == best) { pending = StorePurchase.pack(pack) }
+                    PackTile(pack: pack, first: first, best: pack.id == best)
                 }
             }
-            if session.isVisualOnly {
-                Text("Preview store: nothing is charged and no real purchase happens in this build.").textStyle(.caption).padding(.horizontal, Theme.Space.m)
+            if let problem = purchases.catalogError {
+                Text(problem).textStyle(.caption, tint: Theme.warn).padding(.horizontal, Theme.Space.m)
             }
             Text(first ? "Your first pack carries a one-time bonus. Bigger packs give more gold for the same money." : "Bigger packs give more gold for the same money.")
                 .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
@@ -96,25 +93,16 @@ struct StoreApp: View {
 
     private var seasonBundleRow: some View {
         let b: SeasonBundle = GoldStore.seasonBundle
-        return Button { pending = StorePurchase.seasonBundle() } label: {
-            HStack(spacing: Theme.Space.m) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(b.name).textStyle(.headline)
-                    Text("\(StoreText.gold(b.gold)), \(StorePurchase.boxText(b)) and Ledger Plus for this season").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: Theme.Space.s)
-                Text(GoldStore.priceText(cents: b.priceCents))
-                    .textStyle(.headline, tint: Theme.accentInk, numeric: true)
-                    .padding(.horizontal, Theme.Space.l).frame(minHeight: 40)
-                    .background(Capsule().fill(Theme.accent))
+        return HStack(spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(b.name).textStyle(.headline)
+                Text("\(StoreText.gold(b.gold)), \(StorePurchase.boxText(b)) and the premium Season Pass track for this season").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
-            .padding(Theme.Space.m)
-            .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
-            .contentShape(Rectangle())
-            .accessibilityElement(children: .combine)
+            Spacer(minLength: Theme.Space.s)
+            PurchaseButton(item: .seasonBundle, identifier: "pack-season-bundle")
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("pack-season-bundle")
+        .padding(Theme.Space.m)
+        .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
     }
 
     private var collectionGroup: some View {
@@ -130,11 +118,11 @@ struct StoreApp: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(spacing: Theme.Space.l) {
-                Button { Task { await ent.restore() } } label: { Text("Restore purchases").textStyle(.caption, tint: Theme.accent, weight: .semibold).frame(minHeight: 32) }
+                Button { Task { await purchases.restore() } } label: { Text("Restore purchases").textStyle(.caption, tint: Theme.accent, weight: .semibold).frame(minHeight: 32) }
                     .buttonStyle(PressableStyle())
-                    .disabled(ent.isBusy)
+                    .disabled(purchases.isBusy)
                     .accessibilityIdentifier("store-restore")
-                if ent.offerCodesAvailable {
+                if purchases.offerCodesAvailable {
                     Button { Haptics.tap(); showRedeem = true } label: { Text("Redeem a code").textStyle(.caption, tint: Theme.accent, weight: .semibold).frame(minHeight: 32) }
                         .buttonStyle(PressableStyle())
                         .accessibilityIdentifier("store-redeem")
@@ -142,7 +130,6 @@ struct StoreApp: View {
                 Link("Terms", destination: LedgerLinks.terms).textStyle(.caption)
                 Link("Privacy", destination: LedgerLinks.privacy).textStyle(.caption)
             }
-            if let note = ent.message { Text(note).textStyle(.caption) }
             Text(StoreText.goldRule).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, Theme.Space.m)

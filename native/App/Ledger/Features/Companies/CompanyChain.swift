@@ -5,41 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-struct CompanyChain: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var company: Company
-
-    var body: some View {
-        let chain = engine.chainSummary(containing: company.id)
-        let franchisee = !company.value("franchise").isNull
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreHeader(glyph: Glyph.group, title: "Chain", blurb: chainBlurb(chain: chain, franchisee: franchisee))
-            if company.status == .open || company.status == .closed {
-                if let sum = chain {
-                    StoreInChainCard(engine: engine, company: company, summary: sum)
-                } else if !franchisee {
-                    GrowIntoChain(engine: engine, company: company)
-                }
-            }
-            if franchisee {
-                FranchiseeCard(engine: engine, company: company)
-            } else if chain == nil && (engine.canFranchise(companyID: company.id) || engine.isFranchisor(companyID: company.id)) {
-                FranchisorCard(engine: engine, company: company)
-            }
-            NavigationLink(value: CompanyRoute.companyAt(company.id, .operations)) {
-                CardRow(glyph: Glyph.market, title: "Suppliers and supply from your own companies", subtitle: "Who provides each input, prices, terms and risks. Switch provider in Operations.")
-            }.buttonStyle(PressableStyle())
-        }
-        .environment(\.insideCard, true)
-    }
-
-    private func chainBlurb(chain: Chains.Summary?, franchisee: Bool) -> String {
-        if let chain { return "This store is one of \(chain.stores.count) in \(chain.name): its place, its own rules and the way to the chain page." }
-        if franchisee { return "This company runs under a franchisor's agreement: its fees, rules and what you owe." }
-        return "Grow this company into a chain, or franchise the concept out to other owners."
-    }
-
+enum CompanyChain {
     static func isRelevant(_ co: Company, _ e: GameEngine) -> Bool {
         co.type != "club" && (co.status == .open || co.status == .closed)
     }
@@ -50,66 +16,29 @@ struct GrowIntoChain: View {
     var engine: GameEngine
     var company: Company
     @State private var name = ""
-    @State private var signing = false
 
     var body: some View {
-        let reqs = engine.chainRequirements(companyID: company.id)
-        let doc = engine.documentState(companyID: company.id, document: "chain")
-        let ready: Int = reqs.filter { $0.ok }.count
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreBlock(title: "Grow into a chain", trailing: { Text("\(ready) of \(reqs.count) ready").textStyle(.caption, tint: Theme.inkFaint) }) {
+        if engine.levelOpen(.chain) {
+            MoreBlock("Start a chain") {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    RateBar(label: "Ready", fraction: reqs.isEmpty ? 0 : Double(ready) / Double(reqs.count), tint: ready == reqs.count ? Theme.gain : Theme.gold)
-                    CardLine()
-                    RequirementGuide(engine: engine, company: company, requirements: reqs)
-                }
-            }
-            if let lock = engine.unlockItem("chain", companyID: company.id), !lock.unlocked {
-                LockedBlock(title: "Chain registration", reason: lock.reason, progress: Double(Unlocks.weeksTraded(engine.state, company)) / Double(Unlocks.weeksChain))
-            } else {
-                registration(doc.status, weeksLeft: doc.weeksLeft, blocked: reqs.contains { !$0.ok })
-            }
-        }
-        .onAppear { if name.isEmpty { name = company.name } }
-    }
-
-    @ViewBuilder private func registration(_ status: String, weeksLeft: Int, blocked: Bool) -> some View {
-        let cur: Currency = engine.currency(for: company)
-        if status == "applied" {
-            NoteCard(text: "Chain registration is in progress: about \(weeksLeft) \(weeksLeft == 1 ? "week" : "weeks") left. The lawyer is writing the operations manual.", glyph: Glyph.clock, tint: Theme.caution)
-        } else if status == "ok" {
-            MoreBlock("Name the chain") {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    Text("Chain approved. Name the chain: every store will carry this name.").textStyle(.caption, tint: Theme.inkSoft)
+                    Text("Every store you add carries one name and one set of rules.").textStyle(.caption, tint: Theme.inkSoft)
                     Card(padding: Theme.Space.m, radius: Theme.Radius.table, fill: Theme.inset) {
                         TextField("Chain name", text: $name).textFieldStyle(.plain).font(.system(size: 15))
                     }
-                    PrimaryAction(title: "Make \(name.isEmpty ? company.name : name) a chain", identifier: "chain-make") {
-                        let made: Int? = store.act({ $0.makeChain(companyID: company.id, name: name.isEmpty ? company.name : name) }) ?? nil
-                        if made != nil { Haptics.success(); store.show("It is now a chain. Add stores or open new ones.", tone: "good") }
-                        else { Haptics.warning(); store.show("The chain registration is not approved yet.", tone: "warn") }
-                    }
+                    PrimaryAction(title: "Start a chain", identifier: "chain-make") { start() }
                 }
             }
+            .onAppear { if name.isEmpty { name = company.name } }
         } else {
-            PrimaryAction(title: "Apply for chain registration \u{00B7} \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")))",
-                          blockedReason: blocked ? "Every step above must be ready first." : nil, identifier: "chain-apply") {
-                signing = true
-            }
-            .centerSheet(isPresented: $signing) {
-                SignPopup(title: "Chain registration", to: "The business register", note: "A lawyer prepares the registration of \(company.name) as a chain. It is reviewed before it is approved.",
-                               fee: cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")), wait: "after a review of some weeks", button: "Sign and send",
-                               onSend: {
-                    switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "chain") }) {
-                    case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
-                    case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
-                    case .notEnoughCash?: Haptics.warning(); store.show("You do not have enough cash for the lawyer.", tone: "warn")
-                    default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
-                    }
-                }, onClose: { signing = false })
-                .environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear)
-            }
+            LevelLockCard(feature: .chain)
         }
+    }
+
+    private func start() {
+        let chosen: String = name.trimmingCharacters(in: .whitespaces)
+        let made: Int? = store.act({ $0.startChain(companyID: company.id, name: chosen.isEmpty ? company.name : chosen) }) ?? nil
+        if made != nil { Haptics.success(); store.show("It is now a chain. Add stores or open new ones.", tone: "good") }
+        else { Haptics.warning(); store.show("A chain cannot be started yet.", tone: "warn") }
     }
 }
 

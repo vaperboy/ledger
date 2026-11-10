@@ -14,7 +14,8 @@
 - The Country app stays hidden until the player is a level away from unlocking it.
 - Accountant leaderboard and rating: the server call for rating a hire exists in the client, no screen uses it.
 - Block list: the client call exists, no screen shows blocked players.
-- Sign-in screen cannot finish Apple or Google sign-in (see Server).
+- Sign out in Settings only pauses the online session until the next launch or "Go online"; the anonymous server account stays in the Keychain, so a lost session means a new empty account.
+- Restoring a linked account on a new device is not possible: linking a Google account that already belongs to another player is refused and there is no sign-in-to-existing-account flow.
 - UI feature tours and popup screenshots run only by hand (workflow `native-tours`, `native-ios` screenshot job); keep them in step with new screens.
 - English text only; no localisation files.
 
@@ -27,10 +28,11 @@
 - Bundle id and source identifier are `com.example.*` and must change before App Store submission.
 
 ## Server
-- `OnlineConfig.useServer` is false; the app runs on mock services.
-- Sign-in: `UnavailableIdentityTokenProvider` is the only token provider; Apple and Google OAuth tokens are not produced. Dashboard: enable Apple and Google providers, anonymous sign-ins, and set the site and redirect URL to `ledger://auth-callback`.
+- `OnlineConfig.useServer` is true: every player gets an anonymous server account at first launch. The stand-in service stays for offline mode and for the markets, joint ventures and startup market that have no server client yet.
+- Google linking needs the dashboard: enable the Google provider (client id and secret), switch on manual linking, check anonymous sign-ins are on, and add `ledger://auth-callback` to the redirect URLs. Until then the link button shows a friendly "not set up yet" message.
+- Apple linking is hidden: Sign in with Apple needs a capability a sideloaded build does not have. The web flow needs a paid developer team with a Services ID; then add `.apple` to `OnlineConfig.serverLinkProviders`.
 - Swift clients missing for supply market, startup market, joint ventures, player deals, exchange positions, trade associations, store and auctions (all mock). Clients exist for profiles and friends, admin, leaderboard, accountant offices, world rules and news.
-- Migrations 0001 to 0021 pass the SQL tests but are not applied to the live project until the `SUPABASE_DB_PASSWORD` repository secret is set (the workflow also reads `SUPABASE_ACCESS_TOKEN`).
+- Migrations 0001 to 0021 are applied to the live project; `0022_anonymous_players.sql` (anonymous players may create a profile and read their status) must be applied by SQL until the `SUPABASE_DB_PASSWORD` repository secret is set (the workflow also reads `SUPABASE_ACCESS_TOKEN`).
 - The `invite` edge function needs deploying; `supabase/seed.sql` is dev data only.
 - SQL tests run only from the manual `supabase-migrate` workflow.
 - TestFlight upload needs the App Store Connect secrets (`APPLE_TEAM_ID`, `IOS_BUNDLE_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`).

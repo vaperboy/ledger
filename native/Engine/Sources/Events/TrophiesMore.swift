@@ -29,7 +29,6 @@ enum TrophiesMore {
         one("stars", "A 4.5-star business", "market") { f in reviewed(f, reviews: 50, stars: 4.5).map { "Customers rate \($0.name) \(String(format: "%.1f", Reviews.rating($0))) stars." } }
         one("st48", "Loved by customers", "market") { f in reviewed(f, reviews: 500, stars: 4.8) != nil ? "A company with 4.8 stars from more than 500 reviews." : nil }
         one("tyall", "Every trade", "trades") { f in let n = f.data.catalog.order.count; return f.types >= n ? "You have run \(n) different kinds of business." : nil }
-        one("rd", "Something new", "trades") { f in f.live.contains { !Development.finished($0).isEmpty } ? "A company of yours developed something new that customers wanted." : nil }
         one("ten10", "Ten years with you", "people") { f in tenure(f) >= 520 ? "Someone on your staff has worked with you for ten years." : nil }
         one("mgr10", "A manager for ten years", "people") { f in
             f.live.first { $0.managerID != nil && !$0.value("mgrW0").isNull && f.s.week - $0.int("mgrW0") >= 520 }

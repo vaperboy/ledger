@@ -14,7 +14,6 @@ struct ProjectsView: View {
 
     @EnvironmentObject var store: GameStore
     @State private var part: Part = .projects
-    @State private var developFor: DevelopRef?
     @State private var foundOpen = false
 
     var body: some View {
@@ -28,7 +27,6 @@ struct ProjectsView: View {
                     .toolbar(.hidden, for: .navigationBar)
                     .safeAreaInset(edge: .top, spacing: 0) { ReturnLine(tab: .projects) }
                     .companyRouteDestinations()
-                    .centerSheet(item: $developFor, title: "", category: .medium, tone: .investment) { (d: DevelopRef) in DevelopSheet(companyID: d.id) }
                     .centerSheet(isPresented: $foundOpen, title: "", category: .medium, tone: .investment) { FoundStartupSheet() }
                     .onAppear { if store.takeVenturesRequest() { part = .portfolio } }
                     .onChange(of: store.appRequest) { _, _ in if store.takeVenturesRequest() { part = .portfolio } }
@@ -46,8 +44,7 @@ struct ProjectsView: View {
         switch part {
         case .projects:
             hero(e, active, prompt: prompt(e, active, options, rows))
-            VenturesActiveSection(active: active, hasCompanies: e.state.companies.contains { (c: Company) -> Bool in c.status.isLive },
-                                  openDevelopment: { (id: Int) in developFor = DevelopRef(id: id) })
+            VenturesActiveSection(active: active, hasCompanies: e.state.companies.contains { (c: Company) -> Bool in c.status.isLive })
             VenturesStartSection(options: options, open: open, newCompany: { store.push(.newCompany) })
         case .portfolio: VenturesHome()
         case .bids: ProjectsBidsTab(engine: e, rows: rows)
@@ -58,7 +55,6 @@ struct ProjectsView: View {
     private func open(_ o: VentureOption) {
         switch o.action {
         case .route(let r): store.push(r)
-        case .develop(let id): developFor = DevelopRef(id: id)
         case .found:
             if let e = store.engine, !Gates.isOpen(.ventures, e.state, data: e.data) { part = .portfolio } else { foundOpen = true }
         }

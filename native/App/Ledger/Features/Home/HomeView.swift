@@ -42,6 +42,9 @@ struct HomeSummary<Companies: View>: View {
                 HomeProgressStrip(engine: e)
                 HomeLevelBar(engine: e)
                 HomeMissionStrip(engine: e)
+            }
+            HomeSeasonPromo(compact: trim >= 2)
+            if trim < 2 {
                 HomeWorldStrip()
                 if fills { Self.gap }
             }
@@ -202,7 +205,7 @@ struct NetWorthCard: View {
     private func balanceRow(personal: Double, total: Double, weekAgo: Double?, monthAgo: Double?) -> some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text("Personal account").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
+                Text("Your account").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
                 HeldValue(live: personal) { (v: Double) in
                     RollingMoney(value: v) { (x: Double) -> String in store.short(x) }
                         .textStyle(.body, tint: v < 0 ? Theme.loss : Theme.ink, numeric: true, weight: .medium).lineLimit(1)

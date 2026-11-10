@@ -18,7 +18,6 @@ extension GameEngine {
 public extension GameEngine {
     var exchangeMarket: [ExchangeRow] { PublicExchange.market(state, context: context) }
     var exchangeOrders: [ExchangeOpenOrder] { PublicExchange.openOrders(state) }
-    var wealth: WealthStatement { Wealth.statement(state, trades: data.catalog, currency: homeCurrency) }
     func leaderboardSubmission(playerID: String) -> LeaderboardSubmission {
         Leaderboards.submission(state, trades: data.catalog, currency: homeCurrency, playerID: playerID)
     }

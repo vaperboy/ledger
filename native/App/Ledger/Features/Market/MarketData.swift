@@ -9,7 +9,7 @@ import Simulation
 
 enum MarketUI {
     enum Tab: String, CaseIterable, Hashable {
-        case overview = "Overview", companies = "Companies", rivals = "Rivals", invest = "Invest", exchange = "Exchange", standing = "Standing", world = "World"
+        case overview = "Overview", companies = "Companies", invest = "Invest", exchange = "Exchange"
     }
 
     typealias Owner = PortfolioOwner
@@ -22,12 +22,11 @@ enum MarketUI {
     }
 
     enum AssetClass: String, Hashable {
-        case crypto, fund, shares, deposit, startup, privateEquity, groupStake, partnership, managed
+        case crypto, fund, deposit, startup, privateEquity, groupStake, partnership, managed
         init(_ k: MarketAssetKind) {
             switch k {
             case .indexFund, .bondFund, .moneyMarketFund: self = .fund
             case .crypto: self = .crypto
-            case .stock: self = .shares
             case .managedFund: self = .managed
             case .fixedDeposit: self = .deposit
             case .startupStake: self = .startup
@@ -40,7 +39,6 @@ enum MarketUI {
             switch self {
             case .crypto: return "Crypto"
             case .fund: return "Fund"
-            case .shares: return "Shares"
             case .deposit: return "Fixed deposit"
             case .startup: return "Startup stake"
             case .privateEquity: return "Private equity"
@@ -53,14 +51,13 @@ enum MarketUI {
             switch self {
             case .crypto: return Glyph.luxury
             case .fund: return Glyph.invest
-            case .shares: return Glyph.stats
             case .deposit: return Glyph.bank
             case .startup: return Glyph.ventures
             case .privateEquity, .groupStake, .partnership: return Glyph.group
             case .managed: return Glyph.person
             }
         }
-        var countsUnits: Bool { self == .fund || self == .crypto || self == .shares }
+        var countsUnits: Bool { self == .fund || self == .crypto }
     }
 
     struct Position: Identifiable, Hashable {

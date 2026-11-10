@@ -85,13 +85,8 @@ final class AccountingReadsTests: XCTestCase {
         XCTAssertNil(e.companyDocuments(companyID: id + 1000, group: .applications), "a company that does not exist has no records")
     }
 
-    func testNetWorthAndOverviewReadModels() throws {
-        var (e, id) = try firm(days: 60)
-        let nw = e.netWorthBreakdown()
-        XCTAssertEqual(nw.total, e.netWorth.total, accuracy: 0.5)
-        XCTAssertEqual(nw.liquid, e.state.cash, accuracy: 0.5)
-        XCTAssertEqual(nw.stakes.filter { $0.companyID == id }.count, 1, "attributable equity once")
-        XCTAssertGreaterThan(nw.guaranteedCompanyDebt + 1, 0)
+    func testOverviewReadModel() throws {
+        let (e, id) = try firm(days: 60)
         let st = try XCTUnwrap(e.companyOverviewStats(companyID: id))
         XCTAssertEqual(st.cash, e.state.company(id)?.cash)
         XCTAssertEqual(st.operatingExpenses, st.expenses.reduce(0) { $0 + $1.amount }, accuracy: 0.5)

@@ -13,19 +13,20 @@ struct SettingsView: View {
     @State private var reminders: Bool = Reminders.enabled
     @State private var askStep = ConfirmThreshold.step
     @State private var pending: PendingAction?
-    @State private var showWardrobe = false
     @State private var showAdmin = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 AccountSettingsGroup()
+                lookGroup
                 feelGroup
                 if store.engine != nil { helpGroup }
                 if store.engine != nil && !embedded { savingGroup }
                 proGroup
                 if store.classicStartUnlocked { newGameGroup }
                 gameGroup
+                DeleteAccountGroup()
             }
             .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -37,8 +38,22 @@ struct SettingsView: View {
         .onChange(of: sounds) { _, v in SoundCues.enabled = v; store.saved("sounds " + (v ? "on" : "off")) }
         .onChange(of: reminders) { _, v in Reminders.enabled = v; store.saved("reminders " + (v ? "on" : "off")) }
         .confirmAction($pending)
-        .centerSheet(isPresented: $showWardrobe, title: "Wardrobe", size: .tall) { WardrobeView() }
         .navigationDestination(isPresented: $showAdmin) { AdminAccessView() }
+    }
+
+    private var lookGroup: some View {
+        group("Profile and look") {
+            if store.engine != nil {
+                Button { store.openProfile() } label: { plainRow(Glyph.person, "Profile", detail: "Your name, photo, friend code and who can see you", chevron: true) }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("settings-profile")
+                rule
+            }
+            NavigationLink { LookView() } label: {
+                plainRow(Glyph.luxury, "Your look", detail: "Equip the avatars, themes and plates you own", chevron: true)
+            }.buttonStyle(PressableStyle())
+            .accessibilityIdentifier("settings-look")
+        }
     }
 
     private var feelGroup: some View {
@@ -116,11 +131,6 @@ struct SettingsView: View {
                 Button { Task { await ent.manageSubscription() } } label: { plainRow(Glyph.settings, "Manage subscription", chevron: true) }
                     .buttonStyle(PressableStyle())
             }
-            rule
-            Button { Haptics.tap(); showWardrobe = true } label: {
-                plainRow(Glyph.lock, "Wardrobe", detail: "Badges and colours", value: ent.isPro ? "" : "Preview", chevron: true)
-            }.buttonStyle(PressableStyle())
-            .accessibilityIdentifier("settings-wardrobe")
             #if DEBUG
             rule
             Button { cycleDebugPlan() } label: { plainRow(Glyph.info, "Debug plan", value: ent.debugMode.rawValue) }

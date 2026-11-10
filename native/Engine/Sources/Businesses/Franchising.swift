@@ -31,44 +31,17 @@ public enum Franchising {
 
     public typealias Requirement = Chains.Requirement
 
-    public static func requirements(_ s: GameState, _ co: Company) -> [Requirement] {
-        let ch = Chains.chain(s, of: co)
-        let L = ch.map { Chains.stores(s, $0) } ?? [co]
-        let proven = provenConcept(s, co)
-        let support = L.contains { $0.managerID != nil || $0.staff.contains { m in let r = m.role.lowercased(); return r.contains("manager") || r.contains("franchise") } }
-            || (ch.map { Chains.hasChainBoss(s, $0, stores: L) } ?? false)
-        return [
-            Requirement(title: "A proven concept", ok: proven.ok, detail: proven.detail, key: "proven"),
-            Chains.documentRequirement(s, co, doc: "trademark", title: "Registered trademark", missing: "Apply to register the brand name (fee, 4 to 8 weeks)"),
-            Chains.documentRequirement(s, co, doc: "ops_manual", title: "Operations manual", missing: "Write it with your manager (a few weeks, a small cost)"),
-            Chains.documentRequirement(s, co, doc: "fran", title: "Franchise disclosure document", missing: "Prepare it with a lawyer, sign it and wait for the review (fee)"),
-            Requirement(title: "Someone to support franchisees", ok: support, detail: support ? "A manager is on staff" : "Employ a manager or a franchise support person", key: "support"),
-        ]
-    }
+    public static let standardEntryFee = 150_000.0
+    public static let standardRoyalty = 0.06
 
-    public static func provenConcept(_ s: GameState, _ co: Company) -> (ok: Bool, detail: String) {
-        let p = provenProgress(s, co)
-        let ok = p.weeks >= 52 && p.quarters == 4
-        return (ok, "Traded \(max(0, p.weeks)) of 52 weeks; profitable quarters \(p.quarters) of 4")
-    }
-
-    public static func provenProgress(_ s: GameState, _ co: Company) -> (weeks: Int, quarters: Int) {
-        let weeks = co.openedWeek.map { s.week - $0 } ?? 0
-        let H = Array(co.monthlyHistory.suffix(12))
-        let quarters = stride(from: 0, to: H.count - 2, by: 3).map { k in H[k..<k + 3].reduce(0.0) { $0 + $1.profit } }
-        let good = H.count == 12 ? quarters.filter { $0 > 0 }.count : 0
-        return (max(0, weeks), good)
-    }
-
-    public enum LaunchResult: Equatable, Sendable { case ok, already, notYet(String), needDocuments, notFranchisable }
+    public enum LaunchResult: Equatable, Sendable { case ok, already, notFound, notFranchisable }
 
     public static func launch(_ s: inout GameState, companyID: Int, fee: Double, royalty: Double, support: Int) -> LaunchResult {
-        guard let i = s.companyIndex(companyID) else { return .notYet("") }
+        guard let i = s.companyIndex(companyID) else { return .notFound }
         let co = s.companies[i]
         guard FranchiseBrands.isFranchisable(co.type) else { return .notFranchisable }
         if co.value("fr")["on"].bool { return .already }
-        if let miss = requirements(s, co).first(where: { !$0.ok && $0.key != "fran" }) { return .notYet("Not yet: \(miss.title.lowercased()) (\(miss.detail.lowercased())).") }
-        if co.value("docs")["fran"]["st"].string != "ok" { return .needDocuments }
+        Chains.grantPapers(&s, i, ["trademark", "ops_manual", "fran"])
         s.companies[i].set("fr", .object(["on": 1, "fee": .number(fee), "roy": .number(royalty), "supp": .number(Double(support)), "share": 0.45, "brand": 15, "mkt": 0.02,
                                           "units": .array([]), "app": .array([]), "w0": .number(Double(s.week))]))
         return .ok

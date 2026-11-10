@@ -3,18 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-struct ReportsScreen: View {
-    @EnvironmentObject var store: GameStore
-    var companyID: Int? = nil
-    var body: some View {
-        if let e = store.engine {
-            ReportsContent(engine: e, companyID: companyID)
-                .safeAreaInset(edge: .bottom, spacing: 0) { if companyID == nil { AnnualReportsLink() } }
-                .appScreen(title: "Reports", subtitle: companyID == nil ? "Week, month and year for the whole group" : "Week, month and year for this company")
-        }
-    }
-}
-
 struct ReportsContent: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -22,13 +10,6 @@ struct ReportsContent: View {
     @State private var kind: ReportKind = .week
     @State private var chosen: [String: Int] = [:]
     @State private var opened: ReportDest?
-
-    private func takeRequest() {
-        if let req = store.takeReportRequest() {
-            kind = req.kind
-            chosen[req.kind.rawValue] = req.id
-        }
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,8 +25,6 @@ struct ReportsContent: View {
                 .scrollBounceBehavior(.basedOnSize)
             }
         }
-        .onAppear { takeRequest() }
-        .onChange(of: store.appRequest) { _, _ in takeRequest() }
     }
 }
 
@@ -104,7 +83,6 @@ struct ReportsPage: View {
         case .people: people(r)
         case .tax: yearly(r)
         case .companies: companies(r)
-        case .happened: happened(r)
         case .line(let key): ReportLineDetail(report: r, history: all, key: key, showCompanies: companyID == nil, format: format)
         }
     }
@@ -221,10 +199,6 @@ struct ReportsPage: View {
         }
         if kind == .year {
             rows.append(OverviewRowData(id: "tax", glyph: Glyph.ovCoin, title: "Tax and dividends", value: f.short(r.group.taxPaid), action: { opened = .tax }))
-        }
-        if !r.group.events.isEmpty {
-            rows.append(OverviewRowData(id: "happened", glyph: Glyph.news, title: "What happened", value: "\(min(r.group.events.count, 8))",
-                                        action: { opened = .happened }))
         }
         rows.append(OverviewRowData(id: "movements", glyph: Glyph.stats, title: ReportPage.movements.rawValue,
                                     subtitle: "Every movement of money", action: { opened = .movements }))
@@ -385,26 +359,10 @@ struct ReportsPage: View {
             }
         }
     }
-
-    @ViewBuilder private func happened(_ r: PeriodReport) -> some View {
-        let events = Array(r.group.events.prefix(8))
-        if !events.isEmpty {
-            CardSection("What happened") {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(Array(events.enumerated()), id: \.offset) { _, e in
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Circle().fill(Theme.tone(e.tone)).frame(width: 5, height: 5)
-                            Text(e.text.tidyMoney).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 enum ReportDest: Hashable {
-    case movements, bills, worth, cash, people, tax, companies, happened
+    case movements, bills, worth, cash, people, tax, companies
     case line(ReportLineKey)
 
     var title: String {
@@ -416,7 +374,6 @@ enum ReportDest: Hashable {
         case .people: return "Customers and people"
         case .tax: return "Tax and dividends"
         case .companies: return "Companies"
-        case .happened: return "What happened"
         case .line(let k): return k.title
         }
     }

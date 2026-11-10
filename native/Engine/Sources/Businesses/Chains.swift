@@ -22,16 +22,6 @@ public enum Chains {
         s.rest["chains"] = .array(L)
     }
 
-    static func hasChainBoss(_ s: GameState, _ ch: JSONValue, stores L: [Company]) -> Bool {
-        let key = "chain:\(ch["id"].int)"
-        if (s.rest["group"]?["regional"].array ?? []).contains(where: { $0["scope"].string.hasPrefix(key) }) { return true }
-        if let md = s.rest["org56"]?["md"], !md.isNull, s.people[md["npc"].int] != nil { return true }
-        if !ch["ceo56"].isNull { return true }
-        if let ceo = s.rest["group"]?["ceo"], !ceo.isNull { return true }
-        let open = L.filter { $0.status == .open }
-        return open.count >= 3 && open.allSatisfy { $0.managerID != nil }
-    }
-
     static let extraDocuments: [String: JSONValue] = [
         "trademark": .array(["Trademark registration", "Intellectual property office", 4200, 6, 0, "Registers the brand name so nobody else can use it. The office reviews it for 4 to 8 weeks."]),
         "ops_manual": .array(["Operations manual", "Written by your own team", 900, 3, 0, "How every store is run, written by you or your manager over a few weeks. No authority reviews it."]),
@@ -55,39 +45,12 @@ public enum Chains {
         }
     }
 
-    static func documentRequirement(_ s: GameState, _ co: Company, doc: String, title: String, missing: String) -> Requirement {
-        let d = co.value("docs")[doc]
-        switch d["st"].string {
-        case "ok": return Requirement(title: title, ok: true, detail: "Done", key: doc)
-        case "applied": return Requirement(title: title, ok: false, detail: "Waiting for review, about \(max(0, d["done"].int - s.week)) weeks left", key: doc, status: .waiting)
-        case "rejected": return Requirement(title: title, ok: false, detail: "Refused: apply again", key: doc)
-        default: return Requirement(title: title, ok: false, detail: missing, key: doc)
+    static func grantPapers(_ s: inout GameState, _ i: Int, _ ids: [String]) {
+        var docs = s.companies[i].value("docs")
+        for id in ids where docs[id]["st"].string != "ok" {
+            docs[id] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week)), "w0": .number(Double(s.week))])
         }
-    }
-
-    public static func requirements(_ s: GameState, _ co: Company) -> [Requirement] {
-        [documentRequirement(s, co, doc: "trademark", title: "Registered trademark", missing: "Apply to register the brand name (fee, 4 to 8 weeks)"),
-         documentRequirement(s, co, doc: "ops_manual", title: "Operations manual", missing: "Write it with your manager (a few weeks, a small cost)")]
-    }
-
-    public enum ChainDocResult: Equatable, Sendable { case ok, notYet(String), alreadyHeld, notEnoughCash, notFound }
-
-    public static func applyDocument(_ s: inout GameState, companyID: Int, doc: String, data: GameData) -> ChainDocResult {
-        guard let i = s.companyIndex(companyID), ["chain", "fran", "trademark", "ops_manual"].contains(doc) else { return .notFound }
-        let co = s.companies[i]
-        if doc == "chain" && !co.value("chain").isNull { return .alreadyHeld }
-        if doc == "chain", let miss = requirements(s, co).first(where: { !$0.ok }) { return .notYet("Not yet: \(miss.title.lowercased()) (\(miss.detail.lowercased())).") }
-        if doc == "fran" {
-            if co.value("fr")["on"].bool { return .alreadyHeld }
-            if let miss = Franchising.requirements(s, co).first(where: { !$0.ok && $0.key != "fran" }) { return .notYet("Not yet: \(miss.title.lowercased()) (\(miss.detail.lowercased())).") }
-        }
-        let r = doc == "ops_manual" ? Documents.apply(doc, companyID: companyID, state: &s, data: data) : Documents.applySigned(doc, companyID: companyID, state: &s, data: data)
-        switch r {
-        case .ok: return .ok
-        case .alreadyHeld: return .alreadyHeld
-        case .notEnoughCash: return .notEnoughCash
-        case .pickAccountant: return .notFound
-        }
+        s.companies[i].set("docs", docs)
     }
 
     @discardableResult
@@ -95,7 +58,7 @@ public enum Chains {
         guard let i = s.companyIndex(companyID) else { return nil }
         let co = s.companies[i]
         if let existing = chain(s, of: co) { return existing["id"].int }
-        guard co.value("docs")["chain"]["st"].string == "ok" else { return nil }
+        grantPapers(&s, i, ["trademark", "ops_manual", "chain"])
         let nm = name.trimmingCharacters(in: .whitespaces).isEmpty ? co.name : name.trimmingCharacters(in: .whitespaces)
         let id = s.makeID()
         let rules: JSONValue = .object(["price": .number(co.priceLevel), "knob": co.value("knob").isNull ? .object([:]) : co.value("knob"), "stockPol": .number(co.num("stockPol", 1)), "pay": 0, "mkt": "own"])

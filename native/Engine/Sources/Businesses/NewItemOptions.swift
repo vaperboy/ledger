@@ -17,7 +17,6 @@ public struct NewItemOptionList: Equatable, Sendable {
 }
 
 public enum NewItemOptions {
-    public static let projectID = "newitem"
     public static let advisorRole = "advisor"
     static let variantLift = 0.02
     static let optionCount = 5
@@ -91,24 +90,5 @@ public enum NewItemOptions {
         let share = own / (own + others)
         let after = own * (1 + effective) / (own * (1 + effective) + others)
         return (profit, after - share)
-    }
-
-    static func addRefusal(_ co: Company, _ bd: Trade, name: String) -> String? {
-        let list = SalesItems.items(co, bd)
-        if list.count >= SalesItems.maxItems { return "That is as many items as one company can sell." }
-        if list.contains(where: { $0.name.lowercased() == name.lowercased() }) { return "There is already an item with that name." }
-        return nil
-    }
-
-    static func finish(_ s: inout GameState, _ i: Int, name: String, isService: Bool, data: GameData) {
-        let co = s.companies[i]
-        guard let bd = data.catalog[co.type] else { return }
-        if let why = addRefusal(co, bd, name: name) {
-            s.addMessage(kind: "info", from: co.name, title: "\(name) could not be added", body: why, companyID: co.id, tone: "bad")
-            return
-        }
-        SalesItems.add(&s, companyID: co.id, name: name, isService: isService, data: data)
-        s.addMessage(kind: "info", from: co.managerID.flatMap { s.people[$0]?.name } ?? co.name, title: "\(name) is ready",
-                     body: "Development is finished. \(name) is now on sale.", companyID: co.id, tone: "good")
     }
 }

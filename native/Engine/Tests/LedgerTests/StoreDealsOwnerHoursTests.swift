@@ -117,7 +117,7 @@ final class StoreDealsOwnerHoursTests: XCTestCase {
         var e = try game()
         let a = try cafe(&e), b = try cafe(&e), c = try cafe(&e)
         e.update { s, d, _ in
-            for i in s.companies.indices { s.companies[i].status = .open }
+            for i in s.companies.indices { s.companies[i].status = .open; s.companies[i].staff = [] }
             OwnerHours.adjustWeek(&s, data: d)
         }
         let hours = [a, b, c].map { e.state.company($0)?.ownerHours ?? -1 }
@@ -129,6 +129,7 @@ final class StoreDealsOwnerHoursTests: XCTestCase {
     func testStepOutAndInKeepsTheKeyOnlyWhenSet() throws {
         var e = try game()
         let id = try cafe(&e)
+        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].staff = [] } }
         XCTAssertNil(e.state.company(id)?.raw["ownOut"], "no key until the player steps out")
         _ = e.setWorksHere(companyID: id, works: false)
         XCTAssertEqual(e.state.company(id)?.ownerHours, 0)
@@ -142,6 +143,49 @@ final class StoreDealsOwnerHoursTests: XCTestCase {
         XCTAssertNil(e.state.company(id)?.raw["ownOut"])
         XCTAssertGreaterThanOrEqual(e.state.company(id)?.ownerHours ?? 0, OwnerHours.floor)
         XCTAssertTrue(OwnerHours.works(try XCTUnwrap(e.state.company(id))))
+    }
+
+    func testAManagerTakesTheOwnerOutOfTheWeek() throws {
+        var e = try game()
+        let id = try cafe(&e)
+        e.update { s, d, _ in
+            guard let i = s.companyIndex(id) else { return }
+            s.companies[i].status = .open
+            s.companies[i].staff = []
+            s.companies[i].ownerHours = 40
+            s.companies[i].set("crew", true)
+            s.companies[i].managerID = 999_999
+            OwnerHours.adjustWeek(&s, data: d)
+        }
+        let co = try XCTUnwrap(e.state.company(id))
+        XCTAssertEqual(co.ownerHours, 0)
+        XCTAssertFalse(OwnerHours.works(co))
+        XCTAssertFalse(OwnerHours.crewRuns(co))
+        XCTAssertNil(co.raw["crew"], "no stale crew mark under a manager")
+    }
+
+    func testStaffThatCoverTheDemandFreeTheOwnerAndLosingThemBringTheOwnerBack() throws {
+        var e = try game()
+        let id = try cafe(&e)
+        e.update { s, d, _ in
+            guard let i = s.companyIndex(id) else { return }
+            s.companies[i].status = .open
+            s.companies[i].staff = (0..<12).map { (k: Int) -> StaffMember in StaffMember(raw: ["id": 9000 + k, "role": "waiter", "wage": 30000, "w0": 0]) }
+            OwnerHours.adjustWeek(&s, data: d)
+        }
+        let covered = try XCTUnwrap(e.state.company(id))
+        try XCTSkipUnless(OwnerHours.crewRuns(covered), "this trade is not covered by waiters alone")
+        XCTAssertEqual(covered.ownerHours, 0)
+        XCTAssertFalse(OwnerHours.works(covered))
+        e.update { s, d, _ in
+            guard let i = s.companyIndex(id) else { return }
+            s.companies[i].staff = []
+            OwnerHours.adjustWeek(&s, data: d)
+        }
+        let alone = try XCTUnwrap(e.state.company(id))
+        XCTAssertTrue(OwnerHours.works(alone))
+        XCTAssertGreaterThanOrEqual(alone.ownerHours, OwnerHours.floor)
+        XCTAssertNil(alone.raw["crew"])
     }
 
     func testBurnoutStartsFromSixtyFiveHours() throws {

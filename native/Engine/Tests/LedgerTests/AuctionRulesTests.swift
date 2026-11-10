@@ -238,6 +238,47 @@ final class AuctionRulesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(AuctionMarket.suggestedStart(.common, priceLevel: 0.0001), 1)
     }
 
+    func testAQuickSalePaysBelowTheMarketValueAndIsRepeatable() {
+        for rarity in BoxRarity.allCases {
+            let market: Int = AuctionMarket.suggestedStart(rarity, priceLevel: 1)
+            let quick: Int = AuctionRules.quickSalePrice(rarity, priceLevel: 1)
+            XCTAssertLessThan(quick, market)
+            XCTAssertGreaterThanOrEqual(quick * 100, market * 85)
+            XCTAssertLessThanOrEqual(quick * 100, market * 90)
+            XCTAssertEqual(quick, AuctionRules.quickSalePrice(rarity, priceLevel: 1))
+        }
+        XCTAssertEqual(AuctionRules.quickSalePrice(.common, priceLevel: 1), 264)
+        XCTAssertGreaterThanOrEqual(AuctionRules.quickSalePrice(.common, priceLevel: 0.0001), 1)
+    }
+
+    func testQuickSellTakesThePieceOutAndSellsItOnlyOnce() {
+        var c = Cabinet()
+        c.add(ArtifactItem(defID: "scales", serial: 7))
+        XCTAssertNil(c.quickSell("scales#8", priceLevel: 1))
+        XCTAssertEqual(c.quickSell("scales#7", priceLevel: 1), AuctionRules.quickSalePrice(.rare, priceLevel: 1))
+        XCTAssertFalse(c.contains("scales#7"))
+        XCTAssertNil(c.quickSell("scales#7", priceLevel: 1))
+    }
+
+    func testDuplicatesKeepTheLowestNumberOfEachPiece() {
+        var c = Cabinet()
+        let first = ArtifactItem(defID: "abacus", serial: 9)
+        let second = ArtifactItem(defID: "abacus", serial: 3)
+        let third = ArtifactItem(defID: "abacus", serial: 40)
+        let single = ArtifactItem(defID: "stamp", serial: 1)
+        for i in [first, second, third, single] { c.add(i) }
+        let dup = c.duplicates(among: [first, second, third, single])
+        XCTAssertEqual(Set(dup.map(\.id)), [first.id, third.id])
+        XCTAssertTrue(c.duplicates(among: [second, single]).isEmpty)
+        XCTAssertTrue(c.duplicates(among: [ArtifactItem(defID: "abacus", serial: 99)]).isEmpty)
+    }
+
+    func testEveryCosmeticABoxCanDropCanBeWorn() {
+        let kinds: Set<SeasonReward.Kind> = Set(BoxRarity.allCases.flatMap { GoldCosmetics.boxPool($0, owned: []).map(\.item.kind) })
+        XCTAssertFalse(kinds.isEmpty)
+        XCTAssertTrue(kinds.allSatisfy(\.isEquippable))
+    }
+
     func testWalletNeverSpendsMoreThanItHas() {
         var w = GoldWallet(balance: 100)
         XCTAssertFalse(w.spend(120))

@@ -55,7 +55,7 @@ public struct GameEngine {
         json["cash"] = .number(startCash); json["cash0"] = .number(startCash); json["flow"] = .object([:])
         json["loans"] = .array([]); json["credit"] = 62; json["overdraft"] = 0
         json["overdraftLimit"] = .number(currency.scaledPrice(25000))
-        json["inv"] = .object(["stocks": .object([:]), "crypto": .object([:]), "funds": .object([:]), "deposits": .array([])])
+        json["inv"] = .object(["crypto": .object([:]), "funds": .object([:]), "deposits": .array([])])
         json["mk"] = .object([:]); json["rivals"] = .object([:]); json["cos"] = .array([]); json["npcs"] = .object([:])
         json["pool"] = .object(["acc": .array([])]); json["inbox"] = .array([]); json["news"] = .array([]); json["rep"] = .null
         json["hist"] = .object(["nw": .array([]), "cash": .array([])]); json["log"] = .array([])

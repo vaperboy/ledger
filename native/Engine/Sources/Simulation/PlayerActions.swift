@@ -206,7 +206,6 @@ public extension GameEngine {
     var classicStartUnlocked: Bool { PlayerGoals.ladderFlag(state, "classic") }
 
     mutating func buyInvestment(_ kind: Brokerage.Kind, symbol: String, amount: Double) -> Brokerage.BuyResult {
-        if kind == .stock { return .delisted }
         var r = Brokerage.BuyResult.notEnoughCash
         update { s, _, ctx in r = Brokerage.buy(&s, kind, symbol, amount: amount, currency: ctx.homeCurrency(s)) }
         return r

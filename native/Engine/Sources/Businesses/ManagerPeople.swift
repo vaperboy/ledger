@@ -209,6 +209,7 @@ extension ManagerModel {
         s.companies[ci].managerMonthlyWage = 0
         s.companies[ci].set("mgrNotice", .null)
         s.companies[ci].managerProfitBonus = 0
+        s.companies[ci].raw[OwnerHours.crewKey] = nil
         s.companies[ci].ownerHours = 40
     }
 

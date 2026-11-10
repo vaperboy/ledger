@@ -4,34 +4,57 @@ import Countries
 import Businesses
 import Simulation
 
-enum CountrySection: Hashable {
+enum WorldSection: Hashable {
     case overview, donate, election, president, record, shadow
 }
 
-struct CountryApp: View {
+enum WorldTab: String, CaseIterable, Hashable {
+    case government = "Government", countries = "Countries", people = "People"
+}
+
+struct WorldTabBar: View {
+    @Binding var tab: WorldTab
+
+    var body: some View {
+        SegmentedPill(items: WorldTab.allCases, title: { (t: WorldTab) -> String in t.rawValue }, selection: $tab,
+                      identifier: { (t: WorldTab) -> String in "world-tab-\(t.rawValue)" })
+    }
+}
+
+struct WorldApp: View {
     @EnvironmentObject var store: GameStore
-    @State private var page: CountrySection = .overview
+    @State private var tab: WorldTab = .government
+    @State private var page: WorldSection = .overview
+    @State private var route: MarketRoute?
 
     var body: some View {
         Group {
             if let e = store.engine {
-                if let r = e.countryRead() {
-                    pageView(e, r)
-                } else {
-                    Text("Opening the state's books").textStyle(.body)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .outsideScreen(.civic)
+                switch tab {
+                case .government:
+                    if let r = e.worldRead() {
+                        pageView(e, r)
+                    } else {
+                        Text("Opening the state's books").textStyle(.body)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .outsideScreen(.civic)
+                    }
+                case .countries:
+                    WorldCountriesPage(tab: $tab, open: { (r: MarketRoute) in route = r })
+                case .people:
+                    WorldPeoplePage(tab: $tab)
                 }
             }
         }
-        .task { store.ensureCountry() }
-        .accessibilityIdentifier("country-app")
+        .task { store.ensureWorld() }
+        .navigationDestination(item: $route) { (r: MarketRoute) in MarketDestination(route: r).environment(\.outsidePalette, OutsidePalette.game) }
+        .accessibilityIdentifier("world-app")
     }
 
-    @ViewBuilder private func pageView(_ e: GameEngine, _ r: CountryRead) -> some View {
+    @ViewBuilder private func pageView(_ e: GameEngine, _ r: WorldRead) -> some View {
         let home: () -> Void = { page = .overview }
         switch page {
-        case .overview: CountryOverview(e: e, r: r) { (p: CountrySection) in page = p }
+        case .overview: WorldOverview(e: e, r: r, tab: $tab) { (p: WorldSection) in page = p }
         case .donate: politics(home) { DonateScreen(e: e, r: r, back: home) }
         case .election: politics(home) { ElectionScreen(e: e, r: r, back: home) }
         case .president: PresidentScreen(e: e, r: r, back: home)
@@ -45,17 +68,19 @@ struct CountryApp: View {
     }
 }
 
-struct CountryOverview: View {
+struct WorldOverview: View {
     var e: GameEngine
-    var r: CountryRead
-    var open: (CountrySection) -> Void
+    var r: WorldRead
+    @Binding var tab: WorldTab
+    var open: (WorldSection) -> Void
     @EnvironmentObject var store: GameStore
     @State private var showAllMints = false
     private let P: OutsidePalette = .civic
 
     var body: some View {
         CivicPage(spacing: 20) {
-            CivicHeader(title: r.name, subtitle: "The state, its money and its president")
+            CivicHeader(title: "World", subtitle: "One president, one treasury, every country")
+            WorldTabBar(tab: $tab)
             hero
             tiles
             rates
@@ -66,7 +91,7 @@ struct CountryOverview: View {
             newsCard
         }
         .outsideScreen(.civic)
-        .accessibilityIdentifier("country-overview")
+        .accessibilityIdentifier("world-overview")
     }
 
     private var hero: some View {
@@ -115,7 +140,7 @@ struct CountryOverview: View {
         }
     }
 
-    private func tile(_ glyph: String, _ title: String, _ line: String, _ target: CountrySection) -> some View {
+    private func tile(_ glyph: String, _ title: String, _ line: String, _ target: WorldSection) -> some View {
         CivicTile(glyph: glyph, title: title, line: line, fill: P.card, edge: P.line, tint: P.accent, ink: P.ink, soft: P.inkSoft) { open(target) }
     }
 

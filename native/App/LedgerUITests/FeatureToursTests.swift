@@ -97,11 +97,11 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     func testT02_PhoneAppsA() {
-        for t in ["Bank", "Inbox", "News", "Weather", "Stats", "Luxury"] { tourApp(t) }
+        for t in ["Bank", "Inbox", "News", "Stats", "Luxury", "Rankings", "World"] { tourApp(t) }
     }
 
     func testT03_PhoneAppsB() {
-        for t in ["Market", "Reviews", "Achievements", "Settings", "AirStay", "TechPro Store", "Atlas Insurance", "Marketplace"] { tourApp(t) }
+        for t in ["Market", "Competition", "Season", "Settings", "AirStay", "TechPro", "Insurance", "Marketplace", "Store"] { tourApp(t) }
     }
 
     private func groupEntity() -> String {
@@ -244,7 +244,7 @@ final class FeatureToursTests: FeatureTourCase {
             swipeBackFromEdge()
             return homeVisible(4) ? .pass() : .fail("after switching section an edge swipe did not return to Home (\(signature().text))")
         }
-        for name in ["Inbox", "Settings", "Reviews", "Market"] {
+        for name in ["Inbox", "Settings", "Competition", "Market"] {
             step("swipe back: Phone app \(name) returns to the grid") {
                 guard openPhoneApp(name), lastOpenWhy != "pick" else { return .skip("no tile on the grid") }
                 swipeBackFromEdge()

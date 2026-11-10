@@ -49,9 +49,6 @@ struct FranchisorCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var fee = 0.0
-    @State private var royalty = 0.06
-    @State private var support = 0
     @State private var pending: PendingAction?
     @State private var ftab: FranchiseTab?
 
@@ -77,53 +74,25 @@ struct FranchisorCard: View {
                     }.buttonStyle(PressableStyle())
                 } else if on {
                     running(cur)
-                } else {
+                } else if engine.levelOpen(.franchise) {
                     Card(padding: Theme.Space.l, radius: Theme.Radius.card) {
-                        VStack(alignment: .leading, spacing: 0) { notYet(cur) }
+                        VStack(alignment: .leading, spacing: Theme.Space.m) {
+                            Text("Others open units under your name for an entry fee and a royalty on their sales. You agree the terms with each applicant.")
+                                .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                            PrimaryAction(title: "Franchise this company", identifier: "franchise-launch") { launch() }
+                        }
                     }
+                } else {
+                    LevelLockCard(feature: .franchise)
                 }
             }
         }
     }
 
-    @ViewBuilder private func notYet(_ cur: Currency) -> some View {
-        let reqs = engine.franchiseRequirements(companyID: company.id)
-        Text("Others open units under your name for a fee and royalties, once the chain has proven itself. \(reqs.filter { $0.ok }.count) of \(reqs.count) ready.")
-            .textStyle(.caption, tint: Theme.inkSoft).padding(.bottom, Theme.Space.s)
-        RequirementGuide(engine: engine, company: company, requirements: reqs)
-        if reqs.allSatisfy({ $0.ok }) {
-            CardLine()
-            launchForm(cur)
-        }
-    }
-
-    @ViewBuilder private func launchForm(_ cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Terms for new units").textStyle(.caption, tint: Theme.inkSoft)
-            HStack {
-                Text("Entry fee").font(.system(size: 13.5)); Spacer()
-                ForEach([50_000.0, 150_000, 300_000], id: \.self) { v in
-                    let amt = cur.scaledPrice(v)
-                    Button(cur.tidyShort(amt)) { fee = amt }.buttonStyle(TinyButtonStyle(tint: abs(fee - amt) < 1 ? Theme.gold : Theme.ivoryFaint))
-                }
-            }
-            HStack {
-                Text("Royalty").font(.system(size: 13.5)); Spacer()
-                ForEach([0.04, 0.06, 0.08, 0.10], id: \.self) { v in
-                    Button("\(Int(v * 100))%") { royalty = v }.buttonStyle(TinyButtonStyle(tint: abs(royalty - v) < 0.0001 ? Theme.gold : Theme.ivoryFaint))
-                }
-            }
-            HStack {
-                Text("Set-up").font(.system(size: 13.5)); Spacer()
-                Button("Franchisee pays") { support = 0 }.buttonStyle(TinyButtonStyle(tint: support == 0 ? Theme.gold : Theme.ivoryFaint))
-                Button("Half covered") { support = 1 }.buttonStyle(TinyButtonStyle(tint: support == 1 ? Theme.gold : Theme.ivoryFaint))
-            }
-            Button("Launch franchise") {
-                let f = fee > 0 ? fee : cur.scaledPrice(150_000)
-                if store.act({ $0.launchFranchise(companyID: company.id, entryFee: f, royalty: royalty, support: support) }) == .ok { Haptics.success(); store.show("Franchise launched.", tone: "good") }
-                else { Haptics.warning(); store.show("The franchise could not be launched now.", tone: "warn") }
-            }.buttonStyle(TinyButtonStyle()).padding(.top, Theme.Space.s)
-        }.padding(.top, Theme.Space.m)
+    private func launch() {
+        let result: Franchising.LaunchResult? = store.act({ $0.startFranchise(companyID: company.id) }) ?? nil
+        if result == .ok { Haptics.success(); store.show("Franchise launched.", tone: "good") }
+        else { Haptics.warning(); store.show("The franchise could not be launched now.", tone: "warn") }
     }
 
     enum FranchiseTab: String, CaseIterable, Identifiable {

@@ -108,7 +108,6 @@ final class ChainsTests: XCTestCase {
     func testChainOpensStoresAndRunsOnSharedRules() throws {
         var e = try Self.engine()
         let first = Self.start(&e, "cafe")
-        XCTAssertFalse(e.chainRequirements(companyID: first).allSatisfy { $0.ok })
         Self.season(&e, first)
         e.update { s, _, _ in if let i = s.companyIndex(first) { s.companies[i].set("mgr", 0) } }
         let id = try XCTUnwrap(e.makeChain(companyID: first, name: "Test Cafe"))

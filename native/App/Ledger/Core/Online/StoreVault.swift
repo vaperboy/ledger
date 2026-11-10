@@ -14,6 +14,7 @@ actor GoldVault {
         var book: AuctionBook
         var lastTick: Double
         var cashAuctions: Bool?
+        var deliveries: DeliveryLedger?
     }
 
     private let defaults: UserDefaults
@@ -26,6 +27,7 @@ actor GoldVault {
     private var opened = 0
     private var book = AuctionBook(me: GoldVault.meID)
     private var lastTick: Double = 0
+    private var deliveries = DeliveryLedger()
     private let players: [String]
     private let names: [String: String]
 
@@ -40,6 +42,7 @@ actor GoldVault {
         if let data = defaults.data(forKey: key), let s = try? JSONDecoder().decode(Saved.self, from: data) {
             wallet = s.wallet; boxes = s.boxes; pity = s.pity; firstPurchaseDone = s.firstPurchaseDone
             cabinet = s.cabinet; opened = s.opened
+            deliveries = s.deliveries ?? DeliveryLedger()
             if s.cashAuctions == true {
                 book = s.book; lastTick = s.lastTick
             } else {
@@ -53,23 +56,34 @@ actor GoldVault {
     }
 
     private func save() {
-        let s = Saved(wallet: wallet, boxes: boxes, pity: pity, firstPurchaseDone: firstPurchaseDone, cabinet: cabinet, opened: opened, book: book, lastTick: lastTick, cashAuctions: true)
+        let s = Saved(wallet: wallet, boxes: boxes, pity: pity, firstPurchaseDone: firstPurchaseDone, cabinet: cabinet, opened: opened, book: book, lastTick: lastTick, cashAuctions: true, deliveries: deliveries)
         if let data = try? JSONEncoder().encode(s) { defaults.set(data, forKey: key) }
     }
 
-    func buyPack(_ id: String) throws -> StoreState {
-        guard let pack = GoldStore.packs.first(where: { $0.id == id }) else { throw StoreError.unknownItem }
-        wallet.credit(GoldStore.totalGold(pack, firstPurchase: !firstPurchaseDone))
-        firstPurchaseDone = true
+    func deliver(_ item: PurchaseItem, transactionID: String) throws -> PurchaseDeliveryResult {
+        guard PurchaseCatalog.isConsumable(item) else { throw StoreError.unknownItem }
+        guard !deliveries.has(transactionID) else { return PurchaseDeliveryResult(state: state(), delivered: false, gold: 0) }
+        let gold: Int = PurchaseCatalog.goldGranted(item, firstPurchase: !firstPurchaseDone)
+        switch item {
+        case .goldPack(let id):
+            guard GoldStore.packs.contains(where: { (p: GoldPack) -> Bool in p.id == id }) else { throw StoreError.unknownItem }
+            firstPurchaseDone = true
+        case .seasonBundle:
+            for (kind, n) in GoldStore.seasonBundle.boxes { boxes[kind.rawValue, default: 0] += n }
+        case .plan:
+            throw StoreError.unknownItem
+        }
+        wallet.credit(gold)
+        deliveries.record(PurchaseDelivery(transactionID: transactionID, productID: PurchaseCatalog.productID(item), gold: gold))
         save()
-        return state()
+        return PurchaseDeliveryResult(state: state(), delivered: true, gold: gold)
     }
 
-    func buySeasonBundle() -> StoreState {
-        let b = GoldStore.seasonBundle
-        wallet.credit(b.gold)
-        for (kind, n) in b.boxes { boxes[kind.rawValue, default: 0] += n }
-        save()
+    func revoke(transactionID: String) -> StoreState {
+        if let d = deliveries.revoke(transactionID) {
+            wallet.spend(min(wallet.available, d.gold))
+            save()
+        }
         return state()
     }
 
@@ -130,6 +144,19 @@ actor GoldVault {
         wallet.credit(gold)
         save()
         return state()
+    }
+
+    func quickSell(_ ids: [String], priceLevel: Double) throws -> QuickSale {
+        var cash = 0
+        var sold: [ArtifactItem] = []
+        for id in ids {
+            guard let item = cabinet.items.first(where: { $0.id == id }), let price = cabinet.quickSell(id, priceLevel: priceLevel) else { continue }
+            cash += price
+            sold.append(item)
+        }
+        guard !sold.isEmpty else { throw AuctionError.notYours }
+        save()
+        return QuickSale(state: state(), cash: cash, sold: sold)
     }
 
     private func now() -> Double { Date().timeIntervalSince1970 }

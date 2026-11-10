@@ -11,29 +11,26 @@ extension GameStore {
         var out: Set<String> = []
         for m in UpdateFeed.freshMessages(e, app, marks: base) { out.insert("m\(m.id)") }
         switch app {
-        case .market:
-            for ev in UpdateFeed.freshMarket(e, marks: base) { out.insert("e\(ev.id)") }
+        case .competition:
             for co in e.state.companies where co.status == .open {
                 guard let known = base.texts["rv.\(co.id)"] else { continue }
                 let have: Set<String> = Set(known.split(separator: ",").map { (s: Substring) -> String in String(s) })
                 for r in e.rivalRows(co) where !have.contains(String(r.id)) { out.insert("r\(co.id).\(r.id)") }
             }
-        case .reviews:
             if let seen = base.ints["reviews"] {
-                for co in ReviewsApp.companies(e) {
-                    for l in e.reviewSummary(co, limit: 30).lines where e.state.week - l.weeksAgo > seen { out.insert(ReviewsApp.lineKey(e, co, l)) }
+                for co in CompetitionApp.reviewCompanies(e) {
+                    for l in e.reviewSummary(co, limit: 30).lines where e.state.week - l.weeksAgo > seen { out.insert(CompetitionApp.lineKey(e, co, l)) }
                 }
             }
         case .news:
             for n in UpdateFeed.freshNews(e, marks: base) { out.insert("n" + UpdateFeed.newsKey(n)) }
-        case .marketplace:
-            if let seen = base.ints["marketplace"] {
-                for l in MarketplaceBridge.newestDay(e, after: seen) { out.insert("l" + l) }
-            }
-        case .weather:
             let sig: String? = base.texts["weather"]
             if sig != nil && sig != UpdateFeed.weatherSignature(e) {
                 for w in e.bigWeatherWarnings() { out.insert("w" + w.title) }
+            }
+        case .marketplace:
+            if let seen = base.ints["marketplace"] {
+                for l in MarketplaceBridge.newestDay(e, after: seen) { out.insert("l" + l) }
             }
         default:
             break

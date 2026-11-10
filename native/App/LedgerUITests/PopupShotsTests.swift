@@ -109,7 +109,7 @@ final class PopupShotsTests: CompanyBatchTourCase {
 
     func testFoundAndLaunch() {
         site("found-startup") {
-            guard openPhoneApp("Ventures") else { return false }
+            guard goTab("Ventures") else { return false }
             guard tapLabel("Found a startup") else { return false }
             popup("found-startup")
             closeAny(); return true
@@ -167,8 +167,8 @@ final class PopupShotsTests: CompanyBatchTourCase {
 
     func testCompanyPopups() {
         site("acquisition") {
-            guard openPhoneApp("Market"), tapID("market-tab-Rivals") else { return false }
-            let r = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'market-rival-co'")).firstMatch
+            guard openPhoneApp("Competition") else { return false }
+            let r = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'competition-rival-co'")).firstMatch
             guard r.waitForExistence(timeout: 4) else { return false }
             r.tap(); sleep(1)
             guard tapID("rival-make-offer", wait: 2) else { return false }

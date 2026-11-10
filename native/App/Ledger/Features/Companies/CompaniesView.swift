@@ -346,6 +346,8 @@ enum RunBy {
     static func name(_ e: GameEngine, _ co: Company) -> String {
         guard co.status.isLive else { return "–" }
         if let b = e.decisionChain(companyID: co.id).first { return b.name }
+        if let mid = co.managerID, let p = e.state.people[mid] { return p.name }
+        if OwnerHours.crewRuns(co) { return "Its team" }
         return OwnerHours.works(co) ? "You" : (co.status == .open ? "No one" : "–")
     }
 }

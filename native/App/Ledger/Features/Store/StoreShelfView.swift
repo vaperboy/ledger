@@ -12,16 +12,19 @@ struct StoreShelfView: View {
         PhonePageScroll(spacing: Theme.Space.xl) {
             cosmeticsGroup.storeAppear(0)
             bundlesGroup.storeAppear(1)
-            Text("Wear what you own in the Cabinet. These change how things look and how many saves you can keep, never how the game plays.")
-                .textStyle(.caption).fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                NavigationLink { LookView() } label: { Text("Equip what you own in Your look").textStyle(.body, tint: Theme.accent, weight: .semibold).frame(minHeight: 44) }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("shelf-look")
+                Text("These change how things look and how many saves you can keep, never how the game plays.")
+                    .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, Theme.Space.m)
         }
         .appScreen(title: "Cosmetics", subtitle: "Bought with gold")
         .confirmAction($pending)
         .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") {
-            ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; dismiss() }, onPick: { (p: GoldPack) in
-                shortOfGold = false
-                StorePurchase.afterPopup { pending = StorePurchase.pack(p) }
-            })
+            ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; dismiss() })
         }
         .task { await session.load() }
     }
@@ -72,9 +75,7 @@ struct StoreShelfView: View {
     }
 
     private func askCosmetic(_ c: GoldCosmetic) {
-        guard let price = c.price else { return }
-        if session.available < price { shortNeed = price; shortOfGold = true; return }
-        pending = StorePurchase.cosmetic(c, price: price)
+        StorePurchase.ask(.cosmetic(c), pending: $pending, onShort: shortage)
     }
 
     private var bundlesGroup: some View {
@@ -109,7 +110,11 @@ struct StoreShelfView: View {
     }
 
     private func askBundle(_ b: BoxBundle) {
-        if session.available < b.price { shortNeed = b.price; shortOfGold = true; return }
-        pending = StorePurchase.boxBundle(b)
+        StorePurchase.ask(.boxBundle(b), pending: $pending, onShort: shortage)
+    }
+
+    private func shortage(_ price: Int) {
+        shortNeed = price
+        shortOfGold = true
     }
 }

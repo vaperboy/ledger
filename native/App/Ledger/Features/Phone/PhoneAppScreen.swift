@@ -34,7 +34,6 @@ struct AppIcon: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
-        .disabled(lock != nil)
         .accessibilityLabel(app.title)
         .accessibilityValue(quietDot ? "Today's question is waiting" : badge > 0 ? "\(badge) waiting" : "")
         .accessibilityIdentifier("phone-app-\(app.title)")
@@ -69,46 +68,38 @@ struct PhoneAppContent: View {
         switch app {
         case .bank:
             BankApp()
-        case .inbox:
-            InboxView()
-        case .news:
-            NewsView()
-        case .weather:
-            WeatherApp()
-        case .luxury:
-            LuxuryView()
-        case .ventures:
-            VenturesFeedApp()
-        case .reports:
-            ReportsScreen()
-        case .activity:
-            ActivityView().appScreen(title: app.title, subtitle: app.subtitle)
+        case .stats:
+            StatsApp()
+        case .atlas:
+            AtlasApp()
         case .market:
             MarketApp()
-        case .reviews:
-            ReviewsApp()
-        case .settings:
-            SettingsView().appScreen(title: app.title, subtitle: app.subtitle)
+        case .luxury:
+            LuxuryView()
+        case .marketplace:
+            MarketplaceApp()
         case .airStay:
             AirStayApp()
         case .techPro:
             TechProApp()
-        case .atlas:
-            AtlasApp()
-        case .marketplace:
-            MarketplaceApp()
-        case .friends:
-            FriendsApp()
-        case .season:
-            SeasonView().appScreen(title: app.title, subtitle: app.subtitle)
-        case .desk:
-            DeskApp().appScreen(title: app.title, subtitle: app.subtitle)
-        case .rivals:
-            RivalsApp().appScreen(title: app.title, subtitle: app.subtitle)
         case .store:
             StoreApp()
-        case .country:
-            LevelGuard(feature: .government) { CountryApp() }
+        case .competition:
+            CompetitionApp()
+        case .rankings:
+            RankingsApp()
+        case .world:
+            LevelGuard(feature: .government) { WorldApp() }
+        case .inbox:
+            InboxView()
+        case .news:
+            NewsView()
+        case .desk:
+            DeskApp().appScreen(title: app.title, subtitle: app.subtitle)
+        case .season:
+            SeasonView().appScreen(title: app.title, subtitle: app.subtitle)
+        case .settings:
+            SettingsView().appScreen(title: app.title, subtitle: app.subtitle)
         case .profile:
             ProfileView()
         }

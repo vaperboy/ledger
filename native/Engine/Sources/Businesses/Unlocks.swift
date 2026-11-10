@@ -18,7 +18,6 @@ public struct UnlockItem: Equatable, Sendable {
 public enum Unlocks {
     static let key = "unlk"
     static let globalKey = "unlkG"
-    public static let weeksChain = 52
     public static let weeksResearch = 8
     public static let weeksDesk = 6, weeksFocus = 8, weeksRivals = 12
 
@@ -32,9 +31,6 @@ public enum Unlocks {
 
     static let defs: [Def] = [
         Def(id: "board", title: "Board", hidden: true, silent: false, target: "board"),
-        Def(id: "chain", title: "Chain", hidden: false, silent: false, target: "expansion"),
-        Def(id: "franchise", title: "Franchising", hidden: false, silent: false, target: "expansion"),
-        Def(id: "abroad", title: "Expand abroad", hidden: false, silent: false, target: "expansion"),
         Def(id: "research", title: "Market research", hidden: false, silent: false, target: "research"),
         Def(id: "marketplace", title: "Marketplace", hidden: false, silent: true, target: "marketplace"),
         Def(id: "desk", title: "Desk", hidden: true, silent: true, target: "desk"),
@@ -58,13 +54,6 @@ public enum Unlocks {
         return max(0, s.week - w)
     }
 
-    public static func yearProfit(_ co: Company) -> Double? {
-        let h = co.monthlyHistory.suffix(12)
-        return h.count == 12 ? h.reduce(0.0) { $0 + $1.profit } : nil
-    }
-
-    public static func monthsClosed(_ co: Company) -> Int { min(12, co.monthlyHistory.count) }
-
     static func boardPossible(_ s: GameState, _ co: Company) -> Bool {
         if ManagerModel.boardActive(s, key: ManagerModel.boardKey(s, co)) { return true }
         return co.managerID != nil
@@ -72,9 +61,6 @@ public enum Unlocks {
 
     static func alreadyUses(_ id: String, _ s: GameState, _ co: Company) -> Bool {
         switch id {
-        case "chain": return !co.value("chain").isNull || co.value("fr")["on"].bool
-        case "franchise": return co.value("fr")["on"].bool
-        case "abroad": return !Abroad.foreignCountries(s).isEmpty
         case "research": return !co.value("res27")["r"].array.isEmpty
         default: return false
         }

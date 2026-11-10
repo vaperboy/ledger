@@ -218,7 +218,7 @@ final class PlayBot {
                     if reckless, e.state.week % 8 == 0, let role = e.hireableRoles(companyID: id).first { hireWorker(id, role: role) }
                 }
                 if e.state.week % 4 == 0 { fillVacancies(id) }
-                if reckless && liquid > cur.scaledPrice(50_000) { _ = e.buyInvestment(.stock, symbol: e.quotes(.stock).first?.symbol ?? "", amount: liquid * 0.8) }
+                if reckless && liquid > cur.scaledPrice(50_000) { _ = e.buyInvestment(.crypto, symbol: e.quotes(.crypto).first?.symbol ?? "", amount: liquid * 0.8) }
             }
         }
     }
@@ -472,11 +472,8 @@ final class PlayBot {
     func midScenario(week: Int) {
         guard job.policy != .passive else { return }
         switch job.scenario {
-        case .chain where [14, 18, 24, 30].contains(week) && mainID != 0:
+        case .chain where week == 30 && mainID != 0:
             guard e.state.company(mainID)?.status == .open else { return }
-            if week == 14 { _ = e.applyForChainDocument(companyID: mainID, document: "trademark"); _ = e.applyForChainDocument(companyID: mainID, document: "ops_manual"); return }
-            if week == 18 { let r = e.applyForChainDocument(companyID: mainID, document: "chain"); if case .notYet(let w) = r { find(2, "chain-doc-stuck", "Chain registration refused after trademark+manual were applied for 4 weeks earlier: \(w.prefix(80))", "Chains.applyDocument / Documents wait", "") }; return }
-            if week == 24 { if e.chainOf(companyID: mainID) == nil { let r = e.applyForChainDocument(companyID: mainID, document: "chain"); if r != .ok && r != .alreadyHeld { find(2, "chain-doc-stuck2", "Chain registration still not possible at week 24: \(r)", "Chains.applyDocument", "") } }; return }
             if let cid = e.makeChain(companyID: mainID, name: "Bot Chain") {
                 structural()
                 let cities = e.homeCountry.cities.map { $0.id }

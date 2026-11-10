@@ -311,14 +311,9 @@ final class PlaytestToursTests: XCTestCase {
         tour = "ChainAndRegional"
         var (e, id) = try fixture()
         weeks(&e, 12)
-        ex(e.chainRequirements(companyID: id).contains { !$0.ok }, "chain requirements list trademark and manual before start")
-        ex(e.applyForChainDocument(companyID: id, document: "trademark") == .ok, "trademark application accepted")
-        ex(e.applyForChainDocument(companyID: id, document: "ops_manual") == .ok, "ops manual application accepted")
-        weeks(&e, 10)
-        ex(e.chainRequirements(companyID: id).allSatisfy { $0.ok }, "chain requirements met 10 weeks after applying", sev: 1)
-        let cr = e.applyForChainDocument(companyID: id, document: "chain"); ex(cr == .ok || cr == .alreadyHeld, "chain registration accepted (\(cr))", sev: 1)
+        e.update { s, _, _ in PlayerLevel.award(&s, PlayerLevel.threshold(LevelGates.level(.chain))) }
         weeks(&e, 8)
-        guard let cid = e.makeChain(companyID: id, name: "Tour Chain") else { return ex(false, "makeChain after trademark, manual and chain papers", sev: 1) }
+        guard let cid = e.startChain(companyID: id, name: "Tour Chain") else { return ex(false, "startChain once the level is reached", sev: 1) }
         ex(e.chainOf(companyID: id) != nil, "chain is recorded on the company")
         var opened: [Int] = []
         for c in e.homeCountry.cities.prefix(3) {

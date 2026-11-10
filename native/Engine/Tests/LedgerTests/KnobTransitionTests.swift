@@ -80,7 +80,7 @@ final class KnobTransitionTests: XCTestCase {
     func testTheLicenceWeeksShownIncludeTheSlowerPaperworkAbroad() throws {
         var e = try ChainsTests.engine("UK")
         let home = ChainsTests.start(&e, "cafe")
-        e.update { s, _, _ in s.companies[s.companyIndex(home)!].reputation = 60; s.companies[s.companyIndex(home)!].status = .open }
+        e.update { s, _, _ in s.companies[s.companyIndex(home)!].reputation = 60; s.companies[s.companyIndex(home)!].status = .open; PlayerLevel.award(&s, PlayerLevel.threshold(LevelGates.level(.abroad))) }
         let option = try XCTUnwrap(e.abroadOptions(companyID: home).first)
         guard case .success(let id) = e.expandAbroad(companyID: home, countryCode: option.countryCode) else { return XCTFail("no expansion") }
         e.update { s, _, _ in s.companies[s.companyIndex(id)!].status = .open; _ = Payments.injectCash(&s, companyID: id, amount: 5_000_000) }

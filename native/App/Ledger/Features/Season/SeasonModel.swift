@@ -6,8 +6,10 @@ import Simulation
 final class SeasonModel: ObservableObject {
     static let shared = SeasonModel()
     private static let key = "ledger.seasonPass"
+    private static let premiumKey = "ledger.seasonPremium"
 
     @Published private(set) var pass: SeasonPass
+    @Published private(set) var premiumSeason: Int?
 
     private init() {
         let today: Int = GameStore.calendarDay()
@@ -16,7 +18,15 @@ final class SeasonModel: ObservableObject {
         var p: SeasonPass = loaded ?? SeasonPass(today: today)
         p.rollover(today: today)
         pass = p
+        premiumSeason = UserDefaults.standard.object(forKey: Self.premiumKey) as? Int
         if loaded == nil { persist() }
+    }
+
+    func premiumOpen(plus: Bool) -> Bool { plus || premiumSeason == pass.season }
+
+    func unlockPremium() {
+        premiumSeason = pass.season
+        UserDefaults.standard.set(pass.season, forKey: Self.premiumKey)
     }
 
     var today: Int { GameStore.calendarDay() }

@@ -31,8 +31,8 @@ public enum PlayerGoals {
         DailyDef(id: "stock", title: "Check the stock page", link: "market", visit: "market"),
         DailyDef(id: "quote", title: "Review a supplier quote", link: "techPro", visit: "techPro"),
         DailyDef(id: "collect", title: "Chase an unpaid invoice", link: "money"),
-        DailyDef(id: "reviews", title: "Read what customers say", link: "reviews", visit: "reviews"),
-        DailyDef(id: "weather", title: "Check the weather outlook", link: "weather", visit: "weather")]
+        DailyDef(id: "reviews", title: "Read what customers say", link: "competition", visit: "competition"),
+        DailyDef(id: "weather", title: "Check the weather outlook", link: "news", visit: "weather")]
 
     static func families(_ s: GameState, _ data: GameData) -> Set<String> { Set(live(s).compactMap { data.catalog[$0.type]?.family }) }
     static func openPayrollAsks(_ s: GameState) -> Int { s.inbox.filter { $0.status == "open" && $0.actionID.hasPrefix("pay29") }.count }
@@ -205,7 +205,10 @@ public enum PlayerGoals {
         ("M10", "Survive a bad week", "Something will go wrong. Keep the lights on.", "", "", "You survived a bad week.", "Your credit score goes up a little"),
     ]
 
-    public static func startLadder(_ s: inout GameState) { s.rest["ldr"] = .object(["done": .object([:])]) }
+    public static func startLadder(_ s: inout GameState) {
+        s.rest["ldr"] = .object(["done": .object([:])])
+        UnlockNotices.seedGates(&s)
+    }
 
     static func ladderCondition(_ id: String, _ s: GameState) -> Bool {
         switch id {

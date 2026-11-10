@@ -19,7 +19,7 @@ private func rangeText(_ low: Int, _ high: Int, unit: String) -> String {
 private func percent(_ x: Double) -> Int { Int(saturating: (x * 100).rounded()) }
 
 struct ActiveVenture: Identifiable {
-    enum Kind { case job, event, build, develop }
+    enum Kind { case job, event, build }
     var id: String
     var kind: Kind
     var title: String
@@ -40,7 +40,6 @@ struct ActiveVenture: Identifiable {
         case .job: return Glyph.projects
         case .event: return Glyph.clock
         case .build: return Glyph.home
-        case .develop: return Glyph.ventures
         }
     }
 
@@ -49,7 +48,6 @@ struct ActiveVenture: Identifiable {
         case .job: return "Job"
         case .event: return "Event"
         case .build: return "Construction"
-        case .develop: return "R&D"
         }
     }
 
@@ -65,13 +63,11 @@ struct ActiveVenture: Identifiable {
 
 struct VentureOption: Identifiable {
     enum Group: Int, CaseIterable {
-        case build, develop, expand, found
+        case build, found
 
         var title: String {
             switch self {
             case .build: return "Build"
-            case .develop: return "Develop"
-            case .expand: return "Expand"
             case .found: return "New ventures"
             }
         }
@@ -79,8 +75,6 @@ struct VentureOption: Identifiable {
         var note: String {
             switch self {
             case .build: return "Buy land, build and sell the units."
-            case .develop: return "Pay for a new product, menu or process."
-            case .expand: return "Open another outlet of a trade you run."
             case .found: return "Start something of your own."
             }
         }
@@ -88,8 +82,6 @@ struct VentureOption: Identifiable {
         var glyph: String {
             switch self {
             case .build: return Glyph.home
-            case .develop: return Glyph.goals
-            case .expand: return Glyph.group
             case .found: return Glyph.ventures
             }
         }
@@ -97,8 +89,6 @@ struct VentureOption: Identifiable {
         var emptyTitle: String {
             switch self {
             case .build: return "No developer company yet"
-            case .develop: return "No company can develop anything now"
-            case .expand: return "No outlet to copy yet"
             case .found: return "Nothing to start yet"
             }
         }
@@ -106,8 +96,6 @@ struct VentureOption: Identifiable {
         var emptyMessage: String {
             switch self {
             case .build: return "Open a property developer and it can buy land, build and sell units from here."
-            case .develop: return "Open a company first. Development needs a running company with a team."
-            case .expand: return "Open a company and let it trade for a while. A second outlet is offered once it runs."
             case .found: return "Ventures open as you level up."
             }
         }
@@ -115,7 +103,6 @@ struct VentureOption: Identifiable {
 
     enum Action {
         case route(NavRoute)
-        case develop(Int)
         case found
     }
 
@@ -141,9 +128,6 @@ struct VentureOption: Identifiable {
         for l in e.projectTimelines() where l.kind == .job || l.kind == .event || l.kind == .development {
             guard let co = e.state.company(l.companyID) else { continue }
             out.append(fromLine(l, co, now, store))
-        }
-        for co in e.state.companies where co.status.isLive {
-            if let v = developing(co, e, now, store) { out.append(v) }
         }
         return out.sorted { (a: ActiveVenture, b: ActiveVenture) -> Bool in
             if a.late != b.late { return a.late }
@@ -179,30 +163,10 @@ struct VentureOption: Identifiable {
                              figures: figures, lineID: l.id)
     }
 
-    private static func developing(_ co: Company, _ e: GameEngine, _ now: Int, _ store: GameStore) -> ActiveVenture? {
-        guard let run = Development.running(co) else { return nil }
-        let raw: JSONValue = co.value("rd56")["run"]
-        let start: Int = raw["w0"].int
-        let total: Int = max(1, run.weeksLeft - start)
-        let fraction: Double = min(1, max(0, Double(now - start) / Double(total)))
-        let known: Development.Project? = Development.projects(for: co, data: e.data).first { (p: Development.Project) -> Bool in p.id == run.project }
-        let name: String = known?.name ?? (raw["item"].string.isEmpty ? "New product work" : raw["item"].string)
-        let left: Int = max(0, run.weeksLeft - now)
-        return ActiveVenture(id: "rd-\(co.id)", kind: .develop, title: name, companyID: co.id, line: co.name + " · " + (known?.text ?? "Development"),
-                             status: left == 0 ? "Finishing" : "In progress", tone: .good, fraction: fraction, step: left == 0 ? "Result this week" : "Result in " + left.weeksText,
-                             weeksLeft: left, dueWeek: run.weeksLeft, late: false,
-                             figures: [(label: "Paid", value: store.short(run.cost, in: co)), (label: "Result", value: shortDate(week: run.weeksLeft)), (label: "Works fully", value: "Not certain")],
-                             lineID: nil)
-    }
-
     static func options(_ e: GameEngine, _ store: GameStore, _ rows: ProjectRows) -> [VentureOption] {
         var out: [VentureOption] = []
         for r in rows where r.board.isDeveloper && r.co.status == .open {
             if let o = build(e, r.co, store) { out.append(o) }
-        }
-        for co in e.state.companies where co.status == .open {
-            if let o = develop(e, co, store) { out.append(o) }
-            if let o = expand(e, co, store) { out.append(o) }
         }
         out.append(contentsOf: found(e, store))
         return out
@@ -219,41 +183,6 @@ struct VentureOption: Identifiable {
                              risk: "Zoning can be refused, building can overrun and a weak housing market lowers prices. A loan can cover most of it.",
                              status: ready ? "Ready" : "Needs cash", tone: ready ? .good : .warn, rank: ready ? 0 : 1, sortCost: q.totalCost,
                              action: .route(.companyAt(co.id, .projects)))
-    }
-
-    private static func develop(_ e: GameEngine, _ co: Company, _ store: GameStore) -> VentureOption? {
-        let list: [(project: Development.Project, cost: Double)] = e.developmentProjects(companyID: co.id)
-        guard !list.isEmpty else { return nil }
-        let plans: [Development.Plan] = list.compactMap { (x: (project: Development.Project, cost: Double)) -> Development.Plan? in e.developmentPlan(companyID: co.id, project: x.project.id) }
-        guard let first = plans.first else { return nil }
-        let costs: [Double] = list.map { (x: (project: Development.Project, cost: Double)) -> Double in x.cost }
-        let weeks: [Int] = plans.map { (p: Development.Plan) -> Int in p.weeks }
-        let sizes: [Int] = list.map { (x: (project: Development.Project, cost: Double)) -> Int in percent(x.project.size) }
-        let busy: Bool = Development.running(co) != nil
-        let low: Double = costs.min() ?? 0
-        let ready: Bool = co.cash >= low
-        let status: String = busy ? "Busy" : (ready ? "Ready" : "Needs cash")
-        let tone: AcctPill.Tone = busy ? .neutral : (ready ? .good : .warn)
-        let high: Double = costs.max() ?? low
-        let cost: String = low == high ? store.short(low, in: co) : store.short(low, in: co) + " to " + store.short(high, in: co)
-        let smallest: Int = sizes.min() ?? 0
-        let largest: Int = sizes.max() ?? 0
-        let gain: String = smallest == largest ? "+\(smallest)%" : "+\(smallest) to \(largest)%"
-        let payoff: String = "About \(gain) on demand, prices, costs or capacity, fading as rivals copy it"
-        return VentureOption(id: "develop-\(co.id)", group: .develop, title: "Develop something new", subtitle: co.name, cost: cost,
-                             time: rangeText(weeks.min() ?? 0, weeks.max() ?? 0, unit: "weeks"), payoff: payoff,
-                             risk: "Works fully in about \(percent(first.oddsFull))% of tries, partly in \(percent(first.oddsPartial))%, and not at all otherwise. The money is spent either way.",
-                             status: status, tone: tone, rank: busy ? 2 : (ready ? 0 : 1), sortCost: low, action: .develop(co.id))
-    }
-
-    private static func expand(_ e: GameEngine, _ co: Company, _ store: GameStore) -> VentureOption? {
-        guard CompanyChain.isRelevant(co, e), let r = Expansion.readiness(e.state, data: e.data, companyID: co.id, cityID: co.cityID) else { return nil }
-        return VentureOption(id: "expand-\(co.id)", group: .expand, title: "Open another outlet", subtitle: co.name,
-                             cost: store.short(r.startCost, in: co) + ", keep \(store.short(r.rampReserve, in: co)) spare", time: "About " + r.rampWeeks.weeksText + " to carry itself",
-                             payoff: "Loses money for about the first \((r.rampWeeks / 2).weeksText), then pays only if customers find it",
-                             risk: r.advice.first ?? "",
-                             status: r.enoughCash ? "Ready" : "Needs cash", tone: r.enoughCash ? .good : .warn, rank: r.enoughCash ? 0 : 1, sortCost: r.startCost,
-                             action: .route(.companyAt(co.id, .chain)))
     }
 
     private static func found(_ e: GameEngine, _ store: GameStore) -> [VentureOption] {
@@ -317,7 +246,6 @@ struct ActiveVentureCard: View {
 struct VenturesActiveSection: View {
     var active: [ActiveVenture]
     var hasCompanies: Bool
-    var openDevelopment: (Int) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -329,15 +257,12 @@ struct VenturesActiveSection: View {
             if active.isEmpty {
                 EmptyState(glyph: Glyph.projects, title: hasCompanies ? "Nothing is running" : "No company yet",
                            message: hasCompanies
-                               ? "Start a development, a build or a new venture below. Project companies also take jobs on their own as requests come in."
+                               ? "Start a build or a new venture below. Project companies also take jobs on their own as requests come in."
                                : "Open a company first. Its jobs, builds and developments show here with progress and time left.")
             }
             ForEach(active) { (v: ActiveVenture) in
                 if let line = v.lineID {
                     NavigationLink { ProjectTimelineDetail(lineID: line) } label: { ActiveVentureCard(venture: v) }
-                        .buttonStyle(PressableStyle())
-                } else {
-                    Button { Haptics.tap(); openDevelopment(v.companyID) } label: { ActiveVentureCard(venture: v) }
                         .buttonStyle(PressableStyle())
                 }
             }
@@ -375,7 +300,7 @@ struct VenturesStartSection: View {
             }
             if list.isEmpty {
                 EmptyState(glyph: g.glyph, title: g.emptyTitle, message: g.emptyMessage,
-                           actionTitle: g == .build || g == .develop ? "Open a company" : nil, action: g == .build || g == .develop ? newCompany : nil, centered: false)
+                           actionTitle: g == .build ? "Open a company" : nil, action: g == .build ? newCompany : nil, centered: false)
             }
             ForEach(list) { (o: VentureOption) in row(o) }
         }
@@ -417,89 +342,6 @@ struct VenturesStartSection: View {
         .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("venture-option-" + o.id)
-    }
-}
-
-struct DevelopRef: Identifiable { var id: Int }
-
-struct DevelopSheet: View {
-    @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var systemDismiss
-    @Environment(\.popupClose) private var popupClose
-    var companyID: Int
-    @State private var pending: PendingAction?
-
-    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
-
-    var body: some View {
-        Group {
-            if let e = store.engine, let co = e.state.company(companyID) { content(e, co) }
-        }
-        .confirmAction($pending)
-        .centerSheetTitle("Develop")
-    }
-
-    @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
-        VStack(alignment: .leading, spacing: PopupSpace.card) {
-            if let run = Development.running(co) { running(e, co, run) }
-            ForEach(Array(e.developmentProjects(companyID: co.id).enumerated()), id: \.offset) { (_: Int, x: (project: Development.Project, cost: Double)) in
-                option(e, co, x.project)
-            }
-        }
-    }
-
-    private func running(_ e: GameEngine, _ co: Company, _ run: (project: String, weeksLeft: Int, cost: Double)) -> some View {
-        let left: Int = max(0, run.weeksLeft - e.state.week)
-        return CardSection("Running now") {
-            VStack(alignment: .leading, spacing: PopupSpace.row) {
-                PopupRow(label: "Project", value: Development.projects(for: co, data: e.data).first { (p: Development.Project) -> Bool in p.id == run.project }?.name ?? "New product work")
-                PopupRow(label: "Result in", value: left.weeksText)
-                PopupRow(label: "Paid", value: store.short(run.cost, in: co))
-                Text("Stopping returns the part of the cost not yet spent. Nothing else changes.").popupText(.caption)
-                Button("Stop the project") {
-                    pending = PendingAction(title: "Stop this project?", message: "The unspent part of \(store.money(run.cost, in: co)) returns to \(co.name). The work done so far is lost.",
-                                            button: "Stop it", destructive: true, tone: .warning, icon: "xmark.circle") {
-                        let refund: Double? = store.act({ (g: inout GameEngine) -> Double? in g.cancelDevelopment(companyID: co.id) }) ?? nil
-                        if let refund { Haptics.success(); store.show("Stopped. \(store.short(refund, in: co)) came back.", tone: "n") } else { store.show("Nothing was running.", tone: "warn") }
-                        dismiss()
-                    }
-                }
-                .buttonStyle(SecondaryButtonStyle(fullWidth: true))
-            }
-        }
-    }
-
-    @ViewBuilder private func option(_ e: GameEngine, _ co: Company, _ p: Development.Project) -> some View {
-        if let plan = e.developmentPlan(companyID: co.id, project: p.id) {
-            CardSection(p.name) {
-                VStack(alignment: .leading, spacing: PopupSpace.row) {
-                    Text(p.text).popupText(.caption)
-                    PopupRow(label: "Cost, paid now", value: store.short(plan.cost, in: co))
-                    PopupRow(label: "Time", value: plan.weeks.weeksText)
-                    PopupRow(label: "Works fully", value: "\(percent(plan.oddsFull))%")
-                    PopupRow(label: "Works partly", value: "\(percent(plan.oddsPartial))%")
-                    PopupRow(label: "Cash after", value: plan.cashAfter < 0 ? "Not enough" : store.short(plan.cashAfter, in: co))
-                    if let why = plan.blockedReason { Text(why).popupText(.risk) }
-                    Button("Start for \(store.short(plan.cost, in: co))") { askStart(co, p, plan) }
-                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                        .disabled(plan.blockedReason != nil)
-                }
-            }
-        }
-    }
-
-    private func askStart(_ co: Company, _ p: Development.Project, _ plan: Development.Plan) {
-        pending = PendingAction(title: "Start \(p.name.lowercased())?",
-                                message: "\(store.money(plan.cost, in: co)) leaves \(co.name) now. It takes about \(plan.weeks.weeksText) and works fully in about \(percent(plan.oddsFull))% of tries. The money is spent either way.",
-                                button: "Start for \(store.short(plan.cost, in: co))", amount: plan.cost, currency: store.engine?.currency(for: co), tone: .investment, icon: "lightbulb") {
-            switch store.act({ (g: inout GameEngine) -> Development.StartResult in g.startDevelopment(companyID: co.id, project: p.id) }) {
-            case .ok?: Haptics.success(); store.show("Started. The result comes in about \(plan.weeks.weeksText).", tone: "good"); dismiss()
-            case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company.", tone: "warn")
-            case .busy?: Haptics.warning(); store.show("Another project is already running.", tone: "warn")
-            case .recent?: Haptics.warning(); store.show("You developed this less than two years ago.", tone: "warn")
-            default: Haptics.warning(); store.show("That cannot be started now.", tone: "warn")
-            }
-        }
     }
 }
 

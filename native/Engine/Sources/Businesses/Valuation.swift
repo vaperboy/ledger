@@ -4,7 +4,6 @@ import Finance
 
 public struct NetWorth: Equatable, Sendable {
     public var personal: Double
-    public var stocks: Double
     public var crypto: Double
     public var funds: Double
     public var companies: Double
@@ -13,9 +12,9 @@ public struct NetWorth: Equatable, Sendable {
     public var pendingTax: Double
     public var exchange: Double = 0
 
-    public var totalAssets: Double { personal + stocks + crypto + funds + companies + luxury + exchange }
+    public var totalAssets: Double { personal + crypto + funds + companies + luxury + exchange }
     public var total: Double { totalAssets - debt - pendingTax }
-    public var investments: Double { stocks + crypto + funds + exchange }
+    public var investments: Double { crypto + funds + exchange }
 }
 
 public enum Valuation {
@@ -46,11 +45,9 @@ public enum Valuation {
     public static let youngCompanyWeeks = 8
 
     public static func netWorth(_ s: GameState, trades: any TradeCatalogProviding, forGoals: Bool = false) -> NetWorth {
-        var stocks = 0.0, crypto = 0.0, funds = 0.0
-        let stockPrices = s.rest["stocks"]?.object ?? [:]
+        var crypto = 0.0, funds = 0.0
         let cryptoPrices = s.rest["crypto"]?.object ?? [:]
         let inv = s.rest["inv"] ?? .null
-        for (sym, h) in inv["stocks"].object.sorted(by: { $0.key < $1.key }) { stocks += h["q"].double * (stockPrices[sym]?["p"].double ?? 0) }
         for (sym, h) in inv["crypto"].object.sorted(by: { $0.key < $1.key }) { crypto += h["q"].double * (cryptoPrices[sym]?["p"].double ?? 0) }
         for d in inv["deposits"].array { funds += d["bal"].double }
         let fundPx = s.rest["fundPx"]?.object ?? [:]
@@ -69,7 +66,7 @@ public enum Valuation {
         }
         let lux = (s.rest["lux"]?.array ?? []).filter { $0["co"].isNull || $0["co"].double == 0 }.reduce(0) { $0 + $1["val"].double }
         let debt = s.loans.filter { $0.companyID == 0 }.reduce(0) { $0 + $1.balance }
-        return NetWorth(personal: s.cash + HeldMoney.playerRemaining(s), stocks: stocks, crypto: crypto, funds: funds, companies: companies,
+        return NetWorth(personal: s.cash + HeldMoney.playerRemaining(s), crypto: crypto, funds: funds, companies: companies,
                         luxury: lux, debt: debt, pendingTax: s.tax.pending, exchange: PublicExchange.holdingsValue(s))
     }
 }

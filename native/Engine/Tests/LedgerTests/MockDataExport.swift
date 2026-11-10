@@ -20,7 +20,6 @@ final class MockDataExport: XCTestCase {
         start("carrental", "bir", 6_000_000); start("bakery", "man", 12_000_000)
         play(120)
         start("webdev", "lon", 2_500_000)
-        for q in e.quotes(.stock).prefix(4) { _ = e.buyInvestment(.stock, symbol: q.symbol, amount: 2_000_000) }
         for q in e.quotes(.fund).prefix(1) { _ = e.buyInvestment(.fund, symbol: q.symbol, amount: 3_000_000) }
         play(160)
 
@@ -61,7 +60,7 @@ final class MockDataExport: XCTestCase {
             "cashAccount": p(e.state.cash), "credit": Banking.creditWord(e.state.credit),
             "loans": e.state.loans.filter { $0.companyID == 0 }.map { ["name": $0.name, "balance": p($0.balance), "payment": p($0.monthlyPayment)] },
             "statement": e.state.statement.prefix(8).map { ["label": $0.label, "amount": p($0.amount)] },
-            "holdings": e.quotes(.stock).filter { $0.value > 0 }.map { ["symbol": $0.symbol, "name": $0.name, "value": p($0.value), "week": $0.weekChange ?? 0] },
+            "holdings": e.quotes(.fund).filter { $0.value > 0 }.map { ["symbol": $0.symbol, "name": $0.name, "value": p($0.value), "week": $0.weekChange ?? 0] },
         ]
         let data = try JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys])
         try data.write(to: URL(fileURLWithPath: path))

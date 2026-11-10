@@ -7,11 +7,11 @@ import Businesses
 public struct GovernmentWorld: Codable, Equatable, Sendable {
     public var account = "me"
     public var name = "You"
-    public var countries: [String: Government] = [:]
+    public var government: Government?
     public var justice = Justice()
     public var routes = RouteBook()
     var lastWeek = -1
-    var newsSeen: [String: Int] = [:]
+    var newsSeen = 0
 
     public init() {}
 }
@@ -33,109 +33,112 @@ public enum GovernmentBridge {
 
     public static func world(_ s: GameState) -> GovernmentWorld { s.governmentWorld ?? GovernmentWorld() }
 
-    public static func ensure(_ s: inout GameState, country: String, admins: Set<String>, startingSupply: Double) {
+    public static func ensure(_ s: inout GameState, admins: Set<String>, startingSupply: Double) {
         var w = world(s)
-        if var g = w.countries[country] {
+        if var g = w.government {
             if g.supply.mints.isEmpty, g.treasury.entries.isEmpty, g.donations.isEmpty, g.supply.base != max(1, startingSupply) { g.supply = GovMoneySupply(base: startingSupply) }
             g.admins.formUnion(admins)
-            w.countries[country] = g
+            w.government = g
         } else {
-            w.countries[country] = Government(country: country, admins: admins, startingSupply: startingSupply)
+            w.government = Government(admins: admins, startingSupply: startingSupply)
         }
         s.governmentWorld = w
     }
 
     public static func ensureHome(_ s: inout GameState, admins: Set<String>, account: String? = nil, name: String? = nil, context: FinanceContext) {
-        let cc: String = s.homeCountryCode
-        let supply: Double = max(1, context.currency(cc, s).scaledPrice(1_000_000_000))
-        ensure(&s, country: cc, admins: admins, startingSupply: supply)
+        let supply: Double = max(1, context.homeCurrency(s).scaledPrice(1_000_000_000))
+        ensure(&s, admins: admins, startingSupply: supply)
         var w = world(s)
         if let account, !account.isEmpty { w.account = account }
         if let name, !name.isEmpty { w.name = name }
         s.governmentWorld = w
     }
 
+    static func currentGovernment(_ w: GovernmentWorld, _ s: GameState, _ context: FinanceContext) -> Government {
+        w.government ?? Government(admins: [], startingSupply: max(1, context.homeCurrency(s).scaledPrice(1_000_000_000)))
+    }
+
+    static func toHome(_ s: GameState, _ context: FinanceContext, _ amount: Double, from cc: String) -> Double {
+        amount * context.currency(cc, s).rate / max(context.homeCurrency(s).rate, 0.000001)
+    }
+
     static func syncRules(_ w: inout GovernmentWorld, _ s: GameState) {
-        let r: WorldRules = s.worldRules
-        for cc in Array(w.countries.keys) { w.countries[cc]?.activeRules = r }
+        w.government?.activeRules = s.worldRules
     }
 
     public static func citizen(_ s: GameState, _ w: GovernmentWorld) -> GovCitizen {
-        GovCitizen(account: w.account, country: s.homeCountryCode, name: w.name, ageWeeks: s.week,
+        GovCitizen(account: w.account, name: w.name, ageWeeks: s.week,
                    barredFromVoting: w.justice.barred(w.account, .vote, week: s.week),
                    barredFromOffice: w.justice.barred(w.account, .office, week: s.week))
     }
 
     @discardableResult
-    public static func act<T>(_ s: inout GameState, country: String, _ body: (inout Government, String, Int) throws -> T) throws -> T {
+    public static func act<T>(_ s: inout GameState, _ body: (inout Government, String, Int) throws -> T) throws -> T {
         var w = world(s)
         syncRules(&w, s)
-        guard var g = w.countries[country] else { throw GovError.notFound }
+        guard var g = w.government else { throw GovError.notFound }
         let r = try body(&g, w.account, s.week)
-        w.countries[country] = g
+        w.government = g
         flushNews(&s, &w)
         s.governmentWorld = w
         return r
     }
 
     static func flushNews(_ s: inout GameState, _ w: inout GovernmentWorld) {
-        for cc in w.countries.keys.sorted() {
-            guard let g = w.countries[cc] else { continue }
-            let seen = w.newsSeen[cc] ?? 0
-            for n in g.news.reversed() where n.id > seen { s.news(n.text, tone: n.tone) }
-            if let top = g.news.map({ $0.id }).max() { w.newsSeen[cc] = max(seen, top) }
-        }
+        guard let g = w.government else { return }
+        for n in g.news.reversed() where n.id > w.newsSeen { s.news(n.text, tone: n.tone) }
+        if let top = g.news.map({ $0.id }).max() { w.newsSeen = max(w.newsSeen, top) }
     }
 
-    public static func donate(_ s: inout GameState, country: String, amount: Double) throws {
+    public static func donate(_ s: inout GameState, amount: Double) throws {
         var w = world(s)
-        guard var g = w.countries[country] else { throw GovError.notFound }
+        guard var g = w.government else { throw GovError.notFound }
         let a = jsRound(amount)
         guard a >= 1 else { throw GovError.badAmount("A donation must be at least 1.") }
         guard s.cash >= a else { throw GovError.cannotAfford("You do not have that much cash.") }
         try g.donate(account: w.account, name: w.name, amount: a, week: s.week)
         Payments.playerPays(&s, a, label: "Donation to the treasury")
-        w.countries[country] = g
+        w.government = g
         flushNews(&s, &w)
         s.governmentWorld = w
     }
 
-    public static func candidacyFee(_ s: GameState, country: String, context: FinanceContext) -> Double {
-        jsRound(context.currency(country, s).scaledPrice(Politics.candidacyFeeReference))
+    public static func candidacyFee(_ s: GameState, context: FinanceContext) -> Double {
+        jsRound(context.homeCurrency(s).scaledPrice(Politics.candidacyFeeReference))
     }
 
-    public static func stand(_ s: inout GameState, country: String, manifesto: String, promises: [CampaignPromise], context: FinanceContext) throws {
+    public static func stand(_ s: inout GameState, manifesto: String, promises: [CampaignPromise], context: FinanceContext) throws {
         var w = world(s)
-        guard var g = w.countries[country] else { throw GovError.notFound }
+        guard var g = w.government else { throw GovError.notFound }
         let c = citizen(s, w)
         try g.validateStand(c, promises: promises, week: s.week)
-        let fee = candidacyFee(s, country: country, context: context)
-        guard s.cash >= fee else { throw GovError.cannotAfford("Standing costs \(context.currency(country, s).display(fee)) and it is not refunded.") }
+        let fee = candidacyFee(s, context: context)
+        guard s.cash >= fee else { throw GovError.cannotAfford("Standing costs \(context.homeCurrency(s).display(fee)) and it is not refunded.") }
         Payments.playerPays(&s, fee, label: "Candidacy fee")
         try g.stand(c, manifesto: manifesto, promises: promises, fee: fee, week: s.week)
-        w.countries[country] = g
+        w.government = g
         flushNews(&s, &w)
         s.governmentWorld = w
     }
 
-    public static func vote(_ s: inout GameState, country: String, for candidate: String) throws {
+    public static func vote(_ s: inout GameState, for candidate: String) throws {
         var w = world(s)
-        guard var g = w.countries[country] else { throw GovError.notFound }
+        guard var g = w.government else { throw GovError.notFound }
         try g.castBallot(citizen(s, w), for: candidate, week: s.week)
-        w.countries[country] = g
+        w.government = g
         s.governmentWorld = w
     }
 
-    public static func quash(_ s: inout GameState, country: String, convictionID: Int) throws {
+    public static func quash(_ s: inout GameState, convictionID: Int) throws {
         var w = world(s)
-        guard var g = w.countries[country] else { throw GovError.notFound }
+        guard var g = w.government else { throw GovError.notFound }
         guard g.isAdmin(w.account) else { throw GovError.notAdmin }
         guard let c = w.justice.convictions.first(where: { $0.id == convictionID && !$0.quashed && $0.account == w.account }) else { throw GovError.notFound }
         if c.fine > 0 { try g.payOut(c.fine, kind: "conviction_refund", ref: String(c.id), week: s.week) }
         _ = w.justice.quash(c.id)
         g.log(w.account, "quash", "conviction \(c.id)", week: s.week)
         if c.fine > 0 { Payments.playerReceives(&s, c.fine, label: "Fine returned: conviction quashed") }
-        w.countries[country] = g
+        w.government = g
         s.governmentWorld = w
     }
 
@@ -205,11 +208,11 @@ public enum GovernmentBridge {
             let cash0 = s.companies[i].cash
             _ = Payments.companyPays(&s, companyID: companyID, amount: want, category: "fine", label: "Fine: \(kind.title)")
             let paid = max(0, cash0 - s.companies[i].cash)
-            var g = w.countries[cc] ?? Government(country: cc, admins: [], startingSupply: 1_000_000_000)
-            g.receive(paid, kind: "conviction_fine", ref: kind.rawValue, week: s.week)
+            var g = currentGovernment(w, s, context)
+            g.receive(toHome(s, context, paid, from: cc), kind: "conviction_fine", ref: kind.rawValue, week: s.week)
             _ = w.justice.record(account: w.account, name: w.name, kind: kind.convictionKind, summary: "\(kind.title) traced back to you", fine: paid,
                                  country: cc, week: s.week, tradeBanWeeks: DirtyTrick.banWeeks, grave: false)
-            w.countries[cc] = g
+            w.government = g
             s.addMessage(from: "Authorities", title: "Dirty trick traced", body: "\(kind.title) was traced back to \(s.companies[i].name). Fine \(context.currency(cc, s).display(paid)) and a \(DirtyTrick.banWeeks)-week trading ban.",
                          companyID: companyID, tone: "bad")
         }
@@ -222,20 +225,20 @@ public enum GovernmentBridge {
         w.lastWeek = s.week
         syncRules(&w, s)
         let week = s.week
-        for cc in w.countries.keys.sorted() {
-            guard var g = w.countries[cc] else { continue }
+        if var g = w.government {
             let justice = w.justice
-            g.advance(week: week, canStand: { !justice.barred($0, .office, week: week) }, hasCitizens: cc == s.homeCountryCode)
-            if cc == s.homeCountryCode {
-                let r = GovInflation.rate(g.supply, week: week)
-                if r > 0 { s.economy.inflationIndex *= 1 + r }
-            }
-            for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].countryCode == cc {
-                let rev = s.companies[i].books.week["rev"] ?? 0
+            g.advance(week: week, canStand: { !justice.barred($0, .office, week: week) })
+            let r = GovInflation.rate(g.supply, week: week)
+            if r > 0 { s.economy.inflationIndex *= 1 + r }
+            let home = context.homeCurrency(s)
+            for i in s.companies.indices where s.companies[i].status == .open {
+                let cc = s.companies[i].countryCode
+                let rate = context.currency(cc, s).rate / max(home.rate, 0.000001)
+                let rev = (s.companies[i].books.week["rev"] ?? 0) * rate
                 let amt = g.supportPayout(account: w.account, tradeID: s.companies[i].type, weekRevenue: rev, week: week)
-                if amt > 0 { Payments.companyReceives(&s, companyID: s.companies[i].id, amount: amt, category: "rev", label: "Price support") }
+                if amt > 0 { Payments.companyReceives(&s, companyID: s.companies[i].id, amount: amt / max(rate, 0.000001), category: "rev", label: "Price support") }
             }
-            w.countries[cc] = g
+            w.government = g
         }
         for risk in w.routes.risks {
             guard let i = s.companyIndex(risk.companyID), s.companies[i].status.isLive else { w.routes.drop(companyID: risk.companyID); continue }
@@ -251,7 +254,7 @@ public enum GovernmentBridge {
     static func settle(_ s: inout GameState, _ w: inout GovernmentWorld, audit a: RouteAudit, companyIndex i: Int, data: GameData, context: FinanceContext) {
         let id = s.companies[i].id, name = s.companies[i].name, cc = s.companies[i].countryCode, week = s.week
         let cur = context.currency(cc, s)
-        var g = w.countries[cc] ?? Government(country: cc, admins: [], startingSupply: 1_000_000_000)
+        var g = currentGovernment(w, s, context)
         let owed = jsRound(a.liability * (RouteRules.backMultiple + RouteRules.fineMultiple(level: a.level)))
         let cash0 = s.companies[i].cash
         _ = Payments.companyPays(&s, companyID: id, amount: owed, category: "fine", label: "Audit: illegal takings")
@@ -284,9 +287,9 @@ public enum GovernmentBridge {
             body += " The company is closed and its cash seized, with nothing paid out to you. You are convicted and banned from trading and from office."
             w.routes.drop(companyID: id)
         }
-        g.receive(paid, kind: "audit_fine", ref: String(id), week: week)
+        g.receive(toHome(s, context, paid, from: cc), kind: "audit_fine", ref: String(id), week: week)
         g.log("system", "audit", "\(name): level \(a.level)", week: week)
-        w.countries[cc] = g
+        w.government = g
         s.addMessage(from: "Authorities", title: "Audit at \(name)", body: body, companyID: id, tone: "bad")
         s.note("Audit at \(name): \(cur.display(paid)) paid.", tone: "bad", companyID: id)
     }

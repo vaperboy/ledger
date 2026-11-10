@@ -1,5 +1,4 @@
 import SwiftUI
-import PhotosUI
 import GameCore
 import Events
 import Finance
@@ -10,7 +9,8 @@ struct ProfileView: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
     @ObservedObject private var local = ProfileLocal.shared
-    @State private var pickedPhoto: PhotosPickerItem?
+    @ObservedObject private var season = SeasonModel.shared
+    @State private var showLadder = false
     @State private var editingName = false
     @State private var nameDraft = ""
     @State private var friends: [PlayerProfile] = []
@@ -27,21 +27,14 @@ struct ProfileView: View {
                     trophies(e)
                     collectionRow
                     friendsSection
-                    runSection(e)
                     if online.isSignedIn, let p = online.profile { privacySection(p) }
                 }
+                .levelLadderPopup(isPresented: $showLadder, engine: e)
             }
         }
         .appScreen(title: "Profile", subtitle: "")
         .confirmAction($pending)
         .task(id: online.isSignedIn) { await syncOnline(); await loadFriends() }
-        .onChange(of: pickedPhoto) { _, item in
-            guard let item else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self) { local.setPhoto(data: data) }
-                pickedPhoto = nil
-            }
-        }
     }
 
     private func shownName(_ e: GameEngine) -> String { local.name.isEmpty ? e.state.player.name : local.name }
@@ -49,34 +42,49 @@ struct ProfileView: View {
     private func identity(_ e: GameEngine) -> some View {
         let info: PlayerLevel.Info = e.playerLevel
         let rank: String = e.careerStatus.rank.title
+        let look: [String: String] = season.pass.equipped
+        let accent: Color = LookKit.accent(look) ?? Theme.gold
         return VStack(spacing: Theme.Space.s) {
-            ProfilePicture(name: shownName(e), size: 84)
-            HStack(spacing: Theme.Space.s) {
-                PhotosPicker(selection: $pickedPhoto, matching: .images) {
-                    Text("Change photo").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minHeight: 44)
-                }
-                .accessibilityIdentifier("profile-photo")
-                if local.photo != nil {
-                    Button("Remove") { Haptics.tap(); local.removePhoto() }
-                        .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
-                }
-            }
-            if editingName { nameEditor(e) } else { nameLine(e) }
-            Text("Level \(info.level) · \(rank)").textStyle(.caption, tint: Theme.inkSoft)
-            ProgressLine(fraction: info.progress, tint: Theme.gold, height: 3).frame(maxWidth: 160)
             NavigationLink { AvatarPickerView() } label: {
-                Text("Choose a profile icon").textStyle(.caption, tint: Theme.accent).frame(minHeight: 44)
+                ProfilePicture(name: shownName(e), size: 84).overlay(Circle().strokeBorder(accent, lineWidth: 2))
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Change profile icon")
+            .accessibilityIdentifier("profile-avatar")
+            NavigationLink { AvatarPickerView() } label: {
+                Text("Change icon").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minHeight: 44)
             }
             .buttonStyle(PressableStyle())
             .accessibilityIdentifier("profile-icon")
+            if editingName { nameEditor(e) } else { nameLine(e, look: look) }
+            LookTradeChip(look: look, company: LookKit.company(store))
+            Button { Haptics.tap(); showLadder = true } label: {
+                VStack(spacing: Theme.Space.xs) {
+                    Text("Level \(info.level) · \(rank)").textStyle(.caption, tint: Theme.inkSoft)
+                    ProgressLine(fraction: info.progress, tint: accent, height: 3).frame(maxWidth: 160)
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Level \(info.level), \(rank). Shows every level and what it unlocks.")
+            .accessibilityIdentifier("profile-level")
+            NavigationLink { LookView() } label: {
+                Text("Change look").textStyle(.caption, tint: Theme.accent).frame(minHeight: 44)
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("profile-look")
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, Theme.Space.m)
+        .background(LookBackdrop(look: look))
     }
 
-    private func nameLine(_ e: GameEngine) -> some View {
+    private func nameLine(_ e: GameEngine, look: [String: String]) -> some View {
         Button { Haptics.tap(); nameDraft = shownName(e); editingName = true } label: {
             HStack(spacing: Theme.Space.xs) {
-                Text(shownName(e)).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+                LookNamePlate(look: look, name: shownName(e))
+                if e.inHallOfFame { HallOfFameMark() }
                 Image(systemName: "pencil").font(.caption.weight(.semibold)).foregroundStyle(Theme.inkFaint)
             }
             .frame(minHeight: 44)
@@ -181,12 +189,16 @@ struct ProfileView: View {
             HStack {
                 Text("Friends").capsLabel(Theme.inkFaint)
                 Spacer()
-                Button("Add friend") { Haptics.tap(); store.openApp(.friends) }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                if online.isSignedIn {
+                    NavigationLink { FriendsScreen() } label: {
+                        Text("Add friend").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minHeight: 44)
+                    }
+                    .buttonStyle(PressableStyle())
                     .accessibilityIdentifier("profile-add-friend")
+                }
             }
             if friends.isEmpty {
-                Text(online.isSignedIn ? "No friends yet. Add one." : "Link an account above to add friends.").textStyle(.caption)
+                Text(online.isSignedIn ? "No friends yet. Add one." : "Friends show here once you are online.").textStyle(.caption)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(friends.prefix(5).enumerated()), id: \.element.id) { (i: Int, p: PlayerProfile) in
@@ -201,60 +213,40 @@ struct ProfileView: View {
         }
     }
 
-    private struct Fact: Identifiable {
-        var id: String
-        var glyph: String
-        var title: String
-        var value: String
-    }
-
-    private func facts(_ e: GameEngine) -> [Fact] {
-        let s = e.state
-        let best: Double = max(s.stats.peakNetWorth, e.netWorth.total)
-        let m: MilestoneProgress = e.milestoneProgress
-        var out: [Fact] = [Fact(id: "days", glyph: Glyph.clock, title: "Days in business", value: "\(s.week * 7 + s.day)")]
-        if best > 0 { out.append(Fact(id: "best", glyph: Glyph.stats, title: "Best net worth so far", value: store.short(best))) }
-        if m.bestWeek > 0 { out.append(Fact(id: "week", glyph: Glyph.arrowIn, title: "Best single week", value: store.short(m.bestWeek))) }
-        if m.bestStreak > 1 { out.append(Fact(id: "run", glyph: Glyph.check, title: "Longest run of growing weeks", value: "\(m.bestStreak)")) }
-        if s.stats.companiesSold > 0 { out.append(Fact(id: "sold", glyph: Glyph.bank, title: "Companies sold", value: "\(s.stats.companiesSold)")) }
-        if s.stats.dividendsReceived > 0 { out.append(Fact(id: "div", glyph: Glyph.arrowIn, title: "Dividends you received", value: store.short(s.stats.dividendsReceived))) }
-        return Array(out.prefix(5))
-    }
-
-    private func runSection(_ e: GameEngine) -> some View {
-        let list: [Fact] = facts(e)
-        return LedgerSection("Your run") {
-            VStack(spacing: 0) {
-                ForEach(Array(list.enumerated()), id: \.element.id) { (i: Int, f: Fact) in
-                    if i > 0 { Hairline() }
-                    LedgerRow(leading: .glyph(f.glyph), title: f.title, value: f.value, density: .compact)
-                }
-            }
-        }
-    }
-
     @ViewBuilder private var codeSection: some View {
-        if online.isSignedIn, let p = online.profile {
-            HStack(spacing: Theme.Space.xs) {
-                Text("Friend code").textStyle(.caption)
-                Text(p.code).textStyle(.headline, numeric: true)
-                ShareLink(item: InviteLink.message(code: p.code)) { LedgerGlyph(glyph: Glyph.share, size: Theme.Icon.small, tint: Theme.accent).frame(minWidth: 44, minHeight: 44) }
-                    .accessibilityLabel("Share your friend code")
-            }
-            .frame(maxWidth: .infinity)
-            .accessibilityIdentifier("profile-code")
-        } else if !online.isSignedIn {
-            VStack(spacing: Theme.Space.xs) {
-                Text("Link an account to get a friend code and use the online world. Your game stays on this device.").textStyle(.caption).multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: Theme.Space.s) {
-                    linkButton(.apple)
-                    linkButton(.google)
+        VStack(spacing: Theme.Space.xs) {
+            if online.isSignedIn, let p = online.profile {
+                HStack(spacing: Theme.Space.xs) {
+                    Text("Friend code").textStyle(.caption)
+                    Text(p.code).textStyle(.headline, numeric: true)
+                    ShareLink(item: InviteLink.message(code: p.code)) { LedgerGlyph(glyph: Glyph.share, size: Theme.Icon.small, tint: Theme.accent).frame(minWidth: 44, minHeight: 44) }
+                        .accessibilityLabel("Share your friend code")
                 }
-                if let problem = online.problem { Text(problem).textStyle(.caption, tint: Theme.loss).multilineTextAlignment(.center) }
+                .accessibilityIdentifier("profile-code")
+                if online.offline { Text("Offline. It reconnects by itself.").textStyle(.caption).accessibilityIdentifier("online-offline") }
+            } else if !online.isSignedIn {
+                Text(guestNote).textStyle(.caption).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity)
+            if online.canLink {
+                if online.isSignedIn {
+                    Text("Link an account to keep your profile and progress across devices. Your game stays on this device.").textStyle(.caption)
+                        .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                }
+                HStack(spacing: Theme.Space.s) {
+                    ForEach(online.linkProviders, id: \.self) { (provider: SignInProvider) in linkButton(provider) }
+                }
+            }
+            if let problem = online.problem, online.canLink || !online.isSignedIn {
+                Text(problem).textStyle(.caption, tint: Theme.loss).multilineTextAlignment(.center)
+            }
         }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var guestNote: String {
+        if online.offline { return "Offline. Your game stays on this device and the online world returns by itself." }
+        if online.service.createsAccountsItself { return online.pausedByPlayer ? "You are offline by choice. Go online from Settings." : "Setting up your online profile." }
+        return "Link an account to get a friend code and use the online world. Your game stays on this device."
     }
 
     private func linkButton(_ provider: SignInProvider) -> some View {
@@ -268,7 +260,7 @@ struct ProfileView: View {
             }
         } label: { Text(provider.title).frame(maxWidth: .infinity) }
             .buttonStyle(SecondaryButtonStyle(size: .compact))
-            .disabled(online.state == .signingIn)
+            .disabled(online.isLinking)
             .accessibilityIdentifier("profile-link-" + provider.rawValue)
     }
 

@@ -171,6 +171,4 @@ public extension GameEngine {
         applySetting(probe: { $0.rest["bigOff"] ?? .null }) { s, _, _ in BigMeeting.walkAway(&s) }
     }
     var groupStakes: [GroupDeals.Stake] { GroupDeals.stakes(state) }
-
-    var crisisCentre: [Message] { Ventures.crises(state) }
 }

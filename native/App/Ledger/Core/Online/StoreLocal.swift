@@ -1,23 +1,13 @@
 import Foundation
 import Simulation
 
-struct MockStoreService: StoreService {
+struct LocalStoreService: StoreService {
     let vault: GoldVault
-
-    private static let grantsGoldWithoutPayment = true
-    var isVisualOnly: Bool { Self.grantsGoldWithoutPayment }
 
     func state() async -> StoreState { await vault.state() }
 
-    func buyPack(_ packID: String) async throws -> StoreState {
-        guard Self.grantsGoldWithoutPayment else { throw StoreError.notAvailable }
-        return try await vault.buyPack(packID)
-    }
-
-    func buySeasonBundle() async throws -> StoreState {
-        guard Self.grantsGoldWithoutPayment else { throw StoreError.notAvailable }
-        return await vault.buySeasonBundle()
-    }
+    func deliver(_ item: PurchaseItem, transactionID: String) async throws -> PurchaseDeliveryResult { try await vault.deliver(item, transactionID: transactionID) }
+    func revoke(transactionID: String) async -> StoreState { await vault.revoke(transactionID: transactionID) }
 
     func buyBoxBundle(_ bundleID: String, paidBoxesAllowed: Bool) async throws -> StoreState { try await vault.buyBoxBundle(bundleID, paidBoxesAllowed: paidBoxesAllowed) }
     func buyCosmetic(_ id: String, owned: Set<String>) async throws -> StoreState { try await vault.buyCosmetic(id, owned: owned) }
@@ -26,4 +16,5 @@ struct MockStoreService: StoreService {
         try await vault.openBoxes(kind, count: count, owned: owned, paidBoxesAllowed: paidBoxesAllowed)
     }
     func grantFromSeason(boxes: Int, gold: Int) async -> StoreState { await vault.grantFromSeason(boxes: boxes, gold: gold) }
+    func quickSell(itemIDs: [String], priceLevel: Double) async throws -> QuickSale { try await vault.quickSell(itemIDs, priceLevel: priceLevel) }
 }

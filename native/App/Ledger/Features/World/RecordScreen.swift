@@ -6,7 +6,7 @@ import Simulation
 
 struct RecordScreen: View {
     var e: GameEngine
-    var r: CountryRead
+    var r: WorldRead
     var back: () -> Void
     @State private var tab = 0
     private let P: OutsidePalette = .docket
@@ -21,7 +21,7 @@ struct RecordScreen: View {
             if tab == 0 { mine } else { watch }
         }
         .outsideScreen(.docket)
-        .accessibilityIdentifier("country-record")
+        .accessibilityIdentifier("world-record")
     }
 
     private var tabs: some View {

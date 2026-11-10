@@ -124,8 +124,8 @@ public extension GameEngine {
             if !co.value("pr29")["late"].isNull { add(.payroll, "Wages are late at \(co.name)", "Staff have not been paid in full. Unpaid wages lead to claims and fines.", 3, by: TeamOverview.you) }
             else if wages > 0 && co.cash < wages && co.status == .open { add(.cash, "\(co.name) has less cash than a month of wages", "Next payday may not be covered. Move money in or cut costs.", 2, by: TeamOverview.you) }
 
-            let ownerWorksThere = co.ownerHours > 0
-            if co.managerID == nil && !ownerWorksThere && co.status == .open && !co.staff.isEmpty {
+            let someoneRunsIt = (co.ownerHours > 0 || OwnerHours.crewRuns(co))
+            if co.managerID == nil && !someoneRunsIt && co.status == .open && !co.staff.isEmpty {
                 add(.vacancy, "No one runs \(co.name)", bosses.isEmpty ? "You do not work there and it has no manager." : "No store manager; \(runner) oversees it from above.", bosses.isEmpty ? 3 : 2, by: TeamOverview.you)
             }
             if co.managerID != nil {
@@ -174,7 +174,7 @@ public extension GameEngine {
 
             if co.status == .open && trade?.family != "club" {
                 let title = trade.map { ManagerModel.title($0) } ?? "Manager"
-                if co.managerID == nil && !ownerWorksThere && !co.staff.isEmpty {
+                if co.managerID == nil && !someoneRunsIt && !co.staff.isEmpty {
                     var v = TeamOverview.Vacancy(id: "mgr-\(co.id)", title: title, scope: "store", place: co.name,
                                                  detail: bosses.isEmpty ? "No one runs it day to day." : "\(runner) oversees it from above, with no one on site.",
                                                  companyID: co.id, chainID: chainID, needed: bosses.isEmpty, employer: co.name)

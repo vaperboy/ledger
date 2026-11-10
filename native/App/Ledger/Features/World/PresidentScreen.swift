@@ -7,7 +7,7 @@ import Simulation
 
 struct PresidentScreen: View {
     var e: GameEngine
-    var r: CountryRead
+    var r: WorldRead
     var back: () -> Void
     @EnvironmentObject var store: GameStore
     @State private var transfer: Double
@@ -18,7 +18,7 @@ struct PresidentScreen: View {
     @State private var budgetText = ""
     private let P: OutsidePalette = .oval
 
-    init(e: GameEngine, r: CountryRead, back: @escaping () -> Void) {
+    init(e: GameEngine, r: WorldRead, back: @escaping () -> Void) {
         self.e = e
         self.r = r
         self.back = back
@@ -49,7 +49,7 @@ struct PresidentScreen: View {
             transfer = p.transferTax
             gains = p.gainsTax
         }
-        .accessibilityIdentifier("country-president")
+        .accessibilityIdentifier("world-president")
     }
 
     private var seat: some View {
@@ -120,11 +120,10 @@ struct PresidentScreen: View {
     }
 
     private func proposeRates() {
-        let country: String = r.code
         let t: Double = transfer
         let g: Double = gains
         let ok: Bool = store.govRun { (s: inout GameState, _: GameData, _: FinanceContext) -> Void in
-            try GovernmentBridge.act(&s, country: country) { (gov: inout Government, acct: String, wk: Int) -> Void in
+            try GovernmentBridge.act(&s) { (gov: inout Government, acct: String, wk: Int) -> Void in
                 _ = try gov.proposePolicy(by: acct, transferTax: t, gainsTax: g, week: wk)
             }
         }
@@ -175,12 +174,11 @@ struct PresidentScreen: View {
     }
 
     private func proposeSupport(_ budget: Double) {
-        let country: String = r.code
         let trade: String = supportTrade
         let pct: Double = supportPct
         let weeks: Int = Int(supportWeeks)
         let ok: Bool = store.govRun { (s: inout GameState, _: GameData, _: FinanceContext) -> Void in
-            try GovernmentBridge.act(&s, country: country) { (gov: inout Government, acct: String, wk: Int) -> Void in
+            try GovernmentBridge.act(&s) { (gov: inout Government, acct: String, wk: Int) -> Void in
                 _ = try gov.proposePriceSupport(by: acct, tradeID: trade, percent: pct, weeklyBudget: budget, weeks: weeks, week: wk)
             }
         }

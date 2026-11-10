@@ -7,7 +7,7 @@ import Simulation
 
 struct ElectionScreen: View {
     var e: GameEngine
-    var r: CountryRead
+    var r: WorldRead
     var back: () -> Void
     @EnvironmentObject var store: GameStore
     @State private var standing = false
@@ -33,7 +33,7 @@ struct ElectionScreen: View {
                 StandForm(e: e, r: r) { standing = false }
             } else {
                 CivicPage(spacing: 18) {
-                    CivicHeader(title: "Election", subtitle: "President of \(r.name)", onBack: back)
+                    CivicHeader(title: "Election", subtitle: "President of the world", onBack: back)
                     sheetHead
                     stateBlock
                     if let el = election, !el.candidates.isEmpty { ballotPaper(el) }
@@ -43,7 +43,7 @@ struct ElectionScreen: View {
             }
         }
         .outsideScreen(.ballot)
-        .accessibilityIdentifier("country-election")
+        .accessibilityIdentifier("world-election")
     }
 
     private var sheetHead: some View {
@@ -107,7 +107,7 @@ struct ElectionScreen: View {
 
     private func nominationBlock(_ el: Election) -> some View {
         let mine: Bool = el.candidates.contains { $0.account == r.account }
-        let fee: Double = GovernmentBridge.candidacyFee(e.state, country: r.code, context: e.context)
+        let fee: Double = GovernmentBridge.candidacyFee(e.state, context: e.context)
         return VStack(alignment: .leading, spacing: 10) {
             if mine {
                 Text("You are a candidate.").textStyle(.headline)
@@ -117,7 +117,7 @@ struct ElectionScreen: View {
                 Text("Stand for president").font(.system(size: 18, weight: .semibold, design: .serif)).foregroundStyle(P.ink)
                 Text("The fee is \(r.cur.tidyDisplay(fee)). It goes to the treasury and is never given back, win or lose.").textStyle(.body)
                     .fixedSize(horizontal: false, vertical: true)
-                let ok: Bool = Politics.mayStand(citizen, country: r.code)
+                let ok: Bool = Politics.mayStand(citizen)
                 PrimaryAction(title: "Stand as a candidate", blockedReason: ok ? nil : "You cannot stand: you must live here, be at least \(Politics.candidateMinAgeWeeks) weeks into the game, and not be barred.", identifier: "election-stand") {
                     standing = true
                 }
@@ -129,7 +129,7 @@ struct ElectionScreen: View {
 
     private func votingBlock(_ el: Election) -> some View {
         let voted: Bool = r.gov.hasVoted(r.account)
-        let may: Bool = Politics.mayVote(citizen, country: r.code)
+        let may: Bool = Politics.mayVote(citizen)
         return VStack(alignment: .leading, spacing: 6) {
             if voted {
                 Text("Your vote is cast.").textStyle(.headline, tint: P.gain)
@@ -166,7 +166,7 @@ struct ElectionScreen: View {
     private func ballotPaper(_ el: Election) -> some View {
         let counts: [String: Int] = Dictionary(uniqueKeysWithValues: (r.gov.tally() ?? []).map { ($0.account, $0.votes) })
         let total: Int = max(1, counts.values.reduce(0, +))
-        let canVote: Bool = el.status == .voting && !r.gov.hasVoted(r.account) && Politics.mayVote(citizen, country: r.code)
+        let canVote: Bool = el.status == .voting && !r.gov.hasVoted(r.account) && Politics.mayVote(citizen)
         return VStack(alignment: .leading, spacing: 0) {
             Text("CANDIDATES").font(.system(size: 11, weight: .bold)).tracking(2).foregroundStyle(P.inkFaint).padding(.bottom, 8)
             VStack(spacing: 0) {
@@ -259,10 +259,9 @@ struct ElectionScreen: View {
     private func tradeName(_ id: String) -> String { e.data.catalog.trades[id]?.name ?? id }
 
     private func cast(_ c: ElectionCandidate) {
-        let country: String = r.code
         let account: String = c.account
         let ok: Bool = store.govRun { (s: inout GameState, _: GameData, _: FinanceContext) -> Void in
-            try GovernmentBridge.vote(&s, country: country, for: account)
+            try GovernmentBridge.vote(&s, for: account)
         }
         pick = nil
         guard ok else { return }
@@ -271,9 +270,8 @@ struct ElectionScreen: View {
     }
 
     private func withdraw() {
-        let country: String = r.code
         store.govRun { (s: inout GameState, _: GameData, _: FinanceContext) -> Void in
-            try GovernmentBridge.act(&s, country: country) { (g: inout Government, acct: String, wk: Int) -> Void in
+            try GovernmentBridge.act(&s) { (g: inout Government, acct: String, wk: Int) -> Void in
                 try g.withdraw(account: acct, week: wk)
             }
         }
@@ -307,7 +305,7 @@ struct PromiseDraft: Equatable {
 
 struct StandForm: View {
     var e: GameEngine
-    var r: CountryRead
+    var r: WorldRead
     var done: () -> Void
     @EnvironmentObject var store: GameStore
     @State private var manifesto = ""
@@ -315,7 +313,7 @@ struct StandForm: View {
     @State private var confirming = false
     private let P: OutsidePalette = .ballot
 
-    init(e: GameEngine, r: CountryRead, done: @escaping () -> Void) {
+    init(e: GameEngine, r: WorldRead, done: @escaping () -> Void) {
         self.e = e
         self.r = r
         self.done = done
@@ -324,14 +322,14 @@ struct StandForm: View {
     }
 
     private var chosen: [CampaignPromise] { drafts.filter { $0.on }.map { $0.promise } }
-    private var fee: Double { GovernmentBridge.candidacyFee(e.state, country: r.code, context: e.context) }
+    private var fee: Double { GovernmentBridge.candidacyFee(e.state, context: e.context) }
 
     private func problem(_ d: PromiseDraft) -> String? {
         Politics.realismProblem(d.promise, policy: r.gov.policy, treasury: r.gov.treasury.balance)
     }
 
     private var blocked: String? {
-        if !Politics.mayStand(GovernmentBridge.citizen(e.state, r.world), country: r.code) { return "You cannot stand: you must live here, be far enough into the game, and not be barred." }
+        if !Politics.mayStand(GovernmentBridge.citizen(e.state, r.world)) { return "You cannot stand: you must live here, be far enough into the game, and not be barred." }
         for d in drafts where d.on { if let p = problem(d) { return d.title + ": " + p } }
         if e.state.cash < fee { return "You need \(r.cur.tidyDisplay(fee)) in cash." }
         return nil
@@ -342,7 +340,7 @@ struct StandForm: View {
             CivicHeader(title: confirming ? "Confirm" : "Stand for president", subtitle: "Nomination form", onBack: { if confirming { confirming = false } else { done() } })
             if confirming { confirmPage } else { form }
         }
-        .accessibilityIdentifier("country-stand")
+        .accessibilityIdentifier("world-stand")
     }
 
     private var form: some View {
@@ -448,12 +446,11 @@ struct StandForm: View {
     }
 
     private func submit() {
-        let country: String = r.code
         let words: String = manifesto.trimmingCharacters(in: .whitespacesAndNewlines)
         let promises: [CampaignPromise] = chosen
         let fee: Double = self.fee
         let ok: Bool = store.govRun { (s: inout GameState, _: GameData, c: FinanceContext) -> Void in
-            try GovernmentBridge.stand(&s, country: country, manifesto: words, promises: promises, context: c)
+            try GovernmentBridge.stand(&s, manifesto: words, promises: promises, context: c)
         }
         guard ok else { confirming = false; return }
         Haptics.success()

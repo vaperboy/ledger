@@ -46,7 +46,7 @@ struct ShadowScreen: View {
             }
         }
         .outsideScreen(.shadow)
-        .accessibilityIdentifier("country-shadow")
+        .accessibilityIdentifier("world-shadow")
     }
 
     private var title: String {

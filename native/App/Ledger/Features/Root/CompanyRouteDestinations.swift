@@ -12,7 +12,7 @@ struct CompanyRouteDestination: View {
             case .companyAt(let id, let sec): CompanyPage(companyID: id, section: sec, part: nil).companySwitcher(route)
             case .companyPart(let id, let sec, let part): CompanyPage(companyID: id, section: sec, part: part).companySwitcher(route)
             case .newCompany: NewCompanyRoute()
-            case .applicants(let id, let role): ApplicantsView(companyID: id == 0 ? nil : id, role: role.isEmpty ? nil : role)
+            case .hire(let id): HireWorkersView(companyID: id)
             case .market: MarketApp()
             case .app(let app): PhoneAppScreen(app: app)
             case .entity(let id, let section): GroupEntityScreen(entityID: id, section: section)

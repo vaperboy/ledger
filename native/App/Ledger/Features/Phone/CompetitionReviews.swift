@@ -26,7 +26,7 @@ struct StarRatingView: View {
     }
 }
 
-struct ReviewsApp: View {
+struct CompetitionReviews: View {
     @EnvironmentObject var store: GameStore
     enum Side: String, CaseIterable, Hashable { case yours = "Yours", rivals = "Rivals" }
     @State private var companyID = 0
@@ -41,31 +41,17 @@ struct ReviewsApp: View {
                 Color.clear
             }
         }
-        .appScreen(title: "Reviews", subtitle: PhoneApp.reviews.subtitle)
-        .onAppear { take() }
-        .onChange(of: store.appRequest) { _, _ in take() }
-    }
-
-    static func companies(_ e: GameEngine) -> [Company] {
-        e.state.companies.filter { (co: Company) -> Bool in
-            guard co.status == .open, let family = e.tradeInfo(companyID: co.id)?.family else { return false }
-            return !["fin", "energy", "club"].contains(family)
-        }
-    }
-
-    static func lineKey(_ e: GameEngine, _ co: Company, _ l: ReviewLine) -> String {
-        "v\(co.id).\(e.state.week - l.weeksAgo).\(l.stars).\(l.who)"
     }
 
     private func page(_ e: GameEngine) -> some View {
-        let companies: [Company] = Self.companies(e)
+        let companies: [Company] = CompetitionApp.reviewCompanies(e)
         let chosen: Company? = companies.first { $0.id == companyID } ?? companies.first
         return Group {
             if let co = chosen {
                 VStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
                         selector(companies, co)
-                        SegmentedPill(items: Side.allCases, title: { $0.rawValue }, selection: $side, identifier: { "reviews-side-" + $0.rawValue.lowercased() })
+                        SegmentedPill(items: Side.allCases, title: { $0.rawValue }, selection: $side, identifier: { "competition-reviews-" + $0.rawValue.lowercased() })
                     }
                     .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.s)
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -79,7 +65,7 @@ struct ReviewsApp: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
-        .accessibilityIdentifier("reviews-app")
+        .accessibilityIdentifier("competition-reviews")
     }
 
     private func sidePage(_ e: GameEngine, _ co: Company, _ sd: Side) -> some View {
@@ -108,14 +94,7 @@ struct ReviewsApp: View {
             BusinessPickerLabel(caption: "Business", title: chosen.name)
         }
         .accessibilityLabel("Business: \(chosen.name)")
-        .accessibilityIdentifier("reviews-business-picker")
-    }
-
-    private func take() {
-        guard let id = store.takeReviewsRequest() else { return }
-        companyID = id
-        side = .yours
-        openRival = nil
+        .accessibilityIdentifier("competition-business-picker")
     }
 
     @ViewBuilder private func yours(_ e: GameEngine, _ co: Company) -> some View {
@@ -130,7 +109,7 @@ struct ReviewsApp: View {
                         if n > 0 { Hairline() }
                         reviewCard(line)
                             .padding(.vertical, Theme.Space.m)
-                            .newMarker(.reviews, ReviewsApp.lineKey(e, co, line), style: .dot, alignment: .topTrailing)
+                            .newMarker(.competition, CompetitionApp.lineKey(e, co, line), style: .dot, alignment: .topTrailing)
                     }
                 }
             }

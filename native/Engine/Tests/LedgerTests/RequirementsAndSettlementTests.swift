@@ -29,21 +29,6 @@ final class RequirementsAndSettlementTests: XCTestCase {
         XCTAssertTrue(Trophies.entries(e.state).allSatisfy { $0.reachedWeek == nil }, "nothing is granted before its condition")
     }
 
-    func testChainRequirementsAreRealLifePapers() throws {
-        let (e, id) = try cafeGame()
-        let r = Chains.requirements(e.state, e.state.company(id)!)
-        XCTAssertEqual(r.map { $0.key }, ["trademark", "ops_manual"])
-        XCTAssertFalse(r.contains { $0.title.lowercased().contains("cash") || $0.title.lowercased().contains("customers like") })
-    }
-
-    func testFranchiseRequirementsHaveNoYearsOrCashGate() throws {
-        let (e, id) = try cafeGame()
-        let r = Franchising.requirements(e.state, e.state.company(id)!)
-        XCTAssertFalse(r.contains { $0.title.contains("years") || $0.title.contains("for a year") })
-        XCTAssertFalse(r.contains { $0.title.lowercased().contains("cash") })
-        XCTAssertEqual(r.map { $0.key }, ["proven", "trademark", "ops_manual", "fran", "support"])
-    }
-
     func testSettlementKeepsWagesFirstAndRecordsTheRest() throws {
         var (e, id) = try cafeGame()
         e.update { s, d, _ in

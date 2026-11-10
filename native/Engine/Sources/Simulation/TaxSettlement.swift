@@ -118,7 +118,7 @@ public enum TaxSettlement {
 
     static func marketHoldings(_ s: GameState) -> [Holding] {
         var out: [Holding] = []
-        let kinds: [(Brokerage.Kind, String)] = [(.fund, "funds"), (.stock, "stocks"), (.crypto, "crypto")]
+        let kinds: [(Brokerage.Kind, String)] = [(.fund, "funds"), (.crypto, "crypto")]
         for (kind, key) in kinds {
             for sym in (s.rest["inv"]?[key].object.keys.sorted() ?? []) {
                 let v = Brokerage.positionValue(s, kind, sym)

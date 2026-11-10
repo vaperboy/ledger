@@ -6,7 +6,6 @@ import Businesses
 
 public extension GameEngine {
 
-    func chainRequirements(companyID: Int) -> [Chains.Requirement] { state.company(companyID).map { Chains.requirements(state, $0) } ?? [] }
     func chainOf(companyID: Int) -> JSONValue? { state.company(companyID).flatMap { Chains.chain(state, of: $0) } }
     var chainSummaries: [Chains.Summary] { Chains.summaries(state, data: data) }
     func chainSummary(id: Int) -> Chains.Summary? { chainSummaries.first { $0.id == id } }
@@ -30,17 +29,16 @@ public extension GameEngine {
     }
 
     @discardableResult
-    mutating func applyForChainDocument(companyID: Int, document: String) -> Chains.ChainDocResult {
-        var r = Chains.ChainDocResult.notFound
-        update { s, d, _ in r = Chains.applyDocument(&s, companyID: companyID, doc: document, data: d) }
-        return r
-    }
-
-    @discardableResult
     mutating func makeChain(companyID: Int, name: String) -> Int? {
         var id: Int?
         update { s, d, _ in id = Chains.make(&s, companyID: companyID, name: name, data: d) }
         return id
+    }
+
+    @discardableResult
+    mutating func startChain(companyID: Int, name: String) -> Int? {
+        guard levelOpen(.chain) else { return nil }
+        return makeChain(companyID: companyID, name: name)
     }
 
     mutating func joinChain(chainID: Int, companyID: Int, rename: Bool) {
@@ -82,7 +80,6 @@ public extension GameEngine {
         }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in Chains.setStoreRule(&s, companyID: companyID, rule: rule) }
     }
 
-    func franchiseRequirements(companyID: Int) -> [Franchising.Requirement] { state.company(companyID).map { Franchising.requirements(state, $0) } ?? [] }
     func isFranchisor(companyID: Int) -> Bool { state.company(companyID)?.value("fr")["on"].bool ?? false }
     func canFranchise(companyID: Int) -> Bool { state.company(companyID).map { FranchiseBrands.isFranchisable($0.type) } ?? false }
     func franchiseApplicants(companyID: Int) -> [Franchising.Applicant] { state.company(companyID).map { Franchising.applicants($0) } ?? [] }
@@ -98,6 +95,13 @@ public extension GameEngine {
         var r = Franchising.LaunchResult.already
         update { s, _, _ in r = Franchising.launch(&s, companyID: companyID, fee: entryFee, royalty: royalty, support: support) }
         return r
+    }
+
+    @discardableResult
+    mutating func startFranchise(companyID: Int) -> Franchising.LaunchResult? {
+        guard levelOpen(.franchise), let co = state.company(companyID) else { return nil }
+        let fee: Double = currency(for: co).scaledPrice(Franchising.standardEntryFee)
+        return launchFranchise(companyID: companyID, entryFee: fee, royalty: Franchising.standardRoyalty, support: 0)
     }
 
     mutating func offerToApplicant(companyID: Int, applicantID: Int, terms: Franchising.TalkTerms) -> Franchising.OfferResult? {

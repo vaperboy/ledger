@@ -1,0 +1,2593 @@
+{
+"decisions": {
+"d_firstorder": {
+"cls": "strat",
+"stages": [
+"start"
+],
+"w": 3,
+"t": "A supplier offers {n} a discount on a bigger first order",
+"b": "Your main supplier will take 8% off if you order about {$v} worth of goods in one go. The stock has to be sold, and the cash is gone until it is.",
+"opts": [
+{
+"l": "Take the big order",
+"d": "Cash is tied up in stock for about two months. If it sells in time you save money; if it ages on the shelf you write some off.",
+"fx": {
+"tied": {
+"a": {
+"expr": "wk*6"
+},
+"w": 9
+},
+"gamble": {
+"p": 0.8,
+"ok": {
+"cogsUp": [
+0.92,
+12
+]
+},
+"bad": {
+"loss": {
+"expr": "wk*1.0"
+},
+"cogsUp": [
+0.98,
+6
+]
+}
+}
+}
+},
+{
+"l": "Order a bit more than usual",
+"d": "A smaller discount and much less risk.",
+"fx": {
+"cogsUp": [
+0.97,
+10
+]
+}
+},
+{
+"l": "Keep orders small",
+"d": "No discount, no risk.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"goods": true,
+"vars": {
+"v": "wk*6"
+}
+},
+"d_festival_shift": {
+"cls": "strat",
+"stages": [
+"start"
+],
+"w": 3,
+"t": "A festival is coming to town near {n}",
+"b": "A three-day local festival is expected to bring thousands of people past your door. Extra hands cost money and the crowd is not guaranteed.",
+"opts": [
+{
+"l": "Hire an extra shift for the weekend",
+"d": "Costs extra wages. If the crowds come, you earn it back; if the weather is bad, you do not.",
+"fx": {
+"cash": {
+"expr": "-wk*0.15"
+},
+"gamble": {
+"p": 0.7,
+"ok": {
+"dem": [
+1.35,
+1
+]
+},
+"bad": {
+"dem": [
+1.05,
+1
+]
+}
+}
+}
+},
+{
+"l": "Open a stall at the festival",
+"d": "A smaller outlay and a chance to reach new customers.",
+"fx": {
+"cash": {
+"expr": "-wk*0.07"
+},
+"gamble": {
+"p": 0.6,
+"ok": {
+"dem": [
+1.15,
+1
+],
+"aware": 4
+},
+"bad": {
+"aware": 1
+}
+}
+}
+},
+{
+"l": "Open as normal",
+"d": "You still get some of the extra trade.",
+"fx": {
+"dem": [
+1.08,
+1
+]
+}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"svc"
+],
+"staff": 1,
+"mo": "5,6,7,8,9"
+},
+"d_secondhand_gear": {
+"cls": "strat",
+"stages": [
+"start",
+"grow"
+],
+"w": 2,
+"t": "A used machine is offered to {n} at half price",
+"b": "A retiring owner is selling good second-hand equipment at about half of the new price. It looks fine, but no one can be sure how long it lasts.",
+"opts": [
+{
+"l": "Buy it",
+"d": "Costs money now and adds capacity. About 8 in 10 such deals work out; the rest break down early.",
+"fx": {
+"cash": {
+"expr": "-min(eqv*0.08, wk*3)"
+},
+"cap": [
+1.1,
+40
+],
+"gamble": {
+"p": 0.8,
+"ok": {},
+"bad": {
+"brk": true
+}
+}
+}
+},
+{
+"l": "Pass",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"fam": [
+"prod",
+"venue",
+"logi",
+"svc"
+],
+"minAge": 8,
+"eq": true,
+"vars": {
+"v": "min(eqv*0.08, wk*3)"
+}
+},
+"d_local_ad": {
+"cls": "strat",
+"stages": [
+"start",
+"grow"
+],
+"w": 3,
+"t": "The local paper and radio offer {n} an advertising package",
+"b": "A salesperson offers a bundle of adverts at a discount. Local reach is real, but results vary a lot.",
+"opts": [
+{
+"l": "Buy the big package",
+"d": "About half of local campaigns pay for themselves. The other half bring little.",
+"fx": {
+"cash": {
+"expr": "-wk*0.25"
+},
+"gamble": {
+"p": 0.5,
+"ok": {
+"aware": 6,
+"dem": [
+1.1,
+6
+]
+},
+"bad": {
+"aware": 1
+}
+}
+}
+},
+{
+"l": "Buy a small advert",
+"d": "A small cost and a small effect.",
+"fx": {
+"cash": {
+"expr": "-wk*0.06"
+},
+"aware": 2
+}
+},
+{
+"l": "No thanks",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"svc"
+],
+"notTr": [
+"webshop"
+]
+},
+"d_trainee": {
+"cls": "strat",
+"stages": [
+"start"
+],
+"w": 2,
+"t": "A school offers {n} a summer trainee",
+"b": "A keen student can help for the summer. It takes some of your time to train them, and they leave in autumn.",
+"opts": [
+{
+"l": "Take the trainee",
+"d": "A little cost and a little time. A useful pair of hands, now and then more.",
+"fx": {
+"cash": {
+"expr": "-wk*0.04"
+},
+"cap": [
+1.05,
+12
+],
+"gamble": {
+"p": 0.3,
+"ok": {
+"q": 2
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Not now",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"fam": [
+"svc",
+"venue",
+"retail",
+"prod",
+"project"
+],
+"staff": 1
+},
+"d_popup_market": {
+"cls": "strat",
+"stages": [
+"start"
+],
+"w": 2,
+"t": "A weekend market has a stall free for {n}",
+"b": "A busy weekend market has had a cancellation. A stall costs money and a lot of effort, and brings new faces.",
+"opts": [
+{
+"l": "Take the stall",
+"d": "Cost of the stall and the work. About 6 in 10 weekends repay it, with new regulars as a bonus.",
+"fx": {
+"cash": {
+"expr": "-wk*0.08"
+},
+"gamble": {
+"p": 0.6,
+"ok": {
+"dem": [
+1.1,
+3
+],
+"aware": 4
+},
+"bad": {
+"aware": 1
+}
+}
+}
+},
+{
+"l": "Skip it",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"prod"
+],
+"notTr": [
+"webshop",
+"casino",
+"hotel"
+]
+},
+"d_friend_job": {
+"cls": "strat",
+"stages": [
+"start"
+],
+"w": 2,
+"t": "A friend wants a big favour from {n}",
+"b": "A friend wants a large job done at cost price and promises to recommend you to everyone. These promises are often forgotten.",
+"opts": [
+{
+"l": "Do it at cost",
+"d": "You lose the margin. About 3 in 10 times it really brings new customers.",
+"fx": {
+"cash": {
+"expr": "-wk*0.2"
+},
+"gamble": {
+"p": 0.3,
+"ok": {
+"dem": [
+1.1,
+12
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Do it at a fair price",
+"d": "Your friend may say yes, and may be upset.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"cash": {
+"expr": "wk*0.3"
+}
+},
+"bad": {
+"rep": -1
+}
+}
+}
+},
+{
+"l": "Politely decline",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"svc",
+"project",
+"prod"
+],
+"trap": true
+},
+"d_seo_promise": {
+"cls": "strat",
+"stages": [
+"start",
+"grow"
+],
+"w": 3,
+"t": "A marketer promises {n} first place on search",
+"b": "A company says it can put you at the top of search results for a monthly fee. Most such promises disappoint.",
+"opts": [
+{
+"l": "Sign for six months",
+"d": "Costs a lot. About 2 in 10 such deals bring real new customers.",
+"fx": {
+"cash": {
+"expr": "-wk*0.3"
+},
+"gamble": {
+"p": 0.2,
+"ok": {
+"aware": 8,
+"dem": [
+1.08,
+12
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Test it for a month",
+"d": "A small cost. Only 1 in 4 is worth keeping.",
+"fx": {
+"cash": {
+"expr": "-wk*0.06"
+},
+"gamble": {
+"p": 0.25,
+"ok": {
+"aware": 3
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Say no",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"svc",
+"prod"
+],
+"trap": true
+},
+"d_cheap_supplier": {
+"cls": "strat",
+"stages": [
+"start",
+"grow"
+],
+"w": 3,
+"t": "A new supplier undercuts the prices of {n}",
+"b": "A supplier you do not know offers prices 15% below your current one. The quality and reliability are unproven.",
+"opts": [
+{
+"l": "Switch fully",
+"d": "About half the time it works and you save a lot. Otherwise quality slips, and so do customers.",
+"fx": {
+"gamble": {
+"p": 0.55,
+"ok": {
+"cogsUp": [
+0.9,
+26
+]
+},
+"bad": {
+"cogsUp": [
+1.0,
+8
+],
+"q": -3,
+"rep": -2,
+"loss": {
+"expr": "wk*0.3"
+}
+}
+}
+}
+},
+{
+"l": "Try a trial order",
+"d": "A smaller saving, and much less risk.",
+"fx": {
+"gamble": {
+"p": 0.8,
+"ok": {
+"cogsUp": [
+0.97,
+20
+]
+},
+"bad": {
+"cogsUp": [
+1.01,
+6
+]
+}
+}
+}
+},
+{
+"l": "Stay with your supplier",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"goods": true,
+"trap": true
+},
+"d_extra_phone_line": {
+"cls": "strat",
+"stages": [
+"start"
+],
+"w": 2,
+"t": "A call centre offers to answer {n}'s phone",
+"b": "A service picks up calls and takes bookings when you are busy. A monthly fee applies.",
+"opts": [
+{
+"l": "Sign up for three months",
+"d": "Fewer missed calls. Costs money each month.",
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+},
+"dem": [
+1.05,
+12
+]
+}
+},
+{
+"l": "No thanks",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"fam": [
+"svc"
+]
+},
+"d_lease_expand": {
+"cls": "strat",
+"stages": [
+"grow"
+],
+"w": 3,
+"t": "The unit next to {n} is free",
+"b": "The shop next door has closed, and the landlord offers you the lease. It would let you grow, and costs {$v} for fit-out and deposit.",
+"opts": [
+{
+"l": "Take it and fit it out",
+"d": "A big spend. About 6 in 10 times demand grows to fill the space; otherwise you carry a half-empty room.",
+"fx": {
+"cash": {
+"expr": "-v"
+},
+"cap": [
+1.25,
+104
+],
+"gamble": {
+"p": 0.6,
+"ok": {
+"dem": [
+1.15,
+52
+]
+},
+"bad": {
+"dem": [
+1.0,
+26
+]
+}
+}
+}
+},
+{
+"l": "Take it and sublet half",
+"d": "A smaller cost and steadier use of the space.",
+"fx": {
+"cash": {
+"expr": "-v*0.5"
+},
+"cap": [
+1.12,
+104
+],
+"dem": [
+1.04,
+52
+]
+}
+},
+{
+"l": "Stay as you are",
+"d": "No risk, no growth.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+],
+"staff": 3,
+"minWk": 3000,
+"vars": {
+"v": "wk*8"
+},
+"prem": true
+},
+"d_rival_talks": {
+"cls": "opp",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A rival owner asks to talk to you about {n}",
+"b": "A competitor wants to meet. It might be a merger, a buyout of your customers, or a way of getting information about you.",
+"opts": [
+{
+"l": "Listen to the offer",
+"d": "About half of such meetings lead to a real offer. Taking it means losing some customers.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"cash": {
+"expr": "wk*5"
+},
+"dem": [
+0.88,
+30
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Make a counter-offer for them",
+"d": "Costs a lot. About 6 in 10 times you gain their customers.",
+"fx": {
+"cash": {
+"expr": "-wk*6"
+},
+"gamble": {
+"p": 0.6,
+"ok": {
+"dem": [
+1.2,
+52
+]
+},
+"bad": {
+"dem": [
+1.0,
+20
+]
+}
+}
+}
+},
+{
+"l": "Decline politely",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"minWk": 3000
+},
+"d_sponsor_team": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 3,
+"t": "The local team asks {n} to sponsor the shirts",
+"b": "A local sports club needs a main sponsor. It is visible in the town. About half of such deals bring measurable sales.",
+"opts": [
+{
+"l": "Be the main sponsor",
+"d": "A real cost for a year. Your name is everywhere.",
+"fx": {
+"cash": {
+"expr": "-wk*0.5"
+},
+"aware": 8,
+"rep": 1,
+"gamble": {
+"p": 0.5,
+"ok": {
+"dem": [
+1.06,
+26
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Sponsor the kit only",
+"d": "A small cost and a small boost.",
+"fx": {
+"cash": {
+"expr": "-wk*0.15"
+},
+"aware": 3
+}
+},
+{
+"l": "Decline",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"svc",
+"prod",
+"logi"
+],
+"minWk": 2000
+},
+"d_supplier_lock": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A supplier offers {n} a fixed price for years",
+"b": "A fixed price protects you if prices go up and costs you if they fall. Nobody knows which way they will go: it is close to even.",
+"opts": [
+{
+"l": "Lock for three years",
+"d": "Close to a coin flip. A bigger win or loss over a longer time.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"cogsUp": [
+0.93,
+78
+]
+},
+"bad": {
+"cogsUp": [
+1.04,
+78
+]
+}
+}
+}
+},
+{
+"l": "Lock for one year",
+"d": "A smaller bet over a shorter time.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"cogsUp": [
+0.97,
+52
+]
+},
+"bad": {
+"cogsUp": [
+1.02,
+52
+]
+}
+}
+}
+},
+{
+"l": "Stay on market prices",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"goods": true,
+"minWk": 2000
+},
+"d_premium_line": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 3,
+"t": "{n} could launch a premium line",
+"b": "A higher-priced range could lift the brand and the average sale. It could also fall flat and confuse customers.",
+"opts": [
+{
+"l": "Launch it fully",
+"d": "A big cost. About 55% of the time it works well.",
+"fx": {
+"cash": {
+"expr": "-wk*1.5"
+},
+"gamble": {
+"p": 0.55,
+"ok": {
+"q": 4,
+"dem": [
+1.1,
+52
+],
+"rep": 2
+},
+"bad": {
+"dem": [
+0.97,
+20
+],
+"rep": -1
+}
+}
+}
+},
+{
+"l": "Try a small trial",
+"d": "A modest cost and a modest effect.",
+"fx": {
+"cash": {
+"expr": "-wk*0.3"
+},
+"gamble": {
+"p": 0.5,
+"ok": {
+"q": 2,
+"dem": [
+1.04,
+26
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Not now",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+],
+"minWk": 2500,
+"staff": 2
+},
+"d_online_orders": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 3,
+"t": "{n} could sell online",
+"b": "More customers now look for orders and bookings online. You can build your own, or use a platform that takes a cut.",
+"opts": [
+{
+"l": "Build your own site",
+"d": "A real cost. About 6 in 10 times it grows sales well; otherwise only a little.",
+"fx": {
+"cash": {
+"expr": "-wk*1.2"
+},
+"gamble": {
+"p": 0.6,
+"ok": {
+"dem": [
+1.12,
+52
+]
+},
+"bad": {
+"dem": [
+1.02,
+52
+]
+}
+}
+}
+},
+{
+"l": "Use a platform",
+"d": "A low cost, and the platform keeps part of each sale.",
+"fx": {
+"cash": {
+"expr": "-wk*0.2"
+},
+"cogsUp": [
+1.03,
+52
+],
+"dem": [
+1.08,
+52
+]
+}
+},
+{
+"l": "Not now",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"prod"
+],
+"notTr": [
+"webshop",
+"casino"
+],
+"minWk": 2000
+},
+"d_salesperson": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A salesperson offers to join {n} on commission",
+"b": "An experienced salesperson with a contact book wants to sell for you on commission and a small base pay.",
+"opts": [
+{
+"l": "Hire them",
+"d": "Costs recruiting and base pay. About 6 in 10 times new contracts follow.",
+"fx": {
+"cash": {
+"expr": "-wk*0.4"
+},
+"gamble": {
+"p": 0.6,
+"ok": {
+"dem": [
+1.12,
+52
+]
+},
+"bad": {
+"dem": [
+1.0,
+10
+],
+"quit": true
+}
+}
+}
+},
+{
+"l": "Do it yourself",
+"d": "A little more of your time.",
+"fx": {
+"dem": [
+1.03,
+26
+]
+}
+},
+{
+"l": "No",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"svc",
+"prod",
+"logi",
+"project"
+],
+"b2b": 0.3,
+"staff": 2,
+"minWk": 2500
+},
+"d_certification": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A quality certificate would open doors for {n}",
+"b": "Large customers prefer certified suppliers. The audit takes time and money, and can be failed on the first try.",
+"opts": [
+{
+"l": "Go for it",
+"d": "A real cost and some disruption. Most firms pass; some have to repeat it.",
+"fx": {
+"cash": {
+"expr": "-wk*0.8"
+},
+"cap": [
+0.95,
+8
+],
+"gamble": {
+"p": 0.8,
+"ok": {
+"dem": [
+1.1,
+104
+]
+},
+"bad": {
+"dem": [
+1.0,
+20
+]
+}
+}
+}
+},
+{
+"l": "Wait a year",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"fam": [
+"prod",
+"project",
+"svc",
+"logi"
+],
+"b2b": 0.3,
+"staff": 3,
+"minWk": 2500
+},
+"d_energy_contract": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A fixed energy price is offered to {n}",
+"b": "An energy supplier will fix your price for two years. If prices rise you win; if they fall you pay more than the market.",
+"opts": [
+{
+"l": "Fix it for two years",
+"d": "About a coin flip: no one knows where prices will go.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"cogsUp": [
+0.96,
+78
+]
+},
+"bad": {
+"cogsUp": [
+1.02,
+78
+]
+}
+}
+}
+},
+{
+"l": "Stay on the market rate",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"prod",
+"retail",
+"logi"
+],
+"prem": true,
+"minWk": 2000
+},
+"d_fleet_replace": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A dealer offers {n} new vehicles",
+"b": "Your vehicles are ageing. A dealer offers new ones against your trade-in. Waiting is cheap until something breaks.",
+"opts": [
+{
+"l": "Replace the oldest vehicles",
+"d": "A big cost, fewer breakdowns and lower running costs.",
+"fx": {
+"cash": {
+"expr": "-wk*1.5"
+},
+"fixeq": 2,
+"cogsUp": [
+0.97,
+52
+]
+}
+},
+{
+"l": "Repair and keep them",
+"d": "A smaller cost now.",
+"fx": {
+"cash": {
+"expr": "-wk*0.3"
+},
+"fixeq": 1
+}
+},
+{
+"l": "Run them as they are",
+"d": "No cost. A coin flip on a breakdown.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {},
+"bad": {
+"brk": true,
+"cap": [
+0.85,
+3
+]
+}
+}
+}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"logi"
+],
+"minWk": 2000
+},
+"d_tender_bid": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 3,
+"t": "A tender worth bidding for turns up at {n}",
+"b": "A public body is asking for bids on a large contract. Preparing a good bid takes real effort. You are one of several bidders.",
+"opts": [
+{
+"l": "Bid carefully",
+"d": "A real cost. About 3 in 10 careful bids win.",
+"fx": {
+"cash": {
+"expr": "-wk*0.6"
+},
+"gamble": {
+"p": 0.3,
+"ok": {
+"dem": [
+1.25,
+52
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Bid low to win",
+"d": "A smaller cost and a better chance of winning, at a thinner margin.",
+"fx": {
+"cash": {
+"expr": "-wk*0.4"
+},
+"gamble": {
+"p": 0.5,
+"ok": {
+"dem": [
+1.25,
+52
+],
+"cogsUp": [
+1.05,
+52
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Skip this one",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"project",
+"svc",
+"prod",
+"logi"
+],
+"b2b": 0.3,
+"minWk": 2500
+},
+"d_customer_credit": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A large customer asks {n} for credit",
+"b": "They want 60 days to pay instead of 30. They say they will order more if you agree.",
+"opts": [
+{
+"l": "Agree",
+"d": "Cash is tied up for two months. About 8 in 10 times they pay and order more.",
+"fx": {
+"tied": {
+"a": {
+"expr": "wk*5"
+},
+"w": 9
+},
+"gamble": {
+"p": 0.8,
+"ok": {
+"dem": [
+1.1,
+26
+]
+},
+"bad": {
+"loss": {
+"expr": "wk*1.5"
+}
+}
+}
+}
+},
+{
+"l": "Decline",
+"d": "No cash tied up. They may take their business elsewhere.",
+"fx": {
+"gamble": {
+"p": 0.6,
+"ok": {},
+"bad": {
+"dem": [
+0.96,
+12
+]
+}
+}
+}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"fam": [
+"svc",
+"prod",
+"logi",
+"project"
+],
+"b2b": 0.3,
+"minWk": 2000
+},
+"d_profit_share": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "Staff at {n} ask for a share of profits",
+"b": "A staff representative proposes a profit share. Many teams work harder when they share the win; it also commits you for years.",
+"opts": [
+{
+"l": "Offer a profit share",
+"d": "A cost every year when there is a profit. More effort in return.",
+"fx": {
+"cash": {
+"expr": "-wk*0.3"
+},
+"cap": [
+1.05,
+52
+],
+"q": 2
+}
+},
+{
+"l": "Offer a small yearly bonus",
+"d": "A smaller commitment.",
+"fx": {
+"cash": {
+"expr": "-wk*0.15"
+},
+"cap": [
+1.02,
+26
+]
+}
+},
+{
+"l": "Refuse",
+"d": "A coin flip on morale.",
+"fx": {
+"gamble": {
+"p": 0.65,
+"ok": {},
+"bad": {
+"cap": [
+0.93,
+6
+],
+"quit": true
+}
+}
+}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"staff": 4,
+"minWk": 2500
+},
+"d_relocate": {
+"cls": "opp",
+"stages": [
+"grow"
+],
+"w": 2,
+"t": "Cheaper premises are available for {n}",
+"b": "A larger site on the edge of town costs less. Your regulars may not follow you.",
+"opts": [
+{
+"l": "Move",
+"d": "Costs a lot to move. About 55% of the time customers follow; otherwise sales drop for months.",
+"fx": {
+"cash": {
+"expr": "-wk*2.5"
+},
+"gamble": {
+"p": 0.55,
+"ok": {
+"dem": [
+1.03,
+52
+]
+},
+"bad": {
+"dem": [
+0.85,
+26
+]
+}
+},
+"later": [
+{
+"w": 26,
+"fx": {
+"cash": {
+"expr": "wk*1.0"
+}
+},
+"note": "Rent savings at the new site have added up.",
+"tone": "good"
+}
+]
+}
+},
+{
+"l": "Stay where you are",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"svc",
+"prod"
+],
+"staff": 3,
+"minWk": 3000,
+"prem": true,
+"notTr": [
+"webshop",
+"casino"
+]
+},
+"d_hire_star": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A rival's best person is looking for a move",
+"b": "A top performer at a competitor is open to an offer. They are good, and they will cost more.",
+"opts": [
+{
+"l": "Hire them at a premium",
+"d": "A higher wage and a recruiting cost. Better quality and speed.",
+"fx": {
+"cash": {
+"expr": "-wk*0.3"
+},
+"q": 3,
+"cap": [
+1.05,
+52
+]
+}
+},
+{
+"l": "Pass",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"fam": [
+"svc",
+"venue",
+"prod",
+"project"
+],
+"staff": 3,
+"minWk": 2500
+},
+"d_agency_rebrand": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "An agency pitches {n} a rebrand",
+"b": "A creative agency says a new look would lift sales. Branding results are slow and hard to measure.",
+"opts": [
+{
+"l": "Full rebrand",
+"d": "A big cost. About half the time it lifts awareness and sales.",
+"fx": {
+"cash": {
+"expr": "-wk*1.2"
+},
+"gamble": {
+"p": 0.5,
+"ok": {
+"aware": 10,
+"dem": [
+1.1,
+52
+],
+"rep": 1
+},
+"bad": {
+"aware": 2
+}
+}
+}
+},
+{
+"l": "Refresh the logo and website",
+"d": "A small cost and a small effect.",
+"fx": {
+"cash": {
+"expr": "-wk*0.2"
+},
+"aware": 2
+}
+},
+{
+"l": "Not now",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"svc",
+"prod"
+],
+"minWk": 2500,
+"trap": true
+},
+"d_equipment_upgrade": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 3,
+"t": "A new machine could speed up {n}",
+"b": "Newer equipment would raise output and quality. It also means a bigger bill and some teething problems.",
+"opts": [
+{
+"l": "Buy new",
+"d": "A big cost. Output and quality rise. Most installations go smoothly, some do not.",
+"fx": {
+"cash": {
+"expr": "-min(eqv*0.2, wk*4)"
+},
+"fixeq": 2,
+"cap": [
+1.15,
+104
+],
+"q": 2,
+"gamble": {
+"p": 0.85,
+"ok": {},
+"bad": {
+"cap": [
+0.9,
+6
+]
+}
+}
+}
+},
+{
+"l": "Refurbish the old one",
+"d": "A smaller cost, and a smaller gain.",
+"fx": {
+"cash": {
+"expr": "-wk*0.8"
+},
+"fixeq": 1,
+"cap": [
+1.05,
+52
+]
+}
+},
+{
+"l": "Keep running it",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"prod",
+"venue",
+"logi",
+"project"
+],
+"eq": true,
+"minWk": 2500,
+"staff": 2,
+"vars": {
+"v": "min(eqv*0.2, wk*4)"
+}
+},
+"d_bank_overdraft": {
+"cls": "strat",
+"stages": [
+"grow"
+],
+"w": 2,
+"t": "The bank offers {n} a bigger credit line",
+"b": "A larger credit line is easy to get. Credit can smooth a slow month, and cost you in interest if you use it as income.",
+"opts": [
+{
+"l": "Take a small line and use it for stock",
+"d": "Cash now, and interest later.",
+"fx": {
+"cash": {
+"expr": "wk*0.6"
+},
+"later": [
+{
+"w": 26,
+"fx": {
+"cash": {
+"expr": "-wk*0.7"
+}
+},
+"note": "The credit line was repaid with interest.",
+"tone": "n"
+}
+]
+}
+},
+{
+"l": "Say no",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"minWk": 2000
+},
+"d_price_rise": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 3,
+"t": "{n} could raise its prices",
+"b": "Costs have gone up. You can raise prices a little; some customers will notice and some will leave.",
+"opts": [
+{
+"l": "Raise prices 5%",
+"d": "More on every sale. About 7 in 10 times customers shrug.",
+"fx": {
+"gamble": {
+"p": 0.7,
+"ok": {
+"cash": {
+"expr": "wk*0.5"
+},
+"dem": [
+1.0,
+12
+]
+},
+"bad": {
+"dem": [
+0.92,
+12
+]
+}
+}
+}
+},
+{
+"l": "Raise prices 2%",
+"d": "A safer step.",
+"fx": {
+"gamble": {
+"p": 0.85,
+"ok": {
+"cash": {
+"expr": "wk*0.2"
+}
+},
+"bad": {
+"dem": [
+0.97,
+8
+]
+}
+}
+}
+},
+{
+"l": "Hold prices",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"minWk": 2000
+},
+"d_free_trial": {
+"cls": "strat",
+"stages": [
+"start",
+"grow"
+],
+"w": 2,
+"t": "{n} could offer a free trial",
+"b": "A free first visit or trial often brings new customers, and costs you the visit.",
+"opts": [
+{
+"l": "Offer it for a month",
+"d": "Cost of the free visits. Many try it, some stay.",
+"fx": {
+"cash": {
+"expr": "-wk*0.15"
+},
+"gamble": {
+"p": 0.65,
+"ok": {
+"dem": [
+1.1,
+8
+]
+},
+"bad": {
+"dem": [
+1.02,
+4
+]
+}
+}
+}
+},
+{
+"l": "Not now",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"fam": [
+"svc",
+"venue"
+],
+"notTr": [
+"casino",
+"hotel"
+]
+},
+"d_partner_exit": {
+"cls": "opp",
+"stages": [
+"est"
+],
+"w": 2,
+"t": "A minority partner of {n} wants to sell",
+"b": "A partner who owns a small share wants out. You can buy them out, or let them sell to someone else.",
+"opts": [
+{
+"l": "Buy them out",
+"d": "A big cost. Fewer disagreements and a free hand.",
+"fx": {
+"cash": {
+"expr": "-wk*8"
+},
+"dem": [
+1.03,
+52
+]
+}
+},
+{
+"l": "Let them sell to an outsider",
+"d": "No cost now. The new owner may ask for a say.",
+"fx": {
+"gamble": {
+"p": 0.6,
+"ok": {},
+"bad": {
+"dem": [
+0.95,
+26
+],
+"cap": [
+0.95,
+12
+]
+}
+}
+}
+},
+{
+"l": "Pay them over time",
+"d": "Spreads the cost over three instalments.",
+"fx": {
+"cash": {
+"expr": "-wk*2"
+},
+"later": [
+{
+"w": 13,
+"fx": {
+"cash": {
+"expr": "-wk*2"
+}
+},
+"note": "The second instalment to the exiting partner was paid.",
+"tone": "n"
+},
+{
+"w": 26,
+"fx": {
+"cash": {
+"expr": "-wk*2"
+}
+},
+"note": "The final instalment to the exiting partner was paid.",
+"tone": "n"
+}
+]
+}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"minWk": 6000,
+"minNW": 500000,
+"mgr": true
+},
+"d_lobby": {
+"cls": "opp",
+"stages": [
+"est"
+],
+"w": 2,
+"t": "An industry body asks {n} to fund lobbying",
+"b": "A new rule could raise costs for the whole industry. A lobbying push may soften it, or not.",
+"opts": [
+{
+"l": "Fund the campaign",
+"d": "A real cost. About 4 in 10 times the rule is softened.",
+"fx": {
+"cash": {
+"expr": "-wk*2"
+},
+"gamble": {
+"p": 0.4,
+"ok": {
+"cogsUp": [
+0.97,
+104
+],
+"dem": [
+1.03,
+52
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Join but do not fund it",
+"d": "A free ride, and a small chance.",
+"fx": {
+"gamble": {
+"p": 0.15,
+"ok": {
+"cogsUp": [
+0.99,
+104
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Stay out",
+"d": "A coin flip on whether the rule passes as written.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {},
+"bad": {
+"cogsUp": [
+1.03,
+104
+]
+}
+}
+}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"minWk": 6000,
+"minNW": 500000,
+"fam": [
+"prod",
+"logi",
+"energy",
+"retail",
+"venue",
+"project"
+]
+},
+"d_big_contract": {
+"cls": "opp",
+"stages": [
+"est"
+],
+"w": 3,
+"t": "A large enterprise offers {n} a long contract",
+"b": "A multi-year contract would lift volume. Penalty clauses apply if you miss delivery, and the margin is thin.",
+"opts": [
+{
+"l": "Sign with the penalty clauses",
+"d": "More volume at a thinner margin. About 8 in 10 times you deliver and nothing goes wrong.",
+"fx": {
+"dem": [
+1.25,
+104
+],
+"cogsUp": [
+1.03,
+104
+],
+"later": [
+{
+"w": 26,
+"fx": {
+"gamble": {
+"p": 0.8,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*2"
+}
+}
+}
+},
+"note": "The contract's delivery review was held.",
+"tone": "n"
+}
+]
+}
+},
+{
+"l": "Negotiate softer terms",
+"d": "They may agree, or walk away.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"dem": [
+1.2,
+104
+],
+"cogsUp": [
+1.03,
+104
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Decline",
+"d": "No risk, no growth.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"prod",
+"svc",
+"logi",
+"project"
+],
+"b2b": 0.3,
+"minWk": 6000,
+"minNW": 300000
+},
+"d_foundation": {
+"cls": "opp",
+"stages": [
+"est"
+],
+"w": 1,
+"t": "{n} could set up a foundation",
+"b": "A company foundation funds local projects and builds goodwill. It costs money every year and pays back slowly.",
+"opts": [
+{
+"l": "Set it up",
+"d": "A cost, and a better name in the town.",
+"fx": {
+"cash": {
+"expr": "-wk*1.5"
+},
+"rep": 4,
+"aware": 5
+}
+},
+{
+"l": "Make a one-off donation",
+"d": "A smaller cost and effect.",
+"fx": {
+"cash": {
+"expr": "-wk*0.4"
+},
+"rep": 2
+}
+},
+{
+"l": "Not now",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"minWk": 6000,
+"minNW": 500000
+},
+"d_pension": {
+"cls": "strat",
+"stages": [
+"est"
+],
+"w": 2,
+"t": "Staff at {n} ask for a better pension",
+"b": "A better employer pension lifts loyalty and costs money every year.",
+"opts": [
+{
+"l": "Match contributions up to 5%",
+"d": "A real cost. Staff stay longer.",
+"fx": {
+"cash": {
+"expr": "-wk*0.5"
+},
+"cap": [
+1.03,
+104
+],
+"q": 2
+}
+},
+{
+"l": "Keep the legal minimum",
+"d": "People may leave.",
+"fx": {
+"gamble": {
+"p": 0.7,
+"ok": {},
+"bad": {
+"quit": true
+}
+}
+}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"staff": 10,
+"minWk": 5000
+},
+"d_brand_licence": {
+"cls": "opp",
+"stages": [
+"est"
+],
+"w": 2,
+"t": "A partner wants to license the brand of {n}",
+"b": "Another business wants to use your name for its own products. It brings income, and your reputation is on the line.",
+"opts": [
+{
+"l": "License it",
+"d": "Money now. About 7 in 10 times the partner does it well; otherwise your name suffers.",
+"fx": {
+"cash": {
+"expr": "wk*3"
+},
+"gamble": {
+"p": 0.7,
+"ok": {
+"rep": 1
+},
+"bad": {
+"rep": -4
+}
+}
+}
+},
+{
+"l": "License it with quality controls",
+"d": "Less money and a safer outcome.",
+"fx": {
+"cash": {
+"expr": "-wk*0.3"
+},
+"rep": 1
+}
+},
+{
+"l": "Decline",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+],
+"minWk": 5000,
+"minNW": 300000
+},
+"d_export_trial": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A foreign distributor wants the goods of {n}",
+"b": "A distributor abroad wants to carry your products. Shipping and customs cost money, and the first batch is a test.",
+"opts": [
+{
+"l": "Ship a trial batch",
+"d": "Cash is tied up for months. About half the time orders follow; otherwise you absorb customs and returns.",
+"fx": {
+"tied": {
+"a": {
+"expr": "wk*4"
+},
+"w": 12
+},
+"gamble": {
+"p": 0.5,
+"ok": {
+"dem": [
+1.12,
+52
+],
+"aware": 4
+},
+"bad": {
+"loss": {
+"expr": "wk*0.8"
+}
+}
+}
+}
+},
+{
+"l": "Skip it",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"goods": true,
+"fam": [
+"prod",
+"retail"
+],
+"minWk": 3000
+},
+"d_buy_customers": {
+"cls": "strat",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A retiring competitor sells the customers of {n}'s market",
+"b": "A retiring owner is selling the customer list and goodwill of a small firm. The customers may or may not stay.",
+"opts": [
+{
+"l": "Pay the asking price",
+"d": "A real cost. About 65% of the customers stay.",
+"fx": {
+"cash": {
+"expr": "-wk*4"
+},
+"gamble": {
+"p": 0.65,
+"ok": {
+"dem": [
+1.12,
+52
+]
+},
+"bad": {
+"dem": [
+1.03,
+26
+]
+}
+}
+}
+},
+{
+"l": "Offer less",
+"d": "A lower cost, and they may refuse.",
+"fx": {
+"gamble": {
+"p": 0.4,
+"ok": {
+"cash": {
+"expr": "-wk*2"
+},
+"dem": [
+1.1,
+52
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Pass",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"minWk": 4000
+},
+"d_cost_consultant": {
+"cls": "strat",
+"stages": [
+"est"
+],
+"w": 2,
+"t": "Consultants promise {n} ten percent lower costs",
+"b": "A consulting firm says it can find savings across the company. Their fee is fixed whatever they find.",
+"opts": [
+{
+"l": "Hire them",
+"d": "A big fee. About 45% of such projects deliver the saving; others only disrupt the work.",
+"fx": {
+"cash": {
+"expr": "-wk*3"
+},
+"gamble": {
+"p": 0.45,
+"ok": {
+"cogsUp": [
+0.95,
+78
+]
+},
+"bad": {
+"cap": [
+0.95,
+12
+]
+}
+}
+}
+},
+{
+"l": "Do a smaller internal review",
+"d": "A small cost, a small gain.",
+"fx": {
+"cash": {
+"expr": "-wk*0.2"
+},
+"gamble": {
+"p": 0.6,
+"ok": {
+"cogsUp": [
+0.99,
+52
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Decline",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 2,
+"exp": 3,
+"tone": "n",
+"staff": 10,
+"minWk": 6000,
+"trap": true
+},
+"d_exec_team": {
+"cls": "strat",
+"stages": [
+"est"
+],
+"w": 2,
+"t": "A headhunter offers {n} a general manager",
+"b": "Hiring a general manager would free you from daily work, and cost a salary every month.",
+"opts": [
+{
+"l": "Hire one",
+"d": "A recruiting fee and a long salary. About 65% of the time it goes well.",
+"fx": {
+"cash": {
+"expr": "-wk*1"
+},
+"gamble": {
+"p": 0.65,
+"ok": {
+"cap": [
+1.05,
+52
+],
+"q": 2
+},
+"bad": {
+"cap": [
+0.95,
+12
+]
+}
+}
+}
+},
+{
+"l": "Not now",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"staff": 8,
+"minWk": 5000,
+"mgr": false
+},
+"d_data_review": {
+"cls": "crisis",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A security audit is offered to {n}",
+"b": "A security firm offers to test your systems and find weak points. It costs money, and it may find problems you would rather not know about.",
+"opts": [
+{
+"l": "Order the audit",
+"d": "About 6 in 10 times it finds something worth fixing. Fixing it costs more.",
+"fx": {
+"cash": {
+"expr": "-wk*0.3"
+},
+"gamble": {
+"p": 0.6,
+"ok": {
+"cash": {
+"expr": "-wk*0.2"
+},
+"rep": 1
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Skip it",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"minWk": 3000,
+"fam": [
+"retail",
+"svc",
+"fin",
+"venue"
+]
+},
+"d_staff_housing": {
+"cls": "strat",
+"stages": [
+"est"
+],
+"w": 1,
+"t": "Staff at {n} ask for help with housing",
+"b": "Rents are high and people are leaving for cheaper cities. A housing allowance costs money and keeps people.",
+"opts": [
+{
+"l": "Offer a housing allowance",
+"d": "A real cost. Fewer people leave.",
+"fx": {
+"cash": {
+"expr": "-wk*0.4"
+},
+"cap": [
+1.03,
+52
+]
+}
+},
+{
+"l": "Decline",
+"d": "Some people leave.",
+"fx": {
+"gamble": {
+"p": 0.7,
+"ok": {},
+"bad": {
+"quit": true
+}
+}
+}
+}
+],
+"def": 1,
+"exp": 3,
+"tone": "n",
+"staff": 8,
+"minWk": 4000
+},
+"d_crisis_pr": {
+"cls": "crisis",
+"stages": [
+"grow",
+"est"
+],
+"w": 2,
+"t": "A news story about {n} is coming",
+"b": "A reporter is working on a story about a complaint against your business. You can talk to them, or say nothing.",
+"opts": [
+{
+"l": "Talk to the reporter and say what happened",
+"d": "About 65% of the time the story is fair.",
+"fx": {
+"gamble": {
+"p": 0.65,
+"ok": {
+"rep": 0
+},
+"bad": {
+"rep": -3,
+"dem": [
+0.95,
+4
+]
+}
+}
+}
+},
+{
+"l": "Hire a PR firm",
+"d": "A cost, and a better chance of fair coverage.",
+"fx": {
+"cash": {
+"expr": "-wk*0.4"
+},
+"gamble": {
+"p": 0.8,
+"ok": {
+"rep": 0
+},
+"bad": {
+"rep": -2,
+"dem": [
+0.97,
+4
+]
+}
+}
+}
+},
+{
+"l": "Decline to comment",
+"d": "A coin flip on how the story reads.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {},
+"bad": {
+"rep": -4,
+"dem": [
+0.92,
+6
+]
+}
+}
+}
+}
+],
+"def": 0,
+"exp": 3,
+"tone": "n",
+"minWk": 3000,
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+]
+}
+}
+}

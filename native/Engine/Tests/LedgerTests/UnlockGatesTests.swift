@@ -102,7 +102,7 @@ final class UnlockGatesTests: XCTestCase {
 
     func testManagerFeaturesStayWithTheLadderAndTheChain() throws {
         XCTAssertEqual(Gate.management.rule, .anyOf([.goal(7), .week(13)]))
-        XCTAssertEqual(Gates.entry(.unlock("chain")).rule, .weeksTraded(Unlocks.weeksChain))
+        XCTAssertEqual(Gates.entry(.unlock("research")).rule, .weeksTraded(Unlocks.weeksResearch))
         XCTAssertEqual(Gates.entry(.unlock("board")).rule, .boardSeat)
     }
 
@@ -122,7 +122,7 @@ final class UnlockGatesTests: XCTestCase {
         let road = e.unlockRoadmap()
         let ids = road.map { $0.id }
         XCTAssertEqual(Set(ids).count, ids.count)
-        for want in ["gate.marketing", "gate.insurance", "gate.suppliers", "gate.group", "gate.luxury", "unlock.chain", "unlock.franchise", "unlock.research"] {
+        for want in ["gate.marketing", "gate.insurance", "gate.suppliers", "gate.group", "gate.luxury", "unlock.research"] {
             XCTAssertTrue(ids.contains(want), "\(want) is locked and listed")
         }
         XCTAssertFalse(ids.contains("gate.reviews"), "systems that follow another are not listed twice")
@@ -132,7 +132,7 @@ final class UnlockGatesTests: XCTestCase {
             XCTAssertTrue((0...1).contains(item.progress), item.id)
         }
         XCTAssertEqual(road.first { $0.id == "gate.group" }?.detail, "Goal 2 of 7")
-        XCTAssertEqual(road.first { $0.id == "unlock.chain" }?.companyID, id)
+        XCTAssertEqual(road.first { $0.id == "unlock.research" }?.companyID, id)
         XCTAssertEqual(road.map { $0.progress }, road.map { $0.progress }.sorted(by: >), "closest first")
         try trade(&e, rev: 5_000, week: 1)
         XCTAssertFalse(e.unlockRoadmap().contains { $0.id == "gate.suppliers" })
@@ -188,7 +188,7 @@ final class UnlockGatesTests: XCTestCase {
         months(2)
         XCTAssertEqual(vis(e, .ventures), .locked(text))
         months(3)
-        for g in [Gate.ventures, .venturesFeed] { XCTAssertEqual(vis(e, g), .open, g.rawValue) }
+        XCTAssertEqual(vis(e, .ventures), .open)
     }
 
     func testVenturesProgressCountsClosedMonthsAndWeekFallbackOpensThem() throws {

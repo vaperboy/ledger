@@ -66,7 +66,6 @@ public struct Government: Codable, Equatable, Sendable {
     public static let termWeeks = 12
     public static let logLimit = 2_000
 
-    public var country: String
     public var admins: Set<String>
     public var activeRules: WorldRules?
     var rules: WorldRules { activeRules ?? WorldRules.defaults }
@@ -83,8 +82,7 @@ public struct Government: Codable, Equatable, Sendable {
     public internal(set) var lastCycleClosedWeek: Int?
     var nextID = 1
 
-    public init(country: String, admins: Set<String>, startingSupply: Double) {
-        self.country = country
+    public init(admins: Set<String>, startingSupply: Double) {
         self.admins = admins
         supply = GovMoneySupply(base: startingSupply)
     }

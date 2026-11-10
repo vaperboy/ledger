@@ -1,6 +1,9 @@
 import SwiftUI
+import GameCore
+import Businesses
+import Simulation
 
-struct FriendsApp: View {
+struct FriendsScreen: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
     @State private var overview: FriendsOverview?
@@ -9,35 +12,32 @@ struct FriendsApp: View {
     @State private var searching = false
     @State private var failure: String?
     @State private var pending: PendingAction?
+    @State private var venturePicker = false
+    @State private var ventureCompany: Int?
+    @State private var ventureOpen = false
 
     var body: some View {
         PhonePageScroll(spacing: Theme.Space.l) {
             if online.isSignedIn && !online.awaitingAdultConfirmation { signedIn } else { AccountSettingsGroup() }
         }
         .confirmAction($pending)
-        .appScreen(title: "Friends", subtitle: "Requests, search and your friends") {
-            if let p = online.profile, online.isSignedIn {
-                Button { store.openProfile() } label: { PlayerAvatar(player: p, size: 34) }
-                    .accessibilityLabel("My profile")
-            }
+        .appScreen(title: "Friends", subtitle: "Requests, search and your friends")
+        .centerSheet(isPresented: $venturePicker, title: "Start a company together") { ventureChoices }
+        .centerSheet(isPresented: $ventureOpen, title: "Invite a friend", size: .tall) {
+            JVInviteSheet(companyID: ventureCompany ?? 0).environmentObject(store).environment(online)
         }
         .task(id: online.isSignedIn) { await reload() }
         .task(id: query) { await search() }
     }
 
     @ViewBuilder private var signedIn: some View {
-        OnlineGroup(title: "") {
-            NavigationLink { WorldFeedView() } label: {
-                OnlineLine(glyph: Glyph.world, title: "World", note: "Events, friends' activity and invitations", chevron: true)
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("friends-world")
-        }
+        OfflineNote()
         searchGroup
         if let o = overview {
             if !o.incoming.isEmpty { incomingGroup(o.incoming) }
             if !o.outgoing.isEmpty { outgoingGroup(o.outgoing) }
             friendsGroup(o.friends)
+            togetherGroup
         } else if failure == nil {
             ProgressView().frame(maxWidth: .infinity)
         }
@@ -156,6 +156,34 @@ struct FriendsApp: View {
                         }
                     }
                     .buttonStyle(PressableStyle())
+                }
+            }
+        }
+    }
+
+    private var togetherGroup: some View {
+        OnlineGroup(title: "Together", footer: "Each friend gets a private price of their own, and big decisions go to a vote by shares.") {
+            Button { Haptics.tap(); venturePicker = true } label: {
+                OnlineLine(glyph: Glyph.group, title: "Start a company together", note: "Own one of your companies with friends", chevron: true)
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("friends-together")
+        }
+    }
+
+    @ViewBuilder private var ventureChoices: some View {
+        let list: [Company] = store.engine.map { (e: GameEngine) -> [Company] in e.state.companies.filter { (c: Company) -> Bool in e.jvCanStart(companyID: c.id) } } ?? []
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            if list.isEmpty {
+                Text("Open a company first. Then you can bring friends in as partners from its Partners section.").popupText(.body)
+            } else {
+                Text("Pick the company to share").popupText(.caption)
+                ForEach(list, id: \.id) { (c: Company) in
+                    ChoiceCard(title: c.name, selected: false) {
+                        ventureCompany = c.id
+                        venturePicker = false
+                        StorePurchase.afterPopup { ventureOpen = true }
+                    }
                 }
             }
         }

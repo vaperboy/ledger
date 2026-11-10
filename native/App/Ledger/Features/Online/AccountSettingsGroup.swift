@@ -2,7 +2,6 @@ import SwiftUI
 import Businesses
 
 struct AccountSettingsGroup: View {
-    @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
     @State private var pending: PendingAction?
     @State private var exportURL: URL?
@@ -10,16 +9,21 @@ struct AccountSettingsGroup: View {
 
     var body: some View {
         VStack(spacing: Theme.Space.l) {
-            if online.isSignedIn { signedIn } else { guest }
+            if online.isLinked { linked } else { unlinked }
         }
         .confirmAction($pending)
     }
 
-    private var guest: some View {
-        OnlineGroup(title: "Account", footer: guestFooter) {
-            providerRow(.apple)
-            Hairline()
-            providerRow(.google)
+    private var unlinked: some View {
+        OnlineGroup(title: "Account", footer: footer) {
+            statusLine
+            if online.canLink {
+                if showsStatus { Hairline() }
+                ForEach(Array(online.linkProviders.enumerated()), id: \.element) { (i: Int, provider: SignInProvider) in
+                    if i > 0 { Hairline() }
+                    providerRow(provider)
+                }
+            }
             if let note = online.notice {
                 Text(note).textStyle(.caption, tint: Theme.inkSoft).padding(.bottom, Theme.Space.s)
             }
@@ -29,9 +33,39 @@ struct AccountSettingsGroup: View {
         }
     }
 
-    private var guestFooter: String {
+    private var showsStatus: Bool {
+        online.isSignedIn ? online.offline : (online.pausedByPlayer || online.service.createsAccountsItself)
+    }
+
+    @ViewBuilder private var statusLine: some View {
+        if online.isSignedIn {
+            if online.offline {
+                statusRow(title: "Offline", note: "Playing without the server. It reconnects by itself.", id: "online-offline")
+            }
+        } else if online.pausedByPlayer {
+            Button { Haptics.tap(); online.resume() } label: {
+                OnlineLine(glyph: Glyph.cloud, title: "Go online", note: "You are offline by choice", chevron: true)
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("settings-go-online")
+        } else if online.service.createsAccountsItself {
+            if online.offline {
+                statusRow(title: "Offline", note: "Playing without the server. It reconnects by itself.", id: "online-offline")
+            } else {
+                statusRow(title: "Connecting", note: "Setting up your online profile.", id: "online-connecting")
+            }
+        }
+    }
+
+    private func statusRow(title: String, note: String, id: String) -> some View {
+        OnlineLine(glyph: Glyph.cloud, title: title, note: note, tint: Theme.inkFaint)
+            .accessibilityIdentifier(id)
+    }
+
+    private var footer: String {
         let reward: String = online.linkRewardGold > 0 ? "\(online.linkRewardGold) gold" : "gold"
-        return "You are playing as a guest. Linking keeps your profile and progress across devices and pays a one-time reward of \(reward). It is not used to find friends. Your game stays on this device either way."
+        guard online.canLink else { return "" }
+        return "Your profile is already saved for this device. Linking keeps it and your progress across devices and pays a one-time reward of \(reward). It is not used to find friends. Your game stays on this device either way."
     }
 
     private func providerRow(_ provider: SignInProvider) -> some View {
@@ -41,51 +75,23 @@ struct AccountSettingsGroup: View {
                 title: "Link " + provider.title + "?",
                 effect: "your profile and progress are saved to this \(provider.title) account and follow you to other devices, and you receive a one-time gold reward.",
                 button: "Continue with " + provider.title, tone: .info, icon: "person.crop.circle") {
-                working = true
-                Task { _ = await online.signIn(with: provider); working = false }
+                Task { _ = await online.signIn(with: provider) }
             }
         } label: {
             OnlineLine(glyph: Glyph.person, title: "Link " + provider.title, note: "Profile and progress, one-time gold reward", chevron: true)
         }
         .buttonStyle(PressableStyle())
-        .disabled(working || online.state == .signingIn)
+        .disabled(online.isLinking)
         .accessibilityIdentifier("settings-link-" + provider.rawValue)
     }
 
-    private var signedIn: some View {
-        OnlineGroup(title: "Account", footer: "Deleting the account removes your profile, friends and requests from the server. The game on this device is not touched.") {
+    private var linked: some View {
+        OnlineGroup(title: "Account", footer: "") {
             OnlineLine(glyph: Glyph.person, title: "Linked with " + (online.provider?.title ?? ""), note: online.profile?.displayName ?? "")
             Hairline()
-            Button { store.openProfile() } label: { OnlineLine(glyph: Glyph.person, title: "Profile", note: "Your name, friend code and who can see you", chevron: true) }
-                .buttonStyle(PressableStyle())
-            Hairline()
-            Button { store.openApp(.friends) } label: { OnlineLine(glyph: Glyph.team, title: "Friends", note: "Requests, search and your friends", chevron: true) }
-                .buttonStyle(PressableStyle())
-            Hairline()
             exportRow
-            Hairline()
-            Button { askToDelete() } label: { OnlineLine(glyph: Glyph.warning, title: "Delete account", note: "Removes everything online", tint: Theme.loss, chevron: true) }
-                .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("settings-delete-account")
             if let problem = online.problem {
                 Text(problem).textStyle(.caption, tint: Theme.loss).padding(.bottom, Theme.Space.s)
-            }
-        }
-    }
-
-    private func askToDelete() {
-        let market: SupplyMarketStore = SupplyMarketStore.shared
-        let rule = SupplyGuards.accountDeletion(openContracts: market.service.openContractsAsSupplier(ownerID: market.service.ownerID))
-        guard rule.allowed else {
-            Haptics.warning()
-            store.tell("The account cannot be deleted yet", rule.reason ?? "", tone: "warn")
-            return
-        }
-        pending = PendingAction(title: "Delete your account?", message: "Your profile, friends and requests are removed for good, and your supply listings stop. Your game on this device is kept.",
-                                button: "Delete account", destructive: true, alwaysAsk: true, risk: "This cannot be undone.") {
-            Task {
-                await online.deleteAccount()
-                if !online.isSignedIn { market.accountDeleted(store) }
             }
         }
     }
@@ -106,6 +112,43 @@ struct AccountSettingsGroup: View {
                 .buttonStyle(PressableStyle())
                 .disabled(working)
                 .accessibilityIdentifier("settings-export-data")
+        }
+    }
+}
+
+struct DeleteAccountGroup: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(OnlineSession.self) private var online
+    @State private var pending: PendingAction?
+
+    var body: some View {
+        if online.isSignedIn {
+            OnlineGroup(title: "", footer: "Deleting the account removes your profile, friends and requests from the server. The game on this device is not touched.") {
+                Button { askToDelete() } label: { OnlineLine(glyph: Glyph.warning, title: "Delete account", note: "Removes everything online", tint: Theme.loss, chevron: true) }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("settings-delete-account")
+                if let problem = online.problem {
+                    Text(problem).textStyle(.caption, tint: Theme.loss).padding(.bottom, Theme.Space.s)
+                }
+            }
+            .confirmAction($pending)
+        }
+    }
+
+    private func askToDelete() {
+        let market: SupplyMarketStore = SupplyMarketStore.shared
+        let rule = SupplyGuards.accountDeletion(openContracts: market.service.openContractsAsSupplier(ownerID: market.service.ownerID))
+        guard rule.allowed else {
+            Haptics.warning()
+            store.tell("The account cannot be deleted yet", rule.reason ?? "", tone: "warn")
+            return
+        }
+        pending = PendingAction(title: "Delete your account?", message: "Your profile, friends and requests are removed for good, and your supply listings stop. Your game on this device is kept.",
+                                button: "Delete account", destructive: true, alwaysAsk: true, risk: "This cannot be undone.") {
+            Task {
+                await online.deleteAccount()
+                if !online.isSignedIn { market.accountDeleted(store) }
+            }
         }
     }
 }
