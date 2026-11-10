@@ -14,6 +14,9 @@ public struct CityMarketTables: Sendable {
     public var rivalCapBoost = 0.12
     public var rivalStrengthBoost = 0.2
     public var awarenessCeilingDrop = 14.0
+    public var shareGain = 0.5, shareCap = 0.12
+    public var shareCrowdStep = 0.01, shareCrowdFrom = 3.0
+    public var shareQuality = 0.3, shareMarketing = 0.2
     public var trades: [String: TradeClass] = [:]
 
     public init(json j: JSONValue) {
@@ -23,6 +26,9 @@ public struct CityMarketTables: Sendable {
         rivalDensityFloor = num("rivalDensityFloor", rivalDensityFloor); rivalDensityCeiling = num("rivalDensityCeiling", rivalDensityCeiling)
         rivalCapBoost = num("rivalCapBoost", rivalCapBoost); rivalStrengthBoost = num("rivalStrengthBoost", rivalStrengthBoost)
         awarenessCeilingDrop = num("awarenessCeilingDrop", awarenessCeilingDrop)
+        shareGain = num("shareGain", shareGain); shareCap = num("shareCap", shareCap)
+        shareCrowdStep = num("shareCrowdStep", shareCrowdStep); shareCrowdFrom = num("shareCrowdFrom", shareCrowdFrom)
+        shareQuality = num("shareQuality", shareQuality); shareMarketing = num("shareMarketing", shareMarketing)
         trades = j["trades"].object.mapValues { TradeClass(need: $0["need"].double, lean: $0["lean"].double) }
     }
 
@@ -173,4 +179,40 @@ public enum CityMarket {
                                summary(.luxury, "Luxury", share: bands.affluent)],
                        trades: trades.sorted { $0.name < $1.name })
     }
+}
+
+public enum CityShare {
+    public struct Pool: Equatable, Sendable {
+        public var rivals: Int
+        public var ownOutlets: Int
+        public var share: Double
+        public var factor: Double
+    }
+
+    static func appeal(_ co: Company, _ w: World, _ tables: CityMarketTables) -> Double {
+        let price = 1 + (1 - Pricing.priceIndex(co, w)) * 0.6
+        let quality = (co.quality - 45) / 100 * tables.shareQuality
+        let marketing = (co.awareness - 25) / 100 * tables.shareMarketing
+        return max(0.3, price + quality + marketing)
+    }
+
+    public static func pool(_ co: Company, _ w: World) -> Pool? {
+        guard let m = w.market(for: co) else { return nil }
+        let tables = w.balance.cityMarket
+        let rivals: [Double] = m["riv"].array.map { Rivals.appeal($0, week: w.week) }
+        guard !rivals.isEmpty else { return nil }
+        let outlets: [Company] = w.state.companies.filter { (c: Company) -> Bool in
+            c.id != co.id && c.status == .open && c.type == co.type && c.cityID == co.cityID && c.countryCode == co.countryCode
+        }
+        let mine: Double = appeal(co, w, tables)
+        let others: Double = rivals.reduce(0, +) + outlets.reduce(0) { (t: Double, c: Company) -> Double in t + appeal(c, w, tables) }
+        let n: Double = Double(rivals.count + outlets.count)
+        let share: Double = mine / (mine + others)
+        let relative: Double = pow(max(0.01, share * (n + 1)), tables.shareGain)
+        let crowd: Double = 1 - tables.shareCrowdStep * (n - tables.shareCrowdFrom)
+        let factor: Double = clamp(relative * crowd, 1 - tables.shareCap, 1 + tables.shareCap)
+        return Pool(rivals: rivals.count, ownOutlets: outlets.count, share: share, factor: factor)
+    }
+
+    public static func factor(_ co: Company, _ w: World) -> Double { pool(co, w)?.factor ?? 1 }
 }

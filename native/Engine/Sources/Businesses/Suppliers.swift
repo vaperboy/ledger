@@ -141,8 +141,10 @@ public enum Suppliers {
         let src = co.value("src")
         if !src["v"].isNull, src["v"].string != "auto", let v = vendor(s, id: src["v"].string, scope: "goods", data: data) { return v }
         if let a = agreement(s, scope: "goods"), let v = vendor(s, id: a, scope: "goods", data: data) { return v }
-        let list = candidates(s, company: co, scope: "goods", data: data)
-        guard !list.isEmpty else { return nil }
+        let all = candidates(s, company: co, scope: "goods", data: data)
+        guard !all.isEmpty else { return nil }
+        let open = all.filter { !Sourcing.lapsed(co, vendorID: $0.id, week: s.week) }
+        let list = open.isEmpty ? all : open
         if let ac = co.raw["srcAuto"], !ac.isNull, Double(s.week) - ac["w"].double < 26, let v = list.first(where: { $0.id == ac["v"].string }) { return v }
         var r = HashedRandom("\(s.seed):gp:\(co.id):\(s.week / 26)")
         let best = list.max { ($0.discount - $0.quality * 0.06) < ($1.discount - $1.quality * 0.06) }!

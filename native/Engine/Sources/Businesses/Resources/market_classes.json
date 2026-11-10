@@ -9,6 +9,12 @@
  "rivalCapBoost": 0.12,
  "rivalStrengthBoost": 0.2,
  "awarenessCeilingDrop": 14,
+ "shareGain": 0.5,
+ "shareCap": 0.12,
+ "shareCrowdStep": 0.01,
+ "shareCrowdFrom": 3,
+ "shareQuality": 0.3,
+ "shareMarketing": 0.2,
  "trades": {
   "boutique": { "need": 1.4, "lean": 1.0 },
   "cardealer": { "need": 2.2, "lean": 1.1 },

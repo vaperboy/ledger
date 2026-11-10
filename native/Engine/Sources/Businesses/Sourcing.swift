@@ -16,6 +16,18 @@ public enum Sourcing {
         outsideSupplierEvents.contains(eventID) && suppliedFromInside(s, companyID: companyID)
     }
 
+    public static func lapsed(_ co: Company, vendorID: String, week: Int) -> Bool {
+        let until = co.value("snx")[vendorID]
+        return !until.isNull && until.int > week
+    }
+
+    public static func lapse(_ s: inout GameState, companyIndex i: Int, vendorID: String, until week: Int) {
+        var o = s.companies[i].value("snx")
+        if o.isNull { o = .object([:]) }
+        o[vendorID] = .number(Double(week))
+        s.companies[i].set("snx", o)
+    }
+
     public struct Offer: Equatable, Sendable {
         public var vendor: Suppliers.Vendor
         public var goodsClass: Int

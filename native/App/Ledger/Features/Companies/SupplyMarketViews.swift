@@ -51,7 +51,7 @@ struct SupplyListingCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                     Text(listing.ownerName).textStyle(.headline).lineLimit(1)
                     if known { Chip(text: "Known supplier", tint: Theme.gold) }
-                    else if listing.isFriend { Chip(text: "Friend", tint: Theme.gold) }
+                    if let tag = FriendTies.tag(friend: listing.isFriend) { Chip(text: tag, tint: Theme.gold) }
                     Spacer(minLength: Theme.Space.s)
                     Chip(text: listing.word.rawValue, tint: SupplyMarketWords.tint(listing.word))
                 }

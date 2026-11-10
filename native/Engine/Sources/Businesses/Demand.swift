@@ -40,6 +40,8 @@ public enum DemandModel {
         let own = Competition.ownOutletShare(co, w)
         D *= own
         if own < 1 { parts.append(("own", own)) }
+        let share = CityShare.factor(co, w)
+        if share != 1 { apply("city share", share) }
         let events = modifier(co, "dem")
         apply("events", events)
         let players = PlayerDemand.factor(country: co.countryCode)
