@@ -87,7 +87,7 @@ public enum OwnListings {
         Payments.companyReceives(&s, companyID: seller, amount: total, category: "rev", label: "Sale to \(b.name): \(listing.itemName)")
         Payments.companyPays(&s, companyID: seller, amount: total * IntercompanySupply.varRatio(sp, data: data), category: "cogs", label: nil)
         IntercompanySupply.transferVat(&s, supplier: s.companies[si], buyerIndex: bi, net: total, data: data, w, cashNow: true)
-        CompanySetup.addEquipment(&s, companyIndex: bi, e, tradeID: bbd.id, quantity: Double(q), totalPrice: total, brand: nil, used: nil, data: data)
+        CompanySetup.addEquipment(&s, companyIndex: bi, e, tradeID: bbd.id, quantity: Double(q), totalPrice: total * IntercompanySupply.varRatio(sp, data: data), brand: nil, used: nil, data: data)
         // The seller's capacity used this week, and a note when it could not supply everything asked for.
         let sup = s.companies[si].value("ownSup")
         let before = (!sup.isNull && sup["w"].int == s.week) ? sup["n"].double : 0

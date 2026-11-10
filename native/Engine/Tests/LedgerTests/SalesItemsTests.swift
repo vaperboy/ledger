@@ -2,7 +2,7 @@ import XCTest
 import GameCore
 import Countries
 import Finance
-import Businesses
+@testable import Businesses
 import Simulation
 
 private extension GameEngine {
@@ -149,6 +149,27 @@ final class SalesItemsTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
         // the licence just bought is not offered again: the next listing (if any) fills a different need
         XCTAssertNotEqual(e.ownCompanyListings(forBuyer: buyer).first?.equipmentID, listing.equipmentID)
+    }
+
+    func testOwnCompanySaleCapitalisesTheBuyersLicenceAtTheSellersCost() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
+        e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
+        let city = e.state.player.cityID
+        guard case .success(let seller) = e.startCompany(tradeID: "webdev", cityID: city, fundWith: 20_000_000),
+              case .success(let buyer) = e.startCompany(tradeID: "cons", cityID: city, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        for _ in 0..<2 { e.week() }
+        let item = e.salesItems(companyID: seller)[0]
+        XCTAssertEqual(e.setItemListedForGroup(companyID: seller, itemID: item.id, listed: true), .applied)
+        e.update { s, _, _ in let i = s.companyIndex(seller)!; var lw = s.companies[i].value("lastW"); lw["cap"] = 100; s.companies[i].set("lastW", lw) }
+        let listing = try XCTUnwrap(e.ownCompanyListings(forBuyer: buyer).first)
+        let ratio = IntercompanySupply.varRatio(e.state.company(seller)!, data: e.data)
+        let before = e.state.company(buyer)!.value("eq")[listing.equipmentID]["bv"].double
+        let cash = e.state.company(buyer)!.cash
+        XCTAssertEqual(e.buyFromOwnCompany(buyer: buyer, seller: seller, itemID: item.id, quantity: 1), .applied)
+        let paid = cash - e.state.company(buyer)!.cash
+        let booked = e.state.company(buyer)!.value("eq")[listing.equipmentID]["bv"].double - before
+        XCTAssertEqual(booked, listing.price.rounded() * ratio, accuracy: 1, "the group's value does not include the seller's margin")
+        XCTAssertLessThan(booked, paid)
     }
 
     // MARK: Price ceiling, first choice, price setter

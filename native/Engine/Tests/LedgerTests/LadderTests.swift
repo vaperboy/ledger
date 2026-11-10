@@ -85,6 +85,16 @@ final class LadderTests: XCTestCase {
         XCTAssertTrue(failures.isEmpty, failures.joined(separator: "; "))
     }
 
+    func testRentWeighsOnTheStartingCityAboutTheSameEverywhere() throws {
+        var heavy: [String] = []
+        for c in try CountryBook.bundled().countries {
+            guard let city = c.cities.first else { continue }
+            let burden = city.rent / (city.demand * city.price)
+            if burden > 1.7 { heavy.append("\(c.code) \(String(format: "%.2f", burden))") }
+        }
+        XCTAssertTrue(heavy.isEmpty, "rent against what a city's customers spend: " + heavy.joined(separator: ", "))
+    }
+
     func testRewardsAreRealConsequencesNeverCash() throws {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cafe")
