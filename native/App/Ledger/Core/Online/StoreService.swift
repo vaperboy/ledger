@@ -56,6 +56,8 @@ protocol StoreService: Sendable {
     func grantFromSeason(boxes: Int, gold: Int) async -> StoreState
     func grantCard(defID: String, roll: Double) async -> StoreState
     func quickSell(itemIDs: [String], priceLevel: Double) async throws -> QuickSale
+    func giveAway(itemID: String) async throws -> StoreState
+    func receiveGift(_ item: ArtifactItem) async -> (state: StoreState, completed: [ArtifactCollection])
 }
 
 struct AuctionsSnapshot: Sendable {

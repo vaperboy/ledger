@@ -33,21 +33,29 @@ struct HomeLevelBar: View {
 struct HomeMissionStrip: View {
     @EnvironmentObject var store: GameStore
     @AppStorage("ledger.home.missionsHiddenWeek") private var hiddenWeek: Int = -1
+    @ObservedObject private var streak = StreakModel.shared
     var engine: GameEngine
 
     var body: some View {
-        if hiddenWeek != engine.state.week {
-            HStack(alignment: .top, spacing: Theme.Space.s) {
-                missionCard
-                Button { Haptics.tap(); hiddenWeek = engine.state.week } label: {
-                    Image(systemName: "xmark").font(.caption2.weight(.semibold)).foregroundStyle(Theme.inkFaint)
-                        .frame(width: 28, height: 28).contentShape(Rectangle())
+        Group {
+            if hiddenWeek != engine.state.week {
+                HStack(alignment: .top, spacing: Theme.Space.s) {
+                    missionCard
+                    Button { Haptics.tap(); hiddenWeek = engine.state.week } label: {
+                        Image(systemName: "xmark").font(.caption2.weight(.semibold)).foregroundStyle(Theme.inkFaint)
+                            .frame(width: 28, height: 28).contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityLabel("Hide until next week")
+                    .accessibilityIdentifier("home-missions-hide")
                 }
-                .buttonStyle(PressableStyle())
-                .accessibilityLabel("Hide until next week")
-                .accessibilityIdentifier("home-missions-hide")
+                .fixedSize(horizontal: false, vertical: true)
             }
-            .fixedSize(horizontal: false, vertical: true)
+        }
+        .task {
+            await MainActor.run {
+                if let reward = streak.openToday() { store.tell("Daily streak", reward.text, tone: "good") }
+            }
         }
     }
 
@@ -76,6 +84,9 @@ struct HomeMissionStrip: View {
                         Text(waiting == 1 ? "1 reward to claim" : "\(waiting) rewards to claim").textStyle(.caption, tint: Theme.accent, weight: .semibold)
                     } else if let body = ladder?.body, !body.isEmpty {
                         Text(body).textStyle(.caption).lineLimit(1)
+                    }
+                    if !streak.line.isEmpty {
+                        Text(streak.line).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                     }
                 }
             }

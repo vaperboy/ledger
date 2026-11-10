@@ -151,6 +151,7 @@ public struct GameEngine {
             if m.actionID == RivalBids.action { RivalBids.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if m.actionID == WeeklyFocus.action { WeeklyFocus.answer(&s, message: m, option: idx, data: d); return true }
             if RivalStories.handlesAnswer(m.actionID) { RivalStories.answer(&s, message: m, option: idx, data: d, context: c); return true }
+            if m.actionID == DailyOrders.action { DailyOrders.answer(&s, message: m, option: idx); return true }
             if m.actionID == "fav31" { WorldAround.answerFavour(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "sue16" { Lawsuits.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "cy56r" { Cyber.answerRansom(&s, message: m, option: idx, data: d); return true }
@@ -224,6 +225,8 @@ public struct GameEngine {
         StoreOrders.runDay(&state, data: data)
         ManagerOpening.runDay(&state, data: data)
         DailyTrade.runDay(&state, day: day, data: data)
+        DailyOrders.runDay(&state, data: data)
+        MarketTips.runDay(&state, data: data)
         runExchangeDay()
         ProjectWeek.runDay(&state, day: day, data: data)
         Payday.onDay(&state, data: data, context: context)
@@ -385,6 +388,7 @@ public struct GameEngine {
             FootballModel.leaguesWeek(&state, data: data)
             Rivals.weekly(&state, data: data)
             PriceMoves.weekly(&state, data: data)
+            LocalFame.weekly(&state, data: data)
             MarketMap.weekly(&state, data: data)
         case 2:
             Markets.fundsWeekly(&state)

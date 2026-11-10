@@ -48,6 +48,9 @@ struct CompanyStatsFigures: View {
                 resultCell("Margin") { Text(marginText).textStyle(.headline, tint: marginTint, numeric: true) }
             }
             .accessibilityElement(children: .combine)
+            if let f = s.localName {
+                FlatRow(label: "Name in \(f.city)", value: f.word, sub: f.note)
+            }
             if s.taxBooked > 0.5 {
                 FlatRow(label: "Company tax booked", value: cur.tidyShort(s.taxBooked), sub: "not in the profit above")
             }

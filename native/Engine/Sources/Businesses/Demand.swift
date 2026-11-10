@@ -25,6 +25,8 @@ public enum DemandModel {
         apply("chain", Competition.chainReachFactor(co, w))
         apply("buzz", 1 + co.num("hype") * 0.006)
         apply("reputation", 0.6 + 0.8 * co.reputation / 100)
+        let fame = LocalFame.demandFactor(w.state, city: co.cityID)
+        if fame != 1 { apply("local name", fame) }
         let pe = Pricing.demandEffect(co, bd, w)
         D *= pe
         let prem = co.value("prem")
