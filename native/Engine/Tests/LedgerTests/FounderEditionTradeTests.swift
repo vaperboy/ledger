@@ -27,8 +27,11 @@ final class FounderEditionTradeTests: XCTestCase {
 
         var cabinet = Cabinet(); cabinet.add(item)
         var book = AuctionBook(me: me)
-        XCTAssertThrowsError(try book.list(item.id, startPrice: 10, reserve: nil, duration: .oneHour, now: t0, cabinet: &cabinet)) { (e: Error) in
-            XCTAssertEqual(e as? AuctionError, .accountBound)
+        do {
+            _ = try book.list(item.id, startPrice: 10, reserve: nil, duration: .oneHour, now: t0, cabinet: &cabinet)
+            XCTFail("a bound piece must not be listed")
+        } catch {
+            XCTAssertEqual(error as? AuctionError, .accountBound)
         }
         XCTAssertTrue(cabinet.contains(item.id), "a refused listing leaves the piece in the cabinet")
         XCTAssertTrue(book.auctions.isEmpty)
