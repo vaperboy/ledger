@@ -83,7 +83,7 @@ actor MockOnlineService: OnlineService {
         return LinkRewardResult(granted: true, gold: Self.linkRewardGold, reason: "granted")
     }
 
-    static let linkRewardGold = 100
+    static let linkRewardGold = 20
 
     func redeemAdminCode(_ code: String) async throws -> AdminCodeResult {
         await pause()

@@ -1,0 +1,180 @@
+{
+ "about": "The one price table. 1 gold is about 1 NOK. Gold prices are in gold. Real-money prices are App Store tiers in US cents (product ids stay in PurchaseCatalog; Ledger.storekit shows the same tiers). localMoney holds the same prices per currency: box is 2 USD, EUR or GBP in that currency rounded up (the gold price of a box is that value in NOK rounded up to 25), battlePass is the 9.99 tier and oneTime the 99.99 tier, converted with each country's fx in countries.json and rounded up to a pretty number. gold.cosmetics is the store price by rarity (legendary items are box-only); gold.items names single items with their own price (save slots); gold.services are one-off services. Earned gold (levels, season pass, streak) is in its own files and is sized against these prices.",
+ "goldPerNok": 1,
+ "gold": {
+  "boxes": {
+   "free": 0,
+   "cabinet": 25,
+   "grand": 75,
+   "cardBasic": 15,
+   "cardPremium": 50,
+   "cardElite": 150
+  },
+  "boxBundles": [
+   {
+    "kind": "cabinet",
+    "count": 5,
+    "price": 110
+   },
+   {
+    "kind": "cabinet",
+    "count": 10,
+    "price": 200
+   },
+   {
+    "kind": "grand",
+    "count": 3,
+    "price": 200
+   }
+  ],
+  "cosmetics": {
+   "common": 15,
+   "rare": 35,
+   "epic": 80
+  },
+  "items": {
+   "gold.slot.1": 75,
+   "gold.slot.2": 120,
+   "gold.slot.3": 175
+  },
+  "services": {
+   "usernameChange": 20,
+   "companyNameSkip": 15
+  },
+  "battlePassPremium": 100
+ },
+ "realMoney": {
+  "goldPacks": [
+   {
+    "id": "gold.pouch",
+    "name": "Pouch",
+    "usdCents": 199,
+    "gold": 20
+   },
+   {
+    "id": "gold.purse",
+    "name": "Purse",
+    "usdCents": 499,
+    "gold": 55
+   },
+   {
+    "id": "gold.chest",
+    "name": "Chest",
+    "usdCents": 999,
+    "gold": 120
+   },
+   {
+    "id": "gold.vault",
+    "name": "Vault",
+    "usdCents": 1999,
+    "gold": 260
+   },
+   {
+    "id": "gold.hoard",
+    "name": "Hoard",
+    "usdCents": 4999,
+    "gold": 700
+   }
+  ],
+  "seasonBundle": {
+   "name": "Season bundle",
+   "usdCents": 999,
+   "gold": 10,
+   "boxes": [
+    {
+     "kind": "cabinet",
+     "count": 1
+    }
+   ],
+   "includesPlus": true
+  },
+  "plans": {
+   "com.ledger.pro": 9999,
+   "com.ledger.founder": 19999,
+   "com.ledger.plus.monthly": 399,
+   "com.ledger.plus.yearly": 2499
+  }
+ },
+ "localMoney": {
+  "AED": {
+   "box": 7.5,
+   "battlePass": 39.99,
+   "oneTime": 369
+  },
+  "AUD": {
+   "box": 3.5,
+   "battlePass": 14.99,
+   "oneTime": 149
+  },
+  "BRL": {
+   "box": 12,
+   "battlePass": 59.99,
+   "oneTime": 579
+  },
+  "CAD": {
+   "box": 3.0,
+   "battlePass": 14.99,
+   "oneTime": 139
+  },
+  "CHF": {
+   "box": 2.0,
+   "battlePass": 7.99,
+   "oneTime": 79.99
+  },
+  "DKK": {
+   "box": 14,
+   "battlePass": 69.99,
+   "oneTime": 689
+  },
+  "EUR": {
+   "box": 2,
+   "battlePass": 9.99,
+   "oneTime": 99.99
+  },
+  "GBP": {
+   "box": 2,
+   "battlePass": 9.99,
+   "oneTime": 99.99
+  },
+  "JPY": {
+   "box": 310,
+   "battlePass": 1490,
+   "oneTime": 14900
+  },
+  "KRW": {
+   "box": 2800,
+   "battlePass": 13900,
+   "oneTime": 139900
+  },
+  "MXN": {
+   "box": 38,
+   "battlePass": 189,
+   "oneTime": 1890
+  },
+  "NOK": {
+   "box": 22,
+   "battlePass": 109,
+   "oneTime": 1090
+  },
+  "PLN": {
+   "box": 8.0,
+   "battlePass": 39.99,
+   "oneTime": 399
+  },
+  "SEK": {
+   "box": 22,
+   "battlePass": 109,
+   "oneTime": 1090
+  },
+  "SGD": {
+   "box": 3.0,
+   "battlePass": 14.99,
+   "oneTime": 129
+  },
+  "USD": {
+   "box": 2,
+   "battlePass": 9.99,
+   "oneTime": 99.99
+  }
+ }
+}

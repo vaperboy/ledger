@@ -1,19 +1,18 @@
 {
- "about": "Box types and their odds. Each box lists rows; weight is out of 10000 and the weights of a box must add up to exactly 10000. prize: cosmetic, artifact, gold (amount = gold), money (amount = cash in the reference economy), profileCard or companyCard. Paid boxes may not hold more than 5 percent cash and must return less gold than their price (a test checks this). theme: optional look theme id from Content/themes/item_themes.json (default classic); a themed box drops items of its theme. The six box ids are fixed; their odds, prices and titles are free to change.",
+ "about": "Box types and their odds. Each box lists rows; weight is out of 10000 and the weights of a box must add up to exactly 10000. prize: cosmetic, artifact, gold (amount = gold), money (amount = cash in the reference economy), profileCard or companyCard. Prices live in pricing/prices.json. Paid boxes may not hold more than 5 percent cash and must return less gold than their price (a test checks this). theme: optional look theme id from Content/themes/item_themes.json (default classic); a themed box drops items of its theme. The six box ids are fixed; their odds and titles are free to change.",
  "boxes": [
   {
    "id": "free",
    "title": "Season box",
-   "price": 0,
    "cardPack": false,
    "rows": [
     {"rarity": "common", "prize": "cosmetic", "weight": 1500},
     {"rarity": "common", "prize": "artifact", "weight": 3450},
-    {"rarity": "common", "prize": "gold", "weight": 3000, "amount": 5},
+    {"rarity": "common", "prize": "gold", "weight": 3000, "amount": 1},
     {"rarity": "common", "prize": "money", "weight": 50, "amount": 1000},
     {"rarity": "rare", "prize": "cosmetic", "weight": 370},
     {"rarity": "rare", "prize": "artifact", "weight": 800},
-    {"rarity": "rare", "prize": "gold", "weight": 500, "amount": 10},
+    {"rarity": "rare", "prize": "gold", "weight": 500, "amount": 2},
     {"rarity": "rare", "prize": "money", "weight": 30, "amount": 5000},
     {"rarity": "epic", "prize": "cosmetic", "weight": 100},
     {"rarity": "epic", "prize": "artifact", "weight": 150},
@@ -23,19 +22,18 @@
   {
    "id": "cabinet",
    "title": "Cabinet box",
-   "price": 120,
    "cardPack": false,
    "rows": [
     {"rarity": "common", "prize": "cosmetic", "weight": 2800},
     {"rarity": "common", "prize": "artifact", "weight": 2800},
-    {"rarity": "common", "prize": "gold", "weight": 1400, "amount": 20},
+    {"rarity": "common", "prize": "gold", "weight": 1400, "amount": 5},
     {"rarity": "rare", "prize": "cosmetic", "weight": 800},
     {"rarity": "rare", "prize": "artifact", "weight": 900},
-    {"rarity": "rare", "prize": "gold", "weight": 400, "amount": 40},
+    {"rarity": "rare", "prize": "gold", "weight": 400, "amount": 8},
     {"rarity": "rare", "prize": "money", "weight": 200, "amount": 1000},
     {"rarity": "epic", "prize": "cosmetic", "weight": 250},
     {"rarity": "epic", "prize": "artifact", "weight": 200},
-    {"rarity": "epic", "prize": "gold", "weight": 50, "amount": 60},
+    {"rarity": "epic", "prize": "gold", "weight": 50, "amount": 12},
     {"rarity": "epic", "prize": "money", "weight": 100, "amount": 2000},
     {"rarity": "legendary", "prize": "cosmetic", "weight": 40},
     {"rarity": "legendary", "prize": "artifact", "weight": 40},
@@ -45,19 +43,18 @@
   {
    "id": "grand",
    "title": "Grand box",
-   "price": 400,
    "cardPack": false,
    "rows": [
     {"rarity": "common", "prize": "cosmetic", "weight": 1500},
     {"rarity": "common", "prize": "artifact", "weight": 2500},
-    {"rarity": "common", "prize": "gold", "weight": 500, "amount": 40},
+    {"rarity": "common", "prize": "gold", "weight": 500, "amount": 6},
     {"rarity": "rare", "prize": "cosmetic", "weight": 1300},
     {"rarity": "rare", "prize": "artifact", "weight": 1900},
-    {"rarity": "rare", "prize": "gold", "weight": 400, "amount": 80},
+    {"rarity": "rare", "prize": "gold", "weight": 400, "amount": 12},
     {"rarity": "rare", "prize": "money", "weight": 200, "amount": 2000},
     {"rarity": "epic", "prize": "cosmetic", "weight": 450},
     {"rarity": "epic", "prize": "artifact", "weight": 700},
-    {"rarity": "epic", "prize": "gold", "weight": 100, "amount": 150},
+    {"rarity": "epic", "prize": "gold", "weight": 100, "amount": 25},
     {"rarity": "epic", "prize": "money", "weight": 150, "amount": 5000},
     {"rarity": "legendary", "prize": "cosmetic", "weight": 100},
     {"rarity": "legendary", "prize": "artifact", "weight": 150},
@@ -67,7 +64,6 @@
   {
    "id": "cardBasic",
    "title": "Card pack",
-   "price": 80,
    "cardPack": true,
    "rows": [
     {"rarity": "common", "prize": "profileCard", "weight": 3650},
@@ -83,7 +79,6 @@
   {
    "id": "cardPremium",
    "title": "Premium card pack",
-   "price": 240,
    "cardPack": true,
    "rows": [
     {"rarity": "common", "prize": "profileCard", "weight": 1800},
@@ -99,7 +94,6 @@
   {
    "id": "cardElite",
    "title": "Elite card pack",
-   "price": 700,
    "cardPack": true,
    "rows": [
     {"rarity": "common", "prize": "profileCard", "weight": 500},

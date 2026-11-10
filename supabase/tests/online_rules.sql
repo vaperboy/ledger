@@ -381,3 +381,29 @@ begin
   perform public.register_push_token(tok, 'production', '{gift}');
   if (select user_id from public.device_tokens where token = tok) <> b then raise exception 'push token did not move to the new owner'; end if;
 end $$;
+
+do $$ declare a uuid := pg_temp.id('a'); b uuid := pg_temp.id('b'); c uuid := pg_temp.id('c');
+begin
+  perform pg_temp.as_user(a);
+  if public.username_available('ab') <> 'invalid' then raise exception 'two letters accepted'; end if;
+  if public.username_available('abcdefghijklmnopq') <> 'invalid' then raise exception '17 characters accepted'; end if;
+  if public.username_available('bad name') <> 'invalid' then raise exception 'space accepted'; end if;
+  if public.username_available('9lives') <> 'invalid' then raise exception 'leading digit accepted'; end if;
+  if public.username_available('Admin_one') <> 'invalid' then raise exception 'reserved word accepted'; end if;
+  if public.claim_username('Tiger_7') <> 'ok' then raise exception 'claim failed'; end if;
+  if (select username from public.profiles where id = a) <> 'Tiger_7' or (select display_name from public.profiles where id = a) <> 'Tiger_7' then raise exception 'claim not stored'; end if;
+  perform pg_temp.as_user(b);
+  if public.username_available('tiger_7') <> 'taken' then raise exception 'case-insensitive duplicate offered'; end if;
+  if public.claim_username('TIGER_7') <> 'taken' then raise exception 'duplicate claimed'; end if;
+  if public.claim_username('Cora') <> 'ok' then raise exception 'free name refused'; end if;
+  perform pg_temp.as_user(c);
+  if public.claim_username('Cora') <> 'taken' then raise exception 'name of another player claimed'; end if;
+  perform pg_temp.as_user(a);
+  if public.claim_username('Tiger_8') <> 'ok' then raise exception 'change failed'; end if;
+  perform pg_temp.as_user(b);
+  if public.claim_username('Tiger_7') <> 'taken' then raise exception 'released name was reused'; end if;
+  perform pg_temp.as_user(a);
+  if public.claim_username('tiger_7') <> 'ok' then raise exception 'owner cannot return to own name'; end if;
+  perform public.update_my_profile(p_display_name => 'Sneaky Name');
+  if (select display_name from public.profiles where id = a) <> 'tiger_7' then raise exception 'display name changed outside the claim'; end if;
+end $$;

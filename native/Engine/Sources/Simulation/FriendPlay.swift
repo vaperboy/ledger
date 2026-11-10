@@ -23,7 +23,7 @@ public enum LoginStreakRules {
     public static let forgivenGap = 7
 
     public static func reward(day n: Int) -> LoginReward {
-        let gold = min(15, 3 + n / 5)
+        let gold = min(3, 1 + n / 10)
         let box = n > 0 && n % boxEvery == 0
         return LoginReward(gold: gold, boxes: box ? 1 : 0,
                            text: "Day \(n): +\(gold) gold" + (box ? " and a Season box" : ""))
@@ -64,7 +64,7 @@ public struct RaceEntry: Codable, Equatable, Hashable, Identifiable, Sendable {
 }
 
 public enum FriendRace {
-    public static let rewardGold = [15, 10, 5]
+    public static let rewardGold = [3, 2, 1]
 
     public static func week(ofDay day: Int) -> Int { day / 7 }
 

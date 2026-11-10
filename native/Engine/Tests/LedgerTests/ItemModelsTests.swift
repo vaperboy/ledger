@@ -300,6 +300,16 @@ final class ItemModelsTests: XCTestCase {
         XCTAssertEqual(e.companyLogoID(companyID: b), "")
     }
 
+    func testCompanyBackdropIsKeptPerCompany() throws {
+        var (e, a) = try engine()
+        XCTAssertEqual(e.companyBackdrop(companyID: a), "")
+        XCTAssertEqual(e.setCompanyBackdrop(companyID: a, id: "gold.backdrop.fog"), .applied)
+        XCTAssertEqual(e.companyBackdrop(companyID: a), "gold.backdrop.fog")
+        XCTAssertEqual(e.setCompanyBackdrop(companyID: a, id: ""), .applied)
+        XCTAssertEqual(e.companyBackdrop(companyID: a), "")
+        XCTAssertTrue(e.setCompanyBackdrop(companyID: 999_999, id: "x").isRefused)
+    }
+
     func testCompanyColoursAndBadgeAreKeptPerCompany() throws {
         var (e, a) = try engine()
         XCTAssertEqual(e.companyStyle(companyID: a).theme, "")
