@@ -159,6 +159,18 @@ actor GoldVault {
         return QuickSale(state: state(), cash: cash, sold: sold)
     }
 
+    func giveAway(_ id: String) throws -> StoreState {
+        guard cabinet.remove(id) != nil else { throw AuctionError.notYours }
+        save()
+        return state()
+    }
+
+    func receiveGift(_ item: ArtifactItem) -> (state: StoreState, completed: [ArtifactCollection]) {
+        let done: [ArtifactCollection] = cabinet.add(item)
+        save()
+        return (state(), done)
+    }
+
     private func now() -> Double { Date().timeIntervalSince1970 }
 
     private func snapshot(_ settled: [AuctionSettlement] = []) -> AuctionsSnapshot {

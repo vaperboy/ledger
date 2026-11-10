@@ -384,6 +384,7 @@ final class OnlineSession {
             await shareProgress(from: e)
         }
         if let a = try? await service.friendActivity() { friendActivity = a }
+        await syncFriendPlay(store: store)
     }
 
     private func bookSettlements(store: GameStore) async {

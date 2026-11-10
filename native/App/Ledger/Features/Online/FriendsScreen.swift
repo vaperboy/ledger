@@ -15,6 +15,8 @@ struct FriendsScreen: View {
     @State private var venturePicker = false
     @State private var ventureCompany: Int?
     @State private var ventureOpen = false
+    @State private var giftOpen = false
+    @State private var giftFriend: PlayerProfile?
 
     var body: some View {
         PhonePageScroll(spacing: Theme.Space.l) {
@@ -25,6 +27,9 @@ struct FriendsScreen: View {
         .centerSheet(isPresented: $venturePicker, title: "Start a company together") { ventureChoices }
         .centerSheet(isPresented: $ventureOpen, title: "Invite a friend", size: .tall) {
             JVInviteSheet(companyID: ventureCompany ?? 0).environmentObject(store).environment(online)
+        }
+        .centerSheet(isPresented: $giftOpen, title: "Send a gift", size: .tall) {
+            if let f = giftFriend { GiftChoices(friend: f) { (item: ArtifactItem) in sendGift(item, to: f) } }
         }
         .task(id: online.isSignedIn) { await reload() }
         .task(id: query) { await search() }
@@ -37,6 +42,7 @@ struct FriendsScreen: View {
             if !o.incoming.isEmpty { incomingGroup(o.incoming) }
             if !o.outgoing.isEmpty { outgoingGroup(o.outgoing) }
             friendsGroup(o.friends)
+            FriendPlayGroups(friends: o.friends)
             togetherGroup
         } else if failure == nil {
             ProgressView().frame(maxWidth: .infinity)
@@ -149,13 +155,19 @@ struct FriendsScreen: View {
             } else {
                 ForEach(Array(list.enumerated()), id: \.element.id) { (i: Int, p: PlayerProfile) in
                     if i > 0 { Hairline() }
-                    NavigationLink { PlayerProfileView(playerID: p.id) } label: {
-                        PlayerRow(player: p) {
-                            Text(companyLine(p)).textStyle(.caption)
-                            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+                    HStack(spacing: Theme.Space.s) {
+                        NavigationLink { PlayerProfileView(playerID: p.id) } label: {
+                            PlayerRow(player: p) {
+                                Text(companyLine(p)).textStyle(.caption)
+                                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+                            }
                         }
+                        .buttonStyle(PressableStyle())
+                        Button("Gift") { Haptics.tap(); giftFriend = p; giftOpen = true }
+                            .buttonStyle(SecondaryButtonStyle(size: .compact))
+                            .disabled(!FriendPlayModel.shared.canGift)
+                            .accessibilityIdentifier("friends-gift-\(p.id)")
                     }
-                    .buttonStyle(PressableStyle())
                 }
             }
         }
@@ -185,6 +197,23 @@ struct FriendsScreen: View {
                         StorePurchase.afterPopup { ventureOpen = true }
                     }
                 }
+            }
+        }
+    }
+
+    private func sendGift(_ item: ArtifactItem, to friend: PlayerProfile) {
+        giftOpen = false
+        Task { @MainActor in
+            guard FriendPlayModel.shared.canGift else { failure = "You have already sent a gift today."; return }
+            guard await StoreSession.shared.giveAway(item) else { failure = StoreSession.shared.problem; return }
+            do {
+                try await online.service.sendGift(to: friend.id, item: item, fromName: online.profile?.displayName ?? "A friend")
+                FriendPlayModel.shared.markGift()
+                failure = nil
+                store.tell("Gift sent", "\(ArtifactCatalog.def(item.defID)?.name ?? "A piece") is on its way to \(friend.displayName).", tone: "good")
+            } catch {
+                await StoreSession.shared.receiveGift(item)
+                failure = (error as? LocalizedError)?.errorDescription ?? "The gift could not be sent. It is back in your cabinet."
             }
         }
     }

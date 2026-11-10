@@ -17,4 +17,6 @@ struct LocalStoreService: StoreService {
     }
     func grantFromSeason(boxes: Int, gold: Int) async -> StoreState { await vault.grantFromSeason(boxes: boxes, gold: gold) }
     func quickSell(itemIDs: [String], priceLevel: Double) async throws -> QuickSale { try await vault.quickSell(itemIDs, priceLevel: priceLevel) }
+    func giveAway(itemID: String) async throws -> StoreState { try await vault.giveAway(itemID) }
+    func receiveGift(_ item: ArtifactItem) async -> (state: StoreState, completed: [ArtifactCollection]) { await vault.receiveGift(item) }
 }

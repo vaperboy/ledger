@@ -55,6 +55,8 @@ protocol StoreService: Sendable {
     func openBoxes(_ kind: BoxKind, count: Int, owned: Set<String>, paidBoxesAllowed: Bool) async throws -> BoxOpening
     func grantFromSeason(boxes: Int, gold: Int) async -> StoreState
     func quickSell(itemIDs: [String], priceLevel: Double) async throws -> QuickSale
+    func giveAway(itemID: String) async throws -> StoreState
+    func receiveGift(_ item: ArtifactItem) async -> (state: StoreState, completed: [ArtifactCollection])
 }
 
 struct AuctionsSnapshot: Sendable {

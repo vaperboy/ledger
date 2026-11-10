@@ -6,7 +6,7 @@ import Businesses
 import Events
 
 public extension GameEngine {
-    private static let ownerOnlyKinds: Set<String> = ["exit", "rofr", "div", "divq", "growth"]
+    private static let ownerOnlyKinds: Set<String> = ["exit", "rofr", "div", "divq", "growth", "dorder"]
 
     static func score(_ fx: JSONValue, scale: Double) -> Double {
         if fx.isNull { return 0 }

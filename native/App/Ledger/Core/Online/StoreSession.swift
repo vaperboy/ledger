@@ -116,6 +116,22 @@ final class StoreSession {
 
     func acknowledgeOpening() { pendingOpening = nil }
 
+    func receiveDaily(boxes: Int, gold: Int) {
+        Task { state = await store.grantFromSeason(boxes: boxes, gold: gold) }
+    }
+
+    @discardableResult
+    func giveAway(_ item: ArtifactItem) async -> Bool {
+        problem = nil
+        do { state = try await store.giveAway(itemID: item.id); return true } catch { problem = message(error); return false }
+    }
+
+    func receiveGift(_ item: ArtifactItem) async {
+        let out = await store.receiveGift(item)
+        state = out.state
+        grantCollections(out.completed)
+    }
+
     func receiveSeason(_ r: SeasonReward) {
         guard r.kind == .box || r.kind == .gold else { return }
         Task { state = await store.grantFromSeason(boxes: r.kind == .box ? r.amount : 0, gold: r.kind == .gold ? r.amount : 0) }

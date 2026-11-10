@@ -223,7 +223,7 @@ protocol OnlineWorldService: Sendable {
     func acknowledgeSettlements(_ ids: [String]) async throws
 }
 
-protocol OnlineService: AdminService, OnlineWorldService, Sendable {
+protocol OnlineService: AdminService, OnlineWorldService, FriendPlayService, Sendable {
     var createsAccountsItself: Bool { get }
     func currentAccount() async -> OnlineAccount?
     func startSession(createIfMissing: Bool) async throws -> OnlineAccount
