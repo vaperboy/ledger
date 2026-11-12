@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: 'Manual job: popup (screenshots), launch (simulator launch check) or tours (feature tours, log-only report)'
+        description: 'Manual job: popup (screenshots), screens (a screenshot of every main screen), launch (simulator launch check) or tours (feature tours, log-only report)'
         default: 'popup'
       only:
         description: 'tours only: one test method to run, e.g. testT12_ManageAndSuppliers (empty runs every tour)'
@@ -193,6 +193,95 @@ jobs:
         with:
           name: popup-shots
           path: shots/
+          if-no-files-found: warn
+
+  screen-shots:
+    if: github.event_name == 'workflow_dispatch' && inputs.which == 'screens'
+    concurrency:
+      group: screen-shots-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use the newest installed Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n 1); [ -n "$X" ] || X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: native/App
+        run: xcodegen generate
+      # The first-run walk accepts the terms, which signs a new player up on the game server.
+      # It only runs when this runner cannot reach that server, so no test accounts are created.
+      - name: Cut this runner off from the game server
+        id: server
+        working-directory: native/App
+        run: |
+          FIRST=0
+          HOST=$(grep -oE 'https://[A-Za-z0-9.-]+' Ledger/Core/Online/OnlineConfig.swift | head -n 1 | sed 's#https://##')
+          if [ -n "$HOST" ]; then
+            printf '127.0.0.1 %s\n::1 %s\n' "$HOST" "$HOST" | sudo tee -a /etc/hosts > /dev/null
+            sudo dscacheutil -flushcache || true
+            sudo killall -HUP mDNSResponder || true
+            sleep 3
+            ADDRS=$(dscacheutil -q host -a name "$HOST" | awk '/_address:/ {print $2}' | sort -u | tr '\n' ' ')
+            echo "the game server now resolves to: $ADDRS"
+            OUTSIDE=$(echo "$ADDRS" | tr ' ' '\n' | grep -vE '^(127\.0\.0\.1|::1)?$' || true)
+            if [ -n "$ADDRS" ] && [ -z "$OUTSIDE" ] && ! curl -s -m 8 -o /dev/null "https://$HOST"; then FIRST=1; fi
+          fi
+          if [ "$FIRST" = "1" ]; then echo "game server unreachable from this runner: the first-run screens are on"; else echo "game server still reachable: the first-run screens are left out"; fi
+          echo "first=$FIRST" >> "$GITHUB_OUTPUT"
+      - name: Run ScreenShotsTests on one large iPhone
+        working-directory: native/App
+        env:
+          TEST_RUNNER_SCREENS_FIRST_RUN: ${{ steps.server.outputs.first }}
+        run: |
+          xcrun simctl list devices available | grep -E "iPhone" || true
+          WANT="iPhone 16 Pro Max"
+          DEV="$WANT"
+          if ! xcrun simctl list devices available | grep -qF "    $WANT ("; then
+            DEV=$(xcrun simctl list devices available | grep -oE "iPhone [0-9]+ Pro Max" | sort -V | tail -n 1)
+            [ -n "$DEV" ] || DEV=$(xcrun simctl list devices available | grep -oE "iPhone [0-9A-Za-z ]+" | head -n 1 | sed -E 's/ +$//')
+            echo "$WANT not available, using $DEV"
+          fi
+          echo "== $DEV"
+          OUT="$GITHUB_WORKSPACE/screens"
+          mkdir -p "$OUT"
+          xcodebuild test -project Ledger.xcodeproj -scheme Ledger \
+            -only-testing:LedgerUITests/ScreenShotsTests \
+            -destination "platform=iOS Simulator,name=$DEV" \
+            -resultBundlePath "$RUNNER_TEMP/screens.xcresult" \
+            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/screens.log" 2>&1 || { echo "tests failed on $DEV"; grep -E "error:" "$RUNNER_TEMP/screens.log" | sort -u | head -20; }
+          if ! xcrun xcresulttool export attachments --path "$RUNNER_TEMP/screens.xcresult" --output-path "$OUT"; then
+            echo "export attachments failed; trying legacy get"
+            xcrun xcresulttool get --legacy --path "$RUNNER_TEMP/screens.xcresult" --format json > "$OUT/result.json" || true
+          fi
+          python3 - "$OUT" <<'PY' || true
+          import json, os, re, sys
+          out = sys.argv[1]
+          try:
+              tests = json.load(open(os.path.join(out, "manifest.json")))
+          except Exception:
+              tests = []
+          for test in tests:
+              for a in test.get("attachments", []):
+                  src = os.path.join(out, a.get("exportedFileName", ""))
+                  name = re.sub(r"_\d+_[0-9A-Fa-f-]{36}(\.\w+)$", r"\1", a.get("suggestedHumanReadableName", ""))
+                  dst = os.path.join(out, name)
+                  if name and os.path.isfile(src) and not os.path.exists(dst):
+                      os.rename(src, dst)
+          PY
+          echo "screens: $(ls "$OUT" | grep -ciE '\.(png|jpe?g|heic)$' || true), skipped: $(ls "$OUT" | grep -c '^SKIPPED-' || true)"
+          cat "$OUT"/SKIPPED-*.txt 2>/dev/null | head -n 200 || true
+      - name: Upload the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screen-shots
+          path: screens/
           if-no-files-found: warn
 
   release:
