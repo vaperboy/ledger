@@ -25,12 +25,12 @@ final class NewPlayerStartTests: XCTestCase {
         }
     }
 
-    func testCashLeftAfterSetupCoversEightWeeksOfCosts() throws {
+    func testCashLeftAfterSetupCoversTheStartRunway() throws {
         for code in ["NO", "US"] {
             let e = try fresh(code)
             let co = try XCTUnwrap(e.state.companies.first)
             let weekly = e.context.weeklyCost(co, e.state)
-            XCTAssertGreaterThanOrEqual(co.cash, weekly * 8 - 1, code)
+            XCTAssertGreaterThanOrEqual(co.cash, weekly * Double(e.data.balance.firstYear.startRunwayWeeks) - 1, code)
         }
     }
 

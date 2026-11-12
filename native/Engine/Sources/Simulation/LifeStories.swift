@@ -53,14 +53,24 @@ enum LifeStories {
         Ledger.move(&probe, .me, big, why: "Start probe")
         guard let pid = build(&probe, data: data, context: context, tradeID: tradeID, cityID: city.id, size: size, name: name),
               let pi = probe.companyIndex(pid) else { return false }
+        let fy = data.balance.firstYear
+        let weeks: Double = Double(fy.startRunwayWeeks)
         let spent: Double = big - probe.cash
-        let weekly: Double = context.weeklyCost(probe.companies[pi], probe)
-        let weeks: Double = Double(data.balance.firstYear.startRunwayWeeks)
-        let cash: Double = ((spent + weekly * weeks) / 1000).rounded(.up) * 1000
-        Ledger.move(&s, .me, cash, why: "Starting money")
+        let need: Double = StartGrant.roundUp(spent + context.weeklyCost(probe.companies[pi], probe) * weeks)
+        let currency = context.currency(country.code, s)
+        let floor: Double = country.shareCapitalMinimum + country.registrationFee
+        let savings: Double = min(need, max(floor, currency.tidy(currency.scaledPrice(fy.startSavings))))
+        Ledger.move(&s, .me, savings, why: "Starting money")
+        // The expected grant is lent to the build for a moment, so setup sees the same money as before; the real grant is booked once at the end.
+        let bridge: Double = max(0, need - savings)
+        Ledger.moveRaw(&s, .me, bridge)
         guard let id = build(&s, data: data, context: context, tradeID: tradeID, cityID: city.id, size: size, name: name),
               let i = s.companyIndex(id) else { return false }
-        s.rest["start"] = .object(["story": .string(LifeStory.fresh.rawValue), "cash": .number(cash)])
+        Ledger.moveRaw(&s, .me, -bridge)
+        let target: Double = context.weeklyCost(s.companies[i], s) * weeks
+        let grant: Double = max(0, StartGrant.roundUp(target - s.cash))
+        StartGrant.pay(&s, companyID: id, amount: grant)
+        s.rest["start"] = .object(["story": .string(LifeStory.fresh.rawValue), "cash": .number(savings + grant), "own": .number(savings), "grant": .number(grant), "weeks": .number(weeks)])
         if chooseFirstItem { SalesItems.markFirstChoicePending(&s, i) }
         return s.companies[i].status == .open
     }
@@ -114,4 +124,19 @@ enum LifeStories {
         s.rest["start"] = .object(["story": .string(LifeStory.heir.rawValue)])
         return s.companies[i].status == .open
     }
+}
+
+/// Government start-up support: sized per company type so that own savings plus the grant cover the same number of weeks of fixed costs for every first company.
+public enum StartGrant {
+    public static let label = "Government start-up grant"
+
+    static func roundUp(_ v: Double) -> Double { (v / 100).rounded(.up) * 100 }
+
+    static func pay(_ s: inout GameState, companyID: Int, amount: Double) {
+        guard amount > 0, let i = s.companyIndex(companyID) else { return }
+        Payments.companyReceives(&s, companyID: companyID, amount: amount, category: nil, label: label, bookInPnL: false)
+        s.companies[i].addTransaction(week: s.week, amount: jsRound(amount), label: label)
+    }
+
+    public static func amount(_ s: GameState) -> Double { s.rest["start"]?["grant"].double ?? 0 }
 }
