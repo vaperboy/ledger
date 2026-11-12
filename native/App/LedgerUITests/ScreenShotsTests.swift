@@ -428,12 +428,12 @@ final class ScreenShotsTests: FeatureTourCase {
             screen("ventures-" + part.lowercased()) { when(ventures, off: "Ventures is locked in this game", "no \(part) part") { tapLabel(part, wait: 2) } }
         }
         screen("tab-group") { ok(goTab("Group"), "no Group tab") }
-        for part in ["Structure", "People", "Suppliers"] {
+        for part in ["Overview", "People", "Suppliers"] {
             screen("group-" + part.lowercased()) { ok(goGroup(part), "no group-home-tab-\(part)") }
         }
         var entity = false
         screen("group-company") {
-            guard goGroup("Structure"), tapPrefix("group-entity-", wait: 4) else { return "no company in the Group structure" }
+            guard goGroup("Overview"), tapPrefix("group-entity-", wait: 4) else { return "no company in the Group structure" }
             entity = has("group-back", wait: 4)
             return ok(entity, "the group company page did not open")
         }

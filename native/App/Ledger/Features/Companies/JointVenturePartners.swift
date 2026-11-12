@@ -2,6 +2,7 @@ import SwiftUI
 import GameCore
 import Countries
 import Events
+import Businesses
 import Simulation
 
 struct JointVenturePartnersCard: View {
@@ -122,6 +123,10 @@ struct JVInviteSheet: View {
     @State private var factor: Double = 1
     @State private var role: String = "Partner"
     @State private var preview = false
+    @State private var pctText = "20"
+    @State private var priceText = ""
+    @State private var editingPct = false
+    @State private var editingPrice = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -138,11 +143,53 @@ struct JVInviteSheet: View {
                 Text("This company no longer exists.").popupText(.body)
             }
         }
+        .onChange(of: pct) { _, v in
+            if !editingPct { pctText = Self.pctString(v) }
+            syncPriceText()
+        }
+        .onChange(of: factor) { _, _ in syncPriceText() }
         .task {
             JointVentureCoordinator.shared.attach(online.service)
+            syncPriceText()
             friends = await JointVentureCoordinator.shared.invitable()
             loaded = true
         }
+    }
+
+    private static let pctRange: ClosedRange<Double> = JVRules.smallestStakePercent...JVRules.largestInvitePercent
+
+    private static func pctString(_ v: Double) -> String {
+        abs(v - v.rounded()) < 0.05 ? String(Int(v.rounded())) : String(format: "%.1f", v)
+    }
+
+    /// Keeps the price box in step with the slider and the share, unless the player is typing in it.
+    private func syncPriceText() {
+        guard !editingPrice, let e = store.engine, let co = e.state.company(companyID) else { return }
+        let cur: Currency = e.currency(for: co)
+        priceText = PriceInput.text(privatePrice(e, fair: e.jvFairPrice(companyID: companyID, pct: pct)), currency: cur)
+    }
+
+    private func typedPct() -> Double? {
+        let t: String = pctText.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces)
+        guard let v = Double(t), v.isFinite else { return nil }
+        return min(max((v * 10).rounded() / 10, Self.pctRange.lowerBound), Self.pctRange.upperBound)
+    }
+
+    private func commitPct() {
+        editingPct = false
+        if let v = typedPct() { pct = v }
+        pctText = Self.pctString(pct)
+    }
+
+    private func typedPrice(_ e: GameEngine, _ cur: Currency, fair: Double) -> Double? {
+        let b: ClosedRange<Double> = band(e)
+        return PriceInput.parse(priceText, currency: cur, range: (fair * b.lowerBound)...(fair * b.upperBound))?.value
+    }
+
+    private func commitPrice(_ e: GameEngine, _ cur: Currency, fair: Double) {
+        editingPrice = false
+        if fair > 0, let v = typedPrice(e, cur, fair: fair) { factor = v / fair }
+        syncPriceText()
     }
 
     private func band(_ e: GameEngine) -> ClosedRange<Double> {
@@ -168,16 +215,20 @@ struct JVInviteSheet: View {
             }
         }
         Text("Their stake").capsLabel()
-        LedgerSlider(value: $pct, in: 5...40, step: 1, valueText: "\(Int(pct))% of the company")
+        LedgerField(placeholder: "Share", text: $pctText, suffix: "% of the company", keyboard: .decimalPad, identifier: "jv-pct",
+                    onFocusChange: { (f: Bool) in if f { editingPct = true } else { commitPct() } }, onSubmit: { commitPct() })
+            .onChange(of: pctText) { _, _ in if editingPct, let v = typedPct() { pct = v } }
+        LedgerSlider(value: $pct, in: Self.pctRange, step: 1, valueText: "\(Self.pctString(pct))% of the company")
+        Text("From \(Int(Self.pctRange.lowerBound))% to \(Int(Self.pctRange.upperBound))% for each friend.").popupText(.caption)
         Text("Their private price").capsLabel()
-        LedgerSlider(value: $factor, in: band(e), step: 0.05, valueText: cur.tidyDisplay(price))
-        HStack(spacing: 4) {
-            if factor == 1 { Text("Fair price: \(cur.tidyDisplay(fair)).") } else {
-                StockArrow(up: false, good: false)
-                Text("Under the fair price of \(cur.tidyDisplay(fair)): a friendly deal that dilutes you.")
+        LedgerField(placeholder: "Price", text: $priceText, prefix: cur.country.currencySymbol, keyboard: .decimalPad, identifier: "jv-price",
+                    onFocusChange: { (f: Bool) in if f { editingPrice = true } else { commitPrice(e, cur, fair: fair) } }, onSubmit: { commitPrice(e, cur, fair: fair) })
+            .onChange(of: priceText) { _, _ in
+                if editingPrice, fair > 0, let v = typedPrice(e, cur, fair: fair) { factor = v / fair }
             }
-        }
-        .popupText(.caption)
+        LedgerSlider(value: $factor, in: band(e), step: 0.05, valueText: cur.tidyDisplay(price))
+        Text("Fair value of this share: \(cur.tidyDisplay(fair)). You can ask from \(cur.tidyDisplay((fair * band(e).lowerBound).rounded(.up))) to \(cur.tidyDisplay((fair * band(e).upperBound).rounded(.down))).").popupText(.caption)
+        summary(friend: picked, pct: pct, price: price, fair: fair, cur: cur)
         Text("They see this share and this price, and accept or decline. Other friends you invite get a price of their own.").popupText(.caption)
         Text("Role").capsLabel()
         SegmentedPill(items: ["Partner", "CFO"], title: { $0 }, selection: $role)
@@ -188,6 +239,16 @@ struct JVInviteSheet: View {
             .popupFooter {
                 PopupFooter(cancel: "Cancel", action: "See what they will read", onCancel: { dismiss() }, onAction: { Haptics.tap(); preview = true }, actionEnabled: picked != nil, actionID: "jv-preview")
             }
+    }
+
+    private func summary(friend: PlayerProfile?, pct: Double, price: Double, fair: Double, cur: Currency) -> some View {
+        let who: String = friend?.displayName ?? "Your friend"
+        let diff: Double = fair > 0 ? (price / fair - 1) * 100 : 0
+        let note: String = abs(diff) < 0.5 ? "the fair value" : (diff < 0 ? "\(Int(abs(diff).rounded()))% under the fair value, a friendly deal that dilutes you" : "\(Int(diff.rounded()))% over the fair value")
+        return VStack(alignment: .leading, spacing: 2) {
+            Text("\(who) gets \(Self.pctString(pct))% for \(cur.tidyDisplay(price))").popupText(.rowLabel)
+            Text("That is \(note).").popupText(.caption)
+        }
     }
 
     @ViewBuilder private func consequence(friend: PlayerProfile, terms: JointVenture.Terms, cur: Currency) -> some View {

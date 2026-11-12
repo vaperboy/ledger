@@ -11,7 +11,7 @@ struct LedgerGlyph: View {
 }
 
 struct LedgerRow: View {
-    enum Leading { case empty, glyph(String), symbol(String), initials(String), thumb(ThumbSpec) }
+    enum Leading { case empty, glyph(String), symbol(String), initials(String), thumb(ThumbSpec), player(String) }
     enum Density { case regular, compact }
 
     @Environment(\.outsidePalette) private var P
@@ -104,6 +104,8 @@ struct LedgerRow: View {
                 .background(Circle().fill(leadingTint ?? P.accent))
         case .thumb(let spec):
             ThumbnailView(spec, size: 40)
+        case .player(let name):
+            PlayerAvatar(name: name, isYou: true, size: 40)
         }
     }
 }

@@ -19,15 +19,9 @@ struct HomeDecisionButtons: View {
         HStack(spacing: Theme.Space.s) {
             ForEach(Array(message.options.enumerated()), id: \.offset) { (pair: (offset: Int, element: JSONValue)) in
                 let label: String = engine.displayText(pair.element["l"].string, companyID: message.companyID)
-                if pair.offset == 0 {
-                    Button(label) { answer(pair.offset) }
-                        .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
-                        .accessibilityIdentifier("home-decision-\(pair.offset)")
-                } else {
-                    Button(label) { answer(pair.offset) }
-                        .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
-                        .accessibilityIdentifier("home-decision-\(pair.offset)")
-                }
+                Button(label) { answer(pair.offset) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
+                    .accessibilityIdentifier("home-decision-\(pair.offset)")
             }
         }
         .confirmAction($pending)
@@ -77,7 +71,7 @@ struct HomeDecisionPopup: View {
         let detail: String = e.displayText(opt["d"].string, companyID: m.companyID)
         let lines: [String] = MessageCard.preview(e, m, opt)
         return VStack(alignment: .leading, spacing: PopupSpace.tight) {
-            PopupOptionButton(title: label, highlighted: index == 0, identifier: "home-decision-\(index)") {
+            PopupOptionButton(title: label, identifier: "home-decision-\(index)") {
                 Haptics.tap()
                 DecisionAnswering.choose(store, e, m, index, ask: { (a: PendingAction) in pending = a }, done: { })
             }

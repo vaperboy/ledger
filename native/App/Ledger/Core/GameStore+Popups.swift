@@ -4,8 +4,8 @@ import Simulation
 
 /// The Home popup queue: one open decision at a time on Home, and each serious alert once.
 extension GameStore {
-    /// Popups wait while the tutorial runs or a day is being played.
-    var homePopupsOn: Bool { !tutorialActive && !isAdvancing }
+    /// Popups wait while the tutorial runs, a day is being played, or the daily brief or weekly report is still open.
+    var homePopupsOn: Bool { !tutorialActive && !isAdvancing && dailySheet == nil && reportSheet == nil }
 
     /// The Home tab at its root, where decisions pop up.
     var onHomeRoot: Bool { tab == .company && depth(.company) == 0 }

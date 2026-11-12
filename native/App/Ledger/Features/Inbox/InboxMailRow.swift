@@ -89,7 +89,7 @@ struct InboxMailRow: View {
     private func optionButtons(_ labels: [String], _ answer: @escaping (Int) -> Void, fullWidth: Bool) -> some View {
         ForEach(Array(labels.enumerated()), id: \.offset) { (i: Int, label: String) in
             Button(label) { Haptics.tap(); answer(i) }
-                .buttonStyle(TertiaryButtonStyle(size: .compact, tint: i == 0 ? P.accent : P.inkSoft))
+                .buttonStyle(TertiaryButtonStyle(size: .compact, tint: P.inkSoft))
                 .accessibilityIdentifier("inbox-inline-option")
         }
     }

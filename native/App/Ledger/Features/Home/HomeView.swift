@@ -37,6 +37,7 @@ struct HomeSummary<Companies: View>: View {
             }
             if fills { Self.gap }
             HomeGoalStrip(engine: e)
+            HomePassCard()
             HomeRecapCard()
             HomeWorldStrip()
             if fills { Self.gap }

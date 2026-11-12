@@ -105,7 +105,7 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     private func groupEntity() -> String {
-        guard goGroup("Structure") else { return "" }
+        guard goGroup("Overview") else { return "" }
         if let h = find(wait: 4, { $0.id.hasPrefix("group-entity-co") && $0.type == .button && $0.label.range(of: "Caf", options: [.caseInsensitive, .diacriticInsensitive]) != nil }) { return h.id }
         return ids(prefix: "group-entity-co", wait: 1).first ?? ids(prefix: "group-entity-", wait: 1).first ?? ""
     }
@@ -129,7 +129,7 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     private func openEntityTab(_ entity: String, _ name: String) -> Bool {
-        guard !entity.isEmpty, goGroup("Structure") else { return false }
+        guard !entity.isEmpty, goGroup("Overview") else { return false }
         guard tapID(entity, wait: 4) else { return false }
         return tapGroupTab(name)
     }
@@ -137,10 +137,10 @@ final class FeatureToursTests: FeatureTourCase {
     func testT04_Group() {
         step("group tab: opens on Overview") { goTab("Group") ? (isSelected("group-home-tab-Overview") ? .pass(signature().text) : .fail("Overview not selected: " + tabState())) : .fail("no Group tab") }
         step("group tab: health") { health("Group", title: false) }
-        for home in ["Structure", "People", "Suppliers"] {
+        for home in ["Overview", "People", "Suppliers"] {
             step("group tab: \(home) opens and is clean") {
                 guard goGroup(home) else { return .fail("no \(home) tab") }
-                if home == "Structure" && ids(prefix: "group-entity-").isEmpty { return .fail("no group-entity-* rows: " + tabState()) }
+                if home == "Overview" && ids(prefix: "group-entity-").isEmpty { return .fail("no group-entity-* rows: " + tabState()) }
                 return health("Group \(home)", title: false)
             }
         }

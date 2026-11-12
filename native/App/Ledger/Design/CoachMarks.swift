@@ -206,7 +206,6 @@ enum CoachTours {
         CoachTour(id: "group", trigger: .tab(.group), marks: [
             CoachMark(stop: .groupAdd, text: "Add a new company, franchise or club to your group here."),
             CoachMark(stop: .groupPeople, text: "People lists everyone who works for you. Tap it to look.", passThrough: true),
-            CoachMark(stop: .groupStructure, text: "Structure shows what you own and who runs it. Tap it to look.", passThrough: true),
             CoachMark(stop: .groupCard, text: "Each card is a company or a stake. Open one to manage it."),
         ]),
         CoachTour(id: "ventures", trigger: .tab(.projects), marks: [

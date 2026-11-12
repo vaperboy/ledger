@@ -4,7 +4,7 @@ import Businesses
 import Simulation
 
 enum GroupHomeTab: String, CaseIterable, Hashable {
-    case overview = "Overview", structure = "Structure", people = "People", suppliers = "Suppliers"
+    case overview = "Overview", people = "People", suppliers = "Suppliers"
 }
 
 struct GroupHome: View {
@@ -20,7 +20,7 @@ struct GroupHome: View {
         let badges: [GroupHomeTab: Int] = waiting > 0 ? [GroupHomeTab.overview: waiting] : [:]
         VStack(spacing: 0) {
             GroupSectionBar(tab: $tab, badges: badges, sections: GroupHomeTab.allCases, idPrefix: "group-home-tab-",
-                            anchors: [GroupHomeTab.structure: CoachStop.groupStructure, GroupHomeTab.people: CoachStop.groupPeople])
+                            anchors: [GroupHomeTab.people: CoachStop.groupPeople])
                 .padding(.top, Theme.Space.s)
             SegmentPager(items: GroupHomeTab.allCases, selection: $tab) { (t: GroupHomeTab) in
                 ScrollScreen(spacing: Theme.Space.xxl, top: Theme.Space.l) { content(t) }
@@ -31,7 +31,6 @@ struct GroupHome: View {
     @ViewBuilder private func content(_ t: GroupHomeTab) -> some View {
         switch t {
         case .overview: GroupOverviewTab(engine: engine, onAdd: onAdd, onPick: onPick)
-        case .structure: GroupStructureTab(engine: engine, onPick: onPick)
         case .people: GroupPeopleTab(engine: engine, onPick: onPick)
         case .suppliers: GroupSupplierDirectory(embedded: true)
         }
@@ -64,6 +63,7 @@ struct GroupOverviewTab: View {
             }
             needsYou(list)
             keyFigures(list, ov)
+            GroupStructureTab(engine: engine, onPick: onPick)
         }
     }
 
@@ -280,11 +280,16 @@ struct GroupPeopleTab: View {
 
     private func companyRow(_ l: TeamOverview.CompanyLine, passedUp: Int) -> some View {
         let managerID: Int? = engine.state.company(l.id)?.managerID
+        // The player's own avatar when they run it; a boss above the store is found by name when the store has no manager of its own.
+        let boss: Person? = managerID == nil && l.managerTitle != nil ? engine.state.people.values.first { (p: Person) -> Bool in p.name == l.managedBy } : nil
+        let lead: LedgerRow.Leading = l.managerTitle == nil
+            ? .player(engine.state.player.name)
+            : .thumb(ThumbSpec(kind: .person, key: l.managerTitle ?? "manager", initials: l.managedBy, face: face(managerID) ?? boss?.faceKey))
         let who: String = l.managerTitle.map { (t: String) -> String in l.managedBy + ", " + t.lowercased() } ?? "You run it"
         var parts: [String] = [who]
         if passedUp > 0 { parts.append("\(passedUp) passed up to you") } else if l.managerTitle != nil, let a = authority(l) { parts.append(a) }
         let id: Int = l.id
-        return LedgerRow(leading: .thumb(ThumbSpec(kind: .person, key: l.managerTitle ?? "owner", initials: l.managedBy, face: face(managerID))),
+        return LedgerRow(leading: lead,
                          title: l.name, subtitle: parts.joined(separator: " \u{00B7} "),
                          value: "\(l.staff) staff", valueNote: l.monthlyWages > 0 ? store.short(l.monthlyWages) : "", lineLimit: 2,
                          identifier: "group-who-\(l.id)", action: managerID == nil ? nil : { sheet = .manager(id) })

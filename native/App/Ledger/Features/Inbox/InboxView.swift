@@ -518,7 +518,7 @@ struct MessageCard: View {
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .padding(.vertical, Theme.Space.s).padding(.leading, Theme.Space.m).padding(.trailing, Theme.Space.xxl)
             .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(idx == 0 ? P.accent.opacity(0.7) : Color.clear, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(Color.clear, lineWidth: 1))
             .overlay(alignment: .trailing) { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).padding(.trailing, Theme.Space.m) }
             .contentShape(Rectangle())
         }.buttonStyle(PressableStyle()).accessibilityIdentifier("inbox-option")
