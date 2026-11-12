@@ -66,35 +66,24 @@ struct CompaniesView: View {
             ScrollView(.vertical) { page(e, rows: rows, limit: nil, compact: false) }
                 .scrollIndicators(.hidden)
         } else {
-            if rows.count <= 1 {
-                ViewThatFits(in: .vertical) {
-                    page(e, rows: rows, limit: 1, compact: false, fills: true)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true, trim: 1)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true, trim: 2)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true, trim: 3)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true, chart: false, trim: 3)
-                }
-            } else {
-                ViewThatFits(in: .vertical) {
-                    page(e, rows: rows, limit: 5, compact: false, fills: true)
-                    page(e, rows: rows, limit: 4, compact: false, fills: true)
-                    page(e, rows: rows, limit: 3, compact: false, fills: true)
-                    page(e, rows: rows, limit: 4, compact: true, fills: true)
-                    page(e, rows: rows, limit: 3, compact: true, fills: true)
-                    page(e, rows: rows, limit: 2, compact: true, fills: true)
-                    page(e, rows: rows, limit: 2, compact: true, fills: true, chart: false)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true, chart: false)
-                    ScrollView(.vertical) { page(e, rows: rows, limit: 3, compact: false) }
-                        .scrollIndicators(.hidden)
-                        .scrollBounceBehavior(.basedOnSize)
-                }
+            ViewThatFits(in: .vertical) {
+                page(e, rows: rows, limit: 5, compact: false, fills: true)
+                page(e, rows: rows, limit: 4, compact: false, fills: true)
+                page(e, rows: rows, limit: 3, compact: false, fills: true)
+                page(e, rows: rows, limit: 4, compact: true, fills: true)
+                page(e, rows: rows, limit: 3, compact: true, fills: true)
+                page(e, rows: rows, limit: 2, compact: true, fills: true)
+                page(e, rows: rows, limit: 2, compact: true, fills: true, chart: false)
+                page(e, rows: rows, limit: 1, compact: true, fills: true, chart: false)
+                ScrollView(.vertical) { page(e, rows: rows, limit: 3, compact: false) }
+                    .scrollIndicators(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
             }
         }
     }
 
-    private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool, fills: Bool = false, chart: Bool = true, trim: Int = 0) -> some View {
-        HomeSummary(engine: e, compact: compact, fills: fills, chart: chart, trim: trim) {
+    private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool, fills: Bool = false, chart: Bool = true) -> some View {
+        HomeSummary(engine: e, compact: compact, fills: fills, chart: chart) {
             companiesBlock(e, rows: rows, limit: limit, compact: compact)
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, (compact ? Theme.Space.xs : Theme.Space.s) + missingTop).padding(.bottom, Theme.Space.m)
@@ -305,8 +294,13 @@ struct CompanyRow: View {
         let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(style.badge.isEmpty ? badgeID : style.badge, earned: engine.careerCosmetics, pro: ent.isPro)
         let accent: Color = Cosmetics.resolvedTheme(style.theme.isEmpty ? themeID : style.theme, pro: ent.isPro).accent
         let urgent = CompaniesView.urgency(co, h) == 0
-        let month: Double = h.profitTTM / 12
-        let profitTint: Color = month < -0.5 ? Theme.loss : month > 0.5 ? Theme.gain : Theme.inkSoft
+        let weekProfits: [Int: Double] = store.memo("homeWeekProfit") { (g: GameEngine) -> [Int: Double] in
+            var out: [Int: Double] = [:]
+            for c in g.reports(.week).last?.companies ?? [] { out[c.id] = c.pnl.netProfit }
+            return out
+        } ?? [:]
+        let week: Double? = weekProfits[co.id]
+        let profitTint: Color = (week ?? 0) < -0.5 ? Theme.loss : (week ?? 0) > 0.5 ? Theme.gain : Theme.inkSoft
         HStack(spacing: Theme.Space.s) {
             if engine.companyLogoID(companyID: co.id).isEmpty { ThumbnailView(kind: .trade, key: co.type, size: 28) } else { LogoBadge(logoID: engine.companyLogoID(companyID: co.id), size: 28) }
             VStack(alignment: .leading, spacing: 1) {
@@ -322,9 +316,9 @@ struct CompanyRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 1) {
-                Text((month < -0.5 ? "\u{2212}" : month > 0.5 ? "+" : "") + store.short(abs(month), in: co) + " a month")
+                Text(week.map { (w: Double) -> String in (w < -0.5 ? "\u{2212}" : w > 0.5 ? "+" : "") + store.short(abs(w), in: co) } ?? "\u{2013}")
                     .textStyle(.body, tint: profitTint, numeric: true, weight: .medium)
-                Text("Cash " + store.short(co.cash, in: co)).textStyle(.caption, tint: co.cash < 0 ? Theme.loss : Theme.inkFaint, numeric: true)
+                Text("this week").textStyle(.caption, tint: Theme.inkFaint)
             }
             .lineLimit(1)
             .layoutPriority(1)

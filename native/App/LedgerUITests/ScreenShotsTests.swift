@@ -412,7 +412,7 @@ final class ScreenShotsTests: FeatureTourCase {
             guard goTab("Home") else { return "no Home tab" }
             return ok(homeVisible(6), "Home did not show")
         }
-        popup("home-goals") { ok(tapID("home-rank-ring", wait: 2), "no home-rank-ring on Home") }
+        popup("home-goals") { ok(tapID("home-goal", wait: 2), "no home-goal on Home") }
         page("home-new-company") {
             guard goTab("Home"), tapID("home-new-company", wait: 2) else { return "no Start a company button on Home in this game" }
             return ok(has("back-button", wait: 4), "the new company page did not open")

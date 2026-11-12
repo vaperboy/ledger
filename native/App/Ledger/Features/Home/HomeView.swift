@@ -8,11 +8,11 @@ struct HomeSummary<Companies: View>: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
+    @ObservedObject private var streak = StreakModel.shared
     var engine: GameEngine
     var compact: Bool = false
     var fills: Bool = false
     var chart: Bool = true
-    var trim: Int = 0
     @ViewBuilder var companies: () -> Companies
     @State private var showInsights = false
 
@@ -32,28 +32,25 @@ struct HomeSummary<Companies: View>: View {
                         TopPriorities(engine: e).frame(maxWidth: .infinity)
                     }
                 } else {
-                    NetWorthCard(engine: e, chartHeight: chart ? (compact ? 24 : 32) : 0, showBalances: trim < 3) { showInsights = true }
-                    if trim < 1 { HomeMilestoneLine(engine: e) }
+                    NetWorthCard(engine: e, chartHeight: chart ? (compact ? 24 : 32) : 0) { showInsights = true }
                 }
             }
             if fills { Self.gap }
-            if trim < 2 {
-                HomeProgressStrip(engine: e)
-                HomeLevelBar(engine: e)
-                HomeMissionStrip(engine: e)
-            }
-            HomeSeasonPromo(compact: trim >= 2)
-            if trim < 2 {
-                HomeRecapCard()
-                HomeWorldStrip()
-                if fills { Self.gap }
-            }
+            HomeGoalStrip(engine: e)
+            HomeRecapCard()
+            HomeWorldStrip()
+            if fills { Self.gap }
             if sizeClass != .regular { TopPriorities(engine: e, compact: compact).coachAnchor(.needsYou) }
             if fills { Self.gap }
             companies()
             if fills { Self.gap }
         }
         .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall, category: .detail, tone: .info) { InsightsView(engine: e) }
+        .task {
+            await MainActor.run {
+                if let reward = streak.openToday() { store.tell("Daily streak", reward.text, tone: "good") }
+            }
+        }
     }
 
     private static var gap: some View { Spacer(minLength: 0) }
@@ -106,7 +103,6 @@ struct NetWorthCard: View {
     @Environment(Entitlements.self) private var ent
     var engine: GameEngine
     var chartHeight: CGFloat = 40
-    var showBalances: Bool = true
     var onInsights: () -> Void
     @State private var snap: NetWorthSnap?
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 42
@@ -160,7 +156,7 @@ struct NetWorthCard: View {
                         .minimumScaleFactor(0.8).lineLimit(2)
                 }
                 changeLine(today: store.dayChip?.profit, week: week, month: month)
-                if showBalances { balanceRow(personal: nw.personal, total: nw.total, weekAgo: weekAgo, monthAgo: monthAgo) }
+                balanceRow(personal: nw.personal, total: nw.total, weekAgo: weekAgo, monthAgo: monthAgo)
                 if series.count >= 2 && chartHeight > 0 {
                     let rising: Bool = (series.last ?? 0) >= (series.first ?? 0)
                     LiveSparkline(values: series, tint: rising ? Theme.gain : Theme.loss, filled: true)
@@ -248,24 +244,10 @@ struct NetWorthCard: View {
 
 struct HomeGroupLabel<Trailing: View>: View {
     var title: String
-    var onTap: (() -> Void)? = nil
     @ViewBuilder var trailing: () -> Trailing
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.s) {
-            if let onTap {
-                Button { Haptics.tap(); onTap() } label: {
-                    HStack(spacing: Theme.Space.xxs) {
-                        Text(title).textStyle(.label, tint: Theme.inkFaint).lineLimit(1)
-                        LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
-                    }
-                    .frame(minHeight: 28).contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
-                .accessibilityHint("Lists every goal you are working on")
-                .accessibilityIdentifier("home-goals-label")
-            } else {
-                Text(title).textStyle(.label, tint: Theme.inkFaint).lineLimit(1)
-            }
+            Text(title).textStyle(.label, tint: Theme.inkFaint).lineLimit(1)
             Spacer(minLength: Theme.Space.s)
             trailing()
         }
@@ -294,44 +276,17 @@ struct TopPriorities: View {
     var engine: GameEngine
     var compact: Bool = false
 
-    @State private var daily: PlayerGoals.DailyGoal?
-
-    private struct Goal {
-        var title: String
-        var line: String
-        var action: String
-        var link: String
-    }
-
-    private var goal: Goal? {
-        if let g = PlayerGoals.currentLadderGoal(engine.state) {
-            return Goal(title: g.title, line: g.body, action: g.button, link: g.link)
-        }
-        if let d = daily, !d.done {
-            return Goal(title: d.title, line: d.progress, action: d.link.isEmpty ? "" : "Go", link: d.link)
-        }
-        return nil
-    }
-
     var body: some View {
         let first: Suggestion? = store.suggestionsNow.first { $0.tone != .neutral }
         let waiting: Int = store.openDecisionCount
-        let offerAmbition: Bool = first == nil && waiting == 0 && engine.ambitionCardPending
-        let next: Goal? = first == nil && waiting == 0 && !offerAmbition ? goal : nil
-        let tick: Int = engine.state.week * 7 + engine.state.day
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HomeGroupLabel(title: next != nil || offerAmbition ? "Your next goal" : "Needs you",
-                           onTap: next != nil || offerAmbition ? { store.openGoals() } : nil) { inboxLink(waiting) }
+            HomeGroupLabel(title: "Needs you") { inboxLink(waiting) }
             if let first {
                 lead(first)
                     .id(first.id)
                     .transition(.opacity)
             } else if waiting > 0 {
                 waitingCard(waiting)
-            } else if offerAmbition {
-                AmbitionCard(compact: compact)
-            } else if let next {
-                goalCard(next)
             } else {
                 HStack(spacing: Theme.Space.s) {
                     LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.small, tint: Theme.inkFaint)
@@ -342,44 +297,6 @@ struct TopPriorities: View {
             }
         }
         .animation(Motion.quick(reduceMotion), value: first?.id)
-        .centerSheet(isPresented: $store.showGoals, title: "Your goals", category: .detail, tone: .info) {
-            GoalsPopup(engine: engine, daily: daily, close: { store.showGoals = false }).environmentObject(store)
-        }
-        .onAppear { daily = store.dailyGoal() }
-        .onChange(of: tick) { _, _ in daily = store.dailyGoal() }
-    }
-
-    private func goalCard(_ g: Goal) -> some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-        let opens: Bool = !g.link.isEmpty && !g.action.isEmpty
-        let card = HStack(alignment: .center, spacing: Theme.Space.m) {
-            LedgerGlyph(glyph: Glyph.goals, size: Theme.Icon.medium, tint: Theme.inkSoft)
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(g.title.tidyMoney).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
-                if !g.line.isEmpty {
-                    Text(g.line.tidyMoney).textStyle(.caption).lineLimit(compact ? 1 : 2).multilineTextAlignment(.leading)
-                }
-                if opens {
-                    Text(g.action).textStyle(.body, tint: Theme.accent, weight: .semibold).lineLimit(1)
-                        .padding(.top, Theme.Space.xxs)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            if opens { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint) }
-        }
-        .fixedSize(horizontal: false, vertical: true)
-        .padding(.vertical, compact ? Theme.Space.m : Theme.Space.l).padding(.horizontal, Theme.Space.l)
-        .glassSurface(raised: true)
-        .contentShape(shape)
-        return Button {
-            guard opens else { return }
-            Haptics.tap()
-            if g.link == "goals" { store.openGoals() } else { _ = store.openLadderLink(g.link) }
-        } label: { card }
-        .buttonStyle(PressableStyle())
-        .disabled(!opens)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("home-goal")
     }
 
     @ViewBuilder private func inboxLink(_ waiting: Int) -> some View {
