@@ -13,7 +13,7 @@ final class ModelRulesTests: XCTestCase {
         return (e, id)
     }
 
-    func testInputVATIsReclaimedWhenRegisteredAndACostWhenNot() throws {
+    func testInputVATIsACostBelowTheThresholdAndReclaimedAboveIt() throws {
         var (e, id) = try cafe()
         e.update { s, d, _ in
             let i = s.companyIndex(id)!
@@ -23,10 +23,12 @@ final class ModelRulesTests: XCTestCase {
             Vat.input(&s, companyIndex: i, net: 1000, data: d)
             XCTAssertEqual(cash - s.companies[i].cash, (1000 * rate).rounded(), accuracy: 1)
             XCTAssertEqual((s.companies[i].books.week["oth"] ?? 0) - oth0, (1000 * rate).rounded(), accuracy: 1, "unreclaimable VAT is a cost")
-            var docs = s.companies[i].value("docs"); docs["vat"] = .object(["st": .string("ok")]); s.companies[i].set("docs", docs)
+            let threshold = World(state: s, data: d).country(s.companies[i]).vatThreshold
+            s.companies[i].monthlyHistory = [MonthRecord(monthIndex: 0, revenue: threshold + 1, profit: 0, cash: 0)]
+            XCTAssertFalse(Vat.isExempt(s.companies[i], World(state: s, data: d)), "sales past the threshold bring the company into VAT with no step to take")
             let before = s.companies[i].vatBalance; cash = s.companies[i].cash
             Vat.input(&s, companyIndex: i, net: 1000, data: d)
-            XCTAssertEqual(before - s.companies[i].vatBalance, (1000 * rate).rounded(), accuracy: 1, "registered: reclaimed through the VAT account")
+            XCTAssertEqual(before - s.companies[i].vatBalance, (1000 * rate).rounded(), accuracy: 1, "past the threshold: reclaimed through the VAT account")
             XCTAssertEqual(cash - s.companies[i].cash, (1000 * rate).rounded(), accuracy: 1)
         }
     }

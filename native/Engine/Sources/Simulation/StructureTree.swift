@@ -73,6 +73,10 @@ public extension GameEngine {
             healthCache[c.id] = h
             return h
         }
+        func capacityToFix(_ c: Company) -> String? {
+            let limit = salesLimit(c)
+            return limit.kind == .capacity || limit.kind == .stopped ? limit.name : nil
+        }
         func label(_ c: Company) -> StructureNode.Health {
             if c.status == .setup { return .setup }
             switch health(c).label {
@@ -97,7 +101,7 @@ public extension GameEngine {
             if decisions, let key = boardKey(companyID: c.id) { waiting = boardOpenDecisions(key: key) }
             var action = StructureNode.Action.open
             if waiting > 0 { action = .decide(waiting) }
-            else if hl == .struggling { action = .fix(h.bottleneck ?? (c.cash < 0 ? "The account is overdrawn." : "Cash is running out.")) }
+            else if hl == .struggling { action = .fix(capacityToFix(c) ?? (c.cash < 0 ? "The account is overdrawn." : "Cash is running out.")) }
             else if c.status == .open, kind != .branch, line?.runner == nil, line?.above.isEmpty ?? true { action = .appointManager }
             return StructureNode(id: id, kind: kind, parentID: parent, companyID: c.id, name: c.name, roleLabel: role,
                                  ownerYouPercent: owner.youPercent,
@@ -122,7 +126,7 @@ public extension GameEngine {
             let boss = mgmt[head.id]?.above.first
             var action = StructureNode.Action.open
             if waiting > 0 { action = .decide(waiting) }
-            else if hl == .struggling { action = .fix(stores.filter { label($0) == .struggling }.compactMap { health($0).bottleneck }.first ?? "A location is losing money.") }
+            else if hl == .struggling { action = .fix(stores.filter { label($0) == .struggling }.compactMap { capacityToFix($0) }.first ?? "A location is losing money.") }
             let owner = ownerLine(companyID: head.id)
             nodes.append(StructureNode(id: cid, kind: .chain, parentID: parent, companyID: nil, name: ch["name"].string,
                                        roleLabel: "\(tradeName(head)) chain, \(stores.count) locations",

@@ -4,12 +4,11 @@ import Countries
 import Finance
 
 public enum Vat {
+    // Outside VAT until twelve months of sales reach the country's threshold; the books switch over by themselves.
     public static func isExempt(_ co: Company, _ w: World) -> Bool {
-        let c = w.country(co)
-        let threshold = c.vatThreshold
-        if threshold <= 0 || Knobs.documentOK(co, "vat") { return false }
-        let t12 = co.monthlyHistory.suffix(12).reduce(0) { $0 + $1.revenue }
-        return t12 < threshold
+        let threshold = w.country(co).vatThreshold
+        guard threshold > 0 else { return false }
+        return co.monthlyHistory.suffix(12).reduce(0) { $0 + $1.revenue } < threshold
     }
 
     public static func rate(_ co: Company, _ bd: Trade, _ w: World) -> Double {

@@ -106,7 +106,7 @@ final class MisconductTests: XCTestCase {
         XCTAssertGreaterThan(paid, back + 66_000 * 0.5, "back taxes plus a penalty above half the gain")
         XCTAssertLessThan(co.cash, cashBefore - back, "the company paid back tax, interest and penalty")
         XCTAssertLessThan(co.reputation, repBefore)
-        XCTAssertLessThan(e.state.cash, personalBefore, "the owner is personally liable for part of it")
+        XCTAssertLessThan(e.state.cash, personalBefore, "the director pays part of it personally")
         XCTAssertTrue(Misconduct.cases(co).isEmpty)
         XCTAssertTrue(e.state.inbox.contains { $0.title.hasPrefix("Investigation at") })
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)

@@ -229,7 +229,10 @@ public enum ProfessionalServices {
                 list[k].ratio = sp.rate * refShare / refRate
                 let norm = list.reduce(0.0) { $0 + $1.unitShare * $1.ratio }
                 if norm > 0 { for j in list.indices { list[j].ratio /= norm } }
-                SalesItems.store(&s, i, list)
+                let ratios = Dictionary(list.map { ($0.id, $0.ratio) }, uniquingKeysWith: { a, _ in a })
+                SalesItems.mutate(&s, companyID: id, data: data) { saved in
+                    for j in saved.indices { if let r = ratios[saved[j].id] { saved[j].ratio = r } }
+                }
             }
             var r = ItemModels.Record(id: it.id, model: sp.model)
             r.leadDays = sp.leadDays

@@ -140,7 +140,7 @@ public enum Misconduct {
         var personal = 0.0
         if fine > 0 {
             personal = jsRound(fine * 0.2)
-            if personal > 0 { Payments.playerPays(&s, personal, label: "Personal liability: \(co0.name)", companyID: id) }
+            if personal > 0 { Payments.playerPays(&s, personal, label: "Director's fine: \(co0.name)", companyID: id) }
         }
         st["cases"] = .array(all.filter { c in !hit.contains { $0["w"].int == c["w"].int && $0["k"].string == c["k"].string && $0["g"].double == c["g"].double } })
         st["caught"] = .number(Double(st["caught"].int + 1))
@@ -151,7 +151,7 @@ public enum Misconduct {
         if back > 0 { body += "Back taxes \(cur.display(back)). " }
         if interest > 0 { body += "Interest \(cur.display(interest)). " }
         body += "Penalty \(cur.display(fine)). "
-        if personal > 0 { body += "You are personally liable for \(cur.display(personal)). " }
+        if personal > 0 { body += "As its director you are fined \(cur.display(personal)) yourself. " }
         if closed { body += "Trading is restricted for six weeks. " }
         body += "Reputation falls by \(Int(repLoss))" + (bank ? " and the bank raises your loan margins and marks your credit." : ".")
         s.addMessage(from: authority.isEmpty ? "Authorities" : authority, title: "Investigation at \(co0.name)", body: body, companyID: id, tone: "bad")
@@ -231,7 +231,7 @@ extension StrategicDecisions {
                      title: { co, _, _ in "Lower the tax bill of \(co.name)?" },
                      body: { _, d, cur in
                          "Your accountant sees a way to cut this year's company tax. "
-                         + "1) Leave about \(cur.display(d["conc"].double)) of takings off the books: benefit about \(cur.display(d["save"].double)) less tax, felt at the next month end; cost nothing now; risk about \(Misconduct.pct(d["risk"].double)) a year of an investigation, rising with size and each repeat; if found you repay the tax with interest plus a penalty of about \(cur.display(d["fine"].double)), lose reputation and are personally liable for part of it. "
+                         + "1) Leave about \(cur.display(d["conc"].double)) of takings off the books: benefit about \(cur.display(d["save"].double)) less tax, felt at the next month end; cost nothing now; risk about \(Misconduct.pct(d["risk"].double)) a year of an investigation, rising with size and each repeat; if found you repay the tax with interest plus a penalty of about \(cur.display(d["fine"].double)), lose reputation and pay part of it yourself as director. "
                          + "2) Use legal deductions: fee \(cur.display(d["fee"].double)), benefit about \(cur.display(d["lsave"].double)) less tax, no risk, effect at the next month end. "
                          + "3) Do nothing." },
                      opts: [
@@ -323,7 +323,7 @@ extension StrategicDecisions {
                      title: { co, _, _ in "An official offers \(co.name) a favour" },
                      body: { _, d, cur in
                          "A public buyer's official hints that a big order for you is easier if a 'consulting fee' is paid. "
-                         + "1) Pay: cost \(cur.display(d["cost"].double)) now, gone whatever happens; benefit: with \(Misconduct.pct(d["p"].double)) chance sales are 6% higher for 26 weeks (about \(cur.display(d["gain"].double))), otherwise nothing; risk about \(Misconduct.pct(d["risk"].double)) a year of a criminal investigation, then a penalty of about \(cur.display(d["fine"].double)), reputation -15, trading restricted for 6 weeks and personal liability for you. "
+                         + "1) Pay: cost \(cur.display(d["cost"].double)) now, gone whatever happens; benefit: with \(Misconduct.pct(d["p"].double)) chance sales are 6% higher for 26 weeks (about \(cur.display(d["gain"].double))), otherwise nothing; risk about \(Misconduct.pct(d["risk"].double)) a year of a criminal investigation, then a penalty of about \(cur.display(d["fine"].double)), reputation -15, trading restricted for 6 weeks and a fine for you as director. "
                          + "2) Report it: reputation +2 for integrity, nothing else. "
                          + "3) Decline quietly." },
                      opts: [

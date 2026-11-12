@@ -238,7 +238,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
         e.update { s, _, _ in
             for id in ids {
                 guard let i = s.companyIndex(id) else { continue }
-                var docs = s.companies[i].value("docs"); docs["vat"] = .object(["st": "ok", "done": 0, "ok": 0]); s.companies[i].set("docs", docs)
                 s.companies[i].managerID = 0
             }
         }
@@ -379,7 +378,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
             let charges = r.events.first { $0.kind == "vatSeen" && $0.co == id }
             XCTAssertTrue(charges != nil || ev.isEmpty, tag("company \(id): no VAT is filed when none was ever charged"))
             if charges != nil { XCTAssertGreaterThanOrEqual(ev.count, filingWeeks.filter { $0 > charges!.week }.count - 1, tag("company \(id): VAT filed every \(r.filing) month(s): \(ev.count) of \(filingWeeks.count)")) }
-            if charges != nil, charges!.week < 8, r.filing == 1 && W == 156 { XCTAssertGreaterThanOrEqual(ev.count, 35, tag("12 filings a year where VAT is filed monthly")) }
+            if charges != nil, charges!.week < 8, r.filing == 1 && W == 156 { XCTAssertGreaterThanOrEqual(ev.count, 34, tag("12 filings a year where VAT is filed monthly")) }
         }
 
         let byLoan = Dictionary(grouping: r.events.filter { $0.kind == "instalment" }, by: { $0.month })

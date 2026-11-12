@@ -69,7 +69,7 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
             let b = PersonalFinance.breakdown(s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
             XCTAssertGreaterThanOrEqual(b.incomeDue, -5_000, "a refund is at most what was withheld")
             s.tax.salary = 60_000
-            let tax = Taxes.personalIncomeTax(60_000, kind: .wage, in: ctx.homeCountry(s))
+            let tax = Taxes.personalIncomeTax(60_000, in: ctx.homeCountry(s))
             XCTAssertEqual(PersonalFinance.breakdown(s, context: ctx, netWorth: 0, ownedCompanyValue: 0).incomeTax, tax, accuracy: 0.01)
         }
     }

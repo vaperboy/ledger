@@ -123,14 +123,14 @@ final class CountryAuditProbeTests: XCTestCase {
     func testPersonalTaxQuoteRisesWithIncomeInEveryCountry() throws {
         for c in try countries() {
             let median = c.medianMonthlyWage * 12
-            let t1 = Taxes.personalIncomeTax(median, kind: .wage, in: c), t5 = Taxes.personalIncomeTax(median * 5, kind: .wage, in: c)
+            let t1 = Taxes.personalIncomeTax(median, in: c), t5 = Taxes.personalIncomeTax(median * 5, in: c)
             XCTAssertGreaterThanOrEqual(t1, 0, c.code)
             XCTAssertLessThan(t1 / median, 0.5, "\(c.code) median earner's rate")
             if c.code == "AE" { XCTAssertEqual(t5, 0, "AE has no personal income tax") } else {
                 XCTAssertGreaterThan(t5 / (median * 5), t1 / median, "\(c.code) progressive")
             }
             XCTAssertLessThan(t5 / (median * 5), 0.65, "\(c.code) high earner's rate")
-            XCTAssertEqual(Taxes.personalIncomeTax(-1000, kind: .wage, in: c), 0, c.code)
+            XCTAssertEqual(Taxes.personalIncomeTax(-1000, in: c), 0, c.code)
         }
     }
 

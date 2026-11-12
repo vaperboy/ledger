@@ -247,7 +247,7 @@ struct CompanyTable: View {
                     num(RunwayText.of(r.h), r.h.runwayWeeks.map { $0 < 8 ? Theme.loss : Theme.warn } ?? Theme.inkSoft)
                     Text(RunBy.name(engine, r.co)).textStyle(.caption).lineLimit(1)
                     num("\(r.co.staff.count)")
-                    Text(r.h.bottleneck ?? "–").textStyle(.caption).lineLimit(1)
+                    Text(r.h.limitedBy ?? "–").textStyle(.caption).lineLimit(1)
                 }
                 .padding(.vertical, Theme.Space.xs)
             }

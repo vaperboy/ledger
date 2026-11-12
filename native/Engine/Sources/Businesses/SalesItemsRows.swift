@@ -88,7 +88,7 @@ public extension SalesItems {
 
     static func mutate(_ s: inout GameState, companyID: Int, data: GameData, _ body: (inout [Item]) -> Void) {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return }
-        var list = items(s.companies[i], bd)
+        var list = stored(s.companies[i], bd)
         body(&list)
         store(&s, i, list)
     }

@@ -66,9 +66,10 @@ struct ItemsList: View {
         let reading: (text: String, tint: Color) = page.map { (p: ItemPageData) in itemProfitReading(p.live, cur) } ?? ("", Theme.inkSoft)
         let word: String = page?.statusWord ?? "On sale"
         let off: String = it.discountPercent > 0 ? " \u{00B7} \(Int(it.discountPercent))% off" : ""
+        let sold: String = it.weeklyUnits >= 0.05 ? " \u{00B7} " + String(format: it.weeklyUnits < 10 ? "%.1f" : "%.0f", it.weeklyUnits) + " a week" : ""
         let id: String = it.id
         return LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: it.name, glyph: it.isService ? Glyph.opsWrench : Glyph.opsBox)),
-                         title: it.name, subtitle: word + off, value: itemAmount(it.price, cur),
+                         title: it.name, subtitle: word + off + sold, value: itemAmount(it.price, cur),
                          valueNote: reading.text, valueNoteTint: reading.tint, lineLimit: 1, identifier: "sales-item-\(id)") { onOpen(id) }
     }
 }

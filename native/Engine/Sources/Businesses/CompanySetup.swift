@@ -348,7 +348,7 @@ public enum CompanySetup {
         let w = World(state: tmp, data: data)
         var r = Estimate()
         var vehicleFull = 0.0, monthlyRent = 0.0
-        for d in Documents.needed(co, bd, w) where d != "vat_not_applicable" { r.documents += Documents.cost(d, company: co, bd, w) }
+        for d in Documents.needed(co, bd, w) { r.documents += Documents.cost(d, company: co, bd, w) }
         let need = standardEquipment(bd, size: size)
         for e in bd.equipment {
             let q = need[e.id] ?? (e.isRequired ? 1 : 0)
@@ -441,7 +441,7 @@ public enum CompanySetup {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return SetupReport(log: ["unknown company"]) }
         var rep = SetupReport()
         let w = World(state: s, data: data)
-        for d in Documents.needed(s.companies[i], bd, w) where d != "vat_not_applicable" && options.applyDocuments {
+        for d in Documents.needed(s.companies[i], bd, w) where options.applyDocuments {
             let st = s.companies[i].value("docs")[d]["st"].string
             if st == "ok" || st == "applied" { continue }
             let r = Documents.apply(d, companyID: companyID, state: &s, data: data)

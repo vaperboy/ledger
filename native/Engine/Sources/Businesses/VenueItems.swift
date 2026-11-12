@@ -254,7 +254,7 @@ public enum VenueItems {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open, let bd = data.catalog[s.companies[i].type], allTrades.contains(bd.id), let spec = specs[bd.id] else { return }
         let co = s.companies[i]
         let first = co.value(key).isNull
-        let old = SalesItems.items(co, bd)
+        let old = SalesItems.stored(co, bd)
         let existing = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
         var kept: [SalesItems.Item] = old.filter { !isManaged($0.id) && !(first && $0.id.hasPrefix("d")) }
         var managed: [SalesItems.Item] = []

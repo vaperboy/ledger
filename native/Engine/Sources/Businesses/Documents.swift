@@ -28,12 +28,11 @@ public enum Documents {
 
     public static func needed(_ co: Company, _ bd: Trade, _ w: World) -> [String] {
         let country = w.country(co)
-        var need = bd.documents.filter { $0 != "accountant_agreement" && !($0 == "vat" && Vat.isExempt(co, w)) }
+        var need = bd.documents.filter { $0 != "accountant_agreement" }
         for knob in bd.knobs {
             for o in Knobs.activeOptions(co, knob) { for d in o.requiredDocs where !need.contains(d) { need.append(d) } }
         }
         if !co.value("foreignOf").isNull && !need.contains("foreign_entity") { need.append("foreign_entity") }
-        if !need.contains("vat") && !Vat.isExempt(co, w) { need.append("vat") }
         return need.filter { !isSkipped($0, country: country) }
     }
 
@@ -66,7 +65,7 @@ public enum Documents {
         let s = w.state
         var weeks = Double(dd.weeks)
         if co.countryCode != s.homeCountryCode { weeks = (weeks * w.country(co).bureaucracy * (s.hasHeadOffice("cd_" + co.countryCode) ? 0.6 : 1.4)).rounded(.up) }
-        if id == "vat" || id == "registration" || id == "vat_not_applicable" { weeks = max(1, weeks) }
+        if id == "registration" { weeks = max(1, weeks) }
         if co.value("law")["own"].bool && weeks > 3 { weeks = (weeks * 0.75).rounded(.up) }
         return Int(saturating: weeks)
     }
@@ -101,7 +100,7 @@ public enum Documents {
     }
 
     static func refusalChance(_ id: String, company co: Company) -> Double {
-        let routine: Set<String> = ["registration", "vat", "police", "privacy"]
+        let routine: Set<String> = ["registration", "police", "privacy"]
         let base = routine.contains(id) ? 0.04 : 0.10
         return min(0.3, base)
     }

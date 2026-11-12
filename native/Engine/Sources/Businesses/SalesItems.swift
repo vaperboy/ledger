@@ -101,7 +101,7 @@ public enum SalesItems {
         guard let i = s.companyIndex(companyID), firstChoicePending(s.companies[i]) else { return }
         seedStarters(&s, i, data: data)
         guard let bd = data.catalog[s.companies[i].type] else { return }
-        let all = items(s.companies[i], bd)
+        let all = stored(s.companies[i], bd)
         let hide = all.map(\.id).filter { $0 != keeping }
         let keep: [JSONValue] = keeping.map { [JSONValue.string($0)] } ?? []
         store(&s, i, all)
@@ -207,9 +207,17 @@ public enum SalesItems {
                  "pm": .number(it.priceMultiplier), "dp": .number(it.discountPercent), "dw": .number(Double(it.discountWeeks)), "lg": .bool(it.listedForGroup)])
     }
 
-    public static func items(_ co: Company, _ bd: Trade) -> [Item] {
+    // The list as saved. Hidden starters keep their share here, so edits never change how wide the range counts.
+    static func stored(_ co: Company, _ bd: Trade) -> [Item] {
         let raw = co.value(key)
-        return shaped(co, raw.isNull ? defaults(co, bd) : raw.array.map(decode))
+        return raw.isNull ? defaults(co, bd) : raw.array.map(decode)
+    }
+
+    public static func items(_ co: Company, _ bd: Trade) -> [Item] { shaped(co, stored(co, bd)) }
+
+    // True once an item price or discount differs from the market default.
+    public static func hasOwnPrices(_ co: Company) -> Bool {
+        co.value(key).array.contains { (j: JSONValue) -> Bool in (!j["pm"].isNull && j["pm"].double != 1) || j["dp"].double > 0 }
     }
 
     static func store(_ s: inout GameState, _ i: Int, _ items: [Item]) { s.companies[i].set(key, .array(items.map(encode))) }

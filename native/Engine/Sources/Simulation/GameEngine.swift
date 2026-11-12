@@ -61,7 +61,7 @@ public struct GameEngine {
         json["hist"] = .object(["nw": .array([]), "cash": .array([])]); json["log"] = .array([])
         json["econ"] = .object(["phase": "steady", "dem": 1.0, "infl": 0.03, "fuel": 1.0, "mat": 1.0, "power": 1.0, "oil": 1.0, "housing": 1.0,
                                 "rate": .number(max(0.0025, country.startingPolicyRate)), "left": 12, "freight": 1.0])
-        json["tax"] = .object(["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "bank": 0])
+        json["tax"] = .object(["ytd": 0, "paid": 0, "wage": 0, "div": 0, "ytdDiv": 0, "bank": 0])
         json["office"] = .object(["tier": "home", "city": .string(cityID ?? country.cities[0].id), "since": 0, "staff": .array([]),
                                   "rep": .object(["freq": 4, "detail": "short", "only": "managed"])])
         json["group"] = .object(["ceo": .null, "regional": .array([]), "big": .number(currency.scaledPrice(5_000_000))])

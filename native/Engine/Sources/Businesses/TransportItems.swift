@@ -178,7 +178,7 @@ public enum TransportItems {
         let w = World(state: s, data: data)
         guard SalesItems.marketTicket(co, bd, w) > 0 else { return }
         let first = co.value(key).isNull
-        let old = SalesItems.items(co, bd)
+        let old = SalesItems.stored(co, bd)
         let list = bases(s, co, bd, spec, w)
         guard !list.isEmpty else { return }
         let existing = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })

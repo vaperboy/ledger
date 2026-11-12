@@ -12,7 +12,7 @@ final class TaxAtSourceTests: XCTestCase {
         e.update { s, _, _ in
             Ledger.set(&s, to: 0)
             s.loans.removeAll()
-            s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
+            s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
             Ledger.move(&s, .me, 500_000_000, why: "Test funds")
         }
         return e

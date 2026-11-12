@@ -49,7 +49,7 @@ public enum EmployerCost {
     }
 
     public static func deductions(wage: Double, country: Country) -> Deductions {
-        let tax = wage > 0 ? Taxes.personalIncomeTax(wage * 12, kind: .wage, in: country) / 12 : 0
+        let tax = wage > 0 ? Taxes.personalIncomeTax(wage * 12, in: country) / 12 : 0
         let social = wage * country.employeeSocial
         return Deductions(incomeTax: tax, employeeSocial: social, net: max(0, wage - tax - social))
     }
