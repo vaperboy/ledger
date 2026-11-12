@@ -124,7 +124,8 @@ final class BalanceAuditTests: XCTestCase {
         XCTAssertLessThan(GoalClaims.dailyCash * 365, 100_000, "a daily goal every day of a year stays small")
     }
 
-    private func liquid(_ e: GameEngine) -> Double { e.state.cash + e.state.companies.filter { $0.status.isLive }.reduce(0) { $0 + $1.cash } }
+    // Every company draws on the one account, so the account is all the money there is.
+    private func liquid(_ e: GameEngine) -> Double { e.state.cash + HeldMoney.playerRemaining(e.state) }
 
     func testAPlayerWhoOnlyPressesNextDayDoesNotProfitInTheSecondYear() throws {
         for code in ["UK", "NO", "US"] {

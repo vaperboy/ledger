@@ -46,15 +46,21 @@ final class HeldMoneyAndFiguresTests: XCTestCase {
     func testWindUpMidWeekSettlesHeldMoneyAndLeavesNoStrayCash() throws {
         var (e, id) = try game()
         midWeek(&e, day: 2)
-        let held = HeldMoney.remaining(e.state, companyID: id)
+        // The week's held change belongs to the one account, so it is held for the player, never for the company.
+        XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, accuracy: 0.01)
+        let heldForMe = HeldMoney.playerRemaining(e.state)
+        let worth = e.state.cash + heldForMe
+        let payout = e.windUpEstimate(companyID: id)
         XCTAssertEqual(e.windUpCompany(companyID: id), true)
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(co.status, .sold)
-        XCTAssertEqual(co.cash, 0, accuracy: 0.01)
-        XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, "the held days were settled, not left behind")
+        XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, "nothing is left held for a company that is gone")
+        XCTAssertEqual(HeldMoney.playerRemaining(e.state), heldForMe, accuracy: 0.01, "the held days still land in the account")
+        XCTAssertEqual(e.state.cash + HeldMoney.playerRemaining(e.state), worth + payout, accuracy: 1, "winding up pays the quoted amount once and loses nothing held")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "gaps: \(Ledger.gaps(e.state))")
+        let flowAtEnd = e.state.cashFlow["co\(id)"] ?? 0
         for _ in 0..<8 { e.nextDay() }
-        XCTAssertEqual(try XCTUnwrap(e.state.company(id)).cash, 0, accuracy: 0.01, "nothing lands in a dead company afterwards (held was \(held))")
+        XCTAssertEqual(e.state.cashFlow["co\(id)"] ?? 0, flowAtEnd, accuracy: 0.01, "nothing is paid or received by a dead company afterwards")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 

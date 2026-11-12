@@ -183,6 +183,25 @@ final class BillsAndLoansTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
+    func testWindingUpNeverWipesALoanTheCompanysThingsCannotRepay() throws {
+        var (e, id) = try cafe(seed: 44)
+        var loanID = 0
+        e.update { s, _, _ in
+            let things = CompanyFigures.assets(s.companies[s.companyIndex(id)!])
+            loanID = addLoan(&s, company: id, balance: things * 10 + 1_000_000)
+        }
+        let cash0 = e.state.cash
+        let before = try XCTUnwrap(e.state.loans.first { $0.id == loanID }).balance
+        XCTAssertTrue(e.windUpCompany(companyID: id))
+        XCTAssertEqual(e.state.company(id)?.status, .sold)
+        let kept = try XCTUnwrap(e.state.loans.first { $0.id == loanID }, "the loan is not wiped: its money went into the one account")
+        XCTAssertEqual(kept.companyID, 0, "the owner now owes what is left")
+        XCTAssertGreaterThan(kept.balance, before * 0.4)
+        XCTAssertLessThanOrEqual(kept.balance, before)
+        XCTAssertEqual(e.state.cash, cash0, accuracy: 0.5, "nothing is paid out while a lender is unpaid")
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
+
     func testCalledLoanEndsInBankruptcy() throws {
         var (e, id) = try cafe(seed: 42)
         e.update { s, data, ctx in

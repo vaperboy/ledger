@@ -134,7 +134,7 @@ public extension GameEngine {
     @discardableResult mutating func windUpCompany(companyID: Int) -> Bool {
         if isBranch(companyID: companyID) { if case .success = closeBranch(storeID: companyID) { return true }; return false }
         var done = false
-        update { s, _, _ in
+        update { s, _, ctx in
             guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return }
             HeldMoney.settle(&s, companyID: companyID)
             let co = s.companies[i]
@@ -144,14 +144,16 @@ public extension GameEngine {
             let bills = Self.billsOf(co)
             let frac = loanSum > 0 ? clamp((cash - bills) / loanSum, 0, 1) : 1
             var personal = 0.0
+            // The borrowed money went into the one account, so closing the company by choice never wipes a loan:
+            // what its things do not repay stays owed by the owner.
             for l in ownLoans {
                 let left = l.balance * (1 - frac)
-                if left > 1, l.isGuaranteed, let li = s.loans.firstIndex(where: { $0.id == l.id }) {
+                if left > 1 {
                     personal += left
-                    Banking.close(loanID: l.id, repaid: l.balance * frac, state: &s)
-                    if let k = s.loans.firstIndex(where: { $0.id == l.id }) { s.loans[k].name += " (taken over by you)"; s.loans[k].companyID = 0 } else { _ = li }
+                    Banking.close(loanID: l.id, repaid: l.balance * frac, keep: true, state: &s)
+                    if let k = s.loans.firstIndex(where: { $0.id == l.id }) { s.loans[k].name += " (taken over by you)" }
                 } else {
-                    Banking.close(loanID: l.id, repaid: l.balance * frac, state: &s)
+                    Banking.close(loanID: l.id, repaid: l.balance, state: &s)
                 }
             }
             var rest = cash - loanSum - bills
@@ -168,6 +170,7 @@ public extension GameEngine {
             s.stats.companiesSold += 1
             for k in s.inbox.indices where s.inbox[k].companyID == co.id && s.inbox[k].status == "open" { s.inbox[k].set("status", "done") }
             s.note("\(co.name) is closed down and its things sold.", companyID: co.id)
+            if personal > 1 { s.note("\(ctx.homeCurrency(s).display(personal)) of \(co.name)'s loans stays with you.", tone: "bad", companyID: co.id) }
             done = true
         }
         return done

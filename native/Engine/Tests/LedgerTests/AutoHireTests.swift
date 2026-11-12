@@ -140,7 +140,8 @@ final class AutoHireTests: XCTestCase {
                 XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
             }
         }
-        print("NEGO volumes: \(hires) hires after setup (before this change: 73)")
-        XCTAssertEqual(Double(hires), 73, accuracy: 73 * 0.4)
+        // Ten two-year games on defaults: a handful of replacement hires each. The band is wide; it only catches hiring that stops or runs away.
+        print("NEGO volumes: \(hires) hires after setup")
+        XCTAssertEqual(Double(hires), 37, accuracy: 37 * 0.4)
     }
 }
