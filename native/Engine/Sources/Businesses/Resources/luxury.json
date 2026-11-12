@@ -1,5 +1,5 @@
 {
- "_doc": "Aurum private sales: the luxury collection (original ui/screens/mockup.js LUX), the uses, risks and company-ownership rules of features/player/lifestyle.js, and the yields of estates (features/player/estates.js). Prices in the reference currency of the original game.",
+ "_doc": "Aurum private sales: the luxury collection (original ui/screens/mockup.js LUX), the uses, risks and company-ownership rules of features/player/lifestyle.js, and the yields of estates (features/player/estates.js). Prices in the reference currency of the original game. Cars, yachts and jets carry art, the one picture (sheet/cell of App/Ledger/Resources/art/cells) their model name belongs to; no two models share one, and an empty art has no picture yet.",
  "sellFee": 0.08,
  "categories": [
   {
@@ -13,7 +13,8 @@
      "price": 1300000,
      "upkeep": 0.02,
      "growth": -0.14,
-     "volatility": 0.04
+     "volatility": 0.04,
+     "art": "cars/b2-2"
     },
     {
      "id": "c1",
@@ -22,7 +23,8 @@
      "price": 1800000,
      "upkeep": 0.03,
      "growth": -0.12,
-     "volatility": 0.04
+     "volatility": 0.04,
+     "art": "cars/b2-1"
     },
     {
      "id": "c11",
@@ -31,7 +33,8 @@
      "price": 2700000,
      "upkeep": 0.03,
      "growth": -0.1,
-     "volatility": 0.04
+     "volatility": 0.04,
+     "art": "cars/b1-3"
     },
     {
      "id": "c10",
@@ -40,7 +43,8 @@
      "price": 3000000,
      "upkeep": 0.03,
      "growth": 0.01,
-     "volatility": 0.08
+     "volatility": 0.08,
+     "art": "cars/b1-2"
     },
     {
      "id": "c7",
@@ -49,7 +53,8 @@
      "price": 3300000,
      "upkeep": 0.035,
      "growth": -0.08,
-     "volatility": 0.06
+     "volatility": 0.06,
+     "art": "cars/b1-1"
     },
     {
      "id": "c8",
@@ -58,7 +63,8 @@
      "price": 3600000,
      "upkeep": 0.03,
      "growth": -0.07,
-     "volatility": 0.05
+     "volatility": 0.05,
+     "art": "cars/b6-3"
     },
     {
      "id": "c9",
@@ -67,7 +73,8 @@
      "price": 4100000,
      "upkeep": 0.03,
      "growth": -0.06,
-     "volatility": 0.05
+     "volatility": 0.05,
+     "art": "cars/b6-2"
     },
     {
      "id": "c2",
@@ -76,7 +83,8 @@
      "price": 4200000,
      "upkeep": 0.03,
      "growth": -0.02,
-     "volatility": 0.07
+     "volatility": 0.07,
+     "art": "cars/b5-1"
     },
     {
      "id": "c4",
@@ -85,7 +93,8 @@
      "price": 4500000,
      "upkeep": 0.04,
      "growth": -0.05,
-     "volatility": 0.1
+     "volatility": 0.1,
+     "art": "cars/b3-1"
     },
     {
      "id": "c3",
@@ -94,7 +103,8 @@
      "price": 4800000,
      "upkeep": 0.035,
      "growth": 0,
-     "volatility": 0.09
+     "volatility": 0.09,
+     "art": "cars/b3-2"
     },
     {
      "id": "c14",
@@ -103,7 +113,8 @@
      "price": 7500000,
      "upkeep": 0.035,
      "growth": -0.03,
-     "volatility": 0.09
+     "volatility": 0.09,
+     "art": "cars/b7-3"
     },
     {
      "id": "c13",
@@ -112,7 +123,8 @@
      "price": 8000000,
      "upkeep": 0.03,
      "growth": -0.06,
-     "volatility": 0.05
+     "volatility": 0.05,
+     "art": "cars/b3-3"
     },
     {
      "id": "c12",
@@ -121,7 +133,8 @@
      "price": 9500000,
      "upkeep": 0.03,
      "growth": -0.05,
-     "volatility": 0.05
+     "volatility": 0.05,
+     "art": "cars/b4-1"
     },
     {
      "id": "c5",
@@ -130,7 +143,8 @@
      "price": 38000000,
      "upkeep": 0.03,
      "growth": 0.03,
-     "volatility": 0.18
+     "volatility": 0.18,
+     "art": "cars/b7-1"
     },
     {
      "id": "c6",
@@ -139,7 +153,8 @@
      "price": 42000000,
      "upkeep": 0.03,
      "growth": 0.04,
-     "volatility": 0.2
+     "volatility": 0.2,
+     "art": "cars/b5-2"
     }
    ]
   },
@@ -283,7 +298,8 @@
      "price": 5000000,
      "upkeep": 0.08,
      "growth": -0.08,
-     "volatility": 0.05
+     "volatility": 0.05,
+     "art": "luxury/yachtjet-3"
     },
     {
      "id": "y2",
@@ -292,7 +308,8 @@
      "price": 38000000,
      "upkeep": 0.1,
      "growth": -0.07,
-     "volatility": 0.06
+     "volatility": 0.06,
+     "art": "luxury/yachtjet-2"
     },
     {
      "id": "y3",
@@ -301,7 +318,8 @@
      "price": 320000000,
      "upkeep": 0.1,
      "growth": -0.05,
-     "volatility": 0.08
+     "volatility": 0.08,
+     "art": "luxury/yachtjet-1"
     }
    ]
   },
@@ -316,7 +334,8 @@
      "price": 60000000,
      "upkeep": 0.09,
      "growth": -0.08,
-     "volatility": 0.05
+     "volatility": 0.05,
+     "art": "luxury/homes-1"
     },
     {
      "id": "j2",
@@ -325,7 +344,8 @@
      "price": 160000000,
      "upkeep": 0.09,
      "growth": -0.07,
-     "volatility": 0.05
+     "volatility": 0.05,
+     "art": "luxury/yachtjet-6"
     },
     {
      "id": "j4",
@@ -334,7 +354,8 @@
      "price": 380000000,
      "upkeep": 0.085,
      "growth": -0.06,
-     "volatility": 0.05
+     "volatility": 0.05,
+     "art": "luxury/yachtjet-5"
     },
     {
      "id": "j3",
@@ -343,7 +364,8 @@
      "price": 520000000,
      "upkeep": 0.08,
      "growth": -0.06,
-     "volatility": 0.06
+     "volatility": 0.06,
+     "art": "luxury/yachtjet-4"
     },
     {
      "id": "j5",
@@ -352,7 +374,8 @@
      "price": 900000000,
      "upkeep": 0.08,
      "growth": -0.05,
-     "volatility": 0.06
+     "volatility": 0.06,
+     "art": ""
     }
    ]
   },

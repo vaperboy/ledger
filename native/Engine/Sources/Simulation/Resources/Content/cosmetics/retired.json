@@ -1,0 +1,61 @@
+{
+ "about": "Retired items that were sold for gold. Each pays its gold price back once to a player who owns it. Profile icons are kept outside the pass in the app, so the app passes their ids in.",
+ "refunds": [
+  {
+   "id": "gold.theme.sage",
+   "gold": 15
+  },
+  {
+   "id": "gold.theme.amber",
+   "gold": 35
+  },
+  {
+   "id": "gold.theme.indigo",
+   "gold": 80
+  },
+  {
+   "id": "av.key",
+   "gold": 15
+  },
+  {
+   "id": "av.paw",
+   "gold": 15
+  },
+  {
+   "id": "av.tortoise",
+   "gold": 15
+  },
+  {
+   "id": "av.summit",
+   "gold": 15
+  },
+  {
+   "id": "av.sailboat",
+   "gold": 35
+  },
+  {
+   "id": "av.workshop",
+   "gold": 35
+  },
+  {
+   "id": "av.jet",
+   "gold": 35
+  },
+  {
+   "id": "av.toast",
+   "gold": 35
+  },
+  {
+   "id": "av.diamond",
+   "gold": 80
+  },
+  {
+   "id": "av.goldstar",
+   "gold": 80
+  },
+  {
+   "id": "av.sleight",
+   "gold": 80
+  }
+ ]
+}
