@@ -57,7 +57,7 @@ public struct FirstYear: Sendable, Equatable {
     public static let frozenText = "The bank has frozen the account until the balance is back above zero."
 
     public static func freezeSweep(_ s: inout GameState, balance: Balance) {
-        let f = effective(s, balance: balance)
+        let f = balance.firstYear
         noticeSweep(&s, balance: balance)
         guard !f.bankruptcyActive(week: s.week) else { return }
         for i in s.companies.indices where s.companies[i].status == .open {
@@ -73,7 +73,7 @@ public struct FirstYear: Sendable, Equatable {
     public static func companyAge(_ co: Company, week: Int) -> Int { week - (co.openedWeek ?? co.foundedWeek) }
 
     public static func noticeSweep(_ s: inout GameState, balance: Balance) {
-        let f = effective(s, balance: balance)
+        let f = balance.firstYear
         var done = s.rest["fyNotes"] ?? .object([:])
         func due(_ key: String, week: Int) -> Bool {
             guard s.week >= week, s.week < week + 2, done[key].isNull else { return false }
