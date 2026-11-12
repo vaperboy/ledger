@@ -30,7 +30,7 @@ public extension GameEngine {
         let cur = homeCurrency
         let s = state
 
-        for m in openDecisions.prefix(3) {
+        for m in openDecisions.filter({ (x: Message) -> Bool in DecisionPopups.channel(x, s) == .home }).prefix(3) {
             var detail = localized(m.body, companyID: m.companyID)
             if let exp = m.expiresWeek { let left = exp - s.week; detail += left > 0 ? " · expires in \(left) wk" : " · expires this week" }
             out.append(Suggestion(id: "msg\(m.id)", symbol: "envelope.badge", title: localized(m.title, companyID: m.companyID), detail: detail, tone: m.tone == "bad" ? .bad : .warn,

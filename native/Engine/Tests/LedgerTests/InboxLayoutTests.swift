@@ -86,7 +86,7 @@ final class InboxLayoutTests: XCTestCase {
     func testTrophyNoticesOpenTheProfile() throws {
         var e = try ChainsTests.engine()
         var mid = 0
-        e.update { s, _, _ in mid = s.addMessage(from: "Trophy wall", title: "Trophy", body: "b") }
+        e.update { s, _, _ in mid = s.addMessage(from: "Trophy wall", title: "Trophy", body: "b", route: .inbox) }
         let m = try XCTUnwrap(e.state.inbox.first { $0.id == mid })
         XCTAssertEqual(InboxLayout.target(m, in: e.state), .app("profile"))
     }

@@ -150,8 +150,7 @@ extension GateVisibility {
 extension PhoneApp {
     var gate: Gate? {
         switch self {
-        case .inbox, .stats, .settings, .desk, .store, .profile, .market, .rankings, .competition, .auctions: return nil
-        case .bank, .news, .season: return .bank
+        case .inbox, .stats, .settings, .desk, .store, .profile, .market, .rankings, .competition, .auctions, .bank, .news, .season: return nil
         case .marketplace: return .marketplace
         case .airStay: return .airstay
         case .techPro: return .techpro
@@ -161,21 +160,19 @@ extension PhoneApp {
         }
     }
 
+    /// Apps that open with a level feature of their own rather than a gate.
+    var levelFeature: LevelFeature? {
+        switch self {
+        case .auctions: return .auctions
+        case .world: return .government
+        case .desk: return .desk
+        default: return nil
+        }
+    }
+
     func visibility(_ e: GameEngine) -> GateVisibility {
-        if self == .desk { return e.deskOpen ? .open : .hidden }
-        if self == .competition {
-            return Gates.visibility(.reviews, e.state, data: e.data)
-        }
-        if self == .auctions {
-            if LevelGates.isOpen(.auctions, e.state) { return .open }
-            let away: Int = LevelGates.level(.auctions) - PlayerLevel.info(e.state).level
-            return away <= 1 ? .locked("Unlocks at level \(LevelGates.level(.auctions))") : .hidden
-        }
-        if self == .world {
-            if LevelGates.isOpen(.government, e.state) { return .open }
-            let away: Int = LevelGates.level(.government) - PlayerLevel.info(e.state).level
-            return away <= 1 ? .locked("Unlocks at level \(LevelGates.level(.government))") : .hidden
-        }
+        if let f = levelFeature { return LevelGates.visibility(f, e.state) }
+        if self == .competition { return Gates.visibility(.reviews, e.state, data: e.data) }
         guard let gate else { return .open }
         return Gates.visibility(gate, e.state, data: e.data)
     }

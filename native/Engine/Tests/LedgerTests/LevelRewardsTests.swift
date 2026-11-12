@@ -28,12 +28,13 @@ final class LevelRewardsTests: XCTestCase {
 
     func testVenturesNeedALevelAndTheMapShowsIt() throws {
         var e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 5)
-        XCTAssertEqual(LevelGates.level(.ventures), 3)
+        let l: Int = LevelGates.level(.ventures)
+        XCTAssertGreaterThan(l, 1)
         XCTAssertFalse(LevelGates.isOpen(.ventures, e.state))
-        XCTAssertTrue(LevelGates.lockLine(.ventures).hasPrefix("Unlocks at level 3"))
-        e.update { s, _, _ in s.rest["lvl"] = .object(["xp": .number(Double(PlayerLevel.threshold(3)))]) }
+        XCTAssertEqual(LevelGates.lockLine(.ventures), "Unlocks at level \(l)")
+        e.update { s, _, _ in s.rest["lvl"] = .object(["xp": .number(Double(PlayerLevel.threshold(l)))]) }
         XCTAssertTrue(LevelGates.isOpen(.ventures, e.state))
-        XCTAssertTrue(LevelGates.ladder().contains { $0.level == 3 && $0.unlocks.contains { $0.feature == .ventures } })
+        XCTAssertTrue(LevelGates.ladder().contains { $0.level == l && $0.unlocks.contains { $0.feature == .ventures } })
     }
 
     func testEveryLevelFromTwoToOneHundredGivesGoldOnce() {

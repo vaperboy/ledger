@@ -169,7 +169,7 @@ final class PlayerSupplyTests: XCTestCase {
         let cash = try XCTUnwrap(e.state.company(id)).cash
         XCTAssertEqual(e.cancelPlayerSupplier(companyID: id, lineID: "goods", bySupplier: true), .applied)
         XCTAssertGreaterThan(try XCTUnwrap(e.state.company(id)).cash, cash)
-        XCTAssertTrue(e.state.inbox.contains { $0.companyID == id && $0.title == "Supplier ended the supply" })
+        XCTAssertTrue(e.state.feedLines.contains { $0.companyID == id && $0.text == "Supplier ended the supply" })
     }
 
     func testAListingCannotPromiseMoreThanTheCompanyCanSupply() throws {
