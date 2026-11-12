@@ -172,7 +172,7 @@ public enum PlayerGoals {
         case "staff": return L.contains { !$0.staff.isEmpty }
         case "open": return L.contains { $0.status == .open }
         case "week": return !((s.rest["reports"]?[ReportKind.week.storeKey] ?? .null).array.isEmpty)
-        case "sell": return L.contains { $0.priceLevel != 0 || $0.value("chose").int != 0 }
+        case "sell": return L.contains { $0.priceLevel != 0 || $0.value("chose").int != 0 || SalesItems.hasOwnPrices($0) }
         case "ad": return L.contains { $0.value("mkt").object.values.contains { $0["b"].double > 0 } }
         case "inbox": return s.inbox.contains { !$0.options.isEmpty && $0.value("pick").int >= 0 && !$0.value("pick").isNull && !$0.flag("auto") && $0.value("mgrName").isNull }
         case "profit": return L.contains { $0.monthlyHistory.contains { $0.profit > 0 } }

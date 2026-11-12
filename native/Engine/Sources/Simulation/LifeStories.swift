@@ -71,7 +71,7 @@ enum LifeStories {
         _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: options)
         guard let i = s.companyIndex(id), let bd = data.catalog[s.companies[i].type] else { return nil }
         var docs = s.companies[i].value("docs")
-        for d in Documents.needed(s.companies[i], bd, World(state: s, data: data)) where d != "vat_not_applicable" {
+        for d in Documents.needed(s.companies[i], bd, World(state: s, data: data)) {
             var entry = docs[d]
             entry["st"] = .string("ok")
             for k in ["done", "ok", "w0"] where entry[k].isNull { entry[k] = .number(Double(s.week)) }
@@ -100,7 +100,7 @@ enum LifeStories {
         guard let i = s.companyIndex(id) else { return false }
         let w = World(state: s, data: data)
         var docs = s.companies[i].value("docs")
-        for d in Documents.needed(s.companies[i], bd, w) where d != "vat_not_applicable" {
+        for d in Documents.needed(s.companies[i], bd, w) {
             docs[d] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week)), "w0": .number(Double(s.week))])
         }
         s.companies[i].set("docs", docs)

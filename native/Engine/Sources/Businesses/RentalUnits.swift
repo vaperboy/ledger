@@ -259,7 +259,7 @@ public enum RentalUnits {
         let mt = SalesItems.marketTicket(co, bd, w)
         guard mt > 0 else { return }
         let first = co.value(key).isNull
-        let old = SalesItems.items(co, bd)
+        let old = SalesItems.stored(co, bd)
         let units = bases(s, co, bd, spec, w, mt: mt)
         let existing = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
         var kept: [SalesItems.Item] = old.filter { !isManaged($0.id) && !(first && $0.id.hasPrefix("d")) }

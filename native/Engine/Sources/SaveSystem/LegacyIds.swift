@@ -3,6 +3,9 @@ import GameCore
 import Businesses
 
 public enum LegacyIds {
+    // Papers that no longer exist are dropped from old saves.
+    static let retiredDocuments: Set<String> = ["mva", "mva_na", "vat", "vat_not_applicable"]
+
     static let documents: [String: String] = [
         "acctr": "accountant_agreement",
         "aif": "fund_manager",
@@ -49,8 +52,6 @@ public enum LegacyIds {
         "mattil": "food_registration",
         "megler": "estate_agency",
         "mfinans": "credit_notification",
-        "mva": "vat",
-        "mva_na": "vat_not_applicable",
         "nve": "power_licence",
         "nveLite": "solar_notification",
         "oil": "oil_licence",
@@ -97,7 +98,7 @@ public enum LegacyIds {
             let docs = companies[i]["docs"]
             if !docs.isNull {
                 var renamed: [String: JSONValue] = [:]
-                for (k, v) in docs.object { renamed[documents[k] ?? k] = v }
+                for (k, v) in docs.object where !retiredDocuments.contains(k) { renamed[documents[k] ?? k] = v }
                 companies[i]["docs"] = .object(renamed)
             }
         }

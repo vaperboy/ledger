@@ -52,7 +52,7 @@ final class DocumentReviewTests: XCTestCase {
         let form = try XCTUnwrap(e.documentForm(companyID: id, documentID: "registration"))
         XCTAssertTrue(["", "ok", "applied"].contains(form.status))
         let ids = e.openingChecklist(companyID: id).map { $0.id }
-        XCTAssertTrue(ids.contains("doc:vat") || e.state.company(id).map { Vat.isExempt($0, World(state: e.state, data: e.data)) } == true)
+        XCTAssertFalse(ids.contains("doc:vat"), "VAT is booked by itself and is never a step")
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
             var docs = s.companies[i].value("docs"); docs["registration"] = .object(["st": "rejected"]); s.companies[i].set("docs", docs)

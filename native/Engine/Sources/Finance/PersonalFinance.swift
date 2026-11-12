@@ -6,7 +6,7 @@ public enum PersonalFinance {
     public static func taxEstimate(_ s: GameState, context: FinanceContext) -> Double {
         let c = context.homeCountry(s)
         let wage = s.tax.salary
-        let tax1 = Taxes.personalIncomeTax(wage, kind: .wage, in: c)
+        let tax1 = Taxes.personalIncomeTax(wage, in: c)
         let t = s.tax
         return max(0, max(0, tax1 - t.withheld) + (Taxes.capitalGainsTax(t.gains, in: c) - t.paidGains)
             + (Taxes.dividendTax(t.dividends, shield: t.dividendShield, in: c) - t.paidDividend) + (Taxes.savingsInterestTax(t.interest, in: c) - t.paidInterest))
@@ -95,7 +95,7 @@ public enum PersonalFinance {
         var b = TaxBreakdown()
         b.week = s.week
         b.taxableIncome = wage
-        b.incomeTax = Taxes.personalIncomeTax(wage, kind: .wage, in: c)
+        b.incomeTax = Taxes.personalIncomeTax(wage, in: c)
         b.withheld = t.withheld
         b.incomeDue = b.incomeTax - t.withheld
         b.dividends = t.dividends

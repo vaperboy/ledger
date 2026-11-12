@@ -42,7 +42,7 @@ final class TaxRulesAuditTests: XCTestCase {
             var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 5)
             e.update { s, data, ctx in
                 let k = data.countries.resolve(code, orHome: code)
-                s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
+                s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
                 s.tax.gains = 2_000_000; s.tax.interest = 100_000
                 Ledger.move(&s, .me, 100_000_000, why: "Test funds")
                 let before = s.cash

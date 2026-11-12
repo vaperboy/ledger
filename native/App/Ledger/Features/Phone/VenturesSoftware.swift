@@ -85,7 +85,7 @@ struct VenturesSoftwareSection: View {
                             case .offers(let n)?: Haptics.success(); store.show("\(n) investor\(n == 1 ? "" : "s") made an offer: the offers wait with the company.", tone: "good")
                             case .none?: store.show("No investor bit this time.", tone: "warn")
                             case .tooSoon(let w)?: store.show("Too soon to pitch again: \(w.weeksText) to go.", tone: "n")
-                            default: store.show("Only a limited company can raise money from investors.", tone: "warn")
+                            default: store.show("This company cannot pitch to investors.", tone: "warn")
                             }
                         }.buttonStyle(SecondaryButtonStyle(size: .compact)).disabled(wait > 0)
                     }

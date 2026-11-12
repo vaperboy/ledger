@@ -336,7 +336,7 @@ public enum CompanyWeek {
                                   "bot": ctx.bottleneck.map { .string($0) } ?? .null]))
         if let out = ctx.outage { var lw = co.value("lastW"); lw["out"] = .string(out); co.set("lastW", lw) }
         var hist: [JSONValue] = co.value("wkHist").array
-        hist.append(.object(["w": .number(Double(s.week)), "D": .number(ctx.D), "cap": .number(ctx.cap)]))
+        hist.append(.object(["w": .number(Double(s.week)), "D": .number(ctx.D), "cap": .number(ctx.cap), "u": .number(ctx.units)]))
         co.set("wkHist", .array(Array(hist.suffix(8))))
         let cashShare = 1 - bd.businessShare
         let gross = rev * (1 + vr)

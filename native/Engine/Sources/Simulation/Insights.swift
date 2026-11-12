@@ -41,6 +41,7 @@ public struct CompanyHealth: Equatable, Sendable {
     public var servedLastWeek = 0.0
     public var capacityLastWeek = 0.0
     public var bottleneck: String?
+    public var limitedBy: String?
     public var marginTTM: Double? { revenueTTM > 0 ? profitTTM / revenueTTM : nil }
     public var revenueSeries: [Double] = []
     public var profitSeries: [Double] = []
@@ -75,8 +76,8 @@ public extension GameEngine {
         h.runwayWeeks = CompanyFigures.runwayWeeks(cash: co.cash, weeklyLoss: -monthlyProfit * 12 / 52)
         if !lw.isNull { h.servedLastWeek = lw["units"].double; h.capacityLastWeek = lw["cap"].double }
         if co.status == .open, let bd = data.catalog[co.type], !SpecialFamilies.handles(bd) {
-            h.bottleneck = CapacityModel.compute(co, bd, World(state: state, data: data)).bottleneck?.label
-            if lw["cap"].double == 0 || !lw["out"].string.isEmpty, case let then = lw["bot"].string, !then.isEmpty { h.bottleneck = then }
+            h.bottleneck = weakestLink(co, bd)
+            h.limitedBy = salesLimit(co).name
         }
         let months = hist.count
         if months < 3 { h.label = co.status == .open ? "New" : "Setting up" }
@@ -88,6 +89,48 @@ public extension GameEngine {
     }
 
     private func weeklyCost(_ co: Company) -> Double { context.weeklyCost(co, state) }
+
+    // The capacity part with the least room; a week that served no one or had an outage keeps its own reason.
+    private func weakestLink(_ co: Company, _ bd: Trade) -> String? {
+        let lw = co.value("lastW")
+        let then: String = lw["bot"].string
+        if lw["cap"].double == 0 || !lw["out"].string.isEmpty, !then.isEmpty { return then }
+        return CapacityModel.compute(co, bd, World(state: state, data: data)).bottleneck?.label
+    }
+
+    // What held last week's sales. Capacity is named only when demand passed it and it was used up.
+    func salesLimit(_ co: Company) -> SalesLimit {
+        let lw = co.value("lastW")
+        let waiting = SalesLimit(kind: .unknown, name: nil, text: "Shows after the first trading week")
+        guard co.status == .open, !lw.isNull, let bd = data.catalog[co.type] else { return waiting }
+        let ownModel: Bool = SpecialFamilies.handles(bd)
+        switch SalesLimit.reading(units: lw["units"].double, demand: lw["D"].double, capacity: lw["cap"].double) {
+        case .unknown:
+            return waiting
+        case .stopped:
+            let why: String? = ownModel ? nil : weakestLink(co, bd)
+            let reason: String = why.map { (t: String) -> String in t.prefix(1).lowercased() + t.dropFirst() } ?? "staff or equipment is missing"
+            return SalesLimit(kind: .stopped, name: why, text: "Served no one last week: " + reason)
+        case .capacity:
+            return SalesLimit(kind: .capacity, name: (ownModel ? nil : weakestLink(co, bd)) ?? "Capacity", text: "Capacity is the limit: customers are turned away")
+        case .demand:
+            return SalesLimit(kind: .demand, name: "Demand", text: "Demand is the limit: there is room for more customers")
+        case .held:
+            let why = heldBack(co, bd)
+            return SalesLimit(kind: .held, name: why.name, text: why.text)
+        }
+    }
+
+    // Why fewer were served than both demand and capacity allowed.
+    private func heldBack(_ co: Company, _ bd: Trade) -> (name: String, text: String) {
+        let start = data.balance.firstYear, lw = co.value("lastW")
+        if start.untended(state), lw["units"].double <= lw["cap"].double * start.serveShare(state) + 1 { return ("Prices not set", "Held back until you set a price") }
+        let soldOut = Int(saturating: co.value("dlast")["so"].double)
+        if soldOut > 0 { return ("Stock", "Sold out on \(soldOut) day\(soldOut == 1 ? "" : "s") last week: the shelves ran empty") }
+        if bd.hasTrait("sub") { return ("Members", "Members join over time: the place is still filling up") }
+        if let target = StockHandling.policyTarget(co, bd), co.inventory < target * 0.5 { return ("Stock", "Stock ran short: there was too little to sell") }
+        return ("Sales", "Fewer were served than demand and capacity allow")
+    }
 
     func insights(for co: Company, limit: Int = 4) -> [Insight] {
         var out: [Insight] = []
@@ -104,7 +147,12 @@ public extension GameEngine {
             let cap = lw["cap"].double, D = lw["D"].double, util = lw["util"].double
             if !lw["out"].string.isEmpty { out.append(Insight(id: "repair", symbol: "wrench.and.screwdriver", text: lw["out"].string, tone: .warn)) }
             if cap > 0, D > cap * 1.12, util > 0.93 { out.append(Insight(id: "cap", symbol: "gauge.with.dots.needle.100percent", text: "Capacity is limiting sales: about \(Int(saturating: jsRound(D - cap))) customers a week are turned away. More staff or equipment would add revenue.", tone: .warn)) }
-            else if cap > 0, util < 0.5 { out.append(Insight(id: "slack", symbol: "person.3", text: "Only \(Int(saturating: jsRound(util * 100)))% of capacity is used. Demand is the limit: price, marketing and reputation matter more than hiring.", tone: .neutral)) }
+            else if cap > 0, util < 0.5 {
+                let limit = salesLimit(co)
+                let used = "Only \(Int(saturating: jsRound(util * 100)))% of capacity is used. "
+                if limit.kind == .held { out.append(Insight(id: "slack", symbol: "person.3", text: used + limit.text + ".", tone: .warn)) }
+                else { out.append(Insight(id: "slack", symbol: "person.3", text: used + "Demand is the limit: price, marketing and reputation matter more than hiring.", tone: .neutral)) }
+            }
         }
         let rev = co.books.month["rev"] ?? 0, wages = co.books.month["wages"] ?? 0, rent = co.books.month["rent"] ?? 0
         if rev > 0, wages / rev > 0.55 { out.append(Insight(id: "wages", symbol: "banknote", text: "Wages are \(Int(saturating: jsRound(wages / rev * 100)))% of this month's revenue, which leaves little for profit.", tone: .warn)) }
@@ -151,15 +199,34 @@ public extension GameEngine {
     }
 }
 
+public struct SalesLimit: Equatable, Sendable {
+    public enum Kind: String, Sendable { case unknown, demand, capacity, stopped, held }
+    public var kind: Kind
+    public var name: String?
+    public var text: String
+
+    static let usedShare = 0.85
+    static let servedShare = 0.7
+
+    // Small slack keeps weekly noise from flipping the reading on low volumes.
+    public static func reading(units: Double, demand: Double, capacity: Double) -> Kind {
+        if capacity <= 0 { return demand > 0 ? .stopped : .unknown }
+        if demand > capacity { return units >= capacity * usedShare - 1 ? .capacity : .held }
+        return units >= demand * servedShare - 2 ? .demand : .held
+    }
+}
+
 public struct OperationsFigures: Equatable, Sendable {
     public struct Week: Equatable, Sendable, Identifiable {
         public var week: Int
         public var demand: Double
         public var capacity: Double
+        public var served: Double
         public var id: Int { week }
+        public var capacityUse: Double { capacity > 0 ? served / capacity : 0 }
     }
     public var capacityUse: Double?
-    public var demandIsLimit: Bool
+    public var limit: SalesLimit
     public var profitPerWeek: Double?
     public var profitChangePerWeek: Double?
     public var weeks: [Week]
@@ -170,16 +237,16 @@ public extension GameEngine {
         guard let co = state.company(companyID) else { return nil }
         let lw = co.value("lastW")
         let hist = co.monthlyHistory
-        var f = OperationsFigures(capacityUse: nil, demandIsLimit: false, profitPerWeek: nil, profitChangePerWeek: nil, weeks: [])
-        if !lw.isNull, lw["cap"].double > 0 {
-            f.capacityUse = lw["units"].double / lw["cap"].double
-            f.demandIsLimit = lw["D"].double <= lw["cap"].double
-        }
+        var f = OperationsFigures(capacityUse: nil, limit: salesLimit(co), profitPerWeek: nil, profitChangePerWeek: nil, weeks: [])
+        if !lw.isNull, lw["cap"].double > 0 { f.capacityUse = lw["units"].double / lw["cap"].double }
         if let last = hist.last {
             f.profitPerWeek = last.profit / 4.33
             if hist.count >= 2 { f.profitChangePerWeek = (last.profit - hist[hist.count - 2].profit) / 4.33 }
         }
-        f.weeks = co.value("wkHist").array.map { OperationsFigures.Week(week: $0["w"].int, demand: $0["D"].double, capacity: $0["cap"].double) }
+        f.weeks = co.value("wkHist").array.map { (j: JSONValue) -> OperationsFigures.Week in
+            let served: Double = j["u"].isNull ? min(j["D"].double, j["cap"].double) : j["u"].double
+            return OperationsFigures.Week(week: j["w"].int, demand: j["D"].double, capacity: j["cap"].double, served: served)
+        }
         return f
     }
 }

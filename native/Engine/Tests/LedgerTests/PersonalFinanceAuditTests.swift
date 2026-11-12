@@ -85,7 +85,7 @@ final class PersonalFinanceAuditTests: XCTestCase {
             var e = try game(code, seed: 9)
             e.update { s, data, ctx in
                 let c = data.countries.resolve(code, orHome: code)
-                s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
+                s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
                 s.tax.gains = 1_000_000; s.tax.dividends = 500_000; s.tax.dividendShield = 100_000; s.tax.interest = 20_000
                 let nw = 400_000_000.0
                 let before = s.cash
@@ -103,7 +103,7 @@ final class PersonalFinanceAuditTests: XCTestCase {
     func testYearEndNoteItemisesEveryCharge() throws {
         var e = try game("NO", seed: 9)
         e.update { s, data, ctx in
-            s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
+            s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
             s.tax.gains = 1_000_000; s.tax.dividends = 5_000_000; s.tax.interest = 20_000
             PersonalFinance.yearEnd(&s, context: ctx, netWorth: 50_000_000, ownedCompanyValue: 0)
             let text = s.rest["rep"]?["ev"].array.last?["t"].string ?? ""

@@ -151,8 +151,7 @@ final class FoundationTests: XCTestCase {
             for (i, inc) in t["inc"].array.enumerated() {
                 let v = inc.double
                 if !incomeCorrected.contains(c.code) {
-                    assertClose(Taxes.personalIncomeTax(v, kind: .selfEmployed, in: c), t["self"][i].double, tol: 1e-9, "\(c.code) self \(v)")
-                    assertClose(Taxes.personalIncomeTax(v, kind: .wage, in: c), t["wage"][i].double, tol: 1e-9, "\(c.code) wage \(v)")
+                    assertClose(Taxes.personalIncomeTax(v, in: c), t["wage"][i].double, tol: 1e-9, "\(c.code) wage \(v)")
                     assertClose(Taxes.bracketTax(v, brackets: c.income.brackets), t["br"][i].double, tol: 1e-9)
                 }
                 if !dividendCorrected.contains(c.code) { assertClose(Taxes.dividendTax(v, shield: 50000, in: c), t["div"][i].double, tol: 1e-9) }

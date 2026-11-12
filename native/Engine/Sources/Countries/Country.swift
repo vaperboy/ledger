@@ -86,7 +86,6 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var contributionUnitMonthly: Double = 0
     public var statePayrollTax: Double = 0
     public var employeeSocial: Double
-    public var selfEmployedSocial: Double
     public var income: IncomeTax
     public var wealthRate: Double
     public var wealthThreshold: Double
@@ -187,7 +186,6 @@ extension Country {
         let unitDaily = tax["employer"]["unit"]["daily"].double, unitDays = tax["employer"]["unit"]["monthDays"].double
         contributionUnitMonthly = B(unitDaily * unitDays)
         employeeSocial = soc["employee"].double
-        selfEmployedSocial = soc["selfEmployed"].double
         let wd = inc["wageDeduction"].array
         income = IncomeTax(
             flat: inc["flat"].double,

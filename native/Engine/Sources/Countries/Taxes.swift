@@ -2,8 +2,6 @@ import Foundation
 import GameCore
 
 public enum Taxes {
-    public enum IncomeKind { case selfEmployed, wage }
-
     public static func bracketTax(_ income: Double, brackets: [(from: Double, rate: Double)]) -> Double {
         var t = 0.0
         for i in brackets.indices {
@@ -14,12 +12,12 @@ public enum Taxes {
         return t
     }
 
-    public static func personalIncomeTax(_ income: Double, kind: IncomeKind, in c: Country) -> Double {
+    public static func personalIncomeTax(_ income: Double, in c: Country) -> Double {
         let I = c.income
         let inc = max(0, income)
-        let rate = kind == .wage ? c.employeeSocial : c.selfEmployedSocial
+        let rate = c.employeeSocial
         let deduction: Double
-        if kind == .wage, let wd = I.wageDeduction { deduction = min(wd.maximum, inc * wd.share) } else { deduction = 0 }
+        if let wd = I.wageDeduction { deduction = min(wd.maximum, inc * wd.share) } else { deduction = 0 }
         let flat = I.flat != 0 ? max(0, inc - deduction - I.allowance) * I.flat : 0
         let social: Double
         if I.socialCapShare != 0 {

@@ -411,7 +411,7 @@ public enum FootballModel {
         s.companies[i].status = .open
         s.companies[i].openedWeek = s.week
         var docs = s.companies[i].value("docs")
-        for d in ["registration", "vat"] { docs[d] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))]) }
+        docs["registration"] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))])
         s.companies[i].set("docs", docs)
         let L = leagueInfo(country)
         let N = L?.clubs ?? 16

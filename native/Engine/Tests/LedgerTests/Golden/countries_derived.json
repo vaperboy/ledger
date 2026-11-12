@@ -347,7 +347,7 @@
   "code": "LT",
   "pl": 0.59,
   "mkt": 1,
-  "rent": 0.35,
+  "rent": 0.51,
   "wage": 0.55,
   "loan": 87228.261,
   "loanTermM": 60,
@@ -389,7 +389,7 @@
     "id": "vln",
     "name": "Vilnius",
     "pop": 580,
-    "rent": 0.42,
+    "rent": 0.52,
     "wage": 0.66,
     "dem": 1.22,
     "price": 0.6
@@ -398,7 +398,7 @@
     "id": "kau",
     "name": "Kaunas",
     "pop": 290,
-    "rent": 0.32,
+    "rent": 0.42,
     "wage": 0.55,
     "dem": 1.06,
     "price": 0.58
@@ -407,7 +407,7 @@
     "id": "klp",
     "name": "Klaip\u0117da",
     "pop": 150,
-    "rent": 0.28,
+    "rent": 0.38,
     "wage": 0.52,
     "dem": 0.9,
     "price": 0.58
@@ -416,7 +416,7 @@
     "id": "siau",
     "name": "\u0160iauliai",
     "pop": 100,
-    "rent": 0.19,
+    "rent": 0.26,
     "wage": 0.47,
     "dem": 0.81,
     "price": 0.57
@@ -425,7 +425,7 @@
     "id": "smalllt",
     "name": "Small town",
     "pop": 15,
-    "rent": 0.12,
+    "rent": 0.17,
     "wage": 0.41,
     "dem": 0.35,
     "price": 0.55

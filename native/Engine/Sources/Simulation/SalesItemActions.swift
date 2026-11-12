@@ -66,6 +66,7 @@ public extension GameEngine {
             return nil
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.setPrice(&s, companyID: companyID, itemID: itemID, price: price, data: d)
+            if let i = s.companyIndex(companyID) { s.companies[i].set("chose", 1) }
         }
         if !result.isRefused { tutorialAdvance(from: .setPrice) }
         return result
@@ -86,6 +87,7 @@ public extension GameEngine {
             return nil
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.setDiscount(&s, companyID: companyID, itemID: itemID, percent: percent, weeks: weeks, data: d)
+            if percent > 0, let i = s.companyIndex(companyID) { s.companies[i].set("chose", 1) }
         }
     }
 
