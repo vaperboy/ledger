@@ -82,12 +82,18 @@ extension ScreenShotsTests {
         }
         act { clearPopups() }
         var season = false
-        screen("app-season") {
-            season = openApp("Season") == nil
-            if !season && openApp("Store") == nil && tapID("store-open-pass") { season = !has("store-open-pass", wait: 1) }
-            return ok(season, "no Season tile on the Phone grid and no Open pass button in the Store")
+        screen("app-goals") {
+            _ = openApp("Goals")
+            return ok(has("goals-app", wait: 2), "no Goals tile on the Phone grid")
         }
-        for part in ["Missions", "Collection"] {
+        for tab in ["Weekly", "Season", "Long-term"] {
+            screen("goals-" + tab.lowercased()) { when(has("goals-app", wait: 1), off: "Goals did not open", "no \(tab) tab") { seekLabel(tab) } }
+        }
+        screen("app-season") {
+            season = has("goals-pass", wait: 1) && tapID("goals-pass")
+            return ok(season, "no battle pass strip on the Goals screen")
+        }
+        for part in ["Collection"] {
             screen("season-" + part.lowercased()) { when(season, off: "the Season pass did not open", "no \(part) tab") { seekLabel(part) } }
         }
         screen("season-claimed", settle: 2) {

@@ -64,6 +64,7 @@ jobs:
 
       - name: Backtrace of the crashing test (only if the tests failed)
         if: failure()
+        timeout-minutes: 6
         working-directory: native/Engine
         run: |
           B=$(find .build -name "LedgerEnginePackageTests.xctest" -maxdepth 4 | head -n 1)

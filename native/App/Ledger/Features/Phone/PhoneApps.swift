@@ -32,7 +32,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .news: return "News"
         case .desk: return "Desk"
         case .profile: return "Profile"
-        case .season: return "Season"
+        case .season: return "Goals"
         case .settings: return "Settings"
         }
     }
@@ -64,7 +64,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     var subtitle: String {
         switch self {
         case .bank: return "Cash, accounts, savings and loans"
-        case .stats: return "Fun facts, reports and where the money went"
+        case .stats: return "You, your companies, your money and your records"
         case .atlas: return "Cover for your companies"
         case .market: return "Your markets, companies, investments and the exchange"
         case .luxury: return "Cars, watches, art, yachts, jets and homes"
@@ -80,7 +80,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .news: return "The world, other players, government and weather"
         case .desk: return "One small question a day, and your notebook"
         case .profile: return "You, your trophies and your friends"
-        case .season: return "Half-year rewards, free and Plus"
+        case .season: return "Daily, weekly, season and long-term goals"
         case .settings: return "How much you decide, saving, haptics"
         }
     }

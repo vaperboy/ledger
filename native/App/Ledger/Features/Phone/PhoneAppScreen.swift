@@ -99,7 +99,7 @@ struct PhoneAppContent: View {
         case .desk:
             DeskApp().appScreen(title: app.title, subtitle: app.subtitle)
         case .season:
-            SeasonView().appScreen(title: app.title, subtitle: app.subtitle)
+            GoalsApp()
         case .settings:
             SettingsView().appScreen(title: app.title, subtitle: app.subtitle)
         case .profile:
