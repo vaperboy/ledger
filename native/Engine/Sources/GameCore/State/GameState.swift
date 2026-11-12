@@ -51,7 +51,8 @@ public struct GameState: Codable, Equatable, Sendable {
         week = take("week").int
         day = take("day").int
         homeCountryCode = take("country").string
-        let pooled = take("pool") != .null
+        // Older saves keep an unrelated object under "pool"; only the flag written by encode marks a one-account save.
+        let pooled = take("pool") == .bool(true)
         var playerRaw: [String: JSONValue] = take("player").object
         playerRaw.removeValue(forKey: "age")
         player = Player(raw: playerRaw)

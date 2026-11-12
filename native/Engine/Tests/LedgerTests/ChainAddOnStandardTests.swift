@@ -39,7 +39,7 @@ final class ChainAddOnStandardTests: XCTestCase {
             let actual = Set([first, second].filter { try! XCTUnwrap(e.state.company($0)).value("knob")[k.id].int != other })
             XCTAssertEqual(listed, actual, "exceptions are exactly the stores that differ (seed \(seed))")
             XCTAssertEqual(done.exceptions, listed.count)
-            XCTAssertEqual(listed, [second], "the store without cash cannot pay for the alcohol licence and keeps its add-ons")
+            XCTAssertEqual(listed, [first, second], "with the one account empty no store can pay for the alcohol licence, so both keep their add-ons")
             ChainsTests.play(&e, days: 14)
             XCTAssertEqual(Set(e.chainKnobExceptions(chainID: chain, knob: k.id).map { $0.storeID }), listed, "the weekly turn does not silently override or fix them")
             XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")

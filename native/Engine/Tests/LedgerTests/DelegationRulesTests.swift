@@ -18,8 +18,8 @@ final class DelegationRulesTests: XCTestCase {
         let id = try company(&e)
         e.update { s, _, ctx in
             guard let i = s.companyIndex(id) else { return }
-            s.companies[i].weeksNegative = 10
-            Ledger.set(&s, to: -90_000_000)
+            // A company has no cash of its own to run out of; the forced sale it is warned about is the called loan.
+            s.companies[i].set("loanCall", s.week + 2)
             Failure.warn(&s, context: ctx)
             Failure.warn(&s, context: ctx)
         }

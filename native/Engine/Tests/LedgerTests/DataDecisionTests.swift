@@ -177,7 +177,7 @@ final class DataDecisionTests: XCTestCase {
             let strat = StrategicDecisions.definitions.filter { $0.cls == "strat" }
             XCTAssertFalse(StrategicDecisions.fireOne(&s, from: strat, companyIndex: i, data: data, context: ctx), "a decision is already waiting")
             XCTAssertTrue(StrategicDecisions.companyBusy(s, s.companies[i]))
-            if let k = s.inbox.firstIndex(where: { $0.actionID == StrategicDecisions.action }) { s.inbox[k].set("status", "done") }
+            for k in s.inbox.indices where s.inbox[k].actionID == StrategicDecisions.action && s.inbox[k].status == "open" { s.inbox[k].set("status", "done") }
             XCTAssertTrue(StrategicDecisions.companyBusy(s, s.companies[i]), "a few weeks must pass before the next one")
             s.week += DataDecisions.companyGapWeeks
             XCTAssertFalse(StrategicDecisions.companyBusy(s, s.companies[i]))

@@ -457,7 +457,8 @@ final class ContentValidationTests: XCTestCase {
             need(l, ["id", "name", "how", "asset"], lfile, label, &p)
             let how: [String] = l["how"].string.split(separator: ":").map(String.init)
             let ok: Bool = l["how"].string == "free" || (how.count == 2 && how[0] == "level" && Int(how[1]) != nil) || (how.count == 2 && how[0] == "box" && Self.rarities.contains(how[1]))
-            if !ok { p.append("\(lfile): \(label) has how \"\(l["how"].string)\"; use free, level:N or box:common, box:rare, box:epic, box:legendary") }
+                || (how.count == 2 && how[0] == "plan" && !how[1].isEmpty)
+            if !ok { p.append("\(lfile): \(label) has how \"\(l["how"].string)\"; use free, level:N, plan:<perk> or box:common, box:rare, box:epic, box:legendary") }
         }
         finish(p)
     }

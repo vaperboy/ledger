@@ -47,7 +47,8 @@ final class CountryNeutralityTests: XCTestCase {
             let text = String(data: try JSONEncoder().encode(c.pack), encoding: .utf8) ?? ""
             XCTAssertFalse(text.contains("Norw") || text.contains("NOK"), "\(c.name)'s data mentions Norway")
         }
-        for f in try files(withExtension: "json") where f.lastPathComponent != "countries.json" {
+        // countries.json and the per-currency price table name every currency, the Norwegian one included.
+        for f in try files(withExtension: "json") where !["countries.json", "prices.json"].contains(f.lastPathComponent) {
             let text = try String(contentsOf: f, encoding: .utf8)
             XCTAssertFalse(text.contains("Norw") || text.contains("NOK"), "\(f.lastPathComponent) mentions Norway")
         }

@@ -104,16 +104,12 @@ final class BoardDecisionTests: XCTestCase {
         XCTAssertEqual(e.boardOpenDecisions(key: keys[0]), 0)
     }
 
-    func testCapitalInjectionIsOfferedWhenCashRunsOutAndPutsMoneyIn() throws {
+    func testNoCapitalInjectionIsRaisedBecauseEveryCompanyDrawsOnTheOneAccount() throws {
         var (e, ids, _) = try makeBoards(seed: 37, count: 1)
         history(&e, ids[0], profit: 2_000)
         e.update { s, _, _ in if let i = s.companyIndex(ids[0]) { s.companies[i].set("wkD", -2_000_000) } }
-        let d = try XCTUnwrap(e.boardDecisionList().first { $0.kind == "inject" })
-        XCTAssertGreaterThan(d.cost, 0)
-        XCTAssertTrue(d.recommends, "the business itself holds up")
-        let cash0 = try XCTUnwrap(e.state.company(ids[0])).cash
-        guard case .done = e.decideBoardItem(id: d.id, approve: true) else { return XCTFail("approve") }
-        XCTAssertGreaterThan(try XCTUnwrap(e.state.company(ids[0])).cash, cash0)
+        XCTAssertFalse(e.boardDecisionList().contains { $0.kind == "inject" }, "there is no separate company account to put money into")
+        guard case .gone = e.decideBoardItem(id: "inject:\(ids[0])", approve: true) else { return XCTFail("an injection cannot be approved") }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 

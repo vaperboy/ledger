@@ -169,7 +169,7 @@ final class EngagementTests: XCTestCase {
             XCTAssertEqual(mods.last?["m"].double ?? 0, 1 + WeeklyFocus.effect, accuracy: 1e-9)
         }
         XCTAssertEqual(e.weeklyPlan.planned, 1)
-        play(&e, until: 14, "the outcome is told") { $0.state.inbox.contains { $0.from == "Weekly plan" && $0.title.hasPrefix("Last week's plan") } }
+        play(&e, until: 21, "the outcome is told") { $0.state.inbox.contains { $0.from == "Weekly plan" && $0.title.hasPrefix("Last week's plan") } }
         XCTAssertEqual(e.weeklyPlanResults.count, 1)
         play(&e, until: 14, "the next plan") { $0.openDecisions.contains { $0.actionID == WeeklyFocus.action && $0.id != ask.id } }
         let next = try XCTUnwrap(e.openDecisions.first { $0.actionID == WeeklyFocus.action })

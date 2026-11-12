@@ -35,15 +35,18 @@ final class ChainBranchesTests: XCTestCase {
         XCTAssertEqual(plan.receiverID, a)
         XCTAssertTrue(plan.transfers.contains { $0.role == gone.role && $0.toStoreID == a })
         let bStaff = e.state.company(b)!.staff.map { $0.id }
-        let inv0 = e.state.company(a)!.inventory, me0 = e.state.cash
+        // The stores share the one account: the closure runs through the stores' books, never as a payment to the owner.
+        let inv0 = e.state.company(a)!.inventory, me0 = e.state.cashFlow["me"] ?? 0, cash0 = e.state.cash
+        let stores0 = (e.state.cashFlow["co\(a)"] ?? 0) + (e.state.cashFlow["co\(b)"] ?? 0)
         guard case .success = e.closeBranch(storeID: b) else { return XCTFail("not closed") }
         XCTAssertEqual(e.state.company(b)?.status, .sold)
         XCTAssertEqual(e.state.company(b).flatMap { ChainBranches.ending($0) }, "closed")
-        XCTAssertEqual(e.state.company(b)?.cash, 0)
         for t in plan.transfers { XCTAssertEqual(e.state.people[t.staffID]?.employerID, a) }
         for id in bStaff where !plan.transfers.contains(where: { $0.staffID == id }) { XCTAssertEqual(e.state.people[id]?.employerID, 0, "made redundant") }
         XCTAssertEqual(e.state.company(a)!.inventory, inv0 + plan.stockMoved, accuracy: 1)
-        XCTAssertEqual(e.state.cash, me0, "closing a branch pays the chain, not the owner")
+        XCTAssertEqual(e.state.cashFlow["me"] ?? 0, me0, accuracy: 0.5, "closing a branch pays the chain, not the owner")
+        let stores1 = (e.state.cashFlow["co\(a)"] ?? 0) + (e.state.cashFlow["co\(b)"] ?? 0)
+        XCTAssertEqual(e.state.cash - cash0, stores1 - stores0, accuracy: 0.5, "the account moves only by what the two stores paid and received")
         XCTAssertFalse(e.isBranch(companyID: a), "one store left: the chain is a single company again")
         XCTAssertEqual(Chains.stores(e.state, Chains.chain(e.state, id: chainID)!).map { $0.id }, [a])
         balanced(e, "branch closed")
@@ -58,13 +61,14 @@ final class ChainBranchesTests: XCTestCase {
         XCTAssertGreaterThan(q.price, 0)
         XCTAssertGreaterThan(q.yearlyRevenue, 0)
         let staff = e.state.company(b)!.staff.map { $0.id }
-        let me0 = e.state.cash
+        let me0 = e.state.cashFlow["me"] ?? 0, cash0 = e.state.cash
         guard case .success(let done) = e.sellBranch(storeID: b) else { return XCTFail("not sold") }
         XCTAssertEqual(done.price, q.price)
         XCTAssertEqual(e.state.company(b).flatMap { ChainBranches.ending($0) }, "sold")
         for id in staff { XCTAssertEqual(e.state.people[id]?.employerID, 0, "the staff go with the business") }
         XCTAssertTrue(e.state.company(a)!.transactions.contains { $0["l"].string.hasPrefix("Sale of") && abs($0["a"].double - q.price) < 1 }, "the price goes to the chain")
-        XCTAssertEqual(e.state.cash, me0)
+        XCTAssertEqual(e.state.cashFlow["me"] ?? 0, me0, accuracy: 0.5, "the owner is not paid personally")
+        XCTAssertEqual(e.state.cash - cash0, q.price, accuracy: 1, "the price lands in the one account once")
         XCTAssertEqual(e.closeBranch(storeID: a).failureValue, .notABranch, "the last store is the company itself")
         balanced(e, "branch sold")
     }

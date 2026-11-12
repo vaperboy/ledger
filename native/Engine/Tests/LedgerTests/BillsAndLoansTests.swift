@@ -21,6 +21,9 @@ final class BillsAndLoansTests: XCTestCase {
         Ledger.moveRaw(&s, .company(id), -(s.companies[i].cash + room))
     }
 
+    // Every company draws on the one account, so what a company itself paid or received is read from its own cash flow.
+    private func flow(_ s: GameState, _ id: Int) -> Double { s.cashFlow["co\(id)"] ?? 0 }
+
     private func fund(_ s: inout GameState, _ id: Int, _ amount: Double) {
         Ledger.moveRaw(&s, .company(id), amount - s.companies[s.companyIndex(id)!].cash)
     }
@@ -96,17 +99,18 @@ final class BillsAndLoansTests: XCTestCase {
             s.companies[ti].set("landlord", .object(["co": .number(Double(landlord)), "pid": 999]))
             s.companies[ti].payables = [:]
             fund(&s, tenant, 50_000_000)
-            let landlordCash = s.companies[li].cash
+            let landlordCash = flow(s, landlord)
             for _ in 0..<4 { CompanyCosts.rent(&s, companyIndex: ti, data: data) }
-            XCTAssertEqual(s.companies[li].cash, landlordCash, accuracy: 0.5, "rent accrued, nothing received yet")
+            XCTAssertEqual(flow(s, landlord), landlordCash, accuracy: 0.5, "rent accrued, nothing received yet")
             let owed = s.companies[ti].payables["rent"] ?? 0
             XCTAssertGreaterThan(owed, 0)
-            let tenantCash = s.companies[ti].cash
+            let tenantCash = flow(s, tenant), account = s.cash
             let t = Payday.dayNumber(week: s.week, day: s.day)
             _ = Payday.payBills(&s, ti, today: t, context: ctx)
-            let paid = tenantCash - s.companies[ti].cash
+            let paid = tenantCash - flow(s, tenant)
             XCTAssertGreaterThanOrEqual(paid, owed - 1)
-            XCTAssertEqual(s.companies[li].cash - landlordCash, owed * 0.97, accuracy: 2, "landlord gets 97 % of what was paid, in the same month")
+            XCTAssertEqual(flow(s, landlord) - landlordCash, owed * 0.97, accuracy: 2, "landlord gets 97 % of what was paid, in the same month")
+            XCTAssertEqual(account - s.cash, paid - (flow(s, landlord) - landlordCash), accuracy: 0.5, "the account loses only what left the group")
         }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
@@ -122,9 +126,9 @@ final class BillsAndLoansTests: XCTestCase {
             s.companies[ti].set("landlord", .object(["co": .number(Double(landlord)), "pid": 999]))
             drain(&s, tenant, ctx)
             s.companies[ti].payables = ["rent": 2_000_000]
-            let before = s.companies[li].cash
+            let before = flow(s, landlord)
             _ = Payday.payBills(&s, ti, today: Payday.dayNumber(week: s.week, day: s.day), context: ctx)
-            XCTAssertEqual(s.companies[li].cash, before, accuracy: 0.5)
+            XCTAssertEqual(flow(s, landlord), before, accuracy: 0.5)
             XCTAssertEqual(s.companies[ti].payables["rent"] ?? 0, 2_000_000, accuracy: 1)
         }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
@@ -145,7 +149,8 @@ final class BillsAndLoansTests: XCTestCase {
             loanID = addLoan(&s, company: id)
             drain(&s, id, ctx)
         }
-        let cash0 = try XCTUnwrap(e.state.company(id)).cash
+        // A personal loan of the player is collected in the same run, so only the company's own payments are watched.
+        let cash0 = e.state.cashFlow["co\(id)"] ?? 0
         var balance = 1_000_000.0
         for n in 1...3 {
             e.update { s, _, ctx in Banking.collectMonthlyInstalments(state: &s, context: ctx) }
@@ -153,7 +158,7 @@ final class BillsAndLoansTests: XCTestCase {
             XCTAssertEqual(l.int("miss"), n)
             XCTAssertGreaterThan(l.balance, balance, "unpaid interest and a penalty are added")
             balance = l.balance
-            XCTAssertEqual(try XCTUnwrap(e.state.company(id)).cash, cash0, accuracy: 1, "no cash moved")
+            XCTAssertEqual(e.state.cashFlow["co\(id)"] ?? 0, cash0, accuracy: 1, "no cash moved")
         }
         var co = try XCTUnwrap(e.state.company(id))
         XCTAssertTrue(co.flag("loanFrozen"))

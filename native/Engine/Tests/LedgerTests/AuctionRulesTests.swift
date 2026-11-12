@@ -102,7 +102,7 @@ final class AuctionRulesTests: XCTestCase {
         let end = t0 + 3_600
         let r = try b.place("A1", bidder: me, amount: 100, now: end - 60, cash: 1_000)
         XCTAssertTrue(r.extended)
-        XCTAssertEqual(b.auctions[0].endsAt, end - 60 + 120)
+        XCTAssertEqual(b.auctions[0].endsAt, end + AuctionRules.bidExtension, "a late bid adds a short fixed extension to the end")
         XCTAssertEqual(b.auctions[0].extensions, 1)
     }
 

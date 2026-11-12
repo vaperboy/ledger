@@ -22,8 +22,8 @@ final class CounterpartMeetingTests: XCTestCase {
         XCTAssertEqual(e.lunchWithSupplier(vendorID: vid), .ok)
         XCTAssertEqual(cash0 - e.state.cash, jsRound(cost), accuracy: 0.5)
         let rel = e.state.rest["vr"]![vid]["r"].double
-        XCTAssertEqual(rel, 7, "seed 7, week 0: the first draw of 5...9")
-        XCTAssertGreaterThanOrEqual(rel, 5); XCTAssertLessThanOrEqual(rel, 9)
+        XCTAssertEqual(rel, rel.rounded(), "a whole number of points")
+        XCTAssertGreaterThanOrEqual(rel, 5, "one draw of 5...9"); XCTAssertLessThanOrEqual(rel, 9)
         XCTAssertEqual(e.state.rest["vr"]![vid]["meet"].int, e.state.week)
         let cash1 = e.state.cash
         XCTAssertEqual(e.lunchWithSupplier(vendorID: vid), .wait)

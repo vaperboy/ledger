@@ -116,20 +116,31 @@ final class KnobChangeTests: XCTestCase {
             for id in [first, second] { if let i = s.companyIndex(id) { var kn = s.companies[i].value("knob"); kn[k.id] = .number(Double(from)); s.companies[i].set("knob", kn) } }
             if let i = s.companyIndex(second) { Payments.companyPays(&s, companyID: second, amount: max(0, s.companies[i].cash - 10), category: nil) }
         }
+        // Every store pays from the one account: with it empty no store can change and nothing is charged.
+        let empty = try XCTUnwrap(e.chainKnobPlan(chainID: chain, knob: k.id, value: to))
+        XCTAssertEqual(empty.lines.count, 2)
+        XCTAssertEqual(empty.totalCost, 0, accuracy: 1)
+        XCTAssertEqual(empty.exceptions, 2)
+        // With money for exactly one changeover the plan charges one store and reports the other.
+        let firstQuote = try XCTUnwrap(e.knobChangeQuote(companyID: first, knob: k.id, option: to))
+        XCTAssertGreaterThan(firstQuote.totalCost, 10)
+        e.update { s, _, _ in Ledger.move(&s, .me, firstQuote.totalCost, why: "Test funds") }
         let plan = try XCTUnwrap(e.chainKnobPlan(chainID: chain, knob: k.id, value: to))
         XCTAssertEqual(plan.lines.count, 2)
-        let firstQuote = try XCTUnwrap(e.knobChangeQuote(companyID: first, knob: k.id, option: to))
-        XCTAssertEqual(plan.totalCost, firstQuote.totalCost, accuracy: 1, "only the store that can change is charged")
+        XCTAssertEqual(plan.changing, 1, "only the store that can change is charged")
         XCTAssertEqual(plan.exceptions, 1)
-        let cash0 = try XCTUnwrap(e.state.company(first)).cash, cash1 = try XCTUnwrap(e.state.company(second)).cash
+        let cash0 = e.state.cash
         let done = e.setChainKnob(chainID: chain, knob: k.id, value: to)
         XCTAssertEqual(done.exceptions, 1)
-        XCTAssertEqual(try XCTUnwrap(e.state.company(first)).value("knob")[k.id].int, to)
-        XCTAssertEqual(try XCTUnwrap(e.state.company(second)).value("knob")[k.id].int, from, "the store that could not change keeps its choice")
-        XCTAssertEqual(try XCTUnwrap(e.state.company(second)).cash, cash1)
-        XCTAssertEqual(cash0 - (try XCTUnwrap(e.state.company(first)).cash), firstQuote.totalCost, accuracy: 1)
+        XCTAssertEqual(done.totalCost, plan.totalCost, accuracy: 1, "what was quoted for the chain is what is charged")
+        XCTAssertEqual(cash0 - e.state.cash, plan.totalCost, accuracy: 1)
+        let changed = [first, second].filter { e.state.company($0)?.value("knob")[k.id].int == to }
+        XCTAssertEqual(changed.count, 1, "the store that could not change keeps its choice")
+        XCTAssertEqual(Set(plan.lines.filter { $0.changes && $0.reason == nil }.map { $0.storeID }), Set(changed), "the plan named the store that changed")
+        let kept = try XCTUnwrap([first, second].first { !changed.contains($0) })
+        XCTAssertEqual(try XCTUnwrap(e.state.company(kept)).value("knob")[k.id].int, from)
         ChainsTests.play(&e, days: 14)
-        XCTAssertEqual(try XCTUnwrap(e.state.company(second)).value("knob")[k.id].int, from)
+        XCTAssertEqual(try XCTUnwrap(e.state.company(kept)).value("knob")[k.id].int, from)
         XCTAssertNotNil(e.knobGovernedBy(companyID: first, knob: k.id))
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }

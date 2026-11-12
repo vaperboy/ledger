@@ -290,7 +290,7 @@ final class ChainsAndStreaksTests: XCTestCase {
     func testAdvancedGoalsAppearOnlyAfterTheLadderAndAreMarkedAdvanced() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
         XCTAssertTrue(PlayerGoals.advancedGoals(e.state).isEmpty)
-        XCTAssertEqual(PlayerGoals.ladder(e.state)?.count, 10)
+        XCTAssertEqual(PlayerGoals.ladder(e.state)?.count, 9, "M1 to M5 and M7 to M10: the sixth step was dropped")
         e.update { s, _, _ in
             s.rest["ldr"] = .object(["done": .object(Dictionary(uniqueKeysWithValues: (1...10).map { ("M\($0)", JSONValue.object(["w": .number(Double(s.week))])) }))])
         }

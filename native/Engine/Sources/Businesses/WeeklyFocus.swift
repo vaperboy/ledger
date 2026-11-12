@@ -62,6 +62,8 @@ public enum WeeklyFocus {
         if let cur = s.rest["wfoc"]?["cur"], !cur.isNull {
             if cur["w"].int == s.week - 1, !cur["pick"].string.isEmpty { report(&s, cur: cur) }
             else if cur["w"].int < s.week { s.rest["wfoc"]?["cur"] = .null }
+            // A plan answered earlier this week is still running: a new offer would wipe it before its outcome is told.
+            else if cur["w"].int == s.week, !cur["pick"].string.isEmpty { return }
         }
         offer(&s, data: data)
     }
