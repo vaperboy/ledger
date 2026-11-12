@@ -384,7 +384,7 @@ final class JointVentureTests: XCTestCase {
     func testPassedDividendIsAppliedByTheGameAndBooksStayBalanced() throws {
         var (e, id) = try makeCompany(seed: 79)
         try join(&e, id, friendA, pct: 20)
-        e.update { s, _, _ in Ledger.moveRaw(&s, .company(id), 4_000_000); if let i = s.companyIndex(id) { s.companies[i].shareCapital = 0 } }
+        e.update { s, _, _ in Ledger.moveRaw(&s, .company(id), 4_000_000); if let i = s.companyIndex(id) { s.companies[i].shareCapital = 0; s.companies[i].monthlyHistory = [MonthRecord(monthIndex: 0, revenue: 2_000_000, profit: 600_000, cash: 4_000_000)] } }
         let top = e.maximumDividend(companyID: id)
         XCTAssertGreaterThan(top, 0)
         let made = e.jvMakeItem(companyID: id, kind: .dividend, amount: top)
