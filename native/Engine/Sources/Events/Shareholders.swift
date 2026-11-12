@@ -55,6 +55,7 @@ public enum Shareholders {
     public static func isBlocked(_ s: GameState, companyID: Int) -> Bool { (s.company(companyID).flatMap { blockedUntil($0) } ?? 0) > s.week }
     public static func buyBackPrice(_ s: GameState, companyID: Int, holder name: String, data: GameData) -> Double? {
         guard let co = s.company(companyID), let h = holders(s, companyID: companyID).first(where: { $0.name == name }) else { return nil }
+        if co.value("holders").array.contains(where: { $0["name"].string == name && $0["jv"].bool }) { return nil }
         let v0 = max(0, Valuation.companyValue(co, state: s, trades: data.catalog))
         return (v0 * h.pct / 100 * (h.mood < 40 ? 1.0 : 1.12) / 1000).rounded() * 1000
     }
@@ -102,7 +103,13 @@ public enum Shareholders {
         var paid = 0.0
         if (payout[pol] ?? 0) > 0 && pr > 0 {
             let amt = (pr * payout[pol]! / 1000).rounded() * 1000
-            if amt > 0 {
+            if amt > 0, JointVenture.isShared(co) {
+                let pay = min(amt, JointVenture.payoutRoom(s, co, fc))
+                if pay > 0, Payments.payDividend(&s, companyID: co.id, amount: pay) == .ok {
+                    paid = pay
+                    s.note("\(co.name) paid a dividend of \(fc.currency(co.countryCode, s).display(pay)) under the policy its owners voted for.", tone: "good", companyID: co.id)
+                }
+            } else if amt > 0 {
                 s.addMessage(kind: "ask", from: "Shareholders of \(co.name)", title: "Dividend for \(co.name) this quarter?",
                              body: "By the policy (\((policyNames[pol] ?? "").lowercased())) the dividend is \(fc.currency(co.countryCode, s).display(amt)).",
                              companyID: co.id, tone: "n", status: "open", options: ["Pay it", "Pay half", "Not this quarter"].map { .option($0) }, action: action,

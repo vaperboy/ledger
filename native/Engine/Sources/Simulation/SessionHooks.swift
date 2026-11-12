@@ -56,8 +56,9 @@ public enum SessionHooks {
         } else if out.isEmpty, let name = s.companies.first?.name {
             out.append(Reminder(id: "ledger.idle", title: name, body: lead + "\(name) is waiting for its next day.", after: 7 * 86400))
         }
-        if let v = JointVenture.pendingVote(s) {
-            let left: String = v.weeksLeft <= 0 ? "Voting closes this week." : v.weeksLeft == 1 ? "1 week left to vote." : "\(v.weeksLeft) weeks left to vote."
+        if let v = JointVenture.pendingVote(s, now: now.timeIntervalSince1970) {
+            let weeks: String = v.weeksLeft <= 0 ? "Voting closes this week." : v.weeksLeft == 1 ? "1 week left to vote." : "\(v.weeksLeft) weeks left to vote."
+            let left: String = v.hoursLeft.map { (h: Int) -> String in h <= 1 ? "Under an hour left to vote." : h < 48 ? "\(h) hours left to vote." : "\(h / 24) days left to vote." } ?? weeks
             out.append(Reminder(id: v.urgent ? "ledger.jv.urgent" : "ledger.jv.planned", title: v.companyName,
                                 body: v.urgent ? "Emergency meeting: \(v.reason). \(left)" : "Board meeting waits for your vote. \(left) A vote not cast counts as an abstention.",
                                 after: v.urgent ? 3 * 3600 : 20 * 3600))

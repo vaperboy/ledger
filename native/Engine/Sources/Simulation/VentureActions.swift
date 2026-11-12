@@ -54,7 +54,7 @@ public extension GameEngine {
     mutating func setDividendPolicy(companyID: Int, policy: String) -> SettingResult {
         applySetting(refuse: { s in
             if s.company(companyID) == nil { return "That company no longer exists." }
-            if policy != "none", let why = JointVenture.payoutBlock(s, companyID: companyID) { return why }
+            if let why = JointVenture.payoutBlock(s, companyID: companyID) { return why }
             return Shareholders.policies.contains(policy) ? nil : "That is not a dividend policy."
         }, probe: { $0.company(companyID)?.value("dp27") ?? .null }) { s, _, _ in Shareholders.setPolicy(&s, companyID: companyID, policy: policy) }
     }
