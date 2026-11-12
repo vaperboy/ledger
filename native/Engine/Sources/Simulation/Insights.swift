@@ -102,16 +102,17 @@ public extension GameEngine {
     func salesLimit(_ co: Company) -> SalesLimit {
         let lw = co.value("lastW")
         let waiting = SalesLimit(kind: .unknown, name: nil, text: "Shows after the first trading week")
-        guard co.status == .open, !lw.isNull, let bd = data.catalog[co.type], !SpecialFamilies.handles(bd) else { return waiting }
+        guard co.status == .open, !lw.isNull, let bd = data.catalog[co.type] else { return waiting }
+        let ownModel: Bool = SpecialFamilies.handles(bd)
         switch SalesLimit.reading(units: lw["units"].double, demand: lw["D"].double, capacity: lw["cap"].double) {
         case .unknown:
             return waiting
         case .stopped:
-            let why: String? = weakestLink(co, bd)
+            let why: String? = ownModel ? nil : weakestLink(co, bd)
             let reason: String = why.map { (t: String) -> String in t.prefix(1).lowercased() + t.dropFirst() } ?? "staff or equipment is missing"
             return SalesLimit(kind: .stopped, name: why, text: "Served no one last week: " + reason)
         case .capacity:
-            return SalesLimit(kind: .capacity, name: weakestLink(co, bd) ?? "Capacity", text: "Capacity is the limit: customers are turned away")
+            return SalesLimit(kind: .capacity, name: (ownModel ? nil : weakestLink(co, bd)) ?? "Capacity", text: "Capacity is the limit: customers are turned away")
         case .demand:
             return SalesLimit(kind: .demand, name: "Demand", text: "Demand is the limit: there is room for more customers")
         case .held:
@@ -122,7 +123,8 @@ public extension GameEngine {
 
     // Why fewer were served than both demand and capacity allowed.
     private func heldBack(_ co: Company, _ bd: Trade) -> (name: String, text: String) {
-        if data.balance.firstYear.untended(state) { return ("Prices not set", "Held back until you set a price or run a campaign") }
+        let start = data.balance.firstYear, lw = co.value("lastW")
+        if start.untended(state), lw["units"].double <= lw["cap"].double * start.serveShare(state) + 1 { return ("Prices not set", "Held back until you set a price") }
         let soldOut = Int(saturating: co.value("dlast")["so"].double)
         if soldOut > 0 { return ("Stock", "Sold out on \(soldOut) day\(soldOut == 1 ? "" : "s") last week: the shelves ran empty") }
         if bd.hasTrait("sub") { return ("Members", "Members join over time: the place is still filling up") }
