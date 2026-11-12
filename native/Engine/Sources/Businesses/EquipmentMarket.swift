@@ -210,7 +210,7 @@ public enum EquipmentMarket {
             let randomModel = words[Int(r.next() * 5)] + " " + String(Int(r.next() * 8) + 2) + "00"
             let fixed = VehicleCatalog.variant(modelID: m, index: i)
             let model = fixed?.model ?? randomModel
-            let f =jsRound((0.92 + r.next() * 0.2 + (rating - 3.6) * 0.08) * 100) / 100
+            let f = jsRound((0.92 + r.next() * 0.2 + (rating - 3.6) * 0.08) * 100) / 100
             let reviews = Int(saturating: jsRound(40 + r.next() * r.next() * 1500))
             list.append(VehicleOffer(modelID: m, index: i, brand: brand, model: model, modelName: modelName, priceFactor: f, rating: rating, reviews: reviews,
                                      reliability: jsRound((1.4 - 0.3 * (rating - 2.6)) * 100) / 100, art: fixed?.art ?? ""))
