@@ -1,4 +1,5 @@
 # What's new
+- Realistic closing and bankruptcy: closing a company repays all its debts first, a company that owes more than it has can only go bankrupt, guaranteed loans pass to the owner, money taken out while insolvent is clawed back, and no bank loans for 2 years after a bankruptcy
 - One fair game for everyone: no difficulty modes, retries or rolling back to older saves; save slots are separate careers, and every company type starts with the same 12-week runway from your savings plus a government start-up grant
 - Features unlock one per level ("Unlocks at level N"), decisions pop up on Home one at a time with Later, every day brings at least one event, and the Inbox only keeps what needs you
 - One Home for every player, one Goals screen with the battle pass on top (Daily, Weekly, Season, Long-term) and one Stats screen
