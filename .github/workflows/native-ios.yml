@@ -283,6 +283,22 @@ jobs:
           name: screen-shots
           path: screens/
           if-no-files-found: warn
+      - name: Publish small copies to the screens branch
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/small"
+          for f in screens/*.png screens/*.jpg screens/*.jpeg; do
+            [ -f "$f" ] || continue
+            sips -Z 1100 -s format jpeg -s formatOptions 60 "$f" --out "$RUNNER_TEMP/small/$(basename "${f%.*}").jpg" >/dev/null 2>&1 || true
+          done
+          cp screens/SKIPPED-*.txt "$RUNNER_TEMP/small/" 2>/dev/null || true
+          cd "$RUNNER_TEMP/small"
+          git init -q -b screens
+          git config user.name "ledger-ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Screens from ${GITHUB_SHA}" || exit 0
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" screens
 
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/native-swiftui'
