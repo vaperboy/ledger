@@ -2,14 +2,7 @@ import SwiftUI
 import Simulation
 
 extension BoxRarity {
-    var suspense: Double {
-        switch self {
-        case .common: return 1.1
-        case .rare: return 1.5
-        case .epic: return 1.9
-        case .legendary: return 2.3
-        }
-    }
+    var suspense: Double { LootTiming.buildUp(self) }
 }
 
 struct BoxPlan {
@@ -156,30 +149,6 @@ struct OpenedBox: Identifiable {
     var opening: BoxOpening
 }
 
-struct BoxShake: View {
-    var kind: BoxKind
-    var rarity: BoxRarity
-    var start: Date
-
-    var body: some View {
-        let total: Double = rarity.suspense
-        let tint: Color = rarity.tint
-        return TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { tl in
-            let t: Double = tl.date.timeIntervalSince(start)
-            let p: Double = min(1, max(0, t / total))
-            ZStack {
-                Circle()
-                    .fill(RadialGradient(colors: [tint.opacity(0.15 + 0.6 * p), .clear], center: .center, startRadius: 4, endRadius: 40 + 90 * p))
-                    .frame(width: 240, height: 240)
-                BoxArt(kind: kind, size: 110)
-                    .scaleEffect(1 + 0.12 * p)
-                    .rotationEffect(.degrees(sin(t * 30) * (2 + 11 * p)))
-                    .offset(x: CGFloat(sin(t * 47)) * CGFloat(1 + 4 * p))
-            }
-        }
-    }
-}
-
 struct BoxResultCard: View {
     var opened: OpenedBox
     var paidBoxesAllowed: Bool
@@ -195,6 +164,7 @@ struct BoxResultCard: View {
     @State private var canSkip = false
     @State private var start = Date()
     @State private var ring = false
+    @State private var faceUp = false
     @State private var showInfo = false
     @State private var desk = PieceDesk()
 
@@ -222,7 +192,7 @@ struct BoxResultCard: View {
         let r: BoxResult = opened.opening.results[0]
         return VStack(spacing: Theme.Space.s) {
             stage(r)
-            if shown {
+            if shown && faceUp {
                 VStack(spacing: Theme.Space.xs) {
                     HStack(spacing: Theme.Space.s) {
                         RarityTag(rarity: r.rarity)
@@ -244,25 +214,31 @@ struct BoxResultCard: View {
         .centerSheetLocked(!shown)
         .popupFooter {
             PopupFooter(cancel: "Done", action: againTitle, onCancel: { if shown { close() } else { reveal(r) } }, onAction: { another() },
-                        actionEnabled: canAgain && !working && shown)
+                        actionEnabled: canAgain && !working && shown && faceUp)
         }
     }
 
     private func play() async {
-        if reduceMotion { revealed = true; Haptics.success(); onRevealed(opened.id); return }
+        faceUp = false
+        if reduceMotion {
+            revealed = true
+            canSkip = true
+            onRevealed(opened.id)
+            await turnOver(opened.opening.results[0])
+            return
+        }
         revealed = false
-        canSkip = false
+        canSkip = true
         ring = false
         showInfo = false
         start = Date()
-        let total: Double = opened.opening.results[0].rarity.suspense
+        let total: Double = LootTiming.buildUp(opened.opening.results[0].rarity)
         var elapsed: Double = 0
         while elapsed < total {
             try? await Task.sleep(nanoseconds: 250_000_000)
             if Task.isCancelled || revealed { return }
             elapsed += 0.25
-            if elapsed >= 1 { canSkip = true }
-            Haptics.tap()
+            LootHaptics.buildUp(progress: elapsed / total)
         }
         reveal(opened.opening.results[0])
     }
@@ -270,14 +246,27 @@ struct BoxResultCard: View {
     private func reveal(_ r: BoxResult) {
         if revealed { return }
         Motion.animate(.spring(response: 0.55, dampingFraction: 0.66)) { revealed = true }
-        Motion.animate(.easeOut(duration: 0.7)) { ring = true }
-        Haptics.success()
         onRevealed(opened.id)
-        if r.rarity >= .epic {
-            Task {
-                try? await Task.sleep(nanoseconds: 180_000_000)
-                Haptics.success()
-            }
+        Task { await turnOver(r) }
+    }
+
+    /// The face-down card waits a moment, longer for rarer prizes, then turns over.
+    private func turnOver(_ r: BoxResult) async {
+        try? await Task.sleep(nanoseconds: UInt64(LootTiming.hold(r.rarity) * 1_000_000_000))
+        if Task.isCancelled || faceUp { return }
+        faceUp = true
+        Motion.animate(.easeOut(duration: 0.7)) { ring = true }
+        await LootHaptics.flip(r.rarity)
+    }
+
+    private func tapStage(_ r: BoxResult) {
+        guard canSkip else { return }
+        if !revealed && !reduceMotion {
+            reveal(r)
+        } else if !faceUp {
+            faceUp = true
+            Motion.animate(.easeOut(duration: 0.7)) { ring = true }
+            Task { await LootHaptics.flip(r.rarity) }
         }
     }
 
@@ -293,16 +282,24 @@ struct BoxResultCard: View {
         let tint: Color = r.rarity.tint
         return ZStack {
             if shown {
-                StoreRays(tint: tint, size: 280, strength: r.rarity >= .epic ? 0.6 : 0.32)
-                    .transition(.opacity)
-                Circle().strokeBorder(tint, lineWidth: 3)
-                    .frame(width: 140, height: 140)
-                    .scaleEffect(ring ? 2.4 : 0.4)
-                    .opacity(ring ? 0 : 0.9)
+                Circle()
+                    .fill(RadialGradient(colors: [tint.opacity(faceUp ? 0.5 : 0.28), .clear], center: .center, startRadius: 4, endRadius: 120))
+                    .frame(width: 260, height: 260)
                     .allowsHitTesting(false)
-                prizeTile(r)
-                    .transition(.scale(scale: 0.3).combined(with: .opacity))
-                if r.rarity >= .rare && !reduceMotion {
+                if faceUp {
+                    StoreRays(tint: tint, size: 280, strength: r.rarity >= .epic ? 0.6 : 0.32)
+                        .transition(.opacity)
+                    Circle().strokeBorder(tint, lineWidth: 3)
+                        .frame(width: 140, height: 140)
+                        .scaleEffect(ring ? 2.4 : 0.4)
+                        .opacity(ring ? 0 : 0.9)
+                        .allowsHitTesting(false)
+                }
+                if let entry = HaulEntry.group([r]).first {
+                    LootFlipCard(entry: entry, faceUp: faceUp, width: 118)
+                        .transition(.scale(scale: 0.3).combined(with: .opacity))
+                }
+                if faceUp && r.rarity >= .rare && !reduceMotion {
                     ConfettiBurst(count: r.rarity == .legendary ? 90 : r.rarity == .epic ? 60 : 30, goldOnly: r.rarity == .legendary, originFraction: 0.5)
                         .id(opened.id)
                 }
@@ -315,27 +312,9 @@ struct BoxResultCard: View {
             if !shown && canSkip { Text("Tap to skip").textStyle(.caption) }
         }
         .contentShape(Rectangle())
-        .onTapGesture { if canSkip { reveal(r) } }
+        .onTapGesture { tapStage(r) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(shown ? "Prize: \(r.rarity.title)" : "Opening the box")
-    }
-
-    private func prizeTile(_ r: BoxResult) -> some View {
-        let tint: Color = r.rarity.tint
-        return ZStack {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(LinearGradient(colors: [tint.opacity(0.6), tint.opacity(0.16)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(tint, lineWidth: 1.5))
-            switch r.content {
-            case .cosmetic: Image(systemName: "paintpalette.fill").font(.system(size: 46)).foregroundStyle(Theme.ink)
-            case .artifact: LedgerGlyph(glyph: Glyph.luxury, size: 52, tint: Theme.ink)
-            case .gold: StoreCoin(size: 60)
-            case .money: Image(systemName: "banknote.fill").font(.system(size: 46)).foregroundStyle(Theme.ink)
-            }
-        }
-        .frame(width: 132, height: 132)
-        .storeSheen(radius: 24, strength: 0.4)
-        .shadow(color: tint.opacity(r.rarity >= .epic ? 0.75 : 0.4), radius: r.rarity >= .epic ? 24 : 14)
     }
 
     @ViewBuilder private func content(_ r: BoxResult) -> some View {
@@ -539,6 +518,8 @@ struct BoxBatchCard: View {
     @State private var start = Date()
     @State private var desk = PieceDesk()
     @State private var pick: String?
+    @State private var flipped = 0
+    @State private var haulOpen = false
 
     private var kind: BoxKind { opened.opening.kind }
     private var shown: Bool { revealed || reduceMotion }
@@ -555,11 +536,11 @@ struct BoxBatchCard: View {
 
     private var main: some View {
         Group {
-            if showInfo { info } else if shown { results } else { shaking }
+            if showInfo { info } else if shown && haulOpen { results } else if shown { cards } else { shaking }
         }
         .popupFooter {
             PopupFooter(cancel: "Done", action: againTitle, onCancel: { if shown { close() } else { reveal() } }, onAction: { again() },
-                        actionEnabled: canAgain && !working && shown && !showInfo)
+                        actionEnabled: canAgain && !working && shown && haulOpen && !showInfo)
         }
     }
 
@@ -573,6 +554,59 @@ struct BoxBatchCard: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { reveal() }
+    }
+
+    private var bestRarity: BoxRarity { opened.opening.results.map(\.rarity).max() ?? .common }
+
+    /// Every reward as a face-down card that turns over one after another.
+    private var cards: some View {
+        let singles: [HaulEntry] = opened.opening.results.compactMap { (r: BoxResult) -> HaulEntry? in HaulEntry.group([r]).first }
+        let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 5)
+        let done: Bool = flipped >= singles.count
+        return VStack(spacing: Theme.Space.m) {
+            Spacer(minLength: 0)
+            LazyVGrid(columns: columns, spacing: Theme.Space.s) {
+                ForEach(Array(singles.enumerated()), id: \.offset) { (i: Int, e: HaulEntry) in
+                    LootFlipCard(entry: e, faceUp: i < flipped, width: 52)
+                }
+            }
+            Text(done ? "Here is what you got." : "Tap to turn them all.").textStyle(.caption)
+            Button { Haptics.tap(); Motion.animate(.easeInOut(duration: 0.2)) { haulOpen = true } } label: { Text("See the haul").frame(maxWidth: .infinity) }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .disabled(!done)
+                .accessibilityIdentifier("box-see-haul")
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, PopupLayout.inset)
+        .contentShape(Rectangle())
+        .onTapGesture { flipAll() }
+        .transition(.opacity)
+    }
+
+    private func flipAll() {
+        let n: Int = opened.opening.results.count
+        guard flipped < n else { return }
+        flipped = n
+        let best: BoxRarity = bestRarity
+        Task { await LootHaptics.flip(best) }
+    }
+
+    private func startFlips() {
+        let n: Int = opened.opening.results.count
+        let id: UUID = opened.id
+        flipped = 0
+        haulOpen = false
+        Task {
+            try? await Task.sleep(nanoseconds: UInt64((reduceMotion ? 0.3 : LootTiming.hold(bestRarity)) * 1_000_000_000))
+            if reduceMotion { flipped = n; return }
+            for i in 0..<n {
+                if flipped >= n || opened.id != id { return }
+                flipped = i + 1
+                if opened.opening.results[i].rarity >= .rare { Haptics.success() } else { Haptics.tap() }
+                try? await Task.sleep(nanoseconds: 230_000_000)
+            }
+            if bestRarity >= .epic { await LootHaptics.flip(bestRarity) }
+        }
     }
 
     private var info: some View {
@@ -717,17 +751,19 @@ struct BoxBatchCard: View {
     }
 
     private func play() async {
-        if reduceMotion { revealed = true; Haptics.success(); onRevealed(opened.id); return }
+        flipped = 0
+        haulOpen = false
+        if reduceMotion { revealed = true; onRevealed(opened.id); startFlips(); return }
         revealed = false
         showInfo = false
         start = Date()
-        let top: BoxRarity = opened.opening.results.map(\.rarity).max() ?? .common
+        let total: Double = LootTiming.buildUp(bestRarity)
         var elapsed: Double = 0
-        while elapsed < top.suspense {
+        while elapsed < total {
             try? await Task.sleep(nanoseconds: 250_000_000)
             if Task.isCancelled || revealed { return }
             elapsed += 0.25
-            Haptics.tap()
+            LootHaptics.buildUp(progress: elapsed / total)
         }
         reveal()
     }
@@ -735,8 +771,8 @@ struct BoxBatchCard: View {
     private func reveal() {
         if revealed { return }
         Motion.animate(.spring(response: 0.5, dampingFraction: 0.8)) { revealed = true }
-        Haptics.success()
         onRevealed(opened.id)
+        startFlips()
     }
 
     private var canAgain: Bool {
