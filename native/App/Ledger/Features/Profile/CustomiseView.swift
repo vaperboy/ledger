@@ -2,34 +2,38 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// One screen to dress your player card: the card on top shows every change, including items you only try on.
+/// One screen to dress your player card. It opens on the live card: tap any part of the card (backdrop, avatar, name plate, flair), or an
+/// empty "+" slot, to open the matching tab. Items you do not own yet can be tried on and show on the card.
 struct CustomiseView: View {
     enum Part: String, CaseIterable, Identifiable {
-        case avatar, outfit, backdrop, plate, frame, flair, badges
+        case character, backdrop, plate, flair
 
         var id: String { rawValue }
 
+        init(card: CardPart) {
+            switch card {
+            case .character: self = .character
+            case .backdrop: self = .backdrop
+            case .plate: self = .plate
+            case .flair: self = .flair
+            }
+        }
+
         var title: String {
             switch self {
-            case .avatar: return "Avatar"
-            case .outfit: return "Outfit"
+            case .character: return "Character"
             case .backdrop: return "Backdrop"
             case .plate: return "Name plate"
-            case .frame: return "Frame"
             case .flair: return "Flair"
-            case .badges: return "Badges"
             }
         }
 
         var hint: String {
             switch self {
-            case .avatar: return "Your face and hair. Other players see them."
-            case .outfit: return "What your avatar wears. Some unlock as you level up."
-            case .backdrop: return "Fills the top of your card. The name plate takes its colours from it."
-            case .plate: return "Frames your name on the card."
-            case .frame: return "Tints the edge of your card and the glow behind your avatar."
+            case .character: return "Your face, skin, hair and outfit. Other players see them."
+            case .backdrop: return "Fills your whole card."
+            case .plate: return "The plate your name sits on."
             case .flair: return "Sits beside your name."
-            case .badges: return "Pick up to 3 badges for your card."
             }
         }
 
@@ -37,28 +41,36 @@ struct CustomiseView: View {
             switch self {
             case .backdrop: return .backdrop
             case .plate: return .namePlate
-            case .frame: return .theme
             case .flair: return .richListFlair
-            default: return nil
+            case .character: return nil
+            }
+        }
+    }
+
+    enum Look: String, CaseIterable, Identifiable {
+        case face, skin, hair, outfit
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .face: return "Face"
+            case .skin: return "Skin colour"
+            case .hair: return "Hair"
+            case .outfit: return "Outfit"
             }
         }
     }
 
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
-    @Environment(Entitlements.self) private var ent
     @ObservedObject private var season = SeasonModel.shared
     @ObservedObject private var avatars = AvatarModel.shared
     @ObservedObject private var local = ProfileLocal.shared
-    @AppStorage(CosmeticKeys.badge) private var savedBadge: String = Cosmetics.defaultBadgeID
-    @AppStorage(CosmeticKeys.theme) private var savedTheme: String = Cosmetics.defaultThemeID
     private let session = StoreSession.shared
-    @State private var part: Part = .avatar
+    @State private var part: Part?
+    @State private var look: Look = .face
     @State private var pending: PendingAction?
-    @State private var shortOfGold = false
-    @State private var shortNeed = 0
-    @State private var showPacks = false
-    @State private var renaming = false
     @State private var note = ""
     @State private var trial: [String: String] = [:]
     @State private var trialOutfit: String?
@@ -68,24 +80,30 @@ struct CustomiseView: View {
 
     var body: some View {
         let cabinet: Cabinet = session.state.cabinet
-        VStack(spacing: Theme.Space.m) {
-            if let e = store.engine {
-                PlayerCard(data: PlayerCardData.mine(e, store: store, trial: trial, trialOutfit: trialOutfit), onRename: { renaming = true })
-            }
-            chips
-            hintLine
+        ScrollViewReader { (proxy: ScrollViewProxy) in
             ScrollView {
-                content(cabinet).padding(.bottom, Self.barClearance)
+                VStack(spacing: Theme.Space.m) {
+                    if let e = store.engine {
+                        PlayerCard(data: PlayerCardData.mine(e, store: store, trial: trial, trialOutfit: trialOutfit), onPart: { (c: CardPart) in
+                            choosePart(Part(card: c))
+                            withAnimation { proxy.scrollTo("customise-chips", anchor: .center) }
+                        })
+                    }
+                    if let current = part {
+                        chips(current).id("customise-chips")
+                        hintLine(current)
+                        content(current, cabinet)
+                    } else {
+                        overview
+                    }
+                }
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Self.barClearance)
+                .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
         }
-        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s)
-        .frame(maxWidth: 760).frame(maxWidth: .infinity)
-        .appScreen(title: "Customise", subtitle: "Tap to wear it")
+        .appScreen(title: "Customise", subtitle: "Tap a part of your card")
         .confirmAction($pending)
-        .usernameChange(isPresented: $renaming)
-        .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") { ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; showPacks = true }) }
-        .navigationDestination(isPresented: $showPacks) { StoreApp() }
         .task {
             await session.load()
             if let e = store.engine { avatars.note(rank: e.careerStatus.rank.index, badges: e.careerCosmetics, level: e.playerLevel.level) }
@@ -93,14 +111,63 @@ struct CustomiseView: View {
         .onChange(of: LookSync.signature) { _, _ in LookSync.push(online) }
     }
 
+    private func choosePart(_ p: Part) {
+        part = p
+        note = ""
+    }
+
+    // MARK: Overview
+
+    private var overview: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("What do you want to change?").textStyle(.label, tint: Theme.inkFaint).frame(maxWidth: .infinity, alignment: .leading)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible(), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
+                ForEach(Part.allCases) { (p: Part) in partTile(p) }
+            }
+        }
+    }
+
+    private func partTile(_ p: Part) -> some View {
+        let status: String? = wornTitle(p)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+        return Button { Haptics.choose(); choosePart(p) } label: {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                HStack {
+                    Text(p.title).textStyle(.headline, tint: Theme.ink)
+                    Spacer(minLength: 0)
+                    if status == nil { Image(systemName: "plus.circle.fill").foregroundStyle(Theme.accent) }
+                }
+                Text(status ?? "Empty. Tap to add one.").textStyle(.caption, tint: status == nil ? Theme.accent : Theme.inkSoft).lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, minHeight: 72, alignment: .topLeading).padding(Theme.Space.m)
+            .background(shape.fill(Theme.inset))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("customise-part-" + p.rawValue)
+    }
+
+    /// The title of what is worn for a part, or nil when the slot is empty. The character is always set.
+    private func wornTitle(_ p: Part) -> String? {
+        switch p {
+        case .character: return "Face, skin, hair and outfit"
+        case .backdrop:
+            if let id = season.pass.equipped[SeasonReward.Kind.backdrop.rawValue], let r = LookKit.item(id) { return r.title }
+            if let id = season.pass.equipped[SeasonPass.profileCardKey], let d = CardCatalog.def(forItem: id) { return d.name }
+            return nil
+        case .plate: return season.pass.equipped[SeasonReward.Kind.namePlate.rawValue].flatMap { (id: String) -> String? in LookKit.item(id)?.title }
+        case .flair: return season.pass.equipped[SeasonReward.Kind.richListFlair.rawValue].flatMap { (id: String) -> String? in LookKit.item(id)?.title }
+        }
+    }
+
     // MARK: Header
 
-    private var chips: some View {
+    private func chips(_ current: Part) -> some View {
         ScrollView(.horizontal) {
             HStack(spacing: Theme.Space.s) {
                 ForEach(Part.allCases) { (p: Part) in
-                    let on: Bool = p == part
-                    Button { Haptics.choose(); part = p; note = "" } label: {
+                    let on: Bool = p == current
+                    Button { Haptics.choose(); part = on ? nil : p; note = "" } label: {
                         Text(p.title).textStyle(.body, tint: on ? Theme.ink : Theme.inkSoft, weight: on ? .semibold : .regular)
                             .padding(.horizontal, Theme.Space.l).frame(minHeight: 44)
                             .background(Capsule().fill(on ? Theme.accentWash : Theme.inset))
@@ -114,9 +181,9 @@ struct CustomiseView: View {
         .scrollIndicators(.hidden)
     }
 
-    private var hintLine: some View {
+    private func hintLine(_ current: Part) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-            Text(note.isEmpty ? part.hint : note).textStyle(.caption, tint: note.isEmpty ? Theme.inkSoft : Theme.accent)
+            Text(note.isEmpty ? current.hint : note).textStyle(.caption, tint: note.isEmpty ? Theme.inkSoft : Theme.accent)
                 .frame(maxWidth: .infinity, alignment: .leading).lineLimit(2)
             if !trial.isEmpty || trialOutfit != nil {
                 Button("Stop trying") { Haptics.tap(); trial = [:]; trialOutfit = nil; note = "" }
@@ -127,27 +194,24 @@ struct CustomiseView: View {
         .frame(minHeight: 32)
     }
 
-    @ViewBuilder private func content(_ cabinet: Cabinet) -> some View {
-        switch part {
-        case .avatar: avatarContent
-        case .outfit: outfitContent
+    @ViewBuilder private func content(_ current: Part, _ cabinet: Cabinet) -> some View {
+        switch current {
+        case .character: characterContent
         case .backdrop: backdropContent(cabinet)
-        case .plate, .frame, .flair: rewardGrid(part.kind ?? .namePlate)
-        case .badges: badgesContent
+        case .plate, .flair: rewardGrid(current.kind ?? .namePlate)
         }
     }
 
-    // MARK: Avatar and outfit
+    // MARK: Character
 
-    private var avatarContent: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Face").textStyle(.label, tint: Theme.inkFaint)
-                AvatarFacePicker(look: local.avatar, onChange: { (l: AvatarLook) in wear(l) })
-            }
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Hair").textStyle(.label, tint: Theme.inkFaint)
-                AvatarHairPicker(look: local.avatar, onChange: { (l: AvatarLook) in wear(l) })
+    private var characterContent: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            SegmentedPill(items: Look.allCases, title: { (l: Look) -> String in l.title }, selection: $look, identifier: { (l: Look) -> String in "customise-look-" + l.rawValue })
+            switch look {
+            case .face: AvatarFacePicker(look: local.avatar, onChange: { (l: AvatarLook) in wear(l) })
+            case .skin: AvatarSkinPicker(look: local.avatar, onChange: { (l: AvatarLook) in wear(l) })
+            case .hair: AvatarHairPicker(look: local.avatar, onChange: { (l: AvatarLook) in wear(l) })
+            case .outfit: outfitContent
             }
         }
     }
@@ -173,7 +237,7 @@ struct CustomiseView: View {
         note = ""
     }
 
-    // MARK: Backdrop, plate, frame, flair
+    // MARK: Backdrop, plate, flair
 
     private func rewards(_ kind: SeasonReward.Kind) -> [SeasonReward] {
         var seen = Set<String>()
@@ -190,13 +254,21 @@ struct CustomiseView: View {
         }
     }
 
+    @ViewBuilder private func tileArt(_ r: SeasonReward) -> some View {
+        if r.kind == .namePlate {
+            NamePlateView(name: "Name", plate: r, compact: true).frame(height: 48)
+        } else {
+            ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 48, wide: true)
+        }
+    }
+
     private func rewardTile(_ r: SeasonReward) -> some View {
         let isOpen: Bool = season.pass.owned.contains(r.id)
         let worn: Bool = trial[r.kind.rawValue] == nil && season.pass.equipped[r.kind.rawValue] == r.id
         let trying: Bool = trial[r.kind.rawValue] == r.id
         let how: String = CustomiseView.how(r)
         return LookTile(title: r.title, note: isOpen ? "" : how, worn: worn || trying, wornText: trying ? "Trying" : "Equipped", locked: !isOpen, id: "reward-" + r.id,
-                        art: ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 48, wide: true)) {
+                        art: tileArt(r)) {
             if !isOpen {
                 Haptics.choose()
                 trial[r.kind.rawValue] = trying ? nil : r.id
@@ -262,58 +334,6 @@ struct CustomiseView: View {
         if let l = CardCatalog.levelRewards.first(where: { (x: CardCatalog.LevelReward) -> Bool in x.defID == d.id }) { return "Reach level \(l.level)" }
         if let s = SeasonRewards.all.first(where: { (x: SeasonReward) -> Bool in x.id == d.id }) { return "Season Pass tier \(s.tier)" + (s.premium ? ", premium track" : "") }
         return "Card packs"
-    }
-
-    // MARK: Badges
-
-    private var badgesContent: some View {
-        let cabinet: Cabinet = session.state.cabinet
-        let open: [AvatarDef] = AvatarCatalog.all.filter { avatars.isUnlocked($0, pro: ent.isPro, plus: ent.isPlus, ownsPro: ent.ownsPro, founder: ent.isFounder, cabinet: cabinet) }
-        let shut: [AvatarDef] = AvatarCatalog.all.filter { (d: AvatarDef) -> Bool in !open.contains(d) }
-        return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Text("On your card").textStyle(.label, tint: Theme.inkFaint)
-            LazyVGrid(columns: columns, spacing: Theme.Space.s) {
-                ForEach(open + shut) { (d: AvatarDef) in
-                    let isOpen: Bool = open.contains(d)
-                    let how: String = d.requirement + (d.price.map { (p: Int) -> String in " \u{00B7} " + StoreText.gold(p) } ?? "")
-                    let slot: Int? = local.cardBadges.firstIndex(of: d.id)
-                    LookTile(title: d.title, note: isOpen ? "" : how, worn: slot != nil, wornText: "Badge \((slot ?? 0) + 1)", locked: !isOpen, id: "badge-" + d.id,
-                             art: ItemArt(avatar: d.id, size: 48)) { tapBadge(d, open: isOpen, how: how) }
-                }
-            }
-            Text("On the home screen").textStyle(.label, tint: Theme.inkFaint)
-            ColourBadgePicker(earned: store.engine?.careerCosmetics ?? [], theme: $savedTheme, badge: $savedBadge, show: .both)
-        }
-    }
-
-    private func tapBadge(_ d: AvatarDef, open: Bool, how: String) {
-        if !open {
-            if d.price != nil { ask(d) } else { Haptics.warning(); note = d.title + ": " + how }
-            return
-        }
-        toggleBadge(d.id)
-    }
-
-    private func toggleBadge(_ id: String) {
-        var list: [String] = local.cardBadges
-        if let i = list.firstIndex(of: id) {
-            list.remove(at: i)
-        } else if list.count < ProfileLocal.badgeSlots {
-            list.append(id)
-        } else {
-            Haptics.warning()
-            note = "The card holds 3 badges. Tap one to take it off first."
-            return
-        }
-        Haptics.choose()
-        note = ""
-        local.setCardBadges(list)
-    }
-
-    private func ask(_ d: AvatarDef) {
-        StorePurchase.ask(.avatar(d), pending: $pending, onShort: { (price: Int) in shortNeed = price; shortOfGold = true }, then: { (done: Bool) in
-            if done { toggleBadge(d.id) }
-        })
     }
 }
 

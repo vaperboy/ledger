@@ -10,7 +10,8 @@ struct CompanyCustomiseButton: View {
 
     var body: some View {
         Button { Haptics.tap(); open = true } label: {
-            LedgerGlyph(glyph: Glyph.luxury, size: Theme.Icon.medium, tint: Theme.gold)
+            Image(systemName: "wrench.and.screwdriver.fill")
+                .font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.gold)
                 .frame(width: 40, height: 40)
                 .background(Circle().fill(Color.black.opacity(0.45)))
                 .overlay(Circle().strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1.2))
@@ -19,16 +20,17 @@ struct CompanyCustomiseButton: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel("Customise")
-        .accessibilityHint("Logo and banner")
+        .accessibilityHint("Name, logo and banner")
         .accessibilityIdentifier("company-customise")
         .navigationDestination(isPresented: $open) { CompanyCustomiseView(companyID: companyID) }
     }
 }
 
-/// A company looks like a logo and one banner. The banner styles the company's header wherever it is shown.
+/// The one place to change how a company looks: its name, logo and banner. Opened by the wrench on the company header.
+/// The banner styles the company's header wherever it is shown. Tap the logo, name or banner in the preview to open that tab.
 struct CompanyCustomiseView: View {
     enum Part: String, CaseIterable, Identifiable {
-        case banner, logo
+        case name, logo, banner
         var id: String { rawValue }
         var title: String { rawValue.capitalized }
     }
@@ -41,6 +43,7 @@ struct CompanyCustomiseView: View {
     @ObservedObject private var season = SeasonModel.shared
     private let session = StoreSession.shared
     @State private var part: Part = .banner
+    @State private var renaming = false
     @State private var pending: PendingAction?
     @State private var note = ""
     @State private var shareURL: URL?
@@ -71,11 +74,20 @@ struct CompanyCustomiseView: View {
         }
         .appScreen(title: "Customise", subtitle: store.engine?.state.company(companyID)?.name ?? "", backdrop: store.engine.flatMap { (e: GameEngine) -> SeasonReward? in LookKit.companyBackdrop(e, companyID) })
         .confirmAction($pending)
+        .companyRename(companyID: companyID, isPresented: $renaming)
         .task { await session.load() }
     }
 
     private func previewView(_ e: GameEngine, _ co: Company) -> some View {
         CompanyCardView(name: co.name, def: nil, logoID: e.companyLogoID(companyID: co.id), backdrop: LookKit.companyBackdrop(e, co.id))
+    }
+
+    /// The preview you tap: the logo, the name and the banner each open their own tab.
+    private func livePreview(_ e: GameEngine, _ co: Company) -> some View {
+        CompanyCardView(name: co.name, def: nil, logoID: e.companyLogoID(companyID: co.id), backdrop: LookKit.companyBackdrop(e, co.id),
+                        onLogo: { part = .logo; note = "" },
+                        onName: { part = .name; note = ""; renaming = true },
+                        onBanner: { part = .banner; note = "" })
     }
 
     private func signature(_ e: GameEngine, _ co: Company) -> String {
@@ -84,8 +96,8 @@ struct CompanyCustomiseView: View {
 
     private func preview(_ e: GameEngine, _ co: Company) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("As other players see it").textStyle(.label, tint: Theme.inkFaint)
-            previewView(e, co)
+            Text("As other players see it. Tap a part to change it.").textStyle(.label, tint: Theme.inkFaint)
+            livePreview(e, co)
             if let url = shareURL {
                 ShareLink(item: url) {
                     HStack(spacing: Theme.Space.xs) {
@@ -114,6 +126,7 @@ struct CompanyCustomiseView: View {
 
     @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
         switch part {
+        case .name: nameSection(e, co)
         case .banner: bannerGrid(e, co)
         case .logo: logoGrid(e, co)
         }
@@ -121,6 +134,26 @@ struct CompanyCustomiseView: View {
 
     private func replace(_ item: String, on other: String, then run: @escaping () -> Void) {
         pending = PendingAction(title: "Replace?", message: item + " is on " + other + ". Move it here?", button: "Move", alwaysAsk: true, run: run)
+    }
+
+    private func nameSection(_ e: GameEngine, _ co: Company) -> some View {
+        let left: Int = e.renameCooldownLeft(companyID: co.id)
+        let cur: Currency = e.currency(for: co)
+        let cost: Double = e.renameCost(companyID: co.id)
+        let inChain: Bool = e.chainOf(companyID: co.id) != nil
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(co.name).textStyle(.title)
+            if inChain {
+                Text("This store carries its chain's name. Rebranding the whole chain is done from the chain.").textStyle(.caption, tint: Theme.inkSoft)
+            } else {
+                Text(left > 0 ? "The name can change again in \(left) \(left == 1 ? "week" : "weeks"). Costs \(cur.tidyDisplay(cost))."
+                              : "Costs \(cur.tidyDisplay(cost)); about a third of customers lose track of you. Then you wait \(GameEngine.renameCooldownWeeks) weeks.")
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Button("Rename") { Haptics.tap(); renaming = true }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("company-rename")
+            }
+        }
     }
 
     private func bannerGrid(_ e: GameEngine, _ co: Company) -> some View {
@@ -132,7 +165,7 @@ struct CompanyCustomiseView: View {
         let current: String = e.companyBackdrop(companyID: co.id)
         let id: Int = co.id
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Styles the header of this company everywhere it is shown.").textStyle(.caption, tint: Theme.inkSoft)
+            Text("Fills the top of this company everywhere it is shown.").textStyle(.caption, tint: Theme.inkSoft)
             LazyVGrid(columns: columns, spacing: Theme.Space.s) {
                 ForEach(owned + shut) { (r: SeasonReward) in
                     let isOpen: Bool = season.pass.owned.contains(r.id)

@@ -186,6 +186,7 @@ struct CompanySwitcherBar: View {
             .accessibilityLabel("Switch company")
             .accessibilityValue(context)
             .padding(.horizontal, Theme.Space.page)
+            .frame(maxWidth: .infinity)
             .background {
                 ZStack {
                     if P != .game { P.ground.ignoresSafeArea(edges: .top) }

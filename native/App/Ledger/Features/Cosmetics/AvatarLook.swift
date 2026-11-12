@@ -7,11 +7,15 @@ struct AvatarLook: Equatable, Hashable, Sendable {
     var hair: Int = 0
     var hairColour: Int = 0
     var outfit: String = AvatarParts.outfits[0].id
+    /// Index into `AvatarParts.skinTones`, or -1 to keep the skin the chosen face is drawn with.
+    var skin: Int = -1
 
-    /// Short text form stored with the profile, for example "3,2,5,blazer".
-    var code: String { "\(face),\(hair),\(hairColour),\(outfit)" }
+    /// Short text form stored with the profile, for example "3,2,5,blazer". A chosen skin tone is a fifth part ("3,2,5,blazer,4");
+    /// codes without it still decode.
+    var code: String { "\(face),\(hair),\(hairColour),\(outfit)" + (skin >= 0 ? ",\(skin)" : "") }
 
-    init(face: Int = 0, hair: Int = 0, hairColour: Int = 0, outfit: String = AvatarParts.outfits[0].id) {
+    init(face: Int = 0, hair: Int = 0, hairColour: Int = 0, outfit: String = AvatarParts.outfits[0].id, skin: Int = -1) {
+        self.skin = skin < 0 ? -1 : AvatarParts.clamp(skin, AvatarParts.skinTones.count)
         self.face = AvatarParts.clamp(face, AvatarParts.faces.count)
         self.hair = AvatarParts.clamp(hair, AvatarParts.hairStyles.count)
         self.hairColour = AvatarParts.clamp(hairColour, AvatarParts.hairColours.count)
@@ -20,8 +24,13 @@ struct AvatarLook: Equatable, Hashable, Sendable {
 
     init?(code: String) {
         let parts: [Substring] = code.split(separator: ",", omittingEmptySubsequences: false)
-        guard parts.count == 4, let f = Int(parts[0]), let h = Int(parts[1]), let c = Int(parts[2]) else { return nil }
-        self.init(face: f, hair: h, hairColour: c, outfit: String(parts[3]))
+        guard parts.count == 4 || parts.count == 5, let f = Int(parts[0]), let h = Int(parts[1]), let c = Int(parts[2]) else { return nil }
+        var tone: Int = -1
+        if parts.count == 5 {
+            guard let t = Int(parts[4]) else { return nil }
+            tone = t
+        }
+        self.init(face: f, hair: h, hairColour: c, outfit: String(parts[3]), skin: tone)
     }
 
     /// A stable look for players who have not made one (rivals, older profiles).
@@ -60,6 +69,9 @@ struct OutfitDef: Identifiable, Equatable {
 /// Art slots (all optional, placeholders are drawn when missing):
 ///   avatar.body.<outfit id>      shoulders and outfit, full canvas
 ///   avatar.face.<n>              face with skin, eyes and mouth, full canvas
+///   avatar.skin.<n>              optional: the skin areas of face n (head, ears, neck) as a white mask, tinted with the chosen skin tone
+///                                and drawn under avatar.face.<n>, which then needs transparent skin areas; without it a chosen tone only
+///                                recolours the drawn placeholder
 ///   avatar.hair.<key>            front hair, white or grey so it can be tinted
 ///   avatar.hair.<key>.back       hair behind the head and shoulders, tinted the same way
 /// Every layer is the same square-ish canvas (width 1, height 1.1) so they stack without offsets.
@@ -90,6 +102,11 @@ enum AvatarParts {
         OutfitDef(id: "vest", title: "Waistcoat", main: 0x7A4B2A, trim: 0xE6E0D0, level: 15),
         OutfitDef(id: "tux", title: "Dinner jacket", main: 0x16171A, trim: 0xD6B889, level: 25)
     ]
+
+    /// A few realistic skin tones, light to deep.
+    static let skinTones: [UInt32] = [0xF6DCC4, 0xE8BE98, 0xD39E74, 0xB57C54, 0x8D5A3C, 0x5E3B28]
+
+    static func skinTone(_ i: Int) -> Color { Color(hex: skinTones[clamp(i, skinTones.count)]) }
 
     static var freeOutfits: [OutfitDef] { outfits.filter { $0.isFree } }
 

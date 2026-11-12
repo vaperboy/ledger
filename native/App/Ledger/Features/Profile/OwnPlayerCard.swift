@@ -22,7 +22,6 @@ extension PlayerCardData {
                               levelText: "Level \(e.playerLevel.level)",
                               avatar: avatar,
                               worn: worn,
-                              badgeIcons: local.cardBadges,
                               figures: [PlayerCardFigure(title: "Net worth", value: store.short(e.netWorth.total)),
                                         PlayerCardFigure(title: "Companies", value: "\(live)"),
                                         PlayerCardFigure(title: "Weeks played", value: "\(e.state.week)")],

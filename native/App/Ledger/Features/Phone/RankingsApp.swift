@@ -125,7 +125,7 @@ struct RankingsBoards: View {
         if BoardProfiles.isRival(x.id) {
             PlayerProfileView(playerID: x.id, preset: BoardProfiles.rivalProfile(id: x.id, name: x.name))
         } else {
-            PlayerProfileView(playerID: x.id)
+            PlayerProfileView(playerID: x.id, knownName: x.name)
         }
     }
 

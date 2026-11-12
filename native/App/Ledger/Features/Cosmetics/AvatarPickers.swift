@@ -48,7 +48,7 @@ struct AvatarFacePicker: View {
                     var next: AvatarLook = look
                     next.face = f.id
                     onChange(next)
-                }) { AvatarHead(look: AvatarLook(face: f.id, hair: look.hair, hairColour: look.hairColour, outfit: look.outfit), size: 56) }
+                }) { AvatarHead(look: AvatarLook(face: f.id, hair: look.hair, hairColour: look.hairColour, outfit: look.outfit, skin: look.skin), size: 56) }
             }
         }
     }
@@ -69,7 +69,7 @@ struct AvatarHairPicker: View {
                             var next: AvatarLook = look
                             next.hair = h.id
                             onChange(next)
-                        }) { AvatarHead(look: AvatarLook(face: look.face, hair: h.id, hairColour: look.hairColour, outfit: look.outfit), size: 56) }
+                        }) { AvatarHead(look: AvatarLook(face: look.face, hair: h.id, hairColour: look.hairColour, outfit: look.outfit, skin: look.skin), size: 56) }
                     }
                 }
             }
@@ -114,9 +114,39 @@ struct AvatarOutfitPicker: View {
                     Haptics.choose()
                     onPick(o, open)
                 }) {
-                    HalfBodyAvatar(look: AvatarLook(face: look.face, hair: look.hair, hairColour: look.hairColour, outfit: o.id), width: 66)
+                    HalfBodyAvatar(look: AvatarLook(face: look.face, hair: look.hair, hairColour: look.hairColour, outfit: o.id, skin: look.skin), width: 66)
                         .frame(width: 66, height: 66, alignment: .top).clipped()
                 }
+            }
+        }
+    }
+}
+
+/// A row of skin tones. The picked tone tints the face and body layers.
+struct AvatarSkinPicker: View {
+    var look: AvatarLook
+    var onChange: (AvatarLook) -> Void
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
+            ForEach(0..<AvatarParts.skinTones.count, id: \.self) { (i: Int) in
+                let on: Bool = look.skin == i
+                Button {
+                    Haptics.choose()
+                    var next: AvatarLook = look
+                    next.skin = i
+                    onChange(next)
+                } label: {
+                    Circle().fill(AvatarParts.skinTone(i)).frame(width: 40, height: 40)
+                        .padding(4)
+                        .overlay(Circle().strokeBorder(on ? Theme.ink : Color.clear, lineWidth: 2))
+                        .frame(minWidth: 48, minHeight: 48)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel("Skin colour \(i + 1)")
+                .accessibilityAddTraits(on ? .isSelected : [])
+                .accessibilityIdentifier("avatar-skin-\(i)")
             }
         }
     }

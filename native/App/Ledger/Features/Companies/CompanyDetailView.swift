@@ -48,7 +48,6 @@ struct CompanyDetailView: View {
     @State private var opsPart: OpsPart = .setup
     @State private var heldOpsPart: OpsPart = .setup
     @State private var appliedPart = false
-    @State private var renaming = false
 
     init(companyID: Int, initial: CompanyTab? = nil, part: String? = nil) {
         self.companyID = companyID
@@ -86,13 +85,12 @@ struct CompanyDetailView: View {
                 }
                 .coachTopStrip(.companyPage, height: 150)
             }
-            .appScreen(title: co.name, subtitle: ([e.tradeName(co), e.cityName(co)] + [contextLine(co, e)].compactMap { $0 }).joined(separator: " \u{00B7} ").tidyText, backdrop: LookKit.companyBackdrop(e, co.id), onTitleTap: { renaming = true }) {
+            .appScreen(title: co.name, subtitle: ([e.tradeName(co), e.cityName(co)] + [contextLine(co, e)].compactMap { $0 }).joined(separator: " \u{00B7} ").tidyText, backdrop: LookKit.companyBackdrop(e, co.id)) {
                 HStack(spacing: Theme.Space.s) {
                     if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
                     CompanyCustomiseButton(companyID: co.id)
                 }
             }
-            .companyRename(companyID: co.id, isPresented: $renaming)
             .onAppear { applyPart(tabs) }
             .navigationDestination(isPresented: Binding(get: { opsPart != .setup }, set: { if !$0 { opsPart = .setup } })) {
                 OpsPageDestination(part: opsPart == .setup ? heldOpsPart : opsPart, companyID: companyID)

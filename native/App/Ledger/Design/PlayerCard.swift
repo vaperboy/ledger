@@ -18,6 +18,7 @@ struct PlayerCardData {
     var avatar: AvatarLook
     /// Worn items by kind: backdrop, namePlate, richListFlair, theme, profileCard (item or card id).
     var worn: [String: String] = [:]
+    /// Kept so stored and shared profiles still decode; the card does not show badges.
     var badgeIcons: [String] = []
     var badgeTexts: [String] = []
     var figures: [PlayerCardFigure] = []
@@ -50,101 +51,161 @@ extension PlayerCardData {
     }
 }
 
-/// The one player card, used wherever a player is shown in full: a backdrop across the top with the name plate on it,
-/// the half-body avatar standing on the left across the backdrop edge, then title, level, badges and three figures.
+/// A part of the card a player can tap to change it.
+enum CardPart: String, CaseIterable, Identifiable {
+    case backdrop, plate, flair, character
+
+    var id: String { rawValue }
+}
+
+/// The one player card, used wherever a player is shown in full.
+/// The backdrop fills the whole card. The top part is picture only (the avatar stands in it, no text); a dark scrim rises from the bottom
+/// so the name plate, title, level and figures sit on a calm area, never on busy art.
+///
+/// Backdrop art spec (slot `art.backdrop.<id>`, or `backdrop.<id>.png` in the art folder): one 4:3 landscape picture, 1600 x 1200 px,
+/// drawn aspect-fill and centred, so it is cropped on tall or wide cards. Keep the subject inside the middle 70% and in the upper 55%
+/// (the avatar covers the middle, the bottom 45% sits under the scrim, so keep it low in detail and dark). No text or logos in the art.
 struct PlayerCard: View {
     var data: PlayerCardData
     var onRename: (() -> Void)? = nil
+    /// When set, every part of the card is tappable and empty slots show a "+".
+    var onPart: ((CardPart) -> Void)? = nil
 
-    private static let avatarWidth: CGFloat = 120
-    private static let backdropHeight: CGFloat = 96
+    private static let avatarWidth: CGFloat = 150
+    static let pictureHeight: CGFloat = 176
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-        let ringItem: SeasonReward? = LookKit.item(data.worn["theme"] ?? "")
-        let accent: Color = ringItem.map { (r: SeasonReward) -> Color in Color(hex: LookKit.tint(r)) } ?? Theme.gold
         VStack(spacing: 0) {
-            top(accent: accent)
+            picture
             info
         }
         .frame(maxWidth: .infinity)
-        .background(shape.fill(Theme.surfaceRaised))
-        .overlay(alignment: .bottomLeading) { avatar(accent: accent, framed: ringItem != nil) }
+        .background {
+            ZStack {
+                backdropFill
+                    .contentShape(Rectangle())
+                    .onTapGesture { if let onPart { Haptics.tap(); onPart(.backdrop) } }
+                    .accessibilityHidden(true)
+                scrim.allowsHitTesting(false)
+            }
+        }
         .clipShape(shape)
-        .overlay(shape.strokeBorder(ringItem == nil ? Theme.line : accent.opacity(0.8), lineWidth: ringItem == nil ? 1 : 1.5))
+        .overlay(shape.strokeBorder(Theme.line, lineWidth: 1))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("profile-card")
     }
 
     private var backdrop: SeasonReward? { LookKit.item(data.worn["backdrop"] ?? "") }
     private var cardDef: CardDef? { data.worn["profileCard"].flatMap { (id: String) -> CardDef? in CardCatalog.def(forItem: id) } }
-
-    private func top(accent: Color) -> some View {
-        ZStack(alignment: .bottomLeading) {
-            backdropFill
-            plateRow
-        }
-        .frame(height: Self.backdropHeight)
-        .clipped()
-    }
+    private var plate: SeasonReward? { LookKit.item(data.worn["namePlate"] ?? "") }
+    private var flair: SeasonReward? { LookKit.item(data.worn["richListFlair"] ?? "") }
 
     @ViewBuilder private var backdropFill: some View {
         if let b = backdrop {
-            BackdropFill(reward: b, scrim: 0.3)
+            BackdropFill(reward: b, scrim: 0.12)
         } else if let d = cardDef {
             CardFace(def: d, radius: 0)
         } else {
-            LinearGradient(colors: [Theme.accent.opacity(0.32), Theme.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [Theme.accent.opacity(0.4), Color(hex: 0x1A1B1D)], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
 
-    private var plateRow: some View {
-        HStack(spacing: Theme.Space.xs) {
-            if let onRename {
-                NameTapLabel(label: data.name, tint: Theme.ink, action: onRename) { CardNamePlate(name: data.name, worn: data.worn) }
-            } else {
-                CardNamePlate(name: data.name, worn: data.worn)
+    /// Clear over the picture, then darker down to the text area.
+    private var scrim: some View {
+        LinearGradient(stops: [.init(color: Color.black.opacity(0), location: 0),
+                               .init(color: Color.black.opacity(0), location: 0.3),
+                               .init(color: Color.black.opacity(0.72), location: 0.58),
+                               .init(color: Color.black.opacity(0.9), location: 1)],
+                       startPoint: .top, endPoint: .bottom)
+    }
+
+    private var picture: some View {
+        ZStack(alignment: .bottom) {
+            Color.clear
+            avatarView
+            if let onPart, backdrop == nil, cardDef == nil {
+                AddChip(title: "Backdrop") { onPart(.backdrop) }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .padding(Theme.Space.m)
             }
-            if data.hallOfFame { HallOfFameMark() }
-            Spacer(minLength: 0)
         }
-        .padding(.leading, Self.avatarWidth + Theme.Space.l + Theme.Space.s).padding(.trailing, Theme.Space.m).padding(.bottom, Theme.Space.s)
+        .frame(height: Self.pictureHeight)
+    }
+
+    @ViewBuilder private var avatarView: some View {
+        let art = HalfBodyAvatar(look: data.avatar, width: Self.avatarWidth)
+            .frame(width: Self.avatarWidth, height: Self.pictureHeight, alignment: .bottom)
+            .clipped()
+        if let onPart {
+            Button { Haptics.tap(); onPart(.character) } label: { art.contentShape(Rectangle()) }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Character")
+                .accessibilityIdentifier("card-part-character")
+        } else {
+            art.accessibilityHidden(true)
+        }
     }
 
     private var info: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
+            nameRow
             if !data.username.isEmpty && data.username != data.name {
                 Text("@" + data.username).textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
             }
             let line: String = [data.title, data.levelText].filter { (s: String) -> Bool in !s.isEmpty }.joined(separator: " \u{00B7} ")
             if !line.isEmpty { Text(line).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1).minimumScaleFactor(0.8) }
-            if !data.detail.isEmpty { Text(data.detail).textStyle(.caption).lineLimit(1) }
+            if !data.detail.isEmpty { Text(data.detail).textStyle(.caption, tint: Theme.inkSoft).lineLimit(1) }
             if let note = data.privateNote {
-                Text(note).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                Text(note).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             } else {
-                badges
                 figures
             }
         }
-        .frame(maxWidth: .infinity, minHeight: Self.avatarWidth * AvatarArt.aspect - Self.backdropHeight + Theme.Space.l, alignment: .topLeading)
-        .padding(.leading, Self.avatarWidth + Theme.Space.l + Theme.Space.s).padding(.trailing, Theme.Space.m)
-        .padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
     }
 
-    @ViewBuilder private var badges: some View {
-        if !data.badgeIcons.isEmpty || !data.badgeTexts.isEmpty {
+    private var nameRow: some View {
+        HStack(spacing: Theme.Space.s) {
+            plateButton
+            flairView
+            if data.hallOfFame { HallOfFameMark() }
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 44)
+    }
+
+    @ViewBuilder private var plateButton: some View {
+        let view = NamePlateView(name: data.name, plate: plate)
+        if let onPart {
             HStack(spacing: Theme.Space.xs) {
-                ForEach(data.badgeIcons, id: \.self) { (id: String) in
-                    if AvatarCatalog.def(id) != nil { ItemArt(avatar: id, size: 28) }
-                }
-                ForEach(data.badgeTexts, id: \.self) { (t: String) in
-                    Text(t).textStyle(.caption, tint: Theme.accent).lineLimit(1)
-                        .padding(.horizontal, Theme.Space.s).padding(.vertical, 3)
-                        .background(Capsule().fill(Theme.accentWash))
-                }
+                Button { Haptics.tap(); onPart(.plate) } label: { view.frame(minHeight: 44).contentShape(Rectangle()) }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityHint("Change the name plate")
+                    .accessibilityIdentifier("card-part-plate")
+                if plate == nil { AddChip(title: "Plate") { onPart(.plate) } }
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Badges")
+        } else if let onRename {
+            NameTapLabel(label: data.name, tint: Theme.ink, action: onRename) { view }
+        } else {
+            view
+        }
+    }
+
+    @ViewBuilder private var flairView: some View {
+        if let flair {
+            let art = ItemArt(reward: flair, rarity: GoldCosmetics.cosmetic(flair.id)?.rarity, size: 28)
+            if let onPart {
+                Button { Haptics.tap(); onPart(.flair) } label: { art.frame(minWidth: 44, minHeight: 44).contentShape(Rectangle()) }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityLabel("Flair")
+                    .accessibilityIdentifier("card-part-flair")
+            } else {
+                art
+            }
+        } else if let onPart {
+            AddChip(title: "Flair") { onPart(.flair) }
         }
     }
 
@@ -154,59 +215,38 @@ struct PlayerCard: View {
                 ForEach(data.figures.prefix(3)) { (f: PlayerCardFigure) in
                     VStack(alignment: .leading, spacing: 1) {
                         Text(f.value).textStyle(.headline, numeric: true).lineLimit(1).minimumScaleFactor(0.6)
-                        Text(f.title).textStyle(.label, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.7)
+                        Text(f.title).textStyle(.label, tint: Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.7)
                     }
                     .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xs)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset))
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Color.white.opacity(0.08)))
                     .accessibilityElement(children: .combine)
                 }
             }
         }
     }
-
-    private func avatar(accent: Color, framed: Bool) -> some View {
-        ZStack(alignment: .bottom) {
-            Circle().fill(accent.opacity(framed ? 0.3 : 0.12)).frame(width: Self.avatarWidth * 0.86, height: Self.avatarWidth * 0.86)
-                .offset(y: -Self.avatarWidth * 0.34)
-            HalfBodyAvatar(look: data.avatar, width: Self.avatarWidth)
-        }
-        .frame(width: Self.avatarWidth)
-        .padding(.leading, Theme.Space.m)
-        .accessibilityHidden(true)
-    }
 }
 
-/// The name on its plate. The plate takes its backdrop and sheen from the worn backdrop, its trim from the worn plate.
-struct CardNamePlate: View {
-    var name: String
-    var worn: [String: String]
+/// A small "+" button shown on an empty slot of your own card.
+struct AddChip: View {
+    var title: String
+    var action: () -> Void
 
     var body: some View {
-        let plate: SeasonReward? = LookKit.item(worn["namePlate"] ?? "")
-        let backdrop: SeasonReward? = LookKit.item(worn["backdrop"] ?? "")
-        let flair: SeasonReward? = LookKit.item(worn["richListFlair"] ?? "")
-        let ink: Color = plate.map { (r: SeasonReward) -> Color in LookKit.ink(r) } ?? Theme.ink
-        let source: SeasonReward? = backdrop ?? plate
-        let rarity: BoxRarity? = backdrop.flatMap { (r: SeasonReward) -> BoxRarity? in r.rarity ?? GoldCosmetics.cosmetic(r.id)?.rarity }
-        let sheen: Bool = (rarity ?? .common) >= .epic
-        HStack(spacing: Theme.Space.xs) {
-            Text(name).textStyle(.title, tint: ink).lineLimit(1).minimumScaleFactor(0.6)
-            if let flair { ItemArt(reward: flair, rarity: GoldCosmetics.cosmetic(flair.id)?.rarity, size: 24) }
+        Button { Haptics.tap(); action() } label: {
+            HStack(spacing: Theme.Space.xs) {
+                Image(systemName: "plus").font(.system(size: 11, weight: .bold))
+                Text(title).textStyle(.caption, tint: Theme.ink, weight: .semibold)
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, Theme.Space.m).frame(minHeight: 32)
+            .background(Capsule().fill(Color.black.opacity(0.5)))
+            .overlay(Capsule().strokeBorder(Theme.ink.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs)
-        .background { plateFill(source) }
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(ink.opacity(plate == nil ? 0.18 : 0.55), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .storeSheen(radius: 12, enabled: sheen, strength: 0.25)
-        .accessibilityElement(children: .combine)
-    }
-
-    @ViewBuilder private func plateFill(_ source: SeasonReward?) -> some View {
-        if let source {
-            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(LookKit.plate(source))
-        } else {
-            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.black.opacity(0.42))
-        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel("Add " + title.lowercased())
+        .accessibilityIdentifier("card-add-" + title.lowercased())
     }
 }

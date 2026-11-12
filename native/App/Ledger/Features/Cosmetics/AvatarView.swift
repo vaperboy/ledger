@@ -28,10 +28,12 @@ struct HalfBodyAvatar: View {
         let face: FaceDef = AvatarParts.faces[AvatarParts.clamp(look.face, AvatarParts.faces.count)]
         let hairKey: String = AvatarParts.hairStyles[AvatarParts.clamp(look.hair, AvatarParts.hairStyles.count)].key
         let tint: Color = AvatarParts.hairColour(look.hairColour)
+        let skin: Color = look.skin >= 0 ? AvatarParts.skinTone(look.skin) : Color(hex: face.skin)
         ZStack {
             tinted("avatar.hair." + hairKey + ".back", tint: tint) { AvatarHairBack(key: hairKey, w: width).foregroundStyle(tint) }
-            plain("avatar.body." + outfit.id) { AvatarBodyArt(outfit: outfit, skin: Color(hex: face.skin), w: width) }
-            plain("avatar.face.\(face.id)") { AvatarFaceArt(face: face, w: width) }
+            plain("avatar.body." + outfit.id) { AvatarBodyArt(outfit: outfit, skin: skin, w: width) }
+            if look.skin >= 0 { tinted("avatar.skin.\(face.id)", tint: skin) { EmptyView() } }
+            plain("avatar.face.\(face.id)") { AvatarFaceArt(face: face, skin: skin, w: width) }
             tinted("avatar.hair." + hairKey, tint: tint) { AvatarHairFront(key: hairKey, w: width).foregroundStyle(tint) }
         }
         .frame(width: width, height: width * AvatarArt.aspect)
@@ -84,15 +86,16 @@ private struct VShape: Shape {
 
 private struct AvatarFaceArt: View {
     var face: FaceDef
+    var skin: Color
     var w: CGFloat
 
     var body: some View {
         let sharp: Bool = face.variant == 1
         let ink: Color = Color(hex: 0x1E1B1A)
         ZStack {
-            Circle().fill(Color(hex: face.skin)).frame(width: w * 0.06, height: w * 0.06).position(x: w * 0.315, y: w * 0.385)
-            Circle().fill(Color(hex: face.skin)).frame(width: w * 0.06, height: w * 0.06).position(x: w * 0.685, y: w * 0.385)
-            Ellipse().fill(Color(hex: face.skin)).frame(width: w * 0.36, height: w * 0.42).position(x: w * 0.5, y: w * 0.36)
+            Circle().fill(skin).frame(width: w * 0.06, height: w * 0.06).position(x: w * 0.315, y: w * 0.385)
+            Circle().fill(skin).frame(width: w * 0.06, height: w * 0.06).position(x: w * 0.685, y: w * 0.385)
+            Ellipse().fill(skin).frame(width: w * 0.36, height: w * 0.42).position(x: w * 0.5, y: w * 0.36)
             Ellipse().fill(ink).frame(width: w * (sharp ? 0.04 : 0.032), height: w * (sharp ? 0.026 : 0.04)).position(x: w * 0.425, y: w * 0.37)
             Ellipse().fill(ink).frame(width: w * (sharp ? 0.04 : 0.032), height: w * (sharp ? 0.026 : 0.04)).position(x: w * 0.575, y: w * 0.37)
             Capsule().fill(ink.opacity(0.7)).frame(width: w * 0.07, height: w * 0.012)

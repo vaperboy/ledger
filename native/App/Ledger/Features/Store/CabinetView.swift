@@ -264,17 +264,16 @@ struct LookBackdrop: View {
     }
 }
 
+/// The company banner behind a header bar. It fills the bar's full width and height, including the status-bar area when the caller ignores
+/// the top safe area; the picture is aspect-fill and clipped, so there are never empty sides. The scrim darkens toward the bottom so the
+/// title stays readable. Art spec: same as the card backdrop (4:3, 1600 x 1200 px, subject in the middle 70%), cropped to a wide strip.
 struct HeaderBackdropFill: View {
     var reward: SeasonReward
-    static let height: CGFloat = 240
 
     var body: some View {
         GeometryReader { (g: GeometryProxy) in
-            let top: CGFloat = g.frame(in: .global).minY
-            BackdropFill(reward: reward, scrim: 0.55)
-                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.7), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
-                .frame(width: g.size.width, height: Self.height)
-                .offset(y: -top)
+            BackdropFill(reward: reward, scrim: 0.35)
+                .frame(width: g.size.width, height: g.size.height)
         }
         .clipped()
         .allowsHitTesting(false)
@@ -429,36 +428,70 @@ struct CardThumb: View {
     }
 }
 
+/// A company as other players see it: the banner fills the whole card, the logo and name sit on a darkened lower area.
+/// When the tap closures are set (company customise) the logo, the name and the banner each open their own tab, and an empty banner shows a "+".
 struct CompanyCardView: View {
     var name: String
     var def: CardDef?
     var logoID: String = ""
     var backdrop: SeasonReward? = nil
+    var onLogo: (() -> Void)? = nil
+    var onName: (() -> Void)? = nil
+    var onBanner: (() -> Void)? = nil
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-        HStack(spacing: Theme.Space.m) {
-            if logoID.isEmpty {
-                Image(systemName: def?.logo ?? "briefcase.fill")
-                    .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.white.opacity(0.92))
-                    .frame(width: 40, height: 40).background(Circle().fill(Color.white.opacity(0.16)))
-            } else {
-                LogoBadge(logoID: logoID, size: 40)
+        let editing: Bool = onBanner != nil
+        VStack(spacing: 0) {
+            Color.clear.frame(height: editing ? 56 : 0)
+                .overlay(alignment: .topTrailing) {
+                    if let onBanner, backdrop == nil, def == nil { AddChip(title: "Banner", action: onBanner).padding(Theme.Space.s) }
+                }
+            HStack(spacing: Theme.Space.m) {
+                tap(onLogo, label: "Logo") { logo }
+                tap(onName, label: "Company name") {
+                    Text(name).textStyle(.headline, tint: def == nil ? Theme.ink : Color.white).lineLimit(1)
+                        .shadow(color: Color.black.opacity(0.5), radius: 4, x: 0, y: 1)
+                }
+                Spacer(minLength: 0)
+                if let def { RarityTag(rarity: def.rarity) }
             }
-            Text(name).textStyle(.headline, tint: def == nil ? Theme.ink : Color.white).lineLimit(1)
-            Spacer(minLength: 0)
-            if let def { RarityTag(rarity: def.rarity) }
+            .padding(Theme.Space.m)
+            .frame(minHeight: 64)
         }
-        .padding(Theme.Space.m)
-        .frame(minHeight: 64)
+        .frame(maxWidth: .infinity)
         .background {
             ZStack {
                 if let def { CardFace(def: def) } else { shape.fill(Theme.inset) }
-                if let backdrop { BackdropFill(reward: backdrop, scrim: 0.45) }
+                if let backdrop { BackdropFill(reward: backdrop, scrim: 0.12) }
+                if backdrop != nil || def != nil {
+                    LinearGradient(stops: [.init(color: Color.black.opacity(0), location: 0.35), .init(color: Color.black.opacity(0.7), location: 1)], startPoint: .top, endPoint: .bottom)
+                }
             }
+            .contentShape(Rectangle())
+            .onTapGesture { if let onBanner { Haptics.tap(); onBanner() } }
         }
         .clipShape(shape)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: editing ? .contain : .combine)
+    }
+
+    @ViewBuilder private var logo: some View {
+        if logoID.isEmpty {
+            Image(systemName: def?.logo ?? "briefcase.fill")
+                .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.white.opacity(0.92))
+                .frame(width: 40, height: 40).background(Circle().fill(Color.white.opacity(0.16)))
+        } else {
+            LogoBadge(logoID: logoID, size: 40)
+        }
+    }
+
+    @ViewBuilder private func tap<C: View>(_ action: (() -> Void)?, label: String, @ViewBuilder content: () -> C) -> some View {
+        if let action {
+            Button { Haptics.tap(); action() } label: { content().frame(minHeight: 44).contentShape(Rectangle()) }
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel(label)
+        } else {
+            content()
+        }
     }
 }
-
