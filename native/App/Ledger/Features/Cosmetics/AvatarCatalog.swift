@@ -141,37 +141,40 @@ final class AvatarModel: ObservableObject {
     }
 }
 
+/// A player's head portrait: their own look for you, the shared look for others, a stable generated look for the rest.
 struct PlayerAvatar: View {
     var initials: String
     var colour: Int
     var icon: String?
     var isYou: Bool = false
     var size: CGFloat = 44
-    @ObservedObject private var avatars = AvatarModel.shared
+    var seed: String = ""
+    var look: String? = nil
+    @ObservedObject private var local = ProfileLocal.shared
 
-    init(initials: String, colour: Int, icon: String?, isYou: Bool = false, size: CGFloat = 44) {
+    init(initials: String, colour: Int, icon: String?, isYou: Bool = false, size: CGFloat = 44, seed: String = "", look: String? = nil) {
         self.initials = initials; self.colour = colour; self.icon = icon; self.isYou = isYou; self.size = size
+        self.seed = seed.isEmpty ? initials : seed; self.look = look
     }
 
     init(player: PlayerProfile, size: CGFloat = 44) {
-        self.init(initials: player.initials, colour: player.avatarColour, icon: player.avatarIcon, isYou: player.relation == .you, size: size)
+        self.init(initials: player.initials, colour: player.avatarColour, icon: player.avatarIcon, isYou: player.relation == .you, size: size,
+                  seed: player.displayName, look: player.avatarLook)
     }
 
     init(name: String, isYou: Bool, size: CGFloat = 36) {
-        self.init(initials: ArtLibrary.initials(name), colour: AvatarCatalog.colour(for: name), icon: isYou ? nil : AvatarCatalog.simulatedIcon(for: name), isYou: isYou, size: size)
+        self.init(initials: ArtLibrary.initials(name), colour: AvatarCatalog.colour(for: name), icon: nil, isYou: isYou, size: size, seed: name)
     }
 
-    private var shown: String? {
-        let id: String? = isYou ? (avatars.equipped ?? icon) : icon
-        guard let id, AvatarCatalog.def(id) != nil else { return nil }
-        return id
+    private var resolved: AvatarLook {
+        if isYou { return local.avatar }
+        if let shared = ProfileLookCode.decode(look) { return shared.avatar }
+        return AvatarLook.generated(for: seed)
     }
 
     var body: some View {
-        if let id = shown {
-            ItemArt(avatar: id, size: size)
-        } else {
-            ProfileAvatar(initials: initials, colour: colour, size: size)
-        }
+        let count: Int = ProfileAvatar.colours.count
+        let tone: Color = ProfileAvatar.colours[((colour % count) + count) % count]
+        AvatarHead(look: resolved, size: size, backdrop: tone.opacity(0.5))
     }
 }

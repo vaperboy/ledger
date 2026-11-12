@@ -133,8 +133,7 @@ final class GameStore: ObservableObject {
     @Published private(set) var reportSheet: ReportDigest?
     @Published private(set) var celebrationQueue: [Celebration] = []
     @Published var homeCliffhanger: Int = 0
-    @Published var showGoals = false
-    func openGoals() { showGoals = true }
+    func openGoals() { openApp(.season) }
     var playStreakShown: Int {
         guard let e = engine else { return 0 }
         let n: Int = PlayStreak.current(e.state, today: GameStore.calendarDay())
@@ -480,8 +479,6 @@ final class GameStore: ObservableObject {
     func dismissCelebration() {
         if !celebrationQueue.isEmpty { celebrationQueue.removeFirst() }
     }
-
-    var homeShortcuts: [HomeShortcut] { HomeShortcut.resolve(engine?.homeShortcutIDs) }
 
     private func report(_ fresh: [Message]) {
         if fresh.contains(where: { $0.isOwnerAddressed && ($0.status == "open" || $0.severity >= 3) }) { Haptics.warning() }

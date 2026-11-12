@@ -106,6 +106,7 @@ struct ItemPriceSheet: View {
     var companyID: Int
     var itemID: String
     var onClose: () -> Void
+    var onRestock: (() -> Void)? = nil
     @State private var draftPrice: Double?
     @State private var draftPercent: Int?
     @State private var weeks = 4
@@ -141,6 +142,7 @@ struct ItemPriceSheet: View {
             }
             .coachAnchor(.itemPrice)
             preview(f, cur)
+            stockAndTrend(e, co, pg, cur)
             if let line = hint(e, pg, f, move: move) { Text(line).popupText(.caption) }
             promotion(co, pg.item)
             listToggle(co, pg.item)
@@ -149,6 +151,34 @@ struct ItemPriceSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .centerSheetTitle(base.item.name.tidyText)
         .popupFooter { footer(owner: setBy == nil) }
+    }
+
+    private func stockFigures(_ co: Company, _ p: ItemPageData, _ cur: Currency) -> [KeyFigures.Item] {
+        var figures: [KeyFigures.Item] = []
+        if let rec = p.record, !p.item.isService {
+            figures.append(KeyFigures.Item(label: "In stock", value: String(rec.stock), tint: rec.stock == 0 ? P.loss : P.ink, sub: rec.onOrder > 0 ? "\(rec.onOrder) on order" : ""))
+        }
+        figures.append(KeyFigures.Item(label: "Quality", value: Words.level(co.quality, scale: .quality)))
+        figures.append(KeyFigures.Item(label: "Sales last week", value: cur.tidyShort(p.item.weeklyRevenue)))
+        return figures
+    }
+
+    /// Stock, quality and the weekly sales line, with the restock action when the item has a supplier to ask.
+    @ViewBuilder private func stockAndTrend(_ e: GameEngine, _ co: Company, _ p: ItemPageData, _ cur: Currency) -> some View {
+        let weeks: [ItemModels.Week] = Array((p.record?.history ?? []).suffix(12))
+        let units: [Double] = weeks.map { (w: ItemModels.Week) -> Double in w.units }
+        VStack(alignment: .leading, spacing: PopupSpace.row) {
+            FigureRow(items: stockFigures(co, p, cur), columns: 3, combineCells: true)
+            if units.count >= 2 {
+                Text("Sold each week, last \(units.count) weeks").popupText(.caption)
+                Sparkline(values: units, tint: P.accent).frame(height: 44).accessibilityHidden(true)
+            }
+            if let onRestock, e.supplyAsk(companyID: companyID, itemID: itemID) != nil {
+                Button { Haptics.tap(); onRestock() } label: { Text(p.supply == nil ? "Choose a supplier" : "Restock or change supplier") }
+                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("item-restock")
+            }
+        }
     }
 
     private func header(_ p: ItemPageData, _ cur: Currency, _ price: Double) -> some View {

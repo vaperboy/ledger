@@ -13,6 +13,7 @@ struct NewPlayerSetup: View {
     var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ channel: SalesChannel) -> Void
 
     @State private var step: Step = .country
+    @State private var avatarDone = false
     @State private var countryCode = ""
     @State private var tradeID = ""
     @State private var companyName = ""
@@ -55,6 +56,7 @@ struct NewPlayerSetup: View {
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
         .keyboardDismissable()
+        .overlay { if !avatarDone && !ProfileLocal.shared.hasAvatar { AvatarSetupStep(onDone: { avatarDone = true }, onBack: onClose) } }
     }
 
     private var header: some View {

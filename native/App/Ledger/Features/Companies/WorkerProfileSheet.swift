@@ -33,39 +33,6 @@ struct WorkerProfileSheet: View {
     }
 }
 
-struct StaffProfileView: View {
-    @EnvironmentObject var store: GameStore
-    @Environment(\.outsidePalette) private var P
-    @Environment(\.dismiss) private var systemDismiss
-    @Environment(\.popupClose) private var popupClose
-    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
-    var companyID: Int
-    var staffID: Int
-    @State private var discussing = false
-
-    var body: some View {
-        let p: WorkerProfile? = store.engine?.workerProfile(companyID: companyID, employeeID: staffID)
-        let age: String = store.engine?.staffProfile(companyID: companyID, staffID: staffID).map { " \u{00B7} age \($0.age)" } ?? ""
-        ScrollView {
-            WorkerProfileBody(companyID: companyID, employeeID: staffID, showsName: false, inlineActions: false, onDiscuss: { discussing = true }, onGone: { dismiss() })
-                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xl)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
-        }
-        .scrollIndicators(.hidden)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if p != nil {
-                WorkerActionBar(companyID: companyID, employeeID: staffID, onDiscuss: { discussing = true }, onGone: { dismiss() })
-                    .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.m)
-                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
-                    .background(P.page)
-                    .overlay(alignment: .top) { Hairline() }
-            }
-        }
-        .appScreen(title: p?.name ?? "Profile", subtitle: (p?.roleName ?? "") + age, tab: .company)
-        .centerSheet(isPresented: $discussing, category: .detail, tone: .info) { ContractDiscussionView(companyID: companyID, personID: staffID).environmentObject(store) }
-    }
-}
-
 struct WorkerActionBar: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

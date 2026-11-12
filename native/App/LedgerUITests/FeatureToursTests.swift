@@ -45,7 +45,7 @@ final class FeatureToursTests: FeatureTourCase {
                 return .pass("-> \(after.text)" + (backed ? "" : " (no Back button: left by the tab bar)"))
             }
         }
-        roundTrip("home: the rank ring opens Goals and Back returns to Home", prepare: { goTab("Home") }) { tapID("home-rank-ring") }
+        roundTrip("home: the goal strip opens Goals and Back returns to Home", prepare: { goTab("Home") }) { tapID("home-goal") }
         step("home: a Needs you row opens its object and Back/close returns to Home") {
             guard goTab("Home") else { return .fail("no Home") }
             guard tapWhere(wait: 2, { $0.id == "suggestion-row" || $0.id == "suggestion-open-company" }) else { return .skip("nothing in Needs you") }
@@ -101,7 +101,7 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     func testT03_PhoneAppsB() {
-        for t in ["Market", "Competition", "Season", "Settings", "AirStay", "TechPro", "Insurance", "Marketplace", "Store"] { tourApp(t) }
+        for t in ["Market", "Competition", "Goals", "Settings", "AirStay", "TechPro", "Insurance", "Marketplace", "Store"] { tourApp(t) }
     }
 
     private func groupEntity() -> String {

@@ -41,6 +41,14 @@ final class PopupShotsTests: CompanyBatchTourCase {
         if p.waitForExistence(timeout: 3) { p.tap(); sleep(1) }
     }
 
+    // Opens a bottom tab by its title.
+    func goTab(_ title: String) -> Bool {
+        let p = app.buttons["tab-" + title]
+        guard p.waitForExistence(timeout: 4) else { return false }
+        p.tap(); sleep(1)
+        return true
+    }
+
     func goBackToHome() {
         let p = app.buttons["tab-Home"]
         if p.exists && p.isHittable { p.tap(); sleep(1) }
