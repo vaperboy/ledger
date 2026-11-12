@@ -33,7 +33,8 @@ final class CountryAuditProbeTests: XCTestCase {
         let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: e.state.loans)
         let profit = Books.profit(co.books.total) - (co.books.total["tax"] ?? 0)
         // The company holds no cash of its own: what it has taken out of the one account is the capital put in.
-        let funded = -(e.state.cashFlow["co\(id)"] ?? 0)
+        // A start-up grant is a receipt outside profit, so it counts as capital too.
+        let funded = StartGrant.amount(e.state) - (e.state.cashFlow["co\(id)"] ?? 0)
         XCTAssertEqual(equity, funded + profit, accuracy: max(60_000, abs(profit) * 0.02), "\(code) equity \(equity) vs funded \(funded) + profit \(profit)")
     }
 
