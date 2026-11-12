@@ -73,7 +73,7 @@ struct CustomiseView: View {
     @State private var pending: PendingAction?
     @State private var note = ""
     @State private var trial: [String: String] = [:]
-    @State private var trialOutfit: String?
+    @State private var trialLook: AvatarLook?
 
     static let barClearance: CGFloat = 130
     private let columns: [GridItem] = [GridItem(.adaptive(minimum: 92), spacing: Theme.Space.s)]
@@ -84,7 +84,7 @@ struct CustomiseView: View {
             ScrollView {
                 VStack(spacing: Theme.Space.m) {
                     if let e = store.engine {
-                        PlayerCard(data: PlayerCardData.mine(e, store: store, trial: trial, trialOutfit: trialOutfit), onPart: { (c: CardPart) in
+                        PlayerCard(data: PlayerCardData.mine(e, store: store, trial: trial, trialLook: trialLook), onPart: { (c: CardPart) in
                             choosePart(Part(card: c))
                             withAnimation { proxy.scrollTo("customise-chips", anchor: .center) }
                         })
@@ -185,8 +185,8 @@ struct CustomiseView: View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
             Text(note.isEmpty ? current.hint : note).textStyle(.caption, tint: note.isEmpty ? Theme.inkSoft : Theme.accent)
                 .frame(maxWidth: .infinity, alignment: .leading).lineLimit(2)
-            if !trial.isEmpty || trialOutfit != nil {
-                Button("Stop trying") { Haptics.tap(); trial = [:]; trialOutfit = nil; note = "" }
+            if !trial.isEmpty || trialLook != nil {
+                Button("Stop trying") { Haptics.tap(); trial = [:]; trialLook = nil; note = "" }
                     .buttonStyle(TertiaryButtonStyle(size: .compact))
                     .accessibilityIdentifier("customise-stop-trying")
             }
@@ -205,31 +205,31 @@ struct CustomiseView: View {
     // MARK: Character
 
     private var characterContent: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
+        let shown: AvatarLook = trialLook ?? local.avatar
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
             SegmentedPill(items: Look.allCases, title: { (l: Look) -> String in l.title }, selection: $look, identifier: { (l: Look) -> String in "customise-look-" + l.rawValue })
             switch look {
-            case .face: AvatarFacePicker(look: local.avatar, onChange: { (l: AvatarLook) in wear(l) })
-            case .skin: AvatarSkinPicker(look: local.avatar, onChange: { (l: AvatarLook) in wear(l) })
-            case .hair: AvatarHairPicker(look: local.avatar, onChange: { (l: AvatarLook) in wear(l) })
-            case .outfit: outfitContent
+            case .face: AvatarFacePicker(look: shown, onPick: { (p: AvatarPick) in choose(p) })
+            case .skin: AvatarSkinPicker(look: shown, onPick: { (p: AvatarPick) in choose(p) })
+            case .hair: AvatarHairPicker(look: shown, onPick: { (p: AvatarPick) in choose(p) })
+            case .outfit: AvatarOutfitPicker(look: shown, onPick: { (p: AvatarPick) in choose(p) })
             }
         }
     }
 
-    private var outfitContent: some View {
-        var shown: AvatarLook = local.avatar
-        if let o = trialOutfit { shown.outfit = o }
-        return AvatarOutfitPicker(look: shown, onPick: { (o: OutfitDef, open: Bool) in
-            if open {
-                trialOutfit = nil
-                var next: AvatarLook = local.avatar
-                next.outfit = o.id
-                wear(next)
-            } else {
-                trialOutfit = o.id
-                note = "Trying " + o.title + ". It unlocks at level \(o.level)."
-            }
-        })
+    /// An item you have is worn; one you do not have is tried on the card and says where to get it.
+    private func choose(_ p: AvatarPick) {
+        if p.owned {
+            var next: AvatarLook = local.avatar
+            p.apply(&next)
+            trialLook = nil
+            wear(next)
+        } else {
+            var tried: AvatarLook = trialLook ?? local.avatar
+            p.apply(&tried)
+            trialLook = tried
+            note = "Trying " + p.title + ". " + p.how + "."
+        }
     }
 
     private func wear(_ look: AvatarLook) {
@@ -368,81 +368,5 @@ struct LookTile<Art: View>: View {
         .accessibilityLabel(title + (worn ? ", " + wornText : (locked ? ", locked. " + note : "")))
         .accessibilityAddTraits(worn ? .isSelected : [])
         .accessibilityIdentifier("customise-" + id)
-    }
-}
-
-struct ColourBadgePicker: View {
-    enum Show { case both, colour, badge }
-    @Environment(Entitlements.self) private var ent
-    var earned: [String]
-    @Binding var theme: String
-    @Binding var badge: String
-    var show: Show = .both
-
-    var body: some View {
-        let pro: Bool = ent.isPro
-        let themeID: String = Cosmetics.resolvedTheme(theme.isEmpty ? nil : theme, pro: pro).id
-        let badgeID: String = Cosmetics.resolvedBadge(badge.isEmpty ? nil : badge, earned: earned, pro: pro).id
-        let accent: Color = Cosmetics.theme(themeID).accent
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            if show != .badge {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    if show == .both { Text("Colour").textStyle(.label, tint: Theme.inkFaint) }
-                    HStack(spacing: Theme.Space.s) {
-                        ForEach(Cosmetics.themes) { (t: Cosmetics.Palette) in dot(t, on: t.id == themeID, pro: pro) }
-                    }
-                }
-            }
-            if show != .colour {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    if show == .both { Text("Logo badge").textStyle(.label, tint: Theme.inkFaint) }
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 74), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
-                        ForEach(Cosmetics.badges) { (b: Cosmetics.Badge) in cell(b, on: b.id == badgeID, accent: accent, pro: pro) }
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func dot(_ t: Cosmetics.Palette, on: Bool, pro: Bool) -> some View {
-        let open: Bool = Cosmetics.isThemeUnlocked(t.id, pro: pro)
-        return Button {
-            if open { Haptics.choose(); theme = t.id } else { Haptics.warning(); ent.paywall = PaywallRequest(title: "Wardrobe") }
-        } label: {
-            ZStack {
-                Circle().fill(t.accent).frame(width: 34, height: 34)
-                if !open { LedgerGlyph(glyph: Glyph.lock, size: 12, tint: Color.black.opacity(0.65)) }
-            }
-            .padding(4)
-            .overlay(Circle().strokeBorder(on ? Theme.ivory : Color.clear, lineWidth: 2))
-            .frame(minWidth: 44, minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityLabel(t.title + (open ? "" : ", needs Ledger Pro"))
-        .accessibilityAddTraits(on ? .isSelected : [])
-    }
-
-    private func cell(_ b: Cosmetics.Badge, on: Bool, accent: Color, pro: Bool) -> some View {
-        let open: Bool = Cosmetics.isBadgeUnlocked(b.id, earned: earned, pro: pro)
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-        let note: String = open ? b.title : (b.premium ? "Ledger Pro" : "Earn in Goals")
-        return Button {
-            if open { Haptics.choose(); badge = b.id } else if b.premium { Haptics.warning(); ent.paywall = PaywallRequest(title: "Wardrobe") } else { Haptics.warning() }
-        } label: {
-            VStack(spacing: 5) {
-                CosmeticBadgeView(badge: b, tint: open ? accent : Theme.ivoryDim, size: 36)
-                Text(note).textStyle(.caption, tint: open ? Theme.inkSoft : Theme.inkFaint).lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, minHeight: 64).padding(.vertical, Theme.Space.s)
-            .background(shape.fill(on ? Theme.inset : Color.clear))
-            .overlay(shape.strokeBorder(on ? accent.opacity(0.8) : Color.clear, lineWidth: 1))
-            .opacity(open ? 1 : 0.6)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityLabel(b.title + (open ? "" : (b.premium ? ", needs Ledger Pro" : ", not earned yet")))
-        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }

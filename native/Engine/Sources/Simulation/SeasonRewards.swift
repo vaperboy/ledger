@@ -47,6 +47,8 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
     public var rarity: BoxRarity?
     /// Art slot, for example avatar.body.suit or plate.brass. Empty for items without a picture slot.
     public var art: String = ""
+    /// How a name plate is drawn (ribbon, chalkboard, wood, ...). Empty when the file gives none.
+    public var style: String = ""
 }
 
 public enum SeasonRewards {
@@ -73,6 +75,7 @@ public enum SeasonRewards {
         }
         r.accountBound = e["bound"].bool
         r.art = e["art"].string
+        r.style = e["style"].string
         if r.kind == .profileCard || r.kind == .companyCard || r.kind == .artifact {
             r.rarity = CardCatalog.def(r.id)?.rarity ?? ArtifactCatalog.defs.first(where: { (d: ArtifactDef) -> Bool in d.id == r.id })?.rarity
         } else if !e["rarity"].isNull {

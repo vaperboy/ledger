@@ -4,11 +4,19 @@ import Simulation
 import UIKit
 #endif
 
-/// The shape a worn name plate takes behind the name. Chosen from the plate's id and title so every plate, including new ones, has a shape.
+/// The shape a worn name plate takes behind the name: the catalogue `style` of the plate (ribbon, chalkboard, slate, mosaic, wood, enamel,
+/// neon), and for plates without one a guess from the id and title so every plate has a shape.
 enum PlateStyle: CaseIterable {
     case ribbon, plaque, neon, slab
 
     static func of(_ r: SeasonReward) -> PlateStyle {
+        switch r.style.lowercased() {
+        case "ribbon": return .ribbon
+        case "chalkboard", "slate", "mosaic", "marble", "stone": return .slab
+        case "wood", "enamel", "brass", "metal": return .plaque
+        case "neon": return .neon
+        default: break
+        }
         let key: String = (r.id + " " + r.title).lowercased()
         func has(_ words: [String]) -> Bool { words.contains { (w: String) -> Bool in key.contains(w) } }
         if has(["marble", "onyx", "walnut", "stone", "slab"]) { return .slab }

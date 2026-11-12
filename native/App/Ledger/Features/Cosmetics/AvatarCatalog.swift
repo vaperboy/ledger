@@ -71,7 +71,7 @@ enum AvatarCatalog {
 
     static func simulatedIcon(for name: String) -> String {
         let pool: [AvatarDef] = freeIcons
-        return pool[EmblemCatalog.hash(name) % pool.count].id
+        return pool.isEmpty ? "" : pool[EmblemCatalog.hash(name) % pool.count].id
     }
 
     static func colour(for name: String) -> Int { EmblemCatalog.hash("c" + name) % PlayerProfile.avatarColourCount }
