@@ -181,6 +181,9 @@ final class CardCatalogTests: XCTestCase {
         var p = SeasonPass(today: 0)
         p.xp = SeasonPass.tierCount * SeasonPass.xpPerTier
         let got = p.claimAll(isPlus: true).filter { $0.kind == .profileCard || $0.kind == .companyCard }
-        XCTAssertEqual(got.count, rewards.count)
+        // A pass hands out the cards of its own season; `rewards` above spans every season.
+        let seasonCards = (p.seasonDef?.rewards ?? []).filter { $0.kind == .profileCard || $0.kind == .companyCard }
+        XCTAssertFalse(seasonCards.isEmpty)
+        XCTAssertEqual(got.count, seasonCards.count)
     }
 }

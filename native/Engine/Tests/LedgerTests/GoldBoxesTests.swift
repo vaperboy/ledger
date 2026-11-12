@@ -151,7 +151,10 @@ final class GoldBoxesTests: XCTestCase {
         var p = SeasonPass(today: 20_000)
         p.xp = SeasonPass.tierCount * SeasonPass.xpPerTier
         let got = p.claimAll(isPlus: true)
-        XCTAssertEqual(got.filter { $0.kind == .box }.reduce(0) { $0 + $1.amount }, boxes.reduce(0) { $0 + $1.amount })
+        // A pass covers one season; the list of all rewards spans every season.
+        let seasonBoxes = (p.seasonDef?.rewards ?? []).filter { $0.kind == .box }
+        XCTAssertFalse(seasonBoxes.isEmpty)
+        XCTAssertEqual(got.filter { $0.kind == .box }.reduce(0) { $0 + $1.amount }, seasonBoxes.reduce(0) { $0 + $1.amount })
     }
 
     func testBoughtCosmeticsEquipAndSlotsCount() {
@@ -171,7 +174,8 @@ final class GoldBoxesTests: XCTestCase {
     }
 
     func testPaidBoxesAlsoHoldCashInTheRareTiers() {
-        for kind in BoxKind.allCases where kind.isPaid {
+        for kind in BoxKind.cardPacks { XCTAssertEqual(BoxOdds.moneyPercent(kind), 0, "\(kind): a card pack holds cards only") }
+        for kind in BoxKind.standard where kind.isPaid {
             XCTAssertGreaterThan(BoxOdds.moneyPercent(kind), 0)
             XCTAssertLessThanOrEqual(BoxOdds.moneyPercent(kind), 5)
             var cash = 0

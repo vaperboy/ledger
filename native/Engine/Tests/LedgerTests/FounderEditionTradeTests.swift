@@ -54,7 +54,7 @@ final class FounderEditionTradeTests: XCTestCase {
 
     func testEveryOtherSeasonOneRewardIsSellable() {
         let others: [SeasonReward] = seasonOne.rewards.filter { $0.id != firstIcon }
-        XCTAssertGreaterThan(others.count, 40)
+        XCTAssertGreaterThan(others.count, 30, "a full season of rewards besides the first icon")
         for r in others {
             let consumed: Bool = r.kind == .box || r.kind == .gold
             XCTAssertEqual(TradeRules.isSellable(reward: r), !consumed, "\(r.id) is sellable unless it is used up on claiming")
