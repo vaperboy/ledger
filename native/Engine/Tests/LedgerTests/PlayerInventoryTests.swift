@@ -14,8 +14,13 @@ final class PlayerInventoryTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { throw XCTSkip("no company") }
         _ = e.quickSetup(companyID: id)
         _ = e.openCompany(companyID: id)
+        // Licences can still be on their way; these tests need a trading company, not the opening wait.
+        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         return (e, id)
     }
+
+    // Companies share the one account, so what a company itself paid or received is read from its own cash flow.
+    private func flow(_ e: GameEngine, _ id: Int) -> Double { e.state.cashFlow["co\(id)"] ?? 0 }
 
     private func balanced(_ e: GameEngine, _ what: String) { XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(what): \(Ledger.gaps(e.state))") }
 
@@ -155,11 +160,13 @@ final class PlayerInventoryTests: XCTestCase {
         let own = try XCTUnwrap(offers.first { $0.shopID == shop }), outside = try XCTUnwrap(offers.first { $0.shopID == 0 })
         XCTAssertLessThan(own.price, outside.price)
         XCTAssertLessThanOrEqual(own.weeks, outside.weeks)
-        let shopCash0 = try XCTUnwrap(e.state.company(shop)).cash
+        let shopFlow0 = flow(e, shop), me0 = e.state.cashFlow["me"] ?? 0
         let cash0 = e.state.cash
         XCTAssertEqual(e.startInventoryRepair(itemID: "r2", shopID: shop), .applied)
-        XCTAssertEqual(e.state.cash, cash0 - own.price, accuracy: 1)
-        XCTAssertGreaterThan(try XCTUnwrap(e.state.company(shop)).cash, shopCash0, "the garage was paid")
+        XCTAssertEqual(me0 - (e.state.cashFlow["me"] ?? 0), own.price, accuracy: 1, "the owner pays the garage's price")
+        XCTAssertEqual(flow(e, shop) - shopFlow0, own.price * (1 - PlayerInventory.partsShare), accuracy: 1, "the garage was paid and bought the parts")
+        XCTAssertEqual(cash0 - e.state.cash, own.price * PlayerInventory.partsShare, accuracy: 1, "only the parts leave the one account")
+        XCTAssertTrue(e.state.company(shop)?.transactions.contains { $0["l"].string.hasPrefix("Repair of") && abs($0["a"].double - own.price) < 1 } ?? false, "the garage books the revenue")
         balanced(e, "own repair")
     }
 
@@ -169,15 +176,17 @@ final class PlayerInventoryTests: XCTestCase {
         guard lot.free > 0 else { throw XCTSkip("no lot space") }
         e.update { s, _, _ in PlayerInventory.add(&s, self.item("d1", cond: 0.7, seen: 0.7, paid: 1_000_000)); PlayerInventory.add(&s, self.item("d2", kind: "boat")) }
         XCTAssertNotNil(e.inventoryStockProblem(itemID: "d2", companyID: dealer), "a dealer sells cars and vans")
-        let cash0 = e.state.cash, co0 = try XCTUnwrap(e.state.company(dealer)).cash
+        let cash0 = e.state.cash, co0 = flow(e, dealer), me0 = e.state.cashFlow["me"] ?? 0
         XCTAssertEqual(e.stockInventoryItem(itemID: "d1", companyID: dealer), .applied)
         XCTAssertNil(e.inventoryItem("d1"))
-        XCTAssertEqual(e.state.cash, cash0 + 1_000_000, accuracy: 1)
-        XCTAssertEqual(try XCTUnwrap(e.state.company(dealer)).cash, co0 - 1_000_000, accuracy: 1)
-        let stock = e.state.company(dealer)!.value("stk").array
+        XCTAssertEqual((e.state.cashFlow["me"] ?? 0) - me0, 1_000_000, accuracy: 1, "the owner is paid what the car cost")
+        XCTAssertEqual(co0 - flow(e, dealer), 1_000_000, accuracy: 1, "the dealer buys it at cost")
+        XCTAssertEqual(e.state.cash, cash0, accuracy: 1, "moving a car between the owner and an own company leaves the one account unchanged")
+        let stock = try XCTUnwrap(e.state.company(dealer)).value("stk").array
         XCTAssertEqual(stock.count, 1)
-        XCTAssertEqual(stock[0]["cost"].double, 1_000_000, accuracy: 0.01)
-        XCTAssertEqual(stock[0]["wear"].double, 0.3, accuracy: 1e-9)
+        let car = try XCTUnwrap(stock.first)
+        XCTAssertEqual(car["cost"].double, 1_000_000, accuracy: 0.01)
+        XCTAssertEqual(car["wear"].double, 0.3, accuracy: 1e-9)
         balanced(e, "stock")
     }
 
@@ -187,9 +196,10 @@ final class PlayerInventoryTests: XCTestCase {
         e.update { s, _, _ in PlayerInventory.add(&s, self.item("d3", cond: 0.4, seen: 0.4, paid: 500_000)) }
         XCTAssertEqual(e.stockInventoryItem(itemID: "d3", companyID: dealer), .applied)
         var wearBefore = 0.0, fairBefore = 0.0, wearAfter = 0.0, fairAfter = 0.0
+        let stocked = try XCTUnwrap(e.state.company(dealer)?.value("stk").array.first, "the car is on the lot")
         e.update { s, d, _ in
-            let i = s.companyIndex(dealer)!
-            var car = s.companies[i].value("stk").array[0]
+            guard let i = s.companyIndex(dealer) else { return XCTFail("no dealer") }
+            var car = stocked
             car["job"] = .object(["due": .number(Double(s.week)), "sup": 0, "sn": "An independent garage", "price": 1_000, "from": .number(Double(s.week))])
             wearBefore = car["wear"].double; fairBefore = car["fair"].double
             XCTAssertTrue(UsedCarDealer.finishJob(&s, i, &car, data: d))
