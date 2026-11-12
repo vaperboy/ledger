@@ -172,7 +172,13 @@ final class JointVentureTests: XCTestCase {
         let fair = e.jvFairPrice(companyID: id, pct: 10)
         guard case .refused = e.jvInvite(companyID: id, playerID: friendA.id, name: friendA.name, linkKey: friendA.key, pct: 10, price: fair * 1.3, myLinkKeys: []) else { return XCTFail("an imaginary partner cannot overpay") }
         guard case .sent = e.jvInvite(companyID: id, playerID: friendA.id, name: friendA.name, linkKey: friendA.key, pct: 10, price: fair, myLinkKeys: []) else { return XCTFail("a sample partner pays the fair price") }
-        guard case .sent = e.jvInvite(companyID: id, playerID: friendB.id, name: friendB.name, linkKey: friendB.key, mock: false, pct: 10, price: fair * 1.3, myLinkKeys: []) else { return XCTFail("a real partner may pay up to the band") }
+        guard case .refused(let mixed) = e.jvInvite(companyID: id, playerID: friendB.id, name: friendB.name, linkKey: friendB.key, mock: false, pct: 10, price: fair, myLinkKeys: []) else {
+            return XCTFail("a real player cannot join a board of sample partners")
+        }
+        XCTAssertTrue(mixed.contains("practice"), mixed)
+        var (real, rid) = try makeCompany(seed: 76)
+        let realFair = real.jvFairPrice(companyID: rid, pct: 10)
+        guard case .sent = real.jvInvite(companyID: rid, playerID: friendB.id, name: friendB.name, linkKey: friendB.key, mock: false, pct: 10, price: realFair * 1.3, myLinkKeys: []) else { return XCTFail("a real partner may pay up to the band") }
     }
 
     func testAcceptedInviteIssuesSharesWithLockUpAndKeepsBooksBalanced() throws {

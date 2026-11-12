@@ -365,12 +365,25 @@ final class OnlineSession {
             return
         } catch {}
         await bookSettlements(store: store)
+        await syncSharedCompanies(store: store)
         if let e = store.engine, sharedWeek != e.state.week {
             sharedWeek = e.state.week
             await shareProgress(from: e)
         }
         if let a = try? await service.friendActivity() { friendActivity = a }
         await syncFriendPlay(store: store)
+    }
+
+    // Shared companies: the owner's boards follow the server, and offers made to this player are picked up and announced once.
+    private func syncSharedCompanies(store: GameStore) async {
+        JointVentureCoordinator.shared.attach(service)
+        await JointVentureCoordinator.shared.sync(store)
+        let shares: PartnerSharesModel = PartnerSharesModel.shared
+        await shares.refresh(self)
+        for o in shares.unseenOffers() {
+            store.tell("\(o.chairName ?? "A player") invites you into \(o.companyName)",
+                       "You are offered \(PartnerShareText.percent(o.pct)) for \(PartnerShareText.money(o.price, o.currency)). Open Ventures to read the offer and answer.", tone: "good")
+        }
     }
 
     private func bookSettlements(store: GameStore) async {

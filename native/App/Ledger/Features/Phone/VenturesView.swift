@@ -96,6 +96,7 @@ enum VentureSheet: Identifiable, Equatable {
 
 struct VenturesHome: View {
     @EnvironmentObject var store: GameStore
+    @Environment(OnlineSession.self) private var online
     @State private var sheet: VentureSheet?
     @State private var pending: PendingAction?
     @State private var open: String?
@@ -103,17 +104,24 @@ struct VenturesHome: View {
     var body: some View {
         if let e = store.engine {
             let fig = VenturesFigures(e)
-            if fig.isEmpty && !Gates.isOpen(.ventures, e.state, data: e.data) {
-                VenturesLockCard()
-            } else {
-                portfolio(e, fig)
+            Group {
+                if fig.isEmpty && !Gates.isOpen(.ventures, e.state, data: e.data) {
+                    VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                        PartnerSharesSection()
+                        VenturesLockCard()
+                    }
+                } else {
+                    portfolio(e, fig)
+                }
             }
+            .task { await PartnerSharesModel.shared.refresh(online) }
         }
     }
 
     private func portfolio(_ e: GameEngine, _ fig: VenturesFigures) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
             VenturesHeader(figures: fig, found: found).coachAnchor(.venturesHeader)
+            PartnerSharesSection()
             if fig.isEmpty {
                 EmptyState(glyph: Glyph.ventures, title: "No ventures yet",
                            message: "Found a startup and build it, back a founder with a stake, or commit to a fund. Whatever you hold shows here with its value and what to do next.",
