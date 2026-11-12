@@ -170,14 +170,15 @@ final class PhoneAppsTests: XCTestCase {
         XCTAssertEqual(targets.first?.monthlyRent ?? 0, active.monthlyRent, accuracy: 0.01)
         XCTAssertTrue(e.placeTargets(from: second).isEmpty || e.placeTargets(from: second).allSatisfy { $0.companyID != second })
         let deposit = e.state.company(first)?.value("prem")["dep"].double ?? 0
-        let secondCash = try XCTUnwrap(e.state.company(second)?.cash)
+        // The two companies draw on the one account, so each side is read from its own cash flow.
+        let secondCash: Double = e.state.cashFlow["co\(second)"] ?? 0
         let secondPrem = try XCTUnwrap(e.state.company(second)?.value("prem"))
         let secondBack: Double = (secondPrem["m2"].double > 0 && !secondPrem["owned"].bool) ? secondPrem["dep"].double : 0
-        let firstCash = try XCTUnwrap(e.state.company(first)?.cash)
+        let firstCash: Double = e.state.cashFlow["co\(first)"] ?? 0
         let move = e.reassignPlace(from: first, to: second)
         XCTAssertEqual(move, .ok)
-        XCTAssertEqual(try XCTUnwrap(e.state.company(first)?.cash), firstCash + deposit, accuracy: 1, "the deposit comes back")
-        XCTAssertEqual(try XCTUnwrap(e.state.company(second)?.cash), secondCash + secondBack - deposit, accuracy: 1, "the new tenant pays the deposit, its old one comes back")
+        XCTAssertEqual(e.state.cashFlow["co\(first)"] ?? 0, firstCash + deposit, accuracy: 1, "the deposit comes back")
+        XCTAssertEqual(e.state.cashFlow["co\(second)"] ?? 0, secondCash + secondBack - deposit, accuracy: 1, "the new tenant pays the deposit, its old one comes back")
         let movedRent: Double = try XCTUnwrap(e.state.company(second)?.value("prem")["rent"].double)
         XCTAssertEqual(movedRent, active.monthlyRent * 12 / active.squareMetres, accuracy: 0.01)
         XCTAssertEqual(e.state.company(first)?.value("prem")["m2"].double, 0)
