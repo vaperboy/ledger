@@ -1,5 +1,6 @@
 import Foundation
 import GameCore
+import Businesses
 import Events
 
 final class MockJointVentureService: JointVentureService, @unchecked Sendable {
@@ -46,16 +47,27 @@ final class MockJointVentureService: JointVentureService, @unchecked Sendable {
         return JVEmergency(memberID: who.memberID, kind: .dividend, reason: "The company is making money, time to share some")
     }
 
+    private func country(of memberID: String) -> String {
+        SampleRoster.countryCode(of: memberID.hasPrefix("p:") ? String(memberID.dropFirst(2)) : memberID)
+    }
+
     func votes(_ q: JVVoteQuery) async -> [JVCastVote] {
         var out: [JVCastVote] = []
         for p in q.partners {
+            let home: String = country(of: p.memberID)
             for item in q.items {
                 let seed: String = "\(q.companyID):\(q.meetingID):\(item.id):\(p.memberID)"
-                let when: Int = JVRules.mockVoteWeek(opened: q.opened, deadline: q.deadline, seed: seed)
-                guard when <= q.week, when <= q.deadline else { continue }
-                out.append(JVCastVote(itemID: item.id, memberID: p.memberID, choice: JVRules.mockChoice(item.kind, profitable: q.profitable, cashTight: q.cashTight, seed: seed)))
+                guard let when: Double = JVRules.mockVoteTime(opened: q.opened, closes: q.closes, memberID: p.memberID, countryCode: home, seed: seed), when <= q.now else { continue }
+                let choice: JVRules.Choice = JVRules.mockChoice(item.kind, profitable: q.profitable, cashTight: q.cashTight, seed: seed, raises: item.raises)
+                out.append(JVCastVote(itemID: item.id, memberID: p.memberID, choice: choice))
             }
         }
         return out
+    }
+
+    func buybackReply(_ q: JVBuybackQuery) async -> JVReply? {
+        let answersAt: Date = PlayerRhythm.replyTime(id: q.memberID, countryCode: country(of: q.memberID), sentAt: Date(timeIntervalSince1970: q.sentAt))
+        guard q.now >= answersAt.timeIntervalSince1970 else { return nil }
+        return JVRules.mockSells(price: q.price, fair: q.fair, seed: "\(q.companyID):\(q.offerID):\(q.memberID)") ? .accepted : .declined
     }
 }

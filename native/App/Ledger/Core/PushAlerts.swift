@@ -3,7 +3,7 @@ import UIKit
 import UserNotifications
 
 enum PushCategory: String, CaseIterable, Identifiable {
-    case auction, supplier, gift, race, daily
+    case auction, supplier, gift, race, daily, board
 
     var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum PushCategory: String, CaseIterable, Identifiable {
         case .gift: return "Friend gifts"
         case .race: return "Weekly race result"
         case .daily: return "Daily reward ready"
+        case .board: return "Board votes and offers"
         }
     }
 
@@ -24,6 +25,7 @@ enum PushCategory: String, CaseIterable, Identifiable {
         case .gift: return "When a friend sends you a piece"
         case .race: return "When the friend race week closes"
         case .daily: return "When your daily reward is waiting"
+        case .board: return "When a co-owner calls an emergency vote or makes you an offer"
         }
     }
 }

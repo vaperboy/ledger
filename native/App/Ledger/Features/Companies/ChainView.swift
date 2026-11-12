@@ -3,6 +3,7 @@ import GameCore
 import Countries
 import Finance
 import Businesses
+import Events
 import Simulation
 
 struct ChainView: View {
@@ -314,12 +315,26 @@ struct ChainRulesSection: View {
     var engine: GameEngine
     var chainID: Int
     @State private var pending: PendingAction?
+    @State private var proposal: BoardProposal?
+    @State private var priceDraft: Double?
 
     private var rules: JSONValue { engine.chainRules(chainID: chainID) }
+    private var board: Company? { engine.jvBoardCompany(chainID: chainID) }
+
+    // With co-owners a rule change becomes a proposal; returns false when the caller should apply it directly.
+    private func propose(_ rule: String, number: Double = 0, text: String = "", label: String) -> Bool {
+        guard let b = board else { return false }
+        proposal = BoardProposal(companyID: b.id, boardName: b.name, change: .setting(JointVenture.Setting(chainID: chainID, rule: rule, number: number, text: text, label: label)),
+                                 title: label, effect: "If it passes it holds for every store in the group.")
+        return true
+    }
 
     var body: some View {
         MoreBlock("Chain rules") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
+                if let b = board {
+                    Text("\(b.name) has co-owners, so a rule change is a proposal the owners vote on.").textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                }
                 priceRule
                 Text("Ordering").textStyle(.caption, tint: Theme.inkSoft)
                 orderingRule
@@ -331,17 +346,24 @@ struct ChainRulesSection: View {
             }
         }
         .confirmAction($pending)
+        .centerSheet(item: $proposal, title: "Board decision") { (p: BoardProposal) in BoardProposalSheet(proposal: p).environmentObject(store) }
     }
 
     private var priceRule: some View {
-        let current: Double = rules["price"].double
+        let saved: Double = rules["price"].double
+        let shared: Bool = board != nil
+        let current: Double = priceDraft ?? saved
         let binding = Binding<Double>(get: { current }, set: { (v: Double) in
-            store.act { $0.setChainRule(chainID: chainID, rule: .price((v * 2).rounded() / 2)) }
+            let level: Double = (v * 2).rounded() / 2
+            if shared { priceDraft = level } else { store.act { $0.setChainRule(chainID: chainID, rule: .price(level)) } }
         })
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack { Text("Price").textStyle(.caption, tint: Theme.inkSoft); Spacer(); Text(priceWord(current)).textStyle(.caption, tint: Theme.ink) }
             LedgerSlider(value: binding, in: -3...3, step: 0.5) { editing in
-                if !editing { store.saved("chain price rule.") }
+                if editing { return }
+                guard shared else { store.saved("chain price rule."); return }
+                if let level = priceDraft, level != saved { _ = propose("price", number: level, label: "Chain price rule: \(priceWord(level).lowercased())") }
+                priceDraft = nil
             }
         }
     }
@@ -349,8 +371,10 @@ struct ChainRulesSection: View {
     private var orderingRule: some View {
         let names: [String] = ["Lean", "Balanced", "Generous"]
         let binding = Binding<Int>(get: { rules["stockPol"].int }, set: { (v: Int) in
+            let label: String = "Chain ordering rule: \(names[min(2, max(0, v))].lowercased())"
+            if propose("stock", number: Double(v), label: label) { return }
             let r = store.act { $0.setChainRule(chainID: chainID, rule: .stockPolicy(v)) }
-            store.settle(r, "Chain ordering rule: \(names[min(2, max(0, v))].lowercased()).")
+            store.settle(r, label + ".")
         })
         return SegmentedPill(items: [0, 1, 2], title: { names[$0] }, selection: binding)
     }
@@ -361,8 +385,10 @@ struct ChainRulesSection: View {
         let now: Double = rules["pay"].double
         let nearest: Double = steps.min(by: { abs($0 - now) < abs($1 - now) }) ?? 0
         let binding = Binding<Double>(get: { nearest }, set: { (v: Double) in
+            let label: String = v == 0 ? "Chain pay rule: market pay" : "Chain pay rule: \(Int(saturating: (v * 100).rounded()))% above market"
+            if propose("pay", number: v, label: label) { return }
             let r = store.act { $0.setChainRule(chainID: chainID, rule: .pay(v)) }
-            store.settle(r, v == 0 ? "Chain pay rule: market pay." : "Chain pay rule: \(Int(saturating: (v * 100).rounded()))% above market.")
+            store.settle(r, label + ".")
         })
         return SegmentedPill(items: steps, title: { labels[steps.firstIndex(of: $0) ?? 0] }, selection: binding)
     }
@@ -371,8 +397,10 @@ struct ChainRulesSection: View {
         let labels: [String: String] = ["own": "Each store", "light": "Light", "normal": "Normal", "heavy": "Heavy"]
         let raw: String = rules["mkt"].string
         let binding = Binding<String>(get: { raw.isEmpty ? "own" : raw }, set: { (v: String) in
+            let label: String = v == "own" ? "Each store runs its own marketing" : "Chain marketing rule: \(v)"
+            if propose("marketing", text: v, label: label) { return }
             let r = store.act { $0.setChainRule(chainID: chainID, rule: .marketing(v)) }
-            store.settle(r, v == "own" ? "Each store runs its own marketing." : "Chain marketing rule: \(v).")
+            store.settle(r, label + ".")
         })
         return SegmentedPill(items: ["own", "light", "normal", "heavy"], title: { labels[$0] ?? $0 }, selection: binding)
     }
@@ -391,6 +419,7 @@ struct ChainRulesSection: View {
                 Group {
                     Button("Each store decides") {
                         if current.isNull { return }
+                        if propose("knobFree", text: knob.id, label: "\(knob.name) is each store's choice") { return }
                         pending = PendingAction(title: "Leave \(knob.name) to each store?", message: "Stores keep what they sell by now and can change it themselves, each paying its own changeover.", button: "Leave to stores") {
                             store.settle(store.act { $0.releaseChainKnob(chainID: chainID, knob: knob.id) }, "\(knob.name) is now each store's choice.", same: "\(knob.name) was already each store's choice.", tone: "good")
                         }
@@ -429,6 +458,7 @@ struct ChainRulesSection: View {
     private func askStandard(_ knob: Knob, _ option: Int, _ cur: Currency) {
         guard let plan = engine.chainKnobPlan(chainID: chainID, knob: knob.id, value: option) else { return }
         let name = optionNames(knob, option)
+        if propose("knob", number: Double(option), text: knob.id, label: "\(name) is the chain standard for \(knob.name.lowercased())") { return }
         let head: String = knob.isMulti ? "Every store offers exactly these add-ons from now on and cannot choose otherwise: \(name)." : "Every store sells by \(name) from now on and cannot choose otherwise."
         var lines: [String] = [head]
         if plan.changing == 0 && plan.exceptions == 0 { lines.append("Every store already does.") }
