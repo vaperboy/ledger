@@ -21,6 +21,22 @@ final class SaveRoundTripTests: XCTestCase {
             let written = try JSONEncoder().encode(state)
             var again = try JSONDecoder().decode(JSONValue.self, from: written)
             if original["day"].isNull, again["day"].int == 0 { again["day"] = .null; var o = again.object; o.removeValue(forKey: "day"); again = .object(o) }
+            // One account: the company's cash and any old savings join the player's cash; the savings pocket and the old candidate pool are not written back.
+            var out = again.object
+            let before = original.object
+            let account: Double = out["cash"]?.double ?? 0
+            let companyCash: Double = original["cos"].array.reduce(0.0) { $0 + $1["cash"].double }
+            XCTAssertEqual(account, original["cash"].double + companyCash + original["sav"]["bal"].double, accuracy: 0.01, "\(name): no money is lost on loading")
+            XCTAssertEqual(out["pool"], JSONValue.bool(true), "\(name) is marked as a one-account save")
+            XCTAssertNil(out["sav"], "\(name): no savings pocket is written")
+            for c in again["cos"].array { XCTAssertEqual(c["cash"].double, account, accuracy: 0.01, "\(name): a company shows the one account") }
+            out["cash"] = before["cash"]; out["pool"] = before["pool"]; out["sav"] = before["sav"]
+            out["cos"] = .array(zip(again["cos"].array, original["cos"].array).map { (mine: JSONValue, theirs: JSONValue) -> JSONValue in
+                var c = mine.object
+                c["cash"] = theirs["cash"]
+                return .object(c)
+            })
+            again = .object(out)
             XCTAssertEqual(again, original, "\(name) changed while loading and saving")
             XCTAssertEqual(state.version, 5)
             XCTAssertEqual(state.homeCountryCode, "UK")

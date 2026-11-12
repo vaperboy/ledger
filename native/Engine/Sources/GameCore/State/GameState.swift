@@ -53,6 +53,8 @@ public struct GameState: Codable, Equatable, Sendable {
         homeCountryCode = take("country").string
         // Older saves keep an unrelated object under "pool"; only the flag written by encode marks a one-account save.
         let pooled = take("pool") == .bool(true)
+        // Savings were a second pocket once; a balance still sitting in an old save is paid into the account.
+        let oldSavings = max(0, take("sav")["bal"].double)
         var playerRaw: [String: JSONValue] = take("player").object
         playerRaw.removeValue(forKey: "age")
         player = Player(raw: playerRaw)
@@ -78,6 +80,7 @@ public struct GameState: Codable, Equatable, Sendable {
         rest = o
         if !histRest.isEmpty { rest["hist"] = .object(histRest) }
         if !pooled { cash += companies.reduce(0) { $0 + $1.cash } }
+        if oldSavings > 0 { cash += oldSavings; openingCash += oldSavings }
         dissolveHoldings()
         dropFinanceManagers()
         mirrorCash()
