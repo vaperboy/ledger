@@ -1,4 +1,12 @@
 # What's new
+- One fair game for everyone: no difficulty modes, retries or rolling back to older saves; save slots are separate careers, and every company type starts with the same 12-week runway from your savings plus a government start-up grant
+- Features unlock one per level ("Unlocks at level N"), decisions pop up on Home one at a time with Later, every day brings at least one event, and the Inbox only keeps what needs you
+- One Home for every player, one Goals screen with the battle pass on top (Daily, Weekly, Season, Long-term) and one Stats screen
+- Company shares with real players: invites with percentage and price, buyback offers the other player must accept, board votes by share with a 24-hour Decide now meeting, and a shares section for partners in Ventures
+- Create a half-body avatar before your first company, a business-card player profile, one-screen Customise with a live preview, company logo and banner, and loot boxes that build up and flip each card
+- Slim equipment and supplier rows with one detail page each, and Rent in AirStay / Buy in TechPro open the exact item
+- Worker and product pages in one popup each, a one-page company overview with one graph, and collections that show their reward
+- Realistic rents and prices for warehouses, industry, gyms, farms and football tickets; 1 gold is worth 1,000 in-game NOK
 - Goal rewards are claimed on purpose: finished goals wait with a Claim button (ladder, career and daily) and pay a small cash reward; Home shows your level bar, the current mission and the Season Pass claim or a watch-an-ad bonus, and you can put the cards away for a week
 - One global electricity price that follows how much power companies use and how much plants supply, a World prices card in the Market app, and bank, insurance, fund, casino and football club can no longer be started
 - A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold
