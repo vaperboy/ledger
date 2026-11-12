@@ -88,7 +88,6 @@ public struct AdLedger: Equatable, Sendable, Codable {
     public var lastReportWeek: Int?
     public var lastRewardedGrantWeek: Int?
     public var doubledGrantWeek: Int?
-    public var secondChanceUsed: Bool = false
     public var lastInterstitialAt: Date?
     public var lastPassAt: Date?
     public var lastDeclinedAt: Date?
@@ -105,7 +104,6 @@ public struct AdLedger: Equatable, Sendable, Codable {
         lastReportWeek = try c.decodeIfPresent(Int.self, forKey: .lastReportWeek)
         lastRewardedGrantWeek = try c.decodeIfPresent(Int.self, forKey: .lastRewardedGrantWeek)
         doubledGrantWeek = try c.decodeIfPresent(Int.self, forKey: .doubledGrantWeek)
-        secondChanceUsed = try c.decodeIfPresent(Bool.self, forKey: .secondChanceUsed) ?? false
         lastInterstitialAt = try c.decodeIfPresent(Date.self, forKey: .lastInterstitialAt)
         lastPassAt = try c.decodeIfPresent(Date.self, forKey: .lastPassAt)
         lastDeclinedAt = try c.decodeIfPresent(Date.self, forKey: .lastDeclinedAt)
@@ -127,7 +125,7 @@ public struct AdLedger: Equatable, Sendable, Codable {
     public mutating func beginSession(now: Date) { self = rolled(now); sessionsToday += 1 }
 
     public mutating func resetForNewSave() {
-        lastInterstitialWeek = nil; lastReportWeek = nil; lastRewardedGrantWeek = nil; doubledGrantWeek = nil; secondChanceUsed = false
+        lastInterstitialWeek = nil; lastReportWeek = nil; lastRewardedGrantWeek = nil; doubledGrantWeek = nil
     }
 
     public mutating func refundInterstitial() {
@@ -196,11 +194,6 @@ public enum AdPolicy {
         return max(0, min(grantCash, max(0.02 * max(0, companyCash), floor)))
     }
 
-    public static func canOfferSecondChance(_ s: GameState, currency: Currency, entitlements e: EntitlementSnapshot, now: Date, _ ledger: AdLedger) -> Bool {
-        guard !e.isAdFree(now: now), !ledger.secondChanceUsed, s.week > freeWeeksWithoutAds, !ledger.isQuiet(now: now) else { return false }
-        return AdRewards.canSecondChance(s, currency: currency)
-    }
-
     public static func canOfferPass(entitlements e: EntitlementSnapshot, now: Date, _ l: AdLedger) -> Bool {
         if e.isAdFree(now: now) { return false }
         if let t = l.lastPassAt, now.timeIntervalSince(t) < passCooldown { return false }
@@ -221,7 +214,6 @@ public enum AdRewards {
         "Start-up grant from the town", "Recruitment agency: fee waived", "Insurance: first premium free",
     ]
     public static let doubleLabel = "Ad reward: this week's grant doubled"
-    public static let secondChanceLabel = "Second chance: a fresh stake"
 
     public static func grantCash(_ s: GameState, doubledThrough: Int?) -> Double {
         let from: Int = max(s.week - 1, (doubledThrough ?? -1) + 1)
@@ -240,22 +232,5 @@ public enum AdRewards {
         guard amount > 0 else { return 0 }
         Ledger.move(&s, .me, amount, why: doubleLabel)
         return amount
-    }
-
-    public static func secondChanceStake(_ currency: Currency) -> Double { currency.scaledPrice(10_000) }
-
-    public static func canSecondChance(_ s: GameState, currency: Currency) -> Bool {
-        s.isGameOver && s.cash + secondChanceStake(currency) >= -s.overdraftLimit && Payments.liquid(s) >= 0
-    }
-
-    @discardableResult
-    public static func applySecondChance(_ s: inout GameState, currency: Currency) -> Bool {
-        guard canSecondChance(s, currency: currency) else { return false }
-        s.gameOver = .null
-        var flags = s.rest["flags"] ?? .object([:])
-        flags["od"] = .number(0)
-        s.rest["flags"] = flags
-        Ledger.move(&s, .me, secondChanceStake(currency), why: secondChanceLabel)
-        return true
     }
 }

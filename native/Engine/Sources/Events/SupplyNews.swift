@@ -73,8 +73,7 @@ public enum SupplyNews {
         guard s.companies.indices.contains(i), s.companies[i].status == .open, let opened = s.companies[i].openedWeek, s.week - opened >= minAgeWeeks,
               let bd = data.catalog[s.companies[i].type], bd.family != "hold" else { return }
         let co = s.companies[i]
-        let difficulty = Difficulty.of(s)
-        let chance = s.week > difficulty.badEventCapWeeks ? weeklyChance * difficulty.eventRamp(data.balance, week: s.week) : 0
+        let chance = s.week > FairRules.badEventCapWeeks ? weeklyChance * FairRules.eventRamp(data.balance, week: s.week) : 0
         var gate = HashedRandom("\(s.seed):sn:\(s.week):\(co.id)")
         if gate.next() < chance, !Sourcing.suppliedFromInside(s, companyID: co.id) {
             if let r = roll(s, co, sources: sources(s, co, bd, data: data), chance: chance),

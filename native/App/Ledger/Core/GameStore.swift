@@ -285,18 +285,32 @@ final class GameStore: ObservableObject {
 
     func slotList() -> [(slot: String, summary: SaveSummary?)] { saves?.slots() ?? [] }
 
-    @discardableResult
-    func saveToSlot(_ raw: String) -> Bool {
-        guard !isShowcase, let saves, let engine, let name = SaveStore.cleanSlotName(raw), name != "current", !saves.hasSave(slot: name) else { return false }
-        do { try saves.save(engine.state, slot: name, summary: saves.summary(of: engine.state, trades: engine.data.catalog)); return true }
-        catch { errorText = "Saving failed: \(error)"; return false }
+    /// Slots are separate careers: the current one is parked under its own name and the chosen one continues from its latest state.
+    func switchCareer(to slot: String) {
+        guard !isShowcase, let saves, slot != "current", saves.hasSave(slot: slot) else { return }
+        save()
+        do {
+            if saves.hasSave() { guard try saves.park(as: careerName) != nil else { errorText = "Your career could not be put aside."; return } }
+            guard try saves.unpark(slot) else { errorText = "That career could not be opened."; return }
+            try start(with: saves.load()); loadProblem = nil; resetNavigation(); save()
+        } catch { errorText = "That career could not be opened. " + Self.describe(error) }
     }
 
-    func loadSlot(_ slot: String) {
-        guard !isShowcase, let saves else { return }
-        save(backup: true)
-        do { try start(with: saves.load(slot: slot)); loadProblem = nil; resetNavigation(); save() }
-        catch { errorText = "That slot could not be opened. " + Self.describe(error) }
+    /// Puts the current career aside in its own slot and returns to the start screen for a new one.
+    @discardableResult
+    func parkForNewCareer() -> Bool {
+        guard !isShowcase, let saves, engine != nil else { return false }
+        save()
+        do {
+            guard try saves.park(as: careerName) != nil else { return false }
+            resetNavigation(); engine = nil
+            return true
+        } catch { errorText = "Your career could not be put aside. " + Self.describe(error); return false }
+    }
+
+    private var careerName: String {
+        guard let s = engine?.state else { return "Career" }
+        return SaveStore.cleanSlotName(s.companies.first?.name ?? s.player.name) ?? "Career"
     }
 
     func deleteSlot(_ slot: String) { try? saves?.delete(slot: slot) }
@@ -304,10 +318,10 @@ final class GameStore: ObservableObject {
     @discardableResult
     func renameSlot(_ slot: String, to raw: String) -> Bool { (try? saves?.renameSlot(slot, to: raw)) ?? false }
 
-    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, channel: SalesChannel? = nil, difficulty: Difficulty = .classic) {
+    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, channel: SalesChannel? = nil) {
         RememberedDetails.clearAll()
         do {
-            var e = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, channel: channel, difficulty: difficulty)
+            var e = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, channel: channel)
             ProfileStore.adopt(into: &e)
             if let old = engine, !isShowcase { SeasonModel.shared.succeed(save: Self.saveID(old.state), with: Self.saveID(e.state)) }
             engine = e
@@ -317,30 +331,30 @@ final class GameStore: ObservableObject {
         } catch { errorText = "Could not start a game: \(error)" }
     }
 
-    var canRetrySameSetup: Bool {
-        guard let s = engine?.state else { return false }
-        let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
-        return story != .fresh || !s.companies.isEmpty
+    /// Restores the cloud copy only when it is newer than every copy of that career on this phone, so a backup never rolls a career back.
+    func restoreBackup(text: String) -> String? {
+        guard let saves else { return "Saving is not available." }
+        do {
+            let state: GameState = try saves.importLegacy(text: text)
+            let id: String = Self.saveID(state)
+            for row in saves.slots() where row.slot != "current" {
+                if let parked = try? saves.load(slot: row.slot), Self.saveID(parked) == id { return "This career is in the slot \(row.slot). Open it there." }
+            }
+            if engine != nil { save() }
+            var here: GameState? = engine?.state
+            if here == nil, saves.hasSave() { here = try? saves.load() }
+            if let here {
+                if Self.saveID(here) == id {
+                    guard (state.week, state.day) > (here.week, here.day) else { return "This phone already has this career at the same point or later." }
+                } else {
+                    let name: String = SaveStore.cleanSlotName(here.companies.first?.name ?? here.player.name) ?? "Career"
+                    guard try saves.park(as: name) != nil else { return "Your career could not be put aside." }
+                }
+            }
+            try start(with: state); loadProblem = nil; resetNavigation(); save()
+            return nil
+        } catch { return "That backup could not be restored. " + Self.describe(error) }
     }
-
-    func retryWithSameSetup() {
-        guard let s = engine?.state else { return }
-        let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
-        if story == .fresh, let c = s.companies.first {
-            newGame(name: s.player.name, countryCode: s.homeCountryCode, story: .fresh, tradeID: c.type, companyName: c.name, channel: c.chosenChannel)
-        } else if story != .fresh {
-            newGame(name: s.player.name, countryCode: s.homeCountryCode, story: story)
-        }
-    }
-
-    func restoreBackup(text: String) {
-        guard let saves else { return }
-        do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save() }
-        catch { errorText = "That backup could not be restored. " + Self.describe(error) }
-    }
-
-    static let classicStartKey = "ledger.classicStartUnlocked"
-    var classicStartUnlocked: Bool { UserDefaults.standard.bool(forKey: Self.classicStartKey) }
 
     func backupText() -> String? {
         guard let engine, let d = try? JSONEncoder().encode(engine.state) else { return nil }
@@ -384,7 +398,6 @@ final class GameStore: ObservableObject {
         engine = e
         SeasonModel.shared.observe(e.state)
         StoreSession.shared.receiveLevel(e.playerLevel.level)
-        if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }
         Haptics.nextDay()
         SoundCues.play(out.completedWeek ? .weekReport : .dayClose)
         report(out.newMessages)

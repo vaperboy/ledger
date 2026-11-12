@@ -162,7 +162,7 @@ public enum EventPack {
         let age = s.week - opened
         let w = World(state: s, data: data)
         let country = w.country(co)
-        let ramp = Difficulty.of(s).eventRamp(data.balance, week: s.week)
+        let ramp = FairRules.eventRamp(data.balance, week: s.week)
         let risk = Knobs.effect(co, bd, "r", w)
         let month = GameCalendar.month(week: s.week) + 1
         let kind = Weather.draw(country: co.countryCode, week: s.week, seed: s.seed, tables: data.balance.weather).kind

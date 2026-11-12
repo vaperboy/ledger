@@ -316,14 +316,8 @@ public enum AuctionMarket {
 
     public static func suggestedStart(_ r: BoxRarity, priceLevel: Double) -> Int { tidy(Double(basePrice(r)) * priceLevel) }
 
-    static func basePrice(_ r: BoxRarity) -> Int {
-        switch r {
-        case .common: return 300
-        case .rare: return 1_200
-        case .epic: return 4_000
-        case .legendary: return 15_000
-        }
-    }
+    /// Market value in game money: the rarity's worth in gold at the one in-game gold rate.
+    static func basePrice(_ r: BoxRarity) -> Int { Int(GoldValue.gameMoney(gold: GoldPrices.artifactValue(r)).rounded()) }
 
     static func tidy(_ v: Double) -> Int {
         let n: Int = max(1, Int(v.rounded()))

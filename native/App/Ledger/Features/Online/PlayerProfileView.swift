@@ -47,29 +47,10 @@ struct PlayerProfileView: View {
     }
 
     private func header(_ p: PlayerProfile) -> some View {
-        VStack(spacing: Theme.Space.s) {
-            PlayerAvatar(player: p, size: 84)
-            HStack(spacing: Theme.Space.xs) {
-                Text(p.displayName).textStyle(.title)
-                if p.badges.contains(HallOfFameBadge.name) { HallOfFameMark() }
-            }
-            Text(p.subline).textStyle(.caption)
-            let shown: [String] = p.badges.filter { (b: String) -> Bool in b != HallOfFameBadge.name }
-            if !shown.isEmpty {
-                Text(shown.joined(separator: "  ·  ")).textStyle(.caption, tint: Theme.accent).multilineTextAlignment(.center)
-            }
-        }
-        .frame(maxWidth: .infinity).padding(.vertical, Theme.Space.m)
+        PlayerCard(data: PlayerCardData(profile: p))
     }
 
     @ViewBuilder private func detailGroups(_ p: PlayerProfile) -> some View {
-        if p.level != nil || p.companyCount != nil || p.gameWeek != nil {
-            OnlineGroup(title: "Profile") {
-                if let l = p.level { OnlineLine(glyph: Glyph.achievements, title: "Level", value: "\(l)") }
-                if let n = p.companyCount { Hairline(); OnlineLine(glyph: Glyph.group, title: "Companies", value: "\(n)") }
-                if let w = p.gameWeek { Hairline(); OnlineLine(glyph: Glyph.stats, title: "Their game is in week", value: "\(w + 1)") }
-            }
-        }
         if let list = p.companies, !list.isEmpty {
             OnlineGroup(title: "Companies and how they are doing") {
                 OnlineCompanyList(companies: Array(list.prefix(3)))
@@ -79,11 +60,8 @@ struct PlayerProfileView: View {
                         .buttonStyle(PressableStyle())
                 }
             }
-        } else {
+        } else if p.privacy != .onlyMe || p.relation == .you {
             Text(hiddenNote(p)).textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center).frame(maxWidth: .infinity)
-        }
-        if let t = p.tradesCompleted {
-            OnlineGroup(title: "Trade record") { OnlineLine(glyph: Glyph.market, title: "Trades completed", value: "\(t)") }
         }
     }
 

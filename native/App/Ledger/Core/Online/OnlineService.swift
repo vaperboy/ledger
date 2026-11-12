@@ -66,6 +66,7 @@ struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
     var relation: FriendRelation
     var avatarIcon: String? = nil
     var lastSeen: Double? = nil
+    var avatarLook: String? = nil
 
     static let avatarColourCount = 8
     var initials: String {
@@ -84,11 +85,12 @@ struct ProfileUpdate: Codable, Sendable {
     var badges: [String]?
     var gameWeek: Int?
     var avatarIcon: String?
+    var avatarLook: String?
     init(avatarColour: Int? = nil, countryCode: String? = nil, privacy: PrivacyLevel? = nil,
-         companies: [OnlineCompany]? = nil, level: Int? = nil, badges: [String]? = nil, gameWeek: Int? = nil, avatarIcon: String? = nil) {
+         companies: [OnlineCompany]? = nil, level: Int? = nil, badges: [String]? = nil, gameWeek: Int? = nil, avatarIcon: String? = nil, avatarLook: String? = nil) {
         self.avatarColour = avatarColour; self.countryCode = countryCode; self.privacy = privacy
         self.companies = companies; self.level = level; self.badges = badges; self.gameWeek = gameWeek
-        self.avatarIcon = avatarIcon
+        self.avatarIcon = avatarIcon; self.avatarLook = avatarLook
     }
 }
 

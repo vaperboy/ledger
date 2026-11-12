@@ -62,13 +62,13 @@
     "gym": {
       "per": "member-week", "sessions": 7, "sessionName": "day", "unit": "member", "source": "members",
       "items": [
-        { "id": "off", "n": "Off-peak membership", "kind": "Membership", "model": "sub", "ratio": 0.70, "share": 2.0, "fleet": 0.25, "vc": 0.02, "use": 0.7, "churn": 1.2, "recipe": "Weekday daytime only: fewer visits at peak, so the floor has room for more of them." },
+        { "id": "off", "n": "Off-peak membership", "kind": "Membership", "model": "sub", "ratio": 0.65, "share": 2.154, "fleet": 0.25, "vc": 0.02, "use": 0.7, "churn": 1.2, "recipe": "Weekday daytime only: fewer visits at peak, so the floor has room for more of them." },
         { "id": "std", "n": "Standard membership", "kind": "Membership", "model": "sub", "ratio": 1.00, "share": 5.0, "fleet": 0.50, "vc": 0.03, "use": 1, "churn": 1.0, "recipe": "Full access to the gym floor and classes. Cost to serve: cleaning, towels and wear." },
-        { "id": "prem", "n": "Premium membership", "kind": "Membership", "model": "sub", "ratio": 1.60, "share": 1.5, "fleet": 0.12, "vc": 0.08, "use": 1.1, "churn": 0.6, "recipe": "Sauna, towels and a monthly coaching check. Members of this tier leave less often." },
-        { "id": "day", "n": "Day pass", "kind": "Pass", "model": "rent", "ratio": 0.40, "share": 1.6, "fleet": 0.13, "vc": 0.03, "use": 0.4, "recipe": "One visit, paid at the desk. No contract, no churn." },
-        { "id": "pt", "n": "Personal training session", "kind": "Session", "model": "svc", "ratio": 0.60, "share": 1.0, "fleet": 0, "vc": 0.06, "use": 0.1, "recipe": "One hour with a trainer (wages are in the staff cost; trainers can be paid on commission)." },
-        { "id": "class", "n": "Class pack", "kind": "Class", "model": "svc", "ratio": 0.45, "share": 1.5, "fleet": 0, "vc": 0.05, "use": 0.1, "recipe": "Ten studio classes with an instructor; capacity is the studio, not the floor." },
-        { "id": "supp", "n": "Supplements and drinks", "kind": "Shop", "model": "svc", "ratio": 0.25, "share": 2.0, "fleet": 0, "vc": 0.62, "use": 0.05, "recipe": "Bought from the sports wholesaler at about 62% of the price: a thin retail margin." }
+        { "id": "prem", "n": "Premium membership", "kind": "Membership", "model": "sub", "ratio": 1.50, "share": 1.6, "fleet": 0.12, "vc": 0.08, "use": 1.1, "churn": 0.6, "recipe": "Sauna, towels and a monthly coaching check. Members of this tier leave less often." },
+        { "id": "day", "n": "Day pass", "kind": "Pass", "model": "rent", "ratio": 1.30, "share": 0.492, "fleet": 0.13, "vc": 0.03, "use": 0.4, "recipe": "One visit, paid at the desk. No contract, no churn." },
+        { "id": "pt", "n": "Personal training session", "kind": "Session", "model": "svc", "ratio": 5.30, "share": 0.113, "fleet": 0, "vc": 0.06, "use": 0.1, "recipe": "One hour with a trainer (wages are in the staff cost; trainers can be paid on commission)." },
+        { "id": "class", "n": "Class pack", "kind": "Class", "model": "svc", "ratio": 10.5, "share": 0.064, "fleet": 0, "vc": 0.05, "use": 0.1, "recipe": "Ten studio classes with an instructor; capacity is the studio, not the floor." },
+        { "id": "supp", "n": "Supplements and drinks", "kind": "Shop", "model": "svc", "ratio": 0.32, "share": 1.563, "fleet": 0, "vc": 0.62, "use": 0.05, "recipe": "Bought from the sports wholesaler at about 62% of the price: a thin retail margin." }
       ]
     },
     "club": {

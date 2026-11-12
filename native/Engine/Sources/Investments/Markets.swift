@@ -67,12 +67,9 @@ public enum Markets {
         return crash ? "crash" : pick
     }
 
-    static func crashChance(_ s: GameState) -> Double {
-        let mode = s.rest["difficulty"]?.string ?? ""
-        return mode == "sandbox" ? 0.015 : mode == "hard" ? 0.04 : 0.03
-    }
+    static func crashChance(_ s: GameState) -> Double { 0.03 }
 
-    static func warningLead(_ s: GameState) -> Int { s.rest["difficulty"]?.string == "hard" ? 1 : 2 }
+    static func warningLead(_ s: GameState) -> Int { 2 }
 
     static func warn(_ s: inout GameState, next: String, weeks: Int) {
         let when = weeks == 1 ? "next week" : "within \(weeks) weeks"

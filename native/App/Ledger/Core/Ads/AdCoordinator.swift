@@ -93,24 +93,6 @@ final class AdCoordinator {
         return paid
     }
 
-    func secondChanceOffer(_ game: GameStore) -> Double? {
-        guard available, !isShowing, let e = game.engine else { return nil }
-        guard AdPolicy.canOfferSecondChance(e.state, currency: e.homeCurrency, entitlements: entitlements.effective, now: Date(), ledger) else { return nil }
-        return AdRewards.secondChanceStake(e.homeCurrency)
-    }
-
-    @discardableResult
-    func watchForSecondChance(_ game: GameStore) async -> Bool {
-        guard secondChanceOffer(game) != nil, await rewardedFinished(), let cur = game.engine?.homeCurrency else { return false }
-        let ok: Bool = game.act { (eng: inout GameEngine) -> Bool in
-            var done: Bool = false
-            eng.update { s, _, _ in done = AdRewards.applySecondChance(&s, currency: cur) }
-            return done
-        } ?? false
-        if ok { ledger.secondChanceUsed = true; store() }
-        return ok
-    }
-
     var canOfferSeasonBonus: Bool { available && !isShowing && !entitlements.effective.isAdFree(now: Date()) && SeasonModel.shared.adBonusAvailable }
 
     @discardableResult

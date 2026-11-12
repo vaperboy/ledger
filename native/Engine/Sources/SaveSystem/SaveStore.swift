@@ -100,6 +100,26 @@ public final class SaveStore {
         return true
     }
 
+    /// Moves the current career into a named slot, so it exists once and continues from where it stopped.
+    @discardableResult
+    public func park(as raw: String) throws -> String? {
+        guard hasSave(), let base = Self.cleanSlotName(raw), base != "current" else { return nil }
+        var name = base, n = 2
+        while hasSave(slot: name) || name == "current" { name = Self.cleanSlotName("\(base.prefix(20)) \(n)") ?? "\(n)"; n += 1 }
+        try fm.moveItem(at: url(slot: "current"), to: url(slot: name))
+        try? fm.removeItem(at: previousURL(slot: "current"))
+        return name
+    }
+
+    /// Makes a parked career the current one again. The slot file is moved, not copied, so no older copy stays behind.
+    @discardableResult
+    public func unpark(_ slot: String) throws -> Bool {
+        guard slot != "current", !hasSave(), hasSave(slot: slot) else { return false }
+        try fm.moveItem(at: url(slot: slot), to: url(slot: "current"))
+        try? fm.removeItem(at: previousURL(slot: slot))
+        return true
+    }
+
     @discardableResult
     public func keepUnreadable(slot: String = "current", now: Date = Date()) -> Bool {
         let dir = directory.appendingPathComponent("Unreadable", isDirectory: true)

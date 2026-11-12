@@ -32,7 +32,8 @@ struct OpsPageDestination: View {
         if e.tradeInfo(companyID: co.id)?.family == "rent" {
             SettingsPage(title: "Properties", subtitle: co.name) { CompanyProperties(engine: e, company: co) }
         } else {
-            EmptyState(glyph: Glyph.airStay, title: "Premises are in AirStay", message: "Places to rent and buy are in AirStay.")
+            EmptyState(glyph: Glyph.airStay, title: "Premises are in AirStay", message: "Places to rent and buy are in AirStay.",
+                       actionTitle: "Find a place in AirStay", action: { store.openAirStay(companyID: co.id) })
                 .frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }

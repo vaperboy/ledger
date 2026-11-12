@@ -6,7 +6,6 @@ struct SettingsView: View {
     var embedded = false
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
-    @Environment(AdCoordinator.self) private var ads
     @Environment(OnlineSession.self) private var online
     @State private var haptics = Haptics.enabled
     @State private var sounds = SoundCues.enabled
@@ -26,7 +25,6 @@ struct SettingsView: View {
                 if store.engine != nil { helpGroup }
                 if store.engine != nil && !embedded { savingGroup }
                 proGroup
-                if store.classicStartUnlocked { newGameGroup }
                 gameGroup
                 DeleteAccountGroup()
             }
@@ -107,30 +105,11 @@ struct SettingsView: View {
     private var savingGroup: some View {
         group("Saves", footer: "The game saves itself after every day.") {
             NavigationLink {
-                PhonePageScroll(spacing: 14) { SaveSlotsView() }.appScreen(title: "Save slots", subtitle: "Named copies and cloud backup")
+                PhonePageScroll(spacing: 14) { SaveSlotsView() }.appScreen(title: "Save slots", subtitle: "Your careers and cloud backup")
             } label: {
-                plainRow(Glyph.save, "Save slots", detail: "Named copies of this game", chevron: true)
+                plainRow(Glyph.save, "Save slots", detail: "Each slot is its own career", chevron: true)
             }.buttonStyle(PressableStyle())
         }
-    }
-
-    private var newGameGroup: some View {
-        group("New game", footer: "Replaces the game you are playing; the copy before it is kept as a backup.") {
-            Button { askNewGame(.loan) } label: {
-                plainRow(Glyph.bank, "New game: start-up loan", detail: LifeStory.loan.tagline, tint: Theme.loss, chevron: true)
-            }.buttonStyle(PressableStyle())
-            rule
-            Button { askNewGame(.heir) } label: {
-                plainRow(Glyph.home, "New game: the family café", detail: LifeStory.heir.tagline, tint: Theme.loss, chevron: true)
-            }.buttonStyle(PressableStyle())
-        }
-    }
-
-    private func askNewGame(_ story: LifeStory) {
-        let code: String = store.engine?.state.homeCountryCode ?? (Locale.current.region?.identifier == "GB" ? "UK" : (Locale.current.region?.identifier ?? "NO"))
-        let who: String = store.engine?.state.player.name ?? ""
-        pending = PendingAction(title: "Start a new game?", message: "It replaces the saved game. The copy before it is kept as a backup file, but the game will no longer open it.",
-                                button: "Start new game", destructive: true) { store.newGame(name: who, countryCode: code, story: story); ads.resetForNewSave() }
     }
 
     private var proGroup: some View {
