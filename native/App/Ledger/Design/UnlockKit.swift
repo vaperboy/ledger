@@ -34,24 +34,39 @@ extension GameStore {
         }
     }
 
-    private func noticeApp(_ target: String) -> PhoneApp? {
-        PhoneApp.launcher.first(where: { (a: PhoneApp) -> Bool in a.gate?.rawValue == target })
-    }
-
-    private func hasNoticeTarget(_ target: String) -> Bool {
-        noticeApp(target) != nil || target == Gate.ventures.rawValue || ["government", "politics", "chain", "franchise", "abroad"].contains(target)
-    }
-
-    private func openNoticeTarget(_ target: String) {
-        if let app = noticeApp(target) { openApp(app); return }
-        if target == Gate.ventures.rawValue { openVentures(); return }
-        switch target {
-        case "government", "politics": openApp(.world)
-        default:
-            guard let id = engine?.state.companies.first(where: { (c: Company) -> Bool in c.status.isLive })?.id else { return }
-            openGroupEntity(companyID: id, section: "expansion")
+    /// Where an unlock popup's "Take me there" goes for each level feature; nil when there is no single place.
+    private func noticeAction(_ target: String) -> (() -> Void)? {
+        guard let f = LevelFeature(rawValue: target) else { return nil }
+        let first: Int? = engine?.state.companies.first(where: { (c: Company) -> Bool in c.status.isLive })?.id
+        switch f {
+        case .marketplace: return { self.openApp(.marketplace) }
+        case .techpro: return { self.openApp(.techPro) }
+        case .insurance: return { self.openApp(.atlas) }
+        case .luxury: return { self.openApp(.luxury) }
+        case .auctions: return { self.openApp(.auctions) }
+        case .desk: return { self.openApp(.desk) }
+        case .exchange: return { self.openApp(.market) }
+        case .government, .politics: return { self.openApp(.world) }
+        case .ventures: return { self.openVentures() }
+        case .marketing:
+            guard let id = first else { return nil }
+            return { self.openCompany(id, section: .marketing) }
+        case .management:
+            guard let id = first else { return nil }
+            return { self.openCompany(id, section: .operations) }
+        case .research:
+            guard let id = first else { return nil }
+            return { self.openMarket(companyID: id) }
+        case .chain, .franchise, .abroad:
+            guard let id = first else { return nil }
+            return { self.openGroupEntity(companyID: id, section: "expansion") }
+        case .newCompany, .weeklyPlan, .rivals, .jointVentures: return nil
         }
     }
+
+    private func hasNoticeTarget(_ target: String) -> Bool { noticeAction(target) != nil }
+
+    private func openNoticeTarget(_ target: String) { noticeAction(target)?() }
 
     private static func unlockLine(_ id: String, _ name: String) -> String {
         switch id {

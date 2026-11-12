@@ -55,7 +55,7 @@ final class BillsAndLoansTests: XCTestCase {
         XCTAssertEqual(co.payables["other"] ?? 0, 5_100_000, accuracy: 2, "2 % late interest on the 5 000 000 left over")
         XCTAssertGreaterThan(co.books.year["int"] ?? 0, 0)
         XCTAssertEqual(co.int("supCut"), 1, "second miss: stock only against cash")
-        XCTAssertTrue(e.state.inbox.contains { $0.title.hasPrefix("Late fees") })
+        XCTAssertTrue(e.state.feedLines.contains { $0.text.hasPrefix("Late fees") }, "late fees are a report line, not a message")
 
         e.update { s, _, ctx in
             let i = s.companyIndex(id)!

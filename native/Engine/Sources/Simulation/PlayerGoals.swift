@@ -207,7 +207,6 @@ public enum PlayerGoals {
 
     public static func startLadder(_ s: inout GameState) {
         s.rest["ldr"] = .object(["done": .object([:])])
-        UnlockNotices.seedGates(&s)
     }
 
     static func ladderCondition(_ id: String, _ s: GameState) -> Bool {

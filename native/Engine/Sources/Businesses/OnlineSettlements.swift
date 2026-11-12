@@ -33,14 +33,17 @@ public enum OnlineSettlements {
         (s.rest["online"] ?? .null)["booked"].array.contains { (v: JSONValue) -> Bool in v.string == id }
     }
 
+    // Lets a later module book kinds it owns; it gets the amount in game money and returns true when it took the item.
+    public typealias Handler = (inout GameState, OnlineSettlement, Double) -> Bool
+
     @discardableResult
-    public static func book(_ s: inout GameState, _ items: [OnlineSettlement], data: GameData) -> [String] {
+    public static func book(_ s: inout GameState, _ items: [OnlineSettlement], data: GameData, handler: Handler? = nil) -> [String] {
         var booked: [JSONValue] = (s.rest["online"] ?? .null)["booked"].array
         var seen: Set<String> = Set(booked.map { (v: JSONValue) -> String in v.string })
         var done: [String] = []
         for item in items {
             if !seen.contains(item.id) {
-                bookOne(&s, item, data: data)
+                bookOne(&s, item, data: data, handler: handler)
                 booked.append(.string(item.id))
                 seen.insert(item.id)
             }
@@ -59,9 +62,10 @@ public enum OnlineSettlements {
         return Currency(country: country, rates: ExchangeRates(drift: s.exchangeRates.values)).rate
     }
 
-    private static func bookOne(_ s: inout GameState, _ item: OnlineSettlement, data: GameData) {
+    private static func bookOne(_ s: inout GameState, _ item: OnlineSettlement, data: GameData, handler: Handler?) {
         let fx: Double = rate(item.currency, s, data)
         let amount: Double = item.amount * fx
+        if let handler, handler(&s, item, amount) { return }
         let company: Int? = companyID(fromKey: item.companyKey).flatMap { (id: Int) -> Int? in s.company(id)?.status == .open ? id : nil }
         if item.kind.hasPrefix("market_") {
             MarketSettlements.book(&s, item, amount: amount, data: data)

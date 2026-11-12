@@ -170,6 +170,21 @@ enum SupabaseWire {
         case "already_discussing": return .rejected("A price is already on the table.")
         case "invalid_action": return .rejected("That cannot be done now.")
         case "listing_closed": return .rejected("This listing is closed.")
+        case "not_friends": return .rejected("Only a friend can be invited as a partner.")
+        case "already_partner": return .rejected("That player is a partner already.")
+        case "too_many_partners": return .rejected("The company has as many partners as it can have.")
+        case "invalid_stake": return .rejected("That share is not allowed: a partner holds 2% to 49%.")
+        case "worthless": return .rejected("The company is worth nothing yet, so its shares cannot be priced.")
+        case "offer_open": return .rejected("An offer for these shares is already waiting for an answer.")
+        case "locked": return .rejected("These shares cannot be sold yet.")
+        case "meeting_open": return .rejected("An emergency meeting is already open. Let it finish first.")
+        case "agenda_full": return .rejected("The next board meeting is full. Try again after it.")
+        case "vote_closed", "already_closed": return .rejected("Voting has closed.")
+        case "offer_expired": return .rejected("That offer is no longer open.")
+        case "already_set": return .rejected("That is already how it is set.")
+        case "no_partners": return .rejected("There is no board yet: the company has no partners.")
+        case "invalid_agenda", "too_many_settings": return .rejected("That cannot be put to the board.")
+        case "barred": return .rejected("Your account cannot trade with other players right now.")
         default:
             if key.hasPrefix("listing_") { return .rejected("That offer is not available.") }
         }

@@ -35,6 +35,7 @@ struct InboxView: View {
     private func filtered(_ e: GameEngine) -> [Message] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         return e.state.inbox.filter { m in
+            if !store.showsInInbox(m) { return false }
             if let c = companyFilter, m.companyID != c { return false }
             if q.isEmpty { return true }
             let co = m.companyID != 0 ? (e.state.company(m.companyID)?.name ?? "") : ""

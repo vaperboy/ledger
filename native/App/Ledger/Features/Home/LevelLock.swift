@@ -21,7 +21,7 @@ struct LevelLockCard: View {
                 }
                 Text(LevelGates.lockLine(feature)).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 ProgressLine(fraction: p.fraction, tint: Theme.gold, height: 4)
-                Text("\(p.xpToGo) XP to go. You earn XP from goals, daily goals and every week you play.")
+                Text("Lets you " + LevelGates.gives(feature) + ". \(p.xpToGo) XP to go.")
                     .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
             .padding(Theme.Space.l)
@@ -88,13 +88,7 @@ struct HomeNextUnlock: View {
     var body: some View {
         if let f = LevelGates.nextLocked(engine.state) {
             let p: LevelGates.Progress = LevelGates.progress(f, engine.state)
-            let names: String = LevelGates.opensWith(f).map { (x: LevelFeature) -> String in LevelGates.title(x) }.joined(separator: ", ")
-            line("Level \(LevelGates.level(f)) unlocks \(names)", fraction: p.fraction, detail: "\(p.xpToGo) XP to go")
-        } else {
-            let next: [UnlockRoadmapItem] = store.memo("nextUnlock") { (g: GameEngine) -> [UnlockRoadmapItem] in Array(g.unlockRoadmap().prefix(1)) } ?? []
-            if let item = next.first {
-                line(item.title + ": " + item.condition, fraction: item.progress, detail: item.detail)
-            }
+            line("Level \(LevelGates.level(f)) unlocks \(LevelGates.title(f))", fraction: p.fraction, detail: "\(p.xpToGo) XP to go")
         }
     }
 

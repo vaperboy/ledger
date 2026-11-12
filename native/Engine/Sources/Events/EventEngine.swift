@@ -192,8 +192,8 @@ public enum EventEngine {
         if decision == .manager {
             let pick = choose(co, options: options, ctx: ctx, quality: ManagerModel.quality(co, bd(data, co), people: s.people), random: &s.random)
             let who = s.people[co.managerID ?? 0]?.name ?? "The manager"
-            s.addMessage(from: co.name, title: title, body: "\(who) chose: \(options[pick]["l"].string).", companyID: co.id, tone: e.tone, options: options)
-            if let k = s.inbox.indices.first, true { s.inbox[k].set("status", "done"); s.inbox[k].set("pick", pick); s.inbox[k].set("mgrName", who); s.inbox[k].set("ev", e.id) }
+            // The manager answered: one line for the day and the report, no message.
+            s.feedLine("\(title) \(who) chose: \(options[pick]["l"].string).", tone: e.tone, companyID: co.id)
             apply(&s, companyIndex: i, options[pick]["fx"], ctx: ctx, event: e, data: data, context: fc)
             if e.tone == "bad" { Threat.survived(&s, companyID: co.id, text: "\"\(title)\" at \(co.name). \(who) handled it: \(options[pick]["l"].string).") }
             else { s.note("\(co.name): \(who) handled \"\(title)\" by choosing: \(options[pick]["l"].string).", tone: "n", companyID: co.id) }

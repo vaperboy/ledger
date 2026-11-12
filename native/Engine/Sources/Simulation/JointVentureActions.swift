@@ -32,9 +32,9 @@ public extension GameEngine {
         return r
     }
     @discardableResult
-    mutating func jvRespond(companyID: Int, inviteID: Int, accept: Bool) -> String? {
+    mutating func jvRespond(companyID: Int, inviteID: Int, accept: Bool, settled: Bool = false) -> String? {
         var r: String?
-        update { s, d, c in r = JointVenture.respond(&s, companyID: companyID, inviteID: inviteID, accept: accept, data: d, context: c) }
+        update { s, d, c in r = JointVenture.respond(&s, companyID: companyID, inviteID: inviteID, accept: accept, settled: settled, data: d, context: c) }
         return r
     }
     @discardableResult
@@ -87,9 +87,9 @@ public extension GameEngine {
         return r
     }
     @discardableResult
-    mutating func jvAnswerBuyBack(companyID: Int, offerID: Int, accept: Bool) -> String? {
+    mutating func jvAnswerBuyBack(companyID: Int, offerID: Int, accept: Bool, settled: Bool = false) -> String? {
         var r: String? = "That offer is no longer open."
-        update { s, d, c in r = JointVenture.answerBuyBack(&s, companyID: companyID, offerID: offerID, accept: accept, data: d, context: c) }
+        update { s, d, c in r = JointVenture.answerBuyBack(&s, companyID: companyID, offerID: offerID, accept: accept, settled: settled, data: d, context: c) }
         return r
     }
     @discardableResult
@@ -104,4 +104,72 @@ public extension GameEngine {
         update { s, d, c in r = JointVenture.partnerWantsOut(&s, companyID: companyID, memberID: memberID, data: d, context: c) }
         return r
     }
+
+    // What follows keeps a company in step with a board that the game server runs for real players.
+    func jvIsRemote(companyID: Int) -> Bool { jointVenture(companyID: companyID).map { JointVenture.isRemote($0) } ?? false }
+    var jvHoldings: [JointVentureSettlements.Holding] { JointVentureSettlements.holdings(state) }
+    func jvCompanyValue(companyID: Int) -> Double {
+        state.company(companyID).map { max(0, Valuation.companyValue($0, state: state, trades: data.catalog)) } ?? 0
+    }
+    func jvCurrencyCode(companyID: Int) -> String? {
+        state.company(companyID).map { context.currency($0.countryCode, state).country.currencyCode }
+    }
+    // Game money as the server counts it, in the company's own currency.
+    func jvServerAmount(_ amount: Double, companyID: Int) -> Double {
+        guard let code = jvCurrencyCode(companyID: companyID) else { return amount }
+        return (PlayerInventory.toServer(amount, currency: code, state, data) * 100).rounded() / 100
+    }
+    func jvGameAmount(_ amount: Double, companyID: Int) -> Double {
+        guard let code = jvCurrencyCode(companyID: companyID) else { return amount }
+        return PlayerInventory.fromServer(amount, currency: code, state, data)
+    }
+    mutating func jvSetRemote(companyID: Int, ventureID: String) { update { s, _, _ in JointVenture.setRemote(&s, companyID: companyID, ventureID: ventureID) } }
+    mutating func jvLinkInvite(companyID: Int, inviteID: Int, remoteID: String) { update { s, _, _ in JointVenture.linkInvite(&s, companyID: companyID, inviteID: inviteID, remoteID: remoteID) } }
+    @discardableResult
+    mutating func jvDropInvite(companyID: Int, inviteID: Int, status: String = "failed", why: String? = nil) -> Bool {
+        var ok = false
+        update { s, _, _ in ok = JointVenture.dropInvite(&s, companyID: companyID, inviteID: inviteID, status: status, why: why) }
+        return ok
+    }
+    @discardableResult
+    mutating func jvRemoteJoin(companyID: Int, playerID: String, name: String, pct: Double, price: Double, lockAt: Double? = nil) -> String? {
+        var r: String? = "Could not add that partner."
+        update { s, d, c in r = JointVenture.remoteJoin(&s, companyID: companyID, playerID: playerID, name: name, pct: pct, price: price, lockAt: lockAt, data: d, context: c) }
+        return r
+    }
+    mutating func jvLinkItem(companyID: Int, meetingID: Int, itemID: Int, remoteID: String, remoteMeeting: String, closesAt: Double?) {
+        update { s, _, _ in JointVenture.linkItem(&s, companyID: companyID, meetingID: meetingID, itemID: itemID, remoteID: remoteID, remoteMeeting: remoteMeeting, closesAt: closesAt) }
+    }
+    @discardableResult
+    mutating func jvDropItem(companyID: Int, meetingID: Int, itemID: Int, why: String) -> Bool {
+        var ok = false
+        update { s, _, _ in ok = JointVenture.dropItem(&s, companyID: companyID, meetingID: meetingID, itemID: itemID, why: why) }
+        return ok
+    }
+    @discardableResult
+    mutating func jvRemoteStanding(companyID: Int, meetingID: Int, itemID: Int, yes: Double, no: Double, total: Double) -> Bool {
+        var ok = false
+        update { s, _, _ in ok = JointVenture.remoteStanding(&s, companyID: companyID, meetingID: meetingID, itemID: itemID, yes: yes, no: no, total: total) }
+        return ok
+    }
+    @discardableResult
+    mutating func jvRemoteResult(companyID: Int, meetingID: Int, itemID: Int, passed: Bool, votes: [String: JVRules.Choice] = [:]) -> Bool {
+        var ok = false
+        update { s, d, c in ok = JointVenture.remoteResult(&s, companyID: companyID, meetingID: meetingID, itemID: itemID, passed: passed, votes: votes, data: d, context: c) }
+        return ok
+    }
+    mutating func jvLinkBuyBack(companyID: Int, offerID: Int, remoteID: String) { update { s, _, _ in JointVenture.linkBuyBack(&s, companyID: companyID, offerID: offerID, remoteID: remoteID) } }
+    @discardableResult
+    mutating func jvCloseBuyBack(companyID: Int, offerID: Int, declined: Bool) -> Bool {
+        var ok = false
+        update { s, d, c in ok = JointVenture.closeBuyBack(&s, companyID: companyID, offerID: offerID, declined: declined, data: d, context: c) }
+        return ok
+    }
+    @discardableResult
+    mutating func jvPartnerLeft(companyID: Int, memberID: String, price: Double) -> String? {
+        var r: String? = "That partner is no longer here."
+        update { s, d, c in r = JointVenture.partnerLeft(&s, companyID: companyID, memberID: memberID, price: price, data: d, context: c) }
+        return r
+    }
+    mutating func jvMarkDividendSent(companyID: Int, week: Int) { update { s, _, _ in JointVenture.markDividendSent(&s, companyID: companyID, week: week) } }
 }

@@ -14,8 +14,9 @@ final class PlaytestFixesTests: XCTestCase {
         }
         let reached = Trophies.entries(e.state).filter { $0.reachedWeek != nil && $0.text.hasPrefix("Your net worth passed") }
         XCTAssertGreaterThan(reached.count, 3, "every rung is still recorded")
-        let told = e.state.inbox.filter { $0.from == "Trophy wall" && $0.body.hasPrefix("Your net worth passed") }
+        let told = e.takeCelebrations().filter { $0.kind == "trophy" && $0.detail.hasPrefix("Your net worth passed") }
         XCTAssertEqual(told.count, 1, "but the player is told once")
+        XCTAssertFalse(e.state.inbox.contains { $0.from == "Trophy wall" }, "the celebration tells it, not a message")
     }
 
     func testBusinessLoanDecisionAgreesWithOffer() throws {

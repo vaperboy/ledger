@@ -208,7 +208,7 @@ final class SupplierTermsTests: XCTestCase {
         XCTAssertNil(SupplyDeals.deal(try XCTUnwrap(e.state.company(cafe)), input: "goods", week: e.state.week), "the negotiated price is withdrawn")
         XCTAssertTrue(levels.contains(1) || levels.contains(2), "repeated lateness cuts the supplier off: \(levels.suffix(10))")
         XCTAssertEqual(levels.max(), 2)
-        XCTAssertTrue(e.state.inbox.contains { $0.title.contains("Late payment:") })
+        XCTAssertTrue(e.state.feedLines.contains { $0.text.contains("Late payment:") })
         XCTAssertTrue(e.state.inbox.contains { $0.title.hasPrefix("Suppliers stop delivering") || $0.title.hasPrefix("Suppliers want cash") })
         e.update { s, _, _ in
             var vr = s.rest["vr"]!; vr[vendor]["r"] = 10; s.rest["vr"] = vr

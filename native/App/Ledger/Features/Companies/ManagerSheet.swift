@@ -24,7 +24,7 @@ struct ManagerSheet: View {
             PeopleSheet(title: "Manager") {
                 if let e = store.engine, let co = e.state.company(companyID) {
                     let cur = e.currency(for: co)
-                    if let mid = co.managerID, let m = e.state.people[mid] { manage(e, co, m, cur) } else { hire(e, co, cur) }
+                    if let mid = co.managerID, let m = e.state.people[mid] { manage(e, co, m, cur) } else if store.levelOpen(.management) { hire(e, co, cur) } else { LevelLockCard(feature: .management) }
                 } else {
                     Text("This company no longer exists.").popupText(.body)
                 }
