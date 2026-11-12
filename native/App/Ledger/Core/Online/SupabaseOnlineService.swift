@@ -63,8 +63,9 @@ actor SupabaseOnlineService: OnlineService {
         if let country = update.countryCode { fields["p_country_code"] = country.uppercased() }
         if let privacy = update.privacy { fields["p_privacy"] = SupabaseWire.privacyWire(privacy) }
         if let icon = update.avatarIcon { fields["p_avatar_icon"] = icon }
-        if let look = update.avatarLook { fields["p_avatar_look"] = look }
         if !fields.isEmpty { _ = try await rpcData("update_my_profile", fields) }
+        // The look goes in its own call, so a server that does not know it yet still saves the rest.
+        if let look = update.avatarLook { _ = try? await rpcData("update_my_profile", ["p_avatar_look": look]) }
         if update.level != nil || update.badges != nil || update.gameWeek != nil || update.companies != nil {
             struct Args: Encodable {
                 var p_level: Int?; var p_badges: [String]?; var p_game_week: Int?; var p_companies: [OnlineCompany]?
