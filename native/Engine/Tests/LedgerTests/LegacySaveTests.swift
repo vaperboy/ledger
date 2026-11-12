@@ -30,6 +30,22 @@ final class LegacySaveTests: XCTestCase {
         XCTAssertEqual(again.cash, loaded.cash, accuracy: 0.01, "a save that already has one account is not folded twice")
     }
 
+    func testAnOldSaveWithItsOwnPoolEntryAndSavingsLosesNoMoney() throws {
+        var e = try ChainsTests.engine("UK")
+        let id = ChainsTests.start(&e, "cafe")
+        let own = e.state.cash
+        var o = try JSONDecoder().decode([String: JSONValue].self, from: JSONEncoder().encode(e.state))
+        // Saves from before the one account kept a list of candidates under "pool" and a savings pocket under "sav".
+        o["pool"] = .object(["acc": .array([])])
+        o["sav"] = .object(["bal": .number(3_000)])
+        editCompany(&o, at: 0) { $0["cash"] = .number(7_000) }
+        let loaded = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(o))
+        XCTAssertEqual(loaded.cash, own + 7_000 + 3_000, accuracy: 0.01, "the company's cash and the savings are paid into the account")
+        XCTAssertEqual(loaded.company(id)?.cash ?? -1, loaded.cash, accuracy: 0.01)
+        let again = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(loaded))
+        XCTAssertEqual(again.cash, loaded.cash, accuracy: 0.01, "nothing is paid in a second time")
+    }
+
     func testAnOldHoldingCompanyDisappearsAndItsStakesComeBackToYou() throws {
         var e = try ChainsTests.engine("UK")
         let id = ChainsTests.start(&e, "cafe")
