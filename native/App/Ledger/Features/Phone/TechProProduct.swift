@@ -118,7 +118,7 @@ struct TechProProduct: View {
         var item: String = ArtAsset.cellFallback(equipmentID, group: group, seed: equipmentID)
         if offerKey.hasPrefix("v"), let o = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.VehicleOffer) -> Bool in x.id == offerRest }) {
             photo = TechPhotos.vehicle(model: o.modelID)
-            item = ArtLibrary.itemKey(group: "vehicle", familyKey: o.modelID, seed: equipmentID + "#" + String(o.index)) ?? ""
+            item = ArtLibrary.vehicleCell(o.art)
         } else if offerKey.hasPrefix("n"), let n = Int(offerRest) {
             item = ArtLibrary.itemKey(group: group, familyKey: equipmentID, seed: equipmentID + "#" + String(n)) ?? ""
         }

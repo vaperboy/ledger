@@ -13,11 +13,11 @@ struct LevelLadderView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     header(info)
                     next(info)
-                    nextIcon(info)
+                    nextOutfit(info)
                     LazyVStack(spacing: Theme.Space.s) {
                         ForEach(1...PlayerLevel.maxLevel, id: \.self) { (level: Int) in row(level, info).id(level) }
                     }
-                    Text("The highest level is \(PlayerLevel.maxLevel). XP comes from \(PlayerLevel.ladderXP) for each step of the ladder, \(PlayerLevel.dailyXP) for the daily goal and \(PlayerLevel.weekXP) for every week you play. Level icons belong to your account and cannot be traded.")
+                    Text("The highest level is \(PlayerLevel.maxLevel). XP comes from \(PlayerLevel.ladderXP) for each step of the ladder, \(PlayerLevel.dailyXP) for the daily goal and \(PlayerLevel.weekXP) for every week you play. Level outfits belong to your account and cannot be traded.")
                         .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.bottom, Theme.Space.l)
@@ -69,13 +69,13 @@ struct LevelLadderView: View {
         }
     }
 
-    @ViewBuilder private func nextIcon(_ info: PlayerLevel.Info) -> some View {
-        if let r = LevelRewards.all.first(where: { (x: LevelRewards.Reward) -> Bool in x.level > info.level && x.icon != nil }), let id = r.icon {
+    @ViewBuilder private func nextOutfit(_ info: PlayerLevel.Info) -> some View {
+        if let r = LevelRewards.all.first(where: { (x: LevelRewards.Reward) -> Bool in x.level > info.level && x.outfit != nil }), let id = r.outfit, let outfit = GoldCosmetics.cosmetic(id) {
             HStack(spacing: Theme.Space.m) {
-                ItemArt(avatar: id, size: 40)
+                ItemArt(cosmetic: outfit, size: 40)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Next icon").textStyle(.label, tint: Theme.gold)
-                    Text("Level \(r.level): " + (AvatarCatalog.def(id)?.title ?? "Icon")).textStyle(.body, weight: .medium)
+                    Text("Next outfit").textStyle(.label, tint: Theme.gold)
+                    Text("Level \(r.level): " + outfit.item.title).textStyle(.body, weight: .medium)
                 }
                 Spacer(minLength: 0)
             }
@@ -98,8 +98,8 @@ struct LevelLadderView: View {
         let current: Bool = info.level == level
         let unlocks: [LevelGates.Entry] = LevelGates.unlocks(atLevel: level)
         let reward: LevelRewards.Reward? = LevelRewards.reward(at: level)
-        let icon: String? = reward?.icon
-        let notable: Bool = !unlocks.isEmpty || icon != nil
+        let outfit: GoldCosmetic? = reward?.outfit.flatMap { (id: String) -> GoldCosmetic? in GoldCosmetics.cosmetic(id) }
+        let notable: Bool = !unlocks.isEmpty || outfit != nil
         return HStack(alignment: .top, spacing: Theme.Space.m) {
             Text("\(level)").textStyle(.headline, tint: reached ? Theme.ink : Theme.inkSoft, numeric: true)
                 .frame(width: 34, alignment: .leading)
@@ -113,10 +113,10 @@ struct LevelLadderView: View {
                         }
                     }
                 }
-                if let icon {
+                if let outfit {
                     HStack(spacing: Theme.Space.s) {
-                        ItemArt(avatar: icon, size: 28)
-                        Text((AvatarCatalog.def(icon)?.title ?? "Icon") + " icon").textStyle(.caption, tint: reached ? Theme.ink : Theme.inkSoft)
+                        ItemArt(cosmetic: outfit, size: 28)
+                        Text(outfit.item.title + " outfit").textStyle(.caption, tint: reached ? Theme.ink : Theme.inkSoft)
                     }
                 }
                 if let reward {

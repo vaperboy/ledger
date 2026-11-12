@@ -156,7 +156,7 @@ struct TechProSuppliers: View {
                 let sale: StoreDeals.Deal = e.vehicleDeal(modelID: o.modelID, factor: o.priceFactor)
                 out.append(Row(key: "v" + o.id, title: o.name, photo: TechPhotos.vehicle(model: o.modelID), glyph: Glyph.vehicle, price: p, from: "from " + cur.tidyShort(p),
                                deal: sale.isOn ? sale.percentOff : 0, sub: stars(o.rating, o.reviews) + " \u{00B7} reliability " + reliabilityWord(o.reliability), rating: o.rating, reviews: o.reviews, breakdown: o.reliability,
-                               item: ArtLibrary.itemKey(group: "vehicle", familyKey: o.modelID, seed: equipmentID + "#" + String(o.index)) ?? ""))
+                               item: ArtLibrary.vehicleCell(o.art)))
             }
         } else if need.subscription {
             for o in e.equipmentOffers(companyID: companyID, equipmentID: equipmentID) where o.cls == 1 {
