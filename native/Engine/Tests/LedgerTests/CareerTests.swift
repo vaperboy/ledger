@@ -69,13 +69,13 @@ final class CareerTests: XCTestCase {
         XCTAssertEqual(Career.goalsDone(e.state), 1)
     }
 
-    func testCosmeticBadgeUnlockedWithGoal() throws {
+    func testCosmeticOutfitUnlockedWithGoal() throws {
         var e = try cafe()
         e.update { s, _, _ in for i in s.companies.indices { s.companies[i].reputation = 80 } }
         e.sweepCareer()
-        XCTAssertFalse(e.careerCosmetics.contains("logo.star"), "the badge comes with the claim")
+        XCTAssertFalse(e.careerCosmetics.contains("outfit.goal.regulars"), "the outfit comes with the claim")
         e.claimGoal(kind: .career, id: "k3")
-        XCTAssertTrue(e.careerCosmetics.contains("logo.star"))
+        XCTAssertTrue(e.careerCosmetics.contains("outfit.goal.regulars"))
     }
 
     private func nw(_ e: GameEngine) -> Double { Valuation.netWorth(e.state, trades: e.data.catalog).total }

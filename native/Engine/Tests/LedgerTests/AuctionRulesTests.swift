@@ -276,7 +276,7 @@ final class AuctionRulesTests: XCTestCase {
     func testEveryCosmeticABoxCanDropCanBeWorn() {
         let kinds: Set<SeasonReward.Kind> = Set(BoxRarity.allCases.flatMap { GoldCosmetics.boxPool($0, owned: []).map(\.item.kind) })
         XCTAssertFalse(kinds.isEmpty)
-        XCTAssertTrue(kinds.allSatisfy(\.isEquippable))
+        XCTAssertTrue(kinds.allSatisfy { $0.isEquippable || CosmeticCatalog.avatarKinds.contains($0) }, "a drop is worn on the profile or on the avatar")
     }
 
     func testWalletNeverSpendsMoreThanItHas() {
@@ -299,7 +299,7 @@ final class AuctionRulesTests: XCTestCase {
         XCTAssertTrue(c.add(ArtifactItem(defID: "abacus", serial: 99)).isEmpty)
         XCTAssertEqual(ArtifactCatalog.label(ArtifactItem(defID: "strongbox", serial: 14)), "14 of 500")
         XCTAssertTrue(ArtifactCatalog.collections.allSatisfy { GoldCosmetics.cosmetic($0.rewardID) != nil })
-        XCTAssertEqual(Set(ArtifactCatalog.collections.flatMap(\.members)), Set(ArtifactCatalog.defs.map(\.id)))
+        XCTAssertEqual(Set(ArtifactCatalog.everyCollection.flatMap(\.members)), Set(ArtifactCatalog.defs.map(\.id)))
         for rarity in BoxRarity.allCases { XCTAssertFalse(ArtifactCatalog.defs(of: rarity).isEmpty) }
         XCTAssertEqual(ArtifactCatalog.serial(of: ArtifactCatalog.defs[3], roll: 0.9999), 100)
         XCTAssertEqual(ArtifactCatalog.serial(of: ArtifactCatalog.defs[3], roll: 0), 1)
