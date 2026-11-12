@@ -254,7 +254,7 @@ public extension GameEngine {
                 rivals = Int(saturating: jsRound(mk == nil || mk!.isNull ? CityMarket.expectedRivals(trade: bd, country: c, city: city, tables: tables) : mk!["n"].double))
             }
             return MarketCity(id: city.id, name: city.name, countryCode: c.code, population: city.population, demand: city.demand,
-                              priceLevel: c.priceLevel * city.price, rentLevel: c.rentLevel * city.rent, wageLevel: c.wageLevel * city.wage, touristIndex: city.touristIndex,
+                              priceLevel: city.price, rentLevel: city.rent, wageLevel: city.wage, touristIndex: city.touristIndex,
                               tradeID: bd?.id, tradeDemand: demand, tradeDemandLevel: level, rivals: rivals,
                               yourCompanies: live.filter { $0.cityID == city.id }.count, isHomeCity: countryCode == state.homeCountryCode && city.id == state.player.cityID)
         }
