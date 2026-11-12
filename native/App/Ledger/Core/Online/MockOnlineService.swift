@@ -167,6 +167,7 @@ actor MockOnlineService: OnlineService {
         }
         if let w = update.gameWeek { me.gameWeek = max(me.gameWeek ?? 0, w) }
         if let icon = update.avatarIcon, AvatarCatalog.def(icon) != nil { me.avatarIcon = icon }
+        if let look = update.avatarLook, ProfileLookCode.decode(look) != nil { me.avatarLook = look }
         state.me = me
         save()
         me.relation = .you
