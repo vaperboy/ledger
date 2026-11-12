@@ -327,6 +327,10 @@ struct CustomiseView: View {
         case .box: return "Cosmetic boxes"
         case .collection: return "Complete a collection"
         case .plan: return "Ledger plans"
+        case .free: return "Free"
+        case .level: return "Reach level " + g.value
+        case .rank: return "Reach rank " + g.value
+        case .goal: return "Career goal"
         }
     }
 
