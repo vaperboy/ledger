@@ -50,7 +50,10 @@ final class HeldMoneyAndFiguresTests: XCTestCase {
         XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, accuracy: 0.01)
         let heldForMe = HeldMoney.playerRemaining(e.state)
         let worth = e.state.cash + heldForMe
-        let payout = e.windUpEstimate(companyID: id)
+        let terms = try XCTUnwrap(e.windUpTerms(companyID: id))
+        XCTAssertEqual(e.windUpEstimate(companyID: id), terms.toOwner)
+        // Debts the sale of its things does not cover are paid from the account before anything reaches the owner.
+        let payout = terms.toOwner - terms.fromAccount
         XCTAssertEqual(e.windUpCompany(companyID: id), true)
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(co.status, .sold)

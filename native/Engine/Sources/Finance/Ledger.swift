@@ -24,7 +24,10 @@ public enum Ledger {
         switch holder {
         case .me: s.cash += amount; AccountingLedger.pending = nil
         case .company(let id):
-            if let i = s.companyIndex(id) { AccountingLedger.record(&s, companyIndex: i, amount: amount); s.cash += amount }
+            if let i = s.companyIndex(id) {
+                AccountingLedger.record(&s, companyIndex: i, amount: amount); s.cash += amount
+                s.companies[i].retainedCash = max(0, s.companies[i].retainedCash + amount)
+            }
         }
         s.cashFlow[holder.flowKey, default: 0] += amount
     }

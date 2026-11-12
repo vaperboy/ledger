@@ -183,22 +183,26 @@ final class BillsAndLoansTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    func testWindingUpNeverWipesALoanTheCompanysThingsCannotRepay() throws {
+    func testWindingUpRepaysEveryLoanInFullFromTheSaleAndTheAccount() throws {
         var (e, id) = try cafe(seed: 44)
         var loanID = 0
         e.update { s, _, _ in
-            let things = CompanyFigures.assets(s.companies[s.companyIndex(id)!])
+            let i = s.companyIndex(id)!
+            s.companies[i].payables = ["other": 40_000]
+            let things = CompanyFigures.assets(s.companies[i])
             loanID = addLoan(&s, company: id, balance: things * 10 + 1_000_000)
         }
         let cash0 = e.state.cash
-        let before = try XCTUnwrap(e.state.loans.first { $0.id == loanID }).balance
+        let t = try XCTUnwrap(e.windUpTerms(companyID: id))
+        XCTAssertNil(t.refusal, "the account covers what the sale of its things does not")
+        XCTAssertGreaterThan(t.fromAccount, 0)
+        XCTAssertEqual(t.toOwner, 0, "nothing is left for the owner while debts exceed the sale")
         XCTAssertTrue(e.windUpCompany(companyID: id))
         XCTAssertEqual(e.state.company(id)?.status, .sold)
-        let kept = try XCTUnwrap(e.state.loans.first { $0.id == loanID }, "the loan is not wiped: its money went into the one account")
-        XCTAssertEqual(kept.companyID, 0, "the owner now owes what is left")
-        XCTAssertGreaterThan(kept.balance, before * 0.4)
-        XCTAssertLessThanOrEqual(kept.balance, before)
-        XCTAssertEqual(e.state.cash, cash0, accuracy: 0.5, "nothing is paid out while a lender is unpaid")
+        XCTAssertFalse(e.state.loans.contains { $0.id == loanID }, "the loan is repaid at closing, not carried on")
+        XCTAssertFalse(e.state.loans.contains { $0.name.contains("taken over") })
+        XCTAssertEqual(e.state.cash, cash0 - t.fromAccount, accuracy: 1, "the account pays what the sale does not")
+        XCTAssertEqual(e.state.company(id)?.payables.values.reduce(0, +) ?? -1, 0, accuracy: 0.5, "its bills are paid too")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 

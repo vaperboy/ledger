@@ -27,6 +27,7 @@ public enum Failure {
         let billsDue = max(0, debts - loanBalance)
         var spare = max(0, pool - billsDue)
         var repaidToLoans = 0.0
+        var lendersLost = 0.0
         for l in ownLoans {
             guard let li = s.loans.firstIndex(where: { $0.id == l.id }) else { continue }
             let more = min(unpaid[l.id] ?? 0, spare)
@@ -34,17 +35,26 @@ public enum Failure {
             let left = (unpaid[l.id] ?? 0) - more
             repaidToLoans += l.balance - left
             if l.isGuaranteed {
+                // A loan the owner guaranteed passes to the owner, so its lender loses nothing.
                 s.loans[li].balance = left
                 s.loans[li].companyID = 0
                 s.loans[li].name += " (taken over by you)"
                 personalHit += left
                 if left < 1 { s.loans.remove(at: li) }
             } else {
+                // Limited liability: a lender without a guarantee loses what the company's things do not repay.
+                lendersLost += left
                 Banking.close(loanID: l.id, repaid: l.balance - left, state: &s)
             }
         }
         let rest = assets - billsDue - repaidToLoans
+        let billsLost = max(0, billsDue - max(0, assets - repaidToLoans))
         if rest > 0 && co.ownership > 0 { Payments.playerReceives(&s, rest * co.ownership / 100 * 0.2, label: "Remaining value from \(co.name)") }
+        // Money the company handed its owner while insolvent goes back to the creditors who lost out; a closure by the authorities seizes instead.
+        let claw = reason == "closed" ? 0 : jsRound(min(ClawBack.takenOut(s, co), lendersLost + billsLost))
+        let back = ClawBack.collect(&s, amount: claw, from: co)
+        s.companies[i].set("clawBk", claw)
+        s.companies[i].retainedCash = 0
         for m in s.companies[i].staff { if var person = s.people[m.id] { person.employerID = 0; s.people[m.id] = person } }
         if let mid = s.companies[i].managerID, var mgr = s.people[mid] { mgr.employerID = 0; s.people[mid] = mgr }
         s.companies[i].staff = []
@@ -54,19 +64,29 @@ public enum Failure {
         guard announce else { return personalHit }
         s.stats.bankruptcies += 1
         s.credit = clamp(s.credit - 14, 0, 100)
-        s.addMessage(from: co.name, title: "\(co.name) has gone bankrupt", body: why(reason) + liability(personalHit, cur) + "Credit score hit.", companyID: co.id, tone: "bad")
+        Banking.recordBankruptcy(&s)
+        s.addMessage(from: co.name, title: "\(co.name) has gone bankrupt",
+                     body: why(reason) + liability(personalHit, cur) + clawBackText(claw, owed: back.owed, cur) + "Credit score hit. " + banText,
+                     companyID: co.id, tone: "bad")
         s.news("\(co.name) files for bankruptcy.", tone: "bad", companyID: co.id)
         return personalHit
     }
 
     static func why(_ reason: String) -> String {
-        reason == "unpaid" ? "Bills went unpaid for months. " : reason == "insolvent" ? "The regulator closed it: its capital was gone. " : reason == "loan" ? "The bank called its loan after missed instalments. " : "Cash ran out. "
+        reason == "unpaid" ? "Bills went unpaid for months. " : reason == "insolvent" ? "The regulator closed it: its capital was gone. " : reason == "loan" ? "The bank called its loan after missed instalments. "
+            : reason == "filed" ? "You filed for bankruptcy: it owed more than it had. " : "Cash ran out. "
     }
     static func liability(_ personalHit: Double, _ cur: Currency) -> String {
         personalHit > 0
             ? "About \(cur.display(personalHit)) lands on you personally (guarantees you signed). "
             : "As a limited company, your loss is limited to what you put in. "
     }
+    static func clawBackText(_ claw: Double, owed: Double, _ cur: Currency) -> String {
+        guard claw >= 1 else { return "" }
+        let rest = owed >= 1 ? "\(cur.display(owed)) of it you could not pay now becomes a debt you repay monthly. " : ""
+        return "\(cur.display(claw)) it brought into your account while it could not pay its debts is taken back for its lenders. " + rest
+    }
+    static let banText = "No new bank loans for two years."
 
     public static func chainChecks(_ s: inout GameState, data: GameData, context: FinanceContext, insolvent: Set<Int>) {
         for ch in Chains.all(s) {
@@ -92,7 +112,11 @@ public enum Failure {
         let name = ch["name"].string
         s.stats.bankruptcies += 1
         s.credit = clamp(s.credit - 14, 0, 100)
-        s.addMessage(from: name, title: "\(name) has gone bankrupt", body: why(reason) + "All \(L.count) branches close with the chain. " + liability(hit, context.homeCurrency(s)) + "Credit score hit.",
+        Banking.recordBankruptcy(&s)
+        let claw = L.reduce(0.0) { $0 + (s.company($1.id)?.num("clawBk") ?? 0) }
+        let cur = context.homeCurrency(s)
+        s.addMessage(from: name, title: "\(name) has gone bankrupt",
+                     body: why(reason) + "All \(L.count) branches close with the chain. " + liability(hit, cur) + clawBackText(claw, owed: 0, cur) + "Credit score hit. " + banText,
                      companyID: head.id, tone: "bad")
         s.news("\(name) files for bankruptcy and closes its \(L.count) branches.", tone: "bad", companyID: head.id)
     }

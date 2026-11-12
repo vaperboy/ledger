@@ -79,6 +79,7 @@ public extension GameEngine {
         var refusal: String?
         if !supported { refusal = "The bank does not offer that loan here." }
         else if kind == "biz", companyID.flatMap({ state.company($0) }) == nil { refusal = "That company is no longer trading." }
+        else if let until = Banking.loanBanUntil(state) { refusal = "After a bankruptcy the bank lends again from \(GameCalendar.dateString(week: until))." }
         else if offer.maximum <= 0 { refusal = "The bank would not lend to you at the moment." }
         else if offer.maximum < minimum { refusal = "The bank would lend less than its smallest loan (\(cur.display(minimum)))." }
         let approved = refusal == nil
@@ -88,13 +89,22 @@ public extension GameEngine {
             let q = loanQuote(kind: kind, amount: atMax, termMonths: t, companyID: companyID)
             return LoanExample(termMonths: t, monthlyPayment: q.monthlyPayment, totalInterest: q.totalInterest)
         } : []
-        let guarantee = false
+        let company: Company? = kind == "biz" ? companyID.flatMap({ state.company($0) }) : nil
+        let guarantee = company.map { Banking.needsGuarantee(company: $0, amount: max(minimum, atMax), week: state.week) } == true
         var conditions = [
             "The loan owed is the full amount you choose; the arrangement fee of \(String(format: "%.2f%%", probe.feeRate * 100)) is taken when the money is paid out.",
             "Interest follows the central bank rate plus the bank's margin for credit band \(offer.creditBand). The instalment is re-worked every month at that month's rate.",
             "Instalments are taken on the last day of each month. A payment the account cannot cover adds the unpaid interest and a penalty and lowers the credit score.",
         ]
-        if kind == "biz" { conditions.append("This loan is the company's: you are not personally liable unless you sign a guarantee.") }
+        if let c = company {
+            if state.week - c.foundedWeek < Banking.guaranteeAgeWeeks {
+                conditions.append("\(c.name) is under two years old, so you guarantee the loan personally: if it fails, you owe what is left.")
+            } else if c.shareCapital < atMax {
+                conditions.append("A loan above its share capital (\(cur.display(c.shareCapital))) needs your personal guarantee: if it fails, you owe what is left.")
+            } else {
+                conditions.append("This loan is the company's: you are not personally liable unless you sign a guarantee.")
+            }
+        }
         var accounts: [LoanPayoutAccount] = []
         if let c = companyID.flatMap({ state.company($0) }) {
             accounts.append(LoanPayoutAccount(id: .current, name: c.name + " account", balance: c.cash))

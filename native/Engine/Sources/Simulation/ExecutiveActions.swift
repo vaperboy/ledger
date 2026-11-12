@@ -71,7 +71,8 @@ public extension GameEngine {
                 return .voteFailed(pct)
             }
             let name = state.company(d.companyID)?.name ?? "The company"
-            guard windUpCompany(companyID: d.companyID) else { return .refused("\(name) cannot be wound up now.") }
+            let refusal = windUpTerms(companyID: d.companyID)?.refusal
+            guard windUpCompany(companyID: d.companyID) else { return .refused(refusal ?? "\(name) cannot be wound up now.") }
             update { s, _, _ in ManagerModel.settleDecision(&s, d, approved: true) }
             return .done("\(name) is wound up.")
         }

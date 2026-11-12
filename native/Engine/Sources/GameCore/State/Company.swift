@@ -65,6 +65,8 @@ public struct Company: JSONRecord, Identifiable {
     public var shareCapital: Double { get { num("capital") } set { set("capital", newValue) } }
     public var injectedCapital: Double { get { num("inj") } set { set("inj", newValue) } }
     public var ownerNetFlow: Double { get { num("ownNet") } set { set("ownNet", newValue) } }
+    /// What the company brought into the one account and has not spent on itself; never below zero, the owner covers any shortfall.
+    public var retainedCash: Double { get { num("sur") } set { set("sur", newValue) } }
     public var weeksNegative: Int { get { int("negW") } set { set("negW", newValue) } }
     public var unpaidMonths: Int { get { int("unpaid") } set { set("unpaid", newValue) } }
     public var wageShortfall: Double { get { num("wageShort") } set { set("wageShort", newValue) } }

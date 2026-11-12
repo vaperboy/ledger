@@ -183,7 +183,11 @@ public enum MonthEnd {
             if hist.count > 60 { hist.removeFirst() }
             co.monthlyHistory = hist
             var h = co.monthlyHistory
-            if var last = h.last { last.set("bk", .object(month.mapValues { .number($0) })); h[h.count - 1] = last; co.monthlyHistory = h }
+            if var last = h.last {
+                last.set("bk", .object(month.mapValues { .number($0) }))
+                ClawBack.mark(&last, co, loans: s.loans)
+                h[h.count - 1] = last; co.monthlyHistory = h
+            }
         }
         if co.managerID != nil {
             let mood = co.value("mood").isNull ? 60 : co.num("mood")

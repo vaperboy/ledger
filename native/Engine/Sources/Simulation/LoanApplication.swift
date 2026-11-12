@@ -104,6 +104,7 @@ public extension GameEngine {
         }
         var refusal: String?
         if amount < minimum { refusal = "The bank does not lend less than \(cur.display(minimum))." }
+        else if kind != "lomb", let until = Banking.loanBanUntil(state) { refusal = "After a bankruptcy the bank lends again from \(GameCalendar.dateString(week: until))." }
         else if q.maximum <= 0 { refusal = "The bank would not lend to you at the moment." }
         else if amount > q.maximum { refusal = "The bank would lend at most \(cur.display(q.maximum)) on today's figures." }
         return LoanApplicationQuote(kind: kind, amount: amount, termMonths: term, minimum: minimum, maximum: q.maximum, minTermMonths: range.lowerBound,
@@ -118,13 +119,16 @@ public extension GameEngine {
         let cur = accountCurrency(companyID)
         let borrower = companyID.flatMap { state.company($0)?.name } ?? state.player.name
         let pct = { (r: Double) in String(format: "%.2f%%", r * 100) }
+        let guaranteed = kind == "biz" && companyID.flatMap({ state.company($0) }).map { Banking.needsGuarantee(company: $0, amount: q.amount, week: state.week) } == true
+        let guarantee: [LoanClause] = guaranteed
+            ? [LoanClause(title: "6. Personal guarantee", body: "You personally guarantee this loan. If \(borrower) cannot repay it, what is left is yours to pay.")] : []
         return [
             LoanClause(title: "1. The loan", body: "The bank lends \(borrower) \(cur.display(q.amount)) for \(q.termMonths) months. The loan owed is the full \(cur.display(q.amount))."),
             LoanClause(title: "2. Fee and disbursal", body: "An arrangement fee of \(cur.display(q.fee)) (\(pct(q.feeRate))) is taken when the money is paid out, so \(cur.display(q.disbursal)) reaches the account."),
             LoanClause(title: "3. Interest", body: "Interest is the central bank rate plus the bank's margin for credit band \(q.creditBand): \(pct(q.yearlyRate)) a year today. The rate follows the central bank and the bank re-works the instalment each month so the loan ends on time."),
             LoanClause(title: "4. Repayment", body: "\(cur.display(q.monthlyPayment)) a month at today's rate, \(cur.display(q.totalRepaid)) in all, of which \(cur.display(q.totalInterest)) interest. Payments are taken on the \(q.paymentDayText.lowercased()), the first on \(q.firstPaymentText)."),
             LoanClause(title: "5. Missed payments", body: "A payment the account cannot cover adds the unpaid interest and a penalty to the loan and lowers the credit score. A second miss restricts further credit; a third lets the bank call the loan."),
-        ]
+        ] + guarantee
     }
 
     @discardableResult

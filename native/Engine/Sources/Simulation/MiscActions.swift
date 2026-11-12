@@ -113,22 +113,37 @@ public extension GameEngine {
         return r
     }
 
-    func windUpEstimate(companyID: Int) -> Double {
-        guard let co = state.company(companyID), co.status.isLive else { return 0 }
-        if state.isBranch(co) { return 0 }
-        let (rest, _) = Self.windUpFigures(co, state)
-        return max(0, rest) * co.ownership / 100
+    /// Closing a company by choice: its things are sold, every debt is repaid in full, and only then does the owner get what is left.
+    struct WindUpTerms: Equatable, Sendable {
+        /// What the company's things fetch when sold off.
+        public var saleValue: Double
+        /// Loans with interest to date, unpaid bills and tax.
+        public var debts: Double
+        /// What the account pays on top of the sale to clear the debts.
+        public var fromAccount: Double
+        /// What reaches the owner after every debt is paid.
+        public var toOwner: Double
+        /// Set when the sale and the account together cannot cover the debts.
+        public var refusal: String?
     }
 
-    private static func billsOf(_ co: Company) -> Double {
-        CompanyFigures.billsOwed(co)
+    static let insolventWindUp = "The company owes more than it has; it cannot be closed, only declared bankrupt or rescued. Rescue it by paying down its debts or selling it, or file for bankruptcy."
+
+    func windUpTerms(companyID: Int) -> WindUpTerms? {
+        guard let co = state.company(companyID), co.status.isLive, !state.isBranch(co) else { return nil }
+        return Self.windUpTerms(co, state, context)
     }
 
-    private static func windUpFigures(_ co: Company, _ s: GameState) -> (rest: Double, debts: Double) {
-        let cash: Double = max(0, CompanyFigures.assets(co)) * 0.55
-        let loans: Double = s.loans.filter { $0.companyID == co.id }.reduce(0.0) { $0 + $1.balance }
-        let bills = billsOf(co)
-        return (cash - loans - bills, loans + bills)
+    func windUpEstimate(companyID: Int) -> Double { windUpTerms(companyID: companyID)?.toOwner ?? 0 }
+
+    private static func windUpTerms(_ co: Company, _ s: GameState, _ ctx: FinanceContext) -> WindUpTerms {
+        let sale: Double = max(0, CompanyFigures.assets(co)) * 0.55
+        let loans = s.loans.filter { $0.companyID == co.id }
+        let owedOnLoans: Double = loans.reduce(0.0) { $0 + $1.balance + Banking.accruedInterest(of: $1, state: s, context: ctx) }
+        let debts = owedOnLoans + CompanyFigures.billsOwed(co)
+        let fromAccount = jsRound(max(0, debts - sale))
+        return WindUpTerms(saleValue: sale, debts: debts, fromAccount: fromAccount, toOwner: max(0, sale - debts) * co.ownership / 100,
+                           refusal: fromAccount > max(0, s.cash) + 0.5 ? insolventWindUp : nil)
     }
 
     @discardableResult mutating func windUpCompany(companyID: Int) -> Bool {
@@ -138,28 +153,17 @@ public extension GameEngine {
             guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return }
             HeldMoney.settle(&s, companyID: companyID)
             let co = s.companies[i]
-            let cash: Double = max(0, CompanyFigures.assets(co)) * 0.55
-            let ownLoans = s.loans.filter { $0.companyID == co.id }
-            let loanSum: Double = ownLoans.reduce(0.0) { $0 + $1.balance }
-            let bills = Self.billsOf(co)
-            let frac = loanSum > 0 ? clamp((cash - bills) / loanSum, 0, 1) : 1
-            var personal = 0.0
-            // The borrowed money went into the one account, so closing the company by choice never wipes a loan:
-            // what its things do not repay stays owed by the owner.
-            for l in ownLoans {
-                let left = l.balance * (1 - frac)
-                if left > 1 {
-                    personal += left
-                    Banking.close(loanID: l.id, repaid: l.balance * frac, keep: true, state: &s)
-                    if let k = s.loans.firstIndex(where: { $0.id == l.id }) { s.loans[k].name += " (taken over by you)" }
-                } else {
-                    Banking.close(loanID: l.id, repaid: l.balance, state: &s)
-                }
-            }
-            var rest = cash - loanSum - bills
-            if rest < 0 { rest = 0 }
-            if rest > 0 {
-                Payments.playerReceives(&s, rest * co.ownership / 100, label: "Liquidation of \(co.name)", companyID: co.id)
+            let t = Self.windUpTerms(co, s, ctx)
+            guard t.refusal == nil else { return }
+            // Creditors come first: the sale of its things pays them, and the account pays what the sale does not cover.
+            let interest = s.loans.filter { $0.companyID == co.id }.reduce(0.0) { $0 + Banking.accruedInterest(of: $1, state: s, context: ctx) }
+            if interest > 0 { Payments.book(&s, companyID: co.id, category: "int", amount: interest) }
+            if t.fromAccount > 0 { Payments.companyPays(&s, companyID: co.id, amount: t.fromAccount, category: nil, label: "Debts repaid at closing") }
+            for l in s.loans.filter({ $0.companyID == co.id }) { Banking.close(loanID: l.id, repaid: l.balance, state: &s) }
+            s.companies[i].payables = [:]
+            if s.companies[i].vatBalance > 0 { s.companies[i].vatBalance = 0 }
+            if t.toOwner > 0 {
+                Payments.playerReceives(&s, t.toOwner, label: "Liquidation of \(co.name)", companyID: co.id)
             }
             for m in s.companies[i].staff { if var person = s.people[m.id] { person.employerID = 0; s.people[m.id] = person } }
             if let mid = s.companies[i].managerID, var mgr = s.people[mid] { mgr.employerID = 0; s.people[mid] = mgr }
@@ -169,9 +173,20 @@ public extension GameEngine {
             s.companies[i].status = .sold
             s.stats.companiesSold += 1
             for k in s.inbox.indices where s.inbox[k].companyID == co.id && s.inbox[k].status == "open" { s.inbox[k].set("status", "done") }
-            s.note("\(co.name) is closed down and its things sold.", companyID: co.id)
-            if personal > 1 { s.note("\(ctx.homeCurrency(s).display(personal)) of \(co.name)'s loans stays with you.", tone: "bad", companyID: co.id) }
+            s.note("\(co.name) is closed down, its things sold and its debts paid.", companyID: co.id)
             done = true
+        }
+        return done
+    }
+
+    /// Files a company that owes more than it has for bankruptcy; a company that can pay its debts is closed instead.
+    @discardableResult mutating func fileForBankruptcy(companyID: Int) -> Bool {
+        guard windUpTerms(companyID: companyID)?.refusal != nil else { return false }
+        var done = false
+        update { s, d, ctx in
+            guard let i = s.companyIndex(companyID) else { return }
+            Failure.bankrupt(&s, companyIndex: i, reason: "filed", data: d, context: ctx)
+            done = s.companies[i].status == .bust
         }
         return done
     }

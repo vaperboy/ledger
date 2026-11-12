@@ -78,14 +78,26 @@ struct CompanyCloseButton: View {
         let id: Int = company.id
         let staff: Int = company.staff.count
         let cur: Currency = engine.currency(for: company)
-        let back: Double = engine.windUpEstimate(companyID: id)
-        pending = PendingAction(title: "Are you sure?", message: "Closing \(name) is permanent. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back)).",
+        let terms: GameEngine.WindUpTerms? = engine.windUpTerms(companyID: id)
+        if let why = terms?.refusal {
+            pending = PendingAction(title: "It cannot be closed", message: why, button: "File for bankruptcy", destructive: true, alwaysAsk: true, tone: .danger, icon: "exclamationmark.triangle") {
+                if store.act({ $0.fileForBankruptcy(companyID: id) }) == true {
+                    Haptics.warning()
+                    store.show("\(name) is bankrupt.", tone: "warn")
+                }
+            }
+            return
+        }
+        let back: Double = terms?.toOwner ?? 0
+        let fromAccount: Double = terms?.fromAccount ?? 0
+        let debts: String = fromAccount > 0 ? " Its debts take \(cur.tidyDisplay(fromAccount)) from your account." : ""
+        pending = PendingAction(title: "Are you sure?", message: "Closing \(name) is permanent. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back))." + debts,
                                 button: "Close it for good", destructive: true, alwaysAsk: true, tone: .danger, icon: "xmark.octagon") {
             let alone: Bool = engine.boardVote(kind: "close", companyID: id).pushedThroughAlone
             if store.act({ $0.windUpCompany(companyID: id) }) == true {
                 if alone { store.act { $0.recordPushedThrough(companyID: id) } }
                 Haptics.warning()
-                store.show("\(name) is closed down and its things sold." + (alone ? " The other owners did not want this." : ""), tone: "n")
+                store.show("\(name) is closed down, its things sold and its debts paid." + (alone ? " The other owners did not want this." : ""), tone: "n")
             } else {
                 Haptics.warning()
                 store.show("\(name) could not be closed.", tone: "warn")
