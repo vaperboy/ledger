@@ -28,9 +28,9 @@ struct StartView: View {
                                 button: button, alwaysAsk: true, tone: .warning, icon: "arrow.counterclockwise", run: body)
     }
 
-    private func begin(country: String, trade: String, company: String, player: String, channel: SalesChannel, difficulty: Difficulty) {
+    private func begin(country: String, trade: String, company: String, player: String, channel: SalesChannel) {
         replacingSave("Start a new game?", button: "Start new game") {
-            store.newGame(name: player, countryCode: country, story: .fresh, tradeID: trade, companyName: company, channel: channel, difficulty: difficulty)
+            store.newGame(name: player, countryCode: country, story: .fresh, tradeID: trade, companyName: company, channel: channel)
             ads.resetForNewSave()
         }
     }
@@ -38,7 +38,7 @@ struct StartView: View {
     var body: some View {
         Group {
             if settingUp {
-                NewPlayerSetup(onClose: { settingUp = false }, begin: { (country: String, trade: String, company: String, player: String, channel: SalesChannel, difficulty: Difficulty) in begin(country: country, trade: trade, company: company, player: player, channel: channel, difficulty: difficulty) })
+                NewPlayerSetup(onClose: { settingUp = false }, begin: { (country: String, trade: String, company: String, player: String, channel: SalesChannel) in begin(country: country, trade: trade, company: company, player: player, channel: channel) })
             } else {
                 home
             }

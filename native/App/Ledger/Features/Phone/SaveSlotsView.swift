@@ -6,7 +6,6 @@ struct SaveSlotsView: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
     @State private var rows: [SlotRow] = []
-    @State private var newName = ""
     @State private var renaming: String? = nil
     @State private var renameText = ""
     @State private var pending: PendingAction? = nil
@@ -53,13 +52,13 @@ struct SaveSlotsView: View {
         let isCurrent: Bool = r.id == "current"
         return Card(padding: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(isCurrent ? "Current game" : r.id).textStyle(.headline)
+                Text(isCurrent ? "This career" : r.id).textStyle(.headline)
                 Text(detail(r)).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 if renaming == r.id {
                     renameEditor(r)
                 } else if !isCurrent {
                     HStack(spacing: 8) {
-                        Button("Load") { askLoad(r) }.buttonStyle(TinyButtonStyle()).disabled(r.summary == nil)
+                        Button("Continue") { askSwitch(r) }.buttonStyle(TinyButtonStyle()).disabled(r.summary == nil)
                         Button("Rename") { renaming = r.id; renameText = r.id }.buttonStyle(TinyButtonStyle())
                         Button("Delete") { askDelete(r) }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
                     }
@@ -84,30 +83,30 @@ struct SaveSlotsView: View {
     private var newSlot: some View {
         Card(padding: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("New slot").textStyle(.headline)
-                TextField("Name this copy", text: $newName).textFieldStyle(.plain).textStyle(.headline)
+                Text("New career").textStyle(.headline)
+                Text("This career is kept in its own slot and goes on from where you leave it.").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
-                    Button("Save to slot") { ent.run(.saveSlots, "More save slots") { createSlot() } }
+                    Button("Start a new career") { ent.run(.saveSlots, "More save slots") { askNewCareer() } }
                         .buttonStyle(TinyButtonStyle()).disabled(store.engine == nil)
                     ProMark(feature: .saveSlots)
                     Spacer(minLength: 4)
-                    InfoSheetButton(title: "Save slots", text: "A slot is a named copy of the game you are playing. Loading one replaces the current game; the game it replaces is kept as a backup file first.")
+                    InfoSheetButton(title: "Careers", text: "Each slot is its own career. A career always goes on from its latest day: there is no going back to an earlier save.")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func createSlot() {
+    private func askNewCareer() {
         guard rows.count < limit else { store.show("All \(limit) slots are used. Delete one first.", tone: "warn"); return }
-        let name: String = newName.trimmingCharacters(in: .whitespaces).isEmpty ? "Slot \(rows.count + 1)" : newName
-        if store.saveToSlot(name) { newName = ""; reload(); store.show("Saved to a new slot.", tone: "good") }
-        else { store.show("That name is empty or already used.", tone: "warn") }
+        pending = PendingAction(title: "Start a new career?", message: "This career moves to its own slot and waits there.", button: "Start a new career", alwaysAsk: true) {
+            if !store.parkForNewCareer() { store.show("This career could not be put aside.", tone: "warn") }
+        }
     }
 
-    private func askLoad(_ r: SlotRow) {
-        pending = PendingAction(title: "Load \(r.id)?", message: "It replaces the game you are playing. That game is kept as a backup file.", button: "Load \(r.id)", alwaysAsk: true) {
-            store.loadSlot(r.id); reload()
+    private func askSwitch(_ r: SlotRow) {
+        pending = PendingAction(title: "Continue \(r.id)?", message: "This career moves to its own slot and waits there.", button: "Continue \(r.id)", alwaysAsk: true) {
+            store.switchCareer(to: r.id); reload()
         }
     }
 
@@ -149,8 +148,9 @@ struct SaveSlotsView: View {
 
     private func askRestore() {
         guard let text = CloudBackup.restoreText() else { store.show("No backup found.", tone: "warn"); return }
-        pending = PendingAction(title: "Restore the backup?", message: "It replaces the game you are playing. That game is kept as a backup file.", button: "Restore backup", alwaysAsk: true) {
-            store.save(backup: true); store.restoreBackup(text: text); reload()
+        pending = PendingAction(title: "Restore the backup?", message: "For a new phone: the backup opens only if it is newer than what this phone has.", button: "Restore backup", alwaysAsk: true) {
+            if let problem = store.restoreBackup(text: text) { store.show(problem, tone: "warn") } else { store.show("Backup restored.", tone: "good") }
+            reload()
         }
     }
 }

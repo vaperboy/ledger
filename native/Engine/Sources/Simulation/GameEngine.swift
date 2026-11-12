@@ -37,7 +37,6 @@ public struct GameEngine {
 
     public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, story: LifeStory = .loan, ambition: String? = nil,
                                tradeID: String? = nil, companyName: String? = nil, chooseFirstItem: Bool = false, channel: SalesChannel? = nil,
-                               difficulty: Difficulty = .classic,
                                admins: Set<String>? = nil, worldRules: WorldRules? = nil) throws -> GameEngine {
         let (data, events, marketing) = try loadResources()
         guard let country = data.countries[countryCode] ?? data.countries.countries.first else { throw CocoaError(.fileReadUnknown) }
@@ -79,7 +78,6 @@ public struct GameEngine {
         }
         state.economy.set("rate0", state.economy.policyRate)
         state.rest["gameID"] = .string("g\(seed)")
-        state.rest[Difficulty.restKey] = .string(difficulty.rawValue)
         PlayerGoals.startLadder(&state)
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
@@ -431,7 +429,7 @@ public struct GameEngine {
     mutating func runFailureChecks() {
         Failure.warn(&state, context: context)
         FirstYear.freezeSweep(&state, balance: data.balance)
-        let bankruptcyOn = FirstYear.effective(state, balance: data.balance).bankruptcyActive(week: state.week)
+        let bankruptcyOn = data.balance.firstYear.bankruptcyActive(week: state.week)
         for i in state.companies.indices where bankruptcyOn {
             let c = state.companies[i]
             if state.isBranch(c) { continue }

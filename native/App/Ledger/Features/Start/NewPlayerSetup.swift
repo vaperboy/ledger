@@ -10,7 +10,7 @@ struct NewPlayerSetup: View {
     enum Field { case company, player }
 
     var onClose: () -> Void
-    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ channel: SalesChannel, _ difficulty: Difficulty) -> Void
+    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ channel: SalesChannel) -> Void
 
     @State private var step: Step = .country
     @State private var countryCode = ""
@@ -18,7 +18,6 @@ struct NewPlayerSetup: View {
     @State private var companyName = ""
     @State private var playerName = ""
     @State private var suggested = ""
-    @State private var difficulty: Difficulty = .classic
     @State private var channel: SalesChannel = .consumers
     @State private var allTrades: [StarterTrade] = []
     @State private var loading = false
@@ -269,22 +268,9 @@ struct NewPlayerSetup: View {
     private var optionsStep: some View {
         VStack(alignment: .leading, spacing: 16) {
             SalesChannelPicker(tradeID: tradeID, channel: $channel)
-            difficultyRow
             Button("Start") { Haptics.tap(); start() }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                 .accessibilityIdentifier("setup-start")
-        }
-    }
-
-    private var difficultyRow: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Text("Difficulty").textStyle(.label, tint: Theme.inkFaint)
-            Picker("Difficulty", selection: $difficulty) {
-                ForEach(Difficulty.allCases) { (d: Difficulty) in Text(d.name).tag(d) }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("setup-difficulty")
-            Text(difficulty.blurb).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -292,6 +278,6 @@ struct NewPlayerSetup: View {
         let n: String = companyName.trimmingCharacters(in: .whitespacesAndNewlines)
         let player: String = ProfileRules.clean(playerName)
         if !player.isEmpty, ProfileLocal.shared.name.isEmpty, ProfileRules.problem(with: player) == nil { ProfileLocal.shared.setName(player) }
-        begin(countryCode, tradeID, n.isEmpty ? suggested : n, player, channel, difficulty)
+        begin(countryCode, tradeID, n.isEmpty ? suggested : n, player, channel)
     }
 }
