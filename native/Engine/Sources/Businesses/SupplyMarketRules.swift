@@ -2,14 +2,13 @@ import Foundation
 import GameCore
 import Finance
 
+// What each trade can sell to other players, read from the one supply map.
 public enum SupplyMarketCatalogue {
-    public static let supplies: [String: [String]] = [
-        "bakery": ["goods"], "brewery": ["goods"], "farm": ["goods"], "vineyard": ["goods"], "salmon": ["goods"],
-        "factory": ["goods", "mat", "pack", "parts"], "furniture": ["goods", "mat"], "grocery": ["goods"], "hardware": ["supplies", "parts", "pack"],
-        "cleaning": ["clean", "laundry"], "carclean": ["clean"],
-        "carrepair": ["parts", "repair"], "handy": ["repair", "parts"], "electrician": ["repair", "parts"], "plumber": ["repair", "parts"],
-        "oilgas": ["fuel"],
-    ]
+    public static var supplies: [String: [String]] {
+        var out: [String: [String]] = [:]
+        for p in SupplyMap.supplyPairs { out[p.trade, default: []].append(p.line) }
+        return out.mapValues { (ls: [String]) -> [String] in SupplyMap.lineOrder.filter { ls.contains($0) } }
+    }
 
     public struct Line: Equatable, Identifiable, Sendable {
         public var id: String
@@ -18,18 +17,18 @@ public enum SupplyMarketCatalogue {
     }
 
     public static func line(_ id: String) -> Line? {
-        SupplyCatalogue.catalogue.templates[id].map { Line(id: id, name: $0.name, group: $0.group) }
+        SupplyMap.line(id).map { Line(id: id, name: $0.name, group: $0.group) }
     }
 
     public static func supplyableLines(tradeID: String) -> [Line] {
-        (supplies[tradeID] ?? []).compactMap { line($0) }
+        SupplyMap.linesSupplied(by: tradeID).compactMap { line($0) }
     }
 
     public static var supplierTrades: [String] { supplies.keys.sorted() }
 
     public static func tradesSupplying(line id: String) -> [String] { supplies.filter { $0.value.contains(id) }.map { $0.key }.sorted() }
 
-    public static func canSupply(tradeID: String) -> Bool { !(supplies[tradeID] ?? []).isEmpty }
+    public static func canSupply(tradeID: String) -> Bool { !SupplyMap.linesSupplied(by: tradeID).isEmpty }
 
     public static let priceTiers: [String] = ["Basic", "Standard", "Premium"]
     public static let qualityTiers: [String] = SupplyCatalogue.qualityWords
@@ -292,7 +291,7 @@ public struct SupplyFallback: Equatable, Sendable {
     public var reason: SupplyEnd
     public let title = "Your supplier stopped supplying"
     public var body: String {
-        "\(contract.supplierName) \(reason.phrase). The contract ended at once and this line now comes from the standard supplier at its price."
+        "\(contract.supplierName) \(reason.phrase). The contract ended at once and this line goes back to your usual supplier."
     }
 }
 

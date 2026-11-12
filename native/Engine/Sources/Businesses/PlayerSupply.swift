@@ -104,7 +104,7 @@ public enum PlayerSupply {
         rw.removeValue(forKey: c.base.id)
         rec["rw"] = .object(rw)
         s.rest["psup"] = rec
-        if let i = s.companyIndex(buyer), SupplyCatalogue.chosenID(s.companies[i], line: line).hasPrefix("P:") { setChoice(&s, companyIndex: i, line: line, offer: "market") }
+        if let i = s.companyIndex(buyer), SupplyCatalogue.chosenID(s.companies[i], line: line)?.hasPrefix("P:") == true { setChoice(&s, companyIndex: i, line: line, offer: "market") }
     }
 
     @discardableResult
@@ -119,8 +119,8 @@ public enum PlayerSupply {
         }
         end(&s, buyer: buyer, line: line)
         s.addMessage(kind: "info", from: c.base.supplierName, title: bySupplier ? "Supplier ended the supply" : "Supply ended",
-                     body: bySupplier ? "\(c.base.supplierName) stopped supplying and paid the fee of two weeks of the order. This line goes back to the standard supplier."
-                                      : "You ended the supply from \(c.base.supplierName) and paid the fee of two weeks of the order. This line goes back to the standard supplier.",
+                     body: bySupplier ? "\(c.base.supplierName) stopped supplying and paid the fee of two weeks of the order. This line goes back to your usual supplier."
+                                      : "You ended the supply from \(c.base.supplierName) and paid the fee of two weeks of the order. This line goes back to your usual supplier.",
                      companyID: buyer, tone: bySupplier ? "bad" : "n")
         return nil
     }
@@ -228,7 +228,7 @@ public enum PlayerSupply {
     public static func noticeOfStop(_ s: inout GameState, listingID: String, endsDay: Int) {
         for c in contracts(s) where c.base.listingID == listingID && s.company(c.base.buyerCompanyID)?.status.isLive == true {
             s.addMessage(kind: "info", from: c.base.supplierName, title: "Your supplier will stop supplying",
-                         body: "\(c.base.supplierName) has announced it will stop supplying on \(GameCalendar.dateString(week: endsDay / 7, dayOffset: endsDay % 7)). Until then it still delivers. After that this line comes from the standard supplier at its price.",
+                         body: "\(c.base.supplierName) has announced it will stop supplying on \(GameCalendar.dateString(week: endsDay / 7, dayOffset: endsDay % 7)). Until then it still delivers. After that this line goes back to your usual supplier.",
                          companyID: c.base.buyerCompanyID, tone: "bad")
         }
     }
@@ -254,7 +254,7 @@ public enum PlayerSupply {
                 SupplyMarketBooks.tellBuyer(&s, fallback: f)
             } else if quiet == silentWeeksLimit - 1 {
                 s.addMessage(kind: "info", from: c.base.supplierName, title: "Your supplier has gone quiet",
-                             body: "\(c.base.supplierName) has not reported a delivery for \(quiet) weeks. If nothing arrives next week the contract ends and this line goes back to the standard supplier.",
+                             body: "\(c.base.supplierName) has not reported a delivery for \(quiet) weeks. If nothing arrives next week the contract ends and this line goes back to your usual supplier.",
                              companyID: c.base.buyerCompanyID, tone: "bad")
             }
         }

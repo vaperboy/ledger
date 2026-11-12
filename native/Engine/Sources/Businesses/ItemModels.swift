@@ -169,6 +169,12 @@ public enum ItemModels {
         public var owner: String = ""
         public var capacityTotal: Int = 0
         public var capacityFree: Int = 0
+        public var need: Int = 0
+        public var fit: SupplyFit = .fine
+        public var ownerCode: String = ""
+        public var logoID: String = ""
+        public var tradeID: String = ""
+        public var city: String = ""
     }
 
     public static let repickWeeks = 4
@@ -204,9 +210,12 @@ public enum ItemModels {
 
     static func line(_ s: GameState, companyID: Int, _ v: Suppliers.Vendor, _ r: Record, data: GameData) -> SupplyLine {
         let space = room(s, companyID: companyID, vendorID: v.id, excluding: r.id, data: data)
+        let need = monthlyNeed(s, companyID: companyID, itemID: r.id, data: data)
         return SupplyLine(vendorID: v.id, vendorName: v.name, relationshipWord: v.relationshipWord, discount: discount(s, vendorID: v.id), listCost: r.cost,
-                          buyPrice: buyPrice(s, r, vendorID: v.id), leadDays: r.leadDays,
-                          reliability: min(0.995, max(0.8, 0.85 + (v.rating - 2.6) / 2.2 * 0.14)), owner: v.owner, capacityTotal: space.total, capacityFree: space.free)
+                          buyPrice: buyPrice(s, r, vendorID: v.id), leadDays: r.leadDays, reliability: v.reliability, owner: v.owner,
+                          capacityTotal: space.total, capacityFree: space.free, need: need,
+                          fit: SupplyFit.of(free: Double(space.free), need: Double(need)),
+                          ownerCode: v.ownerCode, logoID: v.logoID, tradeID: v.tradeID, city: v.city)
     }
 
     public static func offers(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> [SupplyLine] {
@@ -232,10 +241,14 @@ public enum ItemModels {
         public var free: Int
     }
 
+    // A supplier company's room for this company's items, from its size and how busy it is with other buyers.
     public static func room(_ s: GameState, companyID: Int, vendorID: String, excluding itemID: String?, data: GameData) -> Room {
         let need = Double(companyNeed(s, companyID: companyID, data: data))
-        let total = max(1, Int(saturating: (need * (2.5 + 4.5 * HashedRandom.first("vcap:" + vendorID))).rounded()))
-        let others = Int(saturating: (Double(total) * (0.1 + 0.45 * HashedRandom.first("vload:" + vendorID))).rounded())
+        let p = SupplyPlayers.supplier(seed: s.seed, id: vendorID, countries: data.countries)
+        let factor = p?.capacityFactor ?? (2.5 + 4.5 * HashedRandom.first("vcap:" + vendorID))
+        let load = p?.load ?? (0.1 + 0.45 * HashedRandom.first("vload:" + vendorID))
+        let total = max(1, Int(saturating: (need * factor).rounded()))
+        let others = Int(saturating: (Double(total) * load).rounded())
         var mine = 0
         if let co = s.company(companyID) {
             for r in records(co) where r.supplierID == vendorID && r.id != itemID { mine += r.monthlyUnits }
@@ -253,7 +266,8 @@ public enum ItemModels {
         return Double(r.monthlyUnits) / weeksPerMonth * buyPrice(s, r, vendorID: r.supplierID) * cancelFeeWeeks
     }
 
-    public static func pickRefusal(_ s: GameState, companyID: Int, itemID: String, vendorID: String?, units: Int?, data: GameData) -> String? {
+    // The order is always what the item needs; a supplier that cannot cover it cannot be picked.
+    public static func pickRefusal(_ s: GameState, companyID: Int, itemID: String, vendorID: String?, data: GameData) -> String? {
         guard let co = s.company(companyID) else { return "That company no longer exists." }
         let current = record(co, itemID: itemID)?.supplierID
         if let id = vendorID, id != current {
@@ -264,15 +278,14 @@ public enum ItemModels {
             if left > 0 { return "You changed this supplier recently. You can pick another in \(left) \(left == 1 ? "week" : "weeks")." }
         }
         guard let id = vendorID else { return nil }
-        let want = units ?? monthlyNeed(s, companyID: companyID, itemID: itemID, data: data)
-        if want < 1 { return "Order at least one unit a month." }
+        let want = monthlyNeed(s, companyID: companyID, itemID: itemID, data: data)
         let free = room(s, companyID: companyID, vendorID: id, excluding: itemID, data: data).free
-        if want > free { return "This supplier can only take \(free) more units a month, you asked for \(want)." }
+        if SupplyFit.of(free: Double(free), need: Double(want)) == .cannot { return "This supplier cannot supply enough: \(free) units a month free, this item needs \(want)." }
         return nil
     }
 
-    public static func pick(_ s: inout GameState, companyID: Int, itemID: String, vendorID: String?, units: Int?, data: GameData) {
-        let want = max(1, units ?? monthlyNeed(s, companyID: companyID, itemID: itemID, data: data))
+    public static func pick(_ s: inout GameState, companyID: Int, itemID: String, vendorID: String?, data: GameData) {
+        let want = monthlyNeed(s, companyID: companyID, itemID: itemID, data: data)
         let week = s.week
         let before = s.company(companyID).flatMap { record($0, itemID: itemID) }?.supplierID
         mutate(&s, companyID: companyID, itemID: itemID) { r in
@@ -283,8 +296,17 @@ public enum ItemModels {
         guard let id = vendorID, id != before, let v = Suppliers.vendor(s, id: id, data: data) else { return }
         let fee = cancelFee(s, companyID: companyID, itemID: itemID)
         s.addMessage(kind: "info", from: v.name, title: "New supplier",
-                     body: "\(v.name) will supply \(want) units a month. Either side can end it for a fee of two weeks of the order, now \(Int(saturating: fee.rounded())).",
+                     body: "\(v.name) will supply what this item needs, about \(want) units a month. Either side can end it for a fee of two weeks of the order, now \(Int(saturating: fee.rounded())).",
                      companyID: companyID, tone: "good")
+    }
+
+    // Orders follow the need: each week a picked supplier's order is resized to what the item now sells.
+    static func resizeOrders(_ s: inout GameState, _ i: Int, data: GameData) {
+        let id = s.companies[i].id
+        for r in records(s.companies[i]) where r.supplierID != nil {
+            let want = monthlyNeed(s, companyID: id, itemID: r.id, data: data)
+            if want != r.monthlyUnits { mutate(&s, companyID: id, itemID: r.id) { $0.monthlyUnits = want } }
+        }
     }
 
     @discardableResult
@@ -308,22 +330,6 @@ public enum ItemModels {
                                       : "You ended the supply from \(name) and paid the fee of two weeks of the order.",
                      companyID: companyID, tone: bySupplier ? "bad" : "n")
         return nil
-    }
-
-    @discardableResult
-    static func dropFakeVendors(_ s: inout GameState) -> Int {
-        var n = 0
-        for i in s.companies.indices {
-            for r in records(s.companies[i]) where r.supplierID?.hasPrefix("V-") == true {
-                var x = r
-                x.supplierID = nil
-                x.monthlyUnits = 0
-                x.pickedWeek = nil
-                put(&s, i, x)
-                n += 1
-            }
-        }
-        return n
     }
 
     public static func needsSupplier(_ s: GameState, companyID: Int, itemID: String, data: GameData) -> Bool {
@@ -427,6 +433,7 @@ public enum ItemModels {
 
     static func weeklyTick(_ s: inout GameState, _ i: Int, data: GameData) {
         guard !s.companies[i].value(key).isNull else { return }
+        resizeOrders(&s, i, data: data)
         let id = s.companies[i].id
         let rows = SalesItems.rows(s, companyID: id, data: data)
         for r in records(s.companies[i]) {

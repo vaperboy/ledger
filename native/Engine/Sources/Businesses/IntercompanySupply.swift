@@ -15,12 +15,13 @@ public enum IntercompanySupply {
         public var delivered = false
     }
 
+    // Lines an own company can take over, with each buying trade's share of sales, from the one supply map.
     public static let kinds: [Kind] = {
-        guard let url = Bundle.module.url(forResource: "supply_kinds", withExtension: "json", subdirectory: "Resources"),
-              let raw = try? Data(contentsOf: url), let j = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return [] }
-        return j["kinds"].array.map { k in
-            Kind(id: k["id"].string, name: k["name"].string, suppliers: k["suppliers"].array.map { $0.string }, local: k["local"].bool, category: k["category"].string,
-                 noCapacity: k["noCapacity"].bool, buyers: k["buyers"].object.mapValues { $0.double }, delivered: k["delivered"].bool)
+        SupplyMap.allLines.compactMap { (l: SupplyMap.LineSpec) -> Kind? in
+            var buyers: [String: Double] = [:]
+            for t in SupplyMap.buyers(of: l.id) { if let share = SupplyMap.need(t, line: l.id)?.salesShare { buyers[t] = share } }
+            guard !buyers.isEmpty, !l.suppliers.isEmpty else { return nil }
+            return Kind(id: l.id, name: l.name, suppliers: l.suppliers, local: l.local, category: l.category, noCapacity: l.noCapacity, buyers: buyers, delivered: l.delivered)
         }
     }()
 

@@ -22,6 +22,7 @@ public struct GameEngine {
         Markets.refreshNames(&state, country: data.countries.resolve(state.homeCountryCode, orHome: state.homeCountryCode))
         MarketBook.backfillCostBases(&state)
         HeldMoney.normalise(&state)
+        SupplyMigration.run(&state, countries: data.countries, nouns: data.catalog.tables.raw["FAM_NOUN"])
         self.state = state
         self.data = data
         self.events = events

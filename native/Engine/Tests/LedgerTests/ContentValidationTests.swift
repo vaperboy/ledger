@@ -431,14 +431,26 @@ final class ContentValidationTests: XCTestCase {
         for k in traits["countries"].object.keys where !codes.contains(k) { p.append("country_traits.json: \"\(k)\" is not a country code in countries.json") }
         for k in traits["labour"].object.keys where !codes.contains(k) { p.append("country_traits.json: labour entry \"\(k)\" is not a country code in countries.json") }
 
-        let sfile: String = "Engine/Sources/Businesses/Resources/supply_catalogue.json"
+        let sfile: String = "Engine/Sources/Businesses/Resources/supply_map.json"
         let supply: JSONValue = load(sfile, &p)
         let lines: [String: JSONValue] = supply["lines"].object
-        for k in supply["trades"].object.keys where trades[k] == nil { p.append("\(sfile): \"\(k)\" is not a trade id in trades.json") }
-        for (fam, rows) in supply["families"].object {
-            if !families.contains(fam) { p.append("\(sfile): family \"\(fam)\" is not used by any trade") }
-            for r in rows.array where lines[r[0].string] == nil { p.append("\(sfile): family \"\(fam)\" names the supply line \"\(r[0].string)\", which is not in lines") }
+        let groups: Set<String> = Set(supply["groups"].array.map { (g: JSONValue) -> String in g.string })
+        let order: [String] = supply["order"].array.map { (l: JSONValue) -> String in l.string }
+        if Set(order) != Set(lines.keys) { p.append("\(sfile): order must list every line once") }
+        for (id, l) in lines {
+            if !groups.contains(l["group"].string) && !l["auto"].bool { p.append("\(sfile): line \"\(id)\" is in the group \"\(l["group"].string)\", which is not in groups") }
+            for t in l["suppliers"].array where trades[t.string] == nil { p.append("\(sfile): line \"\(id)\" is supplied by \"\(t.string)\", which is not a trade id in trades.json") }
+            if !["cogs", "oth", "mkt", "wages"].contains(l["category"].string) { p.append("\(sfile): line \"\(id)\" has an unknown category") }
         }
+        for (k, needs) in supply["trades"].object {
+            if trades[k] == nil { p.append("\(sfile): \"\(k)\" is not a trade id in trades.json") }
+            for (line, e) in needs.object {
+                if lines[line] == nil { p.append("\(sfile): \"\(k)\" needs the line \"\(line)\", which is not in lines") }
+                for t in e["from"].array where trades[t.string] == nil { p.append("\(sfile): \"\(k)\" buys \"\(line)\" from \"\(t.string)\", which is not a trade id") }
+            }
+            if needs.object.values.filter({ (e: JSONValue) -> Bool in e["stock"].bool }).count > 1 { p.append("\(sfile): \"\(k)\" has more than one stock line") }
+        }
+        for k in trades.keys where supply["trades"][k].isNull { p.append("\(sfile): trade \"\(k)\" has no entry") }
 
         let lfile: String = "Engine/Sources/Businesses/Resources/logo_catalogue.json"
         for l in load(lfile, &p)["logos"].array {

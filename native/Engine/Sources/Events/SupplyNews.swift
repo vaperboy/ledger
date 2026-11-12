@@ -29,13 +29,13 @@ public enum SupplyNews {
 
     public static func sources(_ s: GameState, _ co: Company, _ bd: Trade, data: GameData) -> [Source] {
         var out: [Source] = []
-        if Suppliers.hasGoods(bd, co), PlayerSupply.contract(s, buyer: co.id, line: "goods") == nil, SupplyDeals.governedBy(s, co, input: "goods") == nil,
+        let stock = SupplyCatalogue.stockLine(co, bd)
+        if Suppliers.hasGoods(bd, co), let stock, PlayerSupply.contract(s, buyer: co.id, line: stock.id) == nil, SupplyDeals.governedBy(s, co, input: "goods") == nil,
            let v = Suppliers.goodsVendor(s, company: co, data: data) {
-            out.append(Source(line: "goods", item: "goods", vendorID: v.id, vendorName: v.name, share: 1, goods: true))
+            out.append(Source(line: stock.id, item: stock.name.lowercased(), vendorID: v.id, vendorName: v.name, share: 1, goods: true))
         }
-        for line in SupplyCatalogue.lines(co, bd) where line.isCogs && line.id != "goods" && line.tiers && !line.automatic && line.input != "goods" && line.input != "repair" {
-            let id = SupplyCatalogue.chosenID(co, line: line.id)
-            guard id.hasPrefix("V-"), let v = Suppliers.vendor(s, id: id, data: data) else { continue }
+        for line in SupplyCatalogue.lines(co, bd) where line.isCogs && line.tiers && !line.automatic && line.input != "goods" && line.input != "repair" {
+            guard let id = SupplyCatalogue.chosenID(co, line: line.id), SupplyPlayers.isSupplierID(id), let v = Suppliers.vendor(s, id: id, data: data) else { continue }
             out.append(Source(line: line.id, item: line.name.lowercased(), vendorID: v.id, vendorName: v.name, share: line.share, goods: false))
         }
         return out
@@ -104,7 +104,7 @@ public enum SupplyNews {
         case .ended:
             release(&s, companyIndex: i, src, data: data)
             title = "\(src.vendorName) ended your supply deal"
-            body = "\(src.vendorName) will no longer supply your \(src.item). You buy from the market for now, which costs about \(pct)% more for \(r.weeks) weeks while you switch. Pick a new supplier in the supplier list."
+            body = "\(src.vendorName) will no longer supply your \(src.item). Your usual supplier fills in for now, which costs about \(pct)% more for \(r.weeks) weeks while you switch. Pick a new supplier in the supplier list."
         }
         s.addMessage(kind: "info", from: src.vendorName, title: title, body: body, companyID: co.id, tone: "bad")
         s.note("\(co.name): \(title).", tone: "bad", companyID: co.id)
@@ -129,7 +129,7 @@ public enum SupplyNews {
             }
             Sourcing.lapse(&s, companyIndex: i, vendorID: src.vendorID, until: s.week + lapseWeeks)
         } else {
-            _ = SupplyCatalogue.choose(&s, companyID: id, line: src.line, offer: "market", data: data)
+            _ = SupplyCatalogue.choose(&s, companyID: id, line: src.line, offer: nil, data: data)
         }
     }
 

@@ -42,6 +42,21 @@ public extension GameEngine {
         return ok
     }
 
+    // What a line needs a week, in the units suppliers count capacity in. The player never sets it.
+    func playerSupplyNeed(companyID: Int, lineID: String) -> Int {
+        guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return 1 }
+        return SupplyCatalogue.needUnits(co, bd, line: lineID, costIndex: World(state: state, data: data).country(co).costIndex)
+    }
+
+    // Whether a player's listing can meet this company's need on its line.
+    func playerSupplyFit(companyID: Int, listing l: SupplyListing, today: Int) -> SupplyFit {
+        let need = playerSupplyNeed(companyID: companyID, lineID: l.lineID)
+        let mine = PlayerSupply.contract(state, buyer: companyID, line: l.lineID).map { $0.base.listingID == l.id ? $0.base.unitsPerWeek : 0 } ?? 0
+        let open = !l.stopped && !l.paused && l.stopsDay == nil && (l.expiresDay.map { today <= $0 } ?? true)
+        let free = SupplyGuards.effectiveCapacity(l) - l.committedUnits + mine
+        return SupplyFit.of(free: Double(max(0, free)), need: Double(max(need, l.minOrder)), open: open)
+    }
+
     private func ownUnits(_ c: SupplyContract, _ l: SupplyListing) -> Int {
         PlayerSupply.contract(state, buyer: c.buyerCompanyID, line: c.lineID).map { $0.base.listingID == l.id ? $0.base.unitsPerWeek : 0 } ?? 0
     }
@@ -116,6 +131,13 @@ public extension GameEngine {
         update { s, _, _ in PlayerSupply.saveListings(&s, listings: capped, orders: orders) }
     }
 
+    // The units a one-off stock order brings the shelves back to what the company wants to hold.
+    func stockOrderUnits(companyID: Int) -> Int {
+        guard let b = stockOrderBasis(companyID: companyID) else { return 0 }
+        let target: Double = b.target ?? b.held * 1.5
+        return max(1, Int(saturating: (target - b.held).rounded(.up)))
+    }
+
     func stockOrderBasis(companyID: Int) -> StockOrderBasis? {
         guard let co = state.company(companyID), co.status == .open, let bd = data.catalog[co.type], bd.hasTrait("stock"), Suppliers.hasGoods(bd, co) else { return nil }
         let lw = co.value("lastW")
@@ -125,8 +147,8 @@ public extension GameEngine {
 
     @discardableResult
     mutating func orderFromSupplier(companyID: Int, listing l: SupplyListing, units: Int) -> Shipments.OrderResult {
-        guard l.lineID == "goods", units > 0, !l.stopped, !l.paused, l.stopsDay == nil, playerSupplyAllowed(companyID: companyID, listing: l), let basis = stockOrderBasis(companyID: companyID),
-              let co = state.company(companyID) else { return .badOrder }
+        guard let co = state.company(companyID), let bd = data.catalog[co.type], l.lineID == SupplyCatalogue.stockLine(co, bd)?.id, units > 0, !l.stopped, !l.paused,
+              l.stopsDay == nil, playerSupplyAllowed(companyID: companyID, listing: l), let basis = stockOrderBasis(companyID: companyID) else { return .badOrder }
         let cargo: TransportCost.Cargo = SupplyLanded.cargo(lineID: l.lineID, supplierTrade: l.tradeID) ?? .standard
         let offer = TransportCost.Offer(id: l.id, country: l.country.isEmpty ? co.countryCode : l.country, unitPrice: basis.unitCost * l.priceFactor)
         var r = Shipments.OrderResult.badOrder

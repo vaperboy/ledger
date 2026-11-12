@@ -1,0 +1,2051 @@
+{
+ "about": "The one map of supplies: what every trade buys, and which trades supply it. The engine, the app and the server read it (the server's supply_trade_lines rows are generated from it). lines: id, name, group (Stock, Upkeep, Transport, Services; Bills are paid automatically and never shown as a supplier), category where the cost lands (cogs, oth, mkt, wages), suppliers (trade ids that supply it), local (supplier must be in the buyer's city to supply as an own company), lead and terms in days, critical (a short delivery cuts sales), variable (spend follows how busy the place is), noCapacity, delivered (spend is a share of delivered orders), auto (a bill), cargo (freight class). trades: per buying trade, the lines it needs: o is the share of the cost split (a cogs line's share of the cost of sales, 0 means it takes what the other cogs lines leave; an overhead line's share of the weekly fixed overhead), s is the share of sales an own company can take over, n a label for this buyer, from replaces the supplying trades for this buyer. Shares are game design values.",
+ "groups": [
+  "Stock",
+  "Upkeep",
+  "Transport",
+  "Services"
+ ],
+ "order": [
+  "food",
+  "care",
+  "wares",
+  "produce",
+  "bread",
+  "beer",
+  "wine",
+  "fish",
+  "parts",
+  "build",
+  "fuel",
+  "furn",
+  "upkeep",
+  "machines",
+  "carserv",
+  "valet",
+  "freight",
+  "parcel",
+  "deliv",
+  "whouse",
+  "clean",
+  "laundry",
+  "guards",
+  "temp",
+  "ads",
+  "power",
+  "web",
+  "software"
+ ],
+ "lines": {
+  "food": {
+   "name": "Food and drink stock",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "wholesale"
+   ],
+   "lead": 3,
+   "terms": 30,
+   "critical": true,
+   "cargo": "perishable"
+  },
+  "care": {
+   "name": "Household and care stock",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "wholesale"
+   ],
+   "lead": 3,
+   "terms": 30,
+   "critical": true,
+   "cargo": "light"
+  },
+  "wares": {
+   "name": "Shop stock",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "wholesale"
+   ],
+   "lead": 3,
+   "terms": 30,
+   "critical": true,
+   "cargo": "standard"
+  },
+  "produce": {
+   "name": "Farm and forest produce",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "farm"
+   ],
+   "lead": 3,
+   "terms": 30,
+   "critical": false,
+   "cargo": "perishable"
+  },
+  "bread": {
+   "name": "Bread and pastries",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "bakery"
+   ],
+   "local": true,
+   "lead": 1,
+   "terms": 14,
+   "cargo": "perishable"
+  },
+  "beer": {
+   "name": "Beer",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "brewery"
+   ],
+   "lead": 3,
+   "terms": 30,
+   "cargo": "standard"
+  },
+  "wine": {
+   "name": "Wine",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "vineyard"
+   ],
+   "lead": 4,
+   "terms": 30,
+   "cargo": "standard"
+  },
+  "fish": {
+   "name": "Fish",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "salmon"
+   ],
+   "lead": 2,
+   "terms": 14,
+   "cargo": "perishable"
+  },
+  "parts": {
+   "name": "Components and parts",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "factory"
+   ],
+   "lead": 4,
+   "terms": 30,
+   "critical": false,
+   "cargo": "standard"
+  },
+  "build": {
+   "name": "Building materials",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "hardware"
+   ],
+   "lead": 3,
+   "terms": 30,
+   "cargo": "bulky"
+  },
+  "fuel": {
+   "name": "Fuel",
+   "group": "Stock",
+   "category": "cogs",
+   "suppliers": [
+    "fuelstation"
+   ],
+   "lead": 1,
+   "terms": 14,
+   "variable": true,
+   "cargo": "bulky"
+  },
+  "furn": {
+   "name": "Furniture",
+   "group": "Stock",
+   "category": "oth",
+   "suppliers": [
+    "furniture"
+   ],
+   "lead": 10,
+   "terms": 30,
+   "cargo": "bulky"
+  },
+  "upkeep": {
+   "name": "Building upkeep",
+   "group": "Upkeep",
+   "category": "oth",
+   "suppliers": [
+    "handy",
+    "electrician",
+    "plumber"
+   ],
+   "local": true,
+   "lead": 2,
+   "terms": 14
+  },
+  "machines": {
+   "name": "Machine servicing",
+   "group": "Upkeep",
+   "category": "oth",
+   "suppliers": [
+    "factory"
+   ],
+   "lead": 3,
+   "terms": 14
+  },
+  "carserv": {
+   "name": "Vehicle servicing",
+   "group": "Upkeep",
+   "category": "oth",
+   "suppliers": [
+    "carrepair"
+   ],
+   "local": true,
+   "lead": 1,
+   "terms": 14
+  },
+  "valet": {
+   "name": "Valeting",
+   "group": "Upkeep",
+   "category": "oth",
+   "suppliers": [
+    "carclean"
+   ],
+   "local": true,
+   "lead": 1,
+   "terms": 14,
+   "variable": true
+  },
+  "freight": {
+   "name": "Freight",
+   "group": "Transport",
+   "category": "cogs",
+   "suppliers": [
+    "trucking"
+   ],
+   "lead": 2,
+   "terms": 30
+  },
+  "parcel": {
+   "name": "Parcel delivery",
+   "group": "Transport",
+   "category": "cogs",
+   "suppliers": [
+    "courier"
+   ],
+   "lead": 1,
+   "terms": 14
+  },
+  "deliv": {
+   "name": "Delivery to customers",
+   "group": "Transport",
+   "category": "cogs",
+   "suppliers": [
+    "courier"
+   ],
+   "local": true,
+   "delivered": true,
+   "lead": 0,
+   "terms": 14
+  },
+  "whouse": {
+   "name": "Warehousing",
+   "group": "Transport",
+   "category": "cogs",
+   "suppliers": [
+    "wh3pl"
+   ],
+   "lead": 2,
+   "terms": 30
+  },
+  "clean": {
+   "name": "Cleaning",
+   "group": "Services",
+   "category": "oth",
+   "suppliers": [
+    "cleaning"
+   ],
+   "local": true,
+   "lead": 1,
+   "terms": 14,
+   "variable": true
+  },
+  "laundry": {
+   "name": "Linen and laundry",
+   "group": "Services",
+   "category": "oth",
+   "suppliers": [
+    "laundry"
+   ],
+   "local": true,
+   "lead": 2,
+   "terms": 30,
+   "variable": true
+  },
+  "guards": {
+   "name": "Security guards",
+   "group": "Services",
+   "category": "oth",
+   "suppliers": [
+    "security"
+   ],
+   "local": true,
+   "lead": 2,
+   "terms": 30
+  },
+  "temp": {
+   "name": "Temporary staff",
+   "group": "Services",
+   "category": "wages",
+   "suppliers": [
+    "staffing"
+   ],
+   "local": true,
+   "lead": 2,
+   "terms": 14
+  },
+  "ads": {
+   "name": "Marketing",
+   "group": "Services",
+   "category": "mkt",
+   "suppliers": [
+    "mktg"
+   ],
+   "lead": 5,
+   "terms": 30
+  },
+  "power": {
+   "name": "Electricity and water",
+   "group": "Bills",
+   "category": "oth",
+   "suppliers": [
+    "power"
+   ],
+   "noCapacity": true,
+   "auto": true,
+   "lead": 0,
+   "terms": 30,
+   "variable": true
+  },
+  "web": {
+   "name": "Web and IT",
+   "group": "Bills",
+   "category": "oth",
+   "suppliers": [
+    "webdev"
+   ],
+   "auto": true,
+   "lead": 0,
+   "terms": 30
+  },
+  "software": {
+   "name": "Software and services",
+   "group": "Bills",
+   "category": "oth",
+   "suppliers": [],
+   "auto": true,
+   "lead": 0,
+   "terms": 30
+  }
+ },
+ "trades": {
+  "cons": {
+   "clean": {
+    "o": 0.05,
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.15
+   }
+  },
+  "tutor": {
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.12
+   }
+  },
+  "carclean": {
+   "care": {
+    "o": 0,
+    "n": "Shampoo, wax and cloths",
+    "stock": true
+   },
+   "carserv": {
+    "o": 0.05,
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.15,
+    "n": "Water and electricity"
+   },
+   "software": {
+    "o": 0.1
+   }
+  },
+  "photo": {
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.15
+   }
+  },
+  "handy": {
+   "build": {
+    "o": 0,
+    "n": "Materials and parts",
+    "stock": true,
+    "s": 0.15
+   },
+   "carserv": {
+    "o": 0.06,
+    "s": 0.008
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.1
+   }
+  },
+  "cleaning": {
+   "care": {
+    "o": 0,
+    "n": "Cleaning chemicals and consumables",
+    "stock": true
+   },
+   "carserv": {
+    "o": 0.05
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.1
+   }
+  },
+  "webdev": {
+   "clean": {
+    "o": 0.05,
+    "s": 0.008
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.25
+   }
+  },
+  "mktg": {
+   "clean": {
+    "o": 0.05,
+    "s": 0.008
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "web": {
+    "s": 0.02
+   },
+   "software": {
+    "o": 0.2
+   }
+  },
+  "law": {
+   "clean": {
+    "o": 0.05,
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.2
+   }
+  },
+  "acctfirm": {
+   "clean": {
+    "o": 0.05,
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.25
+   }
+  },
+  "staffing": {
+   "clean": {
+    "o": 0.05,
+    "s": 0.006
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "web": {
+    "s": 0.006
+   },
+   "software": {
+    "o": 0.15
+   }
+  },
+  "barber": {
+   "care": {
+    "o": 0,
+    "n": "Shampoo, dye and hair products",
+    "stock": true
+   },
+   "upkeep": {
+    "o": 0.06
+   },
+   "clean": {
+    "o": 0.05,
+    "s": 0.012
+   },
+   "laundry": {
+    "o": 0.08,
+    "n": "Towels and gowns wash",
+    "s": 0.012
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.1
+   }
+  },
+  "drivsk": {
+   "fuel": {
+    "o": 0,
+    "n": "Fuel for lessons",
+    "stock": true
+   },
+   "carserv": {
+    "o": 0.12
+   },
+   "clean": {
+    "o": 0.05,
+    "s": 0.006
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "physio": {
+   "care": {
+    "o": 0,
+    "n": "Tape, gels and disposables",
+    "stock": true
+   },
+   "upkeep": {
+    "o": 0.06
+   },
+   "clean": {
+    "o": 0.06,
+    "s": 0.015
+   },
+   "laundry": {
+    "o": 0.08,
+    "n": "Towels and linen",
+    "s": 0.012
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.1
+   }
+  },
+  "estate": {
+   "clean": {
+    "o": 0.05,
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.15
+   }
+  },
+  "travel": {
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.2
+   }
+  },
+  "insbroker": {
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.2
+   }
+  },
+  "finbroker": {
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.2
+   }
+  },
+  "pets": {
+   "food": {
+    "o": 0,
+    "n": "Pet food, treats and supplies",
+    "stock": true
+   },
+   "upkeep": {
+    "o": 0.06
+   },
+   "parcel": {
+    "o": 0.05,
+    "s": 0.005
+   },
+   "clean": {
+    "o": 0.06,
+    "s": 0.012
+   },
+   "laundry": {
+    "o": 0.05,
+    "n": "Blankets and towels wash",
+    "s": 0.006
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.1
+   }
+  },
+  "carrepair": {
+   "parts": {
+    "o": 0,
+    "n": "Parts, oil and fluids",
+    "stock": true
+   },
+   "machines": {
+    "o": 0.06
+   },
+   "power": {
+    "o": 0.1,
+    "n": "Workshop electricity"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "foodtruck": {
+   "food": {
+    "o": 0,
+    "n": "Ingredients and drinks",
+    "stock": true
+   },
+   "produce": {
+    "o": 0.0882,
+    "s": 0.03
+   },
+   "bread": {
+    "o": 0.0882,
+    "s": 0.03
+   },
+   "upkeep": {
+    "o": 0.1,
+    "n": "Maintenance and parts"
+   },
+   "clean": {
+    "o": 0.04
+   },
+   "power": {
+    "o": 0.12,
+    "n": "Gas and generator fuel"
+   },
+   "software": {
+    "o": 0.04
+   }
+  },
+  "cafe": {
+   "food": {
+    "o": 0,
+    "n": "Coffee, milk and food",
+    "stock": true
+   },
+   "produce": {
+    "o": 0.0667,
+    "s": 0.02
+   },
+   "bread": {
+    "o": 0.2,
+    "s": 0.06
+   },
+   "furn": {
+    "o": 0.05,
+    "s": 0.008
+   },
+   "upkeep": {
+    "o": 0.1,
+    "n": "Maintenance and parts"
+   },
+   "deliv": {
+    "s": 0.12
+   },
+   "clean": {
+    "o": 0.08,
+    "s": 0.012
+   },
+   "laundry": {
+    "o": 0.04,
+    "n": "Aprons and cloths",
+    "s": 0.006
+   },
+   "power": {
+    "o": 0.22,
+    "n": "Electricity, gas and water"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "restaurant": {
+   "food": {
+    "o": 0,
+    "n": "Ingredients and drinks",
+    "stock": true
+   },
+   "produce": {
+    "o": 0.129,
+    "s": 0.04
+   },
+   "bread": {
+    "o": 0.0645,
+    "s": 0.02
+   },
+   "beer": {
+    "o": 0.0968,
+    "s": 0.03
+   },
+   "wine": {
+    "o": 0.0645,
+    "s": 0.02
+   },
+   "fish": {
+    "o": 0.0968,
+    "s": 0.03
+   },
+   "furn": {
+    "o": 0.05,
+    "s": 0.008
+   },
+   "upkeep": {
+    "o": 0.1,
+    "n": "Maintenance and parts"
+   },
+   "deliv": {
+    "s": 0.12
+   },
+   "clean": {
+    "o": 0.08,
+    "s": 0.015
+   },
+   "laundry": {
+    "o": 0.08,
+    "n": "Table linen and uniforms",
+    "s": 0.008
+   },
+   "temp": {
+    "o": 0.05,
+    "s": 0.015
+   },
+   "ads": {
+    "o": 0.05,
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.22,
+    "n": "Electricity, gas and water"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "nightclub": {
+   "food": {
+    "o": 0,
+    "n": "Bar stock: drinks and mixers",
+    "stock": true
+   },
+   "beer": {
+    "o": 0.3,
+    "s": 0.08
+   },
+   "wine": {
+    "o": 0.125,
+    "s": 0.03
+   },
+   "upkeep": {
+    "o": 0.1,
+    "n": "Maintenance and parts"
+   },
+   "clean": {
+    "o": 0.08,
+    "s": 0.015
+   },
+   "guards": {
+    "o": 0.08,
+    "s": 0.02
+   },
+   "power": {
+    "o": 0.25,
+    "n": "Electricity for sound and light"
+   },
+   "software": {
+    "o": 0.05
+   }
+  },
+  "gym": {
+   "food": {
+    "o": 0,
+    "n": "Drinks, snacks and protein stock",
+    "stock": true
+   },
+   "machines": {
+    "o": 0.1,
+    "n": "Machine servicing and parts"
+   },
+   "clean": {
+    "o": 0.1,
+    "s": 0.02
+   },
+   "laundry": {
+    "o": 0.1,
+    "n": "Towels and laundry",
+    "s": 0.01
+   },
+   "ads": {
+    "o": 0.05,
+    "s": 0.015
+   },
+   "power": {
+    "o": 0.22,
+    "n": "Electricity and water",
+    "s": 0.01
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "hotel": {
+   "food": {
+    "o": 0,
+    "n": "Breakfast, minibar and toiletries",
+    "stock": true
+   },
+   "produce": {
+    "o": 0.125,
+    "s": 0.02
+   },
+   "bread": {
+    "o": 0.0938,
+    "s": 0.015
+   },
+   "beer": {
+    "o": 0.0938,
+    "s": 0.015
+   },
+   "wine": {
+    "o": 0.075,
+    "s": 0.012
+   },
+   "fish": {
+    "o": 0.0625,
+    "s": 0.01
+   },
+   "furn": {
+    "o": 0.05,
+    "s": 0.02
+   },
+   "upkeep": {
+    "o": 0.1,
+    "n": "Maintenance and parts"
+   },
+   "clean": {
+    "o": 0.12,
+    "s": 0.035
+   },
+   "laundry": {
+    "o": 0.18,
+    "s": 0.018
+   },
+   "guards": {
+    "o": 0.03,
+    "s": 0.008
+   },
+   "temp": {
+    "o": 0.05,
+    "s": 0.02
+   },
+   "ads": {
+    "o": 0.05,
+    "s": 0.015
+   },
+   "power": {
+    "o": 0.2,
+    "n": "Electricity, gas and water",
+    "s": 0.02
+   },
+   "web": {
+    "s": 0.004
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "casino": {
+   "food": {
+    "o": 0,
+    "n": "Bar and kitchen stock",
+    "stock": true
+   },
+   "wine": {
+    "o": 0.05,
+    "s": 0.01
+   },
+   "upkeep": {
+    "o": 0.1,
+    "n": "Maintenance and parts"
+   },
+   "clean": {
+    "o": 0.08,
+    "s": 0.015
+   },
+   "laundry": {
+    "o": 0.04,
+    "n": "Cloths, linen and uniform wash",
+    "s": 0.006
+   },
+   "guards": {
+    "o": 0.06,
+    "s": 0.02
+   },
+   "power": {
+    "o": 0.22,
+    "n": "Electricity, gas and water",
+    "s": 0.01
+   },
+   "software": {
+    "o": 0.1
+   }
+  },
+  "fun": {
+   "food": {
+    "o": 0,
+    "n": "Snacks, drinks and prizes",
+    "stock": true
+   },
+   "beer": {
+    "o": 0.1111,
+    "s": 0.02
+   },
+   "machines": {
+    "o": 0.16,
+    "n": "Ride and equipment upkeep"
+   },
+   "clean": {
+    "o": 0.08,
+    "s": 0.015
+   },
+   "temp": {
+    "o": 0.05,
+    "s": 0.015
+   },
+   "ads": {
+    "o": 0.05,
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.22,
+    "n": "Electricity, gas and water"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "skires": {
+   "food": {
+    "o": 0,
+    "n": "Food and drink",
+    "stock": true
+   },
+   "machines": {
+    "o": 0.2,
+    "n": "Lift and piste machine parts"
+   },
+   "clean": {
+    "o": 0.08
+   },
+   "power": {
+    "o": 0.3,
+    "n": "Lift power and snow making"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "indoorski": {
+   "food": {
+    "o": 0,
+    "n": "Food and drink",
+    "stock": true
+   },
+   "machines": {
+    "o": 0.18,
+    "n": "Lift and cooling parts"
+   },
+   "clean": {
+    "o": 0.08
+   },
+   "power": {
+    "o": 0.3,
+    "n": "Cooling and lift power"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "kiosk": {
+   "food": {
+    "o": 0,
+    "n": "Snacks, drinks and papers",
+    "stock": true
+   },
+   "bread": {
+    "o": 0.0405,
+    "s": 0.03
+   },
+   "beer": {
+    "o": 0.0135,
+    "s": 0.01
+   },
+   "wine": {
+    "o": 0.0068,
+    "s": 0.005
+   },
+   "upkeep": {
+    "o": 0.04,
+    "n": "Shop fittings upkeep"
+   },
+   "deliv": {
+    "s": 0.1
+   },
+   "clean": {
+    "o": 0.04,
+    "s": 0.006
+   },
+   "power": {
+    "o": 0.1,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "boutique": {
+   "wares": {
+    "o": 0,
+    "n": "Clothes and accessories",
+    "stock": true
+   },
+   "upkeep": {
+    "o": 0.04,
+    "n": "Shop fittings upkeep"
+   },
+   "parcel": {
+    "o": 0.0192,
+    "s": 0.01
+   },
+   "whouse": {
+    "o": 0.0288,
+    "s": 0.015
+   },
+   "clean": {
+    "o": 0.04,
+    "s": 0.008
+   },
+   "ads": {
+    "o": 0.05,
+    "s": 0.015
+   },
+   "power": {
+    "o": 0.12,
+    "n": "Electricity"
+   },
+   "web": {
+    "s": 0.008
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "webshop": {
+   "wares": {
+    "o": 0,
+    "n": "Products to resell",
+    "stock": true
+   },
+   "parcel": {
+    "o": 0.1489,
+    "s": 0.07
+   },
+   "whouse": {
+    "o": 0.1915,
+    "s": 0.09
+   },
+   "ads": {
+    "o": 0.05,
+    "s": 0.02
+   },
+   "power": {
+    "o": 0.06,
+    "n": "Electricity"
+   },
+   "web": {
+    "s": 0.03
+   },
+   "software": {
+    "o": 0.2
+   }
+  },
+  "grocery": {
+   "food": {
+    "o": 0,
+    "n": "Groceries and fresh produce",
+    "stock": true
+   },
+   "produce": {
+    "o": 0.0533,
+    "s": 0.04
+   },
+   "bread": {
+    "o": 0.0267,
+    "s": 0.02
+   },
+   "beer": {
+    "o": 0.02,
+    "s": 0.015
+   },
+   "wine": {
+    "o": 0.0133,
+    "s": 0.01
+   },
+   "fish": {
+    "o": 0.0267,
+    "s": 0.02
+   },
+   "upkeep": {
+    "o": 0.08,
+    "n": "Fridge and shelf upkeep"
+   },
+   "freight": {
+    "o": 0.0333,
+    "s": 0.025
+   },
+   "deliv": {
+    "s": 0.08
+   },
+   "whouse": {
+    "o": 0.0107,
+    "s": 0.008
+   },
+   "clean": {
+    "o": 0.04,
+    "s": 0.008
+   },
+   "guards": {
+    "o": 0.03,
+    "s": 0.005
+   },
+   "temp": {
+    "o": 0.05,
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.22,
+    "n": "Electricity for fridges",
+    "s": 0.015
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "hardware": {
+   "wares": {
+    "o": 0,
+    "n": "Tools, fixings and materials",
+    "stock": true
+   },
+   "upkeep": {
+    "o": 0.04,
+    "n": "Shop fittings upkeep"
+   },
+   "freight": {
+    "o": 0.0429,
+    "s": 0.03
+   },
+   "parcel": {
+    "o": 0.0143,
+    "s": 0.01
+   },
+   "whouse": {
+    "o": 0.0286,
+    "s": 0.02
+   },
+   "clean": {
+    "o": 0.04,
+    "s": 0.006
+   },
+   "power": {
+    "o": 0.12,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "cardealer": {
+   "upkeep": {
+    "o": 0.04,
+    "n": "Shop fittings upkeep"
+   },
+   "carserv": {
+    "o": 0.05,
+    "s": 0.03
+   },
+   "valet": {
+    "o": 0.05,
+    "n": "Valeting"
+   },
+   "freight": {
+    "o": 0.0174,
+    "s": 0.015
+   },
+   "clean": {
+    "o": 0.04,
+    "s": 0.008
+   },
+   "guards": {
+    "o": 0.04,
+    "s": 0.006
+   },
+   "ads": {
+    "o": 0.05,
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.12,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "usedcar": {
+   "upkeep": {
+    "o": 0.04,
+    "n": "Shop fittings upkeep"
+   },
+   "valet": {
+    "o": 0.05,
+    "n": "Valeting"
+   },
+   "clean": {
+    "o": 0.04
+   },
+   "power": {
+    "o": 0.12,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "construction": {
+   "build": {
+    "o": 0,
+    "s": 0.3
+   },
+   "machines": {
+    "o": 0.08,
+    "n": "Tool and plant upkeep"
+   },
+   "carserv": {
+    "o": 0.08
+   },
+   "freight": {
+    "o": 0.3,
+    "s": 0.02
+   },
+   "guards": {
+    "o": 0.04,
+    "s": 0.01
+   },
+   "temp": {
+    "o": 0.05,
+    "s": 0.03
+   },
+   "power": {
+    "o": 0.05,
+    "n": "Site and office electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "electrician": {
+   "build": {
+    "o": 0,
+    "n": "Cable, fittings and consumer units",
+    "s": 0.18
+   },
+   "machines": {
+    "o": 0.08,
+    "n": "Tool and plant upkeep"
+   },
+   "carserv": {
+    "o": 0.08,
+    "s": 0.008
+   },
+   "power": {
+    "o": 0.05,
+    "n": "Site and office electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "plumber": {
+   "build": {
+    "o": 0,
+    "n": "Pipes, fittings and boilers",
+    "s": 0.2
+   },
+   "machines": {
+    "o": 0.08,
+    "n": "Tool and plant upkeep"
+   },
+   "carserv": {
+    "o": 0.08,
+    "s": 0.008
+   },
+   "power": {
+    "o": 0.05,
+    "n": "Site and office electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "realdev": {
+   "build": {
+    "o": 0,
+    "n": "Building materials and fit-out",
+    "s": 0.25
+   },
+   "furn": {
+    "o": 0.05,
+    "s": 0.03
+   },
+   "machines": {
+    "o": 0.08,
+    "n": "Tool and plant upkeep"
+   },
+   "carserv": {
+    "o": 0.08
+   },
+   "guards": {
+    "o": 0.03,
+    "s": 0.006
+   },
+   "power": {
+    "o": 0.05,
+    "n": "Site and office electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "event": {
+   "carserv": {
+    "o": 0.06
+   },
+   "guards": {
+    "o": 0.08,
+    "s": 0.03
+   },
+   "temp": {
+    "o": 0.05,
+    "s": 0.03
+   },
+   "power": {
+    "o": 0.05,
+    "n": "Site and office electricity"
+   },
+   "software": {
+    "o": 0.1
+   }
+  },
+  "engcons": {
+   "power": {
+    "o": 0.05,
+    "n": "Site and office electricity"
+   },
+   "software": {
+    "o": 0.25
+   }
+  },
+  "bakery": {
+   "produce": {
+    "o": 0,
+    "n": "Flour, butter, sugar and yeast",
+    "stock": true,
+    "s": 0.04
+   },
+   "machines": {
+    "o": 0.12,
+    "n": "Machine parts and servicing"
+   },
+   "freight": {
+    "o": 0.1071,
+    "s": 0.03
+   },
+   "parcel": {
+    "o": 0.0357,
+    "s": 0.01
+   },
+   "clean": {
+    "o": 0.06
+   },
+   "power": {
+    "o": 0.25,
+    "n": "Oven energy",
+    "s": 0.03
+   },
+   "software": {
+    "o": 0.04
+   }
+  },
+  "brewery": {
+   "produce": {
+    "o": 0,
+    "n": "Malt, hops and yeast",
+    "stock": true,
+    "s": 0.03
+   },
+   "machines": {
+    "o": 0.12,
+    "n": "Machine parts and servicing"
+   },
+   "freight": {
+    "o": 0.1,
+    "s": 0.05
+   },
+   "whouse": {
+    "o": 0.04,
+    "s": 0.02
+   },
+   "power": {
+    "o": 0.18,
+    "n": "Electricity, gas and water",
+    "s": 0.03
+   },
+   "software": {
+    "o": 0.04
+   }
+  },
+  "furniture": {
+   "produce": {
+    "o": 0,
+    "n": "Timber, fabric and fittings",
+    "stock": true
+   },
+   "machines": {
+    "o": 0.12,
+    "n": "Machine parts and servicing"
+   },
+   "freight": {
+    "o": 0.1316,
+    "s": 0.05
+   },
+   "parcel": {
+    "o": 0.0263,
+    "s": 0.01
+   },
+   "whouse": {
+    "o": 0.0789,
+    "s": 0.03
+   },
+   "clean": {
+    "o": 0.06
+   },
+   "power": {
+    "o": 0.12,
+    "n": "Electricity, gas and water"
+   },
+   "software": {
+    "o": 0.04
+   }
+  },
+  "salmon": {
+   "fuel": {
+    "o": 0.1,
+    "n": "Boat fuel",
+    "c": "oth"
+   },
+   "machines": {
+    "o": 0.2,
+    "n": "Nets, pens and boat upkeep"
+   },
+   "freight": {
+    "o": 0.3,
+    "s": 0.06
+   },
+   "power": {
+    "o": 0.15,
+    "n": "Electricity, gas and water",
+    "s": 0.03
+   }
+  },
+  "factory": {
+   "parts": {
+    "o": 0,
+    "n": "Components and raw materials",
+    "stock": true
+   },
+   "machines": {
+    "o": 0.14,
+    "n": "Spare parts and servicing"
+   },
+   "freight": {
+    "o": 0.0962,
+    "s": 0.05
+   },
+   "clean": {
+    "o": 0.06
+   },
+   "temp": {
+    "o": 0.05,
+    "s": 0.02
+   },
+   "power": {
+    "o": 0.28,
+    "n": "Electricity, gas and water",
+    "s": 0.04
+   },
+   "software": {
+    "o": 0.04
+   }
+  },
+  "farm": {
+   "produce": {
+    "o": 0,
+    "n": "Seed, feed and fertiliser",
+    "stock": true
+   },
+   "machines": {
+    "o": 0.15,
+    "n": "Tractor and machine parts"
+   },
+   "freight": {
+    "o": 0.1471,
+    "s": 0.05
+   },
+   "clean": {
+    "o": 0.06
+   },
+   "power": {
+    "o": 0.1,
+    "n": "Electricity and fuel",
+    "s": 0.02
+   },
+   "software": {
+    "o": 0.04
+   }
+  },
+  "taxi": {
+   "fuel": {
+    "o": 0,
+    "n": "Fuel and tyres",
+    "stock": true
+   },
+   "carserv": {
+    "o": 0.2,
+    "s": 0.06
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "courier": {
+   "fuel": {
+    "o": 0,
+    "n": "Fuel and tyres",
+    "stock": true
+   },
+   "carserv": {
+    "o": 0.1,
+    "s": 0.04
+   },
+   "valet": {
+    "o": 0.03,
+    "n": "Vehicle cleaning"
+   },
+   "temp": {
+    "o": 0.05,
+    "s": 0.02
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "trucking": {
+   "fuel": {
+    "o": 0,
+    "n": "Diesel, tyres and tolls",
+    "stock": true
+   },
+   "carserv": {
+    "o": 0.1,
+    "s": 0.05
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "shipping": {
+   "fuel": {
+    "o": 0,
+    "n": "Bunker fuel and port fees",
+    "from": [
+     "oilgas"
+    ],
+    "stock": true
+   },
+   "machines": {
+    "o": 0.15,
+    "n": "Hull and engine upkeep"
+   },
+   "power": {
+    "o": 0.05,
+    "n": "Depot electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "airline": {
+   "fuel": {
+    "o": 0,
+    "n": "Jet fuel, catering and airport fees",
+    "from": [
+     "oilgas"
+    ],
+    "stock": true
+   },
+   "machines": {
+    "o": 0.2,
+    "n": "Aircraft parts and maintenance"
+   },
+   "laundry": {
+    "o": 0.04,
+    "n": "Cabin linen and catering wash",
+    "s": 0.004
+   },
+   "power": {
+    "o": 0.05,
+    "n": "Depot electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "wh3pl": {
+   "wares": {
+    "o": 0,
+    "n": "Pallets, wrap and handling supplies",
+    "stock": true
+   },
+   "machines": {
+    "o": 0.1,
+    "n": "Racking and forklift upkeep"
+   },
+   "clean": {
+    "o": 0.03
+   },
+   "power": {
+    "o": 0.2,
+    "n": "Depot electricity"
+   },
+   "software": {
+    "o": 0.12
+   }
+  },
+  "resrent": {
+   "upkeep": {
+    "o": 0.35,
+    "n": "Maintenance and repairs"
+   },
+   "clean": {
+    "o": 0.2
+   },
+   "power": {
+    "o": 0.15,
+    "n": "Common-area electricity"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "comrent": {
+   "upkeep": {
+    "o": 0.35,
+    "n": "Maintenance and repairs"
+   },
+   "clean": {
+    "o": 0.2
+   },
+   "power": {
+    "o": 0.15,
+    "n": "Common-area electricity"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "parking": {
+   "upkeep": {
+    "o": 0.25,
+    "n": "Maintenance and repairs"
+   },
+   "clean": {
+    "o": 0.1
+   },
+   "power": {
+    "o": 0.15,
+    "n": "Lighting and barrier electricity"
+   },
+   "software": {
+    "o": 0.2
+   }
+  },
+  "insco": {
+   "clean": {
+    "o": 0.05,
+    "s": 0.004
+   },
+   "power": {
+    "o": 0.05,
+    "n": "Electricity"
+   },
+   "web": {
+    "s": 0.01
+   },
+   "software": {
+    "o": 0.3
+   }
+  },
+  "bank": {
+   "clean": {
+    "o": 0.05,
+    "s": 0.004
+   },
+   "power": {
+    "o": 0.05,
+    "n": "Electricity"
+   },
+   "web": {
+    "s": 0.01
+   },
+   "software": {
+    "o": 0.3
+   }
+  },
+  "fund": {
+   "software": {
+    "o": 0.35
+   }
+  },
+  "power": {
+   "machines": {
+    "o": 0.3,
+    "n": "Plant and grid parts"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "oilgas": {
+   "machines": {
+    "o": 0.3,
+    "n": "Drilling parts and servicing"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "dental": {
+   "care": {
+    "o": 0,
+    "n": "Dental materials and consumables",
+    "stock": true
+   },
+   "upkeep": {
+    "o": 0.06
+   },
+   "clean": {
+    "o": 0.06
+   },
+   "laundry": {
+    "o": 0.08,
+    "n": "Gowns and sterilisation",
+    "s": 0.012
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.12
+   }
+  },
+  "gamestudio": {
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.3
+   }
+  },
+  "security": {
+   "carserv": {
+    "o": 0.06
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.1
+   }
+  },
+  "vineyard": {
+   "wares": {
+    "o": 0,
+    "n": "Vine care, barrels and supplies",
+    "stock": true
+   },
+   "machines": {
+    "o": 0.1,
+    "n": "Machine parts and servicing"
+   },
+   "clean": {
+    "o": 0.06
+   },
+   "power": {
+    "o": 0.08,
+    "n": "Electricity, gas and water"
+   },
+   "software": {
+    "o": 0.04
+   }
+  },
+  "pcbang": {
+   "food": {
+    "o": 0,
+    "n": "Drinks and snacks",
+    "stock": true
+   },
+   "upkeep": {
+    "o": 0.1,
+    "n": "Maintenance and parts"
+   },
+   "clean": {
+    "o": 0.08
+   },
+   "power": {
+    "o": 0.25,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.2
+   }
+  },
+  "carrental": {
+   "fuel": {
+    "o": 0,
+    "n": "Fuel, tyres and cleaning",
+    "stock": true
+   },
+   "carserv": {
+    "o": 0.14
+   },
+   "valet": {
+    "o": 0.03,
+    "n": "Vehicle cleaning"
+   },
+   "power": {
+    "o": 0.05,
+    "n": "Depot electricity"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "startup": {
+   "power": {
+    "o": 0.08,
+    "n": "Electricity"
+   },
+   "software": {
+    "o": 0.3
+   }
+  },
+  "club": {
+   "machines": {
+    "o": 0.2,
+    "n": "Pitch and stadium upkeep"
+   },
+   "clean": {
+    "o": 0.08
+   },
+   "laundry": {
+    "o": 0.1,
+    "n": "Kit and training wear wash",
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.12,
+    "n": "Stadium electricity"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "wholesale": {
+   "upkeep": {
+    "o": 0.06
+   },
+   "carserv": {
+    "o": 0.05,
+    "s": 0.008
+   },
+   "freight": {
+    "o": 0.03,
+    "s": 0.02
+   },
+   "whouse": {
+    "o": 0.02,
+    "s": 0.01
+   },
+   "guards": {
+    "o": 0.03,
+    "s": 0.004
+   },
+   "power": {
+    "o": 0.15,
+    "n": "Warehouse electricity"
+   },
+   "software": {
+    "o": 0.08
+   }
+  },
+  "fuelstation": {
+   "food": {
+    "o": 0.12,
+    "n": "Shop snacks and drinks"
+   },
+   "fuel": {
+    "o": 0,
+    "n": "Fuel from the refinery",
+    "from": [
+     "oilgas"
+    ],
+    "stock": true
+   },
+   "upkeep": {
+    "o": 0.06
+   },
+   "carserv": {
+    "o": 0.04,
+    "s": 0.004
+   },
+   "clean": {
+    "o": 0.06,
+    "s": 0.004
+   },
+   "power": {
+    "o": 0.15,
+    "n": "Pumps, lights and fridges"
+   },
+   "software": {
+    "o": 0.06
+   }
+  },
+  "laundry": {
+   "care": {
+    "o": 0,
+    "n": "Detergents and linen care",
+    "stock": true
+   },
+   "upkeep": {
+    "o": 0.06
+   },
+   "carserv": {
+    "o": 0.06,
+    "s": 0.01
+   },
+   "power": {
+    "o": 0.3,
+    "n": "Washers, dryers and hot water"
+   },
+   "software": {
+    "o": 0.05
+   }
+  }
+ }
+}
