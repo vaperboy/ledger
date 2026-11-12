@@ -53,6 +53,7 @@ public struct SupplyRow: Identifiable, Equatable, Sendable {
     public var governed: String?
     public var offers: [SupplyOfferRow]
     public var need: Int = 1
+    public var input: String? = nil
     public var canSwitch: Bool { offers.contains { !$0.isCurrent && $0.blocked == nil } }
     public var now: SupplyOfferRow? { offers.first { $0.isCurrent } }
 }
@@ -250,7 +251,7 @@ public extension GameEngine {
         if SupplyCatalogue.missedRecently(state, co, bd, line: line, data: data) { note = "A delivery was missed recently, so fewer customers were served." }
         return SupplyRow(id: line.id, group: line.group, title: line.name, kind: line.kind, scale: Self.supplyScale(line), current: now?.name ?? "", quality: now?.quality ?? "Solid",
                          reliability: now?.reliability ?? "Steady", weekly: shownNow ?? weekly, weeklyBefore: before, note: note,
-                         governed: input?.governedBy ?? ownInput?.governedBy, offers: offers, need: need)
+                         governed: input?.governedBy ?? ownInput?.governedBy, offers: offers, need: need, input: line.input)
     }
 
     // A line only an own company can change (its cost is part of the trade's own cost model): the usual player supplier and own companies.
@@ -271,7 +272,7 @@ public extension GameEngine {
         let now = offers.first { $0.isCurrent } ?? offers.first
         return SupplyRow(id: i.id, group: spec?.group ?? "Services", title: i.title, kind: i.title, scale: i.what, current: now?.name ?? "",
                          quality: now?.quality ?? "Solid", reliability: now?.reliability ?? "Steady", weekly: weekly, weeklyBefore: nil,
-                         note: nil, governed: i.governedBy, offers: offers, need: need)
+                         note: nil, governed: i.governedBy, offers: offers, need: need, input: i.id)
     }
 
     private static func supplyScale(_ line: SupplyCatalogue.Line) -> String {

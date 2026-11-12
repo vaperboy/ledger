@@ -5,28 +5,25 @@ import Finance
 import Businesses
 import Simulation
 
+// Every supplier the group's companies use, in the same groups, rows and supplier screen as each company's own list.
 struct GroupSupplierDirectory: View {
     @EnvironmentObject var store: GameStore
+    @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
     var embedded: Bool = false
-    @State private var picked: DirectoryPick?
+    @State private var opened: Opened?
 
-    struct DirectoryPick: Identifiable, Equatable { var id: String }
-
-    fileprivate struct Use {
+    struct Opened: Identifiable, Hashable {
         var companyID: Int
-        var companyName: String
-        var currency: Currency
-        var row: SupplyRow
+        var subject: SupplierSubject
+        var id: String { "\(companyID):" + subject.id }
     }
 
     fileprivate struct Entry: Identifiable {
-        var id: String
-        var group: String
-        var kind: String
-        var uses: [Use]
-        var weeklyHome: Double
-        var beforeHome: Double
-        var priced: Bool
+        var companyID: Int
+        var facts: SupplierFacts
+        var weeklyHome: Double?
+        var beforeHome: Double?
+        var id: String { "\(companyID):" + facts.id }
     }
 
     fileprivate struct DirectoryGroup: Identifiable {
@@ -37,7 +34,7 @@ struct GroupSupplierDirectory: View {
 
     var body: some View {
         if let e = store.engine {
-            let groups: [DirectoryGroup] = Self.groups(e)
+            let groups: [DirectoryGroup] = Self.groups(e, market: market)
             Group {
                 if embedded {
                     VStack(alignment: .leading, spacing: Theme.Space.xl) { list(groups, e) }
@@ -45,29 +42,27 @@ struct GroupSupplierDirectory: View {
                     ScrollScreen(spacing: Theme.Space.xl) { list(groups, e) }
                 }
             }
-            .centerSheet(item: $picked, category: .medium, tone: .info) { (p: DirectoryPick) in detail(p.id) }
+            .navigationDestination(item: $opened) { (o: Opened) in
+                SupplierProfileScreen(companyID: o.companyID, subject: o.subject)
+            }
+            .task { market.sync(store) }
         }
     }
 
     @ViewBuilder private func list(_ groups: [DirectoryGroup], _ e: GameEngine) -> some View {
         if groups.isEmpty {
             EmptyState(glyph: Glyph.suppliers, title: "Nothing bought from suppliers yet",
-                       message: "What your open companies buy shows here, grouped by what is supplied.")
+                       message: "What your open companies buy shows here, grouped like each company's own supplier list.")
         } else {
-            let home: Currency = e.homeCurrency
-            summary(groups, home)
+            summary(groups, e.homeCurrency)
             ForEach(groups) { (g: DirectoryGroup) in
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text(g.name).capsLabel(Theme.ivoryFaint).padding(.horizontal, 2)
-                    VStack(spacing: 0) {
-                        ForEach(Array(g.entries.enumerated()), id: \.element.id) { (n: Int, en: Entry) in
-                            if n > 0 { Hairline() }
-                            row(en, home)
+                PageGroup("What the group buys: " + g.name.lowercased()) {
+                    ForEach(Array(g.entries.enumerated()), id: \.element.id) { (n: Int, en: Entry) in
+                        if n > 0 { RowRule(inset: 0) }
+                        SupplierListRow(facts: en.facts, identifier: "group-supply-" + en.id) {
+                            opened = Opened(companyID: en.companyID, subject: en.facts.subject)
                         }
                     }
-                    .padding(.horizontal, Theme.Space.m)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .glassSurface()
                 }
             }
         }
@@ -75,17 +70,17 @@ struct GroupSupplierDirectory: View {
 
     private func summary(_ groups: [DirectoryGroup], _ home: Currency) -> some View {
         let all: [Entry] = groups.flatMap { $0.entries }
-        let priced: [Entry] = all.filter { $0.priced }
-        let now: Double = priced.reduce(0) { $0 + $1.weeklyHome }
-        let before: Double = priced.reduce(0) { $0 + $1.beforeHome }
-        let companies: Int = Set(all.flatMap { $0.uses.map { $0.companyID } }).count
+        let priced: [Entry] = all.filter { $0.weeklyHome != nil }
+        let now: Double = priced.reduce(0) { $0 + ($1.weeklyHome ?? 0) }
+        let before: Double = priced.reduce(0) { $0 + ($1.beforeHome ?? $1.weeklyHome ?? 0) }
+        let companies: Int = Set(all.map { $0.companyID }).count
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text("Bought by the group").capsLabel(Theme.ivoryFaint)
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                 SupplyCost(now: priced.isEmpty ? nil : now, before: before, currency: home, step: .figure)
                 if !priced.isEmpty { Text("a week").textStyle(.caption, tint: Theme.inkFaint) }
             }
-            Text("\(all.count) kinds of purchase across \(companies) \(companies == 1 ? "company" : "companies"). Costs are set against last week.")
+            Text("\(all.count) suppliers across \(companies) \(companies == 1 ? "company" : "companies"). Costs are set against last week.")
                 .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
         }
         .padding(Theme.Space.m)
@@ -93,120 +88,30 @@ struct GroupSupplierDirectory: View {
         .glassSurface()
     }
 
-    private func row(_ en: Entry, _ home: Currency) -> some View {
-        let who: String = Self.supplierSummary(en)
-        let count: Int = en.uses.count
-        return Button {
-            Haptics.tap()
-            picked = DirectoryPick(id: en.id)
-        } label: {
-            HStack(alignment: .top, spacing: Theme.Space.m) {
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    Text(en.kind.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
-                    Text("\(count) \(count == 1 ? "company" : "companies") · \(who)").textStyle(.caption, tint: Theme.inkSoft).lineLimit(2).multilineTextAlignment(.leading)
-                    SupplyWords(quality: Self.usualQuality(en), reliability: Self.weakestReliability(en))
-                }
-                Spacer(minLength: Theme.Space.s)
-                VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
-                    SupplyCost(now: en.priced ? en.weeklyHome : nil, before: en.beforeHome, currency: home)
-                    if en.priced { Text("a week").textStyle(.caption, tint: Theme.inkFaint) }
-                }
-            }
-            .padding(.vertical, Theme.Space.m)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("group-supply-\(en.id)")
-    }
-
-    fileprivate static func groups(_ e: GameEngine) -> [DirectoryGroup] {
+    // Built with the company screen's own facts, so the rows read and behave the same.
+    @MainActor fileprivate static func groups(_ e: GameEngine, market: SupplyMarketStore) -> [DirectoryGroup] {
         let home: Currency = e.homeCurrency
-        var byKey: [String: Entry] = [:]
-        var order: [String] = []
+        var byGroup: [String: [Entry]] = [:]
+        var names: [String] = SupplyCatalogue.groups
         for co in e.state.liveCompanies {
             let cur: Currency = e.currency(for: co)
             let scale: Double = home.rate > 0 ? cur.rate / home.rate : 1
-            for g in e.supplyLines(companyID: co.id) {
+            let lines: [SupplyGroup] = e.supplyLines(companyID: co.id)
+            let rows: [SupplyRow] = lines.flatMap { (g: SupplyGroup) -> [SupplyRow] in g.rows }
+            let inputs: [SupplierInput] = e.supplierInputs(companyID: co.id)
+            for g in lines {
+                if !names.contains(g.name) { names.append(g.name) }
                 for r in g.rows {
-                    let key: String = r.group + "|" + r.kind
-                    let use = Use(companyID: co.id, companyName: co.name, currency: cur, row: r)
-                    let now: Double = (r.weekly ?? 0) * scale
-                    let before: Double = (r.weeklyBefore ?? r.weekly ?? 0) * scale
-                    if var en = byKey[key] {
-                        en.uses.append(use)
-                        if r.weekly != nil { en.weeklyHome += now; en.beforeHome += before; en.priced = true }
-                        byKey[key] = en
-                    } else {
-                        byKey[key] = Entry(id: key, group: r.group, kind: r.kind, uses: [use], weeklyHome: now, beforeHome: before, priced: r.weekly != nil)
-                        order.append(key)
-                    }
+                    guard var f = SupplierFacts.make(e, co, .line(r.id), market: market, rows: rows, inputs: inputs) else { continue }
+                    f.what = co.name + " \u{00B7} " + f.what
+                    byGroup[g.name, default: []].append(Entry(companyID: co.id, facts: f, weeklyHome: r.weekly.map { $0 * scale },
+                                                              beforeHome: r.weeklyBefore.map { $0 * scale }))
                 }
             }
         }
-        var names: [String] = SupplyCatalogue.groups
-        for k in order { if let g = byKey[k]?.group, !names.contains(g) { names.append(g) } }
-        var out: [DirectoryGroup] = []
-        for name in names {
-            let entries: [Entry] = order.compactMap { byKey[$0] }.filter { $0.group == name }.sorted { (a: Entry, b: Entry) -> Bool in
-                a.weeklyHome != b.weeklyHome ? a.weeklyHome > b.weeklyHome : a.kind < b.kind
-            }
-            if !entries.isEmpty { out.append(DirectoryGroup(name: name, entries: entries)) }
-        }
-        return out
-    }
-
-    private static func supplierSummary(_ en: Entry) -> String {
-        let counts: [String: Int] = Dictionary(en.uses.map { ($0.row.current, 1) }, uniquingKeysWith: +)
-        let ranked: [(key: String, value: Int)] = counts.sorted { (a: (key: String, value: Int), b: (key: String, value: Int)) -> Bool in
-            a.value != b.value ? a.value > b.value : a.key < b.key
-        }
-        guard let top = ranked.first else { return "" }
-        let others: Int = ranked.count - 1
-        return others == 0 ? top.key : "\(top.key) and \(others) other\(others == 1 ? "" : "s")"
-    }
-
-    private static func usualQuality(_ en: Entry) -> String {
-        let counts: [String: Int] = Dictionary(en.uses.map { ($0.row.quality, 1) }, uniquingKeysWith: +)
-        return counts.max { (a: (key: String, value: Int), b: (key: String, value: Int)) -> Bool in a.value != b.value ? a.value < b.value : a.key > b.key }?.key ?? "Solid"
-    }
-
-    private static func weakestReliability(_ en: Entry) -> String {
-        let rank: [String: Int] = ["Patchy": 0, "Not yet tested": 1, "Steady": 2, "Dependable": 3]
-        return en.uses.map { $0.row.reliability }.min { (rank[$0] ?? 2) < (rank[$1] ?? 2) } ?? "Steady"
-    }
-
-    @ViewBuilder private func detail(_ id: String) -> some View {
-        if let e = store.engine, let en = Self.groups(e).flatMap({ $0.entries }).first(where: { $0.id == id }) {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text(en.group).popupText(.caption)
-                ForEach(Array(en.uses.enumerated()), id: \.offset) { (n: Int, u: Use) in
-                    if n > 0 { Hairline() }
-                    use(u)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .centerSheetTitle(en.kind)
-        }
-    }
-
-    private func use(_ u: Use) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(u.companyName.tidyText).textStyle(.headline)
-                    Text("\(u.row.title) · \(u.row.current)").textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: Theme.Space.s)
-                SupplyCost(now: u.row.weekly, before: u.row.weeklyBefore, currency: u.currency, step: .body)
-            }
-            SupplyWords(quality: u.row.quality, reliability: u.row.reliability)
-            if let note = u.row.governed ?? u.row.note { Text(note).popupText(.risk) }
-            QuietButton(title: "Compare suppliers", fullWidth: true) {
-                picked = nil
-                store.openCompany(u.companyID, section: .operations, part: OpsPart.supply.rawValue)
-            }
+        return names.compactMap { (n: String) -> DirectoryGroup? in
+            guard let list = byGroup[n], !list.isEmpty else { return nil }
+            return DirectoryGroup(name: n, entries: list)
         }
     }
 }

@@ -263,10 +263,21 @@ struct GroupPeopleTab: View {
 
     private func face(_ personID: Int?) -> String? { personID.flatMap { (id: Int) -> String? in engine.state.people[id]?.faceKey } }
 
+    // People rows read like the company's own people list.
+    @ViewBuilder private func personRow(_ row: ThinPersonRow, identifier: String, action: (() -> Void)?) -> some View {
+        if let action {
+            Button { Haptics.tap(); action() } label: { row }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier(identifier)
+        } else {
+            row.accessibilityIdentifier(identifier)
+        }
+    }
+
     private func memberRow(_ m: TeamOverview.Member, action: (() -> Void)?) -> some View {
-        LedgerRow(leading: .thumb(ThumbSpec(kind: .person, key: "executive", initials: m.name, face: face(m.personID))),
-                  title: m.name, subtitle: m.role, value: m.monthlyWage > 0 ? store.short(m.monthlyWage) : "",
-                  lineLimit: 1, identifier: "group-staff-\(m.id)", action: action)
+        personRow(ThinPersonRow(name: m.name, title: m.role, wage: m.monthlyWage > 0 ? store.short(m.monthlyWage) : nil, chevron: action != nil,
+                                roleKey: "executive", face: face(m.personID)),
+                  identifier: "group-staff-\(m.id)", action: action)
     }
 
     private func authority(_ l: TeamOverview.CompanyLine) -> String? {
@@ -282,24 +293,21 @@ struct GroupPeopleTab: View {
         let managerID: Int? = engine.state.company(l.id)?.managerID
         // The player's own avatar when they run it; a boss above the store is found by name when the store has no manager of its own.
         let boss: Person? = managerID == nil && l.managerTitle != nil ? engine.state.people.values.first { (p: Person) -> Bool in p.name == l.managedBy } : nil
-        let lead: LedgerRow.Leading = l.managerTitle == nil
-            ? .player(engine.state.player.name)
-            : .thumb(ThumbSpec(kind: .person, key: l.managerTitle ?? "manager", initials: l.managedBy, face: face(managerID) ?? boss?.faceKey))
-        let who: String = l.managerTitle.map { (t: String) -> String in l.managedBy + ", " + t.lowercased() } ?? "You run it"
+        let who: String = l.managerTitle ?? "You run it"
         var parts: [String] = [who]
         if passedUp > 0 { parts.append("\(passedUp) passed up to you") } else if l.managerTitle != nil, let a = authority(l) { parts.append(a) }
         let id: Int = l.id
-        return LedgerRow(leading: lead,
-                         title: l.name, subtitle: parts.joined(separator: " \u{00B7} "),
-                         value: "\(l.staff) staff", valueNote: l.monthlyWages > 0 ? store.short(l.monthlyWages) : "", lineLimit: 2,
+        parts.insert(l.name, at: 0)
+        return personRow(ThinPersonRow(name: l.managerTitle == nil ? engine.state.player.name : l.managedBy, title: parts.joined(separator: " \u{00B7} "),
+                                       wage: "\(l.staff) staff", chevron: managerID != nil, roleKey: l.managerTitle ?? "manager",
+                                       face: face(managerID) ?? boss?.faceKey, isYou: l.managerTitle == nil),
                          identifier: "group-who-\(l.id)", action: managerID == nil ? nil : { sheet = .manager(id) })
     }
 
     private func seatRow(_ s: ManagerModel.Seat, _ g: GroupEntity) -> some View {
         let p = engine.state.people[s.id]
         let name: String = p?.name ?? s.title
-        return LedgerRow(leading: .thumb(ThumbSpec(kind: .person, key: p?.role ?? "executive", initials: name, face: p?.faceKey)),
-                         title: name, subtitle: s.title + " \u{00B7} board", lineLimit: 1,
+        return personRow(ThinPersonRow(name: name, title: s.title + " \u{00B7} board", roleKey: p?.role ?? "executive", face: p?.faceKey),
                          identifier: "group-seat-\(g.id)-\(s.id)", action: { onPick(g, .board) })
     }
 }

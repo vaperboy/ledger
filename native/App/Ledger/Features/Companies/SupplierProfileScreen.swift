@@ -38,6 +38,8 @@ struct SupplierFacts: Identifiable {
     var negotiateInput: String? = nil
     var negotiateVendor: String? = nil
     var coolingUntil: Int? = nil
+    var fit: SupplyFit = .fine
+    var company: SupplierCompany? = nil
 
     static func reliabilityWord(_ share: Double?) -> String {
         guard let t = share else { return "Not tested yet" }
@@ -65,8 +67,8 @@ struct SupplierFacts: Identifiable {
         if let s { level = s.discount > 0.0001 ? Currency.percent(s.discount, decimals: 0) + " below list" : "List price" }
         var deliver: [Line] = [Line(label: "Delivers", value: p.item.name), Line(label: "Price", value: price)]
         if let s, s.leadDays > 0 { deliver.append(Line(label: "Lead time", value: "\(s.leadDays) days")) }
-        if units > 0 { deliver.append(Line(label: "Your order", value: "\(units) units a month")) }
-        if let s, s.capacityFree > 0 { deliver.append(Line(label: "Room left with them", value: "\(s.capacityFree) units")) }
+        if let s, s.need > 0 { deliver.append(Line(label: "What it needs", value: "\(s.need) units a month")) }
+        if let s { deliver.append(Line(label: "Room left with them", value: "\(s.capacityFree) units a month")) }
         var terms: [Line] = []
         if let s {
             terms.append(Line(label: "Relationship", value: s.relationshipWord))
@@ -77,9 +79,11 @@ struct SupplierFacts: Identifiable {
         var note: String?
         if weeks > 0 { note = "You changed this supplier recently. You can pick another one in \(weeks.weeksText)." }
         return SupplierFacts(subject: .item(id), what: p.item.name, kind: p.item.isService ? "Service" : "Product", supplier: s?.vendorName ?? "No supplier chosen",
-                             ownerName: s?.owner ?? "", chosen: s != nil, price: price, level: level, lead: s.map { (x: ItemModels.SupplyLine) -> String in x.leadDays > 0 ? "\(x.leadDays) days" : "" } ?? "",
+                             logoID: s?.logoID ?? "", ownerName: s?.owner ?? "", ownerCode: s?.ownerCode ?? "", chosen: s != nil, price: price, level: level,
+                             lead: s.map { (x: ItemModels.SupplyLine) -> String in x.leadDays > 0 ? "\(x.leadDays) days" : "" } ?? "",
                              reliability: reliabilityWord(s?.reliability), trust: s?.reliability, termsLine: units > 0 ? "\(units) units a month" : "Pick one so it can be stocked",
-                             deliver: deliver, terms: terms, note: note, canChange: true, endFee: fee)
+                             deliver: deliver, terms: terms, note: note, canChange: true, endFee: fee, fit: s?.fit ?? .fine,
+                             company: s.map { (x: ItemModels.SupplyLine) -> SupplierCompany in SupplierCompany.from(x, engine: e) })
     }
 
     @MainActor private static func line(_ e: GameEngine, _ co: Company, _ id: String, market: SupplyMarketStore, rows: [SupplyRow]?, inputs: [SupplierInput]?) -> SupplierFacts? {
@@ -88,8 +92,9 @@ struct SupplierFacts: Identifiable {
         let cur: Currency = e.currency(for: co)
         let contract: SupplyContract? = market.service.contract(buyerCompanyID: co.id, lineID: id)
         let listing: SupplyListing? = contract.flatMap { (c: SupplyContract) -> SupplyListing? in market.service.listing(c.listingID) }
-        let now: SupplyOfferRow? = r.offers.first(where: { (o: SupplyOfferRow) -> Bool in o.isCurrent })
-        let input: SupplierInput? = (inputs ?? e.supplierInputs(companyID: co.id)).first(where: { (i: SupplierInput) -> Bool in i.id == id })
+        let now: SupplyOfferRow? = r.now
+        let inputID: String = r.input ?? id
+        let input: SupplierInput? = (inputs ?? e.supplierInputs(companyID: co.id)).first(where: { (i: SupplierInput) -> Bool in i.id == inputID })
         let option: SupplierOption? = input?.current
         let price: String = r.weekly.map { (w: Double) -> String in cur.tidyShort(w) + " a week" } ?? "Paid per job"
         var lead: String = ""
@@ -97,14 +102,13 @@ struct SupplierFacts: Identifiable {
         var trust: Double? = now?.trust
         if let l = listing { trust = l.record.ordersTotal == 0 ? nil : l.record.deliveredShare }
         let fee: Double? = contract == nil ? nil : e.playerSupplyCancelFee(companyID: co.id, lineID: id)
+        var fit: SupplyFit = now?.fit ?? .fine
+        if let l = listing { fit = e.playerSupplyFit(companyID: co.id, listing: l, today: SupplyMarketStore.today(e)) }
         var deliver: [Line] = [Line(label: "Delivers", value: r.title), Line(label: "Price", value: price)]
         if !lead.isEmpty { deliver.append(Line(label: "Lead time", value: lead)) }
-        if let l = listing {
-            deliver.append(Line(label: "Quality", value: SupplyMarketWords.quality(l.qualityTier)))
-            deliver.append(Line(label: "Your order", value: "\(contract?.unitsPerWeek ?? 0) units a week"))
-        } else {
-            deliver.append(Line(label: "Quality", value: r.quality))
-        }
+        deliver.append(Line(label: "Quality", value: listing.map { (l: SupplyListing) -> String in SupplyMarketWords.quality(l.qualityTier) } ?? r.quality))
+        deliver.append(Line(label: "What you need", value: "\(r.need) units a week"))
+        if let f = now?.free, listing == nil { deliver.append(Line(label: "Room left with them", value: "\(f) units a week")) }
         deliver.append(Line(label: "Demand", value: r.scale))
         var terms: [Line] = []
         if let o = option, let rel = o.relationshipWord { terms.append(Line(label: "Relationship", value: rel)) }
@@ -123,12 +127,13 @@ struct SupplierFacts: Identifiable {
         if let inp = input, inp.governedBy == nil, let o = option, o.negotiable, let v = o.vendorID { negotiateInput = inp.id; negotiateVendor = v }
         let paying: String = input?.paymentTerms.first(where: { (p: PaymentTermChoice) -> Bool in p.isCurrent })?.name ?? ""
         let termsLine: String = listing.map { (l: SupplyListing) -> String in l.termsDays <= 0 ? "Pay on delivery" : "Pay \(l.termsDays) days after delivery" } ?? (paying.isEmpty ? r.scale : "Payment: " + paying.lowercased())
-        return SupplierFacts(subject: .line(id), what: r.title, kind: "Company needs", supplier: listing?.companyName ?? contract?.supplierName ?? r.current,
-                             logoID: listing?.logoID ?? "", ownerName: listing?.ownerName ?? "", ownerCode: listing?.profileCode ?? "", chosen: true, price: price,
-                             level: listing.map { (l: SupplyListing) -> String in SupplyMarketWords.price(l.priceTier) } ?? "", lead: lead, reliability: r.reliability, trust: trust,
+        let company: SupplierCompany? = listing.map { (l: SupplyListing) -> SupplierCompany in SupplierCompany.from(l, engine: e) } ?? now.map { (o: SupplyOfferRow) -> SupplierCompany in SupplierCompany.from(o, engine: e) }
+        return SupplierFacts(subject: .line(id), what: r.title, kind: r.group, supplier: listing?.companyName ?? contract?.supplierName ?? r.current,
+                             logoID: company?.logoID ?? "", ownerName: company?.owner ?? "", ownerCode: company?.ownerCode ?? "", chosen: true, price: price,
+                             level: listing.map { (l: SupplyListing) -> String in SupplyMarketWords.price(l.priceTier) } ?? (now?.priceLevel ?? ""), lead: lead, reliability: r.reliability, trust: trust,
                              late: r.note != nil, termsLine: termsLine, deliver: deliver, terms: terms, note: r.governed ?? r.note, governed: r.governed, canChange: canChange,
                              endFee: fee, negotiateInput: negotiateInput, negotiateVendor: negotiateVendor,
-                             coolingUntil: negotiateVendor == nil ? nil : option?.coolingUntil)
+                             coolingUntil: negotiateVendor == nil ? nil : option?.coolingUntil, fit: fit, company: company)
     }
 }
 
@@ -155,7 +160,7 @@ struct ReliabilityMeter: View {
     }
 }
 
-// One slim row per product or service: who supplies it, at what price, how reliably, on what terms.
+// One compact row per line or item: who supplies it, at what price, how reliably, and whether it covers the need.
 struct SupplierListRow: View {
     @Environment(\.outsidePalette) private var P
     var facts: SupplierFacts
@@ -168,22 +173,21 @@ struct SupplierListRow: View {
             action()
         } label: {
             HStack(alignment: .center, spacing: Theme.Space.m) {
-                SupplierLogo(logoID: facts.logoID, name: facts.chosen ? facts.supplier : facts.what, size: 48)
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                SupplierLogo(logoID: facts.logoID, name: facts.chosen ? facts.supplier : facts.what, size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(facts.what.tidyText).textStyle(.caption, tint: P.inkFaint).lineLimit(1)
                     Text(facts.supplier.tidyText).textStyle(.headline).lineLimit(1).multilineTextAlignment(.leading)
-                    Text((facts.what + " \u{00B7} " + facts.kind).tidyText).textStyle(.caption).lineLimit(1)
-                    HStack(spacing: Theme.Space.xs) {
-                        Text(([facts.price, facts.level].filter { (s: String) -> Bool in !s.isEmpty }).joined(separator: " \u{00B7} ").tidyText).textStyle(.caption, numeric: true).lineLimit(1)
-                        Text(facts.reliability).textStyle(.caption, tint: facts.reliability == "Patchy" ? P.caution : facts.reliability == "Dependable" ? P.gain : P.inkSoft).lineLimit(1)
-                    }
-                    if !facts.termsLine.isEmpty { Text(facts.termsLine.tidyText).textStyle(.caption, tint: P.inkFaint).lineLimit(1) }
+                    Text(([facts.price, facts.reliability].filter { (s: String) -> Bool in !s.isEmpty }).joined(separator: " \u{00B7} ").tidyText)
+                        .textStyle(.caption, tint: facts.reliability == "Patchy" ? P.caution : P.inkSoft, numeric: true).lineLimit(1)
                 }
                 Spacer(minLength: Theme.Space.s)
-                if !facts.chosen { AcctPill(text: "Pick one", tone: .warn) } else if facts.late { AcctPill(text: "Late", tone: .bad) }
+                if !facts.chosen { AcctPill(text: "Pick one", tone: .warn) }
+                else if facts.late { AcctPill(text: "Late", tone: .bad) }
+                else { FitMark(fit: facts.fit) }
                 LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
             }
             .padding(.vertical, Theme.Space.s)
-            .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(AcctPressStyle())
@@ -264,19 +268,23 @@ struct SupplierProfileScreen: View {
         .accessibilityIdentifier("supplier-profile")
     }
 
+    // The supplier's company card, then what it supplies to this company.
     private func header(_ f: SupplierFacts) -> some View {
         ListingPanel {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack(alignment: .center, spacing: Theme.Space.m) {
-                    SupplierLogo(logoID: f.logoID, name: f.chosen ? f.supplier : f.what, size: 64)
-                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                        Text(f.supplier.tidyText).textStyle(.title).lineLimit(2).multilineTextAlignment(.leading).accessibilityAddTraits(.isHeader)
-                        Text((f.what + " \u{00B7} " + f.kind).tidyText).textStyle(.caption).lineLimit(2)
-                    }
-                    Spacer(minLength: 0)
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                    Text((f.what + " \u{00B7} " + f.kind).tidyText).textStyle(.caption, tint: P.inkFaint).lineLimit(2).accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: Theme.Space.s)
+                    FitMark(fit: f.fit)
                 }
-                if !f.ownerName.isEmpty {
-                    SupplierOwnerLine(name: f.ownerName, onOpen: f.ownerCode.isEmpty ? nil : { ownerCode = SupplierOwnerRoute(id: f.ownerCode) })
+                if let c = f.company {
+                    SupplierCompanyCard(company: c, onOpenOwner: { ownerCode = SupplierOwnerRoute(id: c.ownerCode) })
+                } else {
+                    HStack(alignment: .center, spacing: Theme.Space.m) {
+                        SupplierLogo(logoID: f.logoID, name: f.chosen ? f.supplier : f.what, size: 48)
+                        Text(f.supplier.tidyText).textStyle(.title).lineLimit(2).multilineTextAlignment(.leading)
+                        Spacer(minLength: 0)
+                    }
                 }
             }
         }
@@ -285,7 +293,7 @@ struct SupplierProfileScreen: View {
     @ViewBuilder private func actions(_ e: GameEngine, _ co: Company, _ f: SupplierFacts) -> some View {
         VStack(spacing: Theme.Space.s) {
             if f.canChange {
-                Button(f.chosen ? "Change supplier or order" : "Choose a supplier") { choosing = f.subject }
+                Button(f.chosen ? "Change supplier" : "Choose a supplier") { choosing = f.subject }
                     .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .accessibilityIdentifier("supplier-change")
             }
@@ -312,7 +320,7 @@ struct SupplierProfileScreen: View {
     private func askEnd(_ f: SupplierFacts, _ fee: Double, _ cur: Currency) {
         let cid: Int = companyID
         let subject: SupplierSubject = f.subject
-        pending = PendingAction(title: "End this supply?", message: "Ending it costs a fee of two weeks of the order, about " + cur.tidyShort(fee) + ". \(f.what) then goes back to the standard supplier.",
+        pending = PendingAction(title: "End this supply?", message: "Ending it costs a fee of two weeks of the order, about " + cur.tidyShort(fee) + ". \(f.what) then goes back to your usual supplier.",
                                 button: "End supply", alwaysAsk: true, tone: .danger, icon: "xmark.circle") {
             var why: String?
             switch subject {

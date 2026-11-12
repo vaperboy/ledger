@@ -31,25 +31,30 @@ final class MockSupplyMarketService: SupplyMarketService {
         ("Birmingham", "Midlands", "UK"), ("Oslo", "Oslo", "NO"), ("Aberdeen", "Scotland", "UK"), ("Exeter", "South West", "UK"), ("Newcastle", "North", "UK"),
         ("Chicago", "Midwest", "US"), ("London", "South East", "UK"), ("Zurich", "Zurich", "CH"), ("Glasgow", "Scotland", "UK"), ("Sydney", "New South Wales", "AU"), ("Munich", "Bavaria", "DE"),
     ]
-    private static let tradeTitles: [String: String] = ["bakery": "Bakery", "brewery": "Brewery", "farm": "Farm", "vineyard": "Vineyard", "salmon": "Salmon farm", "factory": "Factory",
-                                                         "furniture": "Furniture maker", "grocery": "Grocer", "hardware": "Hardware store", "cleaning": "Cleaning firm", "carclean": "Car wash",
-                                                         "webdev": "Web studio", "gamestudio": "Game studio", "startup": "Software startup", "carrepair": "Garage", "handy": "Handyman",
-                                                         "electrician": "Electrician", "plumber": "Plumber", "power": "Power company", "oilgas": "Fuel supplier", "courier": "Courier"]
+    // Trade names come from the trade catalogue, so a listing reads like any player company.
+    private static let tradeNames: [String: String] = {
+        guard let c = try? TradeCatalog.bundled() else { return [:] }
+        return c.trades.mapValues { (t: Trade) -> String in t.name }
+    }()
 
     private func roll(_ key: String) -> Double { HashedRandom.first("supplymock:" + key) }
 
     private func seed() {
         let provided: [SupplyMarketPlayer] = SupplyMarketPlayersSource.provider?.players() ?? []
         let players: [SupplyMarketPlayer] = provided.isEmpty ? madeUpPlayers() : provided
-        let trades: [String] = SupplyMarketCatalogue.supplierTrades
+        // Every pair of supplying trade and line from the supply map gets players in turn.
+        let pairs: [(trade: String, line: String)] = SupplyMap.supplyPairs
+        guard !pairs.isEmpty else { return }
         for (i, p) in players.enumerated() {
-            let trade: String = SupplyMarketCatalogue.supplies[p.tradeID] != nil ? p.tradeID : trades[i % trades.count]
-            let lines = SupplyMarketCatalogue.supplyableLines(tradeID: trade)
+            let own: [SupplyMarketCatalogue.Line] = SupplyMarketCatalogue.supplyableLines(tradeID: p.tradeID)
+            let trade: String = own.isEmpty ? pairs[i % pairs.count].trade : p.tradeID
+            var lines: [SupplyMarketCatalogue.Line] = own
+            if own.isEmpty, let l = SupplyMarketCatalogue.line(pairs[i % pairs.count].line) { lines = [l] }
             guard !lines.isEmpty else { continue }
-            let line = lines[(i / max(1, trades.count) + i) % lines.count]
+            let line = lines[i % lines.count]
             let cap = 40 + Int(roll("cap\(i)") * 360)
             var l = SupplyListing(id: "L\(i)", ownerID: p.ownerID, ownerName: p.ownerName, profileCode: p.profileCode, companyName: p.companyName, tradeID: trade,
-                                  tradeName: Self.tradeTitles[trade] ?? trade.capitalized, city: p.city, region: p.region, lineID: line.id, lineName: line.name,
+                                  tradeName: Self.tradeNames[trade] ?? trade.capitalized, city: p.city, region: p.region, lineID: line.id, lineName: line.name,
                                   priceTier: Int(roll("pt\(i)") * 3), qualityTier: Int(roll("qt\(i)") * 3), capacityPerWeek: cap, leadDays: 1 + Int(roll("ld\(i)") * 5),
                                   minOrder: [5, 10, 20, 25][Int(roll("mo\(i)") * 4)], termsDays: SupplyMarketCatalogue.termOptions[Int(roll("tm\(i)") * 3)],
                                   linkKey: p.linkKey, record: record(i, cap: cap), isFriend: p.isFriend, country: p.country)

@@ -133,9 +133,14 @@ protocol SupplyMarketService: AnyObject {
         for f in service.supplierStopped(ownerID: service.ownerID, reason: .accountDeleted) { fallBack(store, f) }
     }
 
-    func sign(_ store: GameStore, companyID: Int, lineID: String, listing: SupplyListing, units: Int, weeklyMarketSpend: Double) -> SupplySignResult {
+    // The order is what the line needs; a player who cannot cover it cannot be signed.
+    func sign(_ store: GameStore, companyID: Int, lineID: String, listing: SupplyListing, weeklyMarketSpend: Double) -> SupplySignResult {
         guard let e = store.engine else { return .refused("There is no game open.") }
         hydrate(e)
+        if e.playerSupplyFit(companyID: companyID, listing: listing, today: Self.today(e)) == .cannot { return .refused("They cannot supply what you need.") }
+        let need: Int = e.playerSupplyNeed(companyID: companyID, lineID: lineID)
+        let room: Int = SupplyGuards.effectiveCapacity(listing) - listing.committedUnits
+        let units: Int = max(listing.minOrder, min(need, max(1, room)))
         let r = service.sign(buyerCompanyID: companyID, lineID: lineID, listingID: listing.id, unitsPerWeek: units, today: Self.today(e))
         guard case .signed(let c) = r else { return r }
         let current: SupplyListing = service.listing(listing.id) ?? listing
@@ -147,25 +152,17 @@ protocol SupplyMarketService: AnyObject {
         return r
     }
 
+    // Ending a player's supply returns the line to the company's usual supplier.
     func end(_ store: GameStore, companyID: Int, lineID: String) -> String? {
         let r: SettingResult? = store.act { $0.cancelPlayerSupplier(companyID: companyID, lineID: lineID) }
         if case .refused(let why)? = r { return why }
         service.endContract(buyerCompanyID: companyID, lineID: lineID)
-        returnToHouse(store, companyID: companyID, lineID: lineID)
         return nil
     }
 
     func fallBack(_ store: GameStore, _ f: SupplyFallback) {
         _ = store.act { $0.applySupplierFallback(f) }
-        returnToHouse(store, companyID: f.contract.buyerCompanyID, lineID: f.contract.lineID)
         store.tell(f.title, f.body, tone: "bad")
-    }
-
-    func returnToHouse(_ store: GameStore, companyID: Int, lineID: String) {
-        guard let e = store.engine,
-              let row = e.supplyLines(companyID: companyID).flatMap({ $0.rows }).first(where: { $0.id == lineID }),
-              let house = row.offers.first(where: { $0.detail == "Whoever the market offers" }), !house.isCurrent else { return }
-        _ = store.act { $0.chooseSupply(companyID: companyID, change: house.change) }
     }
 
     func order(_ store: GameStore, companyID: Int, listing: SupplyListing, units: Int) -> String? {
