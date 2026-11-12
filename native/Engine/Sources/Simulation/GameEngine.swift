@@ -213,6 +213,7 @@ public struct GameEngine {
         sweepLevel()
         checkMilestones(weekClosed: completed)
         routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })
+        if Tutorial.isComplete(state) { DailyBeat.ensure(&state, fresh: state.inbox.filter { !before.contains($0.id) }, library: events, data: data, context: context) }
         Tutorial.advance(&state, from: .nextDay)
         Tutorial.sync(&state)
         let fresh = state.inbox.filter { !before.contains($0.id) }
@@ -309,7 +310,12 @@ public struct GameEngine {
         var msgs = pend["msgs"].array
         let fresh = state.inbox.filter { !mark.inboxBefore.contains($0.id) }
         state.inbox.removeAll { !mark.inboxBefore.contains($0.id) }
-        for m in fresh { msgs.append(.object(["m": .object(m.raw), "d": .number(Double(now) + (r.next() * 7).rounded(.down))])) }
+        for m in fresh {
+            // Decisions and alerts arrive the day they happen; other news is spread over the week.
+            let lag: Double = (r.next() * 7).rounded(.down)
+            let immediate: Bool = m.route == .decision || m.route == .alert
+            msgs.append(.object(["m": .object(m.raw), "d": .number(Double(now) + (immediate ? 0 : lag))]))
+        }
         var newsList = pend["news"].array
         let allNews = state.rest["news"]?.array ?? []
         let addedNews = Array(allNews.prefix(max(0, allNews.count - mark.newsBefore)))

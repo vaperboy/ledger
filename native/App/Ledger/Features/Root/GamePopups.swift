@@ -36,6 +36,7 @@ struct PopupLayer: View {
             }
             .modifier(unlockRegistration)
             .groupReviewPopup(store)
+            .homePopups(store)
     }
 
     private var unlockRegistration: HostedPopupModifier<AnyView> {

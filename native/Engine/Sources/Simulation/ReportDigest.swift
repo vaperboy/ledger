@@ -90,13 +90,16 @@ public extension GameEngine {
             revenue += today["r"].double
             if best == nil || units > best!.units { best = (co.name, units) }
         }
-        let good: [String] = fresh.filter { $0.tone == "good" }.map { $0.title }
-        let asks: [String] = fresh.filter { $0.status == "open" }.map { $0.title }
-        let bad: [String] = fresh.filter { $0.status != "open" && $0.tone == "bad" }.map { $0.title }
+        // Decisions and alerts have their own popups and messages are in the inbox, so the day's summary
+        // only carries the report lines that have no message of their own, and a count of new messages.
+        let feed: [FeedLine] = state.feedToday()
+        let good: [String] = feed.filter { $0.tone == "good" }.map { $0.text }
+        let bad: [String] = feed.filter { $0.tone == "bad" }.map { $0.text }
         var digest = DailyDigest(dateLabel: GameCalendar.dateString(week: state.week, dayOffset: state.day), sales: sales, revenue: revenue,
                                  bestCompany: live.count > 1 ? best?.name : nil, bestSales: best?.units ?? 0,
-                                 wentWell: Array(good.prefix(2)), staffMessages: Array((asks + bad).prefix(3)), decisionsOpen: openDecisions.count)
-        digest.newInboxTitle = asks.first
+                                 wentWell: Array(good.prefix(2)), staffMessages: Array(bad.prefix(3)), decisionsOpen: openDecisions.count)
+        let newMessages: Int = fresh.filter { $0.route == .inbox && $0.isOwnerAddressed }.count
+        digest.newInboxTitle = newMessages == 0 ? nil : newMessages == 1 ? "1 message" : "\(newMessages) messages"
         digest.bestDayOfWeek = state.day > 1 && revenue > 0 && revenue > earlierBest
         digest.handled = fresh.filter { !$0.handledBy.isEmpty }.map { "\($0.handledBy): \($0.title)" }
         return digest
