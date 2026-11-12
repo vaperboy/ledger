@@ -39,7 +39,7 @@ struct ProfileView: View {
     private func identity(_ e: GameEngine) -> some View {
         let info: PlayerLevel.Info = e.playerLevel
         let rank: String = e.careerStatus.rank.title
-        let accent: Color = LookKit.accent(season.pass.equipped) ?? Theme.gold
+        let accent: Color = Theme.gold
         return VStack(spacing: Theme.Space.s) {
             PlayerCard(data: PlayerCardData.mine(e, store: store), onRename: { renaming = true })
             if local.nameTaken {

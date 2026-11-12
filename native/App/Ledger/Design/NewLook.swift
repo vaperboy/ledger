@@ -352,6 +352,7 @@ struct AppScreen<Trailing: View>: ViewModifier {
                 AppHeader(title: title, subtitle: subtitle, onBack: (showsBack && !hidesRootBack) ? { dismiss() } : nil, trailing: trailing, titleAction: titleAction)
                     .environment(\.outsidePalette, palette == OutsidePalette.bank ? OutsidePalette.forest : palette)
                     .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
+                    .frame(maxWidth: .infinity)
                     .background {
                         ZStack {
                             if palette == .game {
