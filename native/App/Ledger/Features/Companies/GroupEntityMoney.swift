@@ -71,13 +71,24 @@ struct GroupEntityMoney: View {
 
 struct DividendPolicySheet: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
+    @State private var proposal: BoardProposal?
 
     var body: some View {
         let chosen: String = store.engine?.dividendPolicy(companyID: companyID) ?? "none"
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            ForEach(Shareholders.policies, id: \.self) { (p: String) in
-                ChoiceCard(title: Shareholders.policyNames[p] ?? p, subtitle: blurb(p), selected: chosen == p) { pick(p) }
+            if let proposal {
+                BoardProposalSheet(proposal: proposal, onDone: { self.proposal = nil })
+            } else {
+                if let board = store.engine?.jvBoardCompany(companyID: companyID) {
+                    Text("\(board.name) has co-owners, so a new policy is a proposal the owners vote on.").popupText(.caption)
+                }
+                ForEach(Shareholders.policies, id: \.self) { (p: String) in
+                    ChoiceCard(title: Shareholders.policyNames[p] ?? p, subtitle: blurb(p), selected: chosen == p) { pick(p) }
+                }
             }
         }
         .centerSheetTitle("Dividend policy")
@@ -95,6 +106,11 @@ struct DividendPolicySheet: View {
     private func pick(_ p: String) {
         let id: Int = companyID
         let name: String = Shareholders.policyNames[p] ?? p
+        if let board = store.engine?.jvBoardCompany(companyID: id) {
+            if p == store.engine?.dividendPolicy(companyID: id) { store.show("That is already the dividend policy."); return }
+            proposal = BoardProposal(companyID: id, boardName: board.name, change: .policy(p), title: "Dividend policy: \(name.lowercased())", effect: blurb(p))
+            return
+        }
         store.settle(store.act { $0.setDividendPolicy(companyID: id, policy: p) }, "Dividend policy: \(name).", same: "That is already the dividend policy.")
     }
 }

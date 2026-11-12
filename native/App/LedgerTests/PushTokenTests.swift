@@ -22,6 +22,6 @@ final class PushTokenTests: XCTestCase {
         defer { for (k, v) in zip(keys, saved) { UserDefaults.standard.set(v, forKey: k) } }
         for k in keys { UserDefaults.standard.set(true, forKey: k) }
         UserDefaults.standard.set(false, forKey: "push.race")
-        XCTAssertEqual(Set(PushAlerts.enabledCategories.map(\.rawValue)), ["auction", "supplier", "gift", "daily"])
+        XCTAssertEqual(Set(PushAlerts.enabledCategories.map(\.rawValue)), ["auction", "supplier", "gift", "daily", "board"])
     }
 }

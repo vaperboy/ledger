@@ -597,3 +597,256 @@ begin
   if exists (select 1 from jsonb_array_elements(public.market_browse(null, 100)) e where e ->> 'sellerID' in (select id::text from public.profiles where is_bot)) then raise exception 'removed sellers still browseable'; end if;
   if private.market_bot_stock() <> 0 then raise exception 'listings restocked after the removal'; end if;
 end $$;
+
+create temp table board_cast (k text primary key, id uuid);
+grant select on board_cast to authenticated;
+insert into board_cast select 'd', pg_temp.mk_player('Dana Dale');
+insert into board_cast select 'e', pg_temp.mk_player('Eli Eden');
+insert into board_cast select 'f', pg_temp.mk_player('Fay Ford');
+insert into board_cast select 'o', pg_temp.mk_player('Otto Outsider');
+create function pg_temp.bid(k text) returns uuid language sql as $$ select id from board_cast where k = $1 $$;
+create function pg_temp.pushes(uid uuid) returns int language sql as $$ select count(*)::int from public.push_outbox where user_id = uid and category = 'board' $$;
+create function pg_temp.mk_bot(nm text) returns uuid language plpgsql as $$
+declare u uuid := gen_random_uuid();
+begin
+  insert into auth.users (id, aud, role) values (u, 'authenticated', 'authenticated');
+  insert into public.profiles (id, display_name, adult_confirmed, is_bot, created_at) values (u, nm, true, true, now() - interval '90 days');
+  return u;
+end $$;
+
+do $$
+declare d uuid := pg_temp.bid('d'); e uuid := pg_temp.bid('e'); f uuid := pg_temp.bid('f'); o uuid := pg_temp.bid('o'); k text; vid uuid; r jsonb; inv uuid;
+begin
+  insert into public.friendships (requester_id, addressee_id, status, responded_at) values (d, e, 'accepted', now()), (d, f, 'accepted', now());
+  foreach k in array array['d', 'e', 'f'] loop
+    perform pg_temp.as_user(pg_temp.bid(k));
+    perform public.register_push_token(repeat(k, 64), 'sandbox', array['board']);
+  end loop;
+
+  perform pg_temp.as_user(d);
+  vid := (public.create_venture('own.9', 'Dale Works', 900000, 'USD') ->> 'id')::uuid;
+  r := public.propose_venture_change(vid, 'policy', '{"policy":"low"}'::jsonb, true);
+  if not (r ->> 'applied')::boolean or (select dividend_policy from public.ventures where id = vid) <> 'low' then raise exception 'a sole owner did not set the policy directly: %', r; end if;
+  if exists (select 1 from public.venture_meetings where venture_id = vid) then raise exception 'a sole owner got a meeting'; end if;
+  perform pg_temp.expect_error(format('select public.propose_venture_change(%L, ''policy'', ''{"policy":"low"}''::jsonb, true)', vid), 'already_set');
+  perform pg_temp.expect_error(format('select public.propose_venture_change(%L, ''policy'', ''{"policy":"all"}''::jsonb, true)', vid), 'invalid_agenda');
+
+  inv := (public.invite_venture_partner(vid, e, 10, 100000) ->> 'id')::uuid;
+  if pg_temp.pushes(e) <> 1 then raise exception 'the invitee got no push'; end if;
+  perform pg_temp.as_user(e);
+  r := public.my_venture_offers();
+  if jsonb_array_length(r) <> 1 or (r -> 0 ->> 'pct')::numeric <> 10 or (r -> 0 ->> 'price')::numeric <> 100000 then raise exception 'the invitee does not see share and price: %', r; end if;
+  perform public.reply_to_venture_offer(inv, false, 'USD');
+  if private.is_partner(vid, e) or exists (select 1 from public.settlements where recipient_id in (d, e) and kind in ('venture_stake', 'venture_capital')) then
+    raise exception 'a declined invitation moved shares or money';
+  end if;
+
+  perform pg_temp.as_user(d);
+  inv := (public.invite_venture_partner(vid, e, 10, 100000) ->> 'id')::uuid;
+  perform pg_temp.as_user(e);
+  perform public.reply_to_venture_offer(inv, true, 'USD');
+  if not private.is_partner(vid, e) or pg_temp.notes(e, 'venture_stake') <> 1 or pg_temp.notes(d, 'venture_capital') <> 1 then raise exception 'an accepted invitation did not settle'; end if;
+  if (select amount from public.settlements where recipient_id = e and kind = 'venture_stake') <> -100000 then raise exception 'the invitee paid another price'; end if;
+
+  update public.ventures set value = 1000000 where id = vid;
+  perform pg_temp.as_user(d);
+  inv := (public.invite_venture_partner(vid, f, 49, round(private.jv_fair_price(1000000, 49), 2)) ->> 'id')::uuid;
+  perform pg_temp.as_user(f);
+  perform public.reply_to_venture_offer(inv, true, 'USD');
+  if (select 100.0 * shares / private.jv_total_shares(vid) from public.venture_partners where venture_id = vid and member_id = d) >= 50 then raise exception 'the chair still holds a majority'; end if;
+  perform pg_temp.as_user(o);
+  perform pg_temp.expect_error(format('select public.propose_venture_change(%L, ''policy'', ''{"policy":"mid"}''::jsonb, true)', vid), 'not_found');
+end $$;
+
+do $$
+declare d uuid := pg_temp.bid('d'); e uuid := pg_temp.bid('e'); f uuid := pg_temp.bid('f'); o uuid := pg_temp.bid('o'); vid uuid; r jsonb; mid uuid; iid uuid;
+        pe int := pg_temp.pushes(pg_temp.bid('e')); pf int := pg_temp.pushes(pg_temp.bid('f')); pd int := pg_temp.pushes(pg_temp.bid('d'));
+begin
+  select id into vid from public.ventures where chair_id = d and company_key = 'own.9';
+  perform pg_temp.as_user(d);
+  r := public.propose_venture_change(vid, 'policy', '{"policy":"mid"}'::jsonb, true);
+  mid := (r ->> 'meetingID')::uuid;
+  if (r ->> 'applied')::boolean or not (r ->> 'emergency')::boolean then raise exception 'a minority owner decided alone: %', r; end if;
+  if (select dividend_policy from public.ventures where id = vid) <> 'low' then raise exception 'the policy changed before the vote'; end if;
+  if abs(extract(epoch from (select deadline - opened_at from public.venture_meetings where id = mid)) - 86400) > 5 then raise exception 'an emergency meeting is not 24 hours'; end if;
+  if pg_temp.pushes(e) <> pe + 1 or pg_temp.pushes(f) <> pf + 1 or pg_temp.pushes(d) <> pd then raise exception 'emergency push went to the wrong owners'; end if;
+  if not exists (select 1 from public.push_outbox where user_id = e and category = 'board' and title = 'Emergency board meeting' and body like 'Dana Dale called a vote at Dale Works%24 hours%') then
+    raise exception 'the emergency push does not say who, where and how long';
+  end if;
+  perform pg_temp.expect_error(format('select public.propose_venture_change(%L, ''setting'', ''{"key":"chain.pay","value":0.05}''::jsonb, true)', vid), 'meeting_open');
+  select id into iid from public.venture_items where meeting_id = mid;
+  if (select choice from public.venture_votes where item_id = iid and member_id = d) <> 'yes' then raise exception 'the proposer is not counted for their own proposal'; end if;
+  perform pg_temp.as_user(o);
+  perform pg_temp.expect_error(format('select public.cast_venture_vote(%L, ''yes'')', iid), 'not_found');
+  perform pg_temp.as_user(e);
+  perform public.cast_venture_vote(iid, 'yes');
+  if (select closed_at from public.venture_meetings where id = mid) is null or (select outcome from public.venture_items where id = iid) <> 'passed' then raise exception 'over half of all shares in favour did not pass at once'; end if;
+  if (select dividend_policy from public.ventures where id = vid) <> 'mid' then raise exception 'a passed policy was not applied'; end if;
+  if not exists (select 1 from public.settlements where recipient_id = d and kind = 'venture_decision' and (meta ->> 'apply')::boolean and meta ->> 'companyKey' = 'own.9' and meta -> 'params' ->> 'policy' = 'mid') then
+    raise exception 'the chair was not told to carry out the decision';
+  end if;
+  if not exists (select 1 from public.settlements where recipient_id = f and kind = 'venture_decision' and not (meta ->> 'apply')::boolean and meta ->> 'companyKey' is null) then
+    raise exception 'the other owners were not told the result';
+  end if;
+
+  perform pg_temp.as_user(d);
+  r := public.propose_venture_change(vid, 'policy', '{"policy":"high"}'::jsonb, true);
+  mid := (r ->> 'meetingID')::uuid;
+  select id into iid from public.venture_items where meeting_id = mid;
+  perform pg_temp.as_user(e);
+  perform public.cast_venture_vote(iid, 'no');
+  perform pg_temp.expect_error(format('select public.close_venture_meeting(%L)', mid), 'voting_open');
+  update public.venture_meetings set deadline = now() - interval '1 minute' where id = mid;
+  perform pg_temp.expect_error(format('select public.cast_venture_vote(%L, ''yes'')', iid), 'vote_closed');
+  perform private.run_venture_housekeeping();
+  if (select outcome from public.venture_items where id = iid) <> 'failed' or (select dividend_policy from public.ventures where id = vid) <> 'mid' then
+    raise exception 'a proposal without half of all shares did not fail at the deadline';
+  end if;
+end $$;
+
+do $$
+declare d uuid := pg_temp.bid('d'); e uuid := pg_temp.bid('e'); f uuid := pg_temp.bid('f'); vid uuid; r jsonb; mid uuid; iid uuid; iid2 uuid; pf int := pg_temp.pushes(pg_temp.bid('f')); slot timestamptz;
+begin
+  select id into vid from public.ventures where chair_id = d and company_key = 'own.9';
+  perform pg_temp.as_user(e);
+  r := public.propose_venture_change(vid, 'setting', '{"key":"chain.price","value":1,"label":"Chain price rule: premium"}'::jsonb, false);
+  mid := (r ->> 'meetingID')::uuid;
+  select deadline into slot from public.venture_meetings where id = mid;
+  if (r ->> 'emergency')::boolean or (r ->> 'applied')::boolean then raise exception 'the weekly meeting was treated as an emergency: %', r; end if;
+  if extract(isodow from slot at time zone 'utc') <> 1 or (slot at time zone 'utc')::time <> '00:00' or slot < now() + interval '24 hours' or slot > now() + interval '8 days' then
+    raise exception 'the weekly meeting is not the next Monday with a day of notice: %', slot;
+  end if;
+  if pg_temp.pushes(f) <> pf then raise exception 'a weekly agenda item sent an emergency push'; end if;
+  perform pg_temp.as_user(d);
+  r := public.propose_venture_change(vid, 'setting', '{"key":"chain.pay","value":0.05,"label":"Chain pay rule: 5% above market"}'::jsonb, false);
+  if (r ->> 'meetingID')::uuid <> mid then raise exception 'a second item opened a second weekly meeting'; end if;
+  select id into iid from public.venture_items where meeting_id = mid and params ->> 'key' = 'chain.price';
+  select id into iid2 from public.venture_items where meeting_id = mid and params ->> 'key' = 'chain.pay';
+  perform public.cast_venture_vote(iid, 'yes');
+  if (select closed_at from public.venture_meetings where id = mid) is not null then raise exception 'the weekly meeting closed before its day'; end if;
+  r := public.venture_meeting(mid);
+  if (r -> 'items' -> 0 ->> 'title') <> 'Chain price rule: premium' or (r -> 'items' -> 0 ->> 'yesShares')::numeric * 2 <= (r ->> 'totalShares')::numeric then raise exception 'meeting view lacks title or tally: %', r; end if;
+  perform pg_temp.expect_error(format('select public.close_venture_meeting(%L)', mid), 'voting_open');
+  update public.venture_meetings set deadline = now() - interval '1 minute' where id = mid;
+  perform private.run_venture_housekeeping();
+  if (select outcome from public.venture_items where id = iid) <> 'passed' or (select settings ->> 'chain.price' from public.ventures where id = vid) <> '1' then
+    raise exception 'the weekly meeting did not pass the item with over half of all shares';
+  end if;
+  if (select outcome from public.venture_items where id = iid2) <> 'failed' or (select settings ? 'chain.pay' from public.ventures where id = vid) then
+    raise exception 'owners who stayed silent were not counted as abstaining';
+  end if;
+end $$;
+
+do $$
+declare d uuid := pg_temp.bid('d'); e uuid := pg_temp.bid('e'); f uuid := pg_temp.bid('f'); vid uuid; r jsonb; oid uuid; fair numeric; held int; chair int; pe int; pd int; n int;
+begin
+  select id into vid from public.ventures where chair_id = d and company_key = 'own.9';
+  select shares into held from public.venture_partners where venture_id = vid and member_id = e;
+  select shares into chair from public.venture_partners where venture_id = vid and member_id = d;
+  fair := round(1000000.0 * held / private.jv_total_shares(vid), 2);
+  perform pg_temp.as_user(d);
+  perform pg_temp.expect_error(format('select public.offer_venture_buyback(%L, %L, %s)', vid, e, fair), 'locked');
+  update public.venture_partners set lock_until = now() - interval '1 day' where venture_id = vid;
+  perform pg_temp.expect_error(format('select public.offer_venture_buyback(%L, %L, %s)', vid, e, fair * 3), 'outside_band');
+  perform pg_temp.as_user(f);
+  perform pg_temp.expect_error(format('select public.offer_venture_buyback(%L, %L, %s)', vid, e, fair), 'not_found');
+  perform pg_temp.as_user(d);
+  pe := pg_temp.pushes(e);
+  oid := (public.offer_venture_buyback(vid, e, fair) ->> 'id')::uuid;
+  if pg_temp.pushes(e) <> pe + 1 then raise exception 'the holder got no push about the offer'; end if;
+  if (select shares from public.venture_partners where venture_id = vid and member_id = e) <> held or exists (select 1 from public.settlements where kind in ('venture_buyback', 'venture_exit') and recipient_id in (d, e)) then
+    raise exception 'a buyback offer moved shares or money before it was accepted';
+  end if;
+  perform pg_temp.expect_error(format('select public.offer_venture_buyback(%L, %L, %s)', vid, e, fair), 'offer_open');
+  perform pg_temp.expect_error(format('select public.reply_to_venture_buyback(%L, true)', oid), 'not_found');
+
+  perform pg_temp.as_user(e);
+  r := public.my_venture_buybacks();
+  if jsonb_array_length(r -> 'incoming') <> 1 or (r -> 'incoming' -> 0 ->> 'price')::numeric <> fair or (r -> 'incoming' -> 0 ->> 'shares')::int <> held then raise exception 'the holder does not see the offer: %', r; end if;
+  perform public.reply_to_venture_buyback(oid, false);
+  if not private.is_partner(vid, e) or pg_temp.notes(d, 'venture_buyback_reply') <> 1 or pg_temp.notes(d, 'venture_buyback') <> 0 then raise exception 'a declined buyback changed something'; end if;
+
+  pd := pg_temp.pushes(d);
+  oid := (public.request_venture_exit(vid, fair) ->> 'id')::uuid;
+  if pg_temp.pushes(d) <> pd + 1 or not private.is_partner(vid, e) then raise exception 'asking to sell forced the chair to buy'; end if;
+  perform pg_temp.expect_error(format('select public.reply_to_venture_buyback(%L, true)', oid), 'not_found');
+  perform public.withdraw_venture_buyback(oid);
+
+  perform pg_temp.as_user(d);
+  oid := (public.offer_venture_buyback(vid, e, fair) ->> 'id')::uuid;
+  perform pg_temp.as_user(e);
+  perform public.reply_to_venture_buyback(oid, true);
+  if private.is_partner(vid, e) or (select shares from public.venture_partners where venture_id = vid and member_id = d) <> chair + held then raise exception 'an accepted buyback did not move the shares'; end if;
+  if (select amount from public.settlements where recipient_id = e and kind = 'venture_exit') <> fair or (select amount from public.settlements where recipient_id = d and kind = 'venture_buyback') <> -fair then
+    raise exception 'an accepted buyback did not pay the agreed price';
+  end if;
+
+  perform pg_temp.as_user(f);
+  set local role authenticated;
+  select count(*) into n from public.venture_buybacks;
+  if n <> 0 then raise exception 'buyback offers of other owners are visible: %', n; end if;
+  perform pg_temp.expect_error(format('insert into public.venture_buybacks (venture_id, buyer_id, seller_id, shares, price, fair, proposed_by) values (%L, %L, %L, 1, 1, 1, %L)', vid, d, f, d), 'permission denied');
+  perform pg_temp.expect_error(format('update public.ventures set dividend_policy = ''high'' where id = %L', vid), 'permission denied');
+  perform pg_temp.expect_error(format('select public.leave_venture(%L)', vid), 'permission denied');
+  reset role;
+end $$;
+
+do $$
+declare d uuid := pg_temp.bid('d'); f uuid := pg_temp.bid('f'); bot uuid := pg_temp.mk_bot('Greta Gale'); vid uuid; r jsonb; inv uuid; mid uuid; oid uuid; i int; n int; fair numeric; voted int;
+begin
+  select id into vid from public.ventures where chair_id = d and company_key = 'own.9';
+  fair := round(private.jv_fair_price(1000000, 5), 2);
+  perform pg_temp.as_user(d);
+  perform pg_temp.expect_error(format('select public.invite_venture_partner(%L, %L, 5, %s)', vid, bot, round(fair * 1.2, 2)), 'outside_band');
+  for i in 1..12 loop
+    inv := (public.invite_venture_partner(vid, bot, 5, fair) ->> 'id')::uuid;
+    perform private.run_venture_housekeeping();
+    if (select status from public.venture_invites where id = inv) <> 'pending' then raise exception 'a generated player answered at once'; end if;
+    update public.venture_invites set sent_at = now() - interval '12 hours' where id = inv;
+    perform private.run_venture_housekeeping();
+    if (select status from public.venture_invites where id = inv) = 'pending' then raise exception 'a generated player never answered the invitation'; end if;
+    exit when private.is_partner(vid, bot);
+  end loop;
+  if not private.is_partner(vid, bot) then raise exception 'no generated player ever accepted a fair invitation'; end if;
+  if exists (select 1 from public.settlements where recipient_id = bot) then raise exception 'a generated player was paid or billed'; end if;
+
+  for i in 1..6 loop
+    r := public.propose_venture_change(vid, 'setting', jsonb_build_object('key', 'rule.' || i, 'value', i, 'label', 'Rule ' || i), false);
+  end loop;
+  mid := (r ->> 'meetingID')::uuid;
+  perform private.run_venture_housekeeping();
+  if exists (select 1 from public.venture_votes x join public.venture_items it on it.id = x.item_id where it.meeting_id = mid and x.member_id = bot) then raise exception 'a generated co-owner voted at once'; end if;
+  update public.venture_items set created_at = now() - interval '15 hours' where meeting_id = mid;
+  perform private.run_venture_housekeeping();
+  select count(*) into voted from public.venture_votes x join public.venture_items it on it.id = x.item_id where it.meeting_id = mid and x.member_id = bot;
+  if voted < 1 then raise exception 'a generated co-owner never voted'; end if;
+  r := public.venture_meeting(mid) || jsonb_build_object('venture', public.my_ventures());
+  if r::text ilike '%is_bot%' or r::text ilike '%fake%' or r::text ilike '%generated%' or r::text ilike '%simulated%' then raise exception 'generated co-owners are labelled: %', r; end if;
+  if (select count(distinct (select array_agg(k order by k) from jsonb_object_keys(p) k)) from jsonb_array_elements(public.my_ventures() -> 0 -> 'partners') p) <> 1 then
+    raise exception 'generated co-owners look different in the partner list';
+  end if;
+
+  update public.venture_partners set lock_until = now() - interval '1 day' where venture_id = vid and member_id = bot;
+  select round(1000000.0 * shares / private.jv_total_shares(vid), 2) into fair from public.venture_partners where venture_id = vid and member_id = bot;
+  oid := (public.offer_venture_buyback(vid, bot, fair) ->> 'id')::uuid;
+  perform private.run_venture_housekeeping();
+  if (select status from public.venture_buybacks where id = oid) <> 'pending' then raise exception 'a generated co-owner answered a buyback at once'; end if;
+  update public.venture_buybacks set created_at = now() - interval '12 hours' where id = oid;
+  perform private.run_venture_housekeeping();
+  if (select status from public.venture_buybacks where id = oid) not in ('accepted', 'declined') then raise exception 'a generated co-owner never answered the buyback'; end if;
+  if (select status from public.venture_buybacks where id = oid) = 'accepted' and private.is_partner(vid, bot) then raise exception 'an accepted buyback left the seller in'; end if;
+
+  if not private.is_partner(vid, bot) then
+    for i in 1..12 loop
+      inv := (public.invite_venture_partner(vid, bot, 5, round(private.jv_fair_price(1000000, 5), 2)) ->> 'id')::uuid;
+      update public.venture_invites set sent_at = now() - interval '12 hours' where id = inv;
+      perform private.run_venture_housekeeping();
+      exit when private.is_partner(vid, bot);
+    end loop;
+  end if;
+  select sum(shares) into n from public.venture_partners where venture_id = vid;
+  update public.profiles set deleted_at = now() where id = bot;
+  perform private.run_venture_housekeeping();
+  if private.is_partner(vid, bot) or (select sum(shares) from public.venture_partners where venture_id = vid) <> n then raise exception 'a removed generated co-owner still holds shares, or shares were lost'; end if;
+  if (select every from public.job_runs where name = 'ventures') > interval '10 minutes' then raise exception 'board deadlines are checked too rarely'; end if;
+end $$;

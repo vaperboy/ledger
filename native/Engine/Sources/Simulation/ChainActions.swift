@@ -3,6 +3,7 @@ import GameCore
 import Countries
 import Finance
 import Businesses
+import Events
 
 public extension GameEngine {
 
@@ -52,6 +53,7 @@ public extension GameEngine {
     @discardableResult
     mutating func setChainKnob(chainID: Int, knob: String, value: Int) -> Chains.KnobStandardPlan {
         var out = Chains.KnobStandardPlan(lines: [])
+        if JointVenture.settingBlock(state, chainID: chainID) != nil { return out }
         update { s, d, _ in out = Chains.setKnobStandard(&s, chainID: chainID, knob: knob, value: value, data: d) }
         return out
     }
@@ -62,12 +64,12 @@ public extension GameEngine {
 
     @discardableResult
     mutating func releaseChainKnob(chainID: Int, knob: String) -> SettingResult {
-        applySetting(refuse: { Chains.chain($0, id: chainID) == nil ? "That chain no longer exists." : nil }, probe: { Chains.chain($0, id: chainID) ?? .null }) { s, _, _ in Chains.releaseKnobStandard(&s, chainID: chainID, knob: knob) }
+        applySetting(refuse: { Chains.chain($0, id: chainID) == nil ? "That chain no longer exists." : JointVenture.settingBlock($0, chainID: chainID) }, probe: { Chains.chain($0, id: chainID) ?? .null }) { s, _, _ in Chains.releaseKnobStandard(&s, chainID: chainID, knob: knob) }
     }
 
     @discardableResult
     mutating func setChainRule(chainID: Int, rule: Chains.Rule) -> SettingResult {
-        applySetting(refuse: { Chains.chain($0, id: chainID) == nil ? "That chain no longer exists." : nil }, probe: { Chains.chain($0, id: chainID) ?? .null }) { s, d, _ in
+        applySetting(refuse: { Chains.chain($0, id: chainID) == nil ? "That chain no longer exists." : JointVenture.settingBlock($0, chainID: chainID) }, probe: { Chains.chain($0, id: chainID) ?? .null }) { s, d, _ in
             if case .knob(let id, let o) = rule { Chains.setKnobStandard(&s, chainID: chainID, knob: id, value: o, data: d) }
             else { Chains.setRule(&s, chainID: chainID, rule: rule) }
         }

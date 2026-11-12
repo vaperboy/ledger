@@ -11,7 +11,9 @@ struct JointVenturePartnersCard: View {
     var company: Company
     @State private var inviteOpen = false
     @State private var meetingsOpen = false
-    @State private var pending: PendingAction?
+    @State private var buyTarget: BuyTarget?
+
+    private struct BuyTarget: Identifiable { var id: String }
 
     static func applies(_ co: Company, _ e: GameEngine) -> Bool { e.jvCanStart(companyID: co.id) }
 
@@ -19,7 +21,8 @@ struct JointVenturePartnersCard: View {
         let st: JointVenture.State? = engine.jointVenture(companyID: company.id)
         let stakes: [JointVenture.Stake] = engine.jvStakes(companyID: company.id)
         let cur: Currency = engine.currency(for: company)
-        let waiting: Int = st?.meetings.filter { !$0.closed && $0.opened <= engine.state.week && $0.items.contains { $0.votes[JointVenture.Member.me] == nil } }.count ?? 0
+        let waiting: Int = st?.meetings.filter { JVClock.votingOpen($0, week: engine.state.week) && $0.items.contains { $0.votes[JointVenture.Member.me] == nil } }.count ?? 0
+        let offers: [JointVenture.Buyback] = engine.jvBuyBackOffers(companyID: company.id)
         Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(alignment: .firstTextBaseline) {
@@ -28,18 +31,18 @@ struct JointVenturePartnersCard: View {
                     GlyphView(glyph: Glyph.group, size: 17, weight: 1.6)
                 }
                 if stakes.count < 2 && (st?.invites.contains { $0.status == "sent" } != true) {
-                    Text("Own this company with friends. Each friend gets a private price of their own, and big decisions go to a vote by shares at a board meeting.")
+                    Text("Own this company with friends. You set the share and the price each friend is offered; they accept or decline. With co-owners, big decisions go to a vote by shares at a board meeting.")
                         .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 } else {
-                    ForEach(stakes) { (s: JointVenture.Stake) in stakeRow(s) }
+                    ForEach(stakes) { (s: JointVenture.Stake) in stakeRow(s, offer: offers.first { $0.memberID == s.id }, cur: cur) }
                 }
                 if let st {
                     ForEach(st.invites.filter { $0.status == "sent" }) { (inv: JointVenture.Invite) in
-                        ListRow(symbol: "paperplane", tint: Theme.inkSoft, title: inv.name, subtitle: "Invitation sent · \(String(format: "%.0f", inv.pct))% for \(cur.tidyDisplay(inv.price)) · open until \(GameCalendar.dateString(week: inv.expires))",
+                        ListRow(symbol: "paperplane", tint: Theme.inkSoft, title: inv.name, subtitle: "Offered \(String(format: "%.0f", inv.pct))% for \(cur.tidyDisplay(inv.price)) · they accept or decline · open until \(GameCalendar.dateString(week: inv.expires))",
                                 trailing: "Waiting")
                     }
                     meetingsRow(st, waiting: waiting)
-                    Text("Decisions go by shares among the votes cast. Money goes out to owners only when a meeting votes for it, and the company is sold only by a vote. A new partner cannot sell or leave for \(JVRules.lockUpWeeks) weeks; after that you can buy them out at what their share is worth.")
+                    Text("A proposal passes only with yes votes from more than half of all shares; an owner who does not vote abstains. The dividend policy, group rules, payouts and a sale all go to the board. A new partner cannot sell or leave for \(JVRules.lockUpWeeks) weeks; after that you can offer to buy their shares, and they accept or decline.")
                         .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 if stakes.count - 1 + (st?.invites.filter { $0.status == "sent" }.count ?? 0) < JVRules.maxPartners {
@@ -54,17 +57,29 @@ struct JointVenturePartnersCard: View {
         }
         .navigationDestination(isPresented: $meetingsOpen) { JointVentureMeetingsView(companyID: company.id) }
         .task { JointVentureCoordinator.shared.attach(online.service); await JointVentureCoordinator.shared.sync(store) }
-        .confirmAction($pending)
+        .centerSheet(item: $buyTarget, title: "Offer for their shares") { (t: BuyTarget) in JVBuybackSheet(companyID: company.id, memberID: t.id).environmentObject(store) }
     }
 
-    private func stakeRow(_ s: JointVenture.Stake) -> some View {
+    private func stakeRow(_ s: JointVenture.Stake, offer: JointVenture.Buyback?, cur: Currency) -> some View {
         let lock: String = s.locked ? "Cannot sell or leave until \(GameCalendar.dateString(week: s.lockUntil))" : (s.isYou ? "Votes with \(String(format: "%.1f", s.pct))%" : "Free to sell or leave")
+        let id: Int = company.id
         return VStack(alignment: .leading, spacing: 4) {
             ListRow(symbol: s.isYou ? "person.fill" : "person", tint: s.isYou ? Theme.accent : Theme.inkSoft,
                     title: s.isYou ? "\(s.name) (you)" : s.name, subtitle: "\(s.roleTitle) · \(lock)", trailing: String(format: "%.1f%%", s.pct))
-            if !s.isYou && !s.locked {
-                Button { askBuyOut(s) } label: { Text("Buy out \(s.name)") }
+            if let offer {
+                Text("You offered \(cur.tidyDisplay(offer.price)) for their shares. Waiting for their answer until \(JVClock.text(Date(timeIntervalSince1970: offer.expiresAt))).")
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Button {
+                    Haptics.tap()
+                    let done: Bool = store.act { (g: inout GameEngine) -> Bool in g.jvWithdrawBuyBack(companyID: id, offerID: offer.id) } ?? false
+                    if done { store.tell("Offer withdrawn", "\(s.name) keeps their shares. Nothing has changed.") }
+                } label: { Text("Withdraw offer") }
                     .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
+                    .accessibilityIdentifier("jv-buyback-withdraw")
+            } else if !s.isYou && !s.locked {
+                Button { askBuyOut(s) } label: { Text("Offer to buy \(s.name)'s shares") }
+                    .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
+                    .accessibilityIdentifier("jv-buyback")
             }
         }
     }
@@ -72,16 +87,12 @@ struct JointVenturePartnersCard: View {
     private func askBuyOut(_ s: JointVenture.Stake) {
         guard let terms: JointVenture.ExitTerms = engine.jvExitTerms(companyID: company.id, memberID: s.id) else { return }
         if let why = terms.problem { Haptics.warning(); store.tell("Not now", why, tone: "warn"); return }
-        let id: Int = company.id
-        let member: String = s.id
-        pending = PendingAction(title: "Buy out \(s.name)?", message: terms.lines.joined(separator: " "), button: "Buy their shares", alwaysAsk: true, tone: .warning, icon: "person.fill.xmark") {
-            let problem: String? = store.act { (g: inout GameEngine) -> String? in g.jvBuyOut(companyID: id, memberID: member) } ?? nil
-            if let problem { Haptics.warning(); store.tell("Not done", problem, tone: "warn") } else { Haptics.success() }
-        }
+        Haptics.tap()
+        buyTarget = BuyTarget(id: s.id)
     }
 
     private func meetingsRow(_ st: JointVenture.State, waiting: Int) -> some View {
-        let next: String = st.nextPlanned.map { "Next planned meeting \(GameCalendar.dateString(week: $0))" } ?? "No planned meeting yet"
+        let next: String = st.members.count > 1 ? "Next board meeting \(JVClock.text(engine.jvNextMeeting()))" : "The board meets weekly once a partner has joined"
         return Button { Haptics.tap(); meetingsOpen = true } label: {
             ListRow(symbol: "calendar", tint: waiting > 0 ? Theme.warn : Theme.accent, title: "Meetings", subtitle: waiting > 0 ? "\(waiting) waiting for your vote" : next,
                     trailing: waiting > 0 ? "Vote" : "", chevron: true)
@@ -161,12 +172,11 @@ struct JVInviteSheet: View {
             }
         }
         .popupText(.caption)
-        Text("A sample friend pays at most the fair price.").popupText(.caption)
-        Text("Only they see this price. Other friends you invite get a price of their own.").popupText(.caption)
+        Text("They see this share and this price, and accept or decline. Other friends you invite get a price of their own.").popupText(.caption)
         Text("Role").capsLabel()
         SegmentedPill(items: ["Partner", "CFO"], title: { $0 }, selection: $role)
         if (e.jointVenture(companyID: companyID)?.members.count ?? 1) > 1 {
-            Text("You have partners, so a meeting votes on this invitation before it goes out.").popupText(.risk)
+            Text("You have partners, so the invitation goes out only if more than half of all shares vote for it at an emergency meeting.").popupText(.risk)
         }
         Color.clear.frame(height: 0)
             .popupFooter {
@@ -207,17 +217,65 @@ struct JVInviteSheet: View {
                 Task { await JointVentureCoordinator.shared.service.send(offer) }
             }
             dismiss()
-            store.tell("Invitation sent", "\(friend.displayName) has the offer: \(Int(p))% of the company at their own price. They have \(JVRules.inviteWeeks) weeks to answer. Once they accept they pay, and cannot sell for \(JVRules.lockUpWeeks) weeks.", tone: "good")
+            store.tell("Invitation sent", "\(friend.displayName) has the offer: \(Int(p))% of the company for the price you set. They have \(JVRules.inviteWeeks) weeks to answer. Once they accept they pay, and cannot sell for \(JVRules.lockUpWeeks) weeks.", tone: "good")
         case .needsVote(let meetingID)?:
             Haptics.success()
             _ = meetingID
             dismiss()
-            store.tell("Put to the partners", "You already have partners, so \(friend.displayName) is invited only if the vote passes. An emergency meeting is open; your partners vote within a week.")
+            store.tell("Put to the partners", "You already have partners, so \(friend.displayName) is invited only if the vote passes. An emergency meeting is open; your partners have 24 hours to vote.")
         case .refused(let why)?:
             Haptics.warning()
             store.tell("Not sent", why, tone: "warn")
         case nil:
             break
         }
+    }
+}
+
+struct JVBuybackSheet: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
+    var companyID: Int
+    var memberID: String
+    @State private var factor: Double = 1
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            if let e = store.engine, let co = e.state.company(companyID), let terms = e.jvExitTerms(companyID: companyID, memberID: memberID) {
+                let cur: Currency = e.currency(for: co)
+                let band: ClosedRange<Double> = e.state.worldRules.ventureBand
+                let price: Double = offerPrice(terms.price, band)
+                ForEach(Array(terms.lines.enumerated()), id: \.offset) { pair in
+                    Text(pair.element).popupText(.body)
+                }
+                Text("Your offer").capsLabel()
+                LedgerSlider(value: $factor, in: band, step: 0.05, valueText: cur.tidyDisplay(price))
+                Text("Their shares are worth \(cur.tidyDisplay(terms.price)) now. A higher offer is more likely to be accepted. The offer stays open for a week unless you withdraw it.")
+                    .popupText(.caption)
+                Color.clear.frame(height: 0)
+                    .popupFooter {
+                        PopupFooter(cancel: "Cancel", action: "Send offer of \(cur.tidyDisplay(price))", onCancel: { dismiss() }, onAction: { send(price, terms.name) }, actionID: "jv-buyback-send")
+                    }
+            } else {
+                Text("That partner is no longer here.").popupText(.body)
+            }
+        }
+    }
+
+    private func offerPrice(_ fair: Double, _ band: ClosedRange<Double>) -> Double {
+        min(max((fair * factor).rounded(), (fair * band.lowerBound).rounded(.up)), (fair * band.upperBound).rounded(.down))
+    }
+
+    private func send(_ price: Double, _ name: String) {
+        let id: Int = companyID
+        let member: String = memberID
+        let problem: String? = store.act { (g: inout GameEngine) -> String? in g.jvOfferBuyBack(companyID: id, memberID: member, price: price) } ?? nil
+        if let problem { Haptics.warning(); store.tell("Not sent", problem, tone: "warn"); return }
+        Haptics.success()
+        dismiss()
+        store.tell("Offer sent", "\(name) has your offer. Nothing moves until they accept; they may also decline.", tone: "good")
+        Task { @MainActor in await JointVentureCoordinator.shared.sync(store) }
     }
 }
