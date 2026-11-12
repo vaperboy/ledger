@@ -170,6 +170,11 @@ actor SupabaseOnlineService: OnlineService {
         try await raw(path: "/rest/v1/rpc/" + name, method: "POST", body: try JSONSerialization.data(withJSONObject: params))
     }
 
+    // Reads rows the signed-in player may see from one table.
+    func tableData(_ table: String, query: [URLQueryItem]) async throws -> Data {
+        try await raw(path: "/rest/v1/" + table, method: "GET", query: query)
+    }
+
     private func liveSession() async throws -> SupabaseSession { try await tokens.validSession() }
 
     private func raw(path: String, method: String, query: [URLQueryItem] = [], body: Data? = nil, prefer: String? = nil) async throws -> Data {

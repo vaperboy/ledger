@@ -61,7 +61,8 @@ struct JointVenturePartnersCard: View {
     }
 
     private func stakeRow(_ s: JointVenture.Stake, offer: JointVenture.Buyback?, cur: Currency) -> some View {
-        let lock: String = s.locked ? "Cannot sell or leave until \(GameCalendar.dateString(week: s.lockUntil))" : (s.isYou ? "Votes with \(String(format: "%.1f", s.pct))%" : "Free to sell or leave")
+        let until: String = s.lockAt.map { (t: Double) -> String in JVClock.text(Date(timeIntervalSince1970: t)) } ?? GameCalendar.dateString(week: s.lockUntil)
+        let lock: String = s.locked ? "Cannot sell or leave until \(until)" : (s.isYou ? "Votes with \(String(format: "%.1f", s.pct))%" : "Free to sell or leave")
         let id: Int = company.id
         return VStack(alignment: .leading, spacing: 4) {
             ListRow(symbol: s.isYou ? "person.fill" : "person", tint: s.isYou ? Theme.accent : Theme.inkSoft,
@@ -71,8 +72,13 @@ struct JointVenturePartnersCard: View {
                     .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 Button {
                     Haptics.tap()
-                    let done: Bool = store.act { (g: inout GameEngine) -> Bool in g.jvWithdrawBuyBack(companyID: id, offerID: offer.id) } ?? false
-                    if done { store.tell("Offer withdrawn", "\(s.name) keeps their shares. Nothing has changed.") }
+                    Task { @MainActor in
+                        if let why = await JointVentureCoordinator.shared.withdraw(store, companyID: id, offer: offer) {
+                            store.tell("Not withdrawn", why, tone: "warn")
+                        } else {
+                            store.tell("Offer withdrawn", "\(s.name) keeps their shares. Nothing has changed.")
+                        }
+                    }
                 } label: { Text("Withdraw offer") }
                     .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
                     .accessibilityIdentifier("jv-buyback-withdraw")
@@ -134,7 +140,7 @@ struct JVInviteSheet: View {
         }
         .task {
             JointVentureCoordinator.shared.attach(online.service)
-            friends = await JointVentureCoordinator.shared.service.invitable()
+            friends = await JointVentureCoordinator.shared.invitable()
             loaded = true
         }
     }
@@ -207,13 +213,16 @@ struct JVInviteSheet: View {
         let p: Double = pct
         let cfo: Bool = role == "CFO"
         let mine: Set<String> = Set(["me"] + [online.profile?.id].compactMap { $0 })
+        let sample: Bool = !JointVentureCoordinator.shared.isReal(friend.id)
         let result = store.act { (g: inout GameEngine) -> JointVenture.InviteResult in
-            g.jvInvite(companyID: id, playerID: friend.id, name: friend.displayName, linkKey: friend.id, role: cfo ? "cfo" : "partner", mock: true, pct: p, price: price, myLinkKeys: mine)
+            g.jvInvite(companyID: id, playerID: friend.id, name: friend.displayName, linkKey: friend.id, role: cfo ? "cfo" : "partner", mock: sample, pct: p, price: price, myLinkKeys: mine)
         }
         switch result {
         case .sent(let inviteID)?:
             Haptics.success()
-            if let g = store.engine, let offer = JointVentureCoordinator.shared.offer(engine: g, companyID: id, inviteID: inviteID, friendName: friend.displayName, friendID: friend.id, pct: p, price: price) {
+            if !sample {
+                Task { @MainActor in await JointVentureCoordinator.shared.sync(store) }
+            } else if let g = store.engine, let offer = JointVentureCoordinator.shared.offer(engine: g, companyID: id, inviteID: inviteID, friendName: friend.displayName, friendID: friend.id, pct: p, price: price) {
                 Task { await JointVentureCoordinator.shared.service.send(offer) }
             }
             dismiss()
@@ -221,6 +230,7 @@ struct JVInviteSheet: View {
         case .needsVote(let meetingID)?:
             Haptics.success()
             _ = meetingID
+            Task { @MainActor in await JointVentureCoordinator.shared.sync(store) }
             dismiss()
             store.tell("Put to the partners", "You already have partners, so \(friend.displayName) is invited only if the vote passes. An emergency meeting is open; your partners have 24 hours to vote.")
         case .refused(let why)?:
