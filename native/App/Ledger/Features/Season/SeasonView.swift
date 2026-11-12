@@ -4,7 +4,7 @@ import Simulation
 
 struct SeasonView: View {
     private enum Tab: String, CaseIterable, Identifiable {
-        case rewards = "Rewards", missions = "Missions", collection = "Collection"
+        case rewards = "Rewards", collection = "Collection"
         var id: String { rawValue }
     }
 
@@ -104,7 +104,6 @@ struct SeasonView: View {
     @ViewBuilder private var content: some View {
         switch tab {
         case .rewards: rewardsList
-        case .missions: missionsList
         case .collection: collectionList
         }
     }
@@ -202,64 +201,6 @@ struct SeasonView: View {
         case .artifact: return "\(r.title) added to your cabinet."
         case .xp: return "\(r.title) added to your pass."
         default: return "\(r.title) added to your collection."
-        }
-    }
-
-    private var missionsList: some View {
-        let today: Int = model.today
-        return VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                LedgerGlyph(glyph: pass.loginDay == today ? Glyph.check : Glyph.lock, size: 14, tint: pass.loginDay == today ? Theme.gain : Theme.inkFaint)
-                Text("Open the game today").textStyle(.body)
-                Spacer(minLength: 8)
-                Text("+\(PassMissions.loginXP) XP").textStyle(.body, tint: Theme.gain, numeric: true)
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-            ForEach(PassMissions.Period.allCases, id: \.self) { period in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(period.label).capsLabel()
-                    ForEach(pass.missionRows(period, today: today)) { r in missionRow(r) }
-                }
-            }
-            earnSection
-        }
-    }
-
-    private func missionRow(_ r: SeasonPass.MissionRow) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                LedgerGlyph(glyph: r.done ? Glyph.check : Glyph.chevron, size: 12, tint: r.done ? Theme.gain : Theme.inkFaint)
-                Text(r.mission.title).textStyle(.body, tint: r.done ? Theme.inkSoft : Theme.ink)
-                Spacer(minLength: 8)
-                Text("+\(r.mission.xp) XP").textStyle(.caption, tint: Theme.gain, numeric: true)
-            }
-            ProgressLine(fraction: Double(r.progress) / Double(max(1, r.mission.target)), tint: accent, height: 4)
-            Text("\(r.progress) of \(r.mission.target)").textStyle(.caption, numeric: true)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .animation(.smooth(duration: 0.3), value: r.progress)
-    }
-
-    private var earnSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Other ways to earn XP").capsLabel()
-            VStack(spacing: 0) {
-                ForEach(SeasonPass.Source.allCases, id: \.self) { s in
-                    HStack {
-                        Text(s.title).textStyle(.body)
-                        Spacer(minLength: 8)
-                        Text("+\(s.xp) XP").textStyle(.body, tint: Theme.gain)
-                    }
-                    .padding(.vertical, 9)
-                    .overlay(alignment: .bottom) { Hairline() }
-                }
-            }
-            Text("These add up to at most \(SeasonPass.dailyXPCap) XP a day. The pass fills at the pace of steady play, not in a week.").textStyle(.caption)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

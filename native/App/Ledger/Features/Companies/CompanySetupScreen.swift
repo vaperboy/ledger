@@ -79,9 +79,14 @@ struct CompanySetupScreen: View {
         } else if !docID.isEmpty {
             rowBody(it, glyph: Glyph.reports, hint: "Under review", action: nil)
         } else if it.id == "prem" && needsPlace {
-            rowBody(it, glyph: Glyph.airStay, hint: "Rent in AirStay", action: nil)
+            rowBody(it, glyph: Glyph.airStay, hint: "Rent in AirStay") { store.openAirStay(companyID: company.id) }
         } else if it.id.hasPrefix("eq:") {
-            rowBody(it, glyph: Glyph.techPro, hint: "Buy in TechPro", action: nil)
+            let equipmentID: String = String(it.id.dropFirst(3))
+            rowBody(it, glyph: Glyph.techPro, hint: "Buy in TechPro") { store.openTechPro(companyID: company.id, equipmentID: equipmentID) }
+        } else if it.id == "stockcash" {
+            let gap: Double = max(0, it.cost - company.cash)
+            let need: Double = gap > 0 ? (gap / 100).rounded(.up) * 100 : 0
+            rowBody(it, glyph: Glyph.cost, hint: "Get a loan") { store.openBank(.personal, tab: .loans, applyLoan: need > 0 ? need : nil) }
         } else {
             rowBody(it, glyph: Glyph.cost, hint: "", action: nil)
         }

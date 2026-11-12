@@ -28,7 +28,6 @@ struct CompanyStaffRoster: View {
     @State private var query = ""
     @State private var expanded: Set<String> = []
     @State private var pending: PendingAction?
-    @Binding var profile: WorkerRef?
 
     private var moods: [Int: String] {
         let cid: Int = company.id
@@ -104,14 +103,13 @@ struct CompanyStaffRoster: View {
     private func name(_ m: StaffMember) -> String { engine.state.people[m.id]?.name ?? roleLabel(m.role) }
 
     private func row(_ m: StaffMember, _ cur: Currency, _ mood: String?) -> some View {
-        let issues: [String] = StaffIssue.list(m)
         let attention: Bool = StaffIssue.needsAttention(m)
-        let note: String = issues.isEmpty ? "" : issues.joined(separator: " \u{00B7} ")
         let wage: String = cur.tidyShort(m.monthlyWage)
         let id: Int = m.id
-        return Button { Haptics.tap(); profile = WorkerRef(id: id) } label: {
-            ThinPersonRow(name: name(m), title: roleLabel(m.role), note: note, noteTint: attention ? P.caution : P.inkFaint, wage: wage, roleKey: m.role,
-                          face: engine.state.people[m.id]?.faceKey, mood: mood)
+        let cid: Int = company.id
+        return Button { Haptics.tap(); store.workerPopup = WorkerPopupRef(id: id, companyID: cid) } label: {
+            SlimWorkerRow(name: name(m), role: roleLabel(m.role), wage: wage, face: engine.state.people[m.id]?.faceKey, roleKey: m.role,
+                          mood: mood, attention: attention, onNotice: m.noticeWeeks > 0)
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("team-worker-\(id)")

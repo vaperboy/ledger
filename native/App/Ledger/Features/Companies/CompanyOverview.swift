@@ -211,6 +211,10 @@ struct CompanyOverview: View {
         let ops: OperationsFigures? = engine.operationsFigures(companyID: co.id)
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             hero(co, h)
+            if co.status == .open || co.status == .closed {
+                CompanyMainChart(health: h, format: { (v: Double) -> String in store.money(v, in: co) })
+                FigureRow(items: keyFigures(co, h), columns: 3)
+            }
             let list: [CompanyIssue] = issues(co, h, ops)
             if list.isEmpty {
                 if co.status == .open { allClear(h) }
@@ -237,8 +241,24 @@ struct CompanyOverview: View {
 
     private func hero(_ co: Company, _ h: CompanyHealth) -> some View {
         CompanyHero(label: "Cash", value: store.money(co.cash, in: co), tint: co.cash < 0 ? P.loss : nil,
-                    context: verdict(co, h), trend: Array(h.cashSeries.suffix(12)), live: co.cash,
+                    context: verdict(co, h), live: co.cash,
                     liveFormat: { (v: Double) -> String in store.money(v, in: co) })
+    }
+
+    /// Six plain figures: what came in, what is left, and how long the cash lasts.
+    private func keyFigures(_ co: Company, _ h: CompanyHealth) -> [KeyFigures.Item] {
+        let lastMonth: MonthRecord? = co.monthlyHistory.last
+        let profit: Double = lastMonth?.profit ?? 0
+        let margin: String = h.marginTTM.map { (m: Double) -> String in String(format: "%.0f%%", m * 100) } ?? "-"
+        let lasts: String = h.weeksOfCash > 0 ? String(format: "%.0f weeks", h.weeksOfCash) : "-"
+        return [
+            KeyFigures.Item(label: "Sales last week", value: store.money(co.lastWeekRevenue, in: co)),
+            KeyFigures.Item(label: "Profit last month", value: lastMonth == nil ? "-" : store.money(profit, in: co), tint: profit < 0 ? P.loss : P.ink),
+            KeyFigures.Item(label: "Margin, 12 months", value: margin),
+            KeyFigures.Item(label: "Cash lasts", value: lasts, sub: "at current costs"),
+            KeyFigures.Item(label: "Customers served", value: String(Int(saturating: h.servedLastWeek.rounded())), sub: "last week"),
+            KeyFigures.Item(label: "Team", value: String(co.staff.count)),
+        ]
     }
 
     private func verdict(_ co: Company, _ h: CompanyHealth) -> String {

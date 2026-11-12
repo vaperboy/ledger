@@ -44,7 +44,7 @@ struct CompanySales: View {
             SupplierPopup(companyID: company.id, subject: s, asking: true, onClose: { supplierFor = nil }).environmentObject(store)
         }
         .centerSheet(item: $priceFor, category: .detail, tone: .investment) { (p: SalesItemPick) in
-            ItemPriceSheet(companyID: company.id, itemID: p.id, onClose: { priceFor = nil })
+            ItemPriceSheet(companyID: company.id, itemID: p.id, onClose: { priceFor = nil }, onRestock: { restock(p.id) })
         }
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "advisor") }
         .navigationDestination(isPresented: $showAddons) { DealerAddonsPage(companyID: company.id) }
@@ -72,6 +72,14 @@ struct CompanySales: View {
             store.tutorialAdvance(from: .pickSupplier)
             showPrice(id)
         }
+    }
+
+    /// Closes the product page, asks the supplier question, then brings the product page back.
+    private func restock(_ id: String) {
+        guard let ask = (store.engine ?? engine).supplyAsk(companyID: company.id, itemID: id) else { return }
+        priceFor = nil
+        pendingPrice = id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { supplierFor = SupplierSubject(ask, itemID: id) }
     }
 
     private func showPrice(_ id: String) {
