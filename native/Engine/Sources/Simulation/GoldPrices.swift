@@ -6,6 +6,11 @@ public enum GoldPrices {
 
     public static var goldPerNok: Int { table["goldPerNok"].int }
 
+    /// Game money (reference NOK) that one gold is worth inside the game.
+    public static var gameNokPerGold: Double { table["gameNokPerGold"].double }
+
+    public static func artifactValue(_ rarity: BoxRarity) -> Double { table["gold"]["artifactValue"][rarity.rawValue].double }
+
     public static func box(_ id: String) -> Int { table["gold"]["boxes"][id].int }
 
     public static func cosmetic(rarity: BoxRarity) -> Int? {
