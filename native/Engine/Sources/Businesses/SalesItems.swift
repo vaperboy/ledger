@@ -153,7 +153,7 @@ public enum SalesItems {
         "restaurant": [("starter", 0.6, 2), ("main course", 1.5, 4), ("dessert", 0.6, 2), ("wine", 1.2, 1.5)],
         "foodtruck": [("signature wrap", 1.2, 4), ("fries", 0.6, 3), ("drink", 0.5, 3)],
         "barber": [("haircut", 1.0, 5), ("beard trim", 0.6, 2), ("full style", 1.8, 1)],
-        "gym": [("monthly pass", 1.0, 4), ("class pack", 0.8, 3), ("personal training", 2.5, 1)],
+        "gym": [("membership", 1.0, 4), ("class pack", 0.8, 3), ("personal training", 2.5, 1)],
         "cons": [("advisory hour", 1.0, 5), ("workshop", 2.5, 1), ("audit", 3.0, 0.6)],
         "webdev": [("website build", 3.0, 1), ("maintenance plan", 0.5, 4), ("custom feature", 1.5, 2)],
         "grocery": [("fresh produce", 0.8, 4), ("pantry basket", 1.2, 3), ("ready meals", 1.0, 2)],

@@ -52,8 +52,4 @@ final class StarterChoiceTests: XCTestCase {
         var (e, id) = try pending("cafe")
         XCTAssertEqual(e.chooseFirstItem(companyID: id, itemID: "w3-nothing"), .refused("That choice is not on offer."))
     }
-
-    func testSandboxIsOpenToFreePlayers() throws {
-        XCTAssertNoThrow(try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, difficulty: .sandbox))
-    }
 }

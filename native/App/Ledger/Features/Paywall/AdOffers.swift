@@ -25,25 +25,3 @@ struct DoubleGrantLink: View {
         }
     }
 }
-
-struct SecondChanceOffer: View {
-    @EnvironmentObject private var store: GameStore
-    @Environment(AdCoordinator.self) private var ads
-
-    var body: some View {
-        if let stake = ads.secondChanceOffer(store) {
-            VStack(spacing: Theme.Space.xs) {
-                Button("Watch an ad for a second chance") {
-                    Haptics.tap()
-                    Task { await ads.watchForSecondChance(store) }
-                }
-                .buttonStyle(TertiaryButtonStyle())
-                .disabled(ads.isShowing)
-                .accessibilityIdentifier("game-over-second-chance")
-                Text("A fresh stake of \(store.money(stake)) and a clear overdraft count. Once per game.")
-                    .textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-}

@@ -267,7 +267,7 @@ public enum Rivals {
         let w = World(state: s, data: data)
         let cityName = data.countries.city(co0.cityID, preferring: co0.countryCode)?.city.name ?? "town"
         let newYear = week / 52 != (week - 1) / 52
-        let sharp = Difficulty.of(s).rivalSharpness
+        let sharp = FairRules.rivalSharpness
         let infl = s.economy.inflation
         let util = co0.value("lastW")["util"].isNull ? 0.7 : co0.value("lastW")["util"].double
         let myP = Pricing.priceIndex(co0, w) / max(0.01, co0.num("ig", 1))
@@ -364,7 +364,7 @@ public enum Rivals {
     static func rivalCalls(_ s: inout GameState, cos idx: [Int], market m: JSONValue, riv: [JSONValue], bd: Trade, data: GameData) {
         guard !riv.isEmpty else { return }
         let w = World(state: s, data: data)
-        let aggr = (m["aggr"].isNull ? 1 : m["aggr"].double) * Difficulty.of(s).rivalSharpness
+        let aggr = (m["aggr"].isNull ? 1 : m["aggr"].double) * FairRules.rivalSharpness
         var h = HashedRandom("\(s.seed):rcall:\(s.week):\(idx.first ?? 0)")
         for i in idx where s.companies[i].status == .open {
             let co = s.companies[i]

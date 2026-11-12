@@ -60,7 +60,7 @@ public enum EventEngine {
             if co.staff.isEmpty && mentionsStaff(e) { continue }
             if co.staff.isEmpty && co.managerID == nil && !soloAllowed(id, co) { continue }
             var p = e.weight * risk * 0.6 * (e.condition?.evaluate(c.variables) ?? 1)
-            if e.tone == "bad" { p *= Difficulty.of(s).eventRamp(data.balance, week: s.week) }
+            if e.tone == "bad" { p *= FairRules.eventRamp(data.balance, week: s.week) }
             if !(p > 0) { p = 0 }
             if p <= 0 || !s.random.chance(p) { continue }
             if Sourcing.shields(s, companyID: co.id, eventID: id) {
@@ -91,7 +91,7 @@ public enum EventEngine {
     }
 
     static func takeBadSlot(_ s: inout GameState, companyID: Int, eventID: String) -> Bool {
-        guard s.week <= Difficulty.of(s).badEventCapWeeks else { return true }
+        guard s.week <= FairRules.badEventCapWeeks else { return true }
         var st = s.rest["evBad"] ?? .object([:])
         if st["week"].int != s.week { st["week"] = .number(Double(s.week)); st["n"] = .number(0) }
         if st["n"].int >= 1 {

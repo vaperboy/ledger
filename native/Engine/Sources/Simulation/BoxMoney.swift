@@ -53,10 +53,8 @@ public enum AuctionCash {
 public extension GameEngine {
     var auctionCash: Int { max(0, Int((state.cash / homeCurrency.rate).rounded(.down))) }
 
-    var auctionPriceLevel: Double {
-        let cur: Currency = homeCurrency
-        return cur.scaledPrice(100_000) / 100_000 / cur.rate
-    }
+    /// Local money per unit of game money, so gold-based values follow the game's exchange rate only.
+    var auctionPriceLevel: Double { 1 / homeCurrency.rate }
 
     @discardableResult
     mutating func settleAuctionCash(_ local: Int, claimID: String, label: String) -> Double? {

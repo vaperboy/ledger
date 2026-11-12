@@ -6,7 +6,6 @@ import Simulation
 
 struct GameOverView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(AdCoordinator.self) private var ads
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var engine: GameEngine
     @State private var ruleGrown: CGFloat = 0
@@ -35,7 +34,6 @@ struct GameOverView: View {
                         .accessibilityHidden(true)
                     Text("\(s.player.name)'s net worth at the end").textStyle(.body, tint: Theme.inkSoft)
                     Text(reason).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-                    Text("\(engine.difficulty.name) mode").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 .padding(.top, Theme.Space.xxl)
                 group("The run") {
@@ -56,14 +54,9 @@ struct GameOverView: View {
         .task { await playEntrance() }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: Theme.Space.s) {
-                SecondChanceOffer()
-                if store.canRetrySameSetup {
-                    Button("Retry with the same setup") { Haptics.tap(); store.retryWithSameSetup(); ads.resetForNewSave() }
-                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                        .accessibilityIdentifier("game-over-retry")
-                }
-                Button("Back to the start screen") { Haptics.tap(); store.quitToMenu() }
-                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                Text("This career starts again from zero.").textStyle(.caption, tint: Theme.inkFaint)
+                Button("Start again") { Haptics.tap(); store.quitToMenu() }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .accessibilityIdentifier("game-over-start")
             }
             .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.s)

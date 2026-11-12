@@ -13,7 +13,9 @@ public struct FirstYear: Sendable, Equatable {
     public var bankruptcyWeek = 27
     public var frozenAfterWeeks = 4
     public var noOverdraftWeeks = 12
-    public var startRunwayWeeks = 8
+    public var startRunwayWeeks = 12
+    /// Own savings every new player brings, in the reference economy; a government grant covers the rest of the runway.
+    public var startSavings = 100_000.0
     public var untendedDemand = 1.0
     public var untendedServe = 1.0
 
@@ -31,6 +33,7 @@ public struct FirstYear: Sendable, Equatable {
         if !j["frozenAfterWeeks"].isNull { frozenAfterWeeks = j["frozenAfterWeeks"].int }
         if !j["noOverdraftWeeks"].isNull { noOverdraftWeeks = j["noOverdraftWeeks"].int }
         if !j["startRunwayWeeks"].isNull { startRunwayWeeks = j["startRunwayWeeks"].int }
+        if !j["startSavings"].isNull { startSavings = j["startSavings"].double }
         if !j["untendedDemand"].isNull { untendedDemand = j["untendedDemand"].double }
         if !j["untendedServe"].isNull { untendedServe = j["untendedServe"].double }
     }

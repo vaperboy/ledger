@@ -14,11 +14,10 @@ public enum CreditorPressure {
     }
 
     static func weekly(_ s: inout GameState, data: GameData) {
-        let d = Difficulty.of(s)
         let wealth = Threat.wealth(s)
         guard wealth >= startWealth, !paysOut(s) else { return }
-        if s.credit > floor { s.credit = max(floor, s.credit - 0.08 * wealth * d.threatScale) }
-        guard d != .sandbox, s.week % 4 == 0, s.credit < askBelow, s.week - (s.rest["credAt"]?.int ?? -askEveryWeeks) >= askEveryWeeks else { return }
+        if s.credit > floor { s.credit = max(floor, s.credit - 0.08 * wealth * FairRules.threatScale) }
+        guard s.week % 4 == 0, s.credit < askBelow, s.week - (s.rest["credAt"]?.int ?? -askEveryWeeks) >= askEveryWeeks else { return }
         let rich = s.companies.indices.filter { s.companies[$0].status == .open && s.companies[$0].cash > 0 }
             .max { s.companies[$0].cash < s.companies[$1].cash }
         guard let i = rich else { return }

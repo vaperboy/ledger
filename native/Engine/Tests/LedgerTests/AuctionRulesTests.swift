@@ -232,9 +232,9 @@ final class AuctionRulesTests: XCTestCase {
     }
 
     func testASuggestedStartScalesWithTheRarityAndThePriceLevel() {
-        XCTAssertEqual(AuctionMarket.suggestedStart(.common, priceLevel: 1), 300)
+        XCTAssertEqual(AuctionMarket.suggestedStart(.common, priceLevel: 1), 2_000)
         XCTAssertGreaterThan(AuctionMarket.suggestedStart(.legendary, priceLevel: 1), AuctionMarket.suggestedStart(.epic, priceLevel: 1))
-        XCTAssertEqual(AuctionMarket.suggestedStart(.rare, priceLevel: 0.1), 120)
+        XCTAssertEqual(AuctionMarket.suggestedStart(.rare, priceLevel: 0.1), 600)
         XCTAssertGreaterThanOrEqual(AuctionMarket.suggestedStart(.common, priceLevel: 0.0001), 1)
     }
 
@@ -247,7 +247,7 @@ final class AuctionRulesTests: XCTestCase {
             XCTAssertLessThanOrEqual(quick * 100, market * 90)
             XCTAssertEqual(quick, AuctionRules.quickSalePrice(rarity, priceLevel: 1))
         }
-        XCTAssertEqual(AuctionRules.quickSalePrice(.common, priceLevel: 1), 264)
+        XCTAssertEqual(AuctionRules.quickSalePrice(.common, priceLevel: 1), 1_760)
         XCTAssertGreaterThanOrEqual(AuctionRules.quickSalePrice(.common, priceLevel: 0.0001), 1)
     }
 

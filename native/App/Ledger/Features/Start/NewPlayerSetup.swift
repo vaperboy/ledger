@@ -7,19 +7,17 @@ import Simulation
 
 struct NewPlayerSetup: View {
     enum Step { case country, trade, detail, name, options }
-    enum Field { case company, player }
+    enum Field { case company }
 
     var onClose: () -> Void
-    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ channel: SalesChannel, _ difficulty: Difficulty) -> Void
+    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ channel: SalesChannel) -> Void
 
     @State private var step: Step = .country
     @State private var avatarDone = false
     @State private var countryCode = ""
     @State private var tradeID = ""
     @State private var companyName = ""
-    @State private var playerName = ""
     @State private var suggested = ""
-    @State private var difficulty: Difficulty = .classic
     @State private var channel: SalesChannel = .consumers
     @State private var allTrades: [StarterTrade] = []
     @State private var loading = false
@@ -30,8 +28,6 @@ struct NewPlayerSetup: View {
     @State private var countryPage = 0
     @State private var tradePage = 0
     @FocusState private var field: Field?
-    @Environment(OnlineSession.self) private var online
-    @StateObject private var checker = UsernameChecker()
     private static let countryRows = 6
     private static let tradeRows = 5
     private static let sizeOrder: [Country] = GameEngine.countriesBySize()
@@ -242,58 +238,30 @@ struct NewPlayerSetup: View {
             TextField("Company name", text: $companyName)
                 .textInputAutocapitalization(.words)
                 .focused($field, equals: .company)
-                .submitLabel(.next)
-                .onSubmit { field = .player }
+                .submitLabel(.done)
+                .onSubmit { field = nil }
                 .textStyle(.figure)
                 .padding(.vertical, Theme.Space.s)
                 .overlay(alignment: .bottom) { Hairline() }
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                TextField("Username (optional)", text: $playerName)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .focused($field, equals: .player)
-                    .submitLabel(.done)
-                    .onSubmit { field = nil }
-                    .textStyle(.figure)
-                    .padding(.vertical, Theme.Space.s)
-                    .overlay(alignment: .bottom) { Hairline() }
-                    .onChange(of: playerName) { _, new in checker.check(new, current: ProfileLocal.shared.name, online: online) }
-                    .accessibilityIdentifier("setup-username")
-                UsernameStatusLine(checker: checker)
-            }
             Button("Next") { Haptics.tap(); field = nil; step = .options }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                .disabled(!playerName.isEmpty && !checker.canUse && checker.verdict != .unchanged)
                 .accessibilityIdentifier("setup-next")
         }
-        .onAppear { field = .company; if playerName.isEmpty { playerName = ProfileLocal.shared.name } }
+        .onAppear { field = .company }
     }
 
     private var optionsStep: some View {
         VStack(alignment: .leading, spacing: 16) {
             SalesChannelPicker(tradeID: tradeID, channel: $channel)
-            difficultyRow
             Button("Start") { Haptics.tap(); start() }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                 .accessibilityIdentifier("setup-start")
         }
     }
 
-    private var difficultyRow: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Text("Difficulty").textStyle(.label, tint: Theme.inkFaint)
-            Picker("Difficulty", selection: $difficulty) {
-                ForEach(Difficulty.allCases) { (d: Difficulty) in Text(d.name).tag(d) }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("setup-difficulty")
-            Text(difficulty.blurb).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     private func start() {
         let n: String = companyName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let player: String = ProfileRules.clean(playerName)
-        if !player.isEmpty, ProfileLocal.shared.name.isEmpty, ProfileRules.problem(with: player) == nil { ProfileLocal.shared.setName(player) }
-        begin(countryCode, tradeID, n.isEmpty ? suggested : n, player, channel, difficulty)
+        let player: String = ProfileLocal.shared.name
+        begin(countryCode, tradeID, n.isEmpty ? suggested : n, player, channel)
     }
 }
