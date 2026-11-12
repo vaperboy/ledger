@@ -330,17 +330,6 @@ final class ContentValidationTests: XCTestCase {
             p.append("\(file): box \"\(kind.rawValue)\" breaks the fairness rules (weights, cash share, gold against price)")
         }
 
-        let gfile: String = "Engine/Sources/Simulation/Resources/Content/progression/level_gates.json"
-        let g: JSONValue = load(gfile, &p)
-        var seen: Set<String> = []
-        for e in g["gates"].array {
-            let label: String = "gate \"\(e["feature"].string)\""
-            need(e, ["feature", "level", "title", "gives"], gfile, label, &p)
-            if LevelFeature(rawValue: e["feature"].string) == nil { p.append("\(gfile): \(label) is not a feature the app has; use one of \(LevelFeature.allCases.map { $0.rawValue }.joined(separator: ", "))") }
-            if !seen.insert(e["feature"].string).inserted { p.append("\(gfile): \(label) is listed twice") }
-            if e["level"].int < 1 { p.append("\(gfile): \(label) needs a level of 1 or more") }
-        }
-        for f in LevelFeature.allCases where !seen.contains(f.rawValue) { p.append("\(gfile): the feature \"\(f.rawValue)\" has no gate") }
         finish(p)
     }
 

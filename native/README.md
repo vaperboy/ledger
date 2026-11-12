@@ -54,7 +54,7 @@ Pictures: drop a PNG named `<kind>.<id>.png` into `App/Ledger/Resources/Content/
 | Season pass reward | `.../Content/season/season_1.json` | id, tier (1 to 30), premium (true or false), kind, title, detail, colors; card: card; box or gold: amount | `<kind>.<id>.png` |
 | Box odds, name | `.../Content/boxes/boxes.json` | title, rows (rarity, prize, weight, amount); weights add to 10000 | `box.<id>.png` |
 | Any price (box, cosmetic, save slot, gold pack, service, store tier) | `.../Content/pricing/prices.json` | gold prices in gold (1 gold is about 1 NOK); App Store tiers in US cents; per-currency table | none |
-| Feature unlock level | `.../Content/progression/level_gates.json` | feature, level, title, gives | none |
+| Feature unlock level | `Engine/Sources/Businesses/Unlocks.swift`, `FeatureUnlocks.table` | feature, level (one feature per level), title, gives | none |
 | Company logo | `Engine/Sources/Businesses/Resources/logo_catalogue.json` | id, name, how (free, level:N, box:rarity), asset | the `asset` name plus `.png` |
 | Country | `Engine/Sources/Countries/Resources/countries.json` | copy the `NO` block and change every value; then add the code to `city_market.json` and `country_traits.json` | none |
 | Country news | `Engine/Sources/Events/Resources/country_events.json` | cc, head, text, fx, tone | none |

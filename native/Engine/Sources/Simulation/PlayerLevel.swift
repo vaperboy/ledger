@@ -1,5 +1,6 @@
 import Foundation
 import GameCore
+import Businesses
 
 public struct ProfileProgress: Codable, Equatable, Sendable {
     public var xp: Int
@@ -20,7 +21,7 @@ public enum PlayerLevel {
     public static let ladderXP = 60
     public static let dailyXP = 25
     public static let weekXP = 15
-    public static let maxLevel = 100
+    public static let maxLevel = LevelCurve.maxLevel
 
     public struct Info: Equatable, Sendable {
         public var level: Int
@@ -30,13 +31,9 @@ public enum PlayerLevel {
         public var progress: Double
     }
 
-    public static func threshold(_ level: Int) -> Int { 25 * level * max(0, level - 1) }
+    public static func threshold(_ level: Int) -> Int { LevelCurve.threshold(level) }
 
-    public static func level(forXP xp: Int) -> Int {
-        var l = 1
-        while l < maxLevel && threshold(l + 1) <= xp { l += 1 }
-        return l
-    }
+    public static func level(forXP xp: Int) -> Int { LevelCurve.level(forXP: xp) }
 
     public static func info(_ s: GameState) -> Info {
         let xp: Int = max(0, s.rest["lvl"]?["xp"].int ?? 0)
@@ -77,7 +74,6 @@ public enum PlayerLevel {
         let seen: [String] = merged.seen ?? LevelGates.reached(level: info(s).level)
         v["seen"] = .array(seen.map { JSONValue.string($0) })
         s.rest["lvl"] = v
-        UnlockNotices.seedGates(&s)
         return ProfileProgress(xp: merged.xp, seen: seen)
     }
 

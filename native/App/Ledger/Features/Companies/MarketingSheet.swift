@@ -10,7 +10,9 @@ struct MarketingSheet: View {
     @State private var pending: PendingAction?
 
     var body: some View {
-        if let e = store.engine, let co = e.state.company(companyID) {
+        if !store.levelOpen(.marketing) {
+            LevelLockCard(feature: .marketing)
+        } else if let e = store.engine, let co = e.state.company(companyID) {
             content(e, co).confirmAction($pending)
         } else {
             EmptyState(glyph: Glyph.opsMega, title: "This company no longer exists")

@@ -410,7 +410,6 @@ public struct GameEngine {
             Aftermath.weekly(&state, data: data, context: context)
             EventEngine.expire(&state, data: data, context: context)
             Unlocks.weekly(&state, context: context)
-            Gates.recordOpen(&state, data: data)
             Engagement.weekly(&state, data: data)
         case 4:
             StrategicDecisions.weekly(&state, data: data, context: context)
