@@ -42,6 +42,8 @@ public enum EquipmentMarket {
         public var rating: Double
         public var reviews: Int
         public var reliability: Double
+        /// The picture this model name belongs to (see VehicleCatalog); a key starting with vehicle. has no picture yet.
+        public var art: String = ""
         public var name: String { brand + " " + model }
     }
 
@@ -205,11 +207,13 @@ public enum EquipmentMarket {
         for i in 0..<2 {
             let brand = makerName(vehicleMakerCategory(m), cc, &r, &used, countries)
             let rating = jsRound(clamp(3.6 + (r.next() - 0.35) * 1.5 + Double(i) * 0.1, 2.7, 4.9) * 10) / 10
-            let model = words[Int(r.next() * 5)] + " " + String(Int(r.next() * 8) + 2) + "00"
-            let f = jsRound((0.92 + r.next() * 0.2 + (rating - 3.6) * 0.08) * 100) / 100
+            let randomModel = words[Int(r.next() * 5)] + " " + String(Int(r.next() * 8) + 2) + "00"
+            let fixed = VehicleCatalog.variant(modelID: m, index: i)
+            let model = fixed?.model ?? randomModel
+            let f =jsRound((0.92 + r.next() * 0.2 + (rating - 3.6) * 0.08) * 100) / 100
             let reviews = Int(saturating: jsRound(40 + r.next() * r.next() * 1500))
             list.append(VehicleOffer(modelID: m, index: i, brand: brand, model: model, modelName: modelName, priceFactor: f, rating: rating, reviews: reviews,
-                                     reliability: jsRound((1.4 - 0.3 * (rating - 2.6)) * 100) / 100))
+                                     reliability: jsRound((1.4 - 0.3 * (rating - 2.6)) * 100) / 100, art: fixed?.art ?? ""))
         }
         return list
     }

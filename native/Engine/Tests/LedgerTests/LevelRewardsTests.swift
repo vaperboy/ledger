@@ -4,16 +4,6 @@ import Businesses
 @testable import Simulation
 
 final class LevelRewardsTests: XCTestCase {
-    private static let native: URL = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-
-    private func avatars() throws -> [JSONValue] {
-        let url: URL = Self.native.appendingPathComponent("App/Ledger/Resources/Content/avatars/avatars.json")
-        return try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: url))["avatars"].array
-    }
-
-    private func rank(_ tier: String) -> Int { ["common": 0, "rare": 1, "epic": 2, "legendary": 3][tier] ?? 0 }
-
     func testTheLevelStopsAtOneHundred() throws {
         XCTAssertEqual(PlayerLevel.maxLevel, 100)
         XCTAssertEqual(PlayerLevel.level(forXP: PlayerLevel.threshold(100)), 100)
@@ -51,29 +41,36 @@ final class LevelRewardsTests: XCTestCase {
         XCTAssertGreaterThan(LevelRewards.reward(at: 100)?.gold ?? 0, LevelRewards.reward(at: 99)?.gold ?? 0)
     }
 
-    func testLevelIconsMatchTheirLevelAndGrowInQuality() throws {
-        let list: [JSONValue] = try avatars()
+    func testLevelOutfitsMatchTheirLevelAndGrowInQuality() throws {
         for r in LevelRewards.all {
-            guard let id = r.icon else { continue }
-            guard let a = list.first(where: { $0["id"].string == id }) else { return XCTFail("\(id) is missing from avatars.json") }
-            XCTAssertEqual(a["unlock"].string, "level", id)
-            XCTAssertEqual(a["value"].string, String(r.level), id)
-            if r.level > 7 && r.level <= 50 { XCTAssertLessThanOrEqual(rank(a["tier"].string), 1, "\(id) should be basic or rare") }
-            if r.level > 60 { XCTAssertGreaterThanOrEqual(rank(a["tier"].string), 2, "\(id) should not be basic") }
+            guard let id = r.outfit else { continue }
+            let c: GoldCosmetic = try XCTUnwrap(GoldCosmetics.cosmetic(id), "\(id) is missing from gold_cosmetics.json")
+            XCTAssertEqual(c.item.kind, .outfit, id)
+            XCTAssertEqual(c.source, .level, id)
+            XCTAssertEqual(c.value, String(r.level), id)
+            XCTAssertFalse(c.art.isEmpty, id)
+            if r.level > 7 && r.level <= 50 { XCTAssertLessThanOrEqual(c.rarity, BoxRarity.rare, "\(id) should be basic or rare") }
+            if r.level > 60 { XCTAssertGreaterThanOrEqual(c.rarity, BoxRarity.epic, "\(id) should not be basic") }
         }
-        XCTAssertTrue(LevelRewards.all.filter { $0.level <= 15 && $0.icon != nil }.count >= 4, "a few cheap icons come early")
-        let top: JSONValue? = list.first { $0["id"].string == LevelRewards.reward(at: 100)?.icon }
-        XCTAssertEqual(top?["tier"].string, "legendary")
+        XCTAssertTrue(LevelRewards.all.filter { $0.level <= 15 && $0.outfit != nil }.count >= 4, "a few cheap outfits come early")
+        let top: GoldCosmetic? = LevelRewards.reward(at: 100)?.outfit.flatMap { GoldCosmetics.cosmetic($0) }
+        XCTAssertEqual(top?.rarity, .legendary)
+        XCTAssertEqual(LevelRewards.outfits(upTo: 5).count, LevelRewards.all.filter { $0.level <= 5 && $0.outfit != nil }.count)
     }
 
-    func testEveryLevelUnlockedIconIsBoundAndNotTradable() throws {
-        for a in try avatars() where a["unlock"].string == "level" {
-            XCTAssertTrue(a["bound"].bool, "\(a["id"].string) must be bound")
-            XCTAssertTrue(LevelRewards.isLevelIcon(a["id"].string), "\(a["id"].string) must be handed out by a level reward")
+    func testEveryLevelOutfitIsBoundAndNotTradable() {
+        for c in GoldCosmetics.everything where c.source == .level {
+            XCTAssertTrue(LevelRewards.isLevelOutfit(c.id), "\(c.id) must be handed out by a level reward")
         }
-        for id in LevelRewards.iconIDs {
+        XCTAssertFalse(LevelRewards.outfitIDs.isEmpty)
+        for id in LevelRewards.outfitIDs {
             XCTAssertTrue(TradeRules.isAccountBound(id), id)
             XCTAssertFalse(TradeRules.isSellable(ArtifactItem(defID: id, serial: 1)), id)
         }
+    }
+
+    func testNoLevelHandsOutAProfileIcon() throws {
+        let raw: JSONValue = ContentFile.load("progression", "level_rewards")
+        for e in raw["rewards"].array { XCTAssertTrue(e["icon"].isNull, "level \(e["level"].int) still names an icon") }
     }
 }

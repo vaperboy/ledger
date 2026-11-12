@@ -1,4 +1,5 @@
 import Foundation
+import Businesses
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -77,15 +78,11 @@ enum ArtLibrary {
     }
     #endif
 
+    /// Pictures of watches, art, homes and estates. Cars, yachts and jets take theirs from the art field in luxury.json.
     static let luxuryCells: [String: (sheet: Sheet, cell: String)] = [
-        "c15": (.cars, "b2-2"), "c1": (.cars, "b2-1"), "c11": (.cars, "b1-3"), "c10": (.cars, "b1-2"), "c7": (.cars, "b1-1"),
-        "c8": (.cars, "b6-3"), "c9": (.cars, "b6-2"), "c2": (.cars, "b5-1"), "c4": (.cars, "b3-1"), "c3": (.cars, "b3-2"),
-        "c14": (.cars, "b7-3"), "c13": (.cars, "b3-3"), "c12": (.cars, "b4-1"), "c5": (.cars, "b7-1"), "c6": (.cars, "b5-2"),
         "w2": (.luxury, "watches-1"), "w1": (.luxury, "watches-2"), "w5": (.luxury, "watches-3"), "w3": (.luxury, "jewellery-1"),
         "w4": (.luxury, "watches-4"), "w6": (.luxury, "watches-5"), "w7": (.luxury, "watches-6"), "w8": (.luxury, "watches-3"),
         "a1": (.luxury, "art-1"), "a2": (.luxury, "art-4"), "a3": (.luxury, "art-5"), "a4": (.luxury, "art-2"), "a5": (.luxury, "art-1"),
-        "y1": (.luxury, "yachtjet-3"), "y2": (.luxury, "yachtjet-2"), "y3": (.luxury, "yachtjet-1"),
-        "j1": (.luxury, "homes-1"), "j2": (.luxury, "yachtjet-6"), "j4": (.luxury, "yachtjet-5"), "j3": (.luxury, "yachtjet-4"), "j5": (.luxury, "yachtjet-4"),
         "h3": (.luxury, "homes-4"), "h4": (.luxury, "homes-2"), "h1": (.luxury, "homes-2"), "h2": (.luxury, "homes-2"),
         "e4": (.luxury, "homes-4"), "e3": (.luxury, "homes-5"), "e1": (.luxury, "homes-5"), "e5": (.luxury, "homes-5"), "e2": (.luxury, "homes-6"),
     ]
@@ -93,10 +90,18 @@ enum ArtLibrary {
     #if canImport(UIKit)
     static func luxuryImage(itemID: String) -> UIImage? {
         if let own = droppedImage("luxury." + itemID) { return own }
+        if let it = Luxury.item(itemID), Luxury.pictureCategories.contains(it.category) {
+            let parts: [String] = it.art.split(separator: "/").map { String($0) }
+            guard parts.count == 2, let sheet = Sheet(rawValue: parts[0]) else { return nil }
+            return image(sheet, parts[1])
+        }
         guard let m = luxuryCells[itemID] else { return nil }
         return image(m.sheet, m.cell)
     }
     #endif
+
+    /// The items-sheet cell for a vehicle picture key; empty when that model has no picture yet.
+    static func vehicleCell(_ art: String) -> String { art.hasPrefix("vehicle.") ? "" : art }
 
     private static let vehicleFamilies: [String: [String]] = [
         "bus": ["bus", "bus_var", "bus_v2"], "minibus": ["minibus", "minibus_var", "minibus_v2"],

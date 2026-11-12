@@ -42,6 +42,8 @@ final class StoreSession {
 
     func load() async {
         state = await store.state()
+        let refund: Int = SeasonModel.shared.refundRetired()
+        if refund > 0 { state = await store.grantFromSeason(boxes: 0, gold: refund) }
         loaded = true
     }
 

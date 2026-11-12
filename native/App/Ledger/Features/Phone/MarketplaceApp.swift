@@ -311,7 +311,7 @@ struct MarketplaceTile: View {
     var today: Int
 
     var body: some View {
-        let key: String = ArtLibrary.itemKey(group: "", familyKey: listing.family, seed: listing.id) ?? ""
+        let key: String = listing.art.isEmpty ? (ArtLibrary.itemKey(group: "", familyKey: listing.family, seed: listing.id) ?? "") : ArtLibrary.vehicleCell(listing.art)
         let ago: Int = max(0, today - listing.postedDay)
         let agoText: String = ago == 0 ? "today" : (ago == 1 ? "yesterday" : "\(ago) days ago")
         return MarketCard(photoKey: key, badge: "Used", title: listing.title, detail: "\(listing.city) \u{00B7} \(agoText)", price: price,

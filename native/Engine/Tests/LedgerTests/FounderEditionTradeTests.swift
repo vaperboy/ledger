@@ -5,18 +5,11 @@ import GameCore
 final class FounderEditionTradeTests: XCTestCase {
     private let t0: Double = 1_000_000
     private let me = "me"
-    private let firstIcon = "badge.s1.first"
+    private let firstIcon = "outfit.s1.pennant"
 
     private var seasonOne: SeasonDef { SeasonCatalog.def(1)! }
 
-    private func avatar(_ id: String) -> JSONValue {
-        let native: URL = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let url: URL = native.appendingPathComponent("App/Ledger/Resources/Content/avatars/avatars.json")
-        guard let raw = try? Data(contentsOf: url), let json = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return .null }
-        return json["avatars"].array.first { (a: JSONValue) -> Bool in a["id"].string == id } ?? .null
-    }
-
-    func testFirstStageIconIsBoundToTheAccount() throws {
+    func testFirstStageOutfitIsBoundToTheAccount() throws {
         let r: SeasonReward = try XCTUnwrap(SeasonRewards.item(firstIcon))
         XCTAssertEqual(r.tier, 1)
         XCTAssertFalse(r.premium)
@@ -39,12 +32,11 @@ final class FounderEditionTradeTests: XCTestCase {
         XCTAssertTrue(cabinet.contains(item.id), "a refused quick sale leaves the piece in the cabinet")
     }
 
-    func testFirstStageIconNeverNamesTheFirstPass() {
+    func testFirstStageOutfitNeverNamesTheFirstPass() {
         let r: SeasonReward? = SeasonRewards.item(firstIcon)
-        let icon: JSONValue = avatar("av.s1.first")
-        XCTAssertFalse(icon.isNull)
-        XCTAssertTrue(icon["bound"].bool)
-        let texts: [String] = [r?.title ?? "", r?.detail ?? "", icon["title"].string, ItemThemes.name(r?.theme ?? ""), ItemThemes.name(icon["theme"].string)].map { $0.lowercased() }
+        XCTAssertEqual(r?.kind, .outfit)
+        XCTAssertEqual(r?.accountBound, true)
+        let texts: [String] = [r?.title ?? "", r?.detail ?? "", ItemThemes.name(r?.theme ?? "")].map { $0.lowercased() }
         for t in texts {
             for word in ["founder", "season 1", "first", "launch", "edition"] { XCTAssertFalse(t.contains(word), "\"\(t)\" must not say \"\(word)\"") }
         }
@@ -54,14 +46,14 @@ final class FounderEditionTradeTests: XCTestCase {
 
     func testEveryOtherSeasonOneRewardIsSellable() {
         let others: [SeasonReward] = seasonOne.rewards.filter { $0.id != firstIcon }
-        XCTAssertGreaterThan(others.count, 30, "a full season of rewards besides the first icon")
+        XCTAssertGreaterThan(others.count, 30, "a full season of rewards besides the first outfit")
         for r in others {
             let consumed: Bool = r.kind == .box || r.kind == .gold
             XCTAssertEqual(TradeRules.isSellable(reward: r), !consumed, "\(r.id) is sellable unless it is used up on claiming")
             XCTAssertFalse(r.accountBound, r.id)
             XCTAssertTrue(TradeRules.isSellable(ArtifactItem(defID: r.id, serial: 1)), r.id)
         }
-        XCTAssertEqual(seasonOne.rewards.filter { $0.accountBound }.map { $0.id }, [firstIcon], "only the first-stage icon is bound")
+        XCTAssertEqual(seasonOne.rewards.filter { $0.accountBound }.map { $0.id }, [firstIcon], "only the first-stage outfit is bound")
     }
 
     func testOtherSeasonOneRewardsCanBeListedAtAuction() throws {

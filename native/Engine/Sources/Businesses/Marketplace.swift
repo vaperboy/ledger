@@ -12,10 +12,12 @@ public struct MarketListing: Sendable, Identifiable, Equatable {
     public var city: String
     public var askingPrice: Double
     public var postedDay: Int
+    /// For a vehicle, the picture its model name belongs to (see VehicleCatalog); empty for everything else.
+    public var art: String
 
-    public init(id: String, family: String, title: String, blurb: String, sellerName: String, city: String, askingPrice: Double, postedDay: Int) {
+    public init(id: String, family: String, title: String, blurb: String, sellerName: String, city: String, askingPrice: Double, postedDay: Int, art: String = "") {
         self.id = id; self.family = family; self.title = title; self.blurb = blurb; self.sellerName = sellerName
-        self.city = city; self.askingPrice = askingPrice; self.postedDay = postedDay
+        self.city = city; self.askingPrice = askingPrice; self.postedDay = postedDay; self.art = art
     }
 }
 
@@ -116,7 +118,7 @@ public enum Marketplace {
     static func make(id: String, c: Int, r: inout HashedRandom, family f: Family, co: Company, bd: Trade, w: World, tables: TradeTables, brands: Int, seed: Int,
                      sellers: [String], cities: [String], countries: CountryBook) -> Entry? {
         let year = GameCalendar.year(week: max(0, c))
-        var name = "", cls = 1, base = 0.0, age = 1, km = 0, rel = 1.0, rating = 3.5, perf = 1.0
+        var name = "", cls = 1, base = 0.0, age = 1, km = 0, rel = 1.0, rating = 3.5, perf = 1.0, art = ""
         let vehicle = f.model != nil
         if let m = f.model, let vm = tables.vehicles[m] {
             let vc = EquipmentMarket.vehicleOffers(model: m, modelName: vm.name, countryCode: co.countryCode, seed: seed, countries: countries)
@@ -127,7 +129,7 @@ public enum Marketplace {
             let kmY: Double = (cl == "truck" || cl == "bus") ? 90000 : (cl == "bike" || cl == "scooter") ? 4000 : 18000
             km = Int(saturating: roundTo(Double(age) * kmY * (0.6 + r.next() * 0.8), step: 1000))
             base = EquipmentMarket.vehiclePrice(vm, factor: o.priceFactor, w) * 0.8 * pow(0.87, Double(age - 1))
-            name = o.name; rel = o.reliability; rating = o.rating
+            name = o.name; rel = o.reliability; rating = o.rating; art = o.art
         } else if let e = f.e {
             let cat = EquipmentMarket.offers(for: e, tradeID: bd.id, family: bd.family, brands: brands, countryCode: co.countryCode, seed: seed, countries: countries, tables: tables)
             guard !cat.isEmpty else { return nil }
@@ -159,7 +161,7 @@ public enum Marketplace {
         let h = Hidden(wear: wear, visWear: vis, fair: fair, aware: aware, kind: kind, noTalk: noTalk, vehicle: vehicle, equipmentID: f.e?.id ?? "", modelID: f.model ?? "",
                        year: year - age, km: km, age: age, brand: name, cls: cls, reliability: rel, rating: rating, performance: perf, seller: seller)
         let day = max(0, c * 7)
-        return Entry(l: MarketListing(id: id, family: f.key, title: title, blurb: blurb, sellerName: seller, city: city, askingPrice: price, postedDay: day), h: h)
+        return Entry(l: MarketListing(id: id, family: f.key, title: title, blurb: blurb, sellerName: seller, city: city, askingPrice: price, postedDay: day, art: art), h: h)
     }
 
     public static func listings(_ s: GameState, companyID: Int, data: GameData) -> [MarketListing] {

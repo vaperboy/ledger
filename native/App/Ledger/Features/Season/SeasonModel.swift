@@ -46,6 +46,14 @@ final class SeasonModel: ObservableObject {
         if p != pass { pass = p; persist() }
     }
 
+    /// Gold owed for retired frames and badges, paid once per item. Returns the gold to credit.
+    func refundRetired() -> Int {
+        var p: SeasonPass = pass
+        let gold: Int = p.refundRetired(alsoOwned: AvatarModel.shared.owned)
+        if p != pass { pass = p; persist() }
+        return gold
+    }
+
     func refreshSeason() {
         var p: SeasonPass = pass
         if p.rollover(today: today) { pass = p; persist() }

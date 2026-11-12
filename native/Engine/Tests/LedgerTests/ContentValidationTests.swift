@@ -125,7 +125,7 @@ final class ContentValidationTests: XCTestCase {
             p.append("\(file): there must be at least one \(r) artifact because boxes drop them")
         }
         XCTAssertEqual(artIDs.count, ArtifactCatalog.defs.count, "the engine loaded a different number of artifacts than the file holds")
-        XCTAssertEqual(colIDs.count, ArtifactCatalog.collections.count)
+        XCTAssertEqual(colIDs.count, ArtifactCatalog.everyCollection.count)
         finish(p)
     }
 
@@ -165,7 +165,7 @@ final class ContentValidationTests: XCTestCase {
             if lr["level"].int <= last { p.append("\(file): levelRewards must list levels in rising order, starting above 0 (level \(lr["level"].int))") }
             last = lr["level"].int
         }
-        XCTAssertEqual(ids.count, CardCatalog.all.count)
+        XCTAssertEqual(ids.count, CardCatalog.everything.count)
         finish(p)
     }
 
@@ -176,15 +176,16 @@ final class ContentValidationTests: XCTestCase {
         let j: JSONValue = load(file, &p)
         let list: [JSONValue] = j["cosmetics"].array
         let ids: Set<String> = uniqueIDs(list, file, &p)
-        let kinds: Set<String> = ["theme", "namePlate", "backdrop", "tradePlate", "richListFlair", "saveSlot"]
-        let colRewards: Set<String> = Set(ArtifactCatalog.collections.map { $0.rewardID })
+        let kinds: Set<String> = ["outfit", "face", "hair", "skin", "namePlate", "backdrop", "tradePlate", "richListFlair", "saveSlot"]
+        let colRewards: Set<String> = Set(ArtifactCatalog.everyCollection.map { $0.rewardID })
         for c in list {
             let label: String = "cosmetic \"\(c["id"].string)\""
             need(c, ["id", "kind", "title", "detail", "rarity", "source", "colors"], file, label, &p)
             checkRarity(c, "rarity", file, label, &p)
             checkHex(c["colors"].array, file, label, &p)
-            if !kinds.contains(c["kind"].string) { p.append("\(file): \(label) has kind \"\(c["kind"].string)\"; use theme, namePlate, backdrop, tradePlate, richListFlair or saveSlot") }
-            if !["store", "box", "collection", "plan"].contains(c["source"].string) { p.append("\(file): \(label) has source \"\(c["source"].string)\"; use store, box, collection or plan") }
+            if !kinds.contains(c["kind"].string) { p.append("\(file): \(label) has kind \"\(c["kind"].string)\"; use outfit, face, hair, skin, namePlate, backdrop, tradePlate, richListFlair or saveSlot") }
+            if !["store", "box", "collection", "plan", "free", "level", "rank", "goal"].contains(c["source"].string) { p.append("\(file): \(label) has source \"\(c["source"].string)\"; use store, box, collection, plan, free, level, rank or goal") }
+            if c["art"].string.isEmpty { p.append("\(file): \(label) needs an art slot name") }
             if c["source"].string == "collection" && !colRewards.contains(c["id"].string) { p.append("\(file): \(label) is a collection reward but no collection in artifacts.json names it") }
             if c["source"].string == "store" && GoldPrices.item(c["id"].string) == nil && GoldCosmetics.storePrice(ContentFile.rarity(c["rarity"].string)) == nil { p.append("\(file): \(label) is a legendary store item and needs a price in pricing/prices.json") }
         }
@@ -193,9 +194,9 @@ final class ContentValidationTests: XCTestCase {
         }
 
         var sids: Set<String> = []
-        let cardIDs: Set<String> = Set(CardCatalog.all.map { $0.id })
+        let cardIDs: Set<String> = Set(CardCatalog.everything.map { $0.id })
         let artifactIDs: Set<String> = Set(ArtifactCatalog.defs.map { $0.id })
-        let sKinds: Set<String> = ["badge", "theme", "namePlate", "backdrop", "saveSlot", "advisorLine", "richListFlair", "tradePlate", "card", "artifact", "xp", "box", "gold"]
+        let sKinds: Set<String> = ["outfit", "badge", "theme", "namePlate", "backdrop", "saveSlot", "advisorLine", "richListFlair", "tradePlate", "card", "artifact", "xp", "box", "gold"]
         XCTAssertFalse(SeasonCatalog.all.isEmpty)
         for n in SeasonCatalog.all.map({ (d: SeasonDef) -> Int in d.number }) {
         let sfile: String = "Engine/Sources/Simulation/Resources/Content/season/season_\(n).json"
@@ -223,7 +224,7 @@ final class ContentValidationTests: XCTestCase {
             if plain && !r["colors"].isNull { checkHex(r["colors"].array, sfile, label, &p) }
         }
         }
-        XCTAssertEqual(sids.count, SeasonRewards.all.count)
+        XCTAssertEqual(sids.count, SeasonRewards.everything.count)
 
         let b: JSONValue = load(bfile, &p)
         let badges: [JSONValue] = b["badges"].array
@@ -340,7 +341,7 @@ final class ContentValidationTests: XCTestCase {
         let list: [JSONValue] = j["avatars"].array
         _ = uniqueIDs(list, file, &p)
         let badgeIDs: Set<String> = Set(Cosmetics.badges.map { $0.id })
-        let collectionIDs: Set<String> = Set(ArtifactCatalog.collections.map { $0.id })
+        let collectionIDs: Set<String> = Set(ArtifactCatalog.everyCollection.map { $0.id })
         for a in list {
             let label: String = "icon \"\(a["id"].string)\""
             need(a, ["id", "title", "tier", "unlock", "symbol", "top", "bottom", "ink", "motif"], file, label, &p)

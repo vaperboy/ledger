@@ -34,6 +34,7 @@
    "name": "Spring Market",
    "blurb": "Eggs, blossom and hares of the spring fair.",
    "reward": "gold.coll.spring",
+   "theme": "spring",
    "look": {"top": "E8A9BC", "bottom": "5E7F52", "ink": "FFF3DC", "motif": "dots"}
   }
  ],
