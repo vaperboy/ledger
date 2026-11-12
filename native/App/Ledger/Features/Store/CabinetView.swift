@@ -18,27 +18,11 @@ struct CabinetView: View {
     }
 
     private func collections(_ cabinet: Cabinet) -> some View {
-        OnlineGroup(title: "Collections", footer: "Own every artifact in a collection to receive its cosmetic, once.") {
-            ForEach(Array(ArtifactCatalog.collections.enumerated()), id: \.element.id) { (i: Int, col: ArtifactCollection) in
-                if i > 0 { Hairline() }
-                let p = cabinet.progress(col)
-                let done: Bool = cabinet.isComplete(col)
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    HStack {
-                        Text(col.name).textStyle(.headline)
-                        Spacer()
-                        Text(done ? "Complete" : "\(p.have) of \(p.total)").textStyle(.caption, tint: done ? Theme.gain : Theme.inkSoft, numeric: true)
-                    }
-                    HStack(spacing: Theme.Space.s) {
-                        ForEach(col.members, id: \.self) { (id: String) in
-                            if let def = ArtifactCatalog.def(id) { ItemArt(artifact: def, size: 40).opacity(cabinet.owns(id) ? 1 : 0.3) }
-                        }
-                    }
-                    ProgressView(value: Double(p.have), total: Double(p.total)).tint(done ? Theme.gain : Theme.accent)
-                }
-                .padding(.vertical, Theme.Space.s)
-                .accessibilityElement(children: .combine)
+        OnlineGroup(title: "Collections", footer: "Own every artifact in a collection to earn its reward, once.") {
+            VStack(spacing: Theme.Space.s) {
+                ForEach(ArtifactCatalog.collections) { (col: ArtifactCollection) in CollectionCard(collection: col, cabinet: cabinet) }
             }
+            .padding(.vertical, Theme.Space.s)
         }
     }
 

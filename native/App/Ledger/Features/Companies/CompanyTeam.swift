@@ -11,18 +11,16 @@ struct CompanyTeam: View {
     var company: Company
     @State private var hiring = false
     @State private var showPerks = false
-    @State private var profile: WorkerRef?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             hero
             perksRow
             if !company.staff.isEmpty {
-                CompanyStaffRoster(engine: engine, company: company, profile: $profile)
+                CompanyStaffRoster(engine: engine, company: company)
             }
         }
         .navigationDestination(isPresented: $hiring) { HireWorkersView(companyID: company.id) }
-        .navigationDestination(item: $profile) { (w: WorkerRef) -> StaffProfileView in StaffProfileView(companyID: company.id, staffID: w.id) }
         .centerSheet(isPresented: $showPerks, category: .medium, tone: .info) { CompanyPerksPopup(companyID: company.id, onClose: { showPerks = false }).environmentObject(store) }
     }
 
