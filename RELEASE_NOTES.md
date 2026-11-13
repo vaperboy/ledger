@@ -1,4 +1,5 @@
 # What's new
+- Daily missions: 4 easy and 1 hard each day (plus weekly and monthly sets) picked from hundreds of missions, rewards that match the effort, and a Claim button on Home
 - First-company guide fixes: Done on the price screen always saves the price and moves the guide on, keeping the supplier in use counts as choosing one, looking at a supplier's owner brings you back to the supplier list, small sales show as decimals instead of 0, and the guide ends after the Inbox when no reward is ready
 - Fairer economy: auction prices follow real value, equipment loans are repaid when you sell, net worth counts company debt, bankruptcy can no longer hide money, startup stakes are realistic, and ignored decisions do nothing
 - Sign in with Apple, sign back into your account on a new phone, and account deletion that settles your deals first

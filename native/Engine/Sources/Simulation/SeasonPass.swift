@@ -26,7 +26,7 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         public var title: String {
             switch self {
             case .weekReport: return "Finish a week report"
-            case .dailyGoal: return "Complete the daily goal"
+            case .dailyGoal: return "Finish two daily missions"
             case .cashStreak: return "Keep cash positive for \(SeasonPass.cashStreakWeeks) weeks"
             case .loanRepaid: return "Repay a loan"
             case .profitMonth: return "Close a month in profit"
