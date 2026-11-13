@@ -1,9 +1,10 @@
--- Store extras on the server wallet: a daily cosmetics shelf, gold for rewarded ads, open supporter perks,
+-- Store extras on the server wallet: a daily cosmetics shelf, gold for rewarded ads and missions, open supporter perks,
 -- administrator and beta codes. Every number lives in private.store_extra().
 
 create or replace function private.store_extra(k text) returns int language sql immutable as $$
   select ('{"shelfSize": 6, "adsPerDay": 10, "adGold": 1, "supporterAdGold": 2, "adCooldown": 300, "supporterAdCooldown": 180,
-            "supporterAds": 50, "betaGold": 500, "adminFloor": 1000000, "codeTriesPerHour": 10}'::jsonb ->> k)::int;
+            "supporterAds": 50, "betaGold": 500, "adminFloor": 1000000, "codeTriesPerHour": 10,
+            "missionGold": 4, "missionGoldPerDay": 12, "missionGoldPerWeek": 40}'::jsonb ->> k)::int;
 $$;
 
 -- Codes are kept only as SHA-256 of salt, a colon and the code (upper case, letters and digits only); the plain codes
@@ -280,6 +281,46 @@ begin
   return jsonb_build_object('ok', true, 'gold', v_gold, 'state', private.store_state_for(uid));
 end $$;
 
+-- Gold from daily, weekly and monthly missions. A claim is paid once per account, period and mission; the amount is
+-- capped per mission, per server day and per server week (era day / 7), so a forged claim gains little.
+create table public.mission_gold (
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  period_key text not null check (char_length(period_key) between 1 and 40),
+  mission_id text not null check (char_length(mission_id) between 1 and 80),
+  day int not null,
+  week int not null,
+  gold int not null default 0 check (gold >= 0),
+  created_at timestamptz not null default now(),
+  primary key (user_id, period_key, mission_id)
+);
+create index mission_gold_day on public.mission_gold (user_id, day);
+create index mission_gold_week on public.mission_gold (user_id, week);
+alter table public.mission_gold enable row level security;
+revoke all on public.mission_gold from anon, authenticated;
+
+create or replace function public.claim_mission_gold(mission_id text, period_key text, gold int) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid := private.require_player(); v_today int := private.era_day(); v_week int := private.era_day() / 7; prev public.mission_gold;
+        day_used int; week_used int; pay int;
+begin
+  perform private.require_free(uid, 'gold');
+  if mission_id is null or char_length(mission_id) not between 1 and 80 or period_key is null or char_length(period_key) not between 1 and 40
+     or gold is null or gold < 0 then
+    raise exception 'invalid_request' using errcode = 'P0001';
+  end if;
+  perform pg_advisory_xact_lock(hashtext('store:' || uid::text));
+  select * into prev from public.mission_gold m where m.user_id = uid and m.period_key = claim_mission_gold.period_key and m.mission_id = claim_mission_gold.mission_id;
+  if found then return jsonb_build_object('ok', true, 'gold', prev.gold, 'repeat', true, 'state', private.store_state_for(uid)); end if;
+  day_used := coalesce((select sum(m.gold) from public.mission_gold m where m.user_id = uid and m.day = v_today), 0);
+  week_used := coalesce((select sum(m.gold) from public.mission_gold m where m.user_id = uid and m.week = v_week), 0);
+  pay := greatest(0, least(gold, private.store_extra('missionGold'), private.store_extra('missionGoldPerDay') - day_used,
+                           private.store_extra('missionGoldPerWeek') - week_used));
+  insert into public.mission_gold (user_id, period_key, mission_id, day, week, gold)
+    values (uid, claim_mission_gold.period_key, claim_mission_gold.mission_id, v_today, v_week, pay);
+  perform private.store_credit(uid, pay, 'mission', left(claim_mission_gold.period_key || ':' || claim_mission_gold.mission_id, 80));
+  return jsonb_build_object('ok', true, 'gold', pay, 'state', private.store_state_for(uid));
+end $$;
+
 -- The account's store state, now with the shelf, ad terms, supporter and administrator flags.
 create or replace function private.store_state_for(uid uuid) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare w public.gold_wallets := private.wallet(uid); v_season int := private.current_season(); v_today int := private.era_day(); used int;
@@ -389,5 +430,5 @@ update public.profiles set badges = badges
  where id in (select user_id from public.store_transactions where revoked_at is null
               union select user_id from public.store_plans where revoked_at is null);
 
-revoke execute on function public.redeem_code(text), public.claim_ad_gold(text) from public, anon;
-grant execute on function public.redeem_code(text), public.claim_ad_gold(text) to authenticated;
+revoke execute on function public.redeem_code(text), public.claim_ad_gold(text), public.claim_mission_gold(text, text, int) from public, anon;
+grant execute on function public.redeem_code(text), public.claim_ad_gold(text), public.claim_mission_gold(text, text, int) to authenticated;

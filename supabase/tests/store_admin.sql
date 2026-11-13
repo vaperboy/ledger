@@ -212,3 +212,31 @@ begin
     raise exception 'watching enough ads did not make a supporter';
   end if;
 end $$;
+
+-- Mission gold: paid once per account, period and mission; capped per mission, per server day and per server week.
+do $$
+declare b uuid := pg_temp.id('b'); r jsonb; before int; i int; total int := 0;
+begin
+  perform pg_temp.as_user(b);
+  before := pg_temp.gold(b);
+  r := public.claim_mission_gold('m.sell.easy', 'day:100', 2);
+  if (r ->> 'gold')::int <> 2 then raise exception 'mission gold not paid: %', r - 'state'; end if;
+  r := public.claim_mission_gold('m.sell.easy', 'day:100', 2);
+  if not (r ->> 'repeat')::boolean or pg_temp.gold(b) <> before + 2 then raise exception 'a mission paid twice'; end if;
+  r := public.claim_mission_gold('m.big.hard', 'day:100', 99);
+  if (r ->> 'gold')::int <> private.store_extra('missionGold') then raise exception 'mission cap did not hold: %', r - 'state'; end if;
+  for i in 1..10 loop r := public.claim_mission_gold('m.more.' || i, 'day:100', 4); end loop;
+  if pg_temp.gold(b) - before <> private.store_extra('missionGoldPerDay') then raise exception 'day cap did not hold: %', pg_temp.gold(b) - before; end if;
+  for i in 1..10 loop
+    update public.mission_gold set day = day - 1 where user_id = b;
+    r := public.claim_mission_gold('m.week.' || i, 'day:' || (100 + i), 4);
+  end loop;
+  if pg_temp.gold(b) - before <> private.store_extra('missionGoldPerWeek') then raise exception 'week cap did not hold: %', pg_temp.gold(b) - before; end if;
+  begin
+    perform public.claim_mission_gold('m.neg', 'day:200', -5);
+    raise exception 'negative mission gold accepted';
+  exception when others then
+    if sqlerrm <> 'invalid_request' then raise; end if;
+  end;
+  reset role;
+end $$;
