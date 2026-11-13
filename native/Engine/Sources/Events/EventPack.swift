@@ -258,8 +258,8 @@ public enum EventPack {
             let fx = bounded(EventEngine.resolve(e.event.automaticEffects, ctx, currency: cur), cap: cap)
             EventEngine.apply(&s, companyIndex: i, fx, ctx: ctx, event: e.event, data: data, context: fc)
             var parts = [story]
-            let lines = EffectPreview.lines(fx, currency: cur)
-            if !lines.isEmpty { parts.append(lines.joined(separator: ". ") + ".") }
+            let lines = EffectPreview.story(fx, currency: cur, money: true)
+            if !lines.isEmpty { parts.append(lines.joined(separator: " ")) }
             if !cover.isEmpty { parts.append(cover) }
             let id = s.addMessage(from: co.name, title: title, body: parts.joined(separator: " "), companyID: co.id, tone: e.tone)
             mark(&s, id, e)

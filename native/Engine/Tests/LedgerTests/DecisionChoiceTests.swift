@@ -155,27 +155,107 @@ final class DecisionChoiceTests: XCTestCase {
 
     // MARK: Order and wording
 
-    func testNoAnswersComeFirstAndTheOrderIsAPermutation() throws {
-        XCTAssertEqual(DecisionOrder.shown(["Accept", "Decline"]), [1, 0])
-        XCTAssertEqual(DecisionOrder.shown(["Take the full project", "Take the design phase only", "Decline"]), [2, 0, 1])
-        XCTAssertEqual(DecisionOrder.shown(["Repair now", "Run without it", "Replace"]), [0, 1, 2])
-        XCTAssertEqual(DecisionOrder.shown(["Absorb it", "Pass part on to customers"]), [0, 1])
-        XCTAssertEqual(DecisionOrder.shown(["Skip it", "Decline"]), [0, 1])
+    func testNoSitsLeftYesRightAndTheRestGoBelow() throws {
+        let pair = DecisionOrder.layout(["Accept", "Decline"])
+        XCTAssertEqual(pair.no, 1)
+        XCTAssertEqual(pair.yes, 0)
+        XCTAssertEqual(pair.others, [])
+        XCTAssertEqual(pair.kind(0), .yes)
+        XCTAssertEqual(pair.kind(1), .no)
+        let three = DecisionOrder.layout(["Take the full project", "Take the design phase only", "Decline"])
+        XCTAssertEqual(three.no, 2)
+        XCTAssertEqual(three.yes, 0)
+        XCTAssertEqual(three.others, [1], "a third answer goes in its own row")
+        XCTAssertEqual(three.kind(1), .neutral)
+        XCTAssertEqual(DecisionOrder.layout(["Raise prices", "Wait it out", "Sign the deal"]).yes, 2, "a plain yes takes the right side")
+        XCTAssertEqual(DecisionOrder.layout(["Vote yes", "Vote no"]).order, [1, 0])
+        let equal = DecisionOrder.layout(["Repair now", "Run without it", "Replace"])
+        XCTAssertFalse(equal.hasPair, "several paths with no turn-down are equal")
+        XCTAssertEqual(equal.others, [0, 1, 2])
+        XCTAssertTrue((0..<3).allSatisfy { equal.kind($0) == .neutral })
+        XCTAssertFalse(DecisionOrder.layout(["Absorb it", "Pass part on to customers"]).hasPair)
+        XCTAssertFalse(DecisionOrder.layout(["Skip it", "Decline"]).hasPair, "two ways of saying no are not a pair")
+        XCTAssertFalse(DecisionOrder.layout(["Understood"]).hasPair)
+    }
+
+    func testEveryLayoutIsAPermutationAndPairsAreYesAndNo() throws {
         let lib = try EventLibrary.bundled()
         let library: [[String]] = lib.events.values.map { (e: GameEvent) -> [String] in e.options.map { (o: GameEvent.Option) -> String in o.label } }
         let pack: [[String]] = EventPack.events.map { (e: PackEvent) -> [String] in e.event.options.map { (o: GameEvent.Option) -> String in o.label } }
         let asks: [[String]] = StrategicDecisions.definitions.map { (d: StrategicDecisions.Def) -> [String] in d.opts.map { (o: StrategicDecisions.Opt) -> String in o.label } }
         let all: [[String]] = library + pack + asks
-        var noFirst = 0
+        var pairs = 0
         for labels in all where labels.count >= 2 {
-            let order = DecisionOrder.shown(labels)
-            XCTAssertEqual(order.sorted(), Array(labels.indices), labels.joined(separator: " / "))
-            if DecisionOrder.isNo(labels[order[0]]) { noFirst += 1 }
-            if let firstYes = order.firstIndex(where: { !DecisionOrder.isNo(labels[$0]) }) {
-                XCTAssertTrue(order[firstYes...].allSatisfy { !DecisionOrder.isNo(labels[$0]) }, "a No answer after a Yes: \(labels)")
+            let l = DecisionOrder.layout(labels)
+            XCTAssertEqual(l.order.sorted(), Array(labels.indices), labels.joined(separator: " / "))
+            XCTAssertEqual(DecisionOrder.shown(labels), l.order)
+            if let no = l.no, let yes = l.yes {
+                pairs += 1
+                XCTAssertTrue(DecisionOrder.isNo(labels[no]), "left is not a No: \(labels)")
+                XCTAssertFalse(DecisionOrder.isNo(labels[yes]), "right is a No: \(labels)")
+            } else {
+                XCTAssertEqual(l.others, Array(labels.indices), "equal answers keep their own order: \(labels)")
             }
         }
-        XCTAssertGreaterThan(noFirst, 40)
+        XCTAssertGreaterThan(pairs, 40)
+    }
+
+    func testAnswerResultsShowNoEngineNumbers() throws {
+        let (base, id) = try engineWithCompany()
+        let json: JSONValue = .object([
+            "t": "A plain choice at {n}.", "w": 0.01, "tone": "n", "exp": 2,
+            "opts": .array([
+                .object(["l": "Decline", "d": "Nothing changes.", "fx": .object([:])]),
+                .object(["l": "Run the campaign", "d": "More people hear of you.",
+                         "fx": .object(["rep": 2, "aware": 6, "dem": .array([1.05, 3]), "cash": -150])])]),
+        ])
+        let ev = GameEvent(id: "test_story", json: json)
+        var e = base
+        var asked: Message? = nil
+        e.update { s, data, ctx in fire(ev, &s, id, data: data, ctx: ctx); asked = openEvent(s, "test_story") }
+        let m = try XCTUnwrap(asked)
+        let r = e.answerDecision(messageID: m.id, option: 1)
+        XCTAssertTrue(r.applied)
+        let all = r.lines.joined(separator: " | ")
+        XCTAssertTrue(r.lines.allSatisfy { DecisionStory.isPlain($0) }, all)
+        XCTAssertFalse(all.lowercased().contains("reputation"), all)
+        XCTAssertFalse(all.contains("%"), all)
+        XCTAssertFalse(all.contains("cost you"), "a small cost is felt, not shown: \(all)")
+        XCTAssertLessThanOrEqual(r.lines.count, DecisionStory.maxLines)
+        XCTAssertTrue(r.lines.contains("People think better of you."), all)
+    }
+
+    func testABigChoiceShowsOneCostLine() throws {
+        let (base, id) = try engineWithCompany()
+        let weekly = try XCTUnwrap(base.state.company(id)).lastWeekRevenue
+        let price = max(5000, weekly * 3)
+        let json: JSONValue = .object([
+            "t": "A lawsuit at {n}.", "w": 0.01, "tone": "bad", "exp": 2,
+            "opts": .array([
+                .object(["l": "Fight it", "d": "", "fx": .object(["rep": -1])]),
+                .object(["l": "Settle", "d": "", "fx": .object(["cash": .number(-price)])])]),
+        ])
+        let ev = GameEvent(id: "test_settle", json: json)
+        var e = base
+        var asked: Message? = nil
+        e.update { s, data, ctx in fire(ev, &s, id, data: data, ctx: ctx); asked = openEvent(s, "test_settle") }
+        let m = try XCTUnwrap(asked)
+        let r = e.answerDecision(messageID: m.id, option: 1)
+        let costs = r.lines.filter { $0.hasPrefix("It cost you") }
+        XCTAssertEqual(costs.count, 1, r.lines.joined(separator: " | "))
+        XCTAssertTrue(r.lines.allSatisfy { DecisionStory.isPlain($0) }, "one account: no separate signed money lines: \(r.lines)")
+        XCTAssertFalse(r.lines.contains { $0.hasPrefix("Your own cash") })
+    }
+
+    func testStoryLinesHaveNoNumbers() throws {
+        let cur = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7).homeCurrency
+        let fx: JSONValue = .object(["rep": 3, "aware": -2, "q": 1, "dem": .array([0.9, 4]), "cap": .array([1.1, 2]), "pr": 1, "raise": 0.05, "warn": true])
+        let lines = EffectPreview.story(fx, currency: cur)
+        XCTAssertFalse(lines.isEmpty)
+        for l in lines { XCTAssertNil(l.range(of: #"\d"#, options: .regularExpression), l) }
+        XCTAssertTrue(EffectPreview.story(.null, currency: cur).isEmpty)
+        let paid = EffectPreview.story(.object(["cash": -500, "fine": 200]), currency: cur, money: true)
+        XCTAssertEqual(paid.filter { $0.hasPrefix("It cost you") }.count, 1, "cash and fine are one cost line")
     }
 
     func testOptionTextsDoNotSayWhichAnswerIsBest() throws {

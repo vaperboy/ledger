@@ -47,4 +47,45 @@ public enum EffectPreview {
     }
 
     static func whole(_ v: Double, _ cur: Currency) -> Double { abs(v) }
+
+    /// What the effects feel like in plain words, with no engine numbers. With `money`, one line says what it cost or brought in.
+    public static func story(_ fx: JSONValue, currency: Currency, money: Bool = false) -> [String] {
+        guard case .object = fx else { return [] }
+        var out: [String] = []
+        func up(_ v: Double, _ good: String, _ bad: String) { if v > 0 { out.append(good) } else if v < 0 { out.append(bad) } }
+        func timed(_ key: String, _ more: String, _ less: String) {
+            let v: JSONValue = fx[key]
+            if v.isNull { return }
+            let m: Double = v[0].double
+            if m > 1 { out.append(more) } else if m < 1 { out.append(less) }
+        }
+        up(fx["rep"].double, "People think better of you.", "People think less of you.")
+        up(fx["aware"].double, "More people know your name.", "Fewer people remember your name.")
+        up(fx["q"].double, "The work gets better.", "The work slips.")
+        timed("dem", "More customers come in for a while.", "Fewer customers come in for a while.")
+        timed("cap", "You can serve more for a while.", "You can serve fewer for a while.")
+        timed("price", "Customers accept higher prices for a while.", "Customers want lower prices for a while.")
+        timed("cogsUp", "Supplies cost more for a while.", "Supplies cost less for a while.")
+        up(fx["pr"].double, "Your prices go up.", "Your prices go down.")
+        if !fx["tied"].isNull { out.append("Money is tied up in stock or credit for a while.") }
+        if fx["raise"].double > 0 { out.append("Pay goes up for good.") }
+        if fx["close"].double > 0 { out.append("The doors stay shut for a while.") }
+        if fx["special"].double > 0 && fx["special"].double < 1 { out.append("The worst of it is less likely.") }
+        if fx["quit"].bool { out.append("Someone may leave.") }
+        if fx["brk"].bool { out.append("Equipment may break.") }
+        if fx["ill"].double != 0 { out.append("The animals are more likely to fall ill for a while.") }
+        if fx["fixeq"].double != 0 { out.append("Your worst equipment is repaired.") }
+        if fx["premUp"].double != 0 { out.append("Insurance costs more for a while.") }
+        if fx["cyberLvl"].double != 0 { out.append("Your systems are better protected.") }
+        if fx["cyberTrain"].bool { out.append("Your staff learn to spot attacks.") }
+        if fx["cyberTarget"].bool { out.append("Attackers have noticed you.") }
+        if fx["delegate"].bool { out.append("Your manager makes the call.") }
+        if fx["warn"].bool { out.append("A warning goes on record, and some customers stay away.") }
+        if money {
+            let spent: Double = -fx["cash"].double + abs(fx["fine"].double)
+            if spent >= 1 { out.append("It cost you \(currency.display(spent)).") } else if spent <= -1 { out.append("It brought in \(currency.display(-spent)).") }
+            if fx["loss"].double != 0 { out.append("There may be a loss to cover.") }
+        }
+        return out
+    }
 }
