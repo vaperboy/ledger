@@ -25,6 +25,8 @@ struct PlayerCardData {
     /// Shown in place of level, badges and figures when the player keeps them private.
     var privateNote: String? = nil
     var hallOfFame = false
+    /// Badges that cannot be bought (badge.creator, badge.beta), shown beside the name.
+    var exclusiveBadges: [String] = []
 }
 
 extension PlayerCardData {
@@ -37,7 +39,7 @@ extension PlayerCardData {
         if let n = p.companyCount { figures.append(PlayerCardFigure(title: "Companies", value: "\(n)")) }
         if let w = p.gameWeek { figures.append(PlayerCardFigure(title: "Week", value: "\(w + 1)")) }
         if let t = p.tradesCompleted, figures.count < 3 { figures.append(PlayerCardFigure(title: "Trades", value: "\(t)")) }
-        let texts: [String] = p.badges.filter { (b: String) -> Bool in b != HallOfFameBadge.name }
+        let texts: [String] = p.badges.filter { (b: String) -> Bool in b != HallOfFameBadge.name && ProfileBadge(rawValue: b) == nil }
         self.init(name: p.displayName,
                   levelText: p.level.map { (l: Int) -> String in "Level \(l)" } ?? "",
                   detail: hidden ? "" : p.subline,
@@ -47,7 +49,8 @@ extension PlayerCardData {
                   badgeTexts: hidden ? [] : Array(texts.prefix(2)),
                   figures: hidden ? [] : figures,
                   privateNote: hidden ? "This player keeps their profile private." : nil,
-                  hallOfFame: p.badges.contains(HallOfFameBadge.name))
+                  hallOfFame: p.badges.contains(HallOfFameBadge.name),
+                  exclusiveBadges: ProfileBadge.exclusive(in: p.badges))
     }
 }
 
@@ -170,6 +173,7 @@ struct PlayerCard: View {
             nameLabel
             flairView
             if data.hallOfFame { HallOfFameMark() }
+            ProfileBadgeRow(ids: data.exclusiveBadges)
             Spacer(minLength: 0)
         }
         .frame(minHeight: 44)

@@ -38,7 +38,10 @@ public struct Person: JSONRecord, Identifiable {
         set { set("hired", newValue); if newValue != 0 && newValue != -9 { set("everHired", true) } }
     }
     public var everHired: Bool { flag("everHired") }
-    public var faceKey: String? { let s = str("face"); return s.isEmpty ? nil : s }
+    /// Uniform layer id worn over the portrait (empty = own clothes); set by FaceBook.sweep from the employer's trade.
+    public var uniformID: String { str("uni") }
+    /// The portrait cell, with ".u<uniform>" appended when a uniform is worn; FaceKey reads only the cell.
+    public var faceKey: String? { let s = str("face"); if s.isEmpty { return nil }; let u = str("uni"); return u.isEmpty ? s : s + ".u" + u }
     public var potential: Double? { get { value("pot").isNull ? nil : num("pot") } set { raw["pot"] = newValue.map { .number($0) } ?? .null } }
     public var trait: String? { value("trait").isNull ? nil : str("trait") }
 }

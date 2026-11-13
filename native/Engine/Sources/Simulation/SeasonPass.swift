@@ -4,8 +4,8 @@ import GameCore
 public struct SeasonPass: Codable, Equatable, Sendable {
 
     public static let seasonDays = SeasonCatalog.days(months: SeasonCatalog.monthsPerSeason)
-    public static let tierCount = 30
-    public static let xpPerTier = 300
+    public static let tierCount = 50
+    public static let xpPerTier = 180
     public static let dailyXPCap = 60
     public static let cashStreakWeeks = 4
 

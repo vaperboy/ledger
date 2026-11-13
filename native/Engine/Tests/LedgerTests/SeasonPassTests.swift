@@ -11,16 +11,16 @@ final class SeasonPassTests: XCTestCase {
 
     func testTierMath() {
         XCTAssertEqual(SeasonPass.tier(forXP: 0), 0)
-        XCTAssertEqual(SeasonPass.tier(forXP: 299), 0)
-        XCTAssertEqual(SeasonPass.tier(forXP: 300), 1)
-        XCTAssertEqual(SeasonPass.tier(forXP: 8_999), 29)
-        XCTAssertEqual(SeasonPass.tier(forXP: 9_000), 30)
-        XCTAssertEqual(SeasonPass.tier(forXP: 99_999), 30)
+        XCTAssertEqual(SeasonPass.tier(forXP: 179), 0)
+        XCTAssertEqual(SeasonPass.tier(forXP: 180), 1)
+        XCTAssertEqual(SeasonPass.tier(forXP: 8_999), 49)
+        XCTAssertEqual(SeasonPass.tier(forXP: 9_000), 50)
+        XCTAssertEqual(SeasonPass.tier(forXP: 99_999), 50)
         var p = SeasonPass(today: day0)
         p.xp = 350
         XCTAssertEqual(p.tier, 1)
         XCTAssertEqual(p.xpIntoTier, 50)
-        XCTAssertEqual(p.progressText, "Tier 1 of 30. 50 of 300 XP to tier 2")
+        XCTAssertEqual(p.progressText, "Tier 1 of 50. 50 of 180 XP to tier 2")
         p.xp = 9_000
         XCTAssertTrue(p.isComplete)
         XCTAssertEqual(p.tierProgress, 1)

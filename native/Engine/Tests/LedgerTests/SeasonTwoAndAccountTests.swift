@@ -72,7 +72,7 @@ final class SeasonTwoAndAccountTests: XCTestCase {
         p.align(firstDay: start1, today: start1 + 40)
         XCTAssertEqual(p.seasonNumber, 1)
         XCTAssertEqual(p.firstDay, start1)
-        p.xp = 300
+        p.xp = 180
         XCTAssertFalse(p.rollover(today: start1 + SeasonPass.seasonDays - 1))
         XCTAssertTrue(p.rollover(today: start1 + SeasonPass.seasonDays))
         XCTAssertEqual(p.seasonNumber, 2)

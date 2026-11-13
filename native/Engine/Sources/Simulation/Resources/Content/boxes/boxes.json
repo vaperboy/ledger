@@ -3,6 +3,9 @@
  "boxes": [
   {
    "id": "free",
+   "animated": true,
+   "animStyle": "cool",
+   "anim": "box.free.anim",
    "title": "Season box",
    "cardPack": false,
    "rows": [
@@ -21,6 +24,9 @@
   },
   {
    "id": "cabinet",
+   "animated": true,
+   "animStyle": "cool",
+   "anim": "box.cabinet.anim",
    "title": "Cabinet box",
    "cardPack": false,
    "rows": [
@@ -42,6 +48,9 @@
   },
   {
    "id": "grand",
+   "animated": true,
+   "animStyle": "neon",
+   "anim": "box.grand.anim",
    "title": "Grand box",
    "cardPack": false,
    "rows": [
@@ -63,6 +72,9 @@
   },
   {
    "id": "cardBasic",
+   "animated": true,
+   "animStyle": "cool",
+   "anim": "box.cardBasic.anim",
    "title": "Card pack",
    "cardPack": true,
    "rows": [
@@ -78,6 +90,9 @@
   },
   {
    "id": "cardPremium",
+   "animated": true,
+   "animStyle": "cool",
+   "anim": "box.cardPremium.anim",
    "title": "Premium card pack",
    "cardPack": true,
    "rows": [
@@ -93,6 +108,9 @@
   },
   {
    "id": "cardElite",
+   "animated": true,
+   "animStyle": "neon",
+   "anim": "box.cardElite.anim",
    "title": "Elite card pack",
    "cardPack": true,
    "rows": [

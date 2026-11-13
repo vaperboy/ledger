@@ -31,6 +31,9 @@ public enum GoldCosmetics {
                                               season: 0, theme: ItemThemes.id(e), founderEdition: e["founderEdition"].bool, accountBound: e["bound"].bool || earned)
         item.art = e["art"].string
         item.style = e["style"].string
+        item.animated = e["animated"].bool
+        item.animStyle = e["animStyle"].string
+        item.anim = e["anim"].string
         item.rarity = rarity
         return GoldCosmetic(item: item, rarity: rarity, source: source, price: price, value: e["value"].string)
     }

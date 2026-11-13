@@ -238,6 +238,9 @@ struct BackdropFill: View {
             ZStack {
                 LinearGradient(colors: [Color(hex: EmblemCatalog.mix(LookKit.tint(reward), 0x000000, 0.1)), Color(hex: LookKit.deep(reward))], startPoint: .top, endPoint: .bottom)
                 picture(g.size)
+                if g.size.height >= ItemArt.loopMinSize {
+                    AnimatedClip(category: .backdrop, id: reward.id, fill: true).frame(width: g.size.width, height: g.size.height).clipped()
+                }
                 LinearGradient(colors: [Color.black.opacity(scrim), Color.black.opacity(scrim * 0.6)], startPoint: .top, endPoint: .bottom)
             }
             .frame(width: g.size.width, height: g.size.height)

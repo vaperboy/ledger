@@ -83,6 +83,7 @@ final class OnlineSession {
     private(set) var profile: PlayerProfile?
     private(set) var status: AccountStatus?
     private(set) var isAdmin = false
+    private(set) var isBetaTester = false
     private(set) var accountID: String?
     private(set) var linkReward: LinkRewardResult?
     private(set) var pulse: WorldPulse?
@@ -177,6 +178,7 @@ final class OnlineSession {
         status = s
         if s.fakePlayersRemoved == true { FakePlayers.removed = true }
         setAdmin(s.isAdmin)
+        isBetaTester = s.isBetaTester ?? false
         await WorldRulesSync.refresh()
     }
 
@@ -317,6 +319,7 @@ final class OnlineSession {
         profile = nil
         status = nil
         isAdmin = false
+        isBetaTester = false
         accountID = nil
         linkReward = nil
         pulse = nil

@@ -64,6 +64,8 @@ public enum FaceBook {
         for id in s.people.keys.sorted() {
             guard var p = s.people[id] else { continue }
             let employed = p.employerID != 0 && p.employerID != -9
+            let wear: String = employed ? Uniforms.id(trade: s.company(p.employerID).flatMap { data.catalog[$0.type] }, role: p.role) : ""
+            if p.str("uni") != wear { p.set("uni", wear); s.people[id] = p }
             if employed && !p.everHired { p.set("everHired", true); s.people[id] = p }
             if employed || p.everHired {
                 if let k = FaceKey(p.faceKey) { l.insert(k.string) }

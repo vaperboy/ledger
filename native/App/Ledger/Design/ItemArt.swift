@@ -84,6 +84,9 @@ struct ItemArt: View {
         }
     }
 
+    /// Legendary loops play only from this size up (card, preview, reveal); small thumbnails stay still.
+    static let loopMinSize: CGFloat = 120
+
     var hasArt: Bool { EmblemCatalog.spec(category: category, id: id, colors: colors) != nil || supplied != nil }
 
     private var resolved: EmblemSpec? {
@@ -95,6 +98,7 @@ struct ItemArt: View {
     var body: some View {
         if let spec = resolved {
             EmblemView(spec: spec, frame: EmblemFrame(rarity), size: size, wide: wide, picture: supplied)
+                .overlay { if size >= ItemArt.loopMinSize { AnimatedClip(category: category, id: id, fill: category == .backdrop) } }
         }
     }
 
