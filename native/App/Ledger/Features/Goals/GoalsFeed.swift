@@ -54,22 +54,18 @@ enum GoalsFeed {
         return (open, all.filter { (g: Career.Goal) -> Bool in g.done }.count)
     }
 
-    static func daily(_ d: PlayerGoals.DailyGoal?, claims: [GoalClaims.Claimable]) -> GoalLine? {
-        guard let d else { return nil }
-        return GoalLine(id: "daily-" + d.id, title: d.title, detail: d.done ? "Done for today" : d.progress,
-                        reward: "A small cash reward", done: d.done, current: !d.done, link: d.done ? "" : d.link, claim: claim(claims, .daily, d.id))
-    }
-
     // The single goal the Home strip points at: rewards first, then the ladder, today's goal, the closest career goal.
     struct Next {
         var label: String
         var title: String
         var ready: Bool
+        var count: Int = 0
     }
 
-    static func next(_ e: GameEngine, daily: PlayerGoals.DailyGoal?, claims: [GoalClaims.Claimable]) -> Next? {
-        if !claims.isEmpty {
-            return Next(label: "Reward ready", title: claims.count == 1 ? claims[0].title : "\(claims.count) rewards to claim", ready: true)
+    static func next(_ e: GameEngine, missions: [PlayMissions.Entry], claims: [GoalClaims.Claimable]) -> Next? {
+        let waiting: Int = missions.filter { (m: PlayMissions.Entry) -> Bool in m.ready }.count + claims.count
+        if waiting > 0 {
+            return Next(label: "Rewards ready", title: waiting == 1 ? "1 reward to claim" : "\(waiting) rewards to claim", ready: true, count: waiting)
         }
         if e.ambitionCardPending {
             return Next(label: "Ambition", title: "Choose what you want to build", ready: false)
@@ -77,8 +73,8 @@ enum GoalsFeed {
         if let g = PlayerGoals.currentLadderGoal(e.state) {
             return Next(label: "Next goal", title: g.title, ready: false)
         }
-        if let d = daily, !d.done {
-            return Next(label: "Today", title: d.title, ready: false)
+        if let m = missions.first(where: { (x: PlayMissions.Entry) -> Bool in !x.done && x.period == .day }) {
+            return Next(label: "Today", title: m.title, ready: false)
         }
         if let g = e.careerNextGoals.filter({ (x: Career.Goal) -> Bool in !x.done }).max(by: { (a: Career.Goal, b: Career.Goal) -> Bool in a.progress < b.progress }) {
             return Next(label: "Next goal", title: g.title, ready: false)

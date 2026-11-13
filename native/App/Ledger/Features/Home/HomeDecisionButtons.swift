@@ -29,32 +29,11 @@ struct HomeDecisionPopup: View {
             if m.companyID != 0, let co = e.state.company(m.companyID) {
                 Text(co.name).popupText(.caption)
             }
-            ForEach(DecisionOrder.shown(m), id: \.self) { (index: Int) in
-                option(e, m, index, m.options[index])
-            }
-            PopupOptionButton(title: "Later", identifier: "home-decision-later") { store.laterDecision(m) }
-            Text(laterLine(e, m)).popupText(.caption)
+            DecisionChoices(labels: DecisionAnswering.labels(e, m),
+                            identifier: { (i: Int) -> String in "home-decision-\(i)" },
+                            later: { store.laterDecision(m) },
+                            laterIdentifier: "home-decision-later",
+                            pick: { (i: Int) in DecisionAnswering.choose(store, e, m, i, ask: { (a: PendingAction) in pending = a }, done: { }) })
         }
-    }
-
-    private func option(_ e: GameEngine, _ m: Message, _ index: Int, _ opt: JSONValue) -> some View {
-        let label: String = e.displayText(opt["l"].string, companyID: m.companyID)
-        let detail: String = e.displayText(opt["d"].string, companyID: m.companyID)
-        let lines: [String] = MessageCard.preview(e, m, opt).filter { (l: String) -> Bool in !detail.contains(l) }
-        return VStack(alignment: .leading, spacing: PopupSpace.tight) {
-            DecisionAnswerButton(title: label, identifier: "home-decision-\(index)") {
-                DecisionAnswering.choose(store, e, m, index, ask: { (a: PendingAction) in pending = a }, done: { })
-            }
-            if !detail.isEmpty { Text(detail.tidyMoney).popupText(.caption) }
-            ForEach(lines, id: \.self) { (line: String) in
-                Text(line.tidyMoney).popupText(.effect)
-            }
-        }
-    }
-
-    private func laterLine(_ e: GameEngine, _ m: Message) -> String {
-        guard let exp = m.expiresWeek else { return "Later keeps it in your Inbox." }
-        let left: Int = exp - e.state.week
-        return left > 1 ? "Later keeps it in your Inbox for \(left) weeks." : "Later keeps it in your Inbox until the end of the week."
     }
 }

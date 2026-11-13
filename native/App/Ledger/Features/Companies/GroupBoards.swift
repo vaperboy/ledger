@@ -136,17 +136,16 @@ struct BoardDecisions: View {
                         if !m.why.isEmpty { Text(m.why.tidyMoney).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
                     }
                 }
-                ForEach(Array(m.options.enumerated()), id: \.offset) { (i: Int, o: String) in
-                    Button(o) {
-                        pending = PendingAction(title: "Decide: \(o)?", message: "An emergency decision of the board takes effect at once and cannot be undone.", button: "Decide", destructive: true) {
-                            let meetingID: Int = m.id
-                            let r: String? = store.act { $0.pickEmergency(key: key, meetingID: meetingID, option: i) } ?? nil
-                            let said: String = r == "hire" ? "Decided. Pick a new manager in the company's Team." : "Decided: \(o)."
-                            Haptics.success()
-                            store.outcome(chosen: "Decide: \(o)", result: said)
-                        }
-                    }.buttonStyle(GreyOutlineButtonStyle())
-                }
+                DecisionChoices(labels: m.options, identifier: { (i: Int) -> String in "board-emergency-\(i)" }, pick: { (i: Int) in
+                    let o: String = m.options[i]
+                    pending = PendingAction(title: "Decide: \(o)?", message: "An emergency decision of the board takes effect at once and cannot be undone.", button: "Decide", destructive: true) {
+                        let meetingID: Int = m.id
+                        let r: String? = store.act { $0.pickEmergency(key: key, meetingID: meetingID, option: i) } ?? nil
+                        let said: String = r == "hire" ? "Decided. Pick a new manager in the company's Team." : "Decided: \(o)."
+                        Haptics.success()
+                        store.outcome(chosen: "Decide: \(o)", result: said)
+                    }
+                })
             }
         }
     }
