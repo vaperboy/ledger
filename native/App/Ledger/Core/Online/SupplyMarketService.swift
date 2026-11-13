@@ -25,10 +25,6 @@ enum SupplyMarketPlayersSource {
     nonisolated(unsafe) static var provider: SupplyMarketPlayers?
 }
 
-enum SupplierOwnerProfileHook {
-    nonisolated(unsafe) static var destination: ((String) -> AnyView)?
-}
-
 enum SupplyMarketEvent: Equatable {
     case shortDelivery(listingID: String)
     case delivery(listingID: String, promised: Int, delivered: Int, orders: Int, late: Int)

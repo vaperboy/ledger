@@ -38,7 +38,7 @@
  ],
  "lines": {
   "food": {
-   "name": "Food and drink stock",
+   "name": "Food and drink",
    "group": "Stock",
    "category": "cogs",
    "suppliers": [
@@ -50,7 +50,7 @@
    "cargo": "perishable"
   },
   "care": {
-   "name": "Household and care stock",
+   "name": "Care products",
    "group": "Stock",
    "category": "cogs",
    "suppliers": [
@@ -62,7 +62,7 @@
    "cargo": "light"
   },
   "wares": {
-   "name": "Shop stock",
+   "name": "Shop goods",
    "group": "Stock",
    "category": "cogs",
    "suppliers": [
@@ -74,7 +74,7 @@
    "cargo": "standard"
   },
   "produce": {
-   "name": "Farm and forest produce",
+   "name": "Farm produce",
    "group": "Stock",
    "category": "cogs",
    "suppliers": [
@@ -86,7 +86,7 @@
    "cargo": "perishable"
   },
   "bread": {
-   "name": "Bread and pastries",
+   "name": "Bread",
    "group": "Stock",
    "category": "cogs",
    "suppliers": [
@@ -131,7 +131,7 @@
    "cargo": "perishable"
   },
   "parts": {
-   "name": "Components and parts",
+   "name": "Parts",
    "group": "Stock",
    "category": "cogs",
    "suppliers": [
@@ -233,7 +233,7 @@
    "terms": 30
   },
   "parcel": {
-   "name": "Parcel delivery",
+   "name": "Parcels",
    "group": "Transport",
    "category": "cogs",
    "suppliers": [
@@ -243,7 +243,7 @@
    "terms": 14
   },
   "deliv": {
-   "name": "Delivery to customers",
+   "name": "Home delivery",
    "group": "Transport",
    "category": "cogs",
    "suppliers": [
@@ -277,7 +277,7 @@
    "variable": true
   },
   "laundry": {
-   "name": "Linen and laundry",
+   "name": "Laundry",
    "group": "Services",
    "category": "oth",
    "suppliers": [
@@ -289,7 +289,7 @@
    "variable": true
   },
   "guards": {
-   "name": "Security guards",
+   "name": "Security",
    "group": "Services",
    "category": "oth",
    "suppliers": [
@@ -300,7 +300,7 @@
    "terms": 30
   },
   "temp": {
-   "name": "Temporary staff",
+   "name": "Temp staff",
    "group": "Services",
    "category": "wages",
    "suppliers": [
@@ -321,7 +321,7 @@
    "terms": 30
   },
   "power": {
-   "name": "Electricity and water",
+   "name": "Electricity",
    "group": "Bills",
    "category": "oth",
    "suppliers": [
@@ -345,7 +345,7 @@
    "terms": 30
   },
   "software": {
-   "name": "Software and services",
+   "name": "Software",
    "group": "Bills",
    "category": "oth",
    "suppliers": [],
@@ -381,7 +381,8 @@
    "care": {
     "o": 0,
     "n": "Shampoo, wax and cloths",
-    "stock": true
+    "stock": true,
+    "s": 0.072
    },
    "carserv": {
     "o": 0.05,
@@ -427,10 +428,12 @@
    "care": {
     "o": 0,
     "n": "Cleaning chemicals and consumables",
-    "stock": true
+    "stock": true,
+    "s": 0.042
    },
    "carserv": {
-    "o": 0.05
+    "o": 0.05,
+    "s": 0.004
    },
    "power": {
     "o": 0.08,
@@ -515,10 +518,12 @@
    "care": {
     "o": 0,
     "n": "Shampoo, dye and hair products",
-    "stock": true
+    "stock": true,
+    "s": 0.054
    },
    "upkeep": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "clean": {
     "o": 0.05,
@@ -541,10 +546,12 @@
    "fuel": {
     "o": 0,
     "n": "Fuel for lessons",
-    "stock": true
+    "stock": true,
+    "s": 0.06
    },
    "carserv": {
-    "o": 0.12
+    "o": 0.12,
+    "s": 0.0096
    },
    "clean": {
     "o": 0.05,
@@ -562,10 +569,12 @@
    "care": {
     "o": 0,
     "n": "Tape, gels and disposables",
-    "stock": true
+    "stock": true,
+    "s": 0.024
    },
    "upkeep": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "clean": {
     "o": 0.06,
@@ -628,10 +637,12 @@
    "food": {
     "o": 0,
     "n": "Pet food, treats and supplies",
-    "stock": true
+    "stock": true,
+    "s": 0.06
    },
    "upkeep": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "parcel": {
     "o": 0.05,
@@ -658,10 +669,12 @@
    "parts": {
     "o": 0,
     "n": "Parts, oil and fluids",
-    "stock": true
+    "stock": true,
+    "s": 0.216
    },
    "machines": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "power": {
     "o": 0.1,
@@ -675,7 +688,8 @@
    "food": {
     "o": 0,
     "n": "Ingredients and drinks",
-    "stock": true
+    "stock": true,
+    "s": 0.204
    },
    "produce": {
     "o": 0.0882,
@@ -687,10 +701,12 @@
    },
    "upkeep": {
     "o": 0.1,
-    "n": "Maintenance and parts"
+    "n": "Maintenance and parts",
+    "s": 0.008
    },
    "clean": {
-    "o": 0.04
+    "o": 0.04,
+    "s": 0.0032
    },
    "power": {
     "o": 0.12,
@@ -704,7 +720,8 @@
    "food": {
     "o": 0,
     "n": "Coffee, milk and food",
-    "stock": true
+    "stock": true,
+    "s": 0.18
    },
    "produce": {
     "o": 0.0667,
@@ -720,7 +737,8 @@
    },
    "upkeep": {
     "o": 0.1,
-    "n": "Maintenance and parts"
+    "n": "Maintenance and parts",
+    "s": 0.008
    },
    "deliv": {
     "s": 0.12
@@ -746,7 +764,8 @@
    "food": {
     "o": 0,
     "n": "Ingredients and drinks",
-    "stock": true
+    "stock": true,
+    "s": 0.186
    },
    "produce": {
     "o": 0.129,
@@ -774,7 +793,8 @@
    },
    "upkeep": {
     "o": 0.1,
-    "n": "Maintenance and parts"
+    "n": "Maintenance and parts",
+    "s": 0.008
    },
    "deliv": {
     "s": 0.12
@@ -808,7 +828,8 @@
    "food": {
     "o": 0,
     "n": "Bar stock: drinks and mixers",
-    "stock": true
+    "stock": true,
+    "s": 0.144
    },
    "beer": {
     "o": 0.3,
@@ -820,7 +841,8 @@
    },
    "upkeep": {
     "o": 0.1,
-    "n": "Maintenance and parts"
+    "n": "Maintenance and parts",
+    "s": 0.008
    },
    "clean": {
     "o": 0.08,
@@ -842,11 +864,13 @@
    "food": {
     "o": 0,
     "n": "Drinks, snacks and protein stock",
-    "stock": true
+    "stock": true,
+    "s": 0.03
    },
    "machines": {
     "o": 0.1,
-    "n": "Machine servicing and parts"
+    "n": "Machine servicing and parts",
+    "s": 0.008
    },
    "clean": {
     "o": 0.1,
@@ -874,7 +898,8 @@
    "food": {
     "o": 0,
     "n": "Breakfast, minibar and toiletries",
-    "stock": true
+    "stock": true,
+    "s": 0.096
    },
    "produce": {
     "o": 0.125,
@@ -902,7 +927,8 @@
    },
    "upkeep": {
     "o": 0.1,
-    "n": "Maintenance and parts"
+    "n": "Maintenance and parts",
+    "s": 0.008
    },
    "clean": {
     "o": 0.12,
@@ -940,7 +966,8 @@
    "food": {
     "o": 0,
     "n": "Bar and kitchen stock",
-    "stock": true
+    "stock": true,
+    "s": 0.12
    },
    "wine": {
     "o": 0.05,
@@ -948,7 +975,8 @@
    },
    "upkeep": {
     "o": 0.1,
-    "n": "Maintenance and parts"
+    "n": "Maintenance and parts",
+    "s": 0.008
    },
    "clean": {
     "o": 0.08,
@@ -976,7 +1004,8 @@
    "food": {
     "o": 0,
     "n": "Snacks, drinks and prizes",
-    "stock": true
+    "stock": true,
+    "s": 0.108
    },
    "beer": {
     "o": 0.1111,
@@ -984,7 +1013,8 @@
    },
    "machines": {
     "o": 0.16,
-    "n": "Ride and equipment upkeep"
+    "n": "Ride and equipment upkeep",
+    "s": 0.0128
    },
    "clean": {
     "o": 0.08,
@@ -1010,14 +1040,17 @@
    "food": {
     "o": 0,
     "n": "Food and drink",
-    "stock": true
+    "stock": true,
+    "s": 0.06
    },
    "machines": {
     "o": 0.2,
-    "n": "Lift and piste machine parts"
+    "n": "Lift and piste machine parts",
+    "s": 0.016
    },
    "clean": {
-    "o": 0.08
+    "o": 0.08,
+    "s": 0.0064
    },
    "power": {
     "o": 0.3,
@@ -1031,14 +1064,17 @@
    "food": {
     "o": 0,
     "n": "Food and drink",
-    "stock": true
+    "stock": true,
+    "s": 0.06
    },
    "machines": {
     "o": 0.18,
-    "n": "Lift and cooling parts"
+    "n": "Lift and cooling parts",
+    "s": 0.0144
    },
    "clean": {
-    "o": 0.08
+    "o": 0.08,
+    "s": 0.0064
    },
    "power": {
     "o": 0.3,
@@ -1052,7 +1088,8 @@
    "food": {
     "o": 0,
     "n": "Snacks, drinks and papers",
-    "stock": true
+    "stock": true,
+    "s": 0.444
    },
    "bread": {
     "o": 0.0405,
@@ -1068,7 +1105,8 @@
    },
    "upkeep": {
     "o": 0.04,
-    "n": "Shop fittings upkeep"
+    "n": "Shop fittings upkeep",
+    "s": 0.0032
    },
    "deliv": {
     "s": 0.1
@@ -1089,11 +1127,13 @@
    "wares": {
     "o": 0,
     "n": "Clothes and accessories",
-    "stock": true
+    "stock": true,
+    "s": 0.312
    },
    "upkeep": {
     "o": 0.04,
-    "n": "Shop fittings upkeep"
+    "n": "Shop fittings upkeep",
+    "s": 0.0032
    },
    "parcel": {
     "o": 0.0192,
@@ -1126,7 +1166,8 @@
    "wares": {
     "o": 0,
     "n": "Products to resell",
-    "stock": true
+    "stock": true,
+    "s": 0.282
    },
    "parcel": {
     "o": 0.1489,
@@ -1155,7 +1196,8 @@
    "food": {
     "o": 0,
     "n": "Groceries and fresh produce",
-    "stock": true
+    "stock": true,
+    "s": 0.45
    },
    "produce": {
     "o": 0.0533,
@@ -1179,7 +1221,8 @@
    },
    "upkeep": {
     "o": 0.08,
-    "n": "Fridge and shelf upkeep"
+    "n": "Fridge and shelf upkeep",
+    "s": 0.0064
    },
    "freight": {
     "o": 0.0333,
@@ -1217,11 +1260,13 @@
    "wares": {
     "o": 0,
     "n": "Tools, fixings and materials",
-    "stock": true
+    "stock": true,
+    "s": 0.42
    },
    "upkeep": {
     "o": 0.04,
-    "n": "Shop fittings upkeep"
+    "n": "Shop fittings upkeep",
+    "s": 0.0032
    },
    "freight": {
     "o": 0.0429,
@@ -1250,7 +1295,8 @@
   "cardealer": {
    "upkeep": {
     "o": 0.04,
-    "n": "Shop fittings upkeep"
+    "n": "Shop fittings upkeep",
+    "s": 0.0032
    },
    "carserv": {
     "o": 0.05,
@@ -1258,7 +1304,8 @@
    },
    "valet": {
     "o": 0.05,
-    "n": "Valeting"
+    "n": "Valeting",
+    "s": 0.004
    },
    "freight": {
     "o": 0.0174,
@@ -1287,14 +1334,17 @@
   "usedcar": {
    "upkeep": {
     "o": 0.04,
-    "n": "Shop fittings upkeep"
+    "n": "Shop fittings upkeep",
+    "s": 0.0032
    },
    "valet": {
     "o": 0.05,
-    "n": "Valeting"
+    "n": "Valeting",
+    "s": 0.004
    },
    "clean": {
-    "o": 0.04
+    "o": 0.04,
+    "s": 0.0032
    },
    "power": {
     "o": 0.12,
@@ -1311,10 +1361,12 @@
    },
    "machines": {
     "o": 0.08,
-    "n": "Tool and plant upkeep"
+    "n": "Tool and plant upkeep",
+    "s": 0.0064
    },
    "carserv": {
-    "o": 0.08
+    "o": 0.08,
+    "s": 0.0064
    },
    "freight": {
     "o": 0.3,
@@ -1344,7 +1396,8 @@
    },
    "machines": {
     "o": 0.08,
-    "n": "Tool and plant upkeep"
+    "n": "Tool and plant upkeep",
+    "s": 0.0064
    },
    "carserv": {
     "o": 0.08,
@@ -1366,7 +1419,8 @@
    },
    "machines": {
     "o": 0.08,
-    "n": "Tool and plant upkeep"
+    "n": "Tool and plant upkeep",
+    "s": 0.0064
    },
    "carserv": {
     "o": 0.08,
@@ -1392,10 +1446,12 @@
    },
    "machines": {
     "o": 0.08,
-    "n": "Tool and plant upkeep"
+    "n": "Tool and plant upkeep",
+    "s": 0.0064
    },
    "carserv": {
-    "o": 0.08
+    "o": 0.08,
+    "s": 0.0064
    },
    "guards": {
     "o": 0.03,
@@ -1411,7 +1467,8 @@
   },
   "event": {
    "carserv": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "guards": {
     "o": 0.08,
@@ -1447,7 +1504,8 @@
    },
    "machines": {
     "o": 0.12,
-    "n": "Machine parts and servicing"
+    "n": "Machine parts and servicing",
+    "s": 0.0096
    },
    "freight": {
     "o": 0.1071,
@@ -1458,7 +1516,8 @@
     "s": 0.01
    },
    "clean": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "power": {
     "o": 0.25,
@@ -1478,7 +1537,8 @@
    },
    "machines": {
     "o": 0.12,
-    "n": "Machine parts and servicing"
+    "n": "Machine parts and servicing",
+    "s": 0.0096
    },
    "freight": {
     "o": 0.1,
@@ -1501,11 +1561,13 @@
    "produce": {
     "o": 0,
     "n": "Timber, fabric and fittings",
-    "stock": true
+    "stock": true,
+    "s": 0.228
    },
    "machines": {
     "o": 0.12,
-    "n": "Machine parts and servicing"
+    "n": "Machine parts and servicing",
+    "s": 0.0096
    },
    "freight": {
     "o": 0.1316,
@@ -1520,7 +1582,8 @@
     "s": 0.03
    },
    "clean": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "power": {
     "o": 0.12,
@@ -1534,11 +1597,13 @@
    "fuel": {
     "o": 0.1,
     "n": "Boat fuel",
-    "c": "oth"
+    "c": "oth",
+    "s": 0.008
    },
    "machines": {
     "o": 0.2,
-    "n": "Nets, pens and boat upkeep"
+    "n": "Nets, pens and boat upkeep",
+    "s": 0.016
    },
    "freight": {
     "o": 0.3,
@@ -1554,18 +1619,21 @@
    "parts": {
     "o": 0,
     "n": "Components and raw materials",
-    "stock": true
+    "stock": true,
+    "s": 0.312
    },
    "machines": {
     "o": 0.14,
-    "n": "Spare parts and servicing"
+    "n": "Spare parts and servicing",
+    "s": 0.0112
    },
    "freight": {
     "o": 0.0962,
     "s": 0.05
    },
    "clean": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "temp": {
     "o": 0.05,
@@ -1584,18 +1652,21 @@
    "produce": {
     "o": 0,
     "n": "Seed, feed and fertiliser",
-    "stock": true
+    "stock": true,
+    "s": 0.204
    },
    "machines": {
     "o": 0.15,
-    "n": "Tractor and machine parts"
+    "n": "Tractor and machine parts",
+    "s": 0.012
    },
    "freight": {
     "o": 0.1471,
     "s": 0.05
    },
    "clean": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "power": {
     "o": 0.1,
@@ -1610,7 +1681,8 @@
    "fuel": {
     "o": 0,
     "n": "Fuel and tyres",
-    "stock": true
+    "stock": true,
+    "s": 0.06
    },
    "carserv": {
     "o": 0.2,
@@ -1624,7 +1696,8 @@
    "fuel": {
     "o": 0,
     "n": "Fuel and tyres",
-    "stock": true
+    "stock": true,
+    "s": 0.084
    },
    "carserv": {
     "o": 0.1,
@@ -1632,7 +1705,8 @@
    },
    "valet": {
     "o": 0.03,
-    "n": "Vehicle cleaning"
+    "n": "Vehicle cleaning",
+    "s": 0.003
    },
    "temp": {
     "o": 0.05,
@@ -1646,7 +1720,8 @@
    "fuel": {
     "o": 0,
     "n": "Diesel, tyres and tolls",
-    "stock": true
+    "stock": true,
+    "s": 0.108
    },
    "carserv": {
     "o": 0.1,
@@ -1663,11 +1738,13 @@
     "from": [
      "oilgas"
     ],
-    "stock": true
+    "stock": true,
+    "s": 0.108
    },
    "machines": {
     "o": 0.15,
-    "n": "Hull and engine upkeep"
+    "n": "Hull and engine upkeep",
+    "s": 0.012
    },
    "power": {
     "o": 0.05,
@@ -1684,11 +1761,13 @@
     "from": [
      "oilgas"
     ],
-    "stock": true
+    "stock": true,
+    "s": 0.18
    },
    "machines": {
     "o": 0.2,
-    "n": "Aircraft parts and maintenance"
+    "n": "Aircraft parts and maintenance",
+    "s": 0.016
    },
    "laundry": {
     "o": 0.04,
@@ -1707,14 +1786,17 @@
    "wares": {
     "o": 0,
     "n": "Pallets, wrap and handling supplies",
-    "stock": true
+    "stock": true,
+    "s": 0.06
    },
    "machines": {
     "o": 0.1,
-    "n": "Racking and forklift upkeep"
+    "n": "Racking and forklift upkeep",
+    "s": 0.008
    },
    "clean": {
-    "o": 0.03
+    "o": 0.03,
+    "s": 0.003
    },
    "power": {
     "o": 0.2,
@@ -1727,10 +1809,12 @@
   "resrent": {
    "upkeep": {
     "o": 0.35,
-    "n": "Maintenance and repairs"
+    "n": "Maintenance and repairs",
+    "s": 0.028
    },
    "clean": {
-    "o": 0.2
+    "o": 0.2,
+    "s": 0.016
    },
    "power": {
     "o": 0.15,
@@ -1743,10 +1827,12 @@
   "comrent": {
    "upkeep": {
     "o": 0.35,
-    "n": "Maintenance and repairs"
+    "n": "Maintenance and repairs",
+    "s": 0.028
    },
    "clean": {
-    "o": 0.2
+    "o": 0.2,
+    "s": 0.016
    },
    "power": {
     "o": 0.15,
@@ -1759,10 +1845,12 @@
   "parking": {
    "upkeep": {
     "o": 0.25,
-    "n": "Maintenance and repairs"
+    "n": "Maintenance and repairs",
+    "s": 0.02
    },
    "clean": {
-    "o": 0.1
+    "o": 0.1,
+    "s": 0.008
    },
    "power": {
     "o": 0.15,
@@ -1812,7 +1900,8 @@
   "power": {
    "machines": {
     "o": 0.3,
-    "n": "Plant and grid parts"
+    "n": "Plant and grid parts",
+    "s": 0.024
    },
    "software": {
     "o": 0.08
@@ -1821,7 +1910,8 @@
   "oilgas": {
    "machines": {
     "o": 0.3,
-    "n": "Drilling parts and servicing"
+    "n": "Drilling parts and servicing",
+    "s": 0.024
    },
    "software": {
     "o": 0.06
@@ -1831,13 +1921,16 @@
    "care": {
     "o": 0,
     "n": "Dental materials and consumables",
-    "stock": true
+    "stock": true,
+    "s": 0.048
    },
    "upkeep": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "clean": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "laundry": {
     "o": 0.08,
@@ -1863,7 +1956,8 @@
   },
   "security": {
    "carserv": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "power": {
     "o": 0.08,
@@ -1877,14 +1971,17 @@
    "wares": {
     "o": 0,
     "n": "Vine care, barrels and supplies",
-    "stock": true
+    "stock": true,
+    "s": 0.18
    },
    "machines": {
     "o": 0.1,
-    "n": "Machine parts and servicing"
+    "n": "Machine parts and servicing",
+    "s": 0.008
    },
    "clean": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "power": {
     "o": 0.08,
@@ -1898,14 +1995,17 @@
    "food": {
     "o": 0,
     "n": "Drinks and snacks",
-    "stock": true
+    "stock": true,
+    "s": 0.09
    },
    "upkeep": {
     "o": 0.1,
-    "n": "Maintenance and parts"
+    "n": "Maintenance and parts",
+    "s": 0.008
    },
    "clean": {
-    "o": 0.08
+    "o": 0.08,
+    "s": 0.0064
    },
    "power": {
     "o": 0.25,
@@ -1919,14 +2019,17 @@
    "fuel": {
     "o": 0,
     "n": "Fuel, tyres and cleaning",
-    "stock": true
+    "stock": true,
+    "s": 0.072
    },
    "carserv": {
-    "o": 0.14
+    "o": 0.14,
+    "s": 0.0112
    },
    "valet": {
     "o": 0.03,
-    "n": "Vehicle cleaning"
+    "n": "Vehicle cleaning",
+    "s": 0.003
    },
    "power": {
     "o": 0.05,
@@ -1948,10 +2051,12 @@
   "club": {
    "machines": {
     "o": 0.2,
-    "n": "Pitch and stadium upkeep"
+    "n": "Pitch and stadium upkeep",
+    "s": 0.016
    },
    "clean": {
-    "o": 0.08
+    "o": 0.08,
+    "s": 0.0064
    },
    "laundry": {
     "o": 0.1,
@@ -1968,7 +2073,8 @@
   },
   "wholesale": {
    "upkeep": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "carserv": {
     "o": 0.05,
@@ -1997,7 +2103,8 @@
   "fuelstation": {
    "food": {
     "o": 0.12,
-    "n": "Shop snacks and drinks"
+    "n": "Shop snacks and drinks",
+    "s": 0.0996
    },
    "fuel": {
     "o": 0,
@@ -2005,10 +2112,12 @@
     "from": [
      "oilgas"
     ],
-    "stock": true
+    "stock": true,
+    "s": 0.498
    },
    "upkeep": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "carserv": {
     "o": 0.04,
@@ -2030,10 +2139,12 @@
    "care": {
     "o": 0,
     "n": "Detergents and linen care",
-    "stock": true
+    "stock": true,
+    "s": 0.072
    },
    "upkeep": {
-    "o": 0.06
+    "o": 0.06,
+    "s": 0.0048
    },
    "carserv": {
     "o": 0.06,

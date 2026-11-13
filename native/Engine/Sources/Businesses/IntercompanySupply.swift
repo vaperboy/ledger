@@ -26,7 +26,7 @@ public enum IntercompanySupply {
     }()
 
     public static func kind(_ id: String) -> Kind? { kinds.first { $0.id == id } }
-    public static let modes: [(id: String, name: String)] = [("mkt", "Market price"), ("c10", "Cost + 10%"), ("cost", "At cost")]
+    public static let modes: [(id: String, name: String)] = [("mkt", "Full price"), ("c10", "Cost + 10%"), ("cost", "At cost")]
     public static func modeName(_ id: String) -> String { modes.first { $0.id == id }?.name ?? id }
 
     static func rawLinks(_ s: GameState) -> [JSONValue] { s.rest["l27"]?.array ?? [] }
@@ -60,11 +60,12 @@ public enum IntercompanySupply {
     public static let automaticKinds: Set<String> = ["power", "web"]
 
     public static func kindsFor(_ co: Company) -> [Kind] {
-        kinds.filter { !automaticKinds.contains($0.id) && $0.buyers[co.type] != nil && !$0.suppliers.contains(co.type) }
+        kinds.filter { !automaticKinds.contains($0.id) && $0.buyers[co.type] != nil }
     }
 
     public static func suppliers(_ s: GameState, for co: Company, kind k: Kind) -> [Company] {
-        s.companies.filter { $0.status == .open && $0.id != co.id && k.suppliers.contains($0.type) && $0.countryCode == co.countryCode && (!k.local || $0.cityID == co.cityID) }
+        let trades = SupplyMap.suppliers(line: k.id, buyer: co.type)
+        return s.companies.filter { $0.status == .open && $0.id != co.id && trades.contains($0.type) && $0.countryCode == co.countryCode && (!k.local || $0.cityID == co.cityID) }
     }
 
     public static func costRatio(_ c: Company, data: GameData, perkCut: Double = 0) -> Double {
@@ -113,7 +114,7 @@ public enum IntercompanySupply {
 
     @discardableResult
     public static func setSupplier(_ s: inout GameState, buyer: Int, kind kid: String, supplier: Int, mode: String) -> Bool {
-        guard let b = s.company(buyer), let sp = s.company(supplier), let k = kind(kid), k.suppliers.contains(sp.type), modes.contains(where: { $0.id == mode }) else { return false }
+        guard let b = s.company(buyer), let sp = s.company(supplier), let k = kind(kid), SupplyMap.suppliers(line: k.id, buyer: b.type).contains(sp.type), modes.contains(where: { $0.id == mode }) else { return false }
         AccountSupply.clear(&s, buyer: b.id, kind: kid)
         var L = rawLinks(s).filter { !($0["b"].int == b.id && $0["k"].string == kid) }
         L.append(.object(["id": .number(Double(s.makeID())), "k": .string(kid), "b": .number(Double(b.id)), "s": .number(Double(sp.id)), "mode": .string(mode), "w0": .number(Double(s.week))]))

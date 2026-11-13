@@ -104,7 +104,7 @@ struct SupplierFacts: Identifiable {
         let fee: Double? = contract == nil ? nil : e.playerSupplyCancelFee(companyID: co.id, lineID: id)
         var fit: SupplyFit = now?.fit ?? .fine
         if let l = listing { fit = e.playerSupplyFit(companyID: co.id, listing: l, today: SupplyMarketStore.today(e)) }
-        var deliver: [Line] = [Line(label: "Delivers", value: r.title), Line(label: "Price", value: price)]
+        var deliver: [Line] = [Line(label: "Delivers", value: r.kind), Line(label: "Price", value: price)]
         if !lead.isEmpty { deliver.append(Line(label: "Lead time", value: lead)) }
         deliver.append(Line(label: "Quality", value: listing.map { (l: SupplyListing) -> String in SupplyMarketWords.quality(l.qualityTier) } ?? r.quality))
         deliver.append(Line(label: "What you need", value: "\(r.need) units a week"))
@@ -175,15 +175,19 @@ struct SupplierListRow: View {
             HStack(alignment: .center, spacing: Theme.Space.m) {
                 SupplierLogo(logoID: facts.logoID, name: facts.chosen ? facts.supplier : facts.what, size: 40)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(facts.what.tidyText).textStyle(.caption, tint: P.inkFaint).lineLimit(1)
-                    Text(facts.supplier.tidyText).textStyle(.headline).lineLimit(1).multilineTextAlignment(.leading)
-                    Text(([facts.price, facts.reliability].filter { (s: String) -> Bool in !s.isEmpty }).joined(separator: " \u{00B7} ").tidyText)
-                        .textStyle(.caption, tint: facts.reliability == "Patchy" ? P.caution : P.inkSoft, numeric: true).lineLimit(1)
+                    Text(facts.what.tidyText).textStyle(.headline).lineLimit(1)
+                    HStack(spacing: Theme.Space.xs) {
+                        Text(facts.supplier.tidyText).textStyle(.caption, tint: P.inkSoft).lineLimit(1)
+                        if facts.company?.isOwn == true { YoursMark() }
+                    }
                 }
                 Spacer(minLength: Theme.Space.s)
-                if !facts.chosen { AcctPill(text: "Pick one", tone: .warn) }
-                else if facts.late { AcctPill(text: "Late", tone: .bad) }
-                else { FitMark(fit: facts.fit) }
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(facts.price.tidyText).textStyle(.caption, tint: P.ink, numeric: true).lineLimit(1)
+                    if !facts.chosen { AcctPill(text: "Pick one", tone: .warn) }
+                    else if facts.late { AcctPill(text: "Late", tone: .bad) }
+                    else { FitMark(fit: facts.fit) }
+                }
                 LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
             }
             .padding(.vertical, Theme.Space.s)
@@ -208,7 +212,6 @@ struct SupplierProfileScreen: View {
 
     @State private var choosing: SupplierSubject?
     @State private var talk: SupplierTalk?
-    @State private var ownerCode: SupplierOwnerRoute?
     @State private var pending: PendingAction?
 
     var body: some View {
@@ -254,15 +257,14 @@ struct SupplierProfileScreen: View {
         .ledgerBackground()
         .confirmAction($pending)
         .centerSheet(item: $choosing, category: .detail, tone: .info) { (s: SupplierSubject) in
-            SupplierPopup(companyID: companyID, subject: s, onClose: { choosing = nil }, onOpenOwner: { (code: String) in
+            SupplierPopup(companyID: companyID, subject: s, onClose: { choosing = nil }, onOpenOwner: { (ref: SupplierOwnerRef) in
                 choosing = nil
-                ownerCode = SupplierOwnerRoute(id: code)
+                store.push(.supplierOwner(ref))
             }).environmentObject(store)
         }
         .centerSheet(item: $talk, category: .detail, tone: .info) { (t: SupplierTalk) in
             SupplierNegotiateSheet(companyID: companyID, input: t.input, vendorID: t.vendor, vendorName: f.supplier, onClose: { talk = nil }).environmentObject(store)
         }
-        .navigationDestination(item: $ownerCode) { (r: SupplierOwnerRoute) in PlayerProfileByCode(code: r.id) }
         .task { market.sync(store) }
         .appScreen(title: "Supplier", subtitle: co.name, tab: .company)
         .accessibilityIdentifier("supplier-profile")
@@ -278,7 +280,7 @@ struct SupplierProfileScreen: View {
                     FitMark(fit: f.fit)
                 }
                 if let c = f.company {
-                    SupplierCompanyCard(company: c, onOpenOwner: { ownerCode = SupplierOwnerRoute(id: c.ownerCode) })
+                    SupplierCompanyCard(company: c, onOpenOwner: { store.push(.supplierOwner(c.ownerRef)) })
                 } else {
                     HStack(alignment: .center, spacing: Theme.Space.m) {
                         SupplierLogo(logoID: f.logoID, name: f.chosen ? f.supplier : f.what, size: 48)
@@ -343,9 +345,6 @@ struct SupplierTalk: Identifiable {
     var id: String { input + "|" + vendor }
 }
 
-struct SupplierOwnerRoute: Identifiable, Hashable {
-    var id: String
-}
 
 // Ask a supplier for an extra discount. They may agree, counter, refuse or walk away for a while.
 struct SupplierNegotiateSheet: View {

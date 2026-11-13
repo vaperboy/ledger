@@ -78,7 +78,6 @@ struct PlayerProfileByCode: View {
 enum OnlineWiring {
     @MainActor static func install() {
         SupplyMarketPlayersSource.provider = OnlinePlayersAdapter()
-        SupplierOwnerProfileHook.destination = { code in AnyView(PlayerProfileByCode(code: code)) }
         JointVentureCoordinator.shared.attach(OnlineBackend.shared)
     }
 }

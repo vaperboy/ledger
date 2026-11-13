@@ -30,6 +30,8 @@ struct SupplierCompany: Equatable {
     var priceLevel: String = ""
     var isOwn: Bool = false
 
+    var ownerRef: SupplierOwnerRef { SupplierOwnerRef(code: ownerCode, name: owner, company: name, trade: trade, city: city) }
+
     var tradeLine: String { [trade, city].filter { (s: String) -> Bool in !s.isEmpty }.joined(separator: " \u{00B7} ") }
 
     static func tradeName(_ e: GameEngine?, _ id: String) -> String { e?.data.catalog[id]?.name ?? "" }
@@ -53,6 +55,71 @@ struct SupplierCompany: Equatable {
     }
 }
 
+// A quiet mark for the player's own companies.
+struct YoursMark: View {
+    @Environment(\.outsidePalette) private var P
+
+    var body: some View {
+        Text("Yours")
+            .textStyle(.caption, tint: P.accent, weight: .medium)
+            .padding(.horizontal, Theme.Space.xs).padding(.vertical, 1)
+            .overlay(Capsule().stroke(P.accent.opacity(0.35), lineWidth: 1))
+            .accessibilityLabel("Your own company")
+    }
+}
+
+// One supplier section (Stock, Upkeep, Transport, Services): a clear header and the rows under it.
+// The company screen and the group screen both use it, so both read the same.
+struct SupplySection<Rows: View>: View {
+    @Environment(\.outsidePalette) private var P
+    var title: String
+    @ViewBuilder var rows: () -> Rows
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(title).textStyle(.headline, tint: P.ink).accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 0) { rows() }
+                .padding(.horizontal, Theme.Space.m)
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.card))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// Who owns a supplier company, enough to open their player card.
+struct SupplierOwnerRef: Hashable {
+    var code: String
+    var name: String
+    var company: String
+    var trade: String
+    var city: String
+}
+
+// The owner's player card. A known player opens their profile; otherwise the card is built from the supplier company.
+struct SupplierOwnerProfile: View {
+    var ref: SupplierOwnerRef
+
+    var body: some View {
+        if let p = OnlineDirectoryCache.players.first(where: { (q: PlayerProfile) -> Bool in q.code == ref.code }) {
+            PlayerProfileView(playerID: p.id)
+        } else {
+            PlayerProfileView(playerID: "supplier:" + ref.code, preset: Self.profile(ref))
+        }
+    }
+
+    static func profile(_ r: SupplierOwnerRef) -> PlayerProfile {
+        let h: Int = EmblemCatalog.hash("owner" + r.code + r.name)
+        let pool: [String] = ["Early player", "Cash positive", "Debt free", "Hired fifty", "Five-star shop", "Season one", "First profit"]
+        let badges: [String] = Array(Set([pool[h % pool.count], pool[(h / 7) % pool.count]])).sorted()
+        let health: [OnlineCompanyHealth] = [.steady, .growing, .thriving]
+        let company = OnlineCompany(id: "supplier:" + r.code, name: r.company, trade: r.trade, city: r.city, countryCode: "", health: health[h % health.count])
+        let raw = PlayerProfile(id: "supplier:" + r.code, code: r.code, displayName: r.name, avatarColour: AvatarCatalog.colour(for: r.name), countryCode: "",
+                                level: 4 + h % 24, badges: badges, privacy: .everyone, companyCount: 1 + (h / 11) % 4, companies: [company],
+                                gameWeek: nil, tradesCompleted: nil, relation: .none, avatarIcon: AvatarCatalog.simulatedIcon(for: r.name))
+        return ProfileVisibility.apply(raw, relation: .none)
+    }
+}
+
 // A supplier's company card: who runs it, how big it is, how reliably it delivers and what it charges.
 struct SupplierCompanyCard: View {
     @Environment(\.outsidePalette) private var P
@@ -70,7 +137,7 @@ struct SupplierCompanyCard: View {
                 Spacer(minLength: 0)
             }
             if company.isOwn {
-                Text("Your company").textStyle(.caption, tint: P.inkFaint)
+                YoursMark()
             } else if !company.owner.isEmpty {
                 SupplierOwnerLine(name: company.owner, onOpen: company.ownerCode.isEmpty ? nil : onOpenOwner)
             }

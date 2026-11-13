@@ -187,7 +187,7 @@ public extension GameEngine {
         options.append(SupplierOption(id: "out", kind: .outside, name: usual.isEmpty ? k.name : usual, subtitle: "Player company", change: .outside, isCurrent: link == nil && acctLink == nil,
                                       priceFactor: 1, yearlyVsMarket: 0, yearlyVsCurrent: nil, discount: nil, relationship: nil, relationshipWord: nil, nextLevel: nil, vendorID: nil,
                                       quality: nil, reliability: outsideRel ?? "Dependable",
-                                      terms: k.delivered ? "Market price per delivered order (\(supplierPct(k.buyers[co.type] ?? 0)) of the order value), paid as you deliver" : "Market price, paid as you buy",
+                                      terms: k.delivered ? "Usual price per delivered order (\(supplierPct(k.buyers[co.type] ?? 0)) of the order value), paid as you deliver" : "Usual price, paid as you buy",
                                       delivery: k.delivered ? "Orders that are not delivered bring no customers" : (k.local ? "Same city" : "Same country"), risks: outsideRisk, blocked: nil))
         for sp in IntercompanySupply.suppliers(state, for: co, kind: k) {
             for m in IntercompanySupply.modes {
@@ -200,10 +200,10 @@ public extension GameEngine {
                 }
                 if m.id != "mkt" && pf >= 1 { risks.append("\(sp.name) runs at no margin today, so this mode gives no saving yet.") }
                 let delivered: String? = isCur ? link.map { "\(Int(saturating: ($0.lastShare * 100).rounded()))% delivered last week" } : nil
-                options.append(SupplierOption(id: "o:\(sp.id):\(m.id)", kind: .ownCompany, name: sp.name, subtitle: "Your company · \(m.name)", change: .ownCompany(sp.id, mode: m.id), isCurrent: isCur,
+                options.append(SupplierOption(id: "o:\(sp.id):\(m.id)", kind: .ownCompany, name: sp.name, subtitle: "Yours · \(m.name)", change: .ownCompany(sp.id, mode: m.id), isCurrent: isCur,
                                               priceFactor: pf, yearlyVsMarket: spend * (1 - pf), yearlyVsCurrent: nil, discount: nil, relationship: nil, relationshipWord: nil, nextLevel: nil,
                                               vendorID: nil, quality: nil, reliability: delivered ?? "Not measured until it delivers",
-                                              terms: "\(m.name), settled weekly between the two companies' books, VAT as on any sale in the country (reclaimed once the buyer is past the VAT threshold); never above the outside price",
+                                              terms: "\(m.name), settled weekly between the two companies' books, VAT as on any sale in the country (reclaimed once the buyer is past the VAT threshold); never above the usual price",
                                               delivery: k.local ? "Same city" : "Same country", risks: risks, blocked: nil))
             }
         }

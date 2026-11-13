@@ -11,6 +11,8 @@ enum NavRoute: Hashable {
     case app(PhoneApp)
     case entity(String, GroupSection)
     case suppliers
+    case supplier(Int, String)
+    case supplierOwner(SupplierOwnerRef)
 
     var key: String {
         switch self {
@@ -22,6 +24,8 @@ enum NavRoute: Hashable {
         case .app(let app): return "app.\(app.rawValue)"
         case .entity(let id, _): return "entity.\(id)"
         case .suppliers: return "suppliers"
+        case .supplier(let id, let subject): return "supplier.\(id).\(subject)"
+        case .supplierOwner(let r): return "supplierOwner.\(r.code).\(r.company)"
         }
     }
 

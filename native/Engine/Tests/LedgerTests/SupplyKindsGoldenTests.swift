@@ -14,7 +14,7 @@ final class SupplyKindsGoldenTests: XCTestCase {
     func testKindsAreExactlyTheGoldenList() throws {
         let golden = try Golden.load("supply_kinds")
         XCTAssertEqual(Self.snapshot(), golden)
-        XCTAssertEqual(IntercompanySupply.kinds.count, 19)
+        XCTAssertEqual(IntercompanySupply.kinds.count, golden.array.count)
         XCTAssertEqual(IntercompanySupply.kinds.map(\.id), golden.array.map { $0["id"].string }, "order is part of the behaviour (first matching supplier kind wins)")
     }
 }

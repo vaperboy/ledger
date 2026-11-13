@@ -16,6 +16,12 @@ enum SupplierSubject: Identifiable, Hashable {
         }
     }
 
+    init?(id: String) {
+        if id.hasPrefix("item:") { self = .item(String(id.dropFirst(5))) }
+        else if id.hasPrefix("line:") { self = .line(String(id.dropFirst(5))) }
+        else { return nil }
+    }
+
     init(_ ask: SupplyAsk, itemID: String) {
         switch ask {
         case .item: self = .item(itemID)
@@ -75,7 +81,7 @@ struct SupplierPopup: View {
     var subject: SupplierSubject
     var asking: Bool = false
     var onClose: () -> Void
-    var onOpenOwner: ((String) -> Void)? = nil
+    var onOpenOwner: ((SupplierOwnerRef) -> Void)? = nil
     @State private var rank: SupplierRank = .cheapest
     @State private var message: String?
     @State private var confirming: SupplierChoice?
@@ -178,8 +184,10 @@ struct SupplierPopup: View {
         ["Continuous", "As needed", "Same week"].contains(lead) ? "" : lead.lowercased()
     }
 
+    // Your own companies come first, then the others by the chosen order.
     private func ranked(_ list: [SupplierChoice]) -> [SupplierChoice] {
         list.sorted { (a: SupplierChoice, b: SupplierChoice) -> Bool in
+            if a.company.isOwn != b.company.isOwn { return a.company.isOwn }
             switch rank {
             case .cheapest: return a.cost != b.cost ? a.cost < b.cost : a.name < b.name
             case .reliable: return (a.trust ?? 0.5) != (b.trust ?? 0.5) ? (a.trust ?? 0.5) > (b.trust ?? 0.5) : a.name < b.name
@@ -264,7 +272,10 @@ struct SupplierPopup: View {
                 HStack(alignment: .center, spacing: Theme.Space.s) {
                     SupplierLogo(logoID: c.company.logoID, name: c.name, size: 36)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(c.name.tidyText).popupText(.rowValue).lineLimit(1)
+                        HStack(spacing: Theme.Space.xs) {
+                            Text(c.name.tidyText).popupText(.rowValue).lineLimit(1)
+                            if c.company.isOwn { YoursMark() }
+                        }
                         Text(([c.price, c.delivery].filter { (s: String) -> Bool in !s.isEmpty }).joined(separator: " \u{00B7} ")).popupText(.caption).lineLimit(1)
                     }
                     Spacer(minLength: Theme.Space.xs)
@@ -293,10 +304,12 @@ struct SupplierPopup: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    // Opens the owner's player card; without a handler the popup closes and the card is pushed.
     private func ownerAction(_ c: SupplierChoice) -> (() -> Void)? {
-        guard !c.company.ownerCode.isEmpty, let open = onOpenOwner else { return nil }
-        let code: String = c.company.ownerCode
-        return { open(code) }
+        guard !c.company.ownerCode.isEmpty, !c.company.isOwn else { return nil }
+        let ref: SupplierOwnerRef = c.company.ownerRef
+        if let open = onOpenOwner { return { open(ref) } }
+        return { onClose(); store.push(.supplierOwner(ref)) }
     }
 
     private func goodsTier(_ co: Company) -> some View {

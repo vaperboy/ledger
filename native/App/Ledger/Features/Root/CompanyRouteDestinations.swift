@@ -20,6 +20,10 @@ struct CompanyRouteDestination: View {
                 GroupSupplierDirectory()
                     .ledgerBackground()
                     .appScreen(title: "Suppliers", subtitle: "Every supplier your companies use")
+            case .supplier(let id, let subject):
+                SupplierProfileScreen(companyID: id, subject: SupplierSubject(id: subject) ?? .line(subject))
+            case .supplierOwner(let ref):
+                SupplierOwnerProfile(ref: ref)
             }
         }
         .zoomDestination(route)

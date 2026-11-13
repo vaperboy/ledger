@@ -156,7 +156,7 @@ public extension GameEngine {
         guard let n = supplyOwnShare(o) else { return "Not yet tested" }
         return n >= 95 ? "Dependable" : n >= 80 ? "Steady" : "Patchy"
     }
-    private func supplyPriceLevel(_ factor: Double) -> String { factor < 0.97 ? "Under market price" : factor > 1.03 ? "Above market price" : "Market price" }
+    private func supplyPriceLevel(_ factor: Double) -> String { factor < 0.97 ? "Cheaper" : factor > 1.03 ? "Dearer" : "Usual price" }
     private func supplyCostIndex(_ co: Company) -> Double { World(state: state, data: data).country(co).costIndex }
 
     // A player company row with the facts every supplier shows, and whether it can meet the need.
@@ -184,10 +184,15 @@ public extension GameEngine {
             if let w, let n = shownNow { vs = w - n }
             let share: Int? = supplyOwnShare(o)
             var row = SupplyOfferRow(id: o.id, name: o.name, detail: o.subtitle, quality: "Solid", reliability: supplyOwnReliability(o), trust: share.map { Double($0) / 100 },
-                                     source: o.kind == .ownCompany ? "Your company" : "Company", lead: lead, weekly: w, weeklyVsNow: vs, isCurrent: o.isCurrent, blocked: o.blocked,
+                                     source: o.kind == .ownCompany ? "Yours" : "Player", lead: lead, weekly: w, weeklyVsNow: vs, isCurrent: o.isCurrent, blocked: o.blocked,
                                      change: .input(k.id, o.change))
             row.isOwn = o.kind == .ownCompany
             row.priceLevel = supplyPriceLevel(o.priceFactor ?? 1)
+            if case .ownCompany(let sid, _) = o.change, let sp = state.company(sid) {
+                row.tradeID = sp.type
+                row.city = data.countries.resolve(sp.countryCode, orHome: state.homeCountryCode).city(sp.cityID)?.name ?? ""
+                row.staff = sp.staff.count
+            }
             if let n = share { row.fit = n >= 95 ? .fine : n >= 80 ? .mayFallShort : .cannot }
             return row
         }
@@ -249,7 +254,7 @@ public extension GameEngine {
         let now = offers.first { $0.isCurrent } ?? offers.first
         var note: String?
         if SupplyCatalogue.missedRecently(state, co, bd, line: line, data: data) { note = "A delivery was missed recently, so fewer customers were served." }
-        return SupplyRow(id: line.id, group: line.group, title: line.name, kind: line.kind, scale: Self.supplyScale(line), current: now?.name ?? "", quality: now?.quality ?? "Solid",
+        return SupplyRow(id: line.id, group: line.group, title: line.kind, kind: line.name, scale: Self.supplyScale(line), current: now?.name ?? "", quality: now?.quality ?? "Solid",
                          reliability: now?.reliability ?? "Steady", weekly: shownNow ?? weekly, weeklyBefore: before, note: note,
                          governed: input?.governedBy ?? ownInput?.governedBy, offers: offers, need: need, input: line.input)
     }

@@ -11,7 +11,6 @@ struct CompanySupply: View {
     @Environment(\.outsidePalette) private var P
     var engine: GameEngine
     var company: Company
-    @State private var opened: SupplierSubject?
     @State private var ordering = false
 
     var body: some View {
@@ -24,7 +23,7 @@ struct CompanySupply: View {
         return VStack(alignment: .leading, spacing: Theme.Space.xl) {
             yourSupply()
             if !items.isEmpty {
-                PageGroup("What you sell: who supplies it") {
+                SupplySection(title: "Items") {
                     ForEach(Array(items.enumerated()), id: \.element.id) { (n: Int, f: SupplierFacts) in
                         if n > 0 { RowRule(inset: 0) }
                         supplierRow(f).coachAnchor(.itemSupplier, enabled: n == 0)
@@ -35,7 +34,7 @@ struct CompanySupply: View {
                 let facts: [SupplierFacts] = g.rows.compactMap { (r: SupplyRow) -> SupplierFacts? in
                     SupplierFacts.make(engine, company, .line(r.id), market: market, rows: rows, inputs: inputs)
                 }
-                PageGroup("What the company buys: " + g.name.lowercased()) {
+                SupplySection(title: g.name) {
                     ForEach(Array(facts.enumerated()), id: \.element.id) { (n: Int, f: SupplierFacts) in
                         if n > 0 { RowRule(inset: 0) }
                         supplierRow(f)
@@ -48,9 +47,6 @@ struct CompanySupply: View {
             InTransitSection(rows: engine.shipmentsOnTheWay(companyID: company.id), currency: engine.currency(for: company))
             more
         }
-        .navigationDestination(item: $opened) { (s: SupplierSubject) in
-            SupplierProfileScreen(companyID: company.id, subject: s).environment(\.outsidePalette, P)
-        }
         .navigationDestination(isPresented: $ordering) {
             SettingsPage(title: "Order stock", subtitle: company.name) { StockOrderPopup(companyID: company.id, onDone: { ordering = false }).environmentObject(store) }
         }
@@ -59,7 +55,7 @@ struct CompanySupply: View {
     }
 
     private func supplierRow(_ f: SupplierFacts) -> some View {
-        SupplierListRow(facts: f, identifier: "supplier-row-" + f.id) { opened = f.subject }
+        SupplierListRow(facts: f, identifier: "supplier-row-" + f.id) { store.push(.supplier(company.id, f.subject.id)) }
     }
 
     @ViewBuilder private func yourSupply() -> some View {
@@ -69,7 +65,7 @@ struct CompanySupply: View {
         }
         if !mine.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("What the company supplies to others").textStyle(.label, tint: P.inkFaint)
+                Text("You supply").textStyle(.headline, tint: P.ink)
                 ForEach(mine) { (l: SupplyListing) in
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         HStack(spacing: Theme.Space.m) {

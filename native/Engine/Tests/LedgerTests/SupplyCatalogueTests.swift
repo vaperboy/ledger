@@ -48,7 +48,8 @@ final class SupplyCatalogueTests: XCTestCase {
         let (e, id) = try open("gym")
         let rows = e.supplyLines(companyID: id).flatMap { $0.rows }
         for want in ["food", "machines", "clean", "laundry"] { XCTAssertTrue(rows.contains { $0.id == want }, "gym lacks \(want): \(rows.map { $0.id })") }
-        XCTAssertEqual(try line(e, id, "food").title, "Drinks, snacks and protein stock")
+        XCTAssertEqual(try line(e, id, "food").title, "Food and drink", "rows carry the short line name")
+        XCTAssertEqual(try line(e, id, "food").kind, "Drinks, snacks and protein stock", "and the trade's own wording as the detail")
         let groups = e.supplyLines(companyID: id).map { $0.name }
         XCTAssertTrue(Set(groups).isSubset(of: ["Stock", "Upkeep", "Transport", "Services"]), "\(groups)")
         let laundry = try line(e, id, "laundry")
