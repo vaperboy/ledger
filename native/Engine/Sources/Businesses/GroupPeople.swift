@@ -119,7 +119,7 @@ public enum GroupPeople {
         let cur = currency(s, data)
         for n in s.people.values.sorted(by: { $0.id < $1.id }) where !n.value("gx").isNull && n.employerID != 0 && n.employerID != Hiring.goneElsewhere {
             var cost = 0.0
-            for (k, v) in n.value("gx").object where v.double != 0 { cost += StaffExpenses.item(k).map { cur.scaledPrice($0.monthlyCost) } ?? 0 }
+            for (k, v) in n.value("gx").object.sorted(by: { $0.key < $1.key }) where v.double != 0 { cost += StaffExpenses.item(k).map { cur.scaledPrice($0.monthlyCost) } ?? 0 }
             if cost > 0 { Payments.playerPays(&s, cost * 12 / 52, label: "Expenses: \(n.name)") }
         }
     }

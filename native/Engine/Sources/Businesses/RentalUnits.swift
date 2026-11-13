@@ -55,7 +55,7 @@ public enum RentalUnits {
         let prem = co.value("prem")
         if !prem.isNull, !prem["owned"].bool, prem["m2"].double > 0 { total += prem["rent"].double * prem["m2"].double / 52 }
         let eq = co.value("eq")
-        for (id, r) in eq.object where !pools.contains(id) && r["n"].double > 0 {
+        for (id, r) in eq.object.sorted(by: { $0.key < $1.key }) where !pools.contains(id) && r["n"].double > 0 {
             if let spec = bd.allEquipment.first(where: { $0.id == id }) { total += r["cost"].double / max(1, spec.lifeYears) / 52 }
         }
         return total

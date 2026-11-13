@@ -217,7 +217,7 @@ public enum OwnerMeetings {
         case "hr": return "We have \(f.staff) \(f.staff == 1 ? "person" : "people"), \(f.notice) working their notice. Mood is \(moodWord(f.mood))."
         case "ops": return "We use \(pct(f.util)) of capacity."
         case "mkt":
-            let spend = co.value("mkt").object.values.reduce(0.0) { $0 + $1["b"].double }
+            let spend = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0.0) { $0 + $1.value["b"].double }
             return "\(Int(saturating: jsRound(f.awareness)))% of the area knows us. We spend \(f.cur.short(spend)) a week on marketing."
         default: return nil
         }

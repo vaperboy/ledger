@@ -264,7 +264,7 @@ public enum Marketing {
         let mkt = co.value("mkt")
         func expected(_ ch: MarketingChannel) -> Double { ch.isPrimeTime ? 0.872 : ch.isHighVariance ? 0.886 : 1 }
         var others = 0.0
-        for (k, m) in mkt.object where k != channel {
+        for (k, m) in mkt.object.sorted(by: { $0.key < $1.key }) where k != channel {
             guard let oc = tables.channels[k] else { continue }
             others += strength(co, bd, w, channel: oc, budget: m["b"].double, since: m["since"].double, tables: tables) * expected(oc)
         }

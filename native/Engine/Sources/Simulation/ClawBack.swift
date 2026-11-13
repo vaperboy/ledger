@@ -36,6 +36,13 @@ public enum ClawBack {
         return max(0, taken)
     }
 
+    /// Borrowed money the company still owes on loans nobody guaranteed sits in the owner's account however long ago it was drawn,
+    /// so it is taken back with no time limit (never more than the company ever brought into the account).
+    public static func borrowedStillHeld(_ s: GameState, _ co: Company) -> Double {
+        let owed = s.loans.filter { $0.companyID == co.id && !$0.isGuaranteed }.reduce(0) { $0 + $1.balance }
+        return max(0, min(co.retainedCash, owed))
+    }
+
     /// Takes `amount` back from the owner: from the account while it holds money, the rest as a personal debt repaid monthly.
     @discardableResult
     static func collect(_ s: inout GameState, amount: Double, from co: Company) -> (paid: Double, owed: Double) {

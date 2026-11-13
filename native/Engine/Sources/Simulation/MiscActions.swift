@@ -143,7 +143,14 @@ public extension GameEngine {
         let debts = owedOnLoans + CompanyFigures.billsOwed(co)
         let fromAccount = jsRound(max(0, debts - sale))
         return WindUpTerms(saleValue: sale, debts: debts, fromAccount: fromAccount, toOwner: max(0, sale - debts) * co.ownership / 100,
-                           refusal: fromAccount > max(0, s.cash) + 0.5 ? insolventWindUp : nil)
+                           refusal: fromAccount > ownerCanPay(s, ctx) + 0.5 ? insolventWindUp : nil)
+    }
+
+    /// Everything the owner could turn into money to pay a company's debts: the account, funds, deposits, crypto, shares and things owned.
+    /// Money parked outside the account never makes a company "unable to pay".
+    static func ownerCanPay(_ s: GameState, _ ctx: FinanceContext) -> Double {
+        let nw = Valuation.netWorth(s, trades: ctx.trades)
+        return max(0, nw.personal) + nw.investments + nw.luxury
     }
 
     @discardableResult mutating func windUpCompany(companyID: Int) -> Bool {
