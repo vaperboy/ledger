@@ -268,9 +268,8 @@ struct PartnerSharesSection: View {
     }
 }
 
-// Accept, decline, or leave it for later.
+// Decline on the left, accept on the right, "Later" below: the same layout as every decision.
 private struct PartnerAnswerFooter: View {
-    @Environment(\.outsidePalette) private var P
     var accept: String
     var busy: Bool
     var onAccept: () -> Void
@@ -278,19 +277,11 @@ private struct PartnerAnswerFooter: View {
     var onLater: () -> Void
 
     var body: some View {
-        VStack(spacing: 6) {
-            Button(action: { Haptics.tap(); onAccept() }) { Text(accept).lineLimit(1).minimumScaleFactor(0.8) }
-                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                .accessibilityIdentifier("partner-accept")
-            Button(action: { Haptics.tap(); onDecline() }) { Text("Decline") }
-                .buttonStyle(SecondaryButtonStyle(fullWidth: true))
-                .accessibilityIdentifier("partner-decline")
-            Button(action: onLater) { Text("Later") }
-                .buttonStyle(PopupTextActionStyle(tint: P.inkSoft))
-                .accessibilityIdentifier("confirm-cancel")
-        }
-        .disabled(busy)
-        .padding(.top, 8)
+        DecisionChoices(labels: [accept, "Decline"], identifier: { (i: Int) -> String in i == 0 ? "partner-accept" : "partner-decline" },
+                        later: onLater, laterIdentifier: "confirm-cancel",
+                        pick: { (i: Int) in if i == 0 { onAccept() } else { onDecline() } })
+            .disabled(busy)
+            .padding(.top, 8)
     }
 }
 
@@ -419,7 +410,7 @@ struct PartnerMeetingSheet: View {
     var meetingID: String
     @State private var picks: [String: String] = [:]
 
-    private static let titles: [String] = ["For", "Against", "Abstain"]
+    private static let titles: [String] = ["Against", "For", "Abstain"]
     private func choice(_ title: String) -> String { title == "For" ? "yes" : title == "Against" ? "no" : "abstain" }
     private func title(_ choice: String?) -> String { choice == "yes" ? "For" : choice == "no" ? "Against" : "Abstain" }
 

@@ -242,8 +242,8 @@ public enum EventEngine {
     }
 
     static func summary(_ fx: JSONValue, currency: Currency, tone: String) -> String {
-        let lines: [String] = EffectPreview.lines(fx, currency: currency)
-        return lines.isEmpty ? plainLine(tone: tone) : lines.joined(separator: ". ") + "."
+        let lines: [String] = EffectPreview.story(fx, currency: currency, money: true)
+        return lines.isEmpty ? plainLine(tone: tone) : lines.joined(separator: " ")
     }
 
     static let insuranceNames: [String: String] = ["prop": "property", "liab": "liability", "prof": "professional", "cyber": "cyber", "bi": "business-interruption"]

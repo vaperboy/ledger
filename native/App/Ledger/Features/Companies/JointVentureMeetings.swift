@@ -162,7 +162,7 @@ struct JVVoteSheet: View {
     var meetingID: Int
     @State private var picks: [Int: JVRules.Choice] = [:]
 
-    private static let titles: [String] = ["For", "Against", "Abstain"]
+    private static let titles: [String] = ["Against", "For", "Abstain"]
     private func choice(_ title: String) -> JVRules.Choice { title == "For" ? .yes : title == "Against" ? .no : .abstain }
     private func title(_ c: JVRules.Choice) -> String { c == .yes ? "For" : c == .no ? "Against" : "Abstain" }
 
