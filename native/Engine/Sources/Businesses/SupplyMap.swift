@@ -84,7 +84,7 @@ public enum SupplyMap {
     }
 
     public static func uses(buyerTrade: String, line: String, supplierTrade: String) -> Bool {
-        guard need(buyerTrade, line: line) != nil, buyerTrade != supplierTrade else { return false }
+        guard need(buyerTrade, line: line) != nil else { return false }
         return suppliers(line: line, buyer: buyerTrade).contains(supplierTrade)
     }
 

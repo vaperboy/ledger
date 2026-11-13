@@ -79,7 +79,7 @@ public enum SupplyPlayers {
         let tier = tiers[n % tiers.count]
         let noise = r.next()
         let quality: Double = n == 0 ? 0 : jsRound(([-0.22, 0, 0.22][tier] + (noise - 0.5) * 0.12) * 100) / 100
-        let reliability: Double = n == 0 ? standardReliability : jsRound(([0.89, 0.95, 0.982][tier] + (r.next() - 0.5) * 0.04) * 1000) / 1000
+        let reliability: Double = n == 0 ? standardReliability : jsRound(([0.89, 0.95, 0.982][tier] + (r.next() - 0.5) * 0.04) * 100) / 100
         let capacity: Double = n == 0 ? 4 : jsRound((0.9 + 5 * r.next()) * 100) / 100
         let load: Double = n == 0 ? 0.3 : jsRound((0.1 + 0.55 * r.next()) * 100) / 100
         var code = HashedRandom("code:" + key)
@@ -142,9 +142,8 @@ public enum SupplyFit: String, Equatable, Sendable {
 
 // How much a line needs, in units a supplier counts its capacity in.
 public enum SupplyNeed {
-    public static let referenceUnit = 1000.0
-
-    public static func unitValue(costIndex: Double) -> Double { referenceUnit * max(0.2, costIndex) }
+    // One unit is a reference amount of spend, scaled by the country's cost index.
+    public static func unitValue(costIndex: Double) -> Double { 1000 * max(0.2, costIndex) }
 
     public static func units(weekly: Double, costIndex: Double) -> Int {
         guard weekly.isFinite, weekly > 0 else { return 1 }

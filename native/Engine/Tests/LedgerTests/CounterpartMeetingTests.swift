@@ -15,8 +15,9 @@ final class CounterpartMeetingTests: XCTestCase {
     private func setWeek(_ e: inout GameEngine, _ delta: Int) { e.update { s, _, _ in s.week += delta } }
 
     func testSupplierLunch() throws {
-        var (e, _) = try game()
-        let vid = "V-UK-3"
+        var (e, id) = try game()
+        let vid = try XCTUnwrap(e.supplierCandidates(companyID: id, scope: "goods").first).id
+        XCTAssertTrue(SupplyPlayers.isSupplierID(vid), "the café's stock comes from a player supplier company")
         let cost = e.homeCurrency.scaledPrice(5000)
         let cash0 = e.state.cash
         XCTAssertEqual(e.lunchWithSupplier(vendorID: vid), .ok)
@@ -35,12 +36,13 @@ final class CounterpartMeetingTests: XCTestCase {
     }
 
     func testSupplierLunchNeedsCash() throws {
-        var (e, _) = try game()
+        var (e, id) = try game()
+        let vid = try XCTUnwrap(e.supplierCandidates(companyID: id, scope: "goods").first).id
         e.update { s, _, _ in Ledger.move(&s, .me, -(s.cash - 100), why: "Spend") }
         let cash = e.state.cash
-        XCTAssertEqual(e.lunchWithSupplier(vendorID: "V-UK-3"), .cash)
+        XCTAssertEqual(e.lunchWithSupplier(vendorID: vid), .cash)
         XCTAssertEqual(e.state.cash, cash)
-        XCTAssertNil(e.state.rest["vr"]?["V-UK-3"]["meet"].isNull == false ? 1 : nil)
+        XCTAssertNil(e.state.rest["vr"]?[vid]["meet"].isNull == false ? 1 : nil)
     }
 
     func testAccountDinner() throws {

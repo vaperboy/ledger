@@ -74,7 +74,7 @@ public enum Suppliers {
     }
 
     public static func lineSuppliers(_ s: GameState, company co: Company, line: String, data: GameData) -> [SupplyPlayers.Supplier] {
-        let trades = SupplyMap.suppliers(line: line, buyer: co.type).filter { $0 != co.type }
+        let trades = SupplyMap.suppliers(line: line, buyer: co.type)
         let n = fakeSlots(needed: EquipmentMarket.brandCount(co, state: s), real: realSuppliers(s), off: fakesOff(s))
         return SupplyPlayers.list(seed: s.seed, countryCode: co.countryCode, line: line, trades: trades, count: n, countries: data.countries)
     }

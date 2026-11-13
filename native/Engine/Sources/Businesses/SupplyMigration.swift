@@ -27,7 +27,7 @@ public enum SupplyMigration {
         let pool = EquipmentMarket.vendorPool(seed: seed, countryCode: p[1], countries: countries, nouns: nouns)
         let q = pool.indices.contains(n) ? pool[n].vendor.quality : 0
         let slot = q < -0.12 ? 1 : q > 0.12 ? 2 : 0
-        let trades = SupplyMap.suppliers(line: line, buyer: buyer).filter { $0 != buyer }
+        let trades = SupplyMap.suppliers(line: line, buyer: buyer)
         guard slot > 0, !trades.isEmpty else { return nil }
         return SupplyPlayers.id(countryCode: cc, line: line, trade: trades[slot % trades.count], slot: slot)
     }
@@ -128,8 +128,6 @@ public enum SupplyMigration {
                 return c
             })
         }
-        // Business customers no longer act as suppliers.
-        if !(s.rest["l39"] ?? .null).isNull { s.rest["l39"] = .array([]) }
         // Player contracts and own listings move to the new line ids; folded lines end.
         if var rec = s.rest["psup"] {
             rec["c"] = .array(rec["c"].array.compactMap { (c: JSONValue) -> JSONValue? in

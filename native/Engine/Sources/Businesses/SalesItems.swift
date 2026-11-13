@@ -158,6 +158,9 @@ public enum SalesItems {
         "webdev": [("website build", 3.0, 1), ("maintenance plan", 0.5, 4), ("custom feature", 1.5, 2)],
         "grocery": [("fresh produce", 0.8, 4), ("pantry basket", 1.2, 3), ("ready meals", 1.0, 2)],
         "boutique": [("everyday piece", 0.7, 4), ("signature piece", 1.4, 2), ("accessory", 0.4, 3)],
+        "wholesale": [("food and drink range", 1.0, 4), ("household and care range", 0.9, 2), ("clothing and goods range", 1.3, 1.5)],
+        "fuelstation": [("petrol", 1.0, 4), ("diesel", 1.1, 3), ("shop basket", 0.3, 2)],
+        "laundry": [("hotel linen", 1.0, 4), ("restaurant linen", 0.7, 2), ("uniform wash", 0.5, 2)],
     ]
     static let familyNouns: [String: [(String, Double, Double)]] = [
         "prod": [("classic", 1.0, 4), ("signature", 1.5, 2), ("premium", 2.4, 1)],

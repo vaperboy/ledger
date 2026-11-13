@@ -67,8 +67,8 @@ final class BalanceAuditTests: XCTestCase {
     }
 
     private func listing(_ id: String, stopped: Bool = false, paused: Bool = false, stopsDay: Int? = nil, committed: Int = 0) -> SupplyListing {
-        SupplyListing(id: id, ownerID: "owner-\(id)", ownerName: "Name \(id)", profileCode: "P-\(id)", companyName: "Co \(id)", companyID: nil, tradeID: "farm", tradeName: "Farm",
-                      city: "Leeds", region: "North", lineID: "goods", lineName: "Stock", priceTier: 1, qualityTier: 1, capacityPerWeek: 300, leadDays: 2, minOrder: 10, termsDays: 14,
+        SupplyListing(id: id, ownerID: "owner-\(id)", ownerName: "Name \(id)", profileCode: "P-\(id)", companyName: "Co \(id)", companyID: nil, tradeID: "wholesale", tradeName: "Wholesaler",
+                      city: "Leeds", region: "North", lineID: "food", lineName: "Food and drink stock", priceTier: 1, qualityTier: 1, capacityPerWeek: 300, leadDays: 2, minOrder: 10, termsDays: 14,
                       linkKey: "key-\(id)", record: DeliveryRecord(weeksTrading: 20, ordersTotal: 40, ordersOnTime: 39, unitsPromised: 800, unitsDelivered: 790, cleanWeeks: 12, lifetimeUnits: 790),
                       paused: paused, stopped: stopped, committedUnits: committed, country: "UK", stopsDay: stopsDay)
     }
@@ -82,7 +82,7 @@ final class BalanceAuditTests: XCTestCase {
             s.companies[i].set("lastW", .object(["cogs": .number(4000), "units": .number(100), "cap": .number(200)]))
         }
         func contract(_ lid: String) -> SupplyContract {
-            SupplyContract(id: "C-\(lid)", buyerCompanyID: id, lineID: "goods", listingID: lid, supplierOwnerID: "owner-\(lid)", supplierName: "Name \(lid)", unitsPerWeek: 20, startDay: 0)
+            SupplyContract(id: "C-\(lid)", buyerCompanyID: id, lineID: "food", listingID: lid, supplierOwnerID: "owner-\(lid)", supplierName: "Name \(lid)", unitsPerWeek: 20, startDay: 0)
         }
         XCTAssertFalse(e.signPlayerSupplier(contract: contract("s"), listing: listing("s", stopped: true), weeklyMarketSpend: 100_000))
         XCTAssertFalse(e.signPlayerSupplier(contract: contract("p"), listing: listing("p", paused: true), weeklyMarketSpend: 100_000))
@@ -151,7 +151,7 @@ final class BalanceAuditTests: XCTestCase {
     }
 
     private func supplyContract(_ lid: String, buyer: Int, units: Int = 20) -> SupplyContract {
-        SupplyContract(id: "C-\(lid)", buyerCompanyID: buyer, lineID: "goods", listingID: lid, supplierOwnerID: "owner-\(lid)", supplierName: "Name \(lid)", unitsPerWeek: units, startDay: 0)
+        SupplyContract(id: "C-\(lid)", buyerCompanyID: buyer, lineID: "food", listingID: lid, supplierOwnerID: "owner-\(lid)", supplierName: "Name \(lid)", unitsPerWeek: units, startDay: 0)
     }
 
     func testTheLastStockCannotGoToTwoBuyers() throws {

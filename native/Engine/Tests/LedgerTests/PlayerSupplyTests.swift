@@ -7,7 +7,7 @@ import Finance
 import Simulation
 
 final class PlayerSupplyTests: XCTestCase {
-    private func listing(_ id: String, trade: String = "farm", line: String = "goods", price: Int = 1, quality: Int = 1, country: String = "UK", companyID: Int? = nil) -> SupplyListing {
+    private func listing(_ id: String, trade: String = "wholesale", line: String = "food", price: Int = 1, quality: Int = 1, country: String = "UK", companyID: Int? = nil) -> SupplyListing {
         SupplyListing(id: id, ownerID: "owner-\(id)", ownerName: "Name \(id)", profileCode: "P-\(id)", companyName: "Co \(id)", companyID: companyID, tradeID: trade, tradeName: trade.capitalized,
                       city: "Leeds", region: "North", lineID: line, lineName: "Stock", priceTier: price, qualityTier: quality, capacityPerWeek: 300, leadDays: 2, minOrder: 10, termsDays: 14,
                       linkKey: "key-\(id)", record: DeliveryRecord(weeksTrading: 20, ordersTotal: 40, ordersOnTime: 39, unitsPromised: 800, unitsDelivered: 790, cleanWeeks: 12, lifetimeUnits: 790),
@@ -25,7 +25,7 @@ final class PlayerSupplyTests: XCTestCase {
         return (e, id)
     }
 
-    private func contract(_ id: String, buyer: Int, line: String = "goods", listing l: String, units: Int = 20) -> SupplyContract {
+    private func contract(_ id: String, buyer: Int, line: String = "food", listing l: String, units: Int = 20) -> SupplyContract {
         SupplyContract(id: id, buyerCompanyID: buyer, lineID: line, listingID: l, supplierOwnerID: "owner-\(l)", supplierName: "Name \(l)", unitsPerWeek: units, startDay: 0)
     }
 
@@ -73,13 +73,17 @@ final class PlayerSupplyTests: XCTestCase {
     }
 
     func testNeedsFollowTheTrade() {
-        XCTAssertTrue(SupplyNeeds.uses(buyerTrade: "cafe", buyerFamily: "venue", line: "goods", supplierTrade: "bakery"))
-        XCTAssertFalse(SupplyNeeds.uses(buyerTrade: "carrepair", buyerFamily: "svc", line: "goods", supplierTrade: "bakery"))
-        XCTAssertFalse(SupplyNeeds.uses(buyerTrade: "cafe", buyerFamily: "venue", line: "goods", supplierTrade: "carrepair"))
-        XCTAssertTrue(SupplyNeeds.uses(buyerTrade: "taxi", buyerFamily: "logi", line: "fuel", supplierTrade: "oilgas"))
-        XCTAssertFalse(SupplyNeeds.uses(buyerTrade: "cafe", buyerFamily: "venue", line: "fuel", supplierTrade: "oilgas"))
-        XCTAssertNil(SupplyMarketCatalogue.supplies["courier"], "a courier does not sell fuel")
-        let kept = SupplyNeeds.relevant([listing("a", trade: "farm"), listing("b", trade: "carrepair", line: "repair")], buyerTrade: "grocery", buyerFamily: "retail")
+        XCTAssertTrue(SupplyNeeds.uses(buyerTrade: "cafe", buyerFamily: "venue", line: "bread", supplierTrade: "bakery"))
+        XCTAssertTrue(SupplyNeeds.uses(buyerTrade: "cafe", buyerFamily: "venue", line: "food", supplierTrade: "wholesale"))
+        XCTAssertFalse(SupplyNeeds.uses(buyerTrade: "carrepair", buyerFamily: "svc", line: "bread", supplierTrade: "bakery"))
+        XCTAssertFalse(SupplyNeeds.uses(buyerTrade: "cafe", buyerFamily: "venue", line: "food", supplierTrade: "carrepair"))
+        XCTAssertTrue(SupplyNeeds.uses(buyerTrade: "taxi", buyerFamily: "logi", line: "fuel", supplierTrade: "fuelstation"))
+        XCTAssertFalse(SupplyNeeds.uses(buyerTrade: "taxi", buyerFamily: "logi", line: "fuel", supplierTrade: "oilgas"), "taxis fill up at filling stations")
+        XCTAssertTrue(SupplyNeeds.uses(buyerTrade: "shipping", buyerFamily: "logi", line: "fuel", supplierTrade: "oilgas"), "ships buy bulk fuel")
+        XCTAssertFalse(SupplyNeeds.uses(buyerTrade: "shipping", buyerFamily: "logi", line: "fuel", supplierTrade: "fuelstation"))
+        XCTAssertFalse(SupplyNeeds.uses(buyerTrade: "cafe", buyerFamily: "venue", line: "fuel", supplierTrade: "fuelstation"))
+        XCTAssertFalse(SupplyMarketCatalogue.supplies["courier"]?.contains("fuel") ?? false, "a courier does not sell fuel")
+        let kept = SupplyNeeds.relevant([listing("a"), listing("b", trade: "carrepair", line: "carserv")], buyerTrade: "grocery", buyerFamily: "retail")
         XCTAssertEqual(kept.map { $0.id }, ["a"])
     }
 
@@ -92,7 +96,7 @@ final class PlayerSupplyTests: XCTestCase {
         let dear = try XCTUnwrap(e.goodsCostFactor(companyID: id))
         XCTAssertLessThan(cheap, dear)
         XCTAssertEqual(e.playerSupplyContracts.count, 1, "one contract per line")
-        e.endPlayerSupplier(companyID: id, lineID: "goods")
+        e.endPlayerSupplier(companyID: id, lineID: "food")
         XCTAssertEqual(try XCTUnwrap(e.goodsCostFactor(companyID: id)), base, accuracy: 1e-9)
         XCTAssertTrue(e.playerSupplyContracts.isEmpty)
     }
@@ -108,7 +112,7 @@ final class PlayerSupplyTests: XCTestCase {
 
     func testTheTradeMustNeedWhatIsOffered() throws {
         var (e, id) = try engine()
-        let wrong = listing("w", trade: "carrepair", line: "goods")
+        let wrong = listing("w", trade: "carrepair", line: "food")
         XCTAssertFalse(e.signPlayerSupplier(contract: contract("C1", buyer: id, listing: "w"), listing: wrong, weeklyMarketSpend: 100_000))
         XCTAssertTrue(e.playerSupplyContracts.isEmpty)
     }
@@ -122,7 +126,7 @@ final class PlayerSupplyTests: XCTestCase {
         e.reportShortDelivery(listingID: "f")
         XCTAssertLessThan(SupplyCatalogue.availability(e.state, co, bd, week: e.state.week, data: e.data), base)
         XCTAssertTrue(e.state.inbox.contains { $0.companyID == id && $0.title == "A delivery arrived short" })
-        e.endPlayerSupplier(companyID: id, lineID: "goods")
+        e.endPlayerSupplier(companyID: id, lineID: "food")
         XCTAssertEqual(SupplyCatalogue.availability(e.state, co, bd, week: e.state.week, data: e.data), base)
     }
 
@@ -155,19 +159,19 @@ final class PlayerSupplyTests: XCTestCase {
     func testEndingAPlayerSupplyCostsTwoWeeksOfTheOrderForEitherSide() throws {
         var (e, id) = try engine()
         XCTAssertTrue(e.signPlayerSupplier(contract: contract("C1", buyer: id, listing: "f", units: 40), listing: listing("f", price: 1), weeklyMarketSpend: 1_000))
-        let fee = e.playerSupplyCancelFee(companyID: id, lineID: "goods")
+        let fee = e.playerSupplyCancelFee(companyID: id, lineID: "food")
         XCTAssertGreaterThan(fee, 0)
-        let signed = try XCTUnwrap(PlayerSupply.contract(e.state, buyer: id, line: "goods"))
+        let signed = try XCTUnwrap(PlayerSupply.contract(e.state, buyer: id, line: "food"))
         XCTAssertEqual(fee, signed.orderValue * 2, accuracy: 1e-9)
         XCTAssertGreaterThan(signed.orderValue, 0)
         let before = try XCTUnwrap(e.state.company(id)).cash
-        XCTAssertEqual(e.cancelPlayerSupplier(companyID: id, lineID: "goods"), .applied)
+        XCTAssertEqual(e.cancelPlayerSupplier(companyID: id, lineID: "food"), .applied)
         XCTAssertEqual(before - (try XCTUnwrap(e.state.company(id)).cash), fee, accuracy: 1)
         XCTAssertTrue(e.playerSupplyContracts.isEmpty)
-        XCTAssertEqual(e.cancelPlayerSupplier(companyID: id, lineID: "goods"), .refused("There is no supplier to end."))
+        XCTAssertEqual(e.cancelPlayerSupplier(companyID: id, lineID: "food"), .refused("There is no supplier to end."))
         XCTAssertTrue(e.signPlayerSupplier(contract: contract("C2", buyer: id, listing: "g", units: 40), listing: listing("g", price: 1), weeklyMarketSpend: 1_000))
         let cash = try XCTUnwrap(e.state.company(id)).cash
-        XCTAssertEqual(e.cancelPlayerSupplier(companyID: id, lineID: "goods", bySupplier: true), .applied)
+        XCTAssertEqual(e.cancelPlayerSupplier(companyID: id, lineID: "food", bySupplier: true), .applied)
         XCTAssertGreaterThan(try XCTUnwrap(e.state.company(id)).cash, cash)
         XCTAssertTrue(e.state.feedLines.contains { $0.companyID == id && $0.text == "Supplier ended the supply" })
     }

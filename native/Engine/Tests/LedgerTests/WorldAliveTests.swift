@@ -89,7 +89,7 @@ final class WorldAliveTests: XCTestCase {
         let s = e.state, co = try XCTUnwrap(s.company(id)), bd = try XCTUnwrap(e.data.catalog[co.type])
         let sources = SupplyNews.sources(s, co, bd, data: e.data)
         let goods = try XCTUnwrap(sources.first { $0.goods })
-        XCTAssertTrue(goods.vendorID.hasPrefix("V-"))
+        XCTAssertTrue(SupplyPlayers.isSupplierID(goods.vendorID), "the goods supplier is a player company")
         XCTAssertNil(SupplyNews.roll(s, co, sources: sources, chance: 0))
         XCTAssertNil(SupplyNews.roll(s, co, sources: [], chance: 1))
         let a = try XCTUnwrap(SupplyNews.roll(s, co, sources: sources, chance: 1))

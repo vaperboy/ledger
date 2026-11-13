@@ -22,6 +22,8 @@ final class SupplierDealsTests: XCTestCase {
         XCTAssertNotNil(clean.noOwnProvider)
         XCTAssertTrue(clean.noOwnProvider?.contains("cleaning") ?? false, clean.noOwnProvider ?? "")
         XCTAssertEqual(clean.current?.kind, .outside)
+        XCTAssertFalse(["Outside suppliers", "Market", "The market"].contains(clean.current?.name ?? ""), "the usual supplier is a named company")
+        XCTAssertFalse(clean.current?.name.isEmpty ?? true)
         XCTAssertEqual(e.switchSupplier(companyID: hotel, input: "clean", to: .ownCompany(99999, mode: "mkt")), .notAllowed)
         XCTAssertNil(e.supplyLink(buyer: hotel, kind: "clean"))
     }
@@ -66,6 +68,8 @@ final class SupplierDealsTests: XCTestCase {
         let goods = try XCTUnwrap(e.supplierInputs(companyID: cafe).first { $0.id == "goods" })
         let vendors = goods.options.filter { $0.kind == .outsideVendor }
         XCTAssertFalse(vendors.isEmpty)
+        XCTAssertTrue(goods.options.allSatisfy { $0.vendorID != nil }, "no let-the-market-decide choice")
+        XCTAssertTrue(vendors.allSatisfy { SupplyPlayers.isSupplierID($0.vendorID ?? "") }, "every goods supplier is a player company")
         let pick = try XCTUnwrap(vendors.first { $0.vendorID != goods.current?.vendorID })
         let before = try XCTUnwrap(pick.priceFactor)
         XCTAssertNotNil(pick.nextLevel, "a stranger has a next relationship level")
@@ -80,7 +84,9 @@ final class SupplierDealsTests: XCTestCase {
         XCTAssertGreaterThan(after.discount ?? 0, pick.discount ?? 0)
 
         XCTAssertEqual(e.switchSupplier(companyID: cafe, input: "goods", to: .goodsVendor("auto")), .ok)
-        XCTAssertTrue(try XCTUnwrap(e.supplierInputs(companyID: cafe).first { $0.id == "goods" }?.options.first { $0.id == "v:auto" }).isCurrent)
+        let standard = try XCTUnwrap(e.currentGoodsSupplier(companyID: cafe))
+        XCTAssertTrue(standard.isStandard, "clearing the choice goes back to the line's standard supplier")
+        XCTAssertEqual(try XCTUnwrap(e.supplierInputs(companyID: cafe).first { $0.id == "goods" }?.current).vendorID, standard.id)
     }
 
     func testBusinessCustomerNeedsARelationshipAndRepairChoiceWorks() throws {
@@ -96,11 +102,10 @@ final class SupplierDealsTests: XCTestCase {
             ]))
         }
         let clean = try XCTUnwrap(e.supplierInputs(companyID: buyer).first { $0.id == "clean" })
-        let stranger = try XCTUnwrap(clean.options.first { $0.id == "c:9002" })
-        XCTAssertNotNil(stranger.blocked)
+        XCTAssertFalse(clean.options.contains { $0.kind == .businessCustomer }, "business customers are not offered as suppliers")
         XCTAssertEqual(e.switchSupplier(companyID: buyer, input: "clean", to: .businessCustomer(9002)), .notKnownWell)
         XCTAssertEqual(e.switchSupplier(companyID: buyer, input: "clean", to: .businessCustomer(9001)), .ok)
-        XCTAssertEqual(try XCTUnwrap(e.supplierInputs(companyID: buyer).first { $0.id == "clean" }).current?.kind, .businessCustomer)
+        XCTAssertEqual(try XCTUnwrap(e.supplierInputs(companyID: buyer).first { $0.id == "clean" }).current?.kind, .businessCustomer, "a deal already running still shows")
         XCTAssertEqual(e.switchSupplier(companyID: buyer, input: "clean", to: .outside), .ok)
         XCTAssertNil(e.accountSupplyLink(buyer: buyer, kind: "clean"))
 
