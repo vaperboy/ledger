@@ -239,7 +239,7 @@ extension StrategicDecisions {
                             Misconduct.addConcealed(&s, x.i, legal: false, amount: x.d["conc"].double)
                             Misconduct.register(&s, x.i, kind: "tax", gain: x.d["save"].double, extra: ["c": num(x.d["conc"].double), "r": num(x.d["rate"].double)])
                             s.note("\(s.companies[x.i].name) holds back \(x.cur.display(x.d["conc"].double)) of takings. Tax falls by about \(x.cur.display(x.d["save"].double)) at the next month end.", tone: "n", companyID: s.companies[x.i].id) },
-                        Opt(label: "Use legal deductions", detail: "A fee now, a smaller but safe saving.") { s, x in
+                        Opt(label: "Use legal deductions", detail: "A fee now, and a smaller saving that is fully legal.") { s, x in
                             pay(&s, x, x.d["fee"].double, "acc", "Tax adviser")
                             Misconduct.addConcealed(&s, x.i, legal: true, amount: x.d["legal"].double)
                             s.note("Legal deductions cut the tax of \(s.companies[x.i].name) by about \(x.cur.display(x.d["lsave"].double)).", tone: "good", companyID: s.companies[x.i].id) },
@@ -303,7 +303,7 @@ extension StrategicDecisions {
                             Misconduct.register(&s, x.i, kind: "bank", gain: x.d["save"].double)
                             later(&s, 52, "mis_bank_end", x.i, .object(["ids": .array(ids), "cut": num(cut)]))
                             s.note("The bank cuts the loan margins of \(s.companies[x.i].name) by 0.6 points for a year.", tone: "n", companyID: s.companies[x.i].id) },
-                        Opt(label: "Pay for audited accounts", detail: "A fee now and a small, safe cut in interest.") { s, x in
+                        Opt(label: "Pay for audited accounts", detail: "A fee now and a small, certain cut in interest.") { s, x in
                             pay(&s, x, x.d["fee"].double, "acc", "Audit fee")
                             let cut = 0.002
                             var ids: [JSONValue] = []

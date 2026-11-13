@@ -148,10 +148,10 @@
 "opts": [
 {
 "l": "Call a plumber now",
-"d": "An emergency callout. It is fixed within hours and the damage stays small.",
+"d": "An emergency callout. It is fixed within hours.",
 "fx": {
 "loss": {
-"expr": "wk*0.25"
+"expr": "wk*0.3"
 }
 }
 },
@@ -160,7 +160,9 @@
 "d": "Cheaper today, but the leak may spread.",
 "fx": {
 "gamble": {
-"p": 0.55,
+"p": {
+"expr": "max(0.08, min(0.92, 0.55 + (co.eqc - 0.8) * 0.9))"
+},
 "ok": {
 "cash": {
 "expr": "-wk*0.08"
@@ -168,7 +170,7 @@
 },
 "bad": {
 "loss": {
-"expr": "wk*0.6"
+"expr": "wk*0.55"
 }
 }
 }
@@ -365,7 +367,7 @@
 "d": "Costs more now, and it is done for good.",
 "fx": {
 "loss": {
-"expr": "wk*0.3"
+"expr": "wk*0.35"
 }
 }
 },
@@ -374,7 +376,9 @@
 "d": "Cheap, but it may fail in the next storm.",
 "fx": {
 "gamble": {
-"p": 0.5,
+"p": {
+"expr": "max(0.08, min(0.92, 0.49 + (co.eqc - 0.8) * 0.9))"
+},
 "ok": {
 "cash": {
 "expr": "-wk*0.05"
@@ -385,7 +389,7 @@
 "expr": "wk*0.5"
 },
 "cap": [
-0.85,
+0.88,
 2
 ]
 }
@@ -607,14 +611,27 @@
 },
 {
 "l": "Accept a smaller harvest",
-"d": "No extra spend, but there will be less to sell.",
+"d": "No extra spend. How much you lose depends on your kit.",
 "fx": {
+"gamble": {
+"p": {
+"expr": "max(0.15, min(0.85, 0.5 + (co.eqc - 0.8) * 0.9))"
+},
+"ok": {
+"cogsUp": [
+1.03,
+12
+]
+},
+"bad": {
 "cogsUp": [
 1.06,
 12
 ],
 "loss": {
-"expr": "wk*0.1"
+"expr": "wk*0.15"
+}
+}
 }
 }
 }
@@ -640,7 +657,7 @@
 "opts": [
 {
 "l": "Light fires and run fans overnight",
-"d": "Costs labour and fuel, but saves most of the crop.",
+"d": "Costs labour and fuel, and saves most of the crop.",
 "fx": {
 "cash": {
 "expr": "-wk*0.35"
@@ -652,15 +669,27 @@
 },
 {
 "l": "Take the loss",
-"d": "No effort, but a share of the crop is gone.",
+"d": "No effort. The frost may spare more than you fear.",
 "fx": {
+"gamble": {
+"p": {
+"expr": "max(0.15, min(0.85, 0.5 + (co.eqc - 0.8) * 0.9))"
+},
+"ok": {
+"loss": {
+"expr": "wk*0.3"
+}
+},
+"bad": {
 "loss": {
 "expr": "wk*0.7"
 },
 "cogsUp": [
-1.08,
+1.06,
 12
 ]
+}
+}
 }
 }
 ],
@@ -913,7 +942,7 @@
 "opts": [
 {
 "l": "Hold your prices",
-"d": "Some bargain hunters go elsewhere, but your margin is safe.",
+"d": "Some bargain hunters go elsewhere, and your margin holds.",
 "fx": {
 "dem": [
 0.97,
@@ -923,13 +952,15 @@
 },
 {
 "l": "Join the promotion",
-"d": "Cost of discounts up front. Busy, but the extra sales may not cover the lost margin.",
+"d": "Discounts up front. Busy, but the extra sales may not cover the lost margin.",
 "fx": {
 "cash": {
-"expr": "-wk*0.12"
+"expr": "-wk*0.1"
 },
 "gamble": {
-"p": 0.6,
+"p": {
+"expr": "max(0.08, min(0.92, 0.51 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "dem": [
 1.25,
@@ -1042,10 +1073,10 @@
 },
 {
 "l": "Pass part on to customers",
-"d": "Margin is partly protected. Some customers will balk at the higher prices.",
+"d": "Margin is partly protected. Some customers balk at the higher prices.",
 "fx": {
 "cogsUp": [
-1.07,
+1.03,
 8
 ],
 "dem": [
@@ -1056,7 +1087,7 @@
 },
 {
 "l": "Buy ahead from a second source",
-"d": "Costs cash up front and keeps prices down for a while.",
+"d": "Cash up front; prices stay lower for a while.",
 "fx": {
 "cash": {
 "expr": "-wk*0.2"
@@ -1151,20 +1182,22 @@
 "opts": [
 {
 "l": "Pull it and refund everyone",
-"d": "Costs money, but customers see you acting fast.",
+"d": "Costs money; customers see you act fast.",
 "fx": {
 "loss": {
 "expr": "wk*0.3"
 },
-"rep": 1
+"rep": 0.5
 }
 },
 {
 "l": "Pull it quietly",
-"d": "Cheaper, but if it comes out your reputation suffers.",
+"d": "Cheaper, unless it comes out.",
 "fx": {
 "gamble": {
-"p": 0.6,
+"p": {
+"expr": "max(0.08, min(0.92, 0.88 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "loss": {
 "expr": "wk*0.15"
@@ -1174,7 +1207,7 @@
 "loss": {
 "expr": "wk*0.35"
 },
-"rep": -4
+"rep": -3
 }
 }
 }
@@ -1328,7 +1361,9 @@
 "d": "Quality is unknown, but prices are better.",
 "fx": {
 "gamble": {
-"p": 0.7,
+"p": {
+"expr": "max(0.08, min(0.92, 0.7 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "cogsUp": [
 0.95,
@@ -1350,7 +1385,9 @@
 "d": "Your supplier may match it.",
 "fx": {
 "gamble": {
-"p": 0.6,
+"p": {
+"expr": "max(0.08, min(0.92, 0.3 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "cogsUp": [
 0.97,
@@ -1544,11 +1581,11 @@
 "d": "Protects margin; some customers trade down.",
 "fx": {
 "cogsUp": [
-1.06,
+1.02,
 12
 ],
 "dem": [
-0.96,
+0.97,
 12
 ]
 }
@@ -1574,14 +1611,24 @@
 "opts": [
 {
 "l": "Switch part of the range",
-"d": "A little more expensive, and a stronger local reputation.",
+"d": "Dearer stock, and people may like the local story.",
 "fx": {
 "cogsUp": [
-1.02,
+1.04,
 20
 ],
-"rep": 2,
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.25 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
+"ok": {
+"rep": 1.5,
 "aware": 4
+},
+"bad": {
+"aware": 1
+}
+}
 }
 },
 {
@@ -1644,7 +1691,9 @@
 "d": "Saves some stock, but it risks a complaint.",
 "fx": {
 "gamble": {
-"p": 0.65,
+"p": {
+"expr": "max(0.08, min(0.92, 0.88 + (co.eqc - 0.8) * 0.9))"
+},
 "ok": {
 "loss": {
 "expr": "wk*0.1"
@@ -1780,8 +1829,13 @@
 "l": "Reply politely to each one",
 "d": "Takes time, and shows you care.",
 "fx": {
+"cash": {
+"expr": "-wk*0.03"
+},
 "gamble": {
-"p": 0.7,
+"p": {
+"expr": "max(0.08, min(0.92, 0.4 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "rep": 1
 },
@@ -1800,13 +1854,15 @@
 "d": "Most people forget. Some do not.",
 "fx": {
 "gamble": {
-"p": 0.5,
+"p": {
+"expr": "max(0.08, min(0.92, 0.55 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
-"rep": -3,
+"rep": -2,
 "dem": [
-0.94,
-6
+0.95,
+4
 ]
 }
 }
@@ -1900,13 +1956,15 @@
 "opts": [
 {
 "l": "Take a stand",
-"d": "Cost of the stand and a few days of work. Good leads usually follow.",
+"d": "The stand and a few days of work. Leads may follow, or not.",
 "fx": {
 "cash": {
 "expr": "-wk*0.15"
 },
 "gamble": {
-"p": 0.65,
+"p": {
+"expr": "max(0.08, min(0.92, 0.25 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "dem": [
 1.12,
@@ -2047,7 +2105,7 @@
 "opts": [
 {
 "l": "Accept at the normal price",
-"d": "Extra revenue, paid in 45 days.",
+"d": "Extra revenue, paid in 45 days, if you can deliver.",
 "fx": {
 "cash": {
 "expr": "wk*0.6"
@@ -2055,23 +2113,30 @@
 "cap": [
 0.9,
 2
-]
+],
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.6 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
+"ok": {},
+"bad": {
+"rep": -2
+}
+}
 }
 },
 {
 "l": "Ask for a deposit first",
-"d": "Safer, and the customer may walk away.",
+"d": "Cash up front, and the customer may walk away.",
 "fx": {
 "gamble": {
-"p": 0.65,
+"p": {
+"expr": "max(0.08, min(0.92, 0.35 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "cash": {
-"expr": "wk*0.8"
-},
-"cap": [
-0.9,
-2
-]
+"expr": "wk*0.7"
+}
 },
 "bad": {}
 }
@@ -2093,23 +2158,37 @@
 "opts": [
 {
 "l": "Apologise and refund",
-"d": "A small cost, and it usually calms things down.",
+"d": "A small cost. They may still post about it.",
 "fx": {
 "cash": {
-"expr": "-wk*0.04"
+"expr": "-wk*0.05"
 },
-"rep": 1
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.4 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
+"ok": {
+"rep": 0.5
+},
+"bad": {
+"rep": -1
+}
+}
 }
 },
 {
 "l": "Defend your side",
-"d": "May cost you reputation if others pile in.",
+"d": "Others may agree with you, or pile in.",
 "fx": {
 "gamble": {
-"p": 0.5,
-"ok": {},
+"p": {
+"expr": "max(0.08, min(0.92, 0.5 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
+"ok": {
+"rep": 0.5
+},
 "bad": {
-"rep": -3
+"rep": -2.5
 }
 }
 }
@@ -2150,14 +2229,16 @@
 "d": "It costs a little. It may reach thousands of people or nobody.",
 "fx": {
 "cash": {
-"expr": "-wk*0.03"
+"expr": "-wk*0.05"
 },
 "gamble": {
-"p": 0.45,
+"p": {
+"expr": "max(0.08, min(0.92, 0.15 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
-"aware": 7,
+"aware": 6,
 "dem": [
-1.1,
+1.08,
 3
 ]
 },
@@ -2190,12 +2271,14 @@
 "opts": [
 {
 "l": "Answer it with facts",
-"d": "Calm and public. Most people are convinced.",
+"d": "Calm and public. It can also feed the story.",
 "fx": {
 "gamble": {
-"p": 0.75,
+"p": {
+"expr": "max(0.08, min(0.92, 0.3 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
-"rep": 0
+"rep": 0.5
 },
 "bad": {
 "rep": -3,
@@ -2212,13 +2295,15 @@
 "d": "It may blow over, or grow.",
 "fx": {
 "gamble": {
-"p": 0.4,
+"p": {
+"expr": "max(0.08, min(0.92, 0.5 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
-"rep": -5,
+"rep": -4,
 "dem": [
-0.88,
-6
+0.9,
+5
 ]
 }
 }
@@ -2275,7 +2360,7 @@
 "d": "A small cost to keep people coming.",
 "fx": {
 "cash": {
-"expr": "-wk*0.05"
+"expr": "-wk*0.08"
 },
 "dem": [
 0.94,
@@ -2285,12 +2370,25 @@
 },
 {
 "l": "Wait it out",
-"d": "Takings drop until the road reopens.",
+"d": "Regulars may find a way in, or stay away.",
 "fx": {
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.48 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
+"ok": {
+"dem": [
+0.95,
+6
+]
+},
+"bad": {
 "dem": [
 0.86,
 6
 ]
+}
+}
 }
 }
 ],
@@ -2521,13 +2619,13 @@
 "opts": [
 {
 "l": "Reassure customers openly",
-"d": "A small outlay, and most customers stay.",
+"d": "A small outlay, and it keeps the story alive a little longer.",
 "fx": {
 "cash": {
-"expr": "-wk*0.06"
+"expr": "-wk*0.08"
 },
 "dem": [
-0.97,
+0.96,
 6
 ]
 }
@@ -2536,10 +2634,23 @@
 "l": "Say nothing",
 "d": "Wait for it to pass.",
 "fx": {
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.5 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
+"ok": {
 "dem": [
-0.92,
+0.97,
+4
+]
+},
+"bad": {
+"dem": [
+0.9,
 8
 ]
+}
+}
 }
 }
 ]
@@ -2583,16 +2694,25 @@
 "opts": [
 {
 "l": "Offer 10% off for a yearly deal",
-"d": "Steady volume, lower margin.",
+"d": "Steady volume at a lower margin. Needs room in the schedule.",
 "fx": {
 "dem": [
 1.1,
 26
 ],
 "cogsUp": [
-1.01,
+1.03,
 26
-]
+],
+"gamble": {
+"p": {
+"expr": "max(0.15, min(0.9, 1.45 - co.util))"
+},
+"ok": {},
+"bad": {
+"rep": -1.5
+}
+}
 }
 },
 {
@@ -2694,10 +2814,10 @@
 "d": "Costs a day of output and brings the energy back.",
 "fx": {
 "cap": [
-0.9,
+0.88,
 1
 ],
-"rep": 1
+"rep": 0.5
 }
 },
 {
@@ -2705,12 +2825,14 @@
 "d": "Output holds for now, but people may leave.",
 "fx": {
 "gamble": {
-"p": 0.55,
+"p": {
+"expr": "max(0.08, min(0.92, 0.85 + (co.mood - 60) * 0.008))"
+},
 "ok": {},
 "bad": {
 "cap": [
-0.9,
-4
+0.92,
+3
 ],
 "quit": true
 }
@@ -2736,7 +2858,9 @@
 "d": "A permanent raise for them, and they will most likely stay.",
 "fx": {
 "raise": 0.1,
-"stay": 0.85
+"stay": {
+"expr": "max(0.2, min(0.95, 0.85 + (co.mood - 60) * 0.006))"
+}
 }
 },
 {
@@ -2744,7 +2868,9 @@
 "d": "Cheaper, and there is a risk they leave anyway.",
 "fx": {
 "raise": 0.05,
-"stay": 0.6,
+"stay": {
+"expr": "max(0.2, min(0.95, 0.6 + (co.mood - 60) * 0.006))"
+},
 "bonus": {
 "expr": "wk*0.1"
 }
@@ -2778,17 +2904,27 @@
 "cash": {
 "expr": "-wk*0.08"
 },
-"rep": 1,
-"q": 2
+"rep": 0.5,
+"q": 1
 }
 },
 {
 "l": "Promote them",
-"d": "A raise and more responsibility.",
+"d": "A raise and more responsibility. They may grow into it.",
 "fx": {
-"raise": 0.06,
-"q": 3,
-"stay": 1
+"raise": 0.04,
+"stay": 1,
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.78 + (co.mood - 60) * 0.008))"
+},
+"ok": {
+"q": 4
+},
+"bad": {
+"q": 1
+}
+}
 }
 }
 ],
@@ -2847,7 +2983,9 @@
 "d": "Some may leave, and the mood suffers.",
 "fx": {
 "gamble": {
-"p": 0.6,
+"p": {
+"expr": "max(0.08, min(0.92, 0.87 + (co.mood - 60) * 0.008))"
+},
 "ok": {},
 "bad": {
 "cap": [
@@ -2909,7 +3047,7 @@
 "opts": [
 {
 "l": "Send the whole team",
-"d": "A cost and a day of lost output. A better team afterwards.",
+"d": "A cost and a day of lost output. Whether it sticks depends on the team.",
 "fx": {
 "cash": {
 "expr": "-wk*0.1"
@@ -2918,7 +3056,17 @@
 0.85,
 1
 ],
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.3 + (co.mood - 60) * 0.008))"
+},
+"ok": {
 "q": 3
+},
+"bad": {
+"q": 0.5
+}
+}
 }
 },
 {
@@ -2958,7 +3106,9 @@
 "d": "Cheaper now, but you risk a claim and bad blood.",
 "fx": {
 "gamble": {
-"p": 0.5,
+"p": {
+"expr": "max(0.08, min(0.92, 0.8 + (co.mood - 60) * 0.008))"
+},
 "ok": {
 "cap": [
 0.92,
@@ -3015,16 +3165,24 @@
 "opts": [
 {
 "l": "Do it",
-"d": "A small cost and a better atmosphere.",
+"d": "A small cost. A good night out lifts the team, a flat one does not.",
 "fx": {
 "cash": {
-"expr": "-wk*0.06"
+"expr": "-wk*0.08"
 },
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.3 + (co.mood - 60) * 0.008))"
+},
+"ok": {
 "cap": [
 1.04,
 4
 ],
-"rep": 1
+"rep": 0.5
+},
+"bad": {}
+}
 }
 },
 {
@@ -3063,13 +3221,17 @@
 "opts": [
 {
 "l": "Sit them down and sort it out",
-"d": "Takes a few hours of your time.",
+"d": "A few hours of your time. It can clear the air or sharpen it.",
 "fx": {
+"cap": [
+0.97,
+1
+],
 "gamble": {
-"p": 0.75,
-"ok": {
-"rep": 0
+"p": {
+"expr": "max(0.08, min(0.92, 0.35 + (co.mood - 60) * 0.008))"
 },
+"ok": {},
 "bad": {
 "cap": [
 0.92,
@@ -3084,11 +3246,13 @@
 "d": "It might.",
 "fx": {
 "gamble": {
-"p": 0.45,
+"p": {
+"expr": "max(0.08, min(0.92, 0.5 + (co.mood - 60) * 0.008))"
+},
 "ok": {},
 "bad": {
 "cap": [
-0.9,
+0.92,
 3
 ],
 "quit": true
@@ -3149,15 +3313,28 @@
 "opts": [
 {
 "l": "Take them on",
-"d": "A little teaching time, and a cheap pair of hands.",
+"d": "Teaching time and a small wage. They may turn out well.",
 "fx": {
 "cash": {
-"expr": "-wk*0.03"
+"expr": "-wk*0.05"
 },
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.29 + (co.mood - 60) * 0.008))"
+},
+"ok": {
 "cap": [
-1.04,
+1.05,
 12
 ]
+},
+"bad": {
+"cap": [
+0.98,
+4
+]
+}
+}
 }
 },
 {
@@ -3198,7 +3375,9 @@
 "d": "Fair if the reasons are good. The mood suffers.",
 "fx": {
 "gamble": {
-"p": 0.55,
+"p": {
+"expr": "max(0.08, min(0.92, 0.72 + (co.mood - 60) * 0.008))"
+},
 "ok": {},
 "bad": {
 "cap": [
@@ -3235,9 +3414,23 @@
 },
 {
 "l": "Refuse some requests",
-"d": "Saves money; some resentment.",
+"d": "Saves money. How the team takes it depends on the mood.",
 "fx": {
-"rep": -1
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.85 + (co.mood - 60) * 0.008))"
+},
+"ok": {
+"rep": -0.3
+},
+"bad": {
+"rep": -1.5,
+"cap": [
+0.95,
+2
+]
+}
+}
 }
 }
 ],
@@ -3268,7 +3461,9 @@
 "expr": "-wk*0.04"
 },
 "gamble": {
-"p": 0.75,
+"p": {
+"expr": "max(0.08, min(0.92, 0.45 + (co.mood - 60) * 0.008))"
+},
 "ok": {
 "rep": 0
 },
@@ -3331,7 +3526,9 @@
 "d": "Happier people, a little less control.",
 "fx": {
 "gamble": {
-"p": 0.7,
+"p": {
+"expr": "max(0.08, min(0.92, 0.68 + (co.mood - 60) * 0.008))"
+},
 "ok": {
 "cap": [
 1.02,
@@ -3406,7 +3603,9 @@
 "d": "Cheaper now, with a fine if it is checked again.",
 "fx": {
 "gamble": {
-"p": 0.5,
+"p": {
+"expr": "max(0.08, min(0.92, 0.64 + (co.mood - 60) * 0.008))"
+},
 "ok": {},
 "bad": {
 "fine": {
@@ -3525,7 +3724,7 @@
 "d": "A small cost.",
 "fx": {
 "cash": {
-"expr": "-wk*0.04"
+"expr": "-wk*0.06"
 }
 }
 },
@@ -3534,11 +3733,17 @@
 "d": "Cheaper if they do not come back.",
 "fx": {
 "gamble": {
-"p": 0.6,
-"ok": {},
+"p": {
+"expr": "max(0.08, min(0.92, 0.54 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
+"ok": {
+"cash": {
+"expr": "-wk*0.02"
+}
+},
 "bad": {
 "fine": {
-"expr": "wk*0.2"
+"expr": "wk*0.15"
 }
 }
 }
@@ -3566,15 +3771,16 @@
 "opts": [
 {
 "l": "Pass it with a deep clean beforehand",
-"d": "The kitchen is spotless.",
+"d": "Costs a day of cleaning before the visit.",
 "fx": {
-"gamble": {
-"p": 0.9,
-"ok": {
 "cash": {
-"expr": "-wk*0.03"
-}
+"expr": "-wk*0.06"
 },
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.55 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
+"ok": {},
 "bad": {
 "fine": {
 "expr": "wk*0.1"
@@ -3588,13 +3794,15 @@
 "d": "Risk of a poor score and a fine.",
 "fx": {
 "gamble": {
-"p": 0.55,
+"p": {
+"expr": "max(0.08, min(0.92, 0.6 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
 "fine": {
-"expr": "wk*0.3"
+"expr": "wk*0.25"
 },
-"rep": -3
+"rep": -2
 }
 }
 }
@@ -3662,7 +3870,9 @@
 "d": "Risk of a fine and a licence review.",
 "fx": {
 "gamble": {
-"p": 0.55,
+"p": {
+"expr": "max(0.08, min(0.92, 0.43 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
 "fine": {
@@ -3703,7 +3913,9 @@
 "expr": "-wk*0.12"
 },
 "gamble": {
-"p": 0.85,
+"p": {
+"expr": "max(0.08, min(0.92, 0.76 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
 "fine": {
@@ -3718,7 +3930,9 @@
 "d": "Cheaper, and riskier.",
 "fx": {
 "gamble": {
-"p": 0.6,
+"p": {
+"expr": "max(0.08, min(0.92, 0.6 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
 "fine": {
@@ -3755,12 +3969,11 @@
 "opts": [
 {
 "l": "Invest in compliance now",
-"d": "Costs now and avoids trouble.",
+"d": "Costs now; the rule may still change.",
 "fx": {
 "cash": {
 "expr": "-wk*0.3"
-},
-"rep": 1
+}
 }
 },
 {
@@ -3768,7 +3981,9 @@
 "d": "Cheaper for now, with a risk of a fine.",
 "fx": {
 "gamble": {
-"p": 0.5,
+"p": {
+"expr": "max(0.08, min(0.92, 0.42 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
 "fine": {
@@ -3811,7 +4026,9 @@
 "d": "May win, may lose.",
 "fx": {
 "gamble": {
-"p": 0.55,
+"p": {
+"expr": "max(0.08, min(0.92, 0.65 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
 "fine": {
@@ -3857,20 +4074,21 @@
 "opts": [
 {
 "l": "Apply",
-"d": "A day spent on the application. Not every application is successful.",
+"d": "A day or two on the application. Not every application succeeds.",
 "fx": {
+"cash": {
+"expr": "-wk*0.05"
+},
 "gamble": {
-"p": 0.5,
+"p": {
+"expr": "max(0.08, min(0.92, 0.15 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "cash": {
-"expr": "wk*0.5"
+"expr": "wk*0.4"
 }
 },
-"bad": {
-"cash": {
-"expr": "-wk*0.01"
-}
-}
+"bad": {}
 }
 }
 },
@@ -3910,10 +4128,22 @@
 "opts": [
 {
 "l": "Apply for consent",
-"d": "A fee and a short delay.",
+"d": "A fee and a short delay. Consent is not certain.",
 "fx": {
 "cash": {
 "expr": "-wk*0.06"
+},
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.49 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
+"ok": {},
+"bad": {
+"dem": [
+0.97,
+6
+]
+}
 }
 }
 },
@@ -3981,7 +4211,9 @@
 "d": "Risk of a fine if inspected.",
 "fx": {
 "gamble": {
-"p": 0.55,
+"p": {
+"expr": "max(0.08, min(0.92, 0.4 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
 "fine": {
@@ -4046,7 +4278,9 @@
 "d": "May cancel the fine, or raise it.",
 "fx": {
 "gamble": {
-"p": 0.45,
+"p": {
+"expr": "max(0.08, min(0.92, 0.53 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
 "fine": {
@@ -4077,17 +4311,21 @@
 "d": "Costs a little more each month for a while.",
 "fx": {
 "cash": {
-"expr": "-wk*0.05"
+"expr": "-wk*0.06"
 }
 }
 },
 {
 "l": "Pay down some debt early",
-"d": "Costs cash now and cuts the interest bill.",
+"d": "Cash now, a smaller interest bill later.",
 "fx": {
 "cash": {
 "expr": "-wk*0.12"
-}
+},
+"cogsUp": [
+0.99,
+12
+]
 }
 }
 ],
@@ -4163,10 +4401,15 @@
 "opts": [
 {
 "l": "Register your claim",
-"d": "A small fee. You may get a part back.",
+"d": "A fee. You may get part of it back.",
 "fx": {
+"cash": {
+"expr": "-wk*0.02"
+},
 "gamble": {
-"p": 0.4,
+"p": {
+"expr": "max(0.08, min(0.92, 0.15 + (min(co.cashWk, 16) - 6) * 0.025))"
+},
 "ok": {
 "loseR": 0.4
 },
@@ -4199,15 +4442,29 @@
 "opts": [
 {
 "l": "Verify by phone first",
-"d": "A short delay. You catch the scam.",
-"fx": {}
+"d": "A delay. If the request is real, the supplier charges a late fee.",
+"fx": {
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.4 + (min(co.cashWk, 16) - 6) * 0.025))"
+},
+"ok": {},
+"bad": {
+"cash": {
+"expr": "-wk*0.05"
+}
+}
+}
+}
 },
 {
 "l": "Pay as asked",
-"d": "If it is fraud, the money is gone.",
+"d": "Paid on time. If it is fraud, the money is gone.",
 "fx": {
 "gamble": {
-"p": 0.35,
+"p": {
+"expr": "max(0.08, min(0.92, 0.3 + (min(co.cashWk, 16) - 6) * 0.025))"
+},
 "ok": {},
 "bad": {
 "loss": {
@@ -4452,13 +4709,17 @@
 "opts": [
 {
 "l": "Take the lease",
-"d": "Better capacity, with a monthly payment you must keep paying.",
+"d": "More capacity, with a payment every month for a year.",
 "fx": {
 "cash": {
-"expr": "-wk*0.05"
+"expr": "-wk*0.1"
 },
 "cap": [
 1.05,
+52
+],
+"cogsUp": [
+1.01,
 52
 ]
 }
@@ -4492,10 +4753,10 @@
 "d": "Keeps the work, ties up cash.",
 "fx": {
 "cash": {
-"expr": "-wk*0.1"
+"expr": "-wk*0.12"
 },
 "dem": [
-1.04,
+1.03,
 12
 ]
 }
@@ -4505,11 +4766,13 @@
 "d": "Protects your cash and may lose some work.",
 "fx": {
 "gamble": {
-"p": 0.6,
+"p": {
+"expr": "max(0.08, min(0.92, 0.88 + (min(co.cashWk, 16) - 6) * 0.025))"
+},
 "ok": {},
 "bad": {
 "dem": [
-0.93,
+0.95,
 12
 ]
 }
@@ -5153,16 +5416,19 @@
 "opts": [
 {
 "l": "Accept",
-"d": "A few hours of your time. Most people hear it, a few come in.",
+"d": "A few hours of your time. It can go either way.",
 "fx": {
 "gamble": {
-"p": 0.7,
+"p": {
+"expr": "max(0.08, min(0.92, 0.33 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "aware": 5,
 "rep": 1
 },
 "bad": {
-"aware": 1
+"aware": 1,
+"rep": -1.5
 }
 }
 }
@@ -5187,12 +5453,20 @@
 "opts": [
 {
 "l": "Donate a small amount",
-"d": "A little goodwill goes a long way.",
+"d": "A little money. People may notice, or not.",
 "fx": {
 "cash": {
-"expr": "-wk*0.03"
+"expr": "-wk*0.04"
 },
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.2 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
+"ok": {
 "rep": 1
+},
+"bad": {}
+}
 }
 },
 {
@@ -5232,8 +5506,14 @@
 "l": "Go",
 "d": "A morning out of the business. Good leads come now and then.",
 "fx": {
+"cap": [
+0.97,
+1
+],
 "gamble": {
-"p": 0.4,
+"p": {
+"expr": "max(0.08, min(0.92, 0.15 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "aware": 2,
 "dem": [
@@ -5265,13 +5545,19 @@
 "opts": [
 {
 "l": "Follow it up",
-"d": "A few calls. May lead to nothing.",
+"d": "A few calls and a visit. May lead to nothing.",
 "fx": {
+"cap": [
+0.97,
+1
+],
 "gamble": {
-"p": 0.5,
+"p": {
+"expr": "max(0.08, min(0.92, 0.12 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "cash": {
-"expr": "wk*0.4"
+"expr": "wk*0.3"
 },
 "aware": 1
 },
@@ -5315,13 +5601,15 @@
 "opts": [
 {
 "l": "Take part",
-"d": "A little time from you and the team.",
+"d": "Time from you and the team. Students may bring ideas.",
 "fx": {
 "cash": {
-"expr": "-wk*0.03"
+"expr": "-wk*0.05"
 },
 "gamble": {
-"p": 0.6,
+"p": {
+"expr": "max(0.08, min(0.92, 0.2 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "q": 2
 },
@@ -5386,13 +5674,19 @@
 "opts": [
 {
 "l": "Accept the offer",
-"d": "Costs you time, and may improve how you run things.",
+"d": "Hours away from the business each week. It may improve how you run things.",
 "fx": {
+"cap": [
+0.96,
+2
+],
 "gamble": {
-"p": 0.7,
+"p": {
+"expr": "max(0.08, min(0.92, 0.3 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "q": 2,
-"rep": 1
+"rep": 0.5
 },
 "bad": {}
 }
@@ -5435,13 +5729,18 @@
 "opts": [
 {
 "l": "Go and discuss terms",
-"d": "You may get better prices.",
+"d": "An evening out. You may get better prices.",
 "fx": {
+"cash": {
+"expr": "-wk*0.02"
+},
 "gamble": {
-"p": 0.5,
+"p": {
+"expr": "max(0.08, min(0.92, 0.19 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "cogsUp": [
-0.97,
+0.98,
 20
 ]
 },
@@ -5473,10 +5772,12 @@
 "d": "Local reach, but fewer people read papers than before.",
 "fx": {
 "cash": {
-"expr": "-wk*0.06"
+"expr": "-wk*0.08"
 },
 "gamble": {
-"p": 0.5,
+"p": {
+"expr": "max(0.08, min(0.92, 0.8 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "dem": [
 1.06,
@@ -5484,7 +5785,7 @@
 ]
 },
 "bad": {
-"aware": 2
+"aware": 1
 }
 }
 }
@@ -5521,23 +5822,43 @@
 "tone": "bad",
 "sev": 1,
 "w": 0.00105,
-"t": "A scam call targets {n}",
-"b": "A caller poses as a utility company and demands immediate payment.",
+"t": "A caller says your power will be cut today",
+"b": "Someone claiming to be from your energy company says a bill is overdue and asks for payment by phone.",
 "cat": "cyber",
 "cool": 40,
 "exp": 2,
 "opts": [
 {
-"l": "Hang up and report it",
-"d": "No cost.",
-"fx": {}
+"l": "Hang up and call the company back",
+"d": "Takes time. If the bill was real, a late fee follows.",
+"fx": {
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.45 + (co.eqc - 0.8) * 0.9))"
+},
+"ok": {},
+"bad": {
+"cash": {
+"expr": "-wk*0.03"
+}
+}
+}
+}
 },
 {
-"l": "Pay to be safe",
-"d": "It was a scam.",
+"l": "Pay the caller",
+"d": "The power stays on, if the caller was real.",
 "fx": {
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.25 + (co.eqc - 0.8) * 0.9))"
+},
+"ok": {},
+"bad": {
 "loss": {
 "expr": "wk*0.05"
+}
+}
 }
 }
 }
@@ -5624,9 +5945,9 @@
 "d": "Some cost and a few awkward calls.",
 "fx": {
 "cash": {
-"expr": "-wk*0.08"
+"expr": "-wk*0.1"
 },
-"rep": 0
+"rep": -0.5
 }
 },
 {
@@ -5634,13 +5955,15 @@
 "d": "It may be fine, or it may not.",
 "fx": {
 "gamble": {
-"p": 0.55,
+"p": {
+"expr": "max(0.08, min(0.92, 0.72 + (co.mood - 60) * 0.008))"
+},
 "ok": {},
 "bad": {
 "loss": {
-"expr": "wk*0.35"
+"expr": "wk*0.3"
 },
-"rep": -3
+"rep": -2
 }
 }
 }
@@ -5660,7 +5983,7 @@
 "opts": [
 {
 "l": "Restore from backups",
-"d": "Slow and costly, and the safest way.",
+"d": "Slow and costly.",
 "fx": {
 "loss": {
 "expr": "wk*0.5"
@@ -5676,7 +5999,9 @@
 "d": "May get the files back. Or not.",
 "fx": {
 "gamble": {
-"p": 0.55,
+"p": {
+"expr": "max(0.08, min(0.92, 0.32 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "loss": {
 "expr": "wk*0.35"
@@ -5752,19 +6077,21 @@
 "opts": [
 {
 "l": "Settle with a small contribution",
-"d": "Quick, and the friendship survives.",
+"d": "Quick, and it costs you.",
 "fx": {
 "cash": {
-"expr": "-wk*0.03"
+"expr": "-wk*0.05"
 }
 }
 },
 {
 "l": "Stand your ground",
-"d": "May cost lawyers and goodwill.",
+"d": "May cost lawyers and goodwill, or nothing.",
 "fx": {
 "gamble": {
-"p": 0.5,
+"p": {
+"expr": "max(0.08, min(0.92, 0.85 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
 "ok": {},
 "bad": {
 "loss": {
@@ -5916,25 +6243,38 @@
 "opts": [
 {
 "l": "Shift to delivery and takeaway where you can",
-"d": "Costs some money. Holds on to part of your income.",
+"d": "Costs money to set up. Holds on to part of your income.",
 "fx": {
 "cash": {
-"expr": "-wk*0.1"
+"expr": "-wk*0.2"
 },
 "dem": [
-0.82,
+0.84,
 6
 ]
 }
 },
 {
 "l": "Wait for it to pass",
-"d": "No cost, and a bigger hit.",
+"d": "No cost. It may pass quickly, or not.",
 "fx": {
+"gamble": {
+"p": {
+"expr": "max(0.08, min(0.92, 0.34 + (co.rep - 50) * 0.007 + (co.q - 55) * 0.003))"
+},
+"ok": {
 "dem": [
-0.7,
+0.8,
+4
+]
+},
+"bad": {
+"dem": [
+0.72,
 6
 ]
+}
+}
 }
 }
 ],
@@ -6207,20 +6547,21 @@
 "opts": [
 {
 "l": "Apply",
-"d": "Some effort on the application. The odds are decent.",
+"d": "Some effort on the application. Not every one succeeds.",
 "fx": {
+"cash": {
+"expr": "-wk*0.05"
+},
 "gamble": {
-"p": 0.45,
+"p": {
+"expr": "max(0.08, min(0.92, 0.15 + (co.books - 0.5) * 0.5 + (co.q - 55) * 0.003))"
+},
 "ok": {
 "cash": {
-"expr": "wk*0.6"
+"expr": "wk*0.5"
 }
 },
-"bad": {
-"cash": {
-"expr": "-wk*0.02"
-}
-}
+"bad": {}
 }
 }
 },

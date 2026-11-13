@@ -5,6 +5,9 @@ import Finance
 import Businesses
 
 extension EventEngine {
+    /// How the last gamble in an answer went: true when the good outcome came up.
+    public static let gambleKey = "evGmb"
+
     static func addModifier(_ s: inout GameState, _ i: Int, key: String, multiplier m: Double, weeks: Double) {
         var mods = s.companies[i].value("mods").array
         mods.append(.object(["k": .string(key), "m": .number(m), "w": .number(jsRound(weeks))]))
@@ -19,7 +22,10 @@ extension EventEngine {
         if fx["special"].double > 0, s.random.chance(fx["special"].double) { _ = SpecialEvents.handle(&s, companyIndex: i, e, ctx: ctx, data: data, context: fc) }
         if !fx["gamble"].isNull {
             let g = fx["gamble"]
-            apply(&s, companyIndex: i, s.random.chance(g["p"].double) ? g["ok"] : g["bad"], ctx: ctx, event: e, data: data, context: fc)
+            let worked: Bool = s.random.chance(g["p"].double)
+            // Remembered so the answer can say how the gamble went.
+            s.rest[gambleKey] = .bool(worked)
+            apply(&s, companyIndex: i, worked ? g["ok"] : g["bad"], ctx: ctx, event: e, data: data, context: fc)
         }
         if fx["cash"].double != 0 {
             let fc2 = fx["cash"].double

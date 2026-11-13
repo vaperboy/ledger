@@ -151,7 +151,11 @@ final class EventPackTests: XCTestCase {
                     XCTAssertLessThanOrEqual(b["close"].double, 2, e.id)
                     XCTAssertLessThanOrEqual(abs(b["rep"].double), 5, e.id)
                     let g = b["gamble"]
-                    if !g.isNull { XCTAssertTrue(g["p"].double > 0.05 && g["p"].double < 0.95, "\(e.id): gamble odds") }
+                    if !g.isNull {
+                        // Odds may depend on the company's situation: check them for a middling company.
+                        let odds: Double = EventPack.amount(g["p"], vars.merging(EventPack.typicalSituation) { (a: Double, _: Double) -> Double in a })
+                        XCTAssertTrue(odds > 0.05 && odds < 0.95, "\(e.id): gamble odds")
+                    }
                 }
             }
         }

@@ -22,7 +22,15 @@ public enum EventEngine {
         let eqv = co.num("eqv") != 0 ? co.num("eqv") : (CompanyFigures.equipmentBookValue(co) != 0 ? CompanyFigures.equipmentBookValue(co) : 50000 * costIndex)
         let v: [String: Double] = ["wk": wk, "pay": pay, "eqv": eqv, "co.eqc": co.num("eqc", 1), "co.q": co.quality, "co.mgrQ": co.num("mgrQ"),
                                    "co.payGap": co.num("payGap"), "co.books": co.num("books", 0.5), "co.rep": co.reputation]
-        return Context(wk: wk, pay: pay, eqv: eqv, variables: v)
+        return Context(wk: wk, pay: pay, eqv: eqv, variables: v.merging(situation(co, wk: wk)) { (a: Double, _: Double) -> Double in a })
+    }
+
+    /// The company's situation, so an answer's odds can depend on it: staff mood (0-100), weeks of sales held as cash, how full it runs, team size.
+    static func situation(_ co: Company, wk: Double) -> [String: Double] {
+        let mood: Double = co.value("mood").isNull ? 60 : co.num("mood")
+        let cashWeeks: Double = clamp(co.cash / max(1, wk), -20, 52)
+        let util: Double = co.value("lastW")["util"].isNull ? 0.7 : clamp(co.value("lastW")["util"].double, 0, 1.5)
+        return ["co.mood": mood, "co.cashWk": cashWeeks, "co.util": util, "co.staffN": Double(co.staff.count)]
     }
 
     static let moneyKeys: Set<String> = ["cash", "fine", "loss", "bonus", "owner"]

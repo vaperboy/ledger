@@ -79,7 +79,7 @@ public enum Press {
         for (i, q) in questions.enumerated() where q.cond(s) && s.random.chance(0.7) { qi = i; break }
         let q = questions[qi]
         var opts: [JSONValue] = q.answers.map { .option($0.label, "\"\($0.quote)\"") }
-        opts.append(.option("No comment", "Safer, but it looks like you are hiding something."))
+        opts.append(.option("No comment", "Says nothing, and it can look like you are hiding something."))
         let paper = paperName(s, data: data)
         s.addMessage(kind: "ask", from: "A reporter at \(paper)", title: "\(paper) wants an interview", body: "\"\(q.q)\"", tone: "n", status: "open", options: opts,
                      action: interviewAction, data: .object(["q": .number(Double(qi))]), expiresWeek: s.week + 2)
