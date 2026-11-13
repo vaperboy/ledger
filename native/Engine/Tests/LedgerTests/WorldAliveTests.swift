@@ -7,9 +7,10 @@ import Finance
 import Simulation
 
 final class WorldAliveTests: XCTestCase {
-    private func listing(_ id: String, trade: String = "farm", price: Int = 1, friend: Bool = false, companyID: Int? = nil) -> SupplyListing {
+    // A grocery's stock line is food, which wholesalers supply.
+    private func listing(_ id: String, trade: String = "wholesale", line: String = "food", price: Int = 1, friend: Bool = false, companyID: Int? = nil) -> SupplyListing {
         SupplyListing(id: id, ownerID: "owner-\(id)", ownerName: "Name \(id)", profileCode: "P-\(id)", companyName: "Co \(id)", companyID: companyID, tradeID: trade, tradeName: trade.capitalized,
-                      city: "Leeds", region: "North", lineID: "goods", lineName: "Stock", priceTier: price, qualityTier: 1, capacityPerWeek: 300, leadDays: 2, minOrder: 10, termsDays: 14,
+                      city: "Leeds", region: "North", lineID: line, lineName: "Stock", priceTier: price, qualityTier: 1, capacityPerWeek: 300, leadDays: 2, minOrder: 10, termsDays: 14,
                       linkKey: "key-\(id)", record: DeliveryRecord(weeksTrading: 20, ordersTotal: 40, ordersOnTime: 39, unitsPromised: 800, unitsDelivered: 790, cleanWeeks: 12, lifetimeUnits: 790),
                       isFriend: friend, country: "UK")
     }
@@ -27,7 +28,7 @@ final class WorldAliveTests: XCTestCase {
     }
 
     private func contract(_ id: String, buyer: Int, listing l: String) -> SupplyContract {
-        SupplyContract(id: id, buyerCompanyID: buyer, lineID: "goods", listingID: l, supplierOwnerID: "owner-\(l)", supplierName: "Name \(l)", unitsPerWeek: 20, startDay: 0)
+        SupplyContract(id: id, buyerCompanyID: buyer, lineID: "food", listingID: l, supplierOwnerID: "owner-\(l)", supplierName: "Name \(l)", unitsPerWeek: 20, startDay: 0)
     }
 
     private func messages(_ e: GameEngine, _ id: Int, containing text: String) -> [Message] {
@@ -172,7 +173,7 @@ final class WorldAliveTests: XCTestCase {
 
     func testASupplierHearsWhenItsListingFillsAndWhenBuyersLeave() throws {
         var (e, id) = try engine(trade: "bakery")
-        var l = listing("M1", trade: "bakery", companyID: id)
+        var l = listing("M1", trade: "bakery", line: "bread", companyID: id)
         l.committedUnits = 100
         e.savePlayerListings([l], orders: [:])
         let before = e.state.inbox.count
