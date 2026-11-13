@@ -136,16 +136,9 @@ struct ProfileView: View {
 
     @ViewBuilder private var codeSection: some View {
         VStack(spacing: Theme.Space.xs) {
-            if online.isSignedIn, let p = online.profile {
-                HStack(spacing: Theme.Space.xs) {
-                    Text("Friend code").textStyle(.caption)
-                    Text(p.code).textStyle(.headline, numeric: true)
-                    ShareLink(item: InviteLink.message(code: p.code)) { LedgerGlyph(glyph: Glyph.share, size: Theme.Icon.small, tint: Theme.accent).frame(minWidth: 44, minHeight: 44) }
-                        .accessibilityLabel("Share your friend code")
-                }
-                .accessibilityIdentifier("profile-code")
+            if online.isSignedIn {
                 if online.offline { Text("Offline. It reconnects by itself.").textStyle(.caption).accessibilityIdentifier("online-offline") }
-            } else if !online.isSignedIn {
+            } else {
                 Text(guestNote).textStyle(.caption).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
             if online.canLink {

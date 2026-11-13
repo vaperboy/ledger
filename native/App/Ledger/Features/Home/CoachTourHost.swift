@@ -29,7 +29,7 @@ private struct CoachTourLayer: View {
     }
 
     private var blocked: Bool {
-        host.hasVisible || store.popupOpen || !store.unlockQueue.isEmpty || store.customPickerOpen || store.workerPopup != nil || store.isAdvancing
+        host.hasVisible || store.popupOpen || !store.unlockQueue.isEmpty || store.workerPopup != nil || store.isAdvancing
     }
 
     private func atRoot(_ t: AppTab) -> Bool { store.tab == t && store.path(for: t).isEmpty }
@@ -41,7 +41,6 @@ private struct CoachTourLayer: View {
             default: return false
             }
         }
-        if store.tab == .custom, case .company = store.customTarget { return true }
         return false
     }
 

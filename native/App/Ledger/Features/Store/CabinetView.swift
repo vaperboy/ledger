@@ -227,23 +227,30 @@ enum LookKit {
     }
 }
 
+/// A banner or backdrop picture, aspect-fill and clipped to whatever space it is given: the picture is sized to the full width and height
+/// of that space, so there are never empty sides, whatever the picture's own proportions.
 struct BackdropFill: View {
     var reward: SeasonReward
     var scrim: Double = 0.4
 
     var body: some View {
-        ZStack {
-            LinearGradient(colors: [Color(hex: EmblemCatalog.mix(LookKit.tint(reward), 0x000000, 0.1)), Color(hex: LookKit.deep(reward))], startPoint: .top, endPoint: .bottom)
-            picture
-            LinearGradient(colors: [Color.black.opacity(scrim), Color.black.opacity(scrim * 0.6)], startPoint: .top, endPoint: .bottom)
+        GeometryReader { (g: GeometryProxy) in
+            ZStack {
+                LinearGradient(colors: [Color(hex: EmblemCatalog.mix(LookKit.tint(reward), 0x000000, 0.1)), Color(hex: LookKit.deep(reward))], startPoint: .top, endPoint: .bottom)
+                picture(g.size)
+                LinearGradient(colors: [Color.black.opacity(scrim), Color.black.opacity(scrim * 0.6)], startPoint: .top, endPoint: .bottom)
+            }
+            .frame(width: g.size.width, height: g.size.height)
+            .clipped()
         }
-        .clipped()
     }
 
-    @ViewBuilder private var picture: some View {
+    @ViewBuilder private func picture(_ size: CGSize) -> some View {
         #if canImport(UIKit)
         if let ui = ArtLibrary.catalogueImage(.backdrop, reward.id) {
-            Color.clear.overlay { Image(uiImage: ui).resizable().scaledToFill() }.clipped()
+            Image(uiImage: ui).resizable().scaledToFill()
+                .frame(width: size.width, height: size.height)
+                .clipped()
         }
         #endif
     }
@@ -271,11 +278,9 @@ struct HeaderBackdropFill: View {
     var reward: SeasonReward
 
     var body: some View {
-        GeometryReader { (g: GeometryProxy) in
-            BackdropFill(reward: reward, scrim: 0.35)
-                .frame(width: g.size.width, height: g.size.height)
-        }
-        .clipped()
+        BackdropFill(reward: reward, scrim: 0.35)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -288,28 +293,6 @@ extension LookKit {
 
     static func companyBackdrop(_ e: GameEngine, _ companyID: Int) -> SeasonReward? {
         item(e.companyBackdrop(companyID: companyID))
-    }
-}
-
-struct LookNamePlate: View {
-    var look: [String: String]
-    var name: String
-
-    var body: some View {
-        let plate: SeasonReward? = LookKit.reward(look, .namePlate)
-        let flair: SeasonReward? = LookKit.reward(look, .richListFlair)
-        HStack(spacing: Theme.Space.xs) {
-            if let plate {
-                Text(name).textStyle(.title, tint: LookKit.ink(plate)).lineLimit(1).minimumScaleFactor(0.7)
-                    .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.xs)
-                    .background(Capsule().fill(LookKit.plate(plate)))
-                    .overlay(Capsule().strokeBorder(LookKit.ink(plate).opacity(0.5), lineWidth: 1))
-            } else {
-                Text(name).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
-            }
-            if let flair { ItemArt(reward: flair, rarity: GoldCosmetics.cosmetic(flair.id)?.rarity, size: 24) }
-        }
-        .accessibilityElement(children: .combine)
     }
 }
 

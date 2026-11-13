@@ -12,9 +12,6 @@ struct FriendsScreen: View {
     @State private var searching = false
     @State private var failure: String?
     @State private var pending: PendingAction?
-    @State private var venturePicker = false
-    @State private var ventureCompany: Int?
-    @State private var ventureOpen = false
     @State private var giftOpen = false
     @State private var giftFriend: PlayerProfile?
 
@@ -24,10 +21,6 @@ struct FriendsScreen: View {
         }
         .confirmAction($pending)
         .appScreen(title: "Friends", subtitle: "Requests, search and your friends")
-        .centerSheet(isPresented: $venturePicker, title: "Start a company together") { ventureChoices }
-        .centerSheet(isPresented: $ventureOpen, title: "Invite a friend", size: .tall) {
-            JVInviteSheet(companyID: ventureCompany ?? 0).environmentObject(store).environment(online)
-        }
         .centerSheet(isPresented: $giftOpen, title: "Send a gift", size: .tall) {
             if let f = giftFriend { GiftChoices(friend: f) { (item: ArtifactItem) in sendGift(item, to: f) } }
         }
@@ -43,7 +36,6 @@ struct FriendsScreen: View {
             if !o.outgoing.isEmpty { outgoingGroup(o.outgoing) }
             friendsGroup(o.friends)
             FriendPlayGroups(friends: o.friends)
-            togetherGroup
         } else if failure == nil {
             ProgressView().frame(maxWidth: .infinity)
         }
@@ -167,34 +159,6 @@ struct FriendsScreen: View {
                             .buttonStyle(SecondaryButtonStyle(size: .compact))
                             .disabled(!FriendPlayModel.shared.canGift)
                             .accessibilityIdentifier("friends-gift-\(p.id)")
-                    }
-                }
-            }
-        }
-    }
-
-    private var togetherGroup: some View {
-        OnlineGroup(title: "Together", footer: "Each friend gets a private price of their own, and big decisions go to a vote by shares.") {
-            Button { Haptics.tap(); venturePicker = true } label: {
-                OnlineLine(glyph: Glyph.group, title: "Start a company together", note: "Own one of your companies with friends", chevron: true)
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("friends-together")
-        }
-    }
-
-    @ViewBuilder private var ventureChoices: some View {
-        let list: [Company] = store.engine.map { (e: GameEngine) -> [Company] in e.state.companies.filter { (c: Company) -> Bool in e.jvCanStart(companyID: c.id) } } ?? []
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            if list.isEmpty {
-                Text("Open a company first. Then you can bring friends in as partners from its Partners section.").popupText(.body)
-            } else {
-                Text("Pick the company to share").popupText(.caption)
-                ForEach(list, id: \.id) { (c: Company) in
-                    ChoiceCard(title: c.name, selected: false) {
-                        ventureCompany = c.id
-                        venturePicker = false
-                        StorePurchase.afterPopup { ventureOpen = true }
                     }
                 }
             }

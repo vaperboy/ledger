@@ -22,9 +22,8 @@ struct GroupStructureTab: View {
         let mgmt: GroupManagement? = store.memo("groupMgmt") { (e: GameEngine) -> GroupManagement in e.groupManagement() }
         let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(engine)
         let firstCardID: String? = rows(nodes).first?.id
-        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             if nodes.count > 1 {
-                Text("Structure").textStyle(.label, tint: P.inkFaint)
                 hero(nodes, mgmt)
                 VStack(spacing: Theme.Space.xs) {
                     ForEach(rows(nodes)) { (r: Row) in

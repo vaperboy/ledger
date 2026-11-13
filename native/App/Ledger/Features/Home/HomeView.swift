@@ -27,10 +27,7 @@ struct HomeSummary<Companies: View>: View {
                         .accessibilityIdentifier("plus-ended-line")
                 }
                 if sizeClass == .regular {
-                    HStack(alignment: .top, spacing: Theme.Space.xxl) {
-                        NetWorthCard(engine: e, chartHeight: 64) { showInsights = true }.frame(maxWidth: .infinity)
-                        TopPriorities(engine: e).frame(maxWidth: .infinity)
-                    }
+                    NetWorthCard(engine: e, chartHeight: 64) { showInsights = true }.frame(maxWidth: .infinity)
                 } else {
                     NetWorthCard(engine: e, chartHeight: chart ? (compact ? 24 : 32) : 0) { showInsights = true }
                 }
@@ -40,8 +37,6 @@ struct HomeSummary<Companies: View>: View {
             HomePassCard()
             HomeRecapCard()
             HomeWorldStrip()
-            if fills { Self.gap }
-            if sizeClass != .regular { TopPriorities(engine: e, compact: compact).coachAnchor(.needsYou) }
             if fills { Self.gap }
             companies()
             if fills { Self.gap }

@@ -6,7 +6,6 @@ struct HomePassCard: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
     @ObservedObject private var model = SeasonModel.shared
-    @State private var plansOpen = false
 
     var body: some View {
         let pass: SeasonPass = model.pass
@@ -34,7 +33,7 @@ struct HomePassCard: View {
             .accessibilityHint("Opens the Battle Pass")
             .accessibilityIdentifier("home-pass")
             if !open {
-                Button { Haptics.tap(); plansOpen = true } label: {
+                Button { Haptics.tap(); store.openApp(.store) } label: {
                     Text("Get the pass").textStyle(.caption, tint: Theme.accentInk, weight: .semibold).lineLimit(1)
                         .padding(.horizontal, Theme.Space.m).frame(minHeight: 36)
                         .background(Capsule().fill(Theme.accent))
@@ -46,7 +45,6 @@ struct HomePassCard: View {
         .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
         .frame(minHeight: 60)
         .glassSurface()
-        .centerSheet(isPresented: $plansOpen, title: "Plans and gold", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
     }
 
     /// The next reward to reach: premium rewards while the premium track is closed (what the pass adds), otherwise whichever comes first.

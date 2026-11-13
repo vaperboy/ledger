@@ -356,11 +356,11 @@ struct AppScreen<Trailing: View>: ViewModifier {
                     .background {
                         ZStack {
                             if palette == .game {
-                                LinearGradient(colors: [Theme.page.opacity(0.6), Theme.page.opacity(0.25)], startPoint: .top, endPoint: .bottom).ignoresSafeArea(edges: .top)
+                                LinearGradient(colors: [Theme.page.opacity(0.6), Theme.page.opacity(0.25)], startPoint: .top, endPoint: .bottom).ignoresSafeArea(edges: [.top, .horizontal])
                             } else {
-                                (palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: .top)
+                                (palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: [.top, .horizontal])
                             }
-                            if let backdrop { HeaderBackdropFill(reward: backdrop).ignoresSafeArea(edges: .top) }
+                            if let backdrop { HeaderBackdropFill(reward: backdrop).ignoresSafeArea(edges: [.top, .horizontal]) }
                         }
                     }
             }

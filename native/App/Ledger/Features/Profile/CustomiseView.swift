@@ -2,11 +2,11 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// One screen to dress your player card. It opens on the live card: tap any part of the card (backdrop, avatar, name plate, flair), or an
+/// One screen to dress your player card. It opens on the live card: tap any part of the card (backdrop, avatar, flair), or an
 /// empty "+" slot, to open the matching tab. Items you do not own yet can be tried on and show on the card.
 struct CustomiseView: View {
     enum Part: String, CaseIterable, Identifiable {
-        case character, backdrop, plate, flair
+        case character, backdrop, flair
 
         var id: String { rawValue }
 
@@ -14,7 +14,6 @@ struct CustomiseView: View {
             switch card {
             case .character: self = .character
             case .backdrop: self = .backdrop
-            case .plate: self = .plate
             case .flair: self = .flair
             }
         }
@@ -23,7 +22,6 @@ struct CustomiseView: View {
             switch self {
             case .character: return "Character"
             case .backdrop: return "Backdrop"
-            case .plate: return "Name plate"
             case .flair: return "Flair"
             }
         }
@@ -32,7 +30,6 @@ struct CustomiseView: View {
             switch self {
             case .character: return "Your face, skin, hair and outfit. Other players see them."
             case .backdrop: return "Fills your whole card."
-            case .plate: return "The plate your name sits on."
             case .flair: return "Sits beside your name."
             }
         }
@@ -40,7 +37,6 @@ struct CustomiseView: View {
         var kind: SeasonReward.Kind? {
             switch self {
             case .backdrop: return .backdrop
-            case .plate: return .namePlate
             case .flair: return .richListFlair
             case .character: return nil
             }
@@ -155,7 +151,6 @@ struct CustomiseView: View {
             if let id = season.pass.equipped[SeasonReward.Kind.backdrop.rawValue], let r = LookKit.item(id) { return r.title }
             if let id = season.pass.equipped[SeasonPass.profileCardKey], let d = CardCatalog.def(forItem: id) { return d.name }
             return nil
-        case .plate: return season.pass.equipped[SeasonReward.Kind.namePlate.rawValue].flatMap { (id: String) -> String? in LookKit.item(id)?.title }
         case .flair: return season.pass.equipped[SeasonReward.Kind.richListFlair.rawValue].flatMap { (id: String) -> String? in LookKit.item(id)?.title }
         }
     }
@@ -198,7 +193,7 @@ struct CustomiseView: View {
         switch current {
         case .character: characterContent
         case .backdrop: backdropContent(cabinet)
-        case .plate, .flair: rewardGrid(current.kind ?? .namePlate)
+        case .flair: rewardGrid(current.kind ?? .richListFlair)
         }
     }
 
@@ -237,7 +232,7 @@ struct CustomiseView: View {
         note = ""
     }
 
-    // MARK: Backdrop, plate, flair
+    // MARK: Backdrop and flair
 
     private func rewards(_ kind: SeasonReward.Kind) -> [SeasonReward] {
         var seen = Set<String>()
@@ -255,11 +250,7 @@ struct CustomiseView: View {
     }
 
     @ViewBuilder private func tileArt(_ r: SeasonReward) -> some View {
-        if r.kind == .namePlate {
-            NamePlateView(name: "Name", plate: r, compact: true).frame(height: 48)
-        } else {
-            ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 48, wide: true)
-        }
+        ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 48, wide: true)
     }
 
     private func rewardTile(_ r: SeasonReward) -> some View {

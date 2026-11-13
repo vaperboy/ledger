@@ -238,6 +238,23 @@ struct StartupPageView: View {
         }
     }
 
+    /// The founder opens their player card unless it is you.
+    @ViewBuilder private func founderBlock(_ s: CrowdStartup, _ cur: Currency, mine: Bool) -> some View {
+        let block = VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(s.founderName).textStyle(.body)
+            Text(CrowdStartupRules.recordWords(exits: s.founderExits, fails: s.founderFails)).textStyle(.caption, tint: Theme.inkFaint)
+            Text("Puts in \(cur.tidyShort(s.plan.founderPutIn)) of their own money").textStyle(.caption, tint: Theme.inkFaint)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        if mine {
+            block
+        } else {
+            NavigationLink { PlayerProfileView(playerID: s.founderID, knownName: s.founderName) } label: { block }
+                .buttonStyle(PressableStyle())
+        }
+    }
+
     @ViewBuilder private func content(_ s: CrowdStartup, _ e: GameEngine) -> some View {
         let cur: Currency = e.homeCurrency
         let today: Int = StartupMarketStore.today(e)
@@ -266,11 +283,7 @@ struct StartupPageView: View {
                 }
             }
             CardSection("The founder") {
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    Text(s.founderName).textStyle(.body)
-                    Text(CrowdStartupRules.recordWords(exits: s.founderExits, fails: s.founderFails)).textStyle(.caption, tint: Theme.inkFaint)
-                    Text("Puts in \(cur.tidyShort(s.plan.founderPutIn)) of their own money").textStyle(.caption, tint: Theme.inkFaint)
-                }
+                founderBlock(s, cur, mine: mine)
             }
             CardSection("Escrow milestones") { milestones(s, cur) }
             if let h = hold { holding(s, h, cur, today) }
