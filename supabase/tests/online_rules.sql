@@ -111,8 +111,13 @@ begin
   perform pg_temp.as_user(c);
   r := public.friend_activity(20);
   if jsonb_array_length(r -> 'activity') <> 0 then raise exception 'a stranger sees friend activity: %', r; end if;
-  perform pg_temp.expect_error('select public.send_friend_request(''' || (select user_id from public.bots limit 1) || '''::uuid)', 'not_found');
-  if exists (select 1 from public.search_players('') s where (s ->> 'playerID')::uuid in (select user_id from public.bots)) then raise exception 'bots are searchable'; end if;
+  perform public.send_friend_request((select user_id from public.bots order by slot limit 1));
+  if (select status from public.friendships where requester_id = c and addressee_id = (select user_id from public.bots order by slot limit 1)) <> 'pending' then
+    raise exception 'a request to a player the world runs did not wait like any other';
+  end if;
+  if jsonb_array_length(public.search_players((select display_name from public.profiles where id = (select user_id from public.bots order by slot limit 1)))) < 1 then
+    raise exception 'a player the world runs cannot be found by name';
+  end if;
 end $$;
 
 do $$
@@ -240,11 +245,12 @@ end $$;
 
 do $$
 declare a uuid := pg_temp.id('a'); c uuid := pg_temp.id('c'); lid uuid; cid uuid; wk date := date_trunc('week', now())::date - 7; price numeric; n int; q int;
+        ln text := (select line_id from public.supply_trade_lines where trade_id = 'bakery' order by line_id limit 1);
 begin
   perform pg_temp.as_user(c);
-  lid := (public.save_supply_listing(null, 'own.8', 'Cole Bakes', 'bakery', 'Leeds', 'GB', 'goods', 1, 1, 100, 3, 1, 14, 7, 10, 'USD') ->> 'id')::uuid;
+  lid := (public.save_supply_listing(null, 'own.8', 'Cole Bakes', 'bakery', 'Leeds', 'GB', ln, 1, 1, 100, 3, 1, 14, 7, 10, 'USD') ->> 'id')::uuid;
   perform pg_temp.as_user(a);
-  cid := (public.sign_supply_contract('own.1', 'goods', lid, 15, 'USD') ->> 'id')::uuid;
+  cid := (public.sign_supply_contract('own.1', ln, lid, 15, 'USD') ->> 'id')::uuid;
   select unit_price into price from public.supply_contracts where id = cid;
   update public.supply_contracts set signed_at = wk::timestamp at time zone 'UTC' + interval '2 days' where id = cid;
   update public.profiles set last_seen_at = now() where id in (a, c);
@@ -409,7 +415,8 @@ begin
 end $$;
 
 create function pg_temp.mk_item(k text, nm text, ttl text) returns jsonb language sql as $$
-  select jsonb_build_object('id', nm, 'kind', k, 'title', ttl, 'family', 'car_s', 'ref', 'car_s', 'age', 4, 'km', 60000, 'seen', 0.7, 'cond', 0.5, 'base', 400000);
+  select jsonb_build_object('id', nm, 'kind', k, 'title', ttl, 'family', r, 'ref', r, 'age', 4, 'km', 60000, 'seen', 0.7, 'cond', 0.5, 'base', 400000)
+    from (select case k when 'van' then 'van_s' when 'boat' then 'y1' when 'equipment' then 'oven' when 'plane' then 'j1' when 'luxury' then 'w1' else 'car_s' end as r) x;
 $$;
 
 create function pg_temp.notes(uid uuid, kind text) returns int language sql as $$
@@ -797,7 +804,12 @@ begin
   select id into vid from public.ventures where chair_id = d and company_key = 'own.9';
   fair := round(private.jv_fair_price(1000000, 5), 2);
   perform pg_temp.as_user(d);
-  perform pg_temp.expect_error(format('select public.invite_venture_partner(%L, %L, 5, %s)', vid, bot, round(fair * 1.2, 2)), 'outside_band');
+  perform pg_temp.expect_error(format('select public.invite_venture_partner(%L, %L, 5, %s)', vid, bot, fair), 'not_friends');
+  insert into public.friendships (requester_id, addressee_id, status, responded_at) values (d, bot, 'accepted', now());
+  inv := (public.invite_venture_partner(vid, bot, 5, round(fair * 1.2, 2)) ->> 'id')::uuid;
+  update public.venture_invites set sent_at = now() - interval '12 hours' where id = inv;
+  perform private.run_venture_housekeeping();
+  if (select status from public.venture_invites where id = inv) <> 'declined' or private.is_partner(vid, bot) then raise exception 'a player the world runs paid more than the fair price'; end if;
   for i in 1..12 loop
     inv := (public.invite_venture_partner(vid, bot, 5, fair) ->> 'id')::uuid;
     perform private.run_venture_housekeeping();

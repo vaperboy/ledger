@@ -14,6 +14,7 @@ final class JointVentureCoordinator {
     private var attachedTo: ObjectIdentifier?
     private var running = false
     private var realIDs: Set<String> = []
+    private var warned: Set<String> = []
 
     private init() {
         online = OnlineBackend.shared
@@ -153,6 +154,20 @@ final class JointVentureCoordinator {
         }
     }
 
+    // The most a stake of this size can cost: the larger of this game's value and the server's, at the widest price band the server allows.
+    private static func stakeCeiling(_ e: GameEngine, _ id: Int, _ venture: VentureInfo, pct: Double) -> Double {
+        let value: Double = max(e.jvCompanyValue(companyID: id), e.jvGameAmount(venture.value, companyID: id))
+        let p: Double = min(max(pct, 0), 49.5)
+        return value * p / (100 - p) * 2.5 * 1.05
+    }
+
+    // A server figure outside the limits is not booked; the player hears about it once per session.
+    private func outOfBounds(_ store: GameStore, key: String, title: String, text: String) {
+        guard !warned.contains(key) else { return }
+        warned.insert(key)
+        store.tell(title, text, tone: "warn")
+    }
+
     private func reportValue(_ store: GameStore, _ api: any VentureBoardService, _ id: Int, _ venture: VentureInfo) async {
         guard let e = store.engine else { return }
         let value: Double = e.jvServerAmount(e.jvCompanyValue(companyID: id), companyID: id)
@@ -170,6 +185,11 @@ final class JointVentureCoordinator {
             guard local != nil || row != nil else { continue }
             let pct: Double = local?.pct ?? row?.pct ?? 0
             let price: Double = local?.price ?? e.jvGameAmount(row?.price ?? 0, companyID: id)
+            if local == nil, !(price.isFinite && price >= 0 && price <= Self.stakeCeiling(e, id, venture, pct: pct)) {
+                outOfBounds(store, key: "join:" + venture.id + ":" + p.memberID, title: "New partner not booked",
+                            text: "The price the server gave for a new partner's shares was outside the limits, so it was not booked.")
+                continue
+            }
             let name: String = local?.name ?? p.name ?? "A partner"
             let lock: Double? = p.lockUntil?.timeIntervalSince1970
             store.act { (g: inout GameEngine) -> String? in g.jvRemoteJoin(companyID: id, playerID: p.memberID, name: name, pct: pct, price: price, lockAt: lock) }
@@ -184,7 +204,14 @@ final class JointVentureCoordinator {
             let row: VentureBuybackRow? = sold.first { (r: VentureBuybackRow) -> Bool in r.sellerID == playerID }
             let open: JointVenture.Buyback? = now.jvBuyBackOffers(companyID: id).first { (o: JointVenture.Buyback) -> Bool in o.memberID == m.id }
             var price: Double = now.jvGameAmount(row?.price ?? 0, companyID: id)
-            if let open, let row, open.remoteID == row.id { price = open.price }
+            var agreedHere = false
+            if let open, let row, open.remoteID == row.id { price = open.price; agreedHere = true }
+            let pct: Double = now.jvStakes(companyID: id).first { (x: JointVenture.Stake) -> Bool in x.id == m.id }?.pct ?? 0
+            if !agreedHere, pct > 0, !(price.isFinite && price >= 0 && price <= Self.stakeCeiling(now, id, venture, pct: pct)) {
+                outOfBounds(store, key: "left:" + venture.id + ":" + m.id, title: "Share sale not booked",
+                            text: "The price the server gave for \(m.name)'s shares was outside the limits, so it was not paid.")
+                continue
+            }
             store.act { (g: inout GameEngine) -> String? in g.jvPartnerLeft(companyID: id, memberID: m.id, price: price) }
         }
     }

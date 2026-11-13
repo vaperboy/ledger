@@ -177,7 +177,10 @@ public extension JointVenture {
 // Money and news from the server about companies the player co-owns with other players.
 public enum JointVentureSettlements {
     static let key = "jvHeld"
+    static let skippedKey = "jvSkipped"
     static let sender = "Partner shares"
+    // One capital call may take at most half of what was paid in for the stake (the server allows a fifth of the company's value).
+    public static let capitalCallShare: Double = 0.5
 
     public struct Holding: Equatable, Identifiable, Sendable {
         public var id: String
@@ -215,6 +218,16 @@ public enum JointVentureSettlements {
         s.addMessage(kind: "info", from: sender, title: title, body: body, companyID: 0, tone: tone)
     }
 
+    // Settlements that were outside the limits and not booked, newest last, kept for support.
+    public static func skipped(_ s: GameState) -> [JSONValue] { s.rest[skippedKey]?.array ?? [] }
+
+    static func skip(_ s: inout GameState, _ item: OnlineSettlement, money: Double, name: String) {
+        let row: JSONValue = .object(["id": .string(item.id), "kind": .string(item.kind), "venture": .string(item.meta["ventureID"].string),
+                                      "amount": .number(money), "w": .number(Double(s.week))])
+        s.rest[skippedKey] = .array(Array((skipped(s) + [row]).suffix(20)))
+        tell(&s, title: "Capital call not paid: \(name)", body: "The call was larger than your stake in \(name) allows, so nothing was taken from your cash.", tone: "bad")
+    }
+
     static func tail(_ label: String, after prefix: String) -> String {
         label.hasPrefix(prefix) ? String(label.dropFirst(prefix.count)) : label
     }
@@ -233,6 +246,11 @@ public enum JointVentureSettlements {
             tell(&s, title: "You are a partner in \(name)", body: "You paid for your shares and hold \(String(format: "%.1f", item.meta["percent"].double))% of \(name). You vote at its board meetings and share in its dividends.", tone: "good")
         case "venture_capital_call":
             let name = tail(item.label, after: "Capital call: ")
+            let paidIn: Double = holdings(s).first { (h: Holding) -> Bool in h.id == venture }?.paid ?? 0
+            guard money <= jsRound(max(0, paidIn) * capitalCallShare) else {
+                skip(&s, item, money: money, name: name)
+                return true
+            }
             if money > 0 { Payments.playerPays(&s, money, label: item.label.isEmpty ? "Capital call" : item.label) }
             change(&s, ventureID: venture, name: name) { (h: inout Holding) -> Void in h.paid += money }
             tell(&s, title: "Capital call: \(name)", body: "The owners voted to put more money into \(name). Your part was taken from your cash.")

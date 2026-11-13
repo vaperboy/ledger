@@ -2,7 +2,7 @@
 -- where too few players supply a line, computer-run players open supplier companies with listings, and step back when real players cover it.
 -- Contracts carry the buyer's need, worked out by the game; the buyer never picks a quantity.
 
-alter table public.supply_contracts add column if not exists need int check (need is null or need >= 1);
+alter table public.supply_contracts add column if not exists need int check (need is null or need between 1 and 1000000);
 alter table public.bots add column if not exists supplier boolean not null default false;
 
 -- Lines: old line ids move to the new ones, dropped lines run out over a week.
@@ -140,7 +140,7 @@ create or replace function private.supply_line_lead(p_line text) returns int lan
   select coalesce((select d from (values ('food',3), ('care',3), ('wares',3), ('produce',3), ('bread',1), ('beer',3), ('wine',4), ('fish',2), ('parts',4), ('build',3), ('fuel',1), ('furn',10), ('upkeep',2), ('machines',3), ('carserv',1), ('valet',1), ('freight',2), ('parcel',1), ('deliv',0), ('whouse',2), ('clean',1), ('laundry',2), ('guards',2), ('temp',2), ('ads',5)) as x(l, d) where x.l = p_line), 2);
 $$;
 
--- A supplier owner the world runs, from the names of that country.
+-- A supplier owner the world runs, named like a player from the names of that country (private.bot_handle and private.bot_dress are in 0034).
 create or replace function private.supply_bot_new(cc text) returns uuid language plpgsql security definer set search_path = '' as $$
 declare pl record; uid uuid := gen_random_uuid(); nm text; k int := 0; s int; days int;
 begin
@@ -148,10 +148,9 @@ begin
   if not found or cardinality(pl.first_names) = 0 or cardinality(pl.last_names) = 0 then return null; end if;
   select coalesce(max(b.slot), 999) + 1 into s from public.bots b where b.slot >= 1000;
   loop
-    nm := pl.first_names[1 + abs(hashtext('sf' || s || ':' || k)) % cardinality(pl.first_names)] || ' '
-       || pl.last_names[1 + abs(hashtext('sl' || s || ':' || k)) % cardinality(pl.last_names)];
-    exit when char_length(nm) between 2 and 20 and nm ~ '^[[:alpha:][:digit:] ._''-]+$' and private.name_problem(nm) is null
-          and not exists (select 1 from public.profiles where lower(display_name) = lower(nm));
+    nm := private.bot_handle(pl.first_names[1 + abs(hashtext('sf' || s || ':' || k)) % cardinality(pl.first_names)],
+                             pl.last_names[1 + abs(hashtext('sl' || s || ':' || k)) % cardinality(pl.last_names)], 's' || s || ':' || k);
+    exit when private.bot_name_free(nm);
     k := k + 1;
     if k > 40 then return null; end if;
   end loop;
@@ -162,13 +161,14 @@ begin
                                adult_confirmed, is_bot, last_seen_at)
     values (uid, nm, abs(hashtext(nm)) % 8, cc, 1 + days * 3 / 14, 'public', days * 3, days * 2, now() - make_interval(days => days), true, true, now());
   insert into public.bots (user_id, slot, active, supplier) values (uid, s, false, true);
+  perform private.bot_dress(uid, nm);
   return uid;
 end $$;
 
 -- Keeps every line supplied in each currency players use: at least two suppliers with room for 1.3 times the largest need on the line.
 -- Real players count first; the world's supplier companies fill the gap and stop taking buyers once two real players cover a line.
 create or replace function private.supply_fill() returns int language plpgsql security definer set search_path = '' as $$
-declare cur text; ln text; need int; want int; covered int; real_cov int; made int := 0; tr text; owner uuid; pc text; pcities text[]; nm text; co text;
+declare cur text; ln text; need bigint; want bigint; covered int; real_cov int; made int := 0; tr text; owner uuid; pc text; pcities text[]; nm text; co text;
         city text; uv numeric; wk date := date_trunc('week', now())::date; key text; salt int; w int;
         logos text[] := array['mark','ring','square','triangle','leaf','wave','spark','anchor','bridge','gear','arrow','key','shield','tower',
                               'compass','crown','fox','owl','bull','stag','falcon'];
@@ -186,21 +186,22 @@ begin
   for cur in select distinct sp.currency from public.profiles p join private.supply_places() sp on sp.country = p.country_code
               where not p.is_bot and p.deleted_at is null and p.adult_confirmed and p.last_seen_at > now() - interval '14 days' order by 1 loop
     for ln in select distinct t.line_id from public.supply_trade_lines t order by 1 loop
-      select greatest(20, coalesce(max(coalesce(c.need, c.units_per_week)), 0)) into need
+      -- Needs are capped so one huge order can neither overflow the sums nor stop the hourly job.
+      select greatest(20, coalesce(max(least(coalesce(c.need, c.units_per_week), 1000000)), 0)) into need
         from public.supply_contracts c join public.supply_listings l on l.id = c.listing_id
        where c.ended_at is null and c.line_id = ln and l.currency = cur;
-      want := ceil(need * 1.3)::int;
+      want := least(ceil(need * 1.3), 1000000)::bigint;
       -- Their own listings grow first when buyers need more.
-      update public.supply_listings l set capacity_per_week = least(1000000, private.supply_committed(l.id) + want * 2)
+      update public.supply_listings l set capacity_per_week = least(1000000, private.supply_committed(l.id)::bigint + want * 2)::int
        where l.line_id = ln and l.currency = cur and not l.stopped and not l.paused
          and l.owner_id in (select b.user_id from public.bots b where b.supplier)
-         and private.supply_effective_capacity(l) - private.supply_committed(l.id) < want;
+         and private.supply_effective_capacity(l)::bigint - private.supply_committed(l.id) < want;
       select count(distinct l.owner_id),
              count(distinct l.owner_id) filter (where not exists (select 1 from public.bots b where b.user_id = l.owner_id and b.supplier))
         into covered, real_cov
         from public.supply_listings l
        where l.line_id = ln and l.currency = cur and not l.stopped and not l.paused and (l.expires_at is null or l.expires_at > now())
-         and private.supply_effective_capacity(l) - private.supply_committed(l.id) >= want;
+         and private.supply_effective_capacity(l)::bigint - private.supply_committed(l.id) >= want;
       if real_cov >= 2 then
         update public.supply_listings l set stopped = true
          where l.line_id = ln and l.currency = cur and not l.stopped and private.supply_committed(l.id) = 0
@@ -221,7 +222,8 @@ begin
         if owner is null then owner := private.supply_bot_new(pc); end if;
         exit when owner is null;
         select display_name into nm from public.profiles where id = owner;
-        co := left(split_part(nm, ' ', 2) || ' ' || private.supply_trade_word(tr, salt), 40);
+        co := left(coalesce((select sp.last_names[1 + abs(hashtext(owner::text)) % cardinality(sp.last_names)] from private.supply_places() sp where sp.country = pc), nm)
+                   || ' ' || private.supply_trade_word(tr, salt), 40);
         city := pcities[1 + salt % cardinality(pcities)];
         key := left('sup-' || ln || '-' || tr, 64);
         insert into public.companies_public (owner_id, company_key, name, trade, city, country, health)
@@ -234,7 +236,7 @@ begin
         insert into public.supply_listings (owner_id, company_key, company_name, trade_id, city, region, line_id, price_tier, quality_tier, capacity_per_week,
             lead_days, min_order, terms_days, unit_value, currency, weeks_trading, orders_total, orders_on_time, units_promised, units_delivered,
             clean_weeks, lifetime_units, logo_id)
-          values (owner, key, co, tr, city, '', ln, 1, 1, want * 3, private.supply_line_lead(ln), 1, 14, uv, cur, w, w * 3, w * 3 - w / 20, w * 40,
+          values (owner, key, co, tr, city, '', ln, 1, 1, least(want * 3, 1000000)::int, private.supply_line_lead(ln), 1, 14, uv, cur, w, w * 3, w * 3 - w / 20, w * 40,
             (w * 40 * (95 + salt % 5)) / 100, 12, (w * 40 * (95 + salt % 5)) / 100, logos[1 + salt % cardinality(logos)]);
         covered := covered + 1;
         made := made + 1;
@@ -249,7 +251,11 @@ create or replace function private.bot_tick() returns int language plpgsql secur
 declare target int := private.bot_target(); b public.bots; p public.profiles; hour_key bigint := floor(extract(epoch from now()) / 3600)::bigint;
         l public.exchange_listings; n int := 0; wk int; nw numeric; share numeric;
 begin
-  perform private.supply_fill();
+  begin
+    perform private.supply_fill();
+  exception when others then
+    raise warning 'supply_fill failed: %', sqlerrm;
+  end;
   if private.fakes_removed() then return 0; end if;
   perform private.bot_ensure(target);
   update public.bots set active = slot < target where not supplier;
@@ -273,7 +279,7 @@ end $$;
 
 -- Removing the computer-run players keeps the supplier companies that stand in for missing suppliers, then refills any line left short.
 create or replace function public.admin_remove_fake_players(p_reason text) returns jsonb language plpgsql security definer set search_path = '' as $$
-declare uid uuid := private.require_admin(); why text := trim(coalesce(p_reason, '')); n int; gone uuid[];
+declare uid uuid := private.require_admin(); why text := trim(coalesce(p_reason, '')); n int; gone uuid[]; l public.market_listings;
 begin
   if char_length(why) < 3 then raise exception 'reason_required' using errcode = 'P0001'; end if;
   insert into public.world_flags (key, value, updated_by) values ('fakes_removed', 'true'::jsonb, uid)
@@ -285,6 +291,10 @@ begin
   update public.supply_listings set stopped = true where not stopped and owner_id in (select unnest(gone));
   update public.exchange_orders set status = 'cancelled' where status = 'open' and trader_id in (select unnest(gone));
   update public.exchange_listings set delisted_at = now() where delisted_at is null and owner_id in (select unnest(gone));
+  for l in select * from public.market_listings where status = 'active' and seller_id in (select unnest(gone)) for update loop
+    update public.market_listings set status = 'cancelled', closed_at = now() where id = l.id;
+    perform private.market_close_open(l, l.title || ' is no longer for sale. Your money is back.', 'cancel');
+  end loop;
   delete from public.leaderboard_entries where user_id in (select id from public.profiles where is_bot);
   delete from public.companies_public where owner_id in (select unnest(gone));
   update public.bots set active = false;
@@ -307,7 +317,7 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_player(); l public.supply_listings; why text; c public.supply_contracts; room int; units int;
 begin
   perform private.require_free(uid, 'trade');
-  if p_units is null or p_units < 1 then raise exception 'invalid_units' using errcode = 'P0001'; end if;
+  if p_units is null or p_units < 1 or p_units > 1000000 then raise exception 'invalid_units' using errcode = 'P0001'; end if;
   select * into l from public.supply_listings where id = p_listing for update;
   if not found or l.line_id <> p_line_id or private.is_blocked_between(uid, l.owner_id)
      or not exists (select 1 from public.supply_trade_lines t where t.trade_id = l.trade_id and t.line_id = l.line_id) then
@@ -328,17 +338,16 @@ begin
   return private.supply_contract_json(c);
 end $$;
 
--- A supplier company's owner opens like any player's card.
+-- Every player the world runs opens like any player's card.
 create or replace function public.profile_by_code(p_code text) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare uid uuid := private.require_user(); target uuid;
 begin
   select p.id into target from public.profiles p
-   where private.code_key(p.code) = private.code_key(p_code) and p.deleted_at is null
-     and (not p.is_bot or exists (select 1 from public.bots b where b.user_id = p.id and b.supplier));
+   where private.code_key(p.code) = private.code_key(p_code) and p.deleted_at is null;
   if target is null or (target <> uid and private.is_blocked_between(uid, target)) then
     raise exception 'not_found' using errcode = 'P0001';
   end if;
   return private.profile_json(uid, target);
 end $$;
 
-grant execute on function public.admin_remove_fake_players(text), public.sign_supply_contract(text, text, uuid, int, text), public.profile_by_code(text) to authenticated;
+grant execute on function public.admin_remove_fake_players(text), public.profile_by_code(text) to authenticated;
