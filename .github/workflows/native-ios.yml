@@ -137,7 +137,7 @@ jobs:
           xcrun simctl launch --terminate-running-process "$DEV" "$BID" || echo "LAUNCH CALL FAILED"
           sleep 20
           if xcrun simctl spawn "$DEV" launchctl list | grep -i "$BID"; then echo "RUNNING"; else echo "NOT RUNNING"; touch notrunning; fi
-          xcrun simctl spawn "$DEV" log show --last 3m --style compact --predicate 'process == "Ledger" OR eventMessage CONTAINS "Fatal error" OR eventMessage CONTAINS "com.example.ledger"' 2>&1 | tail -80 || true
+          xcrun simctl spawn "$DEV" log show --last 3m --style compact --predicate 'process == "Ledger" OR eventMessage CONTAINS "Fatal error" OR eventMessage CONTAINS "com.matasdovyda.ledger"' 2>&1 | tail -80 || true
           find ~/Library/Logs/DiagnosticReports -name "*.ips" -newer notrunning 2>/dev/null | head -3 || true
           for f in $(find ~/Library/Logs/DiagnosticReports -name "Ledger*.ips" 2>/dev/null | head -2); do echo "== $f"; head -c 6000 "$f"; done || true
           test ! -f notrunning
@@ -311,7 +311,7 @@ jobs:
       group: ipa-release
       cancel-in-progress: false
     env:
-      BUNDLE_ID: com.example.ledger
+      BUNDLE_ID: com.matasdovyda.ledger
       SOURCE_BRANCH: native-swiftui
     steps:
       - uses: actions/checkout@v4

@@ -10,7 +10,7 @@
   "apps": [
     {
       "name": "Ledger",
-      "bundleIdentifier": "com.example.ledger",
+      "bundleIdentifier": "com.matasdovyda.ledger",
       "developerName": "Ledger",
       "subtitle": "Run real businesses",
       "localizedDescription": "Ledger: a business-management simulation.",

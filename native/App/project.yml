@@ -1,6 +1,6 @@
 name: Ledger
 options:
-  bundleIdPrefix: com.example
+  bundleIdPrefix: com.matasdovyda
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -38,11 +38,11 @@ targets:
       path: InfoPlists/Ledger.plist
       properties:
         CFBundleURLTypes:
-          - CFBundleURLName: com.example.ledger.invite
+          - CFBundleURLName: com.matasdovyda.ledger.invite
             CFBundleURLSchemes: [ledger]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.ledger
+        PRODUCT_BUNDLE_IDENTIFIER: com.matasdovyda.ledger
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Ledger
@@ -66,7 +66,7 @@ targets:
       - target: Ledger
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.ledger.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.matasdovyda.ledger.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Ledger
   LedgerTests:
@@ -78,7 +78,7 @@ targets:
       - target: Ledger
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.ledger.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.matasdovyda.ledger.tests
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Ledger.app/Ledger"
         BUNDLE_LOADER: "$(TEST_HOST)"

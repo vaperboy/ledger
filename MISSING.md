@@ -25,7 +25,7 @@
 - App icon is a placeholder drawn by script; no store screenshots (`screenshotURLs` in `apps.json` is empty).
 - Sounds are seven system sounds only; no own sound effects or music.
 - The five art sheets (premises, luxury, cars, logos, trophies) were removed after slicing; the cells remain, the sheets are in git history.
-- Bundle id and source identifier are `com.example.*` and must change before App Store submission.
+- AltStore source identifier stays `com.example.ledger.source` so the existing source keeps working; the app bundle id is com.matasdovyda.ledger.
 
 ## Server
 - `OnlineConfig.useServer` is true: every player gets an anonymous server account at first launch. The stand-in service stays for offline mode and for the markets, joint ventures and startup market that have no server client yet.
