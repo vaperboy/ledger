@@ -66,7 +66,7 @@ struct ItemsList: View {
         let reading: (text: String, tint: Color) = page.map { (p: ItemPageData) in itemProfitReading(p.live, cur) } ?? ("", Theme.inkSoft)
         let word: String = page?.statusWord ?? "On sale"
         let off: String = it.discountPercent > 0 ? " \u{00B7} \(Int(it.discountPercent))% off" : ""
-        let sold: String = it.weeklyUnits >= 0.05 ? " \u{00B7} " + String(format: it.weeklyUnits < 10 ? "%.1f" : "%.0f", it.weeklyUnits) + " a week" : ""
+        let sold: String = it.weeklyUnits >= 0.05 ? " \u{00B7} " + ItemPriceWords.units(it.weeklyUnits) + " a week" : ""
         let id: String = it.id
         return LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: it.name, glyph: it.isService ? Glyph.opsWrench : Glyph.opsBox)),
                          title: it.name, subtitle: word + off + sold, value: itemAmount(it.price, cur),
@@ -146,7 +146,7 @@ struct ItemPriceSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .centerSheetTitle(base.item.name.tidyText)
-        .popupFooter { footer(owner: setBy == nil) }
+        .popupFooter { footer(owner: setBy == nil, current: base.item.price) }
     }
 
     /// The price figure with its steppers, the one bar and the three quick prices.
@@ -192,11 +192,11 @@ struct ItemPriceSheet: View {
         return min(max((v / cent).rounded() * cent, lo), hi)
     }
 
-    /// What this price is expected to do in a week, and how strong demand is at it.
+    /// What this price is expected to do in a week, and how strong demand is at it. Units and profit come from the same forecast.
     private func liveLine(_ f: ItemForecast, _ p: ItemPageData, _ cur: Currency, _ price: Double) -> some View {
         let weekly: Double = f.units * (price - p.unitCost)
         let word: String = weekly >= 0 ? "profit" : "loss"
-        let sold: String = String(format: "%.0f", f.units)
+        let sold: String = ItemPriceWords.units(f.units)
         return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             Text("\u{2248} \(sold) sold a week \u{00B7} \(word) \(cur.tidyShort(abs(weekly))) a week")
                 .popupText(.rowValue).foregroundStyle(weekly >= 0 ? P.gain : P.loss)
@@ -268,18 +268,20 @@ struct ItemPriceSheet: View {
         return parts.joined(separator: " \u{00B7} ")
     }
 
-    @ViewBuilder private func footer(owner: Bool) -> some View {
-        if owner && store.tutorialStep == .setPrice {
-            Button("Keep this price") { Haptics.tap(); store.tutorialAdvance(from: .setPrice); onClose() }
-                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                .accessibilityIdentifier("item-keep-price")
-            Button("Close") { Haptics.tap(); onClose() }
-                .buttonStyle(QuietButtonStyle())
-        } else {
-            Button("Done") { Haptics.tap(); onClose() }
-                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                .accessibilityIdentifier("item-price-done")
+    private func footer(owner: Bool, current: Double) -> some View {
+        Button("Done") { Haptics.tap(); finish(owner: owner, current: current) }
+            .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+            .accessibilityIdentifier("item-price-done")
+    }
+
+    /// Done keeps the price on screen: a pending change is saved, and in the guide the shown price counts as the player's choice.
+    private func finish(owner: Bool, current: Double) {
+        if owner {
+            let guided: Bool = store.tutorialStep == .setPrice
+            if let d = draftPrice { commitPrice(d) } else if guided { commitPrice(current) }
+            store.tutorialAdvance(from: .setPrice)
         }
+        onClose()
     }
 
     private func commitPrice(_ price: Double) {

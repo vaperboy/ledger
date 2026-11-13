@@ -243,7 +243,7 @@ struct SupplierPopup: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .centerSheetTitle(sheet.title)
-        .popupFooter { footer(suggested) }
+        .popupFooter { footer(now, suggested, choosable: now != nil || !usable.isEmpty) }
         .accessibilityIdentifier("item-supplier-chooser")
         .task { market.sync(store) }
     }
@@ -252,13 +252,30 @@ struct SupplierPopup: View {
         Text(text).popupText(.rowLabel).padding(.top, Theme.Space.xs)
     }
 
-    @ViewBuilder private func footer(_ suggested: SupplierChoice?) -> some View {
-        if asking, let s = suggested {
+    /// The guide waits on this chooser until a supplier is picked or the one in use is kept.
+    private var guiding: Bool { asking || store.tutorialStep == .pickSupplier }
+
+    @ViewBuilder private func footer(_ now: SupplierChoice?, _ suggested: SupplierChoice?, choosable: Bool) -> some View {
+        if guiding, let n = now {
+            PopupFooter(cancel: asking ? "Decide later" : "Close", action: "Keep \(n.name.tidyText)", onCancel: { onClose() },
+                        onAction: { keep() }, cancelID: "item-supplier-done", actionID: "item-supplier-keep")
+        } else if asking, let s = suggested {
             PopupFooter(cancel: "Decide later", action: "Use \(s.name.tidyText)", onCancel: { onClose() },
-                        onAction: { confirming = s; message = nil }, cancelID: "item-supplier-done", actionID: "item-supplier-keep")
+                        onAction: { confirming = s; message = nil }, cancelID: "item-supplier-done", actionID: "item-supplier-use")
         } else {
-            PopupOptionButton(title: asking ? "Decide later" : "Done", identifier: "item-supplier-done") { onClose() }
+            PopupOptionButton(title: asking ? "Decide later" : "Done", identifier: "item-supplier-done") {
+                // With no supplier to pick, the guide cannot wait on this step.
+                if !choosable { store.tutorialAdvance(from: .pickSupplier) }
+                onClose()
+            }
         }
+    }
+
+    // Keeping the supplier in use is a choice too: nothing changes, the guide moves on.
+    private func keep() {
+        Haptics.success()
+        store.tutorialAdvance(from: .pickSupplier)
+        onClose()
     }
 
     // A compact row: tap the company to see its card, then use it.
@@ -370,6 +387,7 @@ struct SupplierPopup: View {
             Haptics.success()
             let who: String = l.companyName.isEmpty ? l.ownerName : l.companyName
             store.outcome(chosen: "\(who) for \(sheet.lineTitle)", result: "\(who) now supplies \(sheet.lineTitle.lowercased()), \(sheet.need).")
+            store.tutorialAdvance(from: .pickSupplier)
             onClose()
         case .refused(let why):
             Haptics.warning()
@@ -412,7 +430,7 @@ struct SupplierPopup: View {
         let r = store.act { $0.setItemSupplier(companyID: id, itemID: item, vendorID: vendor) }
         if case .refused(let why)? = r { Haptics.warning(); message = why; return }
         if r?.didChange == true { Haptics.success(); store.saved("supplied by " + name) }
-        if asking { store.tutorialAdvance(from: .pickSupplier) }
+        store.tutorialAdvance(from: .pickSupplier)
         onClose()
     }
 
@@ -423,7 +441,7 @@ struct SupplierPopup: View {
         case .ok?:
             Haptics.success()
             store.saved("supplied by " + o.name)
-            if asking { store.tutorialAdvance(from: .pickSupplier) }
+            store.tutorialAdvance(from: .pickSupplier)
             onClose()
         case .notKnownWell?: Haptics.warning(); message = "They do not know you well enough yet. Buy from them for a while first."
         case .governed?: Haptics.warning(); message = "A chain rule or your franchise agreement fixes this supplier."

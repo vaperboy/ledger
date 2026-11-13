@@ -88,6 +88,17 @@ final class PlayerSupplyTests: XCTestCase {
         XCTAssertEqual(kept.map { $0.id }, ["a"])
     }
 
+    func testSigningAPlayerSupplierCountsAsChoosingOneInTheGuide() throws {
+        var (e, id) = try engine()
+        e.update { s, _, _ in
+            Tutorial.start(&s)
+            Tutorial.advance(&s, from: .openCompany)
+        }
+        XCTAssertEqual(e.tutorialStep, .pickSupplier)
+        XCTAssertTrue(e.signPlayerSupplier(contract: contract("C1", buyer: id, listing: "f"), listing: listing("f"), weeklyMarketSpend: 100_000))
+        XCTAssertEqual(e.tutorialStep, .setPrice)
+    }
+
     func testAContractPricesTheLineAndEndingGoesBack() throws {
         var (e, id) = try engine()
         let base = try XCTUnwrap(e.goodsCostFactor(companyID: id))

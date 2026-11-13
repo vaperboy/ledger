@@ -15,7 +15,16 @@ struct CompanySales: View {
     @State private var addingService: Bool?
     @State private var showHire = false
     @State private var showAddons = false
+    @State private var ownerTrip: OwnerTrip?
     @Environment(\.outsidePalette) private var P
+
+    /// A look at a supplier's owner from the chooser: the card is pushed, and the chooser comes back when the player returns.
+    private struct OwnerTrip: Equatable {
+        var subject: SupplierSubject
+        var tab: AppTab
+        var depth: Int
+        var shown: Bool = false
+    }
 
     private struct SalesItemPick: Identifiable, Hashable { var id: String }
     private struct NewItemPick: Identifiable { var id: Bool }
@@ -40,9 +49,12 @@ struct CompanySales: View {
                              if let id { itemChosen(id) }
                          })
         }
-        .centerSheet(item: $supplierFor, category: .detail, tone: .info, onDismiss: { if let id = pendingPrice { pendingPrice = nil; showPrice(id) } }) { (s: SupplierSubject) in
-            SupplierPopup(companyID: company.id, subject: s, asking: true, onClose: { supplierFor = nil }).environmentObject(store)
+        .centerSheet(item: $supplierFor, category: .detail, tone: .info, onDismiss: { supplierClosed() }) { (s: SupplierSubject) in
+            SupplierPopup(companyID: company.id, subject: s, asking: true, onClose: { supplierFor = nil },
+                          onOpenOwner: { (ref: SupplierOwnerRef) in openOwner(ref, from: s) }).environmentObject(store)
         }
+        .onChange(of: ownerTripDepth) { (_: Int, depth: Int) in ownerTripMoved(depth) }
+        .onAppear { ownerTripMoved(ownerTripDepth) }
         .centerSheet(item: $priceFor, category: .detail, tone: .investment) { (p: SalesItemPick) in
             ItemPriceSheet(companyID: company.id, itemID: p.id, onClose: { priceFor = nil }, onRestock: { restock(p.id) })
         }
@@ -58,7 +70,7 @@ struct CompanySales: View {
             CarDealerSection(engine: engine, company: company)
         } else {
             ItemsList(engine: engine, company: company, items: items, service: service,
-                      onOpen: { (id: String) in showPrice(id) }, onAdd: { addingService = service },
+                      onOpen: { (id: String) in openItem(id) }, onAdd: { addingService = service },
                       onChosen: { (id: String) in itemChosen(id) })
             if company.type == "carrepair" { CompanyInventorySection(companyID: company.id, tradeID: company.type) }
         }
@@ -71,6 +83,45 @@ struct CompanySales: View {
         } else {
             store.tutorialAdvance(from: .pickSupplier)
             showPrice(id)
+        }
+    }
+
+    /// While the guide waits for a supplier, a product opens on its supplier question first.
+    private func openItem(_ id: String) {
+        if store.tutorialStep == .pickSupplier { itemChosen(id) } else { showPrice(id) }
+    }
+
+    /// The price page follows the supplier question, unless the player only stepped out to look at an owner.
+    private func supplierClosed() {
+        guard ownerTrip == nil, let id = pendingPrice else { return }
+        pendingPrice = nil
+        showPrice(id)
+    }
+
+    private func openOwner(_ ref: SupplierOwnerRef, from s: SupplierSubject) {
+        let t: AppTab = store.tab
+        ownerTrip = OwnerTrip(subject: s, tab: t, depth: store.path(for: t).count)
+        supplierFor = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            store.push(.supplierOwner(ref), on: t)
+            ownerTrip?.shown = true
+        }
+    }
+
+    private var ownerTripDepth: Int {
+        guard let trip = ownerTrip else { return -1 }
+        return store.path(for: trip.tab).count
+    }
+
+    /// Notes when the owner card is on screen, and brings the chooser back once the player leaves it.
+    private func ownerTripMoved(_ depth: Int) {
+        guard var trip = ownerTrip, depth >= 0 else { return }
+        if depth > trip.depth {
+            trip.shown = true
+            ownerTrip = trip
+        } else if trip.shown {
+            ownerTrip = nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { supplierFor = trip.subject }
         }
     }
 
