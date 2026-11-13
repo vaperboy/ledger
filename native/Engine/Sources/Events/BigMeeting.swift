@@ -34,6 +34,8 @@ public enum BigMeeting {
         (s.rest["stakes"]?.array ?? []).map { Stake(id: $0["id"].int, name: $0["name"].string, pct: $0["pct"].double, value: $0["val"].double, yield: $0["yld"].double) }
     }
     public static func financing(_ s: GameState, price: Double, context fc: FinanceContext) -> (own: Double, borrow: Double) {
+        // No acquisition loan during a bankruptcy ban or on a poor credit score: the whole price is own money then.
+        if LoanChecks.lendingBlocked(s) { return (price, 0) }
         let borrow = min((price * 0.6).rounded(), max(0, (price - max(0, Payments.liquid(s) - fc.homeCurrency(s).scaledPrice(100_000))).rounded()))
         return (price - borrow, borrow)
     }

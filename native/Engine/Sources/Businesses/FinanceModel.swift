@@ -64,7 +64,7 @@ public enum FinanceModel {
     public static func isOffered(_ co: Company, _ k: String) -> Bool { co.value("fm")["prods"][k].bool }
 
     static func weekly(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) -> CompanyWeek.WeekContext {
-        if bd.hasTrait("bank") { bankLiquidity(&s, i) }
+        if bd.hasTrait("bank") { bankLiquidity(&s, i, data: data) }
         if bd.hasTrait("ins") { return insurance(&s, i, bd, data: data) }
         if bd.hasTrait("bank") { return bank(&s, i, bd, data: data) }
         return fund(&s, i, bd, data: data)
@@ -231,7 +231,7 @@ public enum FinanceModel {
         return CompanyWeek.WeekContext(units: aum / 1e6, rev: fee, cogs: 0, D: target, cap: target, util: 0.7, price: 0, paidDuringWeek: 0)
     }
 
-    static func bankLiquidity(_ s: inout GameState, _ i: Int) {
+    static func bankLiquidity(_ s: inout GameState, _ i: Int, data: GameData) {
         let co = s.companies[i]
         guard co.status == .open || co.status == .closed else { return }
         let fm = co.value("fm")
@@ -240,15 +240,17 @@ public enum FinanceModel {
         let eq = fm["equity"].isNull ? co.cash + book - dep : fm["equity"].double
         let facility = s.loans.filter { $0.companyID == co.id && $0.flag("cb") }
         let have = facility.reduce(0) { $0 + $1.balance }
-        if co.cash < dep * 0.03 && eq > 0 {
-            let want = dep * 0.08 - co.cash, room = book * 0.5 - have
+        // Money the owner parked in funds and deposits is still there to meet withdrawals, so it is no reason to borrow.
+        let parked = co.cash < dep * 0.03 ? Valuation.netWorth(s, trades: data.catalog).investments : 0
+        if co.cash + parked < dep * 0.03 && eq > 0 && !LoanChecks.lendingBlocked(s) {
+            let want = dep * 0.08 - co.cash - parked, room = book * 0.5 - have
             let amt = jsRound(min(want, room) / 1e5) * 1e5
             if amt > 0 {
                 var l = Loan(raw: [:])
                 l.id = s.makeID(); l.kind = "biz"; l.name = "Central bank liquidity facility"
                 l.balance = amt; l.originalAmount = amt; l.margin = 0.01
                 l.termMonths = 12; l.companyID = co.id; l.startWeek = s.week + 26; l.graceUntilWeek = s.week + 26
-                l.isGuaranteed = false
+                l.isGuaranteed = LoanChecks.needsGuarantee(s, companyID: co.id, amount: amt)
                 l.set("cb", 1)
                 l.monthlyPayment = Loans.annuity(principal: amt, yearlyRate: s.economy.policyRate + 0.01, months: 12)
                 s.loans.append(l)

@@ -142,6 +142,10 @@ public enum PlayerDeals {
         public var weeksTrading: Int
         public var askPrice: Double
         public var expiresDay: Int
+        /// The company's loans, which a buyer takes off the price.
+        public var debt: Double = 0
+        /// What the company owns less its bills, before loans; a floor under the earnings value.
+        public var netAssets: Double = 0
 
         public init(id: String, ownerID: String, ownerName: String, profileCode: String, linkKey: String, isFriend: Bool = false, companyName: String, tradeID: String,
                     cityID: String, countryCode: String, size: Double, yearlyRevenue: Double, yearlyProfit: Double, staff: Int, reputation: Double, weeksTrading: Int,
@@ -154,10 +158,20 @@ public enum PlayerDeals {
         public func isOpen(today: Int) -> Bool { today <= expiresDay }
     }
 
+    /// What a buyer pays for the shares: earnings value (only for a profitable company) or net assets, whichever is higher, less the loans.
     public static func value(_ l: CompanyListing) -> Double {
-        let byTakings = max(0, l.yearlyRevenue) * 0.3
-        let byProfit = max(0, l.yearlyProfit) * 3.5
-        return jsRound(max(byTakings, byProfit) * (0.8 + min(100, max(0, l.reputation)) / 250))
+        let profit = max(0, l.yearlyProfit)
+        let byTakings = min(max(0, l.yearlyRevenue) * 0.3, profit * 6)
+        let earnings = max(byTakings, profit * 3.5) * (0.8 + min(100, max(0, l.reputation)) / 250)
+        return jsRound(max(0, max(earnings, l.netAssets) - max(0, l.debt)))
+    }
+
+    /// Fills in the loans and net assets a buyer looks at.
+    public static func withBalanceSheet(_ l: CompanyListing, _ co: Company, state s: GameState) -> CompanyListing {
+        var x = l
+        x.debt = s.loans.filter { $0.companyID == co.id }.reduce(0) { $0 + $1.balance }
+        x.netAssets = max(0, CompanyFigures.assets(co) - CompanyFigures.billsOwed(co))
+        return x
     }
 
     public static let sellerFloor = 0.85
@@ -225,9 +239,10 @@ public enum PlayerDeals {
     public static func listing(_ s: GameState, companyID: Int, ownerID: String, ownerName: String, profileCode: String, linkKey: String, askPrice: Double, data: GameData) -> CompanyListing? {
         guard let co = s.company(companyID), co.status.isLive, let until = playerListingUntil(s, companyID: companyID), until >= today(s) else { return nil }
         let rev = (co.books.year["rev"] ?? 0) > 0 ? co.books.year["rev"]! : co.lastWeekRevenue * 52
-        return CompanyListing(id: "C\(co.id)", ownerID: ownerID, ownerName: ownerName, profileCode: profileCode, linkKey: linkKey, companyName: co.name, tradeID: co.type, cityID: co.cityID,
-                              countryCode: co.countryCode, size: co.size, yearlyRevenue: rev, yearlyProfit: CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week), staff: co.staff.count,
-                              reputation: co.reputation, weeksTrading: max(0, s.week - (co.openedWeek ?? s.week)), askPrice: askPrice, expiresDay: until)
+        let l = CompanyListing(id: "C\(co.id)", ownerID: ownerID, ownerName: ownerName, profileCode: profileCode, linkKey: linkKey, companyName: co.name, tradeID: co.type, cityID: co.cityID,
+                               countryCode: co.countryCode, size: co.size, yearlyRevenue: rev, yearlyProfit: CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week), staff: co.staff.count,
+                               reputation: co.reputation, weeksTrading: max(0, s.week - (co.openedWeek ?? s.week)), askPrice: askPrice, expiresDay: until)
+        return withBalanceSheet(l, co, state: s)
     }
 
     public static func playerListingUntil(_ s: GameState, companyID: Int) -> Int? {

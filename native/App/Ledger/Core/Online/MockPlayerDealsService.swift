@@ -128,10 +128,12 @@ final class MockPlayerDealsService: PlayerDealsService {
                 events.append(.applicant(companyID: id, a))
             }
             for (id, l) in ownCompanies.sorted(by: { $0.key < $1.key }) where l.isOpen(today: w * 7) {
-                guard roll("buy\(id):\(w)") < 0.5 else { continue }
+                // Buyers price on what the company earns and owns less its loans, never on the asking price; a worthless company gets no offer.
+                let worth: Double = PlayerDeals.value(l)
+                guard worth >= 1000, roll("buy\(id):\(w)") < 0.5 else { continue }
                 let p = person(pick("by\(id):\(w)", 1000))
-                let share: Double = 0.78 + roll("bp\(id):\(w)") * 0.24
-                let price: Double = (l.askPrice * share / 1000).rounded() * 1000
+                let share: Double = 0.75 + roll("bp\(id):\(w)") * 0.25
+                let price: Double = (min(l.askPrice, worth * share) / 1000).rounded() * 1000
                 events.append(.buyerOffer(companyID: id, buyer: CompanySale.PlayerBuyer(name: p.name, profileCode: p.code), price: max(1000, price)))
             }
         }

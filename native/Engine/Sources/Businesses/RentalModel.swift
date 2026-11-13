@@ -106,6 +106,7 @@ public enum RentalModel {
         if s.companies[i].cash < down + reserve { return .notEnoughCash }
         var loanID = 0
         if loan > 0 {
+            if !LoanChecks.approves(s, companyID: companyID, amount: loan, security: loan, data: data) { return .loanDeclined }
             if loan > price * 0.6 + 1 {
                 let nw = Valuation.netWorth(s, trades: data.catalog).total
                 let ctx = FinanceContext(countries: data.countries, trades: data.catalog)

@@ -484,10 +484,15 @@ struct ListingCard: View {
         if let onFinish { onFinish(listed) } else if let c = popupClose { c() } else { systemDismiss() }
     }
 
+    /// Market value of the piece; every asking price is capped at three times this.
+    private var marketValue: Int { AuctionMarket.value(of: item, priceLevel: session.priceLevel) }
+    private var maxAsk: Int { AuctionRules.maxAsk(value: marketValue) }
+
     var body: some View {
-        let preview = AuctionRules.listingPreview(startPrice: startPrice, reserve: useReserve ? reserve : nil, buyNow: useBuyNow ? buyNow : nil, duration: duration)
+        let preview = AuctionRules.listingPreview(startPrice: startPrice, reserve: useReserve ? reserve : nil, buyNow: useBuyNow ? buyNow : nil, duration: duration, value: marketValue)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             ArtifactRow(item: item)
+            Text("Market value \(session.money(marketValue)). The most you can ask is \(session.money(maxAsk)).").textStyle(.caption)
             field("Start price", $startPrice, id: "list-start")
             Toggle("Set a reserve", isOn: $useReserve)
             if useReserve { field("Reserve", $reserve, id: "list-reserve") }
@@ -505,8 +510,8 @@ struct ListingCard: View {
         }
         .onAppear {
             if !seeded {
-                let base: Int = AuctionMarket.suggestedStart(ArtifactCatalog.def(item.defID)?.rarity ?? .common, priceLevel: session.priceLevel)
-                startPrice = base; reserve = base * 2; buyNow = base * 3; seeded = true
+                let base: Int = marketValue
+                startPrice = base; reserve = base * 2; buyNow = min(base * 3, maxAsk); seeded = true
             }
         }
         .popupFooter {
@@ -534,6 +539,9 @@ struct ListingCard: View {
             TextField("0", value: value, format: .number).keyboardType(.numberPad).multilineTextAlignment(.trailing)
                 .textStyle(.headline, numeric: true).frame(width: 130).frame(minHeight: 44)
                 .accessibilityIdentifier(id)
+                .onChange(of: value.wrappedValue) { (_: Int, new: Int) in
+                    if new > maxAsk { value.wrappedValue = maxAsk }
+                }
         }
     }
 }
