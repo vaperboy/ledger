@@ -1,6 +1,5 @@
 import Foundation
 import UIKit
-import AppTrackingTransparency
 
 enum AdConfig {
     static let testAppID = "ca-app-pub-3940256099942544~1458002511"
@@ -53,19 +52,5 @@ final class PlaceholderAdProvider: AdProvider {
         #else
         return false
         #endif
-    }
-}
-
-enum TrackingPermission {
-    private static let key = "ledger.attAsked"
-    static var asked: Bool { UserDefaults.standard.bool(forKey: key) }
-
-    static let enabled = false
-
-    static func requestOnce() async {
-        guard enabled, !asked else { return }
-        UserDefaults.standard.set(true, forKey: key)
-        guard ATTrackingManager.trackingAuthorizationStatus == .notDetermined else { return }
-        _ = await ATTrackingManager.requestTrackingAuthorization()
     }
 }

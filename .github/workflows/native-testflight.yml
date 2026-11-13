@@ -18,17 +18,17 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
       - name: Check the secrets are set
         env:
-          T: ${{ secrets.APPLE_TEAM_ID }}
-          B: ${{ secrets.IOS_BUNDLE_ID }}
           K: ${{ secrets.ASC_KEY_ID }}
           I: ${{ secrets.ASC_ISSUER_ID }}
           P: ${{ secrets.ASC_KEY_P8_BASE64 }}
         run: |
-          for v in T B K I P; do if [ -z "${!v}" ]; then echo "Missing secret for $v"; exit 1; fi; done
+          for v in K I P; do if [ -z "${!v}" ]; then echo "Missing secret for $v"; exit 1; fi; done
       - name: Use the newest installed Xcode
         run: |
-          X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n 1)
+          [ -n "$X" ] || { echo "Xcode 26 is not installed on this runner"; exit 1; }
           sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
       - name: Generate the Xcode project
         working-directory: native/App
         run: |
@@ -44,8 +44,6 @@ jobs:
       - name: Archive
         working-directory: native/App
         env:
-          T: ${{ secrets.APPLE_TEAM_ID }}
-          B: ${{ secrets.IOS_BUNDLE_ID }}
           K: ${{ secrets.ASC_KEY_ID }}
           I: ${{ secrets.ASC_ISSUER_ID }}
         run: |
@@ -54,12 +52,11 @@ jobs:
             -destination 'generic/platform=iOS' -archivePath $RUNNER_TEMP/Ledger.xcarchive \
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/private_keys/AuthKey_$K.p8 -authenticationKeyID $K -authenticationKeyIssuerID $I \
-            DEVELOPMENT_TEAM=$T PRODUCT_BUNDLE_IDENTIFIER=$B CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             | tail -n 40
       - name: Export and upload to TestFlight
         working-directory: native/App
         env:
-          T: ${{ secrets.APPLE_TEAM_ID }}
           K: ${{ secrets.ASC_KEY_ID }}
           I: ${{ secrets.ASC_ISSUER_ID }}
         run: |
@@ -70,7 +67,7 @@ jobs:
           <plist version="1.0"><dict>
             <key>method</key><string>app-store-connect</string>
             <key>destination</key><string>upload</string>
-            <key>teamID</key><string>$T</string>
+            <key>teamID</key><string>435TYS8H35</string>
             <key>signingStyle</key><string>automatic</string>
             <key>uploadSymbols</key><true/>
           </dict></plist>
