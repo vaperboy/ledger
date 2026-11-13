@@ -163,6 +163,35 @@ final class JointVentureRemoteTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
+    func testACapitalCallLargerThanTheStakeAllowsIsNotBooked() throws {
+        var (e, _) = try makeCompany(seed: 812)
+        let cur = e.homeCurrencyCode
+        let stake = OnlineSettlement(id: "k1", amount: -50_000, currency: cur, kind: "venture_stake", label: "Joined Fjord Bakery", meta: .object(["ventureID": "ven-9", "percent": 20]))
+        e.bookOnlineSettlements([stake])
+        let paid = try XCTUnwrap(e.jvHoldings.first).paid
+        XCTAssertGreaterThan(paid, 0)
+
+        let cash0 = e.state.cash
+        let small = OnlineSettlement(id: "k2", amount: -20_000, currency: cur, kind: "venture_capital_call", label: "Capital call: Fjord Bakery",
+                                     meta: .object(["ventureID": "ven-9"]))
+        XCTAssertEqual(e.bookOnlineSettlements([small]), ["k2"])
+        XCTAssertLessThan(e.state.cash, cash0, "a call within the stake is paid")
+        XCTAssertTrue(JointVentureSettlements.skipped(e.state).isEmpty)
+
+        let cash1 = e.state.cash
+        let paid1 = try XCTUnwrap(e.jvHoldings.first).paid
+        let huge = OnlineSettlement(id: "k3", amount: -350_000, currency: cur, kind: "venture_capital_call", label: "Capital call: Fjord Bakery",
+                                    meta: .object(["ventureID": "ven-9"]))
+        let stranger = OnlineSettlement(id: "k4", amount: -100, currency: cur, kind: "venture_capital_call", label: "Capital call: Other Co",
+                                        meta: .object(["ventureID": "ven-unknown"]))
+        XCTAssertEqual(e.bookOnlineSettlements([huge, stranger]), ["k3", "k4"], "out-of-bounds calls are acknowledged, not retried")
+        XCTAssertEqual(e.state.cash, cash1, "nothing is taken for a call above the limit or for a stake never paid for")
+        XCTAssertEqual(try XCTUnwrap(e.jvHoldings.first { $0.id == "ven-9" }).paid, paid1)
+        XCTAssertEqual(JointVentureSettlements.skipped(e.state).count, 2)
+        XCTAssertTrue(e.state.inbox.contains { $0.title.hasPrefix("Capital call not paid") })
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
+    }
+
     func testTheOwnersSideOfABoardSettlementMovesNoMoneyTwice() throws {
         var (e, id) = try withRealPartner(seed: 810)
         let cur = e.homeCurrencyCode
