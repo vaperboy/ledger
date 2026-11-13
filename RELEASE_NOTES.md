@@ -1,4 +1,6 @@
 # What's new
+- Suppliers are always player companies: plain Stock, Upkeep, Transport and Services lines, no quantities to pick, a yellow or red mark when a supplier may not or cannot deliver, your own companies first, and a company card for every supplier
+- New trades: Wholesaler, Filling station and Laundry service; Security is now a Security company
 - A Store tab on the far left with offers, bundles, boxes, cosmetics and gold; Ventures now sits right of Home
 - New price screen: one bar from cost to market, Cheap / Market / Premium, and a live estimate of sales and profit
 - Cleaner Group page, a one-step partner invite with share and price, tap other players to see their card, and name plates removed
