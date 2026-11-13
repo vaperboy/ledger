@@ -111,6 +111,7 @@ struct ItemPriceSheet: View {
     @State private var draftPercent: Int?
     @State private var weeks = 4
     @State private var showMore = false
+    @State private var overriding = false
 
     private static let listingTrades: Set<String> = ["webdev", "gamestudio", "startup", "mktg", "furniture", "factory", "hardware", "electrician", "plumber", "handy"]
 
@@ -127,18 +128,26 @@ struct ItemPriceSheet: View {
         let price: Double = draftPrice ?? base.item.price
         let pg: ItemPageData = draftPrice == nil ? base : (e.itemPage(companyID: companyID, itemID: itemID, price: price) ?? base)
         let f: ItemForecast = e.itemForecast(companyID: companyID, itemID: itemID, price: price, discountPercent: base.item.discountPercent)
-        let setBy: String? = pg.item.priceSetter.isOwner ? nil : pg.item.priceSetter.label
+        let setBy: String? = pg.item.priceSetter.isOwner || overriding ? nil : pg.item.priceSetter.label
         let move: Double = base.item.price > 0 ? price / base.item.price - 1 : 0
         let facts: [TradeFact] = TradeItemFactRows.rows(e, companyID: companyID, page: pg, price: price, cur: cur)
         return VStack(alignment: .leading, spacing: PopupSpace.block) {
             VStack(alignment: .leading, spacing: PopupSpace.block) {
                 if let who = setBy {
-                    Text("Set by \(who)").popupText(.caption)
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Set by \(who)").popupText(.caption)
+                        Spacer(minLength: PopupSpace.row)
+                        Button("Change") { Haptics.tap(); overriding = true }
+                            .buttonStyle(SecondaryButtonStyle(size: .compact))
+                            .accessibilityIdentifier("item-price-take-back")
+                    }
+                    PopupRow(label: "Price", value: itemAmount(pg.item.price, cur))
                     PopupRow(label: "Market price", value: itemAmount(pg.item.marketPrice, cur))
                     PopupRow(label: "Cost each", value: itemAmount(pg.unitCost, cur))
                 } else {
                     priceControls(e, co, pg, cur, price)
                     liveLine(f, pg, cur, price)
+                    handBack(e)
                 }
             }
             .coachAnchor(.itemPrice)
@@ -176,6 +185,21 @@ struct ItemPriceSheet: View {
         } else {
             PopupRow(label: "Market price", value: itemAmount(market, cur))
             PopupRow(label: "Cost each", value: itemAmount(p.unitCost, cur))
+        }
+    }
+
+    /// After the owner took prices back, one tap lets the manager or advisor set them again.
+    @ViewBuilder private func handBack(_ e: GameEngine) -> some View {
+        if let helper = e.priceHelper(companyID: companyID), e.state.company(companyID).map(SalesItems.pricesTakenBack) == true {
+            let who: String = helper == .advisor ? "your market advisor" : helper.label
+            Button("Let \(who) set prices") {
+                Haptics.tap()
+                let id: Int = companyID
+                let r = store.act { $0.handPricesBack(companyID: id) }
+                if r?.didChange == true { overriding = false; store.saved("prices handed back") }
+            }
+            .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
+            .accessibilityIdentifier("item-price-hand-back")
         }
     }
 

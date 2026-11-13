@@ -50,9 +50,24 @@ public enum SalesItems {
     }
 
     public static func priceSetter(_ s: GameState, _ co: Company) -> PriceSetter {
+        pricesTakenBack(co) ? .owner : helper(s, co)
+    }
+
+    /// Who would set prices if the owner let them: the market advisor, then the manager, else the owner.
+    public static func helper(_ s: GameState, _ co: Company) -> PriceSetter {
         if RoleEffects.filled(co, NewItemOptions.advisorRole) { return .advisor }
         if let m = co.managerID { return .manager(name: s.people[m]?.name ?? "Manager") }
         return .owner
+    }
+
+    static let ownPricesKey = "ownPx"
+
+    /// The owner changed a price by hand, so prices stay the owner's until handed back.
+    public static func pricesTakenBack(_ co: Company) -> Bool { co.value(ownPricesKey).bool }
+
+    static func setPricesTakenBack(_ s: inout GameState, companyID: Int, _ on: Bool) {
+        guard let i = s.companyIndex(companyID) else { return }
+        if on { s.companies[i].set(ownPricesKey, true) } else { s.companies[i].raw[ownPricesKey] = nil }
     }
 
     static let pickKey = "pick1"
