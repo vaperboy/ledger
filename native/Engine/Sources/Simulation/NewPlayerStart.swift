@@ -12,7 +12,7 @@ public struct StarterTrade: Identifiable, Equatable, Sendable {
 }
 
 public extension GameEngine {
-    static let starterTradeIDs: [String] = ["cafe", "barber", "foodtruck", "cleaning", "handy", "webdev", "photo", "kiosk", "bakery", "gym", "boutique", "carclean"]
+    static let starterTradeIDs: [String] = TradeUnlocks.starterIDs
 
     static func countriesBySize() -> [Country] {
         let all: [Country] = (try? CountryBook.bundled().countries) ?? []
@@ -21,18 +21,18 @@ public extension GameEngine {
         }
     }
 
-    static func startableTrades(countryCode: String, all: Bool) -> [StarterTrade] {
+    /// The trades a new player can open on day one: starters that can be opened in this country, cheapest first.
+    static func startableTrades(countryCode: String) -> [StarterTrade] {
         guard let preview = try? GameEngine.newGame(countryCode: countryCode, playerName: "Preview", seed: 1) else { return [] }
         let rows: [TradePickerRow] = preview.tradePickerRows()
         var costs: [String: Double] = [:]
         for r in rows where r.blocked == nil { if let c = r.startUpCost { costs[r.tradeID] = c } }
-        let ids: [String] = all ? rows.map { $0.tradeID } : starterTradeIDs
         var out: [StarterTrade] = []
-        for id in ids {
+        for id in starterTradeIDs {
             guard let bd = preview.data.catalog[id], SpecialFamilies.isStartable(bd), let cost = costs[id] else { continue }
             out.append(StarterTrade(id: id, name: bd.name, line: firstSentence(bd.blurb), startUpCost: cost))
         }
-        return all ? out.sorted { ($0.startUpCost ?? 0) < ($1.startUpCost ?? 0) } : out
+        return out.sorted { ($0.startUpCost ?? 0) < ($1.startUpCost ?? 0) }
     }
 
     static func firstSentence(_ text: String) -> String {

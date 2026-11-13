@@ -45,7 +45,8 @@ public extension GameEngine {
 
 enum LifeStories {
     static func applyFresh(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, name: String, chooseFirstItem: Bool = false) -> Bool {
-        guard let bd = data.catalog[tradeID], SpecialFamilies.isStartable(bd), let country = data.countries[s.homeCountryCode],
+        // The grant only ever funds a starter trade; bigger trades are opened later with the player's own money.
+        guard TradeUnlocks.isStarter(tradeID), let bd = data.catalog[tradeID], SpecialFamilies.isStartable(bd), let country = data.countries[s.homeCountryCode],
               let city = country.city(s.player.cityID) ?? country.cities.first else { return false }
         let size = CompanySetup.recommendedSize(bd, city: city)
         let big = 1e9

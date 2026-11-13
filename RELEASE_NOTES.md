@@ -1,4 +1,10 @@
 # What's new
+- Your first company is one of 12 simple starter trades, and the start-up grant only ever covers those; bigger trades such as hotels, factories, airlines and oil and gas open later as you level up
+- Insurance now opens at level 3 and Rivals at level 6, still one new feature per level
+- The country list starts with the country of your phone, and the last setup step is skipped when your trade sells one way only
+- Events fit the company: shop events skip web shops and wholesalers, premises events skip home-based and vehicle businesses, and money losses scale with the size of the company; grant windows name your own country's agency
+- Suppliers in countries where a trade cannot be started are importers, electricians and plumbers sell whole projects, and a gold prize no longer resets a box guarantee
+- Season 1 starts on launch day, so every buyer gets the whole season
 - Buy in-game money with gold in the Store (five packs with up to 20% bonus, plus a free pack twice a day); name plates are retired and refunded
 - Decisions: every answer has its own result, shown after you choose; which answer is best depends on your company; equal answer buttons with No always first; a few bigger stories each month with a follow-up
 - Suppliers are always player companies: plain Stock, Upkeep, Transport and Services lines, no quantities to pick, a yellow or red mark when a supplier may not or cannot deliver, your own companies first, and a company card for every supplier
@@ -39,7 +45,7 @@
 - Fix for the crash on opening a game that has a report waiting: the report popup no longer overflows the screen stack
 - Fix for a crash on opening an older game when the Custom tab pointed at a company that no longer exists
 - Every newly opened tab, company page and key phone app now gets its own short guided tour, shown once
-- Each company starts by choosing one of three products, the rest come later under add product, Sandbox mode needs Ledger Pro, and the New range option is gone
+- Each company starts by choosing one of three products, the rest come later under add product
 - Equipment opens straight into one structured list, showing machines, vehicles and software only where the business uses them
 - Home sits clear of the island, Next day sits above the tab bar, empty space is shared evenly, a single company shows a richer card, and the app has a soft gradient background with glass-style cards, tab bar and day button
 - Fix for a crash while playing the first weeks of a new game: more number conversions can no longer overflow or hit a non-number, and charts ignore values that are not numbers
@@ -47,12 +53,12 @@
 - Money in is a green up arrow and money out a red down arrow instead of plus and minus; a company shows this week so far live with its change on last week; only the change in a figure rolls (up in green, down in red); the net worth chart adds each new day instead of redrawing
 - A holding company sells nothing and no longer earns interest on idle cash; its income is dividends from your companies and gains on money it invests
 - Events can chain (an ignored breach becomes a claim, then a press story; late invoices, a skipped inspection and price wars escalate), each of the twelve starter trades has its own events, big owners get a fourth answer, daily goals vary with streak perks, a recap shows when you return, and Stats has a "How you are playing" panel
-- Choose Classic, Sandbox or Hard when you start; rivals bid for the best accounts and staff of a top company, markets warn before a crash, big groups lose creditor confidence, and a bad event your team handled shows as "Survived it"
-- Better feel: every button press and choice has a haptic, milestones and trophies are celebrated full-screen, a sounds option (off by default), a game-over screen with a one-tap retry, a four-step first-session tour, and a short help sheet the first time you open each phone app
+- Rivals bid for the best accounts and staff of a top company, markets warn before a crash, big groups lose creditor confidence, and a bad event your team handled shows as "Survived it"
+- Better feel: every button press and choice has a haptic, milestones and trophies are celebrated full-screen, a sounds option (off by default), a four-step first-session tour, and a short help sheet the first time you open each phone app
 - Companies and Phone apps open with a zoom, payroll, loans and large sales send a small chip to your net worth, charts draw in from the left, a cash shortfall opens the loan application with the amount filled in, and two-answer decisions are answered on the Home card
 - The game runs day by day: no work is saved up for the end of the week, each company and process runs on its own day, and month-end money (tax, VAT, loan instalments) lands on the real last day of the month
 - Things that cannot be measured are described in words instead of numbers (worker performance, name recognition, equipment condition, risk, standing); money, wages, ownership and tax stay as numbers
-- Next day is a floating button above the tab bar and Skip week is gone, the daily report popup is back, and Home never scrolls with one company
+- Next day is a floating button above the tab bar, the daily report popup is back, and Home never scrolls with one company
 - Unlocks belong to the player: once one company earns a feature it is open for every company, new ones start with it, and the unlock popup shows once
 - The manager screen has five orders (Direction, Budget, Headcount, Pay and bonus, Replace) with a staffing plan, a weekly digest and read-only targets with one yearly budget approval
 - Boards are simpler: one decision list (sell, close, dividend, CEO, capital, open or close a location) with a recommendation per item, one quarterly review with the CEO (Direction and Budget), and chain standards that every location follows

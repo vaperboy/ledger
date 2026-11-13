@@ -8,8 +8,9 @@ import Businesses
 final class StartGrantTests: XCTestCase {
     func testEveryStartableCompanyTypeGetsTheSameRunway() throws {
         for code in ["NO", "UK"] {
-            let trades: [StarterTrade] = GameEngine.startableTrades(countryCode: code, all: true)
-            XCTAssertGreaterThan(trades.count, 10, code)
+            let trades: [StarterTrade] = GameEngine.startableTrades(countryCode: code)
+            XCTAssertGreaterThan(trades.count, 8, code)
+            XCTAssertTrue(trades.allSatisfy { TradeUnlocks.isStarter($0.id) }, "\(code): a first start lists starter trades only")
             var runways: [String: Double] = [:]
             for t in trades {
                 let e: GameEngine
@@ -33,7 +34,7 @@ final class StartGrantTests: XCTestCase {
 
     func testTheGrantIsAVisibleLineSizedPerCompanyType() throws {
         var grants: [String: Double] = [:]
-        for trade in ["cafe", "gym", "hotel", "carclean"] {
+        for trade in ["cafe", "gym", "bakery", "carclean"] {
             let e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 3, story: .fresh, tradeID: trade, companyName: "Test Co")
             let co = try XCTUnwrap(e.state.companies.first)
             let grant = StartGrant.amount(e.state)
@@ -46,8 +47,40 @@ final class StartGrantTests: XCTestCase {
                 XCTAssertTrue(AccountingLedger.rows(co).contains { $0.label == StartGrant.label && abs($0.amount - grant) < 1 }, "\(trade): the grant is in the books")
             }
         }
-        XCTAssertGreaterThan(grants["hotel"] ?? 0, grants["cafe"] ?? 0, "a bigger company type gets a bigger grant")
+        XCTAssertGreaterThan(grants["gym"] ?? 0, grants["carclean"] ?? 0, "a bigger company type gets a bigger grant")
         XCTAssertGreaterThan(grants["gym"] ?? 0, 0)
+    }
+
+    func testTheStartGrantNeverFundsABigTrade() throws {
+        for trade in ["hotel", "airline", "oilgas", "shipping", "restaurant"] {
+            XCTAssertThrowsError(try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 3, story: .fresh, tradeID: trade, companyName: "Test Co"), trade)
+        }
+        let e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 3)
+        for id in TradeUnlocks.starterIDs {
+            let cost = try XCTUnwrap(e.data.catalog[id]).openingCost
+            XCTAssertLessThanOrEqual(cost, 100_000, "\(id) is inside the starter range")
+        }
+    }
+
+    func testBigTradesWaitForTheirLevel() throws {
+        var e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 3)
+        let locked: [String] = ["airline", "oilgas", "shipping", "hotel", "grocery", "factory"]
+        let before = Dictionary(uniqueKeysWithValues: e.tradePickerRows().map { ($0.tradeID, $0.blocked) })
+        for id in locked { XCTAssertNotNil(before[id].flatMap { $0 }, "\(id) is locked for a new player") }
+        XCTAssertNil(before["cafe"].flatMap { $0 })
+        e.update { s, _, _ in PlayerLevel.award(&s, PlayerLevel.threshold(LevelGates.level(.exchange))) }
+        let mid = Dictionary(uniqueKeysWithValues: e.tradePickerRows().map { ($0.tradeID, $0.blocked) })
+        XCTAssertNil(mid["hotel"].flatMap { $0 }, "big trades open with the stock exchange level")
+        XCTAssertNotNil(mid["airline"].flatMap { $0 }, "the largest trades stay shut")
+        e.update { s, _, _ in PlayerLevel.award(&s, PlayerLevel.threshold(LevelGates.level(.abroad))) }
+        let late = Dictionary(uniqueKeysWithValues: e.tradePickerRows().map { ($0.tradeID, $0.blocked) })
+        XCTAssertNil(late["airline"].flatMap { $0 })
+    }
+
+    func testInsuranceAndRivalsOpenEarly() {
+        XCTAssertLessThanOrEqual(LevelGates.level(.insurance), 4)
+        XCTAssertLessThanOrEqual(LevelGates.level(.rivals), 6)
+        XCTAssertGreaterThanOrEqual(LevelGates.level(.rivals), 5)
     }
 
     func testTheRunwayCoversTheWeeksWithoutOverdraft() throws {

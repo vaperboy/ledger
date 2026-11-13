@@ -96,9 +96,9 @@ final class LevelGatesTests: XCTestCase {
         var e = try fresh()
         XCTAssertTrue(e.pendingNotices().isEmpty)
         e.update { s, _, _ in PlayerLevel.award(&s, PlayerLevel.threshold(3)) }
-        XCTAssertEqual(e.pendingNotices().map { $0.id }, ["level.marketing", "level.marketplace"])
+        XCTAssertEqual(e.pendingNotices().map { $0.id }, ["level.marketing", "level.insurance"])
         e.markNoticeSeen(id: "level.marketing")
-        XCTAssertEqual(e.pendingNotices().map { $0.id }, ["level.marketplace"])
+        XCTAssertEqual(e.pendingNotices().map { $0.id }, ["level.insurance"])
         var other = try fresh()
         other.update { s, _, _ in PlayerLevel.adopt(&s, profile: ProfileProgress(xp: PlayerLevel.threshold(3), seen: nil)) }
         XCTAssertTrue(other.pendingNotices().isEmpty, "a level earned elsewhere is not announced again in a new game")

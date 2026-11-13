@@ -75,7 +75,7 @@ public enum DailyBeat {
             let solo: Bool = co.staff.isEmpty && co.managerID == nil
             let ctx = EventEngine.context(for: co, data: data, country: World(state: s, data: data).country(co))
             for id in bd.eventIDs where !library.special.contains(id) && fresh(id) {
-                guard let e = library[id], isLight(e, decisionsWaiting: decisionsWaiting) else { continue }
+                guard let e = library[id], e.appliesTo(bd), isLight(e, decisionsWaiting: decisionsWaiting) else { continue }
                 if e.minimumCompanyAgeWeeks > 0 && s.week - co.foundedWeek < e.minimumCompanyAgeWeeks { continue }
                 if co.staff.isEmpty && EventEngine.mentionsStaff(e) { continue }
                 if solo && !EventEngine.soloAllowed(id, co) { continue }

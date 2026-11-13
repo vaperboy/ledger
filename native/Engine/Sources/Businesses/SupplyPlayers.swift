@@ -45,6 +45,11 @@ public enum SupplyPlayers {
         "furniture": ["Furniture", "Interiors", "Woodworks", "Design"], "oilgas": ["Energy", "Petroleum", "Oil", "Fuels"],
         "webdev": ["Digital", "Web", "Tech", "Studio"], "power": ["Power", "Energy", "Renewables", "Electric"],
     ]
+    // Where the trade cannot be started, the line is supplied by importers.
+    static let importWords: [String: [String]] = [
+        "salmon": ["Seafood Import", "Fish Imports", "Seafood Trading", "Sea Imports"], "oilgas": ["Fuel Import", "Energy Imports", "Petroleum Trading", "Fuel Supply"],
+        "casino": ["Gaming Supply", "Gaming Imports", "Leisure Trading", "Casino Supply"],
+    ]
     static let logos = ["mark", "ring", "square", "triangle", "leaf", "wave", "spark", "anchor", "bridge", "gear", "arrow", "key", "shield", "tower", "compass", "crown", "fox", "owl", "bull", "stag", "falcon"]
     static let codeLetters: [Character] = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
 
@@ -66,7 +71,8 @@ public enum SupplyPlayers {
         let first = pick(c.firstNames, "Alex"), last = pick(c.lastNames, "Berg")
         let cities = c.coreCities.isEmpty ? c.cities : c.coreCities
         let city = cities.isEmpty ? c.name : cities[min(cities.count - 1, Int(r.next() * Double(cities.count)))].name
-        let word = pick(words[trade] ?? ["Supply"], "Supply")
+        let imported: Bool = CompanySetup.banReason(trade, country: c) != nil
+        let word = pick(imported ? (importWords[trade] ?? ["Imports", "Import and Trade", "Trading", "Supply"]) : (words[trade] ?? ["Supply"]), "Supply")
         let starts = c.companyNameStarts
         let name: String
         switch Int(r.next() * 3) {

@@ -68,7 +68,7 @@ public enum EventEngine {
         let c = context(for: s.companies[i], data: data, country: w.country(s.companies[i]))
         for id in bd.eventIDs {
             let co = s.companies[i]
-            guard let e = library[id] else { continue }
+            guard let e = library[id], e.appliesTo(bd) else { continue }
             if e.minimumCompanyAgeWeeks > 0 && s.week - co.foundedWeek < e.minimumCompanyAgeWeeks { continue }
             if (e.tone == "good" || id == "g_press" || id == "g_offer") && !(co.lastWeekUnits > 0.5 && co.openedWeek != nil && s.week - co.openedWeek! >= goodEventMinimumWeeks(s, companyIndex: i)) { continue }
             if co.staff.isEmpty && mentionsStaff(e) { continue }

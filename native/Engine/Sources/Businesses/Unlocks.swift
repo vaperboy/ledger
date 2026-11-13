@@ -37,23 +37,23 @@ public enum FeatureUnlocks {
 
     public static let table: [Row] = [
         Row(feature: .marketing, level: 2, title: "Marketing", gives: "advertise to bring in more customers and see what they say about you"),
-        Row(feature: .marketplace, level: 3, title: "Marketplace", gives: "buy used items from private sellers and haggle"),
+        Row(feature: .insurance, level: 3, title: "Insurance", gives: "cover your companies against fire, theft and lawsuits"),
         Row(feature: .management, level: 4, title: "Managers", gives: "hire a manager to run a company day to day"),
         Row(feature: .newCompany, level: 5, title: "More companies", gives: "start a second company and see them all as one group"),
-        Row(feature: .techpro, level: 6, title: "TechPro", gives: "buy software, equipment and vehicles that make a company work better"),
-        Row(feature: .insurance, level: 7, title: "Insurance", gives: "cover your companies against fire, theft and lawsuits"),
+        Row(feature: .rivals, level: 6, title: "Rivals", gives: "watch the competition in your market and answer their moves"),
+        Row(feature: .techpro, level: 7, title: "TechPro", gives: "buy software, equipment and vehicles that make a company work better"),
         Row(feature: .auctions, level: 8, title: "Auctions", gives: "sell your artifacts or bid on other players' pieces"),
         Row(feature: .weeklyPlan, level: 9, title: "Weekly plan", gives: "pick one thing each company focuses on this week"),
         Row(feature: .research, level: 10, title: "Market research", gives: "study a market before you spend on it"),
-        Row(feature: .rivals, level: 11, title: "Rivals", gives: "watch the competition in your market and answer their moves"),
+        Row(feature: .marketplace, level: 11, title: "Marketplace", gives: "buy used items from private sellers and haggle"),
         Row(feature: .desk, level: 12, title: "Desk", gives: "answer one small question a day that shapes a company's story"),
-        Row(feature: .exchange, level: 13, title: "Stock exchange", gives: "list a company and sell shares in it"),
+        Row(feature: .exchange, level: 13, title: "Stock exchange", gives: "list a company, sell shares in it and open big trades such as hotels, store chains and factories"),
         Row(feature: .chain, level: 14, title: "Start a chain", gives: "turn a company into a chain of stores under one name"),
         Row(feature: .ventures, level: 15, title: "Ventures", gives: "start startups, back funds and make group deals"),
         Row(feature: .franchise, level: 16, title: "Franchise this company", gives: "let other owners open units under your name"),
         Row(feature: .jointVentures, level: 17, title: "Joint ventures", gives: "start a company together with a friend"),
         Row(feature: .government, level: 18, title: "Government", gives: "see the treasury, tax rates and the president"),
-        Row(feature: .abroad, level: 19, title: "Expand abroad", gives: "open a subsidiary of a company in another country"),
+        Row(feature: .abroad, level: 19, title: "Expand abroad", gives: "open a subsidiary in another country and open the largest trades such as airlines and oil and gas"),
         Row(feature: .politics, level: 20, title: "Politics", gives: "donate, stand in elections and shape the law"),
         Row(feature: .luxury, level: 21, title: "Luxury", gives: "spend your wealth on cars, art, yachts and homes"),
     ]
@@ -93,6 +93,31 @@ public enum FeatureUnlocks {
         if Gate.allCases.contains(where: { (g: Gate) -> Bool in g.feature == f && !gates[g.rawValue].isNull }) { return true }
         let opened: JSONValue = s.rest[Unlocks.globalKey] ?? .null
         return Unlocks.defs.contains { (d: Unlocks.Def) -> Bool in d.feature == f && !opened[d.id].isNull }
+    }
+}
+
+/// Which trades a player can open. The first company is always a starter trade; the biggest trades wait behind a level feature in the table above.
+public enum TradeUnlocks {
+    /// The cheap, simple trades a new player can open on day one.
+    public static let starterIDs: [String] = ["cafe", "barber", "foodtruck", "cleaning", "handy", "webdev", "photo", "kiosk", "bakery", "gym", "boutique", "carclean"]
+    /// Reference-currency opening cost from which a trade counts as big, and as one of the largest.
+    public static let bigOpeningCost = 300_000.0
+    public static let largestOpeningCost = 1_500_000.0
+
+    public static func isStarter(_ tradeID: String) -> Bool { starterIDs.contains(tradeID) }
+
+    /// The level feature that opens this trade; nil when it needs none.
+    public static func feature(for t: Trade) -> LevelFeature? {
+        if isStarter(t.id) { return nil }
+        if t.openingCost > largestOpeningCost { return .abroad }
+        if t.openingCost >= bigOpeningCost { return .exchange }
+        return nil
+    }
+
+    /// A refusal line when the trade is still locked, nil when it can be opened.
+    public static func refusal(_ t: Trade, _ s: GameState) -> String? {
+        guard let f = feature(for: t), !FeatureUnlocks.isUnlocked(f, s) else { return nil }
+        return t.name + " " + FeatureUnlocks.lockLine(f).lowercased()
     }
 }
 

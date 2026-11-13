@@ -1,5 +1,6 @@
 import Foundation
 import GameCore
+import Businesses
 
 public struct GameEvent: Sendable {
     public struct Option: Sendable {
@@ -20,6 +21,9 @@ public struct GameEvent: Sendable {
     public var options: [Option]
     public var lawyerHelps: Bool
     public var blocking: Bool
+    /// Trades this event never happens to, and whether it needs a real premises (not a home, a vehicle or a rented-out portfolio).
+    public var excludedTrades: Set<String>
+    public var needsPremises: Bool
 
     init(id: String, json e: JSONValue) {
         self.id = id
@@ -35,6 +39,15 @@ public struct GameEvent: Sendable {
         options = e["opts"].array.map { Option(label: $0["l"].string, detail: $0["d"].string, effects: $0["fx"]) }
         lawyerHelps = e["lawyer"].bool
         blocking = e["blocking"].bool
+        excludedTrades = Set(e["notTr"].array.map { $0.string })
+        needsPremises = e["prem"].bool
+    }
+
+    /// Whether the event makes sense for this trade.
+    func appliesTo(_ bd: Trade) -> Bool {
+        if excludedTrades.contains(bd.id) { return false }
+        if needsPremises, let k = bd.premisesKind, k != "none", k != "home" { return true }
+        return !needsPremises
     }
 }
 
