@@ -250,7 +250,9 @@ public enum VolumeContracts {
             serviceAndRisk(&s, i, bd, data: data)
             endings(&s, i, data: data)
         }
-        if SalesChannel.takesContracts(s.companies[i]) { SalesChannel.offers(&s, i, bd, data: data) } else { offers(&s, i, bd, data: data) }
+        // A company that chose private customers sells over the counter only; offers go to business sellers and older companies.
+        if SalesChannel.takesContracts(s.companies[i]) { SalesChannel.offers(&s, i, bd, data: data) }
+        else if s.companies[i].chosenChannel != .consumers { offers(&s, i, bd, data: data) }
     }
 
     static func settle(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {

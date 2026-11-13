@@ -223,7 +223,8 @@ public enum JointVentureSettlements {
     public static func book(_ s: inout GameState, _ item: OnlineSettlement, amount: Double) -> Bool {
         guard item.kind.hasPrefix("venture_") else { return false }
         let venture = item.meta["ventureID"].string
-        let money: Double = amount.isFinite ? abs(amount) : 0
+        // Rounded the way the account moves it, so holdings and tax record what really moved.
+        let money: Double = amount.isFinite ? jsRound(abs(amount)) : 0
         switch item.kind {
         case "venture_stake":
             let name = tail(item.label, after: "Joined ")

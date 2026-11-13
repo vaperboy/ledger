@@ -150,7 +150,8 @@ final class RentalFinanceTests: XCTestCase {
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertGreaterThan(e.netWorth.companies, before)
         let assets = CompanyFigures.assets(co)
-        XCTAssertGreaterThan(assets, co.cash, "the property is an asset")
+        // One account: co.cash is the shared account, so the property is checked on its own.
+        XCTAssertGreaterThan(assets, 0, "the property is an asset")
     }
 
     func testFundEarnsFeesOnAssetsUnderManagement() throws {

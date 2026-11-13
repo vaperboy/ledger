@@ -220,7 +220,8 @@ public enum SupplyCatalogue {
         var picked: [String: Offer] = [:]
         for l in cl where folded(s, co, l) { if let o = current(s, co, bd, line: l, data: data) { picked[l.id] = o } }
         let weights: [String: Double] = Dictionary(uniqueKeysWithValues: cl.map { l in (l.id, l.share * (picked[l.id]?.priceFactor ?? 1)) })
-        let wsum = weights.values.reduce(0, +)
+        // Summed in line order: a dictionary's order changes between runs and would change the rounding.
+        let wsum = cl.reduce(0.0) { $0 + (weights[$1.id] ?? 0) }
         if wsum > 0 {
             for l in cl {
                 spend[l.id] = cogsWeek * (weights[l.id] ?? 0) / wsum

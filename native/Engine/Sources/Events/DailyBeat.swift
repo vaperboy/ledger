@@ -7,6 +7,8 @@ import Businesses
 /// Makes sure every game day brings the player at least one event or small decision.
 public enum DailyBeat {
     static let key = "beat"
+    /// Set on the messages a filler event makes.
+    public static let fillerKey = "filler"
     /// An event used to fill a quiet day waits this many weeks before it can fill another.
     public static let repeatWeeks = 4
 
@@ -35,6 +37,7 @@ public enum DailyBeat {
             roll -= p.weight
             if roll <= 0 { pick = p; break }
         }
+        let before: Set<Int> = Set(s.inbox.map { (m: Message) -> Int in m.id })
         if let pe = pick.pack {
             EventPack.fire(&s, companyIndex: pick.index, pe, data: data, context: fc)
         } else {
@@ -42,16 +45,24 @@ public enum DailyBeat {
             let ctx = EventEngine.context(for: co, data: data, country: World(state: s, data: data).country(co))
             EventEngine.fire(&s, companyIndex: pick.index, pick.event, ctx: ctx, data: data, context: fc)
         }
+        // Marked, so the events' own odds and pacing can still be read apart from the filler.
+        for k in s.inbox.indices where !before.contains(s.inbox[k].id) { s.inbox[k].set(fillerKey, true) }
         remember(&s, pick.id)
         return pick.id
     }
 
-    /// Light events only: good news, or a small question while no other answer is waiting. Never bad news.
+    /// Light events only: a small question while no other answer is waiting, or good news that changes nothing. Never bad news.
+    /// Good news that brings money, customers or reputation keeps to its own odds: one on every quiet day would add up to a fortune.
     static func isLight(_ e: GameEvent, decisionsWaiting: Bool) -> Bool {
         guard e.tone != "bad", !e.text.isEmpty, !e.blocking, e.weight > 0 else { return false }
         if e.options.contains(where: { (o: GameEvent.Option) -> Bool in !o.effects["special"].isNull }) { return false }
-        if e.options.isEmpty { return e.tone == "good" }
+        if e.options.isEmpty { return e.tone == "good" && !hasEffects(e.automaticEffects) }
         return !decisionsWaiting
+    }
+
+    static func hasEffects(_ fx: JSONValue) -> Bool {
+        if case .object(let o) = fx { return !o.isEmpty }
+        return !fx.isNull
     }
 
     static func candidates(_ s: GameState, library: EventLibrary, data: GameData, decisionsWaiting: Bool) -> [Pick] {

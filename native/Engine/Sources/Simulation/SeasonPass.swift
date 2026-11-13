@@ -280,8 +280,8 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         return track == .free || isPlus
     }
 
-    public mutating func claim(_ track: Track, tier t: Int, isPlus: Bool) -> ClaimResult {
-        guard let r = reward(track, tier: t) else { return .noReward }
+    public mutating func claim(_ track: Track, tier t: Int, isPlus: Bool, today: Int = SeasonCatalog.today()) -> ClaimResult {
+        guard let r = reward(track, tier: t, today: today) else { return .noReward }
         if isClaimed(track, tier: t) { return .alreadyClaimed }
         if t > tier { return .tierNotReached }
         if track == .premium && !isPlus { return .needsPlus }

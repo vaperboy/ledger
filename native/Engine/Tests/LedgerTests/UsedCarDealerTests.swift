@@ -86,10 +86,12 @@ final class UsedCarDealerTests: XCTestCase {
     func testEachCarHasItsOwnPriceAndQuoteShowsProfitOrLoss() throws {
         var (e, id) = try game()
         let two = Array(cars(e, id).prefix(2))
-        for x in two { buy(&e, id, x) }
+        for x in two { XCTAssertEqual(buy(&e, id, x), .applied) }
         days(&e, 14)
         let items = e.usedCarStock(companyID: id)
         XCTAssertEqual(items.count, 2)
+        // A failed count must not stop the whole run on an out-of-range index.
+        guard items.count >= 2 else { return }
         let a = items[0], b = items[1]
         XCTAssertEqual(e.setUsedCarPrice(companyID: id, carID: a.id, price: a.askingPrice * 1.5), .applied)
         let after = e.usedCarStock(companyID: id)

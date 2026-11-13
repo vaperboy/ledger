@@ -106,7 +106,8 @@ final class ContentValidationTests: XCTestCase {
         let arts: [JSONValue] = j["artifacts"].array
         let colIDs: Set<String> = uniqueIDs(cols, file, &p)
         let artIDs: Set<String> = uniqueIDs(arts, file, &p)
-        let rewards: Set<String> = Set(GoldCosmetics.all.filter { $0.source == .collection }.map { $0.id })
+        // Every cosmetic in the file, also those of a season that has not started yet on today's date.
+        let rewards: Set<String> = Set(GoldCosmetics.everything.filter { $0.source == .collection }.map { $0.id })
         for c in cols {
             need(c, ["id", "name", "blurb", "reward", "look"], file, "collection \"\(c["id"].string)\"", &p)
             if !rewards.contains(c["reward"].string) { p.append("\(file): collection \"\(c["id"].string)\" has reward \"\(c["reward"].string)\", which is not a source:collection cosmetic in gold_cosmetics.json") }
@@ -185,7 +186,7 @@ final class ContentValidationTests: XCTestCase {
             checkHex(c["colors"].array, file, label, &p)
             if !kinds.contains(c["kind"].string) { p.append("\(file): \(label) has kind \"\(c["kind"].string)\"; use outfit, face, hair, skin, namePlate, backdrop, tradePlate, richListFlair or saveSlot") }
             if !["store", "box", "collection", "plan", "free", "level", "rank", "goal"].contains(c["source"].string) { p.append("\(file): \(label) has source \"\(c["source"].string)\"; use store, box, collection, plan, free, level, rank or goal") }
-            if c["art"].string.isEmpty { p.append("\(file): \(label) needs an art slot name") }
+            if c["art"].string.isEmpty && c["kind"].string != "saveSlot" { p.append("\(file): \(label) needs an art slot name") }
             if c["source"].string == "collection" && !colRewards.contains(c["id"].string) { p.append("\(file): \(label) is a collection reward but no collection in artifacts.json names it") }
             if c["source"].string == "store" && GoldPrices.item(c["id"].string) == nil && GoldCosmetics.storePrice(ContentFile.rarity(c["rarity"].string)) == nil { p.append("\(file): \(label) is a legendary store item and needs a price in pricing/prices.json") }
         }

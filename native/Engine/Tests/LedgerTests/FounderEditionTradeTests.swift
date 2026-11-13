@@ -44,20 +44,23 @@ final class FounderEditionTradeTests: XCTestCase {
         XCTAssertEqual(r?.founderEdition, false)
     }
 
+    // Pass outfits are worn by the account that earned them; every other reward can be traded.
     func testEveryOtherSeasonOneRewardIsSellable() {
         let others: [SeasonReward] = seasonOne.rewards.filter { $0.id != firstIcon }
         XCTAssertGreaterThan(others.count, 30, "a full season of rewards besides the first outfit")
         for r in others {
             let consumed: Bool = r.kind == .box || r.kind == .gold
-            XCTAssertEqual(TradeRules.isSellable(reward: r), !consumed, "\(r.id) is sellable unless it is used up on claiming")
-            XCTAssertFalse(r.accountBound, r.id)
-            XCTAssertTrue(TradeRules.isSellable(ArtifactItem(defID: r.id, serial: 1)), r.id)
+            let outfit: Bool = r.kind == .outfit
+            XCTAssertEqual(TradeRules.isSellable(reward: r), !consumed && !outfit, "\(r.id) is sellable unless it is an outfit or used up on claiming")
+            XCTAssertEqual(r.accountBound, outfit, r.id)
+            XCTAssertEqual(TradeRules.isSellable(ArtifactItem(defID: r.id, serial: 1)), !outfit, r.id)
         }
-        XCTAssertEqual(seasonOne.rewards.filter { $0.accountBound }.map { $0.id }, [firstIcon], "only the first-stage outfit is bound")
+        XCTAssertGreaterThan(others.filter { !$0.accountBound }.count, 20, "most of the pass can be traded")
+        XCTAssertEqual(seasonOne.rewards.filter { $0.accountBound }.map { $0.id }, seasonOne.rewards.filter { $0.kind == .outfit }.map { $0.id }, "only outfits are bound")
     }
 
     func testOtherSeasonOneRewardsCanBeListedAtAuction() throws {
-        for r in seasonOne.rewards where r.kind != .box && r.kind != .gold && r.id != firstIcon {
+        for r in seasonOne.rewards where r.kind != .box && r.kind != .gold && r.kind != .outfit {
             var cabinet = Cabinet(); cabinet.add(ArtifactItem(defID: r.id, serial: 7))
             var book = AuctionBook(me: me)
             let a: Auction = try book.list("\(r.id)#7", startPrice: 50, reserve: nil, duration: .oneHour, now: t0, cabinet: &cabinet)

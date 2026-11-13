@@ -30,8 +30,9 @@ final class PlayerSupplyTests: XCTestCase {
     }
 
     func testFarCheapSupplierLosesToANearerOne() {
-        let near = listing("near", trade: "workshop", price: 1, country: "DE")
-        let far = listing("far", trade: "workshop", price: 0, country: "AU")
+        // Standard goods: perishable food would fly and arrive the same week.
+        let near = listing("near", trade: "workshop", line: "wares", price: 1, country: "DE")
+        let far = listing("far", trade: "workshop", line: "wares", price: 0, country: "AU")
         let rows = SupplyLanded.compare([far, near], buyerCountry: "UK", marketUnitPrice: 100, units: 20, priceLevel: 1)
         XCTAssertEqual(rows.map { $0.id }, ["near", "far"])
         let f = rows[1]
@@ -206,10 +207,11 @@ final class PlayerSupplyTests: XCTestCase {
         XCTAssertEqual(e.orderFromSupplier(companyID: id, listing: listing("s", trade: "webdev", line: "software"), units: 5), .badOrder)
     }
 
-    func testDeliveryTroubleIsAnInboxMessage() throws {
+    func testDeliveryTroubleIsInTheDaysReport() throws {
         var (e, id) = try engine()
         e.update { s, _, _ in Shipments.tell(&s, companyID: id, title: "Delivery held at the border", body: "Held for a week.") }
-        let m = try XCTUnwrap(e.state.inbox.first { $0.title == "Delivery held at the border" })
+        // Delivery news goes to the day's report, not the inbox.
+        let m = try XCTUnwrap(e.state.feedLines.first { $0.text == "Delivery held at the border" })
         XCTAssertEqual(m.companyID, id)
         XCTAssertEqual(m.tone, "bad")
     }

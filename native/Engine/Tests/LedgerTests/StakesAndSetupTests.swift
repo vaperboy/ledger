@@ -105,7 +105,7 @@ final class StakesAndSetupTests: XCTestCase {
         XCTAssertTrue(co.staff.contains { $0.role == "ittech" }, "the first support hire is part of the founding team")
         let fee = e.homeCountry.registrationFee
         XCTAssertGreaterThan(fee, 0)
-        let seed = e.homeCurrency.scaledPrice(StartupProducts.sector("saas")!.seed) * 4
-        XCTAssertLessThanOrEqual(e.state.cash, cash0 - fee - seed + 1)
+        // One account: the seed money stays in the account the start-up draws on; the registration fee leaves it.
+        XCTAssertLessThanOrEqual(e.state.cash, cash0 - fee + 1)
     }
 }

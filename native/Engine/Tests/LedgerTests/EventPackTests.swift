@@ -238,7 +238,8 @@ final class EventPackTests: XCTestCase {
             for _ in 0..<(26 * 7) { e.nextDay() }
             XCTAssertTrue(e.state.company(id)?.status.isLive ?? false, "round \(round)")
         }
-        let own = e.state.inbox.filter { $0.value("pk").bool && $0.companyID == id }.sorted { $0.week < $1.week }
+        // The pack's own odds and pacing: quiet-day filler is drawn apart from them.
+        let own = e.state.inbox.filter { $0.value("pk").bool && $0.companyID == id && !$0.flag(DailyBeat.fillerKey) }.sorted { $0.week < $1.week }
         let perYear = Double(own.count) / 2
         XCTAssertTrue(perYear >= 1 && perYear <= 14, "\(perYear) pack events a year")
         for (a, b) in zip(own, own.dropFirst()) { XCTAssertGreaterThanOrEqual(b.week - a.week, EventPack.gapWeeks, "\(a.title) / \(b.title)") }

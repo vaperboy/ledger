@@ -76,7 +76,8 @@ final class ReconciliationTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, -10_000_000, why: "Into company"); Ledger.moveRaw(&s, .company(id), 10_000_000) }
         let after = e.netWorth
         XCTAssertEqual(after.total, before, accuracy: 10_000_000 * 0.35, "the company's value rises by about what the owner's cash fell by, not twice it or not at all")
-        XCTAssertLessThan(after.personal, nw.personal)
+        // One account: a company has no purse of its own, so the account and net worth stay where they were.
+        XCTAssertEqual(after.personal, nw.personal, accuracy: 1)
         balanced(e, "valuation move")
     }
 

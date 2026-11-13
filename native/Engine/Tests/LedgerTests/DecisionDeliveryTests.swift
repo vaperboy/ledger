@@ -105,10 +105,14 @@ final class DecisionDeliveryTests: XCTestCase {
         var fired: String?
         e.update { s, d, c in
             s.rest.removeValue(forKey: "feedD")
+            s.inbox.removeAll { $0.status == "open" }
             fired = DailyBeat.ensure(&s, fresh: [], library: lib, data: d, context: c)
         }
         let ev = try XCTUnwrap(fired, "a starter cafe has light events to draw on")
-        XCTAssertNotEqual((lib[ev] ?? EventPack.byID[ev]?.event)?.tone, "bad")
+        let event = try XCTUnwrap(lib[ev] ?? EventPack.byID[ev]?.event)
+        XCTAssertNotEqual(event.tone, "bad")
+        XCTAssertTrue(!event.options.isEmpty || !DailyBeat.hasEffects(event.automaticEffects), "a filler never hands out money or customers for nothing")
+        XCTAssertTrue(e.state.inbox.contains { $0.flag(DailyBeat.fillerKey) }, "the filler's message is marked")
         XCTAssertTrue(e.state.inbox.contains { $0.companyID == id } || !e.state.feedToday().isEmpty, "the player sees something")
         let busy = Message(raw: ["title": .string("News"), "status": .string("done")])
         e.update { s, d, c in XCTAssertNil(DailyBeat.ensure(&s, fresh: [busy], library: lib, data: d, context: c)) }

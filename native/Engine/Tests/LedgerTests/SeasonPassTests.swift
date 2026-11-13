@@ -69,7 +69,8 @@ final class SeasonPassTests: XCTestCase {
         XCTAssertEqual(p.observe(snap(week: 2), today: day0), 15, "a finished week")
         XCTAssertEqual(p.observe(snap(week: 2, months: 1), today: day0 + 1), login + 30, "a month closed in profit")
         XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1), today: day0 + 2), login + 50, "a milestone")
-        XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1, daily: "2026-1-1"), today: day0 + 3), login + 10, "daily goal")
+        let goalMission: Int = PassMissions.missions(metric: "dailyGoal").filter { $0.target == 1 }.reduce(0) { $0 + $1.xp }
+        XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1, daily: "2026-1-1"), today: day0 + 3), login + 10 + goalMission, "daily goal, which also finishes the daily goal mission")
         XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1, daily: "2026-1-1"), today: day0 + 3), 0, "same facts pay nothing twice")
         var l = SeasonPass(today: day0)
         l.observe(snap(loans: 1), today: day0)
@@ -213,7 +214,7 @@ final class SeasonPassTests: XCTestCase {
         XCTAssertEqual(b.profitMonths, SeasonPass.Snapshot.unknownMonths)
         var p = SeasonPass(today: day0)
         p.baseline = b
-        XCTAssertEqual(p.observe(snap(seed: 1, week: 4, months: 5), today: day0), 0)
+        XCTAssertEqual(p.observe(snap(seed: 1, week: 4, months: 5), today: day0), PassMissions.loginXP, "only the day's login, nothing for the months already closed")
     }
 
     func testSnapshotFromGameState() throws {

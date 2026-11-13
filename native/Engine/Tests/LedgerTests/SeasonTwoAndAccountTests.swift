@@ -41,7 +41,7 @@ final class SeasonTwoAndAccountTests: XCTestCase {
         let rarities: Set<BoxRarity> = Set(s2.rewards.compactMap(\.rarity))
         XCTAssertEqual(rarities, Set(BoxRarity.allCases), "rewards come in every rarity")
         let companyLogos: Set<String> = Set(s2.rewards.filter { $0.kind == .companyCard }.compactMap { CardCatalog.def($0.id)?.logo })
-        XCTAssertTrue(companyLogos.contains("car.fill") && companyLogos.contains("sailboat.fill"), "a car and a boat")
+        XCTAssertTrue(companyLogos.contains("car.fill") && !companyLogos.isDisjoint(with: ["sailboat.fill", "ferry.fill"]), "a car and a boat")
         for r in s2.rewards where r.kind == .artifact {
             XCTAssertNotNil(ArtifactCatalog.defs.first { $0.id == r.id }, r.id)
             XCTAssertEqual(r.rarity, ArtifactCatalog.def(r.id)?.rarity)
@@ -93,7 +93,7 @@ final class SeasonTwoAndAccountTests: XCTestCase {
         var p = SeasonPass(today: 1)
         p.season = 1
         p.xp = SeasonPass.xpPerTier * 2
-        guard case .claimed(let r) = p.claim(.free, tier: 2, isPlus: false) else { return XCTFail("tier 2 xp boost") }
+        guard case .claimed(let r) = p.claim(.free, tier: 2, isPlus: false, today: start2) else { return XCTFail("tier 2 xp boost") }
         XCTAssertEqual(r.kind, .xp)
         XCTAssertEqual(p.xp, SeasonPass.xpPerTier * 2 + 60)
         XCTAssertFalse(TradeRules.isSellable(reward: r))
@@ -224,8 +224,7 @@ final class SeasonTwoAndAccountTests: XCTestCase {
         XCTAssertNil(p.equipped["namePlate"], "the first save lost it when it was moved")
         XCTAssertEqual(p.wornElsewhere("plate.marble"), "B")
         p.activate(save: "B")
-        XCTAssertEqual(p.equipped["namePlate"], "plate.marble")
-        XCTAssertEqual(p.equipped["namePlate"], "plate.walnut")
+        XCTAssertEqual(p.equipped["namePlate"], "plate.marble", "the moved plate replaced the walnut one in this save")
         p.unequip(.namePlate)
         XCTAssertNil(p.equipped["namePlate"])
         p.activate(save: "A")

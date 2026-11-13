@@ -275,7 +275,8 @@ public extension GameEngine {
         }
         offers += ownRows(co, i, line: i.id, lead: lead, marketWeekly: weekly, shownNow: weekly)
         let now = offers.first { $0.isCurrent } ?? offers.first
-        return SupplyRow(id: i.id, group: spec?.group ?? "Services", title: i.title, kind: i.title, scale: i.what, current: now?.name ?? "",
+        // Same as every other row: the short line name as the title, the trade's own wording as the detail.
+        return SupplyRow(id: i.id, group: spec?.group ?? "Services", title: i.title, kind: SupplyMap.need(bd.id, line: i.id)?.label ?? i.title, scale: i.what, current: now?.name ?? "",
                          quality: now?.quality ?? "Solid", reliability: now?.reliability ?? "Steady", weekly: weekly, weeklyBefore: nil,
                          note: nil, governed: i.governedBy, offers: offers, need: need, input: i.id)
     }

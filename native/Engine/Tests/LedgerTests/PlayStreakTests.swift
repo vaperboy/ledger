@@ -63,7 +63,8 @@ final class PlayStreakTests: XCTestCase {
         XCTAssertTrue(SessionHooks.cliffhanger(e.state))
     }
 
-    func testOffersToBuyAreNeverRemindedAndIdleGameGetsTheSevenDayNote() throws {
+    // Without the goal ladder every feature is open, the Desk too, so the idle note is the Desk's.
+    func testOffersToBuyAreNeverRemindedAndIdleGameGetsTheDeskNote() throws {
         var e = try ChainsTests.engine()
         _ = ChainsTests.start(&e, "cafe")
         e.update { s, _, _ in
@@ -72,7 +73,7 @@ final class PlayStreakTests: XCTestCase {
         }
         let r = SessionHooks.reminders(e.state)
         XCTAssertEqual(r.map { $0.id }, ["ledger.idle"])
-        XCTAssertEqual(r.first?.after, 7 * 86400)
-        XCTAssertTrue(r.first?.body.hasSuffix(" is waiting for its next day.") ?? false)
+        XCTAssertEqual(r.first?.after, 22 * 3600)
+        XCTAssertTrue(r.first?.body.hasSuffix("A small question is waiting on your desk.") ?? false)
     }
 }

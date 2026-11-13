@@ -11,6 +11,10 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, 600_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { XCTFail("start"); throw XCTSkip("none") }
         _ = e.quickSetup(companyID: id); _ = e.openCompany(companyID: id)
+        // Registration papers take a few days; the company opens once they are through.
+        var days = 0
+        while e.state.company(id)?.status != .open && days < 70 { _ = e.nextDay(); _ = e.openCompany(companyID: id); days += 1 }
+        XCTAssertEqual(e.state.company(id)?.status, .open, "the test company opens")
         return (e, id)
     }
 

@@ -39,6 +39,8 @@ public enum CompanyWeek {
             SalesWays.weekly(&s, i, bd, data: data)
             VolumeContracts.weekly(&s, i, bd, data: data)
             if bd.family == "project" { ProjectWeek.afterWeek(&s, i, bd, data: data) }
+            // The week's sales just changed what each item needs: picked suppliers' orders follow at once.
+            ItemModels.resizeOrders(&s, i, data: data)
         }
     }
 
