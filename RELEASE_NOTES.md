@@ -1,4 +1,7 @@
 # What's new
+- A Store tab on the far left with offers, bundles, boxes, cosmetics and gold; Ventures now sits right of Home
+- New price screen: one bar from cost to market, Cheap / Market / Premium, and a live estimate of sales and profit
+- Cleaner Group page, a one-step partner invite with share and price, tap other players to see their card, and name plates removed
 - Player card redesign: the backdrop fills the whole card, real name plates, tap any part (or the +) to change it, and a Character tab with face, skin colour, hair and outfit; frames and badges are retired (gold spent on frames is refunded)
 - Many more cosmetics: 80 outfits, faces, hair styles, skin tones, backdrops, plates and flairs from boxes, the pass and levels; future season items stay hidden until the season starts
 - Company customise opens from the wrench and holds rename, logo and banner; the banner fills the full width
