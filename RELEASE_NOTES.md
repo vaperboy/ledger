@@ -1,4 +1,5 @@
 # What's new
+- Fairer economy: auction prices follow real value, equipment loans are repaid when you sell, net worth counts company debt, bankruptcy can no longer hide money, startup stakes are realistic, and ignored decisions do nothing
 - Sign in with Apple, sign back into your account on a new phone, and account deletion that settles your deals first
 - Safer online play: partner payments and company values are capped, ranking scores are checked, and marketplace listings must be real items at fair prices
 - Faster and safer saving in the background, iPhone portrait only, and clearer loading and retry on online screens
