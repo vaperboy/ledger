@@ -27,6 +27,8 @@ final class PurchaseManager {
     @ObservationIgnored private var updates: Task<Void, Never>?
     @ObservationIgnored private var storeAnswered = false
     @ObservationIgnored private var perkGold = 0
+    /// Plan transactions already sent to the server this run, so a refresh does not send them again.
+    @ObservationIgnored private var reportedPlans: Set<String> = []
     private static let graceWindow: TimeInterval = 16 * 24 * 3600
 
     init(entitlements: Entitlements) {
@@ -111,8 +113,11 @@ final class PurchaseManager {
         }
         inFlight = item
         defer { inFlight = nil }
+        // Ties the purchase to the signed-in account, so the server delivers it to no other.
+        var options: Set<Product.PurchaseOption> = []
+        if let token = await StoreSession.shared.accountToken() { options.insert(.appAccountToken(token)) }
         do {
-            switch try await product.purchase() {
+            switch try await product.purchase(options: options) {
             case .success(let verification):
                 await handle(verification, interactive: true)
             case .pending:
@@ -157,28 +162,40 @@ final class PurchaseManager {
 
     func refreshEntitlements() async {
         var owned: Set<LedgerProduct> = []
+        var receipts: [LedgerProduct: PurchaseReceipt] = [:]
         var plusEnd: Date?
         for await result in StoreKit.Transaction.currentEntitlements {
             guard case .verified(let t) = result, t.revocationDate == nil, let p = LedgerProduct(rawValue: t.productID) else { continue }
             owned.insert(p)
+            receipts[p] = PurchaseReceipt(transactionID: String(t.id), originalID: String(t.originalID), jws: result.jwsRepresentation)
             if p.isPlus, let end = t.expirationDate { plusEnd = max(plusEnd ?? end, end) }
         }
         let fresh = EntitlementSnapshot(owned: owned, plusExpires: plusEnd, plusGraceUntil: await graceEnd())
         entitlements.apply(fresh, storeAnswered: storeAnswered)
-        await grantPerks(owned)
+        await grantPerks(owned, receipts: receipts)
     }
 
-    private func grantPerks(_ owned: Set<LedgerProduct>) async {
+    private func grantPerks(_ owned: Set<LedgerProduct>, receipts: [LedgerProduct: PurchaseReceipt]) async {
         var gold: Int = 0
         let season: Int = SeasonModel.shared.pass.seasonNumber
         for p in owned {
             PlanPerks.cosmetics(for: p).forEach { SeasonModel.shared.grantOwned($0) }
+            if StoreSession.shared.isServerBacked {
+                // The server pays Pro and Founder gold once per account and keeps Plus for the premium pass.
+                guard let receipt = receipts[p], reportedPlans.insert(receipt.originalID).inserted else { continue }
+                guard let r = await StoreSession.shared.deliver(.plan(p), receipt: receipt) else { reportedPlans.remove(receipt.originalID); continue }
+                if r.delivered { gold += r.gold }
+                if r.passTiers > 0 { SeasonModel.shared.unlockTiers(r.passTiers) }
+                continue
+            }
             guard let perk = PlanPerk.perk(for: p) else { continue }
             let key: String = perk.claimID(season: season)
-            if let r = await StoreSession.shared.deliver(.perk(perk), transactionID: key), r.delivered { gold += r.gold }
+            let perkReceipt = PurchaseReceipt(transactionID: key, originalID: key, jws: "")
+            if let r = await StoreSession.shared.deliver(.perk(perk), receipt: perkReceipt), r.delivered { gold += r.gold }
             if perk == .founder, PlanPerks.founderPassOpen(season: season) {
                 let pass: PlanPerk = .founderPass
-                if let r = await StoreSession.shared.deliver(.perk(pass), transactionID: pass.claimID(season: season)), r.delivered {
+                let passKey: String = pass.claimID(season: season)
+                if let r = await StoreSession.shared.deliver(.perk(pass), receipt: PurchaseReceipt(transactionID: passKey, originalID: passKey, jws: "")), r.delivered {
                     SeasonModel.shared.unlockTiers(GoldPrices.founderPassTiers)
                 }
             }
@@ -218,8 +235,11 @@ final class PurchaseManager {
         guard let item = PurchaseCatalog.item(forProductID: transaction.productID) else { return }
         storeAnswered = true
         let transactionID: String = String(transaction.id)
+        let signed = PurchaseReceipt(transactionID: transactionID, originalID: String(transaction.originalID), jws: result.jwsRepresentation)
         switch item {
         case .plan:
+            // A refunded Pro or Founder takes its gold back on the server; the entitlement itself goes with StoreKit.
+            if transaction.revocationDate != nil, StoreSession.shared.isServerBacked { await StoreSession.shared.revoke(signed) }
             await transaction.finish()
             await refreshEntitlements()
             let granted: Int = takePerkGold()
@@ -228,17 +248,17 @@ final class PurchaseManager {
             return
         case .goldPack, .seasonBundle, .seasonLevels:
             if transaction.revocationDate != nil {
-                await StoreSession.shared.revoke(transactionID: transactionID)
+                guard await StoreSession.shared.revoke(signed) else { return }
                 await transaction.finish()
                 return
             }
-            guard let delivery = await StoreSession.shared.deliver(item, transactionID: transactionID) else {
+            guard let delivery = await StoreSession.shared.deliver(item, receipt: signed) else {
                 notice = Self.failure("Your payment went through but the purchase could not be added yet. It is added the next time the app opens.")
                 return
             }
             if delivery.delivered {
                 if item == .seasonBundle || item == .seasonLevels { SeasonModel.shared.unlockPremium() }
-                if item == .seasonLevels { SeasonModel.shared.unlockTiers(GoldStore.seasonLevels.tiers) }
+                if item == .seasonLevels { SeasonModel.shared.unlockTiers(delivery.passTiers > 0 ? delivery.passTiers : GoldStore.seasonLevels.tiers) }
                 notice = receipt(item, transactionID: transactionID, gold: delivery.gold)
             }
             await transaction.finish()

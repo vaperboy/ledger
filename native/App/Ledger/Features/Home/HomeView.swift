@@ -43,9 +43,7 @@ struct HomeSummary<Companies: View>: View {
         }
         .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall, category: .detail, tone: .info) { InsightsView(engine: e) }
         .task {
-            await MainActor.run {
-                if let reward = streak.openToday() { store.tell("Daily streak", reward.text, tone: "good") }
-            }
+            if let reward = await streak.openToday() { store.tell("Daily streak", reward.text, tone: "good") }
         }
     }
 

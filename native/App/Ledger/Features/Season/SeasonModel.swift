@@ -60,17 +60,64 @@ final class SeasonModel: ObservableObject {
     }
 
     func claim(_ track: SeasonPass.Track, tier: Int, isPlus: Bool) -> SeasonPass.ClaimResult {
+        guard StoreSession.shared.canSpend else { StoreSession.shared.problem = StoreError.offline.errorDescription; return .noReward }
         var p: SeasonPass = pass
         let r: SeasonPass.ClaimResult = p.claim(track, tier: tier, isPlus: isPlus)
-        if case .claimed(let reward) = r { pass = p; persist(); StoreSession.shared.receiveSeason(reward) }
+        if case .claimed(let reward) = r { pass = p; persist(); forward(reward, track: track, tier: tier) }
         return r
     }
 
     func claimAll(isPlus: Bool) -> [SeasonReward] {
+        guard StoreSession.shared.canSpend else { StoreSession.shared.problem = StoreError.offline.errorDescription; return [] }
         var p: SeasonPass = pass
         let got: [SeasonReward] = p.claimAll(isPlus: isPlus)
-        if !got.isEmpty { pass = p; persist(); got.forEach { StoreSession.shared.receiveSeason($0) } }
+        if !got.isEmpty {
+            pass = p
+            persist()
+            got.forEach { (r: SeasonReward) in forward(r, track: r.premium ? .premium : .free, tier: r.tier) }
+        }
         return got
+    }
+
+    /// Claims sent to the server and not answered yet; they stay claimed here until it answers.
+    private var waiting: Set<String> = []
+
+    private static func claimKey(_ track: SeasonPass.Track, _ tier: Int) -> String { track.rawValue + String(tier) }
+
+    private func forward(_ r: SeasonReward, track: SeasonPass.Track, tier: Int) {
+        if StoreSession.shared.isServerBacked { waiting.insert(Self.claimKey(track, tier)) }
+        StoreSession.shared.receiveSeason(r, track: track, tier: tier)
+    }
+
+    /// The server answered a claim. A refused claim is open again, so nothing is lost.
+    func serverClaimDone(_ track: SeasonPass.Track, tier: Int, kept: Bool) {
+        let key: String = Self.claimKey(track, tier)
+        waiting.remove(key)
+        guard !kept else { return }
+        var p: SeasonPass = pass
+        p.claimed.remove(key)
+        if p != pass { pass = p; persist() }
+    }
+
+    /// Mirrors what the server keeps: claimed tiers, premium, bought tiers and owned cosmetics.
+    /// Until the phone's old pass has moved to the server, its own claims are kept as well.
+    func syncServer(_ info: ServerStoreInfo, replace: Bool) {
+        var p: SeasonPass = pass
+        if info.season == p.seasonNumber {
+            let server: Set<String> = Set(info.passClaims)
+            p.claimed = replace ? server.union(waiting) : p.claimed.union(server)
+            let bought: Int = min(SeasonPass.tierCount, max(0, info.passBonusTiers)) * SeasonPass.xpPerTier
+            if p.xp < bought { p.addBonus(bought - p.xp) }
+            if info.premium, premiumSeason != p.season {
+                premiumSeason = p.season
+                UserDefaults.standard.set(p.season, forKey: Self.premiumKey)
+            } else if !info.premium, replace, premiumSeason == p.season {
+                premiumSeason = nil
+                UserDefaults.standard.removeObject(forKey: Self.premiumKey)
+            }
+        }
+        p.owned.formUnion(info.cosmetics.filter { (id: String) -> Bool in SeasonRewards.item(id) != nil })
+        if p != pass { pass = p; persist() }
     }
 
     func grantOwned(_ id: String) {

@@ -172,6 +172,13 @@ actor SupabaseOnlineService: OnlineService {
         try await raw(path: "/rest/v1/rpc/" + name, method: "POST", body: try JSONSerialization.data(withJSONObject: params))
     }
 
+    // Calls one of the project's edge functions as the signed-in player.
+    func functionData(_ name: String, _ params: [String: Any]) async throws -> Data {
+        try await raw(path: "/functions/v1/" + name, method: "POST", body: try JSONSerialization.data(withJSONObject: params))
+    }
+
+    func signedInUserID() async -> String? { try? await liveSession().userID }
+
     // Reads rows the signed-in player may see from one table.
     func tableData(_ table: String, query: [URLQueryItem]) async throws -> Data {
         try await raw(path: "/rest/v1/" + table, method: "GET", query: query)

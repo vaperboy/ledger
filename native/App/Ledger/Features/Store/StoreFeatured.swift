@@ -280,7 +280,7 @@ struct FreeMoneyTile: View {
     private func claim() {
         busy = true
         Task {
-            if await ads.watchForFreeMoney(), session.claimFreeMoney() { Haptics.success() }
+            if await ads.watchForFreeMoney(), await session.claimFreeMoney() { Haptics.success() }
             busy = false
         }
     }

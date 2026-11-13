@@ -76,10 +76,12 @@ struct FriendPlayGroups: View {
     }
 
     private func claimRace() {
-        let gold: Int = FriendPlayModel.shared.claimRace()
-        guard gold > 0 else { return }
-        Haptics.success()
-        store.tell("Race reward", "+\(gold) gold for last week's race.", tone: "good")
+        Task { @MainActor in
+            let gold: Int = await FriendPlayModel.shared.claimRace()
+            guard gold > 0 else { return }
+            Haptics.success()
+            store.tell("Race reward", "+\(gold) gold for last week's race.", tone: "good")
+        }
     }
 
     private func claimGoal() {

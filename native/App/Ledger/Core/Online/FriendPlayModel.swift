@@ -99,8 +99,18 @@ final class FriendPlayModel {
         loaded = true
     }
 
-    func claimRace() -> Int {
+    func claimRace() async -> Int {
         guard saved.pendingWeek != 0, lastReward > 0 else { return 0 }
+        if StoreSession.shared.isServerBacked {
+            // The server works out the place from the scores it holds and pays once per week.
+            let out = await StoreSession.shared.claimRaceGold(week: saved.pendingWeek)
+            if out.settled {
+                saved.pendingWeek = 0
+                persist()
+                lastReward = 0
+            }
+            return out.gold
+        }
         let gold: Int = lastReward
         saved.pendingWeek = 0
         persist()
