@@ -367,8 +367,8 @@ public enum EventEngine {
         }
     }
 
-    /// The answer an unanswered decision gets: the option that does nothing if there is one, otherwise the one that plays out worst.
-    /// Leaving a choice open never earns more than answering it.
+    /// The answer an unanswered decision gets: the option that does nothing if there is one; otherwise, of the options that spend
+    /// nothing, the one that plays out worst; if every option spends, the cheapest. Leaving a choice open never earns more than answering it.
     public static func passiveOption(of m: Message, _ s: GameState, data: GameData, context fc: FinanceContext) -> Int {
         guard let co = s.company(m.companyID) else { return 0 }
         return passiveOption(m.options, context(for: co, data: data, country: fc.country(of: co, s)))
@@ -378,8 +378,15 @@ public enum EventEngine {
         let open = options.indices.filter { options[$0]["fx"]["tier"].isNull }
         guard let first = open.first else { return 0 }
         if let idle = open.last(where: { options[$0]["fx"].object.isEmpty }) { return idle }
-        var pick = first, worst = Double.infinity
-        for n in open {
+        let free = open.filter { options[$0]["fx"]["cash"].double >= 0 && options[$0]["fx"]["raise"].double <= 0 }
+        var pick = first
+        if free.isEmpty {
+            var cheapest = -Double.infinity
+            for n in open where options[n]["fx"]["cash"].double > cheapest { cheapest = options[n]["fx"]["cash"].double; pick = n }
+            return pick
+        }
+        var worst = Double.infinity
+        for n in free {
             let v = score(options[n]["fx"], ctx)
             if v <= worst { worst = v; pick = n }
         }

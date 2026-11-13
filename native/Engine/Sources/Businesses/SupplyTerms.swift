@@ -364,6 +364,8 @@ public enum SupplyTerms {
     }
 
     static func lapseTerms(_ s: inout GameState, data: GameData) {
+        // A company that has stopped trading keeps no supplier credit.
+        for i in s.companies.indices where !s.companies[i].status.isLive && !s.companies[i].value("pterm").isNull { s.companies[i].set("pterm", .null) }
         for i in s.companies.indices where s.companies[i].status.isLive && !s.companies[i].value("pterm")["fix"].isNull {
             let co = s.companies[i]
             guard let id = agreedRepairTerm(co), let t = vendorTerm(id) else { continue }

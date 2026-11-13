@@ -280,7 +280,7 @@ public enum StrategicDecisions {
                             dem(&s, x, 0.85, 20); pay(&s, x, x.wk(s) * 0.6, "mkt", "Sales push"); s.companies[x.i].awareness = min(100, s.companies[x.i].awareness + 6) },
                         Opt(label: "Cut costs and accept the loss", detail: "") { s, x in dem(&s, x, 0.78, 40) }]))
 
-        L.append(Def(id: "e_execleave", cls: "strat", stages: ["est"], w: 2, def: 0,
+        L.append(Def(id: "e_execleave", cls: "strat", stages: ["est"], w: 2, def: 2,
                      cond: { s, co, _ in co.managerID != nil && s.people[co.managerID!] != nil },
                      make: { s, i, _, _ in s.companies[i].managerID.flatMap { s.people[$0] }.map { .object(["n": .string($0.name)]) } },
                      title: { co, d, _ in "\(d["n"].string) resigns from \(co.name)" },

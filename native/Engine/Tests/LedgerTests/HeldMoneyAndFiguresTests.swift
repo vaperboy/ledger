@@ -99,9 +99,10 @@ final class HeldMoneyAndFiguresTests: XCTestCase {
         for _ in 0..<(7 * 10) { e.nextDay() }
         let nw = e.netWorth
         XCTAssertEqual(nw.total, nw.totalAssets - nw.debt - nw.pendingTax, accuracy: 0.01)
-        XCTAssertEqual(nw.debt, Banking.totalDebt(e.state, personalOnly: true), accuracy: 0.5, "personal debt is the loans that are not a company's")
+        XCTAssertEqual(nw.debt, Banking.totalDebt(e.state), accuracy: 0.5, "one account: every loan, personal or a company's, is debt")
         XCTAssertEqual(nw.personal, e.state.cash + HeldMoney.playerRemaining(e.state), accuracy: 0.01)
         let co = try XCTUnwrap(e.state.company(id))
-        XCTAssertEqual(nw.companies, (Valuation.companyValue(co, state: e.state, trades: e.data.catalog) + HeldMoney.remaining(e.state, companyID: co.id)) * co.ownership / 100, accuracy: 1)
+        XCTAssertEqual(nw.companies, (Valuation.valueBeforeLoans(co, state: e.state, trades: e.data.catalog) + HeldMoney.remaining(e.state, companyID: co.id)) * co.ownership / 100, accuracy: 1,
+                       "companies count before their loans, which are in the debt")
     }
 }
