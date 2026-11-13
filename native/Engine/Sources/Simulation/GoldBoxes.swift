@@ -48,6 +48,10 @@ public struct BoxResult: Equatable, Sendable {
     public var rarity: BoxRarity
     public var content: Content
     public var guaranteed: Bool
+
+    public init(rarity: BoxRarity, content: Content, guaranteed: Bool) {
+        self.rarity = rarity; self.content = content; self.guaranteed = guaranteed
+    }
 }
 
 public struct BoxHaul: Equatable, Sendable {

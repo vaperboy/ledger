@@ -57,8 +57,8 @@ public enum SeasonCatalog {
         return max(1, (day - first) / SeasonPass.seasonDays + 1)
     }
 
-    /// Today as an era day, the same count the pass uses.
-    public static func today() -> Int { Calendar(identifier: .gregorian).ordinality(of: .day, in: .era, for: Date()) ?? 0 }
+    /// Today as an era day, the same count the pass uses, on the server-checked clock.
+    public static func today() -> Int { TrustedClock.today() }
 
     /// A season is live from its start day; before that none of its items may be shown anywhere.
     public static func isLive(_ number: Int, today: Int = SeasonCatalog.today()) -> Bool {

@@ -26,6 +26,8 @@ jobs:
       - run: for f in supabase/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -q -1 -d t -f "$f" || exit 1; done
       - run: psql -v ON_ERROR_STOP=1 -q -1 -d t -f supabase/tests/online_rules.sql
       - run: psql -v ON_ERROR_STOP=1 -q -1 -d t -f supabase/tests/security_fixes.sql
+      - run: psql -v ON_ERROR_STOP=1 -q -1 -d t -f supabase/tests/server_wallet.sql
+      - run: psql -v ON_ERROR_STOP=1 -q -1 -d t -f supabase/tests/account_delete.sql
 
   migrate:
     needs: sql-tests
@@ -42,3 +44,5 @@ jobs:
       - run: supabase db push --yes
       - run: supabase functions deploy invite --no-verify-jwt
       - run: supabase functions deploy send-push --no-verify-jwt
+      - run: supabase functions deploy store-purchase
+      - run: supabase functions deploy store-notify --no-verify-jwt

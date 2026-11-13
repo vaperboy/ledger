@@ -321,11 +321,13 @@ declare x uuid := pg_temp.mk_player('Xena Fox'); y uuid := pg_temp.mk_player('Ya
         wk int := private.friend_week(); r jsonb; gid uuid; ok boolean;
 begin
   insert into public.friendships (requester_id, addressee_id, status) values (x, y, 'accepted');
+  -- A gift carries a piece the sender holds.
+  insert into public.store_cabinet (user_id, def_id, serial) values (x, 'abacus', 7), (x, 'abacus', 8), (x, 'abacus', 9);
 
   perform pg_temp.as_user(x);
-  gid := public.send_friend_gift(y, 'artifact.test', 7);
-  perform pg_temp.expect_error('select public.send_friend_gift(''' || y || ''', ''artifact.test'', 8)', 'gift_limit');
-  perform pg_temp.expect_error('select public.send_friend_gift(''' || z || ''', ''artifact.test'', 9)', 'not_found');
+  gid := public.send_friend_gift(y, 'abacus', 7);
+  perform pg_temp.expect_error('select public.send_friend_gift(''' || y || ''', ''abacus'', 8)', 'gift_limit');
+  perform pg_temp.expect_error('select public.send_friend_gift(''' || z || ''', ''abacus'', 9)', 'not_found');
   if (select count(*) from public.friend_gifts where sender_id = x) <> 1 then raise exception 'daily gift limit not enforced'; end if;
 
   perform pg_temp.as_user(z);
@@ -335,7 +337,7 @@ begin
 
   perform pg_temp.as_user(y);
   r := public.received_friend_gifts();
-  if jsonb_array_length(r) <> 1 or r -> 0 ->> 'fromName' <> 'Xena Fox' or r -> 0 ->> 'defID' <> 'artifact.test' then raise exception 'gift inbox shows %', r; end if;
+  if jsonb_array_length(r) <> 1 or r -> 0 ->> 'fromName' <> 'Xena Fox' or r -> 0 ->> 'defID' <> 'abacus' then raise exception 'gift inbox shows %', r; end if;
   perform public.accept_friend_gifts(array[gid]);
   if jsonb_array_length(public.received_friend_gifts()) <> 0 then raise exception 'accepted gift still in the inbox'; end if;
 

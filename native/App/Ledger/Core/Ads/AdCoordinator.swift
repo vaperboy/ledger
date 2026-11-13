@@ -114,11 +114,11 @@ final class AdCoordinator {
         return true
     }
 
-    var freeMoneyLeft: Int { AdPolicy.freeMoneyLeft(now: Date(), ledger) }
+    var freeMoneyLeft: Int { AdPolicy.freeMoneyLeft(now: TrustedClock.now(), ledger) }
 
     var canOfferFreeMoney: Bool {
         let adFree: Bool = entitlements.effective.isAdFree(now: Date())
-        return !isShowing && (adFree || available) && AdPolicy.canOfferFreeMoney(entitlements: entitlements.effective, now: Date(), ledger)
+        return !isShowing && (adFree || available) && AdPolicy.canOfferFreeMoney(entitlements: entitlements.effective, now: TrustedClock.now(), ledger)
     }
 
     /// Shows the rewarded ad (not to ad-free players) and counts one free pack against today's cap. True when the pack may be paid.
@@ -129,7 +129,7 @@ final class AdCoordinator {
             guard await rewardedFinished() else { return false }
         }
         var l = ledger
-        AdPolicy.recordFreeMoney(now: Date(), &l)
+        AdPolicy.recordFreeMoney(now: TrustedClock.now(), &l)
         ledger = l; store()
         freeMoneyUsed += 1
         return true

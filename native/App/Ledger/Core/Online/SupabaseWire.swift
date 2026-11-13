@@ -185,6 +185,21 @@ enum SupabaseWire {
         case "no_partners": return .rejected("There is no board yet: the company has no partners.")
         case "invalid_agenda", "too_many_settings": return .rejected("That cannot be put to the board.")
         case "barred": return .rejected("Your account cannot trade with other players right now.")
+        case "not_enough_gold": return .rejected(amount.isEmpty ? "You do not have enough gold." : "You need \(amount) more gold.")
+        case "in_debt": return .rejected("A refunded purchase left \(amount.isEmpty ? "some" : amount) gold owed. Spending opens again once new gold has covered it.")
+        case "weekly_limit": return .rejected(amount == "0" || amount.isEmpty ? "You have bought all the money allowed this week. Try again in a few days." : "This week you can spend \(amount) more gold on money.")
+        case "daily_limit": return .rejected("That is all for today. Come back tomorrow.")
+        case "already_owned": return .rejected("You already have this.")
+        case "already_claimed": return .rejected(StoreWireText.alreadyClaimed)
+        case "no_reward": return .rejected(StoreWireText.noReward)
+        case "unknown_item", "unknown_product": return .rejected("That is not in the store.")
+        case "no_box": return .rejected("You have no box of that kind.")
+        case "needs_premium": return .rejected("This reward is on the premium track.")
+        case "tier_not_reached": return .rejected("This tier is not reached yet.")
+        case "season_over": return .rejected("That season has ended.")
+        case "invalid_receipt", "wrong_app", "mismatch": return .rejected("The App Store could not confirm this purchase.")
+        case "wrong_account": return .rejected("This purchase belongs to another player account.")
+        case "invalid_request", "too_many_accounts": return .rejected("That did not work. Try again.")
         default:
             if key.hasPrefix("listing_") { return .rejected("That offer is not available.") }
         }

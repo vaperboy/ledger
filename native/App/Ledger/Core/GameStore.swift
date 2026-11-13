@@ -141,7 +141,7 @@ final class GameStore: ObservableObject {
         let n: Int = PlayStreak.current(e.state, today: GameStore.calendarDay())
         return n >= PlayStreak.showFrom ? n : 0
     }
-    static func calendarDay() -> Int { Calendar(identifier: .gregorian).ordinality(of: .day, in: .era, for: Date()) ?? 0 }
+    static func calendarDay() -> Int { TrustedClock.today() }
     func scheduleReminders() {
         guard let e = engine else { return }
         Reminders.schedule(SessionHooks.reminders(e.state))
