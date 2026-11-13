@@ -108,7 +108,7 @@ public struct GoalState: Codable, Equatable, Sendable {
 
 public enum SharedGoalRules {
     public static let unitsPerMember = 300.0
-    public static let rewards = ["gold.plate.pewter", "gold.backdrop.fog", "gold.trade.pewter", "outfit.charcoal"]
+    public static let rewards = ["gold.backdrop.slate", "gold.backdrop.fog", "gold.trade.pewter", "outfit.charcoal"]
 
     public static func target(members: Int) -> Double { unitsPerMember * Double(max(2, members)) }
 

@@ -159,12 +159,12 @@ final class GoldBoxesTests: XCTestCase {
 
     func testBoughtCosmeticsEquipAndSlotsCount() {
         var p = SeasonPass(today: 20_000)
-        p.grantOwned("gold.plate.copper")
-        XCTAssertEqual(p.equipped["namePlate"], "gold.plate.copper")
-        p.grantOwned("gold.plate.onyx")
-        XCTAssertEqual(p.equipped["namePlate"], "gold.plate.copper", "the first is kept")
-        p.equip("gold.plate.onyx")
-        XCTAssertEqual(p.equipped["namePlate"], "gold.plate.onyx")
+        p.grantOwned("gold.backdrop.fog")
+        XCTAssertEqual(p.equipped["backdrop"], "gold.backdrop.fog")
+        p.grantOwned("gold.backdrop.slate")
+        XCTAssertEqual(p.equipped["backdrop"], "gold.backdrop.fog", "the first is kept")
+        p.equip("gold.backdrop.slate")
+        XCTAssertEqual(p.equipped["backdrop"], "gold.backdrop.slate")
         let before = p.bonusSaveSlots
         p.grantOwned("gold.slot.1")
         XCTAssertEqual(p.bonusSaveSlots, before + 1)
@@ -212,13 +212,13 @@ final class GoldBoxesTests: XCTestCase {
             BoxResult(rarity: .rare, content: .gold(40, doubled: false), guaranteed: false),
             BoxResult(rarity: .rare, content: .money(1_000), guaranteed: false),
             BoxResult(rarity: .epic, content: .money(2_000), guaranteed: false),
-            BoxResult(rarity: .common, content: .cosmetic("gold.plate.copper"), guaranteed: false),
+            BoxResult(rarity: .common, content: .cosmetic("gold.backdrop.fog"), guaranteed: false),
             BoxResult(rarity: .common, content: .artifact(ArtifactItem(defID: "abacus", serial: 3)), guaranteed: false)
         ]
         let h = BoxHaul(rs)
         XCTAssertEqual(h.gold, 60)
         XCTAssertEqual(h.money, 3_000)
-        XCTAssertEqual(h.cosmetics, ["gold.plate.copper"])
+        XCTAssertEqual(h.cosmetics, ["gold.backdrop.fog"])
         XCTAssertEqual(h.artifacts.map(\.id), ["abacus#3"])
     }
 

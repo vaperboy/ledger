@@ -23,7 +23,7 @@ final class CosmeticCatalogTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(count(.hair, today: today), 16)
         XCTAssertTrue((6...8).contains(count(.skin, today: today)), "six to eight skin tones")
         XCTAssertGreaterThanOrEqual(count(.backdrop, today: today), 30)
-        XCTAssertGreaterThanOrEqual(count(.namePlate, today: today), 20)
+        XCTAssertEqual(count(.namePlate, today: today), 0, "name plates are no longer given out")
         XCTAssertGreaterThanOrEqual(count(.richListFlair, today: today), 20)
     }
 
@@ -39,11 +39,28 @@ final class CosmeticCatalogTests: XCTestCase {
         }
     }
 
-    func testEveryNamePlateHasAStyle() {
-        let list: [JSONValue] = ContentFile.load("cosmetics", "gold_cosmetics")["cosmetics"].array
-        let plates: [JSONValue] = list.filter { $0["kind"].string == "namePlate" }
-        XCTAssertGreaterThanOrEqual(plates.count, 16)
-        for p in plates { XCTAssertFalse(p["style"].string.isEmpty, "\(p["id"].string) needs a style") }
+    func testNoNamePlateIsSoldDroppedOrGivenAsAReward() {
+        for c in GoldCosmetics.everything { XCTAssertNotEqual(c.item.kind, .namePlate, c.id) }
+        for r in SeasonRewards.everything { XCTAssertNotEqual(r.kind, .namePlate, r.id) }
+        for rarity in BoxRarity.allCases {
+            XCTAssertFalse(GoldCosmetics.boxPool(rarity, owned: []).contains { $0.item.kind == .namePlate })
+        }
+        XCTAssertFalse(GoldCosmetics.storeItems.contains { $0.item.kind == .namePlate })
+        for col in ArtifactCatalog.everyCollection {
+            XCTAssertNotEqual(GoldCosmetics.cosmetic(col.rewardID)?.item.kind, .namePlate, "\(col.id) rewards a plate")
+        }
+        for r in LevelRewards.all { XCTAssertFalse(r.outfit.map { GoldCosmetics.cosmetic($0)?.item.kind == .namePlate } ?? false, "level \(r.level)") }
+        for id in SharedGoalRules.rewards { XCTAssertNotEqual(GoldCosmetics.cosmetic(id)?.item.kind, .namePlate, id) }
+    }
+
+    func testOwnedPlatesStayKnownSoSavesStillLoad() {
+        for id in ["gold.plate.pewter", "gold.plate.onyx", "gold.plate.leaf", "gold.coll.counting", "plate.ledger", "plate.walnut", "plate.marble", "plate.egg", "plate.marble.s2"] {
+            XCTAssertEqual(SeasonRewards.item(id)?.kind, .namePlate, id)
+            XCTAssertTrue(GoldCosmetics.retired.contains { $0.id == id }, id)
+        }
+        var p = SeasonPass(today: 20_000)
+        p.owned = ["plate.marble", "gold.plate.copper"]
+        XCTAssertEqual(p.equip("plate.marble"), .equipped, "an owned plate can still be worn")
     }
 
     func testNoBadgeIconOrFrameIsGivenOutAnyMore() {
@@ -91,7 +108,8 @@ final class CosmeticCatalogTests: XCTestCase {
     func testOutfitsFacesAndHairDropFromBoxes() {
         let kinds: Set<SeasonReward.Kind> = Set(BoxRarity.allCases.flatMap { GoldCosmetics.boxPool($0, owned: []).map(\.item.kind) })
         for k in [SeasonReward.Kind.outfit, .face, .hair] { XCTAssertTrue(kinds.contains(k), "boxes drop \(k.label)") }
-        XCTAssertTrue(kinds.contains(.backdrop) && kinds.contains(.namePlate) && kinds.contains(.richListFlair))
+        XCTAssertTrue(kinds.contains(.backdrop) && kinds.contains(.richListFlair))
+        XCTAssertFalse(kinds.contains(.namePlate))
     }
 
     func testLegendariesAndEarnedItemsAreNeverSoldForGold() {
@@ -137,7 +155,7 @@ final class CosmeticCatalogTests: XCTestCase {
     func testSeasonOnePassTiersHoldOutfitsNotBadgesOrThemes() throws {
         let s1: SeasonDef = try XCTUnwrap(SeasonCatalog.def(1))
         let outfits: [String: (Int, Bool)] = Dictionary(uniqueKeysWithValues: s1.rewards.filter { $0.kind == .outfit }.map { ($0.id, ($0.tier, $0.premium)) })
-        XCTAssertEqual(outfits.count, 9)
+        XCTAssertEqual(outfits.count, 11)
         XCTAssertEqual(outfits["outfit.s1.pennant"]?.0, 1)
         XCTAssertEqual(outfits["outfit.s1.pennant"]?.1, false)
         XCTAssertEqual(outfits["outfit.s1.finisher"]?.0, 30)
@@ -148,6 +166,10 @@ final class CosmeticCatalogTests: XCTestCase {
         for id in ["outfit.s1.moss", "outfit.s1.plus", "outfit.s1.cash", "outfit.s1.rose", "outfit.s1.dusk", "outfit.s1.ocean"] {
             XCTAssertEqual(outfits[id]?.1, true, "\(id) is a premium reward")
         }
+        XCTAssertEqual(outfits["outfit.s1.walnut"]?.0, 2)
+        XCTAssertEqual(outfits["outfit.s1.walnut"]?.1, true)
+        XCTAssertEqual(outfits["outfit.s1.brass"]?.0, 13)
+        XCTAssertEqual(outfits["outfit.s1.brass"]?.1, false)
         XCTAssertFalse(s1.rewards.contains { $0.kind == .badge || $0.kind == .theme })
         for r in s1.rewards where r.kind == .outfit { XCTAssertTrue(r.art.hasPrefix("avatar.body."), r.id) }
     }
@@ -155,7 +177,7 @@ final class CosmeticCatalogTests: XCTestCase {
     func testSeasonTwoPassTiersHoldOutfitsToo() throws {
         let s2: SeasonDef = try XCTUnwrap(SeasonCatalog.def(2))
         XCTAssertEqual(s2.rewards.filter { $0.kind == .outfit }.map(\.id).sorted(),
-                       ["outfit.s2.crown", "outfit.s2.fairday", "outfit.s2.lilac", "outfit.s2.mint", "outfit.s2.plus", "outfit.s2.sprout"])
+                       ["outfit.s2.crown", "outfit.s2.egg", "outfit.s2.fairday", "outfit.s2.lilac", "outfit.s2.mint", "outfit.s2.plus", "outfit.s2.sprout"])
         XCTAssertFalse(s2.rewards.contains { $0.kind == .badge || $0.kind == .theme })
     }
 
@@ -241,6 +263,22 @@ final class CosmeticCatalogTests: XCTestCase {
         p.owned.insert("gold.theme.amber")
         XCTAssertEqual(p.refundRetired(), RetiredCosmetics.refunds.first { $0.id == "gold.theme.amber" }?.gold, "a newly found frame pays once too")
         XCTAssertEqual(p.refundRetired(), 0)
+    }
+
+    func testRetiredPlatesBoughtWithGoldRefundOnceAndPrizesDoNot() throws {
+        let price: [BoxRarity: Int] = [.common: 15, .rare: 35, .epic: 80]
+        var owed = 0
+        var p = SeasonPass(today: 20_000)
+        for c in GoldCosmetics.retired where c.item.kind == .namePlate && c.id.hasPrefix("gold.plate.") && c.rarity != .legendary {
+            let refund: Int = try XCTUnwrap(RetiredCosmetics.refunds.first { $0.id == c.id }?.gold, c.id)
+            XCTAssertEqual(refund, price[c.rarity], c.id)
+            p.owned.insert(c.id)
+            owed += refund
+        }
+        XCTAssertEqual(owed, 5 * 15 + 4 * 35 + 4 * 80)
+        p.owned.formUnion(["gold.plate.leaf", "gold.coll.counting", "plate.marble"])
+        XCTAssertEqual(p.refundRetired(), owed, "box prizes, collection and pass plates are not refunded")
+        XCTAssertEqual(p.refundRetired(), 0, "paid once")
     }
 
     func testTheRefundSurvivesASaveAndCountsProfileIcons() throws {

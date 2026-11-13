@@ -131,6 +131,6 @@ public enum SeasonRewards {
 
     private static func g(_ id: String, _ tier: Int, _ prem: Bool, _ gold: Int) -> SeasonReward {
         SeasonReward(id: id, tier: tier, premium: prem, kind: .gold, title: "\(gold) gold",
-                     detail: "Gold buys cosmetics, boxes and comfort in the Store. It never buys in-game money.", amount: gold)
+                     detail: "Gold buys cosmetics, boxes and comfort in the Store. It also buys in-game money.", amount: gold)
     }
 }

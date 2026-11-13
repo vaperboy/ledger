@@ -12,6 +12,8 @@ final class AdCoordinator {
     private static let ledgerKey = "ledger.adLedger"
 
     private(set) var isShowing = false
+    /// Bumped when a free money pack is used, so screens that show the count left refresh.
+    private(set) var freeMoneyUsed = 0
 
     init(entitlements: Entitlements, provider: AdProvider? = nil) {
         self.entitlements = entitlements
@@ -110,6 +112,27 @@ final class AdCoordinator {
         let e = AdPolicy.grantPass(entitlements.effective, now: Date(), &l)
         ledger = l; store()
         if let end = e.passExpires { entitlements.grantPass(until: end) }
+        return true
+    }
+
+    var freeMoneyLeft: Int { AdPolicy.freeMoneyLeft(now: Date(), ledger) }
+
+    var canOfferFreeMoney: Bool {
+        let adFree: Bool = entitlements.effective.isAdFree(now: Date())
+        return !isShowing && (adFree || available) && AdPolicy.canOfferFreeMoney(entitlements: entitlements.effective, now: Date(), ledger)
+    }
+
+    /// Shows the rewarded ad (not to ad-free players) and counts one free pack against today's cap. True when the pack may be paid.
+    @discardableResult
+    func watchForFreeMoney() async -> Bool {
+        guard canOfferFreeMoney else { return false }
+        if !entitlements.effective.isAdFree(now: Date()) {
+            guard await rewardedFinished() else { return false }
+        }
+        var l = ledger
+        AdPolicy.recordFreeMoney(now: Date(), &l)
+        ledger = l; store()
+        freeMoneyUsed += 1
         return true
     }
 }

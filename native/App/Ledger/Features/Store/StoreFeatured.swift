@@ -139,7 +139,7 @@ struct StoreCosmeticsSection: View {
     private var picks: [GoldCosmetic] {
         let owned: Set<String> = SeasonModel.shared.pass.owned
         let items: [GoldCosmetic] = GoldCosmetics.storeItems.filter { (c: GoldCosmetic) -> Bool in
-            !owned.contains(c.id) && c.item.kind != .saveSlot && c.item.kind != .namePlate
+            !owned.contains(c.id) && c.item.kind != .saveSlot
         }
         return Array(items.sorted { (a: GoldCosmetic, b: GoldCosmetic) -> Bool in a.rarity > b.rarity }.prefix(6))
     }
@@ -174,5 +174,114 @@ struct StoreCosmeticsSection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
+    }
+}
+
+/// MONEY: game money bought with gold, a three-column grid like the gold packs. The first tile is the free pack.
+struct StoreMoneySection: View {
+    var ask: (GoldGood) -> Void
+    private let session = StoreSession.shared
+
+    var body: some View {
+        let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 3)
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            StoreBand(title: "Money", glyph: Glyph.bank)
+            LazyVGrid(columns: columns, spacing: Theme.Space.s) {
+                FreeMoneyTile()
+                ForEach(Array(MoneyPacks.packs.enumerated()), id: \.element.id) { (i: Int, pack: MoneyPack) in
+                    MoneyPackTile(pack: pack, tier: i + 1) { ask(.moneyPack(pack)) }
+                }
+            }
+            .padding(.horizontal, Theme.Space.m)
+            Text(session.canSellForCash ? "Money is paid into your personal account in the open game. Bigger packs add a bonus." : "Open a game to buy money. It is paid into your personal account.")
+                .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+/// A stack of notes that grows with the pack. A drawn placeholder until there is real art.
+struct MoneyHeap: View {
+    var tier: Int
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<max(1, min(5, tier)), id: \.self) { (i: Int) in
+                Image(systemName: "banknote.fill")
+                    .font(.system(size: CGFloat(22 + tier * 2)))
+                    .foregroundStyle(Theme.gain.opacity(0.55 + 0.1 * Double(i)))
+                    .offset(x: CGFloat(i % 2 == 0 ? -1 : 1) * CGFloat(i) * 3.5, y: -CGFloat(i) * 5)
+            }
+        }
+        .frame(width: 52, height: 48)
+        .accessibilityHidden(true)
+    }
+}
+
+struct MoneyPackTile: View {
+    var pack: MoneyPack
+    var tier: Int
+    var buy: () -> Void
+    private let session = StoreSession.shared
+
+    var body: some View {
+        let open: Bool = session.canSellForCash
+        Button { Haptics.tap(); buy() } label: {
+            VStack(spacing: Theme.Space.xs) {
+                if pack.bonusPercent > 0 { StoreTag(text: "+\(pack.bonusPercent)%", tint: Theme.gain) } else { Color.clear.frame(height: 18) }
+                MoneyHeap(tier: tier)
+                Text(pack.name).textStyle(.headline).lineLimit(1)
+                Text(open ? StorePurchase.moneyText(pack) : "Open a game").textStyle(.caption, tint: Theme.ink, weight: .semibold).lineLimit(1).minimumScaleFactor(0.6)
+                StorePriceBar(gold: pack.gold)
+            }
+            .padding(.horizontal, Theme.Space.xs).padding(.vertical, Theme.Space.s)
+            .frame(maxWidth: .infinity, minHeight: 168)
+            .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
+            .opacity(open ? 1 : 0.55)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .disabled(!open)
+        .accessibilityIdentifier("money-" + pack.id)
+    }
+}
+
+struct FreeMoneyTile: View {
+    @Environment(AdCoordinator.self) private var ads
+    @State private var busy = false
+    private let session = StoreSession.shared
+
+    var body: some View {
+        let pack: MoneyPack = MoneyPacks.free
+        let used: Int = ads.freeMoneyUsed
+        let left: Int = ads.freeMoneyLeft
+        let ready: Bool = used >= 0 && ads.canOfferFreeMoney && session.canSellForCash && !busy
+        Button { Haptics.tap(); claim() } label: {
+            VStack(spacing: Theme.Space.xs) {
+                StoreTag(text: left == 1 ? "1 left today" : "\(left) left today", tint: left > 0 ? Theme.gain : Theme.inkFaint)
+                MoneyHeap(tier: 1)
+                Text(pack.name).textStyle(.headline).lineLimit(1)
+                Text(session.canSellForCash ? StorePurchase.moneyText(pack) : "Open a game").textStyle(.caption, tint: Theme.ink, weight: .semibold).lineLimit(1).minimumScaleFactor(0.6)
+                Text("Free · watch an ad").font(.system(size: 14, weight: .heavy)).foregroundStyle(Theme.accentInk).lineLimit(1).minimumScaleFactor(0.6)
+                    .padding(.horizontal, Theme.Space.s).frame(maxWidth: .infinity, minHeight: 44)
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.gold))
+            }
+            .padding(.horizontal, Theme.Space.xs).padding(.vertical, Theme.Space.s)
+            .frame(maxWidth: .infinity, minHeight: 168)
+            .background(StoreSurface(tint: Theme.gain, radius: Theme.Radius.card))
+            .opacity(ready ? 1 : 0.55)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .disabled(!ready)
+        .accessibilityLabel("Free money pack, watch an ad. \(left) left today.")
+        .accessibilityIdentifier("money-free")
+    }
+
+    private func claim() {
+        busy = true
+        Task {
+            if await ads.watchForFreeMoney(), session.claimFreeMoney() { Haptics.success() }
+            busy = false
+        }
     }
 }

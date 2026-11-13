@@ -10,7 +10,7 @@ enum Terms {
 
     static let sections: [(title: String, text: String)] = [
         ("The game", "Ledger is a simulation. Companies and money are made up, and nothing in the game is financial advice."),
-        ("Gold and purchases", "Gold buys boxes, cosmetics and extra slots. It never buys in-game money and cannot be cashed out. Purchases go through the App Store, and prices are always shown before you pay. Boxes show their exact odds."),
+        ("Gold and purchases", "Gold buys boxes, cosmetics, extra slots and in-game money. Money bought with gold stays in the game, and gold cannot be cashed out. Purchases go through the App Store, and prices are always shown before you pay. Boxes show their exact odds."),
         ("Your profile", "You have one profile: your name, photo, friends and trophies. Linking an account is optional and only keeps it safe across devices. Other players see only what your privacy setting allows. You can delete the account at any time."),
         ("Fair play", "Do not cheat, exploit bugs for gain or harass other players. Accounts that do can be limited or removed."),
         ("Age", "Ledger is for players aged 18 or older. Only that confirmation is kept: no age or date of birth is asked for or stored."),

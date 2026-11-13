@@ -114,8 +114,8 @@ final class SeasonPassTests: XCTestCase {
         XCTAssertNil(p.equipped["outfit"], "an outfit is collected and worn from the avatar editor, not equipped here")
         XCTAssertEqual(p.claimableCount(isPlus: true), 3)
         XCTAssertEqual(p.claimableCount(isPlus: false), 1)
-        XCTAssertEqual(p.claimAll(isPlus: false).map(\.id), ["plate.ledger"])
-        XCTAssertEqual(p.claimAll(isPlus: true).map(\.id), ["plate.walnut", "advisor.patience"])
+        XCTAssertEqual(p.claimAll(isPlus: false).map(\.id), ["backdrop.ledger"])
+        XCTAssertEqual(p.claimAll(isPlus: true).map(\.id), ["outfit.s1.walnut", "advisor.patience"])
     }
 
     func testRewardsAreCosmeticOrComfortAndUnique() {
@@ -133,13 +133,13 @@ final class SeasonPassTests: XCTestCase {
         p.xp = SeasonPass.tierCount * SeasonPass.xpPerTier
         _ = p.claimAll(isPlus: true)
         XCTAssertEqual(p.bonusSaveSlots, 1)
-        p.equip("plate.marble")
-        XCTAssertEqual(p.equipped["namePlate"], "plate.marble")
+        p.equip("backdrop.marble")
+        XCTAssertEqual(p.equipped["backdrop"], "backdrop.marble")
         p.equip("outfit.s1.pennant")
         XCTAssertNil(p.equipped["outfit"], "an outfit is collected, then worn from the avatar editor")
         var q = SeasonPass(today: day0)
-        q.equip("plate.marble")
-        XCTAssertNil(q.equipped["namePlate"], "an unowned reward cannot be equipped")
+        q.equip("backdrop.marble")
+        XCTAssertNil(q.equipped["backdrop"], "an unowned reward cannot be equipped")
     }
 
     func testSeasonRollover() {

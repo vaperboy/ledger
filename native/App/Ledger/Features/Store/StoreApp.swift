@@ -28,6 +28,7 @@ struct StoreApp: View {
                 StoreBand(title: "Gold", glyph: Glyph.bank)
                 ProPlansView(part: .packs)
             }
+            StoreMoneySection(ask: ask).storeAppear(4)
             collectionGroup
             ProPlansView(part: .legal)
             footer

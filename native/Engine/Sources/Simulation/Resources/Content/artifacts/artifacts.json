@@ -5,7 +5,7 @@
    "id": "counting",
    "name": "Counting House",
    "blurb": "Tools of the old bookkeepers.",
-   "reward": "gold.coll.counting",
+   "reward": "gold.coll.counting.backdrop",
    "look": {"top": "A8803A", "bottom": "4A3512", "ink": "FFE9B0", "motif": "rings"}
   },
   {

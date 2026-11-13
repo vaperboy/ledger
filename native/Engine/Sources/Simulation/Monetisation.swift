@@ -95,6 +95,7 @@ public struct AdLedger: Equatable, Sendable, Codable {
     public var sessionsToday: Int = 0
     public var interstitialsToday: Int = 0
     public var doublesToday: Int = 0
+    public var freeMoneyToday: Int = 0
 
     public init() {}
 
@@ -111,6 +112,7 @@ public struct AdLedger: Equatable, Sendable, Codable {
         sessionsToday = try c.decodeIfPresent(Int.self, forKey: .sessionsToday) ?? 0
         interstitialsToday = try c.decodeIfPresent(Int.self, forKey: .interstitialsToday) ?? 0
         doublesToday = try c.decodeIfPresent(Int.self, forKey: .doublesToday) ?? 0
+        freeMoneyToday = try c.decodeIfPresent(Int.self, forKey: .freeMoneyToday) ?? 0
     }
 
     public static func dayIndex(_ d: Date) -> Int { Calendar.current.ordinality(of: .day, in: .era, for: d) ?? 0 }
@@ -118,7 +120,7 @@ public struct AdLedger: Equatable, Sendable, Codable {
     public func rolled(_ now: Date) -> AdLedger {
         var l = self
         let d = Self.dayIndex(now)
-        if l.dayIndex != d { l.dayIndex = d; l.sessionsToday = 0; l.interstitialsToday = 0; l.doublesToday = 0 }
+        if l.dayIndex != d { l.dayIndex = d; l.sessionsToday = 0; l.interstitialsToday = 0; l.doublesToday = 0; l.freeMoneyToday = 0 }
         return l
     }
 
@@ -193,6 +195,16 @@ public enum AdPolicy {
         let floor: Double = floorUnits ?? currency?.scaledPrice(5000) ?? 5000
         return max(0, min(grantCash, max(0.02 * max(0, companyCash), floor)))
     }
+
+    /// Free money packs left today. The ad is only shown to players who still see ads, but everyone shares the daily cap.
+    public static func freeMoneyLeft(now: Date, _ ledger: AdLedger) -> Int { max(0, MoneyPacks.freePerDay - ledger.rolled(now).freeMoneyToday) }
+
+    public static func canOfferFreeMoney(entitlements e: EntitlementSnapshot, now: Date, _ ledger: AdLedger) -> Bool {
+        guard freeMoneyLeft(now: now, ledger) > 0 else { return false }
+        return e.isAdFree(now: now) || !ledger.rolled(now).isQuiet(now: now)
+    }
+
+    public static func recordFreeMoney(now: Date, _ l: inout AdLedger) { l = l.rolled(now); l.freeMoneyToday += 1 }
 
     public static func canOfferPass(entitlements e: EntitlementSnapshot, now: Date, _ l: AdLedger) -> Bool {
         if e.isAdFree(now: now) { return false }

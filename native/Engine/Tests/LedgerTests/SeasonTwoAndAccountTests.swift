@@ -34,9 +34,10 @@ final class SeasonTwoAndAccountTests: XCTestCase {
         var slots: Set<String> = []
         for r in s2.rewards { XCTAssertTrue(slots.insert("\(r.premium)\(r.tier)").inserted, r.id) }
         let kinds: Set<SeasonReward.Kind> = Set(s2.rewards.map(\.kind))
-        for k in [SeasonReward.Kind.artifact, .xp, .gold, .box, .profileCard, .companyCard, .outfit, .namePlate, .backdrop] {
+        for k in [SeasonReward.Kind.artifact, .xp, .gold, .box, .profileCard, .companyCard, .outfit, .backdrop] {
             XCTAssertTrue(kinds.contains(k), "season 2 should hold a \(k.label)")
         }
+        XCTAssertFalse(kinds.contains(.namePlate), "name plates are not pass rewards")
         let rarities: Set<BoxRarity> = Set(s2.rewards.compactMap(\.rarity))
         XCTAssertEqual(rarities, Set(BoxRarity.allCases), "rewards come in every rarity")
         let companyLogos: Set<String> = Set(s2.rewards.filter { $0.kind == .companyCard }.compactMap { CardCatalog.def($0.id)?.logo })

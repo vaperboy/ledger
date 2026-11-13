@@ -21,6 +21,8 @@ final class StoreSession {
     @ObservationIgnored private var opening = false
 
     @ObservationIgnored var moneyPrizeHandler: ((Int, String) -> Void)?
+    /// Pays a money pack (pack id, claim id) into the open game's account; returns the game money paid.
+    @ObservationIgnored var moneyPackHandler: ((String, String) -> Double?)?
     @ObservationIgnored var purse: (() -> AuctionPurse?)?
     @ObservationIgnored var cashHandler: ((Int, String, String) -> Void)?
     @ObservationIgnored private let store: any StoreService
@@ -78,9 +80,25 @@ final class StoreSession {
                 state = try await store.spendGold(price)
             case .username(let price):
                 state = try await store.spendGold(price)
+            case .moneyPack(let pack):
+                guard canSellForCash else { problem = "Open a game to buy money."; return false }
+                state = try await store.spendGold(pack.gold)
+                guard moneyPackHandler?(pack.id, UUID().uuidString) != nil else {
+                    state = await store.grantFromSeason(boxes: 0, gold: pack.gold)
+                    problem = "The money could not be paid, so your gold was returned."
+                    return false
+                }
             }
             return true
         } catch { problem = message(error); return false }
+    }
+
+    /// The free money pack: no gold is taken. The caller has already shown the ad (when one is due).
+    @discardableResult
+    func claimFreeMoney() -> Bool {
+        problem = nil
+        guard canSellForCash else { problem = "Open a game to get money."; return false }
+        return moneyPackHandler?(MoneyPacks.free.id, UUID().uuidString) != nil
     }
 
     func openBoxes(_ kind: BoxKind, count: Int, paidBoxesAllowed: Bool) async -> BoxOpening? {

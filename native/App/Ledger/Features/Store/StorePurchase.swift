@@ -7,6 +7,7 @@ enum GoldGood {
     case avatar(AvatarDef)
     case service(String, Int)
     case username(Int)
+    case moneyPack(MoneyPack)
 
     var price: Int {
         switch self {
@@ -15,6 +16,7 @@ enum GoldGood {
         case .avatar(let d): return d.price ?? 0
         case .service(_, let price): return price
         case .username(let price): return price
+        case .moneyPack(let pack): return MoneyPacks.price(pack)
         }
     }
 }
@@ -44,7 +46,15 @@ enum StorePurchase {
             return GoldOffer(title: title + "?", effect: "the wait is skipped.", price: price, icon: "forward.end")
         case .username(let price):
             return GoldOffer(title: "Change your username?", effect: "your username changes. The old one is never given to anyone else.", price: price, icon: "pencil")
+        case .moneyPack(let pack):
+            return GoldOffer(title: "Buy the \(pack.name) pack?", effect: "\(moneyText(pack)) is paid into your personal account in the game" + (pack.bonusPercent > 0 ? ", \(pack.bonusPercent)% more than the gold rate." : "."),
+                             price: MoneyPacks.price(pack), icon: "banknote")
         }
+    }
+
+    /// A pack's money in the open game's currency.
+    static func moneyText(_ pack: MoneyPack) -> String {
+        session.money(Int((MoneyPacks.gameMoney(pack) * session.priceLevel).rounded()))
     }
 
     static func ask(offer: GoldOffer, pending: Binding<PendingAction?>, onShort: @escaping (Int) -> Void, run: @escaping () -> Void) {

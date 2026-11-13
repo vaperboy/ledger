@@ -218,6 +218,7 @@ final class GameStore: ObservableObject {
         else if let saves, saves.hasSave() { loadCurrent() }
         ConfirmThreshold.delegated = { [weak self] () -> (limit: Double, rate: Double) in self?.engine?.delegatedSpendLimit() ?? (limit: 0, rate: 0) }
         StoreSession.shared.moneyPrizeHandler = { [weak self] (amount: Int, id: String) -> Void in self?.claimBoxMoney(amount, claimID: id) }
+        StoreSession.shared.moneyPackHandler = { [weak self] (pack: String, id: String) -> Double? in self?.claimMoneyPack(pack, claimID: id) }
         StoreSession.shared.purse = { [weak self] () -> AuctionPurse? in
             guard let e = self?.engine else { return nil }
             let cur: Currency = e.homeCurrency
