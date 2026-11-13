@@ -31,7 +31,7 @@ struct StoreShelfView: View {
 
     private var cosmeticsGroup: some View {
         let owned: Set<String> = SeasonModel.shared.pass.owned
-        let items: [GoldCosmetic] = GoldCosmetics.storeItems
+        let items: [GoldCosmetic] = GoldCosmetics.storeItems.filter { (c: GoldCosmetic) -> Bool in c.item.kind != .namePlate }
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text("Cosmetics and comfort").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.m), GridItem(.flexible())], spacing: Theme.Space.m) {

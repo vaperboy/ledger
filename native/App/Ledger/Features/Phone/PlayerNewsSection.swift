@@ -81,7 +81,17 @@ struct PlayerNewsSection: View {
         .padding(.bottom, 8)
     }
 
-    private func row(_ e: PlayerEvent, _ text: String) -> some View {
+    /// A friend's event opens their player card; other events stay anonymous.
+    @ViewBuilder private func row(_ e: PlayerEvent, _ text: String) -> some View {
+        if feed.service.isFriend(e.playerID) {
+            NavigationLink { PlayerProfileView(playerID: e.playerID) } label: { rowBody(e, text) }
+                .buttonStyle(PressableStyle())
+        } else {
+            rowBody(e, text)
+        }
+    }
+
+    private func rowBody(_ e: PlayerEvent, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Text(kicker(e.kind).uppercased()).font(.system(size: 9.5, weight: .semibold)).tracking(1).foregroundStyle(P.accent)
@@ -143,12 +153,16 @@ struct PlayerNewsSection: View {
     @ViewBuilder private var friendActivity: some View {
         ForEach(Array(online.friendActivity.activity.prefix(8).enumerated()), id: \.element.id) { (i: Int, a: FriendActivityItem) in
             Rectangle().fill(P.hairline).frame(height: 1)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("FRIENDS").font(.system(size: 9.5, weight: .semibold)).tracking(1).foregroundStyle(P.accent)
-                Text(a.sentence).font(.serifTitle(16)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
+            NavigationLink { PlayerProfileView(playerID: a.playerID, knownName: a.playerName) } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("FRIENDS").font(.system(size: 9.5, weight: .semibold)).tracking(1).foregroundStyle(P.accent)
+                    Text(a.sentence).font(.serifTitle(16)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .accessibilityElement(children: .combine)
             }
-            .padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
+            .buttonStyle(PressableStyle())
         }
     }
 

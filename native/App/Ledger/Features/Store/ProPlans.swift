@@ -8,24 +8,34 @@ struct ProPlansView: View {
     private let session = StoreSession.shared
     @State private var proOpen = false
 
+    /// The plan cards, the gold packs and the small print are shown in separate parts of the Store.
+    enum Part { case offers, packs, legal }
+    private let part: Part
+
+    init(part: Part = .offers) { self.part = part }
+
     var body: some View {
-        ScrollView {
-            content.padding(.bottom, Theme.Space.l)
+        Group {
+            switch part {
+            case .offers: offers
+            case .packs: packs
+            case .legal: legal
+            }
         }
-        .scrollIndicators(.hidden)
         .task { await session.load(); await purchases.loadProducts() }
     }
 
-    private var content: some View {
+    private var offers: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Text("Nothing here changes how the game plays. Plans give you comfort, looks and gold.")
-                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, Theme.Space.m)
             plusCard
             proCard
             passCard
             founderCard
-            packs
+        }
+    }
+
+    private var legal: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
             if !ent.isPlus && !ent.ownsPro {
                 Text("Subscriptions renew automatically at the price shown unless they are cancelled at least 24 hours before the period ends, and your Apple ID is charged within 24 hours before they renew. Manage or cancel them in your App Store account settings. One-time purchases never renew.")
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
@@ -36,17 +46,12 @@ struct ProPlansView: View {
     }
 
     private var footer: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(spacing: 14) {
-                Button { Task { await purchases.restore() } } label: { Text("Restore purchases") }
-                    .buttonStyle(PlainTextButtonStyle(tint: Theme.ivoryMuted))
-                    .disabled(purchases.isBusy)
-                    .accessibilityIdentifier("plans-restore")
-                Link("Terms", destination: LedgerLinks.terms).textStyle(.caption)
-                Link("Privacy", destination: LedgerLinks.privacy).textStyle(.caption)
-                Spacer(minLength: 0)
-            }
-            Text(StoreText.goldRule).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+        HStack {
+            Button { Task { await purchases.restore() } } label: { Text("Restore purchases") }
+                .buttonStyle(PlainTextButtonStyle(tint: Theme.ivoryMuted))
+                .disabled(purchases.isBusy)
+                .accessibilityIdentifier("plans-restore")
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, Theme.Space.m)
     }

@@ -55,19 +55,16 @@ struct GroupOverviewTab: View {
     var body: some View {
         let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(engine)
         let ov: TeamOverview = store.teamOverviewNow ?? engine.teamOverview()
-        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                hero
-                LedgerRow(leading: .symbol("plus"), title: "Add to group", identifier: "group-add", action: onAdd)
-                    .coachAnchor(.groupAdd)
-            }
-            needsYou(list)
-            keyFigures(list, ov)
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            hero(keyFigures(list, ov))
+            LedgerRow(leading: .symbol("plus"), title: "Add to group", identifier: "group-add", action: onAdd)
+                .coachAnchor(.groupAdd)
             GroupStructureTab(engine: engine, onPick: onPick)
+            needsYou(list)
         }
     }
 
-    private var hero: some View {
+    private func hero<Figures: View>(_ figures: Figures) -> some View {
         let value: Double = (store.netWorthNow ?? engine.netWorth).companies
         let hist: DayHistory = store.dayHistoryNow ?? engine.dayHistory
         let vc = DayHistory.change(hist.companies, days: 30)
@@ -86,6 +83,7 @@ struct GroupOverviewTab: View {
                 Spacer(minLength: 0)
             }
             .accessibilityElement(children: .combine)
+            figures
             if trend.count >= 2 {
                 Sparkline(values: trend, tint: (trend.last ?? 0) >= (trend.first ?? 0) ? Theme.accent : Theme.loss)
                     .frame(height: 44)
@@ -137,7 +135,7 @@ struct GroupOverviewTab: View {
         var id: String { entity.id }
     }
 
-    private func keyFigures(_ list: [GroupEntity], _ ov: TeamOverview) -> some View {
+    private func keyFigures(_ list: [GroupEntity], _ ov: TeamOverview) -> KeyFigures {
         let profit: Double = list.reduce(0) { (a: Double, g: GroupEntity) -> Double in a + g.profit }
         let staff: Int = ov.companies.reduce(0) { (a: Int, l: TeamOverview.CompanyLine) -> Int in a + l.staff }
         let sign: String = profit > 0.5 ? "+" : (profit < -0.5 ? "\u{2212}" : "")

@@ -110,6 +110,7 @@ struct ItemPriceSheet: View {
     @State private var draftPrice: Double?
     @State private var draftPercent: Int?
     @State private var weeks = 4
+    @State private var showMore = false
 
     private static let listingTrades: Set<String> = ["webdev", "gamestudio", "startup", "mktg", "furniture", "factory", "hardware", "electrician", "plumber", "handy"]
 
@@ -130,27 +131,104 @@ struct ItemPriceSheet: View {
         let move: Double = base.item.price > 0 ? price / base.item.price - 1 : 0
         let facts: [TradeFact] = TradeItemFactRows.rows(e, companyID: companyID, page: pg, price: price, cur: cur)
         return VStack(alignment: .leading, spacing: PopupSpace.block) {
-            header(pg, cur, price)
-            VStack(alignment: .leading, spacing: PopupSpace.row) {
+            VStack(alignment: .leading, spacing: PopupSpace.block) {
                 if let who = setBy {
                     Text("Set by \(who)").popupText(.caption)
                     PopupRow(label: "Market price", value: itemAmount(pg.item.marketPrice, cur))
+                    PopupRow(label: "Cost each", value: itemAmount(pg.unitCost, cur))
                 } else {
                     priceControls(e, co, pg, cur, price)
+                    liveLine(f, pg, cur, price)
                 }
-                PopupRow(label: "Cost each", value: itemAmount(pg.unitCost, cur))
             }
             .coachAnchor(.itemPrice)
-            preview(f, cur)
-            stockAndTrend(e, co, pg, cur)
-            if let line = hint(e, pg, f, move: move) { Text(line).popupText(.caption) }
-            promotion(co, pg.item)
-            listToggle(co, pg.item)
-            if !facts.isEmpty { TradeItemFacts(rows: facts, plans: TradeItemFactRows.plans(pg)) }
+            moreSection(e, co, pg, cur, f, move: move, facts: facts)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .centerSheetTitle(base.item.name.tidyText)
         .popupFooter { footer(owner: setBy == nil) }
+    }
+
+    /// The price figure with its steppers, the one bar and the three quick prices.
+    @ViewBuilder private func priceControls(_ e: GameEngine, _ co: Company, _ p: ItemPageData, _ cur: Currency, _ price: Double) -> some View {
+        let range: ClosedRange<Double> = e.itemPriceRange(companyID: co.id)
+        let market: Double = p.item.marketPrice
+        let lo: Double = market * range.lowerBound
+        let hi: Double = market * range.upperBound
+        let unit: String = p.item.isService ? "per service" : "each"
+        if hi > lo {
+            let shown: Double = min(max(price, lo), hi)
+            PriceStepperField(price: shown, range: lo...hi, step: ItemPriceWords.step(market: market, cur: cur), cur: cur, unit: unit,
+                              onSet: { (v: Double) in draftPrice = v; commitPrice(v) })
+            PriceBar(lo: lo, hi: hi, cost: p.unitCost, market: market, price: shown,
+                     onChange: { (v: Double) in draftPrice = min(max(v, lo), hi) },
+                     onEnd: { commitPrice(roundedToCent(draftPrice ?? shown, cur, lo, hi)) })
+            HStack {
+                Text("Cost " + itemAmount(p.unitCost, cur)).popupText(.caption)
+                Spacer(minLength: PopupSpace.row)
+                Text("Market " + itemAmount(market, cur)).popupText(.caption)
+            }
+            HStack(spacing: PopupSpace.row) {
+                quickButton("Cheap", target: market * 0.85, lo, hi, price, cur)
+                quickButton("Market", target: market, lo, hi, price, cur)
+                quickButton("Premium", target: market * 1.15, lo, hi, price, cur)
+            }
+        } else {
+            PopupRow(label: "Market price", value: itemAmount(market, cur))
+            PopupRow(label: "Cost each", value: itemAmount(p.unitCost, cur))
+        }
+    }
+
+    private func quickButton(_ title: String, target: Double, _ lo: Double, _ hi: Double, _ price: Double, _ cur: Currency) -> some View {
+        let value: Double = roundedToCent(min(max(target, lo), hi), cur, lo, hi)
+        let on: Bool = abs(value - price) < 0.005 * cur.rate
+        return Button(title) { Haptics.tap(); draftPrice = value; commitPrice(value) }
+            .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true, tint: on ? P.accent : nil))
+            .accessibilityIdentifier("item-price-" + title.lowercased())
+    }
+
+    private func roundedToCent(_ v: Double, _ cur: Currency, _ lo: Double, _ hi: Double) -> Double {
+        let cent: Double = 0.01 * cur.rate
+        return min(max((v / cent).rounded() * cent, lo), hi)
+    }
+
+    /// What this price is expected to do in a week, and how strong demand is at it.
+    private func liveLine(_ f: ItemForecast, _ p: ItemPageData, _ cur: Currency, _ price: Double) -> some View {
+        let weekly: Double = f.units * (price - p.unitCost)
+        let word: String = weekly >= 0 ? "profit" : "loss"
+        let sold: String = String(format: "%.0f", f.units)
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text("\u{2248} \(sold) sold a week \u{00B7} \(word) \(cur.tidyShort(abs(weekly))) a week")
+                .popupText(.rowValue).foregroundStyle(weekly >= 0 ? P.gain : P.loss)
+            Text("Demand: " + ItemPriceWords.demand(f.demandChange)).popupText(.caption)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("item-price-live")
+    }
+
+    /// Stock, promotion, group listing and the item's facts, folded away until asked for.
+    @ViewBuilder private func moreSection(_ e: GameEngine, _ co: Company, _ pg: ItemPageData, _ cur: Currency, _ f: ItemForecast, move: Double, facts: [TradeFact]) -> some View {
+        Button { Haptics.tap(); Motion.animate(Motion.quickAnimation) { showMore.toggle() } } label: {
+            HStack {
+                Text("More").popupText(.rowLabel)
+                Spacer(minLength: PopupSpace.row)
+                Image(systemName: showMore ? "chevron.up" : "chevron.down").font(.system(size: 12, weight: .semibold)).foregroundStyle(P.inkFaint)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("item-price-more")
+        if showMore {
+            VStack(alignment: .leading, spacing: PopupSpace.block) {
+                stockAndTrend(e, co, pg, cur)
+                if let line = hint(e, pg, f, move: move) { Text(line).popupText(.caption) }
+                promotion(co, pg.item)
+                listToggle(co, pg.item)
+                if !facts.isEmpty { TradeItemFacts(rows: facts, plans: TradeItemFactRows.plans(pg)) }
+            }
+        }
     }
 
     private func stockFigures(_ co: Company, _ p: ItemPageData, _ cur: Currency) -> [KeyFigures.Item] {
@@ -179,66 +257,6 @@ struct ItemPriceSheet: View {
                     .accessibilityIdentifier("item-restock")
             }
         }
-    }
-
-    private func header(_ p: ItemPageData, _ cur: Currency, _ price: Double) -> some View {
-        let reading = itemProfitReading(p.live, cur)
-        let margin: String = price > 0 ? String(format: "margin %.0f%%", (price - p.unitCost) / price * 100) : ""
-        return HStack(alignment: .firstTextBaseline, spacing: PopupSpace.block) {
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(itemAmount(price, cur)).popupText(.figure)
-                Text(p.item.isService ? "per service" : "each").popupText(.caption)
-            }
-            Spacer(minLength: PopupSpace.row)
-            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
-                Text(p.live.outcome == .breakEven ? reading.text : reading.text + " each").popupText(.rowValue).foregroundStyle(reading.tint)
-                Text(margin).popupText(.caption)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    @ViewBuilder private func priceControls(_ e: GameEngine, _ co: Company, _ p: ItemPageData, _ cur: Currency, _ price: Double) -> some View {
-        let range: ClosedRange<Double> = e.itemPriceRange(companyID: co.id)
-        let lo: Double = p.item.marketPrice * range.lowerBound
-        let hi: Double = p.item.marketPrice * range.upperBound
-        let market: Double = p.item.marketPrice
-        let amount = Binding<Double>(get: { min(max(price, lo), hi) }, set: { (v: Double) in draftPrice = v })
-        let unit: String = p.item.isService ? "per service" : "each"
-        if hi > lo {
-            LedgerSlider(value: amount, in: lo...hi, onEditingChanged: { (editing: Bool) in
-                if !editing { commitPrice(draftPrice ?? p.item.price) }
-            })
-            .tint(P.accent)
-            .accessibilityIdentifier("sales-item-price")
-            ProfitBand(lo: lo, hi: hi, cost: p.unitCost, price: price)
-            HStack(alignment: .center, spacing: PopupSpace.row) {
-                Text("Market price").popupText(.rowLabel)
-                Text(itemAmount(market, cur)).popupText(.rowValue)
-                Spacer(minLength: PopupSpace.row)
-                if market >= lo && market <= hi {
-                    Button("Use market price") { Haptics.tap(); commitPrice(market) }
-                        .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
-                        .accessibilityIdentifier("item-use-market-price")
-                }
-            }
-            TypedPriceField(price: price, range: lo...hi, cur: cur, unit: unit,
-                            hint: { (v: Double) -> String? in
-                let lp = ItemModels.liveProfit(price: v, cost: p.unitCost)
-                return lp.outcome == .breakEven ? "Break-even on each one." : "At this price: \(lp.word) \(itemAmount(lp.amount, cur)) on each one."
-            }, onSet: { (v: Double) in draftPrice = v; commitPrice(v) })
-        } else {
-            PopupRow(label: "Market price", value: itemAmount(market, cur))
-        }
-    }
-
-    private func preview(_ f: ItemForecast, _ cur: Currency) -> some View {
-        let profit: String = (f.profitChange >= 0 ? "+" : "\u{2212}") + cur.tidyShort(abs(f.profitChange))
-        return FigureRow(items: [
-            KeyFigures.Item(label: "Demand", value: String(format: "%+.0f%%", f.demandChange * 100), tint: f.demandChange >= 0 ? P.gain : P.loss, sub: "vs market price"),
-            KeyFigures.Item(label: "Sold a week", value: String(format: "about %.0f", f.units)),
-            KeyFigures.Item(label: "Profit a week", value: profit, tint: f.profitChange >= 0 ? P.gain : P.loss, sub: "against now"),
-        ], combineCells: true)
     }
 
     private func hint(_ e: GameEngine, _ p: ItemPageData, _ f: ItemForecast, move: Double) -> String? {

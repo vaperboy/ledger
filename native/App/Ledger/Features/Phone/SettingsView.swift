@@ -56,13 +56,6 @@ struct SettingsView: View {
             toggleRow(Glyph.phone, "Haptic feedback", isOn: $haptics)
             rule
             toggleRow(Glyph.phone, "Sounds", detail: "Short cues, silent when the ringer is muted", isOn: $sounds)
-            if store.engine != nil {
-                rule
-                Button { store.customPickerOpen = true } label: {
-                    plainRow(store.customGlyph, "Custom tab", detail: "Store, Market or any app or company. Long-press it in the tab bar too.", value: store.customTitle, chevron: true)
-                }.buttonStyle(PressableStyle())
-                .accessibilityIdentifier("settings-custom-tab")
-            }
         }
     }
 

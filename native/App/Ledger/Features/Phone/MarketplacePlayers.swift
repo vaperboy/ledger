@@ -285,7 +285,7 @@ struct PlayerListingPage: View {
             }
             ShopSection(title: "Details") { ShopFacts(facts: facts) }
             ShopSection(title: "Seller") {
-                ListingPanel {
+                sellerLink(l) {
                     HStack(spacing: Theme.Space.m) {
                         PlayerAvatar(initials: ArtLibrary.initials(l.sellerName), colour: l.avatarColour ?? AvatarCatalog.colour(for: l.sellerName), icon: l.avatarIcon, size: 40)
                             .overlay(alignment: .bottomTrailing) {
@@ -298,6 +298,7 @@ struct PlayerListingPage: View {
                         }
                         Spacer(minLength: 0)
                         if let lv = l.sellerLevel { Text("Level \(lv)").textStyle(.caption) }
+                        if !l.mine { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint) }
                     }
                 }
             }
@@ -307,6 +308,17 @@ struct PlayerListingPage: View {
         .accessibilityIdentifier("mk-player-listing")
         .safeAreaInset(edge: .bottom, spacing: 0) { ShopBottomAction { actions(l) }.environment(\.outsidePalette, P) }
         .centerSheet(isPresented: $offering, title: "Your offer", category: .medium, tone: .info) { offerSheet(l) }
+    }
+
+    /// The seller panel opens the seller's player card; your own listing has nothing to open.
+    @ViewBuilder private func sellerLink<C: View>(_ l: PlayerListing, @ViewBuilder content: @escaping () -> C) -> some View {
+        if l.mine {
+            ListingPanel { content() }
+        } else {
+            NavigationLink { PlayerProfileView(playerID: l.sellerID, knownName: l.sellerName) } label: { ListingPanel { content() } }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier("mk-seller-card")
+        }
     }
 
     private func dealNote(_ d: MarketDeal) -> some View {

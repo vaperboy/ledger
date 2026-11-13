@@ -99,7 +99,7 @@ enum PhoneSection: String, CaseIterable, Identifiable {
         switch self {
         case .money: return [.bank, .stats, .atlas]
         case .market: return [.market, .luxury]
-        case .shops: return [.marketplace, .auctions, .airStay, .techPro, .store]
+        case .shops: return [.marketplace, .auctions, .airStay, .techPro]
         case .field: return [.competition, .rankings, .world]
         case .daily: return [.inbox, .news, .desk]
         case .you: return [.profile, .season, .settings]

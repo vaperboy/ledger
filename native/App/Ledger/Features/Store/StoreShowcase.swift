@@ -82,39 +82,6 @@ struct StoreSeasonCard: View {
     }
 }
 
-struct StoreProRow: View {
-    var onPlans: () -> Void
-    @Environment(Entitlements.self) private var ent
-
-    var body: some View {
-        Button { Haptics.tap(); onPlans() } label: {
-            HStack(spacing: Theme.Space.m) {
-                LedgerGlyph(glyph: Glyph.lock, size: Theme.Icon.large, tint: Theme.gold)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Plans and gold").textStyle(.headline)
-                    Text(subtitle).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: Theme.Space.s)
-                if ent.ownsPro || ent.isPlus { StoreTag(text: "Owned", tint: Theme.gain) }
-                else { Text("See all").textStyle(.caption, tint: Theme.accent, weight: .semibold) }
-                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
-            }
-            .padding(Theme.Space.m)
-            .frame(minHeight: 44)
-            .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("store-plans")
-    }
-
-    private var subtitle: String {
-        if ent.isFounder { return "Founder's Edition is yours. Gold packs are here too." }
-        if ent.isPlus { return "Ledger Plus is active. Gold packs are here too." }
-        return "Plus, Pro, Battle Pass, Founder's Edition and gold packs."
-    }
-}
-
 struct BoxTile: View {
     var kind: BoxKind
     var index: Int

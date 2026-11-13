@@ -16,7 +16,7 @@ struct PlayerCardData {
     var levelText: String = ""
     var detail: String = ""
     var avatar: AvatarLook
-    /// Worn items by kind: backdrop, namePlate, richListFlair, theme, profileCard (item or card id).
+    /// Worn items by kind: backdrop, richListFlair, theme, profileCard (item or card id).
     var worn: [String: String] = [:]
     /// Kept so stored and shared profiles still decode; the card does not show badges.
     var badgeIcons: [String] = []
@@ -53,14 +53,14 @@ extension PlayerCardData {
 
 /// A part of the card a player can tap to change it.
 enum CardPart: String, CaseIterable, Identifiable {
-    case backdrop, plate, flair, character
+    case backdrop, flair, character
 
     var id: String { rawValue }
 }
 
 /// The one player card, used wherever a player is shown in full.
 /// The backdrop fills the whole card. The top part is picture only (the avatar stands in it, no text); a dark scrim rises from the bottom
-/// so the name plate, title, level and figures sit on a calm area, never on busy art.
+/// so the name, title, level and figures sit on a calm area, never on busy art.
 ///
 /// Backdrop art spec (slot `art.backdrop.<id>`, or `backdrop.<id>.png` in the art folder): one 4:3 landscape picture, 1600 x 1200 px,
 /// drawn aspect-fill and centred, so it is cropped on tall or wide cards. Keep the subject inside the middle 70% and in the upper 55%
@@ -98,7 +98,6 @@ struct PlayerCard: View {
 
     private var backdrop: SeasonReward? { LookKit.item(data.worn["backdrop"] ?? "") }
     private var cardDef: CardDef? { data.worn["profileCard"].flatMap { (id: String) -> CardDef? in CardCatalog.def(forItem: id) } }
-    private var plate: SeasonReward? { LookKit.item(data.worn["namePlate"] ?? "") }
     private var flair: SeasonReward? { LookKit.item(data.worn["richListFlair"] ?? "") }
 
     @ViewBuilder private var backdropFill: some View {
@@ -168,7 +167,7 @@ struct PlayerCard: View {
 
     private var nameRow: some View {
         HStack(spacing: Theme.Space.s) {
-            plateButton
+            nameLabel
             flairView
             if data.hallOfFame { HallOfFameMark() }
             Spacer(minLength: 0)
@@ -176,17 +175,12 @@ struct PlayerCard: View {
         .frame(minHeight: 44)
     }
 
-    @ViewBuilder private var plateButton: some View {
-        let view = NamePlateView(name: data.name, plate: plate)
-        if let onPart {
-            HStack(spacing: Theme.Space.xs) {
-                Button { Haptics.tap(); onPart(.plate) } label: { view.frame(minHeight: 44).contentShape(Rectangle()) }
-                    .buttonStyle(PressableStyle())
-                    .accessibilityHint("Change the name plate")
-                    .accessibilityIdentifier("card-part-plate")
-                if plate == nil { AddChip(title: "Plate") { onPart(.plate) } }
-            }
-        } else if let onRename {
+    @ViewBuilder private var nameLabel: some View {
+        let view = Text(data.name).textStyle(.title, tint: Theme.ink, weight: .semibold)
+            .lineLimit(1).minimumScaleFactor(0.6)
+            .shadow(color: Color.black.opacity(0.55), radius: 6, x: 0, y: 1)
+            .accessibilityLabel(data.name)
+        if onPart == nil, let onRename {
             NameTapLabel(label: data.name, tint: Theme.ink, action: onRename) { view }
         } else {
             view

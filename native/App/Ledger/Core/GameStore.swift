@@ -9,17 +9,17 @@ import SaveSystem
 import Simulation
 
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
-    case projects, group, company, custom, phone
+    case custom, group, company, projects, phone
     var id: String { rawValue }
-    var title: String { switch self { case .company: return "Home"; case .custom: return "Custom"; case .group: return "Group"; case .projects: return "Ventures"; case .phone: return "Phone" } }
+    var title: String { switch self { case .company: return "Home"; case .custom: return "Store"; case .group: return "Group"; case .projects: return "Ventures"; case .phone: return "Phone" } }
     var symbol: String {
-        switch self { case .company: return "house"; case .custom: return "star"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .phone: return "iphone" }
+        switch self { case .company: return "house"; case .custom: return "bag"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .phone: return "iphone" }
     }
     var glyph: String {
-        switch self { case .company: return Glyph.home; case .custom: return Glyph.bank; case .group: return Glyph.group; case .projects: return Glyph.projects; case .phone: return Glyph.phone }
+        switch self { case .company: return Glyph.home; case .custom: return Glyph.shopBag; case .group: return Glyph.group; case .projects: return Glyph.projects; case .phone: return Glyph.phone }
     }
     var accent: Color {
-        switch self { case .company: return Theme.gold; case .custom: return Color(hex: 0xA58BD0); case .group: return Color(hex: 0x7F9BC4); case .projects: return Color(hex: 0xE0BC5E); case .phone: return Color(hex: 0x86B890) }
+        switch self { case .company: return Theme.gold; case .custom: return Color(hex: 0xE0BC5E); case .group: return Color(hex: 0x7F9BC4); case .projects: return Color(hex: 0xE0BC5E); case .phone: return Color(hex: 0x86B890) }
     }
     static let launch: AppTab = .company
     static func from(raw: String) -> AppTab { AppTab(rawValue: raw) ?? .launch }
@@ -196,8 +196,6 @@ final class GameStore: ObservableObject {
     private struct LastPush { var route: NavRoute; var tab: AppTab; var at: Date }
     private var lastPush: LastPush?
     @Published private(set) var stacks: [AppTab: [NavRoute]] = [:]
-    @Published var customTarget: CustomTabTarget = CustomTabTarget.stored()
-    @Published var customPickerOpen = false
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
     @Published private(set) var appRequest: AppRequest?
     @Published private(set) var loadProblem: String?
@@ -726,6 +724,7 @@ final class GameStore: ObservableObject {
     func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
         if var e = engine, e.noteVisit(app: app.rawValue) { engine = e }
         appRequest = request
+        if app == .store { selectTab(.custom); return }
         push(.app(app))
     }
 

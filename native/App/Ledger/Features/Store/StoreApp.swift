@@ -6,25 +6,44 @@ struct StoreApp: View {
     @Environment(OnlineSession.self) private var online
     @Environment(PurchaseManager.self) private var purchases
     private let session = StoreSession.shared
-    @State private var showPlans = false
     @State private var showRedeem = false
     @State private var showInfo = false
+    @State private var pending: PendingAction?
+    @State private var shortOfGold = false
+    @State private var shortNeed = 0
 
     var body: some View {
         let paid: Bool = paidBoxesAllowed
         PhonePageScroll(spacing: Theme.Space.xl) {
-            StoreSeasonCard().storeAppear(0)
-            StoreProRow(onPlans: { showPlans = true }).storeAppear(1)
-            lootBoxes(paid: paid).storeAppear(2)
+            StoreOffersSection(ask: ask).storeAppear(0)
+            StoreBundlesSection(ask: ask).storeAppear(1)
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                StoreBand(title: "Boxes", glyph: Glyph.luxury)
+                lootBoxes(paid: paid)
+            }
+            .storeAppear(2)
             stockGroup(paid: paid)
-            collectionGroup.storeAppear(3)
+            StoreCosmeticsSection(ask: ask).storeAppear(3)
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                StoreBand(title: "Gold", glyph: Glyph.bank)
+                ProPlansView(part: .packs)
+            }
+            collectionGroup
+            ProPlansView(part: .legal)
             footer
         }
         .appScreen(title: "Store", subtitle: "") { StoreGoldChip(amount: session.gold) }
-        .centerSheet(isPresented: $showPlans, title: "Plans and gold", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
+        .confirmAction($pending)
+        .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") {
+            ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false })
+        }
         .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: .cabinet, others: [.grand] + BoxKind.cardPacks) }
         .offerCodeRedemption(isPresented: $showRedeem) { _ in Task { await purchases.codeRedeemed() } }
         .task { await session.load(); await purchases.loadProducts() }
+    }
+
+    private func ask(_ good: GoldGood) {
+        StorePurchase.ask(good, pending: $pending, onShort: { (price: Int) in shortNeed = price; shortOfGold = true })
     }
 
     private var paidBoxesAllowed: Bool {

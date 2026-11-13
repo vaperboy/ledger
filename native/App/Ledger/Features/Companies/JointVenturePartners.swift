@@ -66,8 +66,10 @@ struct JointVenturePartnersCard: View {
         let lock: String = s.locked ? "Cannot sell or leave until \(until)" : (s.isYou ? "Votes with \(String(format: "%.1f", s.pct))%" : "Free to sell or leave")
         let id: Int = company.id
         return VStack(alignment: .leading, spacing: 4) {
-            ListRow(symbol: s.isYou ? "person.fill" : "person", tint: s.isYou ? Theme.accent : Theme.inkSoft,
-                    title: s.isYou ? "\(s.name) (you)" : s.name, subtitle: "\(s.roleTitle) · \(lock)", trailing: String(format: "%.1f%%", s.pct))
+            partnerLink(s) {
+                ListRow(symbol: s.isYou ? "person.fill" : "person", tint: s.isYou ? Theme.accent : Theme.inkSoft,
+                        title: s.isYou ? "\(s.name) (you)" : s.name, subtitle: "\(s.roleTitle) · \(lock)", trailing: String(format: "%.1f%%", s.pct))
+            }
             if let offer {
                 Text("You offered \(cur.tidyDisplay(offer.price)) for their shares. Waiting for their answer until \(JVClock.text(Date(timeIntervalSince1970: offer.expiresAt))).")
                     .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
@@ -88,6 +90,16 @@ struct JointVenturePartnersCard: View {
                     .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
                     .accessibilityIdentifier("jv-buyback")
             }
+        }
+    }
+
+    /// A partner's row opens their player card; your own row has nothing to open.
+    @ViewBuilder private func partnerLink<C: View>(_ s: JointVenture.Stake, @ViewBuilder content: @escaping () -> C) -> some View {
+        if !s.isYou, s.id.hasPrefix("p:") {
+            NavigationLink { PlayerProfileView(playerID: String(s.id.dropFirst(2)), knownName: s.name) } label: { content() }
+                .buttonStyle(PressableStyle())
+        } else {
+            content()
         }
     }
 
@@ -122,7 +134,8 @@ struct JVInviteSheet: View {
     @State private var pct: Double = 20
     @State private var factor: Double = 1
     @State private var role: String = "Partner"
-    @State private var preview = false
+    @State private var showTerms = false
+    @State private var search = ""
     @State private var pctText = "20"
     @State private var priceText = ""
     @State private var editingPct = false
@@ -134,11 +147,7 @@ struct JVInviteSheet: View {
                 let cur: Currency = e.currency(for: co)
                 let fair: Double = e.jvFairPrice(companyID: companyID, pct: pct)
                 let price: Double = privatePrice(e, fair: fair)
-                if preview, let friend = picked, let terms = e.jvTerms(companyID: companyID, pct: pct, price: price) {
-                    consequence(friend: friend, terms: terms, cur: cur)
-                } else {
-                    form(e, co, cur, fair: fair, price: price)
-                }
+                form(e, co, cur, fair: fair, price: price)
             } else {
                 Text("This company no longer exists.").popupText(.body)
             }
@@ -203,67 +212,115 @@ struct JVInviteSheet: View {
     }
 
     @ViewBuilder private func form(_ e: GameEngine, _ co: Company, _ cur: Currency, fair: Double, price: Double) -> some View {
+        friendPicker
+        if picked != nil {
+            termsCard(e, cur, fair: fair, price: price)
+            Text("Role").capsLabel()
+            SegmentedPill(items: ["Partner", "CFO"], title: { $0 }, selection: $role)
+            summary(friend: picked, pct: pct, price: price, fair: fair, cur: cur)
+            readLine(e, price: price)
+            if (e.jointVenture(companyID: companyID)?.members.count ?? 1) > 1 {
+                Text("You have partners, so the invitation goes out only if more than half of all shares vote for it at an emergency meeting.").popupText(.risk)
+            }
+        }
+        Color.clear.frame(height: 0)
+            .popupFooter {
+                PopupFooter(cancel: "Cancel", action: "Send offer", onCancel: { dismiss() }, onAction: { if let f = picked { send(f) } }, actionEnabled: picked != nil, actionID: "jv-send")
+            }
+    }
+
+    /// Step 1: pick the friend from one row of faces, with a search box once the list is long.
+    @ViewBuilder private var friendPicker: some View {
         Text("Who").capsLabel()
         if !loaded {
             ProgressView().tint(Theme.inkSoft)
         } else if friends.isEmpty {
             Text("Add friends in the Friends app first. Their profile shows up here.").popupText(.caption)
         } else {
-            ForEach(friends) { (p: PlayerProfile) in
-                ChoiceCard(title: p.displayName, subtitle: [p.level.map { "Level \($0)" }, p.countryCode].compactMap { $0 }.joined(separator: " · "),
-                           selected: picked?.id == p.id) { picked = p }
+            if friends.count > 5 {
+                LedgerField(placeholder: "Search friends", text: $search, keyboard: .default, identifier: "jv-friend-search")
             }
+            let shown: [PlayerProfile] = friends.filter { (p: PlayerProfile) -> Bool in
+                search.trimmingCharacters(in: .whitespaces).isEmpty || p.displayName.localizedCaseInsensitiveContains(search.trimmingCharacters(in: .whitespaces))
+            }
+            ScrollView(.horizontal) {
+                HStack(spacing: Theme.Space.m) {
+                    ForEach(shown) { (p: PlayerProfile) in friendChip(p) }
+                }
+                .padding(.vertical, Theme.Space.xxs)
+            }
+            .scrollIndicators(.hidden)
         }
-        Text("Their stake").capsLabel()
-        LedgerField(placeholder: "Share", text: $pctText, suffix: "% of the company", keyboard: .decimalPad, identifier: "jv-pct",
-                    onFocusChange: { (f: Bool) in if f { editingPct = true } else { commitPct() } }, onSubmit: { commitPct() })
-            .onChange(of: pctText) { _, _ in if editingPct, let v = typedPct() { pct = v } }
-        LedgerSlider(value: $pct, in: Self.pctRange, step: 1, valueText: "\(Self.pctString(pct))% of the company")
-        Text("From \(Int(Self.pctRange.lowerBound))% to \(Int(Self.pctRange.upperBound))% for each friend.").popupText(.caption)
-        Text("Their private price").capsLabel()
-        LedgerField(placeholder: "Price", text: $priceText, prefix: cur.country.currencySymbol, keyboard: .decimalPad, identifier: "jv-price",
-                    onFocusChange: { (f: Bool) in if f { editingPrice = true } else { commitPrice(e, cur, fair: fair) } }, onSubmit: { commitPrice(e, cur, fair: fair) })
-            .onChange(of: priceText) { _, _ in
-                if editingPrice, fair > 0, let v = typedPrice(e, cur, fair: fair) { factor = v / fair }
+    }
+
+    private func friendChip(_ p: PlayerProfile) -> some View {
+        let on: Bool = picked?.id == p.id
+        return Button { Haptics.tap(); picked = p } label: {
+            VStack(spacing: Theme.Space.xxs) {
+                PlayerAvatar(player: p, size: 44)
+                    .overlay(Circle().strokeBorder(on ? Theme.accent : Color.clear, lineWidth: 2).padding(-3))
+                Text(p.displayName.split(separator: " ").first.map(String.init) ?? p.displayName)
+                    .textStyle(.caption, tint: on ? Theme.accent : Theme.inkSoft, weight: on ? .semibold : .regular).lineLimit(1)
             }
-        LedgerSlider(value: $factor, in: band(e), step: 0.05, valueText: cur.tidyDisplay(price))
-        Text("Fair value of this share: \(cur.tidyDisplay(fair)). You can ask from \(cur.tidyDisplay((fair * band(e).lowerBound).rounded(.up))) to \(cur.tidyDisplay((fair * band(e).upperBound).rounded(.down))).").popupText(.caption)
-        summary(friend: picked, pct: pct, price: price, fair: fair, cur: cur)
-        Text("They see this share and this price, and accept or decline. Other friends you invite get a price of their own.").popupText(.caption)
-        Text("Role").capsLabel()
-        SegmentedPill(items: ["Partner", "CFO"], title: { $0 }, selection: $role)
-        if (e.jointVenture(companyID: companyID)?.members.count ?? 1) > 1 {
-            Text("You have partners, so the invitation goes out only if more than half of all shares vote for it at an emergency meeting.").popupText(.risk)
+            .frame(width: 64, height: 76)
+            .contentShape(Rectangle())
         }
-        Color.clear.frame(height: 0)
-            .popupFooter {
-                PopupFooter(cancel: "Cancel", action: "See what they will read", onCancel: { dismiss() }, onAction: { Haptics.tap(); preview = true }, actionEnabled: picked != nil, actionID: "jv-preview")
-            }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel(p.displayName)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    /// Step 2: the share and the price together in one compact card.
+    private func termsCard(_ e: GameEngine, _ cur: Currency, fair: Double, price: Double) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Their share").capsLabel()
+            LedgerField(placeholder: "Share", text: $pctText, suffix: "% of the company", keyboard: .decimalPad, identifier: "jv-pct",
+                        onFocusChange: { (f: Bool) in if f { editingPct = true } else { commitPct() } }, onSubmit: { commitPct() })
+                .onChange(of: pctText) { _, _ in if editingPct, let v = typedPct() { pct = v } }
+            LedgerSlider(value: $pct, in: Self.pctRange, step: 1, valueText: "\(Self.pctString(pct))%")
+            Text("Their price").capsLabel()
+            LedgerField(placeholder: "Price", text: $priceText, prefix: cur.country.currencySymbol, keyboard: .decimalPad, identifier: "jv-price",
+                        onFocusChange: { (f: Bool) in if f { editingPrice = true } else { commitPrice(e, cur, fair: fair) } }, onSubmit: { commitPrice(e, cur, fair: fair) })
+                .onChange(of: priceText) { _, _ in
+                    if editingPrice, fair > 0, let v = typedPrice(e, cur, fair: fair) { factor = v / fair }
+                }
+            LedgerSlider(value: $factor, in: band(e), step: 0.05, valueText: cur.tidyDisplay(price))
+            Text("Fair value \(cur.tidyDisplay(fair)). Allowed \(cur.tidyDisplay((fair * band(e).lowerBound).rounded(.up))) to \(cur.tidyDisplay((fair * band(e).upperBound).rounded(.down))). Shares \(Int(Self.pctRange.lowerBound))% to \(Int(Self.pctRange.upperBound))%.")
+                .popupText(.caption)
+        }
     }
 
     private func summary(friend: PlayerProfile?, pct: Double, price: Double, fair: Double, cur: Currency) -> some View {
         let who: String = friend?.displayName ?? "Your friend"
         let diff: Double = fair > 0 ? (price / fair - 1) * 100 : 0
-        let note: String = abs(diff) < 0.5 ? "the fair value" : (diff < 0 ? "\(Int(abs(diff).rounded()))% under the fair value, a friendly deal that dilutes you" : "\(Int(diff.rounded()))% over the fair value")
+        let note: String = abs(diff) < 0.5 ? "the fair value" : (diff < 0 ? "\(Int(abs(diff).rounded()))% under the fair value, which dilutes you" : "\(Int(diff.rounded()))% over the fair value")
         return VStack(alignment: .leading, spacing: 2) {
             Text("\(who) gets \(Self.pctString(pct))% for \(cur.tidyDisplay(price))").popupText(.rowLabel)
-            Text("That is \(note).").popupText(.caption)
+            Text("That is \(note). They accept or decline.").popupText(.caption)
         }
     }
 
-    @ViewBuilder private func consequence(friend: PlayerProfile, terms: JointVenture.Terms, cur: Currency) -> some View {
-        Text("If you join, this will happen").popupText(.title)
-        Text("\(friend.displayName) reads this for \(terms.companyName) before answering.").popupText(.caption)
-        ForEach(Array(terms.lines.enumerated()), id: \.offset) { pair in
-            HStack(alignment: .top, spacing: 8) {
-                Circle().fill(Theme.accent).frame(width: 5, height: 5).padding(.top, 7)
-                Text(pair.element).popupText(.body)
+    /// What the friend will read before answering, folded into one line.
+    @ViewBuilder private func readLine(_ e: GameEngine, price: Double) -> some View {
+        if let terms = e.jvTerms(companyID: companyID, pct: pct, price: price) {
+            Button { Haptics.tap(); showTerms.toggle() } label: {
+                HStack {
+                    Text("What they will read").textStyle(.caption, tint: Theme.accent, weight: .semibold)
+                    Spacer(minLength: 8)
+                    Image(systemName: showTerms ? "chevron.up" : "chevron.down").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+                }
+                .frame(minHeight: 36).contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+            if showTerms {
+                ForEach(Array(terms.lines.enumerated()), id: \.offset) { pair in
+                    HStack(alignment: .top, spacing: 8) {
+                        Circle().fill(Theme.accent).frame(width: 5, height: 5).padding(.top, 7)
+                        Text(pair.element).popupText(.caption)
+                    }
+                }
             }
         }
-        Color.clear.frame(height: 0)
-            .popupFooter {
-                PopupFooter(cancel: "Back", action: "Send invitation", onCancel: { preview = false }, onAction: { send(friend) }, actionID: "jv-send")
-            }
     }
 
     private func send(_ friend: PlayerProfile) {

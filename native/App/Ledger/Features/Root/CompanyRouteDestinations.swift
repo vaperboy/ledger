@@ -189,8 +189,8 @@ struct CompanySwitcherBar: View {
             .frame(maxWidth: .infinity)
             .background {
                 ZStack {
-                    if P != .game { P.ground.ignoresSafeArea(edges: .top) }
-                    if let b = LookKit.companyBackdrop(e, id) { HeaderBackdropFill(reward: b).ignoresSafeArea(edges: .top) }
+                    if P != .game { P.ground.ignoresSafeArea(edges: [.top, .horizontal]) }
+                    if let b = LookKit.companyBackdrop(e, id) { HeaderBackdropFill(reward: b).ignoresSafeArea(edges: [.top, .horizontal]) }
                 }
             }
         }

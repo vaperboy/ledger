@@ -11,7 +11,6 @@ struct SeasonView: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
     @ObservedObject private var model = SeasonModel.shared
-    @State private var showPlans = false
     @State private var pending: PendingAction?
     @State private var tab: Tab = .rewards
     @Namespace private var tabLine
@@ -44,7 +43,6 @@ struct SeasonView: View {
         .ledgerBackground()
         .safeAreaInset(edge: .bottom) { if !premium { unlockBar } }
         .confirmAction($pending)
-        .centerSheet(isPresented: $showPlans, title: "Plans and gold", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
     }
 
     private var summaryCard: some View {
@@ -109,7 +107,7 @@ struct SeasonView: View {
     }
 
     private var unlockBar: some View {
-        Button { Haptics.tap(); showPlans = true } label: {
+        Button { Haptics.tap(); store.openApp(.store) } label: {
             HStack(spacing: 8) {
                 LedgerGlyph(glyph: Glyph.lock, size: 16, tint: Theme.accentInk)
                 Text("Unlock battle pass").textStyle(.headline, tint: Theme.accentInk)
@@ -177,7 +175,7 @@ struct SeasonView: View {
     }
 
     private func tap(_ track: SeasonPass.Track, _ t: Int) {
-        if track == .premium && !premium { showPlans = true; return }
+        if track == .premium && !premium { store.openApp(.store); return }
         guard pass.canClaim(track, tier: t, isPlus: premium) else { return }
         if case .claimed(let r) = model.claim(track, tier: t, isPlus: premium) { announce([r]) }
     }

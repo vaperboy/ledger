@@ -214,12 +214,12 @@ enum CoachTours {
             CoachMark(stop: .venturesBacking, text: "Back other founders here: put money into a pitch for a share of it."),
         ]),
         CoachTour(id: "phone", trigger: .tab(.phone), marks: [
-            CoachMark(stop: .phoneGrid, text: "Every app lives here, the Store and the Market too. Tap one to open it."),
+            CoachMark(stop: .phoneGrid, text: "Every app lives here, the Market too. Tap one to open it."),
             CoachMark(stop: .phoneInbox, text: "The Inbox holds every question waiting for you."),
             CoachMark(stop: .phoneBank, text: "The Bank holds your money, bills and loans.", button: "Done"),
         ]),
         CoachTour(id: "custom", trigger: .tab(.custom), marks: [
-            CoachMark(stop: .customTab, text: "This tab is yours. Press and hold it to choose what it opens: it starts on the Inbox. Pick any app, or one of your companies.", button: "Done", fallback: .tabBar),
+            CoachMark(stop: .customTab, text: "The Store: the season pass, plans, gold and boxes.", button: "Done", fallback: .tabBar),
         ]),
         CoachTour(id: "company", trigger: .route(.company), marks: [
             CoachMark(stop: .companyTabs, text: "Overview is the summary, Team the people, Manage how it runs, Sales what it sells and what you charge, Supply who you buy from and Stats the money."),
@@ -247,6 +247,6 @@ enum CoachTours {
 extension GameStore {
     func showsApp(_ app: PhoneApp) -> Bool {
         if path(for: tab).last == .app(app) { return true }
-        return tab == .custom && customPath.isEmpty && customTarget == .app(app)
+        return app == .store && tab == .custom && customPath.isEmpty
     }
 }
