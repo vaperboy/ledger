@@ -52,13 +52,20 @@ extension View {
     func staggerReveal(_ index: Int) -> some View { modifier(StaggerReveal(index: index)) }
 }
 
+/// The money chip in flight. Kept apart from the game store so showing it does not republish the whole app.
+@MainActor
+final class ChipFlight: ObservableObject {
+    static let shared = ChipFlight()
+    @Published var chip: TransferChip?
+}
+
 struct MotionOverlay: View {
-    @EnvironmentObject var store: GameStore
+    @ObservedObject private var flight = ChipFlight.shared
 
     var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 8) {
-                if let c = store.transferChip {
+                if let c = flight.chip {
                     TransferChipView(chip: c, top: proxy.frame(in: .global))
                 }
             }

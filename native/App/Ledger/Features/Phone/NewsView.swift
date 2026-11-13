@@ -12,26 +12,19 @@ struct NewsView: View {
 
     var body: some View {
         if let e = store.engine {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    masthead(e)
-                    sectionPicker
-                    switch section {
-                    case .world:
-                        sourceNote("Source: the newsroom. Weather, banks, markets and the economy, and what happens to your companies.")
-                        frontPage(e)
-                    case .players:
-                        PlayerNewsSection(engine: e)
-                    case .government:
-                        GovernmentNewsSection(engine: e)
-                    case .weather:
-                        WeatherSection(engine: e)
+            // Each section is a page you can swipe to, like turning the paper; the chips stay in step.
+            SegmentPager(items: shownSections, selection: $section) { (s: NewsSection) in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        masthead(e)
+                        sectionPicker
+                        sectionBody(s, e)
                     }
+                    .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
+                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                .scrollIndicators(.hidden)
             }
-            .scrollIndicators(.hidden)
             .outsideScreen(P)
             .accessibilityIdentifier("news-app")
             .navigationDestination(isPresented: $showPaper) { paperPage(e) }
@@ -74,6 +67,22 @@ struct NewsView: View {
         .padding(.bottom, 14)
     }
 
+    private var shownSections: [NewsSection] { NewsSection.allCases.filter { (s: NewsSection) -> Bool in s != .weather || weatherOpen } }
+
+    @ViewBuilder private func sectionBody(_ s: NewsSection, _ e: GameEngine) -> some View {
+        switch s {
+        case .world:
+            sourceNote("Source: the newsroom. Weather, banks, markets and the economy, and what happens to your companies.")
+            frontPage(e)
+        case .players:
+            PlayerNewsSection(engine: e)
+        case .government:
+            GovernmentNewsSection(engine: e)
+        case .weather:
+            WeatherSection(engine: e)
+        }
+    }
+
     enum NewsSection: String, CaseIterable, Identifiable {
         case world = "World and economy", players = "Players", government = "Government", weather = "Weather"
         var id: String { rawValue }
@@ -91,7 +100,7 @@ struct NewsView: View {
 
     private var sectionChips: some View {
         HStack(spacing: 8) {
-            ForEach(NewsSection.allCases.filter { (s: NewsSection) -> Bool in s != .weather || weatherOpen }) { (s: NewsSection) in
+            ForEach(shownSections) { (s: NewsSection) in
                 Button { section = s } label: {
                     Text(s.rawValue).textStyle(.caption, tint: section == s ? P.accentInk : P.inkSoft, weight: .semibold)
                         .padding(.horizontal, 12).padding(.vertical, 7)

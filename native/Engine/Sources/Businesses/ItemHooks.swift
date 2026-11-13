@@ -14,6 +14,7 @@ public enum ItemHooks {
         FinanceItems.weekly(&s, i, data: data)
         let co = s.companies[i]
         if co.status == .open, ItemTradeGroups.food.contains(co.type) { _ = FoodRecipes.apply(&s, companyID: co.id, data: data, trades: ItemTradeGroups.food) }
+        SupplyAutoPick.fillItems(&s, i, data: data)
     }
 
     public static func cogsFactor(_ s: GameState, companyID: Int, data: GameData) -> Double {

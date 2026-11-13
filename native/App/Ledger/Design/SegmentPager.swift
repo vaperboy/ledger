@@ -1,5 +1,7 @@
 import SwiftUI
 
+/// Sub-tabs as pages: swipe left or right to move between them, and the segmented control above stays in step
+/// because both share the same selection.
 struct SegmentPager<T: Hashable, Content: View>: View {
     var items: [T]
     @Binding var selection: T
@@ -19,12 +21,13 @@ struct SegmentPager<T: Hashable, Content: View>: View {
     }
 
     private var paged: some View {
-        let anim: Animation? = reduceMotion ? nil : Motion.quickAnimation
+        let anim: Animation? = Motion.quick(reduceMotion)
         return TabView(selection: $selection) {
             ForEach(items, id: \.self) { (item: T) in
                 content(item)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .environment(\.markerPageActive, outerActive && item == selection)
+                    .accessibilityHidden(item != selection)
                     .tag(item)
             }
         }

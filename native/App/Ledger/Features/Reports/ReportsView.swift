@@ -46,7 +46,9 @@ struct ReportsPage: View {
     }
 
     private func reports() -> [PeriodReport] {
-        let all = engine.reports(kind)
+        // Stored reports are decoded from the save; read them once per game change, not on every redraw.
+        let k: ReportKind = kind
+        let all: [PeriodReport] = store.memo("reports." + k.rawValue) { (g: GameEngine) -> [PeriodReport] in g.reports(k) } ?? engine.reports(k)
         guard let id = companyID else { return all }
         return all.compactMap { $0.filtered(to: id) }
     }

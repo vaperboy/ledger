@@ -76,20 +76,10 @@ struct CompanySales: View {
         }
     }
 
-    private func itemChosen(_ id: String) {
-        if let ask = (store.engine ?? engine).supplyAsk(companyID: company.id, itemID: id) {
-            pendingPrice = id
-            supplierFor = SupplierSubject(ask, itemID: id)
-        } else {
-            store.tutorialAdvance(from: .pickSupplier)
-            showPrice(id)
-        }
-    }
+    /// Suppliers are picked when the company opens, so a new product goes straight to its price.
+    private func itemChosen(_ id: String) { showPrice(id) }
 
-    /// While the guide waits for a supplier, a product opens on its supplier question first.
-    private func openItem(_ id: String) {
-        if store.tutorialStep == .pickSupplier { itemChosen(id) } else { showPrice(id) }
-    }
+    private func openItem(_ id: String) { showPrice(id) }
 
     /// The price page follows the supplier question, unless the player only stepped out to look at an owner.
     private func supplierClosed() {

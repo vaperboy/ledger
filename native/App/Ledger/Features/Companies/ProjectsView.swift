@@ -19,32 +19,40 @@ struct ProjectsView: View {
     var body: some View {
         NavigationStack(path: Binding(get: { store.path(for: .projects) }, set: { store.setPath($0, for: .projects) })) {
             if let e = store.engine {
-                let rows: ProjectRows = e.state.companies.filter { $0.status.isLive }.compactMap { co in e.projectBoard(companyID: co.id).map { (co: co, board: $0) } }
-                ScrollScreen { content(e, rows) }
-                    .id(store.rootToken(.projects))
-                    .scrollDismissesKeyboard(.interactively)
-                    .ledgerBackground()
-                    .toolbar(.hidden, for: .navigationBar)
-                    .safeAreaInset(edge: .top, spacing: 0) { ReturnLine(tab: .projects) }
-                    .companyRouteDestinations()
-                    .navigationDestination(isPresented: $foundOpen) {
-                        SettingsPage(title: "Found a startup", subtitle: "Pick a sector, who builds it and the seed money", tab: .projects) { FoundStartupSheet() }
+                let rows: ProjectRows = store.memo("ventures.rows") { (g: GameEngine) -> ProjectRows in
+                    g.state.companies.filter { $0.status.isLive }.compactMap { co in g.projectBoard(companyID: co.id).map { (co: co, board: $0) } }
+                } ?? []
+                VStack(spacing: 0) {
+                    AppHeader(title: "Ventures", subtitle: "Projects, builds and new ventures")
+                        .padding(.horizontal, Theme.Space.page).padding(.top, 6).padding(.bottom, Theme.Space.s)
+                        .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                    SectionTabs(items: Part.allCases, title: { (p: Part) -> String in p.rawValue }, selection: $part)
+                        .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                    SegmentPager(items: Part.allCases, selection: $part) { (p: Part) in
+                        ScrollScreen(top: Theme.Space.m) { content(p, e, rows) }
+                            .scrollDismissesKeyboard(.interactively)
                     }
-                    .onAppear { if store.takeVenturesRequest() { part = .portfolio } }
-                    .onChange(of: store.appRequest) { _, _ in if store.takeVenturesRequest() { part = .portfolio } }
-                    .onChange(of: store.rootToken(.projects)) { _, _ in part = .projects }
+                }
+                .id(store.rootToken(.projects))
+                .ledgerBackground()
+                .toolbar(.hidden, for: .navigationBar)
+                .safeAreaInset(edge: .top, spacing: 0) { ReturnLine(tab: .projects) }
+                .companyRouteDestinations()
+                .navigationDestination(isPresented: $foundOpen) {
+                    SettingsPage(title: "Found a startup", subtitle: "Pick a sector, who builds it and the seed money", tab: .projects) { FoundStartupSheet() }
+                }
+                .onAppear { if store.takeVenturesRequest() { part = .portfolio } }
+                .onChange(of: store.appRequest) { _, _ in if store.takeVenturesRequest() { part = .portfolio } }
+                .onChange(of: store.rootToken(.projects)) { _, _ in part = .projects }
             }
         }
     }
 
-    @ViewBuilder private func content(_ e: GameEngine, _ rows: ProjectRows) -> some View {
-        let active: [ActiveVenture] = VentureBoard.active(e, store)
-        let options: [VentureOption] = VentureBoard.options(e, store, rows)
-        AppHeader(title: "Ventures", subtitle: "Projects, builds and new ventures")
-        SectionTabs(items: Part.allCases, title: { (p: Part) -> String in p.rawValue }, selection: $part)
-            .padding(.horizontal, -Theme.Space.margin)
-        switch part {
+    @ViewBuilder private func content(_ p: Part, _ e: GameEngine, _ rows: ProjectRows) -> some View {
+        switch p {
         case .projects:
+            let active: [ActiveVenture] = VentureBoard.active(e, store)
+            let options: [VentureOption] = VentureBoard.options(e, store, rows)
             hero(e, active, prompt: prompt(e, active, options, rows))
             VenturesActiveSection(active: active, hasCompanies: e.state.companies.contains { (c: Company) -> Bool in c.status.isLive })
             VenturesStartSection(options: options, open: open, newCompany: { store.push(.newCompany) })

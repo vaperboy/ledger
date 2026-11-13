@@ -91,7 +91,7 @@ struct CompanyDetailView: View {
                     CompanyCustomiseButton(companyID: co.id)
                 }
             }
-            .onAppear { applyPart(tabs) }
+            .onAppear { applyPart(tabs); openSalesForGuide(tabs) }
             .navigationDestination(isPresented: Binding(get: { opsPart != .setup }, set: { if !$0 { opsPart = .setup } })) {
                 OpsPageDestination(part: opsPart == .setup ? heldOpsPart : opsPart, companyID: companyID)
             }
@@ -181,6 +181,12 @@ struct CompanyDetailView: View {
         } else {
             CompanySales(engine: e, company: co)
         }
+    }
+
+    /// While the guide waits for a product and its price, the company opens on Sales where both are.
+    private func openSalesForGuide(_ tabs: [CompanyTab]) {
+        guard part == nil, tabs.contains(.sales), store.tutorialStep == .openCompany || store.tutorialStep == .setPrice else { return }
+        segment = .sales
     }
 
     private func applyPart(_ tabs: [CompanyTab]) {

@@ -182,14 +182,15 @@ final class GameStore: ObservableObject {
         guard !items.isEmpty else { return }
         homeEvents = Array((items + homeEvents).prefix(12))
     }
-    @Published private(set) var transferChip: TransferChip?
+    /// Lives in its own small object so a flying money chip redraws only the overlay, not every screen.
+    var transferChip: TransferChip? { ChipFlight.shared.chip }
     func flyChip(_ label: String, amount: Double, from origin: CGPoint? = nil, outgoing: Bool = false, text: String? = nil) {
-        transferChip = TransferChip(label: label, amount: amount, origin: origin, outgoing: outgoing, text: text)
+        ChipFlight.shared.chip = TransferChip(label: label, amount: amount, origin: origin, outgoing: outgoing, text: text)
     }
-    func clearChip() { transferChip = nil }
+    func clearChip() { ChipFlight.shared.chip = nil }
     @Published private(set) var dailySheet: DailyDigest?
 
-    @Published var tab: AppTab = AppTab.launch
+    @Published var tab: AppTab = AppTab.launch { didSet { if tab != oldValue { routeChanged() } } }
     @Published private(set) var previousTab: AppTab?
     func returnToPreviousTab() {
         guard let p = previousTab, p != tab else { return }
@@ -197,7 +198,7 @@ final class GameStore: ObservableObject {
     }
     private struct LastPush { var route: NavRoute; var tab: AppTab; var at: Date }
     private var lastPush: LastPush?
-    @Published private(set) var stacks: [AppTab: [NavRoute]] = [:]
+    @Published private(set) var stacks: [AppTab: [NavRoute]] = [:] { didSet { routeChanged() } }
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
     @Published private(set) var appRequest: AppRequest?
     @Published private(set) var loadProblem: String?
@@ -557,9 +558,10 @@ final class GameStore: ObservableObject {
     }
 
     func markRead(_ id: Int) {
-        guard var e = engine else { return }
-        e.update { s, _, _ in if let i = s.inbox.firstIndex(where: { $0.id == id }), !s.inbox[i].isRead { s.inbox[i].isRead = true } }
+        guard var e = engine, e.state.inbox.contains(where: { $0.id == id && !$0.isRead }) || e.tutorialStep != nil else { return }
+        e.markMessageRead(id)
         engine = e
+        noteTutorialDone()
     }
 
     @discardableResult
@@ -742,6 +744,7 @@ final class GameStore: ObservableObject {
         } else {
             if resetRoot { popToRoot(t) }
             previousTab = tab
+            TabSwitchTimer.begin(t)
             tab = t
         }
         appRequest = nil

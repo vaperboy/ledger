@@ -304,6 +304,7 @@ public enum CompanySetup {
         let used = CapacityModel.ownerHoursCommitted(s, except: id)
         let hours = max(0, (min(s.companies[i].ownerHours, 80 - used, max(10, 55 - used)) / 5).rounded(.down) * 5)
         s.companies[i].ownerHours = hours
+        SupplyAutoPick.assign(&s, companyID: id, data: data)
         return .success(id)
     }
 

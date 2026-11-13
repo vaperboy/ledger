@@ -31,7 +31,7 @@ public extension GameEngine {
     @discardableResult
     mutating func chooseFirstItem(companyID: Int, itemID: String) -> SettingResult {
         let data = self.data
-        return applySetting(refuse: { s in
+        let result = applySetting(refuse: { s in
             guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return "That company no longer exists." }
             guard co.status == .open else { return "Only an open company sells things." }
             guard SalesItems.firstChoicePending(co), let i = s.companyIndex(companyID) else { return "You have already chosen what to sell." }
@@ -41,6 +41,9 @@ public extension GameEngine {
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.settlePick(&s, companyID: companyID, keeping: itemID, data: d)
         }
+        // Picking the first product happens on the company page, so the guide's open-company step is done too.
+        if !result.isRefused { tutorialSaw(.company) }
+        return result
     }
 
     func itemForecast(companyID: Int, itemID: String, price: Double, discountPercent: Double) -> ItemForecast {

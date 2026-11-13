@@ -52,7 +52,7 @@ public enum DecisionLinks {
 }
 
 public extension GameEngine {
-    /// Answers a decision and says what came of it, so every answer shows its own result.
+    /// Answers a decision and says what came of it in a few plain lines; only a big choice with a real cost adds one cost line.
     mutating func answerDecision(messageID: Int, option: Int) -> DecisionAnswer {
         guard let m = state.inbox.first(where: { (x: Message) -> Bool in x.id == messageID }), m.status == "open", m.options.indices.contains(option) else {
             return DecisionAnswer(applied: false, lines: [], link: nil)
@@ -61,8 +61,8 @@ public extension GameEngine {
         let ids: Set<Int> = Set(state.inbox.map { (x: Message) -> Int in x.id })
         let notes: Int = (state.rest["rep"]?["ev"].array ?? []).count
         let feed: [FeedLine] = state.feedLines
-        let coCash: Double? = m.companyID != 0 ? state.company(m.companyID)?.cash : nil
-        let myCash: Double = state.cash
+        let cashBefore: Double = state.cash
+        let weekly: Double = m.companyID != 0 ? (state.company(m.companyID)?.lastWeekRevenue ?? 0) : 0
         let queued: Int = (state.rest["e27"]?["q"].array ?? []).count
         update { (s: inout GameState, _: GameData, _: FinanceContext) -> Void in s.rest[EventEngine.gambleKey] = nil }
         let link: DecisionLink? = DecisionLinks.link(m, option: option, state: state)
@@ -72,24 +72,26 @@ public extension GameEngine {
         var cur: Currency = homeCurrency
         if let c = state.company(m.companyID) { cur = currency(for: c) }
         var lines: [String] = Self.effectLines(fx, worked: worked, currency: cur)
-        if let before = coCash, let after = state.company(m.companyID)?.cash, abs(after - before) >= 1 {
-            let name: String = state.company(m.companyID)?.name ?? "The company"
-            lines.append("\(name): \(Self.signedMoney(after - before, cur))")
-        }
-        if abs(state.cash - myCash) >= 1 { lines.append("Your own cash: \(Self.signedMoney(state.cash - myCash, homeCurrency))") }
         let newNotes: [JSONValue] = Array((state.rest["rep"]?["ev"].array ?? []).dropFirst(notes))
         lines += newNotes.map { (n: JSONValue) -> String in n["t"].string }
         lines += Self.feedAdded(feed, state.feedLines).map { (l: FeedLine) -> String in l.text }
         lines += state.inbox.filter { (x: Message) -> Bool in !ids.contains(x.id) }.map { (x: Message) -> String in x.title }
-        // A story with a sequel: say when the result comes, so a quiet answer does not look like nothing happened.
-        if (state.rest["e27"]?["q"].array ?? []).count > queued { lines.append("More follows in the coming weeks.") }
         var seen: Set<String> = []
-        lines = lines.filter { (l: String) -> Bool in !l.isEmpty && seen.insert(l).inserted }
+        lines = lines.filter { (l: String) -> Bool in !l.isEmpty && DecisionStory.isPlain(l) && seen.insert(l).inserted }
+        // A story with a sequel: say when the result comes, so a quiet answer does not look like nothing happened.
+        let sequel: Bool = (state.rest["e27"]?["q"].array ?? []).count > queued
+        lines = Array(lines.prefix(DecisionStory.maxLines - (sequel ? 1 : 0)))
+        if sequel { lines.append("More follows in the coming weeks.") }
+        // One account: the money moved once, so it is told once, and only for a big choice.
+        let spent: Double = cashBefore - state.cash
+        if spent >= 1, DecisionStory.isBig(m, option: option, spent: spent, weeklyRevenue: weekly) {
+            lines.append(DecisionStory.costLine(spent, homeCurrency))
+        }
         if lines.isEmpty { lines = ["Nothing changes for now."] }
-        return DecisionAnswer(applied: true, lines: Array(lines.prefix(6)), link: link)
+        return DecisionAnswer(applied: true, lines: lines, link: link)
     }
 
-    /// The option's effects as they turned out: the gamble's branch that came up, without the money lines (the cash change says those).
+    /// The option's effects as they turned out, in plain words: the gamble's branch that came up, then the rest.
     static func effectLines(_ fx: JSONValue, worked: Bool?, currency cur: Currency) -> [String] {
         guard case .object(var base) = fx else { return [] }
         var out: [String] = []
@@ -97,14 +99,11 @@ public extension GameEngine {
         base["gamble"] = nil
         if !g.isNull, let w = worked {
             out.append(w ? "It worked out." : "It did not work out.")
-            out += EffectPreview.lines(w ? g["ok"] : g["bad"], currency: cur)
+            out += EffectPreview.story(w ? g["ok"] : g["bad"], currency: cur)
         }
-        out += EffectPreview.lines(.object(base), currency: cur)
-        let money: [String] = ["Costs ", "Brings in ", "Risk of a loss", "Fine of ", "If it works", "If not", "A gamble"]
-        return out.filter { (l: String) -> Bool in !money.contains { (p: String) -> Bool in l.hasPrefix(p) } }
+        out += EffectPreview.story(.object(base), currency: cur)
+        return out
     }
-
-    static func signedMoney(_ v: Double, _ cur: Currency) -> String { (v >= 0 ? "+" : "\u{2212}") + cur.display(abs(v)) }
 
     /// Feed lines added since `before`; the list keeps only its newest lines, so match the overlap.
     static func feedAdded(_ before: [FeedLine], _ after: [FeedLine]) -> [FeedLine] {
@@ -115,4 +114,30 @@ public extension GameEngine {
         }
         return []
     }
+}
+
+/// How an answer's result is told: a short story, never engine numbers, and a cost line only for the big choices.
+public enum DecisionStory {
+    public static let maxLines = 3
+    static let bigWords: Set<String> = ["fire", "dismiss", "sack", "settle", "court", "lawyer", "lawsuit", "sue", "sues", "fine", "fines",
+                                        "sign", "contract", "sell"]
+
+    /// False for a line that shows an engine number such as "+2 reputation", "−150 kr" or "demand 5%".
+    public static func isPlain(_ line: String) -> Bool {
+        line.range(of: #"[+−]\s?\d|(^|\s)-\d|\d\s?%"#, options: .regularExpression) == nil
+    }
+
+    /// Firing someone, a lawsuit, a fine, a signed contract, or a cost of more than two weeks of the company's sales.
+    public static func isBig(_ m: Message, option: Int, spent: Double, weeklyRevenue: Double) -> Bool {
+        guard m.options.indices.contains(option) else { return false }
+        if DecisionConfirm.confirmation(for: m, option: option).irreversible { return true }
+        let fx: JSONValue = m.options[option]["fx"]
+        if fx["fine"].double != 0 { return true }
+        let text: String = (m.options[option]["l"].string + " " + m.title).lowercased()
+        let words: [String] = text.split { (c: Character) -> Bool in !c.isLetter }.map { (w: Substring) -> String in String(w) }
+        if words.contains(where: { (w: String) -> Bool in bigWords.contains(w) }) || text.contains("let go") { return true }
+        return weeklyRevenue > 0 && spent >= 2 * weeklyRevenue
+    }
+
+    public static func costLine(_ spent: Double, _ cur: Currency) -> String { "It cost you \(cur.display(spent))." }
 }

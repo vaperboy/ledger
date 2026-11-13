@@ -13,8 +13,8 @@ enum FirstRunFlags {
 
 enum CoachStop: Hashable {
     case nextDay, happened, homeCompany
-    case firstPick, firstItemRow, itemPrice, itemSupplier, goalCard, inboxGuided
-    case tabBar, customTab
+    case firstPick, firstItemRow, itemPrice, goalCard, inboxGuided
+    case tabBar, customTab, tabItem(String)
     case groupAdd, groupStructure, groupPeople, groupCard
     case venturesHeader, venturesFound, venturesBacking
     case phoneGrid, phoneInbox, phoneBank
@@ -123,7 +123,7 @@ struct CoachMarks: View {
             }
         }
         .padding(Theme.Space.l)
-        .glassSurface(radius: Theme.Radius.card, raised: true)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surfaceRaised))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.accent.opacity(0.45), lineWidth: 1))
         .padding(.horizontal, Theme.Space.page)
         .frame(maxWidth: 520)
@@ -156,49 +156,45 @@ struct CoachTour {
 }
 
 enum CoachTours {
+    /// Guide marks for each step, most exact first: the first one whose control is on screen is shown.
     static func tutorial(_ step: TutorialStep) -> [CoachMark] {
+        let home: CoachStop = .tabItem(AppTab.company.rawValue)
+        let phone: CoachStop = .tabItem(AppTab.phone.rawValue)
         switch step {
         case .openCompany:
             return [
-                CoachMark(stop: .homeCompany, text: "Tap your company to open it.", passThrough: true, button: ""),
-                CoachMark(stop: .groupCard, text: "Tap your company to open it.", passThrough: true, button: ""),
-                CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: "", blocking: false),
-            ]
-        case .pickSupplier:
-            return [
-                CoachMark(stop: .itemSupplier, text: "Who supplies it? Tap it, then keep the supplier or pick another.", passThrough: true, button: ""),
-                CoachMark(stop: .firstPick, text: "Tap what you want to sell first, then press the Start button under the list.", passThrough: true, button: ""),
-                CoachMark(stop: .firstItemRow, text: "Tap what you sell, then choose who supplies it.", passThrough: true, button: ""),
-                CoachMark(stop: .companyTabs, text: "Tap Sales to choose your first product and who supplies it.", passThrough: true, button: ""),
-                CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .homeCompany, text: "Tap your company to open it."),
+                CoachMark(stop: .groupCard, text: "Tap your company to open it."),
+                CoachMark(stop: home, text: "Tap Home, then your company."),
             ]
         case .setPrice:
             return [
-                CoachMark(stop: .itemPrice, text: "Set your price: slide it, or tap Cheap, Market or Premium, then press Done.", passThrough: true, button: ""),
-                CoachMark(stop: .firstItemRow, text: "Tap your product to set its price.", passThrough: true, button: ""),
-                CoachMark(stop: .companyTabs, text: "Tap Sales to find your product.", passThrough: true, button: ""),
-                CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .firstPick, text: "Pick what you sell first, then tap Start. Its price comes next."),
+                CoachMark(stop: .firstItemRow, text: "Tap your product to set its price."),
+                CoachMark(stop: .companyTabs, text: "Tap Sales to find your product."),
+                CoachMark(stop: .homeCompany, text: "Tap your company to set your first price."),
+                CoachMark(stop: home, text: "Tap Home, then your company."),
             ]
         case .nextDay:
             return [
-                CoachMark(stop: .nextDay, text: "Press Next day. One day passes: customers buy and the books move.", passThrough: true, button: ""),
-                CoachMark(stop: .tabBar, text: "Go back to the Home tab: Next day is there.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .nextDay, text: "Tap Next day. A day passes: customers buy and the books move."),
+                CoachMark(stop: home, text: "Tap Home: Next day is there."),
             ]
         case .openInbox:
             return [
-                CoachMark(stop: .phoneInbox, text: "Open the Inbox. Questions and news from your business arrive here.", passThrough: true, button: ""),
-                CoachMark(stop: .tabBar, text: "Open the Phone tab. The Inbox is an app on it.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .phoneInbox, text: "Open the Inbox. News and questions from your business arrive here."),
+                CoachMark(stop: phone, text: "Tap Phone. The Inbox is an app on it."),
             ]
         case .readInbox:
             return [
-                CoachMark(stop: .inboxGuided, text: "Open the message marked Read next. Anything that needs an answer waits at the top of the Inbox.", passThrough: true, button: "", blocking: false),
-                CoachMark(stop: .phoneInbox, text: "Open the Inbox again to read what came in.", passThrough: true, button: "", blocking: false),
-                CoachMark(stop: .tabBar, text: "Open the Phone tab, then the Inbox.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .inboxGuided, text: "Open a message to read it."),
+                CoachMark(stop: .phoneInbox, text: "Open the Inbox to read what came in."),
+                CoachMark(stop: phone, text: "Tap Phone, then the Inbox."),
             ]
         case .claimGoal:
             return [
-                CoachMark(stop: .goalCard, text: "A reward is ready. Tap the goal strip and claim it.", passThrough: true, button: "", blocking: false),
-                CoachMark(stop: .tabBar, text: "Open the Home tab: the goal strip is there.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .goalCard, text: "A reward is ready. Tap it to claim."),
+                CoachMark(stop: home, text: "Tap Home: your reward is there."),
             ]
         }
     }

@@ -32,7 +32,6 @@ struct MarketApp: View {
         let open: (MarketRoute) -> Void = { (r: MarketRoute) in route = r }
         switch t {
         case .overview: MarketOverviewPage(open: open)
-        case .companies: MarketCompaniesPage(open: open)
         case .invest: MarketInvestPage(open: open)
         case .exchange:
             if store.levelOpen(.exchange) {
@@ -46,8 +45,8 @@ struct MarketApp: View {
     private func take() {
         if let t = store.takeMarketTabRequest() { tab = t; return }
         guard let id = store.takeMarketRequest() else { return }
-        guard id != 0, store.engine?.state.company(id) != nil else { tab = .overview; return }
-        tab = .companies
+        tab = .overview
+        guard id != 0, store.engine?.state.company(id) != nil else { return }
         Task { @MainActor in route = .company(id) }
     }
 }
@@ -96,7 +95,7 @@ struct MarketDestination: View {
             case .stock(let id): MarketStockPage(instrumentID: id)
             case .dataAnalyst:
                 ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.s) { DataAnalystCard() }
-                    .appScreen(title: "Data analyst", subtitle: "Market \u{00B7} Companies")
+                    .appScreen(title: "Data analyst", subtitle: "Market")
             }
         }
         .id(route)

@@ -271,15 +271,14 @@ struct ItemPriceSheet: View {
     private func footer(owner: Bool, current: Double) -> some View {
         Button("Done") { Haptics.tap(); finish(owner: owner, current: current) }
             .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+            .guideHint(owner && store.tutorialStep == .setPrice, key: "price.\(itemID)")
             .accessibilityIdentifier("item-price-done")
     }
 
     /// Done keeps the price on screen: a pending change is saved, and in the guide the shown price counts as the player's choice.
     private func finish(owner: Bool, current: Double) {
         if owner {
-            let guided: Bool = store.tutorialStep == .setPrice
-            if let d = draftPrice { commitPrice(d) } else if guided { commitPrice(current) }
-            store.tutorialAdvance(from: .setPrice)
+            if let d = draftPrice { commitPrice(d) } else if store.tutorialStep == .setPrice { commitPrice(current) }
         }
         onClose()
     }

@@ -24,12 +24,11 @@ struct GoalsContent: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var season = SeasonModel.shared
     @State private var tab: GoalsTab = .daily
-    @State private var daily: PlayerGoals.DailyGoal?
     var engine: GameEngine
 
     var body: some View {
         let e = engine
-        let claims: [GoalClaims.Claimable] = store.claimableGoals
+        let claims: [GoalClaims.Claimable] = store.openGoalClaims
         let tick: Int = e.state.week * 7 + e.state.day
         VStack(spacing: 0) {
             GoalsPassStrip()
@@ -39,7 +38,7 @@ struct GoalsContent: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     switch tab {
-                    case .daily: GoalsDailyTab(engine: e, daily: daily, claims: claims, claim: claim)
+                    case .daily: GoalsDailyTab(engine: e)
                     case .weekly: GoalsWeeklyTab()
                     case .season: GoalsSeasonTab()
                     case .long: GoalsLongTab(engine: e, claims: claims, claim: claim)
@@ -50,23 +49,40 @@ struct GoalsContent: View {
             }
             .scrollIndicators(.hidden)
             .scrollBounceBehavior(.basedOnSize)
+            .simultaneousGesture(swipe)
         }
         .ledgerBackground()
-        .onAppear { season.refreshSeason(); daily = store.dailyGoal() }
-        .onChange(of: tick) { _, _ in daily = store.dailyGoal() }
+        .onAppear { season.refreshSeason(); store.syncMissions() }
+        .onChange(of: tick) { _, _ in store.syncMissions() }
     }
+
+    private func ready(_ p: PlayMissions.Period) -> Int { store.missionsReady.filter { (m: PlayMissions.Entry) -> Bool in m.period == p }.count }
 
     private func badge(_ t: GoalsTab, _ claims: [GoalClaims.Claimable]) -> Int {
         switch t {
-        case .daily: return claims.filter { (c: GoalClaims.Claimable) -> Bool in c.kind == .daily }.count
-        case .long: return claims.filter { (c: GoalClaims.Claimable) -> Bool in c.kind != .daily }.count
-        default: return 0
+        case .daily: return ready(.day)
+        case .weekly: return ready(.week)
+        case .season: return ready(.season)
+        case .long: return claims.count
         }
     }
 
     private func claim(_ c: GoalClaims.Claimable) {
         store.claimGoal(c.kind, id: c.goalID)
-        daily = store.dailyGoal()
+    }
+
+    // Swipe left or right between the tabs; mostly-vertical drags still scroll.
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 30).onEnded { (v: DragGesture.Value) -> Void in
+            let dx: CGFloat = v.translation.width, dy: CGFloat = v.translation.height
+            guard abs(dx) > 60, abs(dx) > abs(dy) * 1.6 else { return }
+            let all: [GoalsTab] = GoalsTab.allCases
+            guard let i = all.firstIndex(of: tab) else { return }
+            let j: Int = dx < 0 ? i + 1 : i - 1
+            guard all.indices.contains(j) else { return }
+            Haptics.tap()
+            tab = all[j]
+        }
     }
 }
 
@@ -226,22 +242,74 @@ struct GoalRowView: View {
     }
 }
 
-struct PassMissionCard: View {
-    var row: SeasonPass.MissionRow
+// One mission: ring, what to do, what it pays, and a Claim button once it is finished.
+struct MissionRowView: View {
+    @EnvironmentObject var store: GameStore
+    var entry: PlayMissions.Entry
+
+    private var length: String {
+        let m: Int = entry.minutes
+        if m < 60 { return "about \(m) min" }
+        let halves: Int = Int((Double(m) / 30).rounded())
+        let whole: Int = halves / 2
+        let text: String = halves % 2 == 0 ? "\(whole)" : "\(whole)\u{00BD}"
+        return "about \(text) hours"
+    }
+
+    private var meta: String {
+        let kind: String = entry.tier == .hard ? "Hard" : "Easy"
+        if entry.claimed { return kind + ". Reward claimed" }
+        if entry.done { return kind + ". Finished" }
+        return kind + ", " + length + ". " + GoalsFeed.progressWords(entry.fraction)
+    }
+
+    private var reward: String {
+        var parts: [String] = ["+\(entry.xp) XP", "+" + store.short(entry.cash)]
+        if entry.gold > 0 { parts.append("+\(entry.gold) gold") }
+        return parts.joined(separator: "   ")
+    }
 
     var body: some View {
-        GoalsCard {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                    LedgerGlyph(glyph: row.done ? Glyph.check : Glyph.chevron, size: 12, tint: row.done ? Theme.gain : Theme.inkFaint)
-                    Text(row.mission.title).textStyle(.body, tint: row.done ? Theme.inkSoft : Theme.ink).fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: Theme.Space.s)
-                    Text("+\(row.mission.xp) XP").textStyle(.caption, tint: Theme.gain, numeric: true)
+        GoalsCard(highlight: entry.ready) {
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                GoalRing(progress: entry.fraction, done: entry.done)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(entry.title.tidyMoney).textStyle(.headline, tint: entry.claimed ? Theme.inkSoft : nil)
+                        .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    Text(meta).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    if !entry.claimed { Text(reward).textStyle(.caption, tint: Theme.accent, numeric: true).fixedSize(horizontal: false, vertical: true) }
                 }
-                ProgressLine(fraction: Double(row.progress) / Double(max(1, row.mission.target)), tint: Theme.gold, height: 4)
-                Text("\(row.progress) of \(row.mission.target)").textStyle(.caption, numeric: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if entry.ready {
+                    Button { store.claimMission(entry) } label: {
+                        Text("Claim").textStyle(.body, tint: Theme.accentInk, weight: .semibold)
+                            .padding(.horizontal, Theme.Space.l).frame(minHeight: 44)
+                            .background(Capsule().fill(Theme.accent))
+                    }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityLabel("Claim " + entry.title)
+                    .accessibilityIdentifier("claim-mission-" + entry.id)
+                }
             }
-            .accessibilityElement(children: .combine)
+            .frame(minHeight: 44)
+            .accessibilityElement(children: .contain)
+        }
+    }
+}
+
+struct MissionList: View {
+    @EnvironmentObject var store: GameStore
+    var period: PlayMissions.Period
+    var title: String
+    var note: String
+
+    var body: some View {
+        let rows: [PlayMissions.Entry] = store.missionEntries(period)
+        GoalsGroup(title: title, note: note) {
+            if rows.isEmpty {
+                GoalsCard { Text("New missions appear once your first company is open.").textStyle(.body, tint: Theme.inkSoft).frame(minHeight: 44, alignment: .leading) }
+            }
+            ForEach(rows) { (r: PlayMissions.Entry) in MissionRowView(entry: r) }
         }
     }
 }
@@ -249,45 +317,11 @@ struct PassMissionCard: View {
 // MARK: Daily
 
 struct GoalsDailyTab: View {
-    @EnvironmentObject var store: GameStore
-    @ObservedObject private var season = SeasonModel.shared
     @ObservedObject private var login = StreakModel.shared
     var engine: GameEngine
-    var daily: PlayerGoals.DailyGoal?
-    var claims: [GoalClaims.Claimable]
-    var claim: (GoalClaims.Claimable) -> Void
 
     var body: some View {
-        let off: Bool = engine.dailyGoalsOff
-        let today: Int = season.today
-        let rows: [SeasonPass.MissionRow] = season.pass.missionRows(.day, today: today)
-        GoalsGroup(title: "Today's goal") {
-            if let line = GoalsFeed.daily(daily, claims: claims) {
-                GoalRowView(line: line, claim: claim)
-            } else {
-                GoalsCard { Text(off ? "The daily goal is off." : "No goal today.").textStyle(.body, tint: Theme.inkSoft).frame(minHeight: 44, alignment: .leading) }
-            }
-            Button(off ? "Turn the daily goal on" : "Turn the daily goal off") {
-                Haptics.tap()
-                store.act { $0.setDailyGoalsOff(!off) }
-            }
-            .textStyle(.caption, tint: Theme.inkFaint, weight: .medium)
-            .buttonStyle(PressableStyle())
-            .frame(minHeight: 44)
-        }
-        GoalsGroup(title: "Pass missions today", note: "Each one adds XP to the battle pass.") {
-            GoalsCard {
-                HStack(spacing: Theme.Space.s) {
-                    LedgerGlyph(glyph: season.pass.loginDay == today ? Glyph.check : Glyph.lock, size: 14, tint: season.pass.loginDay == today ? Theme.gain : Theme.inkFaint)
-                    Text("Open the game today").textStyle(.body)
-                    Spacer(minLength: Theme.Space.s)
-                    Text("+\(PassMissions.loginXP) XP").textStyle(.caption, tint: Theme.gain, numeric: true)
-                }
-                .frame(minHeight: 28)
-                .accessibilityElement(children: .combine)
-            }
-            ForEach(rows) { (r: SeasonPass.MissionRow) in PassMissionCard(row: r) }
-        }
+        MissionList(period: .day, title: "Today's missions", note: "Four quick ones and one big one. A fresh set comes every day.")
         GoalsGroup(title: "Streaks") { streaks }
     }
 
@@ -299,8 +333,8 @@ struct GoalsDailyTab: View {
         if info.protectionTokens > 0 { goalNote += ". A missed day is covered once" }
         return GoalsCard {
             VStack(spacing: 0) {
-                LedgerRow(leading: .symbol("flame.fill"), leadingTint: info.count > 0 ? Theme.warn : Theme.inkFaint, title: "Daily goal streak",
-                          subtitle: goalNote, value: days(info.count), density: .compact)
+                LedgerRow(leading: .symbol("flame.fill"), leadingTint: info.count > 0 ? Theme.warn : Theme.inkFaint, title: "Mission streak",
+                          subtitle: "Finish two daily missions a day. " + goalNote, value: days(info.count), density: .compact)
                 Hairline()
                 LedgerRow(leading: .symbol("calendar"), leadingTint: login.streak.count > 0 ? Theme.warn : Theme.inkFaint, title: "Login streak",
                           subtitle: login.line.isEmpty ? "Open the game each day for a season box." : login.line, value: days(login.streak.count), density: .compact)
@@ -317,16 +351,8 @@ struct GoalsDailyTab: View {
 // MARK: Weekly
 
 struct GoalsWeeklyTab: View {
-    @ObservedObject private var season = SeasonModel.shared
-
     var body: some View {
-        let rows: [SeasonPass.MissionRow] = season.pass.missionRows(.week, today: season.today)
-        GoalsGroup(title: "Pass missions this week", note: "Bigger tasks that add XP to the battle pass.") {
-            if rows.isEmpty {
-                GoalsCard { Text("No weekly missions right now.").textStyle(.body, tint: Theme.inkSoft).frame(minHeight: 44, alignment: .leading) }
-            }
-            ForEach(rows) { (r: SeasonPass.MissionRow) in PassMissionCard(row: r) }
-        }
+        MissionList(period: .week, title: "This week's missions", note: "Bigger goals that take a few sittings. New ones every week.")
     }
 }
 
@@ -340,7 +366,6 @@ struct GoalsSeasonTab: View {
         let pass: SeasonPass = season.pass
         let premium: Bool = season.premiumOpen(plus: ent.isPlus, founder: ent.isFounder)
         let left: Int = pass.daysLeft(today: season.today)
-        let rows: [SeasonPass.MissionRow] = pass.missionRows(.month, today: season.today)
         GoalsGroup(title: "This season") {
             GoalsCard {
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -354,9 +379,7 @@ struct GoalsSeasonTab: View {
                 }
             }
         }
-        GoalsGroup(title: "Pass missions this month", note: "Bigger tasks that add XP to the battle pass.") {
-            ForEach(rows) { (r: SeasonPass.MissionRow) in PassMissionCard(row: r) }
-        }
+        MissionList(period: .season, title: "This month's missions", note: "The long ones. New ones every 30 days.")
         GoalsGroup(title: "Other ways to earn XP", note: "These add up to at most \(SeasonPass.dailyXPCap) XP a day. The pass fills at the pace of steady play, not in a week.") {
             GoalsCard {
                 VStack(spacing: 0) {

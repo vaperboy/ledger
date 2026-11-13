@@ -26,7 +26,7 @@ struct CompanySupply: View {
                 SupplySection(title: "Items") {
                     ForEach(Array(items.enumerated()), id: \.element.id) { (n: Int, f: SupplierFacts) in
                         if n > 0 { RowRule(inset: 0) }
-                        supplierRow(f).coachAnchor(.itemSupplier, enabled: n == 0)
+                        supplierRow(f)
                     }
                 }
             }
