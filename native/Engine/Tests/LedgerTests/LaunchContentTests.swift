@@ -75,8 +75,9 @@ final class LaunchContentTests: XCTestCase {
         for id in ["electrician", "plumber"] { XCTAssertEqual(data.catalog[id]?.unit, "project", id) }
     }
 
-    func testSeasonOneStartsOnLaunchDay() {
-        XCTAssertEqual(SeasonCatalog.firstSeasonStart, SeasonCatalog.eraDay(year: 2026, month: 11, day: 16))
+    // Season 1 keeps its September start so season 2 opens around Easter 2027.
+    func testSeasonOneKeepsItsStartSoSeasonTwoOpensAtEaster() {
+        XCTAssertEqual(SeasonCatalog.firstSeasonStart, SeasonCatalog.eraDay(year: 2026, month: 9, day: 28))
     }
 
     func testAGoldPrizeNeverResetsThePity() {

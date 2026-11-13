@@ -56,12 +56,12 @@ final class SeasonTwoAndAccountTests: XCTestCase {
         XCTAssertNotNil(GoldCosmetics.cosmetic(spring?.rewardID ?? ""))
     }
 
-    func testSeasonTwoStartsHalfAYearAfterSeasonOneInSpring() throws {
+    func testSeasonTwoStartsHalfAYearAfterSeasonOneAroundEaster() throws {
         XCTAssertNotNil(SeasonCatalog.firstSeasonStart)
         XCTAssertEqual(SeasonCatalog.startDay(of: 2), start1 + SeasonPass.seasonDays)
         let s2: Int = try XCTUnwrap(SeasonCatalog.startDay(of: 2))
-        let spring2027: Int = SeasonCatalog.eraDay(year: 2027, month: 5, day: 17)
-        XCTAssertLessThanOrEqual(abs(s2 - spring2027), 3, "season 2 opens half a year after the 16 Nov 2026 launch")
+        let easter2027: Int = SeasonCatalog.eraDay(year: 2027, month: 3, day: 28)
+        XCTAssertLessThanOrEqual(abs(s2 - easter2027), 7, "season 2 opens within a week of Easter 2027")
         XCTAssertEqual(SeasonCatalog.number(onDay: s2 - 1), 1)
         XCTAssertEqual(SeasonCatalog.number(onDay: s2), 2)
         XCTAssertEqual(SeasonCatalog.number(onDay: start1 - 30), 1)

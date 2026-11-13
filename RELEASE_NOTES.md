@@ -4,7 +4,6 @@
 - The country list starts with the country of your phone, and the last setup step is skipped when your trade sells one way only
 - Events fit the company: shop events skip web shops and wholesalers, premises events skip home-based and vehicle businesses, and money losses scale with the size of the company; grant windows name your own country's agency
 - Suppliers in countries where a trade cannot be started are importers, electricians and plumbers sell whole projects, and a gold prize no longer resets a box guarantee
-- Season 1 starts on launch day, so every buyer gets the whole season
 - Buy in-game money with gold in the Store (five packs with up to 20% bonus, plus a free pack twice a day); name plates are retired and refunded
 - Decisions: every answer has its own result, shown after you choose; which answer is best depends on your company; equal answer buttons with No always first; a few bigger stories each month with a follow-up
 - Suppliers are always player companies: plain Stock, Upkeep, Transport and Services lines, no quantities to pick, a yellow or red mark when a supplier may not or cannot deliver, your own companies first, and a company card for every supplier
