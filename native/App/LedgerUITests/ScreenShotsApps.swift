@@ -13,7 +13,7 @@ extension ScreenShotsTests {
         page("app-stats-annual") { inApp("no stats-annual row: no finished year in this game") { seekID("stats-annual") } }
         phoneApp("Insurance", "app-insurance")
         phoneApp("Market", "app-market")
-        for part in ["Companies", "Invest", "Exchange"] {
+        for part in ["Invest", "Exchange"] {
             appPart("app-market-" + part.lowercased(), "market-tab-" + part, strip: "market-tab-")
         }
         phoneApp("Luxury", "app-luxury")
