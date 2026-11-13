@@ -66,18 +66,15 @@ struct CompaniesView: View {
             ScrollView(.vertical) { page(e, rows: rows, limit: nil, compact: false) }
                 .scrollIndicators(.hidden)
         } else {
-            ViewThatFits(in: .vertical) {
-                page(e, rows: rows, limit: 5, compact: false, fills: true)
-                page(e, rows: rows, limit: 4, compact: false, fills: true)
-                page(e, rows: rows, limit: 3, compact: false, fills: true)
-                page(e, rows: rows, limit: 4, compact: true, fills: true)
-                page(e, rows: rows, limit: 3, compact: true, fills: true)
-                page(e, rows: rows, limit: 2, compact: true, fills: true)
-                page(e, rows: rows, limit: 2, compact: true, fills: true, chart: false)
-                page(e, rows: rows, limit: 1, compact: true, fills: true, chart: false)
-                ScrollView(.vertical) { page(e, rows: rows, limit: 3, compact: false) }
-                    .scrollIndicators(.hidden)
-                    .scrollBounceBehavior(.basedOnSize)
+            // One page laid out once. It fills the screen when it is short and scrolls when it is long,
+            // instead of measuring several full copies of Home on every update.
+            GeometryReader { (geo: GeometryProxy) in
+                ScrollView(.vertical) {
+                    page(e, rows: rows, limit: 5, compact: false, fills: true)
+                        .frame(minHeight: geo.size.height, alignment: .top)
+                }
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize)
             }
         }
     }

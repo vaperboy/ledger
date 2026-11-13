@@ -84,6 +84,8 @@ extension EnvironmentValues {
     }
 }
 
+/// The popup card: an opaque tinted fill with a soft glow at the top and a thin edge.
+/// No material, Liquid Glass or shadow, so popups open without a heavy first frame.
 struct PopupGlass: ViewModifier {
     var tone: PopupTone
     var light: Bool
@@ -91,17 +93,11 @@ struct PopupGlass: ViewModifier {
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
-    @ViewBuilder func body(content: Content) -> some View {
-        if reduceTransparency {
-            solid(content)
-        } else {
-            glass(content)
-        }
-    }
-
-    private func solid(_ content: Content) -> some View {
+    func body(content: Content) -> some View {
         let shape: RoundedRectangle = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        let base: Color = light ? Color(white: 0.97) : Color(red: 0.11, green: 0.115, blue: 0.125)
+        let base: Color = light ? Color(white: 0.97) : Color(red: 0.09, green: 0.095, blue: 0.105)
+        let edgeTop: Color = Color.white.opacity(light ? 0.7 : 0.18)
+        let edgeBottom: Color = Color.white.opacity(light ? 0.3 : 0.05)
         return content
             .background {
                 ZStack {
@@ -111,60 +107,13 @@ struct PopupGlass: ViewModifier {
                 }
             }
             .clipShape(shape)
-            .overlay(shape.strokeBorder(Color.primary.opacity(0.25), lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.35), radius: 30, x: 0, y: 12)
-    }
-
-    @ViewBuilder private func glass(_ content: Content) -> some View {
-        #if compiler(>=6.2)
-        if #available(iOS 26.0, *) {
-            real(content)
-        } else {
-            drawn(content)
-        }
-        #else
-        drawn(content)
-        #endif
-    }
-
-    #if compiler(>=6.2)
-    @available(iOS 26.0, *)
-    private func real(_ content: Content) -> some View {
-        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        let tint: Color = light ? Color.white : Color(red: 0.075, green: 0.08, blue: 0.09)
-        return content
-            .modifier(LiquidGlass(shape: shape, tint: tint))
-            .background {
-                shape.fill(RadialGradient(colors: [tone.color.opacity(light ? tone.glow * 0.6 : tone.glow), Color.clear],
-                                          center: .top, startRadius: 0, endRadius: 340))
-            }
             .overlay {
-                shape.fill(RadialGradient(colors: [tone.color.opacity(light ? 0.0 : tone.glow * 0.5), Color.clear],
-                                          center: .top, startRadius: 0, endRadius: 300))
-                    .blendMode(.plusLighter)
-                    .allowsHitTesting(false)
-            }
-            .shadow(color: Color.black.opacity(0.35), radius: 30, x: 0, y: 12)
-    }
-    #endif
-
-    private func drawn(_ content: Content) -> some View {
-        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        let tint: Color = light ? Color.white.opacity(0.62) : Color(red: 0.075, green: 0.08, blue: 0.09).opacity(0.66)
-        let edgeTop: Color = Color.white.opacity(light ? 0.7 : 0.18)
-        let edgeBottom: Color = Color.white.opacity(light ? 0.3 : 0.05)
-        return content
-            .background {
-                ZStack {
-                    shape.fill(.ultraThinMaterial)
-                    shape.fill(tint)
-                    shape.fill(RadialGradient(colors: [tone.color.opacity(light ? tone.glow * 0.6 : tone.glow), Color.clear],
-                                              center: .top, startRadius: 0, endRadius: 340))
+                if reduceTransparency {
+                    shape.strokeBorder(Color.primary.opacity(0.25), lineWidth: 1)
+                } else {
+                    shape.strokeBorder(LinearGradient(colors: [edgeTop, edgeBottom], startPoint: .top, endPoint: .bottom), lineWidth: 0.75)
                 }
             }
-            .clipShape(shape)
-            .overlay(shape.strokeBorder(LinearGradient(colors: [edgeTop, edgeBottom], startPoint: .top, endPoint: .bottom), lineWidth: 0.75))
-            .shadow(color: Color.black.opacity(0.35), radius: 30, x: 0, y: 12)
     }
 }
 

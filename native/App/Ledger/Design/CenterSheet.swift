@@ -123,12 +123,7 @@ struct CenterSheetFrame<Content: View>: View {
     private var backdrop: some View {
         let factor: Double = PopupSizing.dragDimFactor(offset: drag)
         return ZStack {
-            if reduceTransparency {
-                Color.black.opacity(shown ? 0.7 * factor : 0)
-            } else {
-                Rectangle().fill(.ultraThinMaterial).opacity(shown ? factor : 0)
-                Color.black.opacity(shown ? 0.4 * factor : 0)
-            }
+            Color.black.opacity(shown ? (reduceTransparency ? 0.7 : 0.6) * factor : 0)
         }
         .ignoresSafeArea()
         .contentShape(Rectangle())
