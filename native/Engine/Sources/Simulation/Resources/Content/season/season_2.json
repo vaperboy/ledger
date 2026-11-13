@@ -18,7 +18,7 @@
   {"id": "box.s2.f26", "tier": 26, "premium": false, "kind": "box", "amount": 1},
   {"id": "outfit.s2.fairday", "tier": 30, "premium": false, "kind": "outfit", "title": "Fair-day coat", "detail": "A pastel coat for the spring fair.", "colors": ["E8A9BC", "FFF3DC"], "rarity": "epic", "art": "avatar.body.s2.fairday"},
   {"id": "outfit.s2.mint", "tier": 1, "premium": true, "kind": "outfit", "title": "Mint cardigan", "detail": "A fresh mint cardigan.", "colors": ["8FD0C4", "1F3A36"], "rarity": "rare", "art": "avatar.body.s2.mint"},
-  {"id": "outfit.s2.egg", "tier": 2, "premium": true, "kind": "outfit", "title": "Painted-egg smock", "detail": "Stripes of pastel across a smock.", "colors": ["F7E3B5", "6F5A8A"], "rarity": "rare", "art": "avatar.body.s2.egg", "bound": true},
+  {"id": "outfit.s2.egg", "tier": 2, "premium": true, "kind": "outfit", "title": "Painted-egg smock", "detail": "Stripes of pastel across a smock.", "colors": ["F7E3B5", "6F5A8A"], "rarity": "rare", "art": "avatar.body.s2.egg"},
   {"id": "advisor.s2.market", "tier": 3, "premium": true, "kind": "advisorLine", "title": "Advisor: fair day", "detail": "\"A busy stall beats a full shelf.\"", "colors": [], "rarity": "common", "art": "advisor.s2.market"},
   {"id": "box.s2.p4", "tier": 4, "premium": true, "kind": "box", "amount": 2},
   {"id": "backdrop.pastel", "tier": 5, "premium": true, "kind": "backdrop", "title": "Pastel backdrop", "detail": "Sky blue fading to lilac.", "colors": ["BFD8F2", "8A78B0"], "rarity": "rare", "art": "backdrop.pastel"},

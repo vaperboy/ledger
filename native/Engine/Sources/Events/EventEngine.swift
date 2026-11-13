@@ -34,17 +34,23 @@ public enum EventEngine {
     }
 
     static let moneyKeys: Set<String> = ["cash", "fine", "loss", "bonus", "owner"]
-    static func resolve(_ fx: JSONValue, _ ctx: Context, currency: Currency? = nil) -> JSONValue {
+    /// Odds between 0 and 1: a formula for them is kept as it is, not rounded like an amount.
+    static let oddsKeys: Set<String> = ["p", "stay"]
+
+    static func resolve(_ fx: JSONValue, _ ctx: Context, currency: Currency? = nil, key: String? = nil) -> JSONValue {
         switch fx {
         case .object(let o):
-            if let e = o["expr"], o.count == 1 { return .number(jsRound(Formula(e.string).evaluate(ctx.variables))) }
+            if let e = o["expr"], o.count == 1 {
+                let x: Double = Formula(e.string).evaluate(ctx.variables)
+                return .number(key.map { oddsKeys.contains($0) } == true ? x : jsRound(x))
+            }
             var out: [String: JSONValue] = [:]
             for (k, v) in o {
                 if let cur = currency, moneyKeys.contains(k), case .number(let n) = v { out[k] = .number(cur.scaledPrice(n)) }
-                else { out[k] = resolve(v, ctx, currency: currency) }
+                else { out[k] = resolve(v, ctx, currency: currency, key: k) }
             }
             return .object(out)
-        case .array(let a): return .array(a.map { resolve($0, ctx, currency: currency) })
+        case .array(let a): return .array(a.map { resolve($0, ctx, currency: currency, key: key) })
         default: return fx
         }
     }

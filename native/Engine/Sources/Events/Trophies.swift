@@ -131,7 +131,10 @@ public enum Trophies {
         let first = s.rest["ach28i"] == nil && (s.week > 8 || s.rest["start"] != nil)
         if s.rest["ach28i"] == nil { s.rest["ach28i"] = .number(1) }
         if !s.loans.isEmpty && s.rest["ach28d"] == nil { s.rest["ach28d"] = .number(1) }
-        let f = Facts(s: s, data: data, cur: fc.homeCurrency(s), netWorth: Valuation.netWorth(s, trades: data.catalog, forGoals: true),
+        var nw: NetWorth = Valuation.netWorth(s, trades: data.catalog, forGoals: true)
+        // The start money is no achievement: on the first look the net worth trophies it reaches are recorded without a celebration.
+        if first, let start = s.rest["start"]?["cash"].double, start > nw.total { nw.personal += start - nw.total }
+        let f = Facts(s: s, data: data, cur: fc.homeCurrency(s), netWorth: nw,
                       live: s.companies.filter { $0.status == .open || $0.status == .closed }, ever: s.companies)
         var got: [String] = []
         for t in all where rec[t.id].isNull {

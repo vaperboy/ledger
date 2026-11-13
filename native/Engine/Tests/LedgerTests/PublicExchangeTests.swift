@@ -102,13 +102,14 @@ final class PublicExchangeTests: XCTestCase {
 
     func testAServerStockTradesAtTheCloseAndTheBooksStayBalanced() throws {
         var e = try game()
-        let cash0 = e.state.cash
+        // One account: the kiosk's own trade moves the same account, so the owner's side of it is read.
+        let mine0 = e.state.cashFlow["me"] ?? 0
         let r = e.placeExchangeOrder(instrument: PublicExchange.worldIndex, side: .buy, shares: 100, limit: 120)
         guard case .placed = r else { return XCTFail("\(r)") }
         for _ in 0..<8 { e.nextDay() }
         let pos = try XCTUnwrap(ExchangeBook(e.state).positions[PublicExchange.worldIndex])
         XCTAssertEqual(pos.shares, 100)
-        XCTAssertLessThan(e.state.cash, cash0)
+        XCTAssertLessThan(e.state.cashFlow["me"] ?? 0, mine0, "the shares were paid for")
         XCTAssertTrue(ExchangeBook(e.state).orders.isEmpty)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
         let close = try XCTUnwrap(ExchangeBook(e.state).instruments[PublicExchange.worldIndex]).close

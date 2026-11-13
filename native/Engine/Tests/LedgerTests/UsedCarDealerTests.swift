@@ -87,6 +87,8 @@ final class UsedCarDealerTests: XCTestCase {
         var (e, id) = try game()
         let two = Array(cars(e, id).prefix(2))
         for x in two { XCTAssertEqual(buy(&e, id, x), .applied) }
+        // Priced well above the market so neither car sells while the two weeks pass.
+        for car in e.usedCarStock(companyID: id) { _ = e.setUsedCarPrice(companyID: id, carID: car.id, price: car.askingPrice * 3) }
         days(&e, 14)
         let items = e.usedCarStock(companyID: id)
         XCTAssertEqual(items.count, 2)

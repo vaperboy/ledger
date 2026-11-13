@@ -33,11 +33,15 @@ final class RentalFinanceProbeTests: XCTestCase {
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
         tweak?(&e, id)
+        // The company draws on the one account, so the money really tied up in it is the most it ever had out of the account.
+        var drawn = 0.0
         for d in 0..<(years * 52 * 7) {
             e.nextDay()
+            drawn = max(drawn, -(e.state.cashFlow["co\(id)"] ?? 0))
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
             if d % 7 == 6, let co = e.state.company(id), co.status.isLive, co.openedWeek != nil, run.openedWeek < 0 { run.openedWeek = e.state.week }
         }
+        run.invested = max(run.invested, drawn)
         guard let co = e.state.company(id), let bd = e.data.catalog[co.type] else { return run }
         let h = co.monthlyHistory
         for y in 0..<years {
