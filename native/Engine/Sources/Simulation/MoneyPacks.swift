@@ -30,6 +30,15 @@ public enum MoneyPacks {
     /// How many free packs a day the ad cap allows.
     public static var freePerDay: Int { freeEntry["perDay"].int }
 
+    /// Gold one account may spend on money packs in any 7 days; the server enforces it.
+    public static var weeklyGoldCap: Int { GoldPrices.table["gold"]["moneyPackWeeklyGold"].int }
+
+    /// Gold still allowed on money packs this week, given what the server says was used.
+    public static func weeklyRoom(used: Int) -> Int { max(0, weeklyGoldCap - max(0, used)) }
+
+    /// Whether this pack fits in the weekly allowance.
+    public static func fitsThisWeek(_ pack: MoneyPack, used: Int) -> Bool { pack.isFree || price(pack) <= weeklyRoom(used: used) }
+
     public static func pack(_ id: String) -> MoneyPack? {
         id == free.id ? free : packs.first { (p: MoneyPack) -> Bool in p.id == id }
     }
