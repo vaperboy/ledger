@@ -162,8 +162,10 @@ final class DecisionChoiceTests: XCTestCase {
         XCTAssertEqual(DecisionOrder.shown(["Absorb it", "Pass part on to customers"]), [0, 1])
         XCTAssertEqual(DecisionOrder.shown(["Skip it", "Decline"]), [0, 1])
         let lib = try EventLibrary.bundled()
-        let all: [[String]] = lib.events.values.map { $0.options.map { $0.label } } + EventPack.events.map { $0.event.options.map { $0.label } }
-            + StrategicDecisions.definitions.map { $0.opts.map { $0.label } }
+        let library: [[String]] = lib.events.values.map { (e: GameEvent) -> [String] in e.options.map { (o: GameEvent.Option) -> String in o.label } }
+        let pack: [[String]] = EventPack.events.map { (e: PackEvent) -> [String] in e.event.options.map { (o: GameEvent.Option) -> String in o.label } }
+        let asks: [[String]] = StrategicDecisions.definitions.map { (d: StrategicDecisions.Def) -> [String] in d.opts.map { (o: StrategicDecisions.Opt) -> String in o.label } }
+        let all: [[String]] = library + pack + asks
         var noFirst = 0
         for labels in all where labels.count >= 2 {
             let order = DecisionOrder.shown(labels)
@@ -178,8 +180,9 @@ final class DecisionChoiceTests: XCTestCase {
 
     func testOptionTextsDoNotSayWhichAnswerIsBest() throws {
         let lib = try EventLibrary.bundled()
-        let options: [(String, GameEvent.Option)] = lib.events.values.flatMap { e in e.options.map { (e.id, $0) } }
-            + EventPack.events.flatMap { e in e.event.options.map { (e.id, $0) } }
+        let fromLibrary: [(String, GameEvent.Option)] = lib.events.values.flatMap { (e: GameEvent) -> [(String, GameEvent.Option)] in e.options.map { (o: GameEvent.Option) -> (String, GameEvent.Option) in (e.id, o) } }
+        let fromPack: [(String, GameEvent.Option)] = EventPack.events.flatMap { (e: PackEvent) -> [(String, GameEvent.Option)] in e.event.options.map { (o: GameEvent.Option) -> (String, GameEvent.Option) in (e.id, o) } }
+        let options: [(String, GameEvent.Option)] = fromLibrary + fromPack
         let banned = ["recommended", "(best)", "best option", "best choice", " safe.", "safe,", "safer", "safest", "the smart"]
         for (id, o) in options {
             let words = (" " + o.label + " " + o.detail).lowercased()
@@ -198,7 +201,9 @@ final class DecisionChoiceTests: XCTestCase {
 
     func testEachAnswerHasItsOwnConsequence() throws {
         let lib = try EventLibrary.bundled()
-        let sets: [(String, [JSONValue])] = lib.events.values.map { ($0.id, $0.options.map { $0.effects }) } + EventPack.events.map { ($0.id, $0.event.options.map { $0.effects }) }
+        let fromLibrary: [(String, [JSONValue])] = lib.events.values.map { (e: GameEvent) -> (String, [JSONValue]) in (e.id, e.options.map { (o: GameEvent.Option) -> JSONValue in o.effects }) }
+        let fromPack: [(String, [JSONValue])] = EventPack.events.map { (e: PackEvent) -> (String, [JSONValue]) in (e.id, e.event.options.map { (o: GameEvent.Option) -> JSONValue in o.effects }) }
+        let sets: [(String, [JSONValue])] = fromLibrary + fromPack
         for (id, fx) in sets where fx.count >= 2 {
             let neutral = fx.filter { $0.isNull || $0.object.isEmpty }.count
             XCTAssertLessThanOrEqual(neutral, 1, "\(id): more than one answer does nothing")
@@ -223,7 +228,9 @@ final class DecisionChoiceTests: XCTestCase {
 
     func testTheFirstAnswerIsNotSystematicallyTheBest() throws {
         let lib = try EventLibrary.bundled()
-        let sets: [[JSONValue]] = lib.events.values.map { $0.options.map { $0.effects } } + EventPack.events.map { $0.event.options.map { $0.effects } }
+        let fromLibrary: [[JSONValue]] = lib.events.values.map { (e: GameEvent) -> [JSONValue] in e.options.map { (o: GameEvent.Option) -> JSONValue in o.effects } }
+        let fromPack: [[JSONValue]] = EventPack.events.map { (e: PackEvent) -> [JSONValue] in e.event.options.map { (o: GameEvent.Option) -> JSONValue in o.effects } }
+        let sets: [[JSONValue]] = fromLibrary + fromPack
         let ctxs = situations()
         var events = 0, firstAlways = 0, varies = 0
         for fx in sets where fx.count >= 2 {
