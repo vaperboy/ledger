@@ -36,10 +36,12 @@ struct FriendsScreen: View {
             if !o.outgoing.isEmpty { outgoingGroup(o.outgoing) }
             friendsGroup(o.friends)
             FriendPlayGroups(friends: o.friends)
-        } else if failure == nil {
-            ProgressView().frame(maxWidth: .infinity)
+        } else if let failure {
+            OnlineListState(phase: .failed(failure)) { self.failure = nil; Task { await reload() } }
+        } else {
+            OnlineWaiting { Task { await reload() } }
         }
-        if let failure { Text(failure).textStyle(.caption, tint: Theme.loss).frame(maxWidth: .infinity) }
+        if overview != nil, let failure { Text(failure).textStyle(.caption, tint: Theme.loss).frame(maxWidth: .infinity) }
     }
 
     private var searchGroup: some View {
@@ -177,7 +179,7 @@ struct FriendsScreen: View {
 
     private func reload() async {
         guard online.isSignedIn else { overview = nil; return }
-        do { overview = try await online.service.friends(); failure = nil } catch { failure = (error as? LocalizedError)?.errorDescription ?? "Could not load friends." }
+        do { overview = try await online.service.friends(); failure = nil } catch { failure = OnlineWords.friendly(error) }
     }
 
     private func search() async {
@@ -186,7 +188,7 @@ struct FriendsScreen: View {
         searching = true
         try? await Task.sleep(nanoseconds: 300_000_000)
         guard !Task.isCancelled else { return }
-        do { results = try await online.service.searchPlayers(query: q); failure = nil } catch { if !Task.isCancelled { failure = (error as? LocalizedError)?.errorDescription } }
+        do { results = try await online.service.searchPlayers(query: q); failure = nil } catch { if !Task.isCancelled { failure = OnlineWords.friendly(error) } }
         if !Task.isCancelled { searching = false }
     }
 
@@ -198,7 +200,7 @@ struct FriendsScreen: View {
 
     private func act(_ call: @escaping () async throws -> Void) {
         Task {
-            do { try await call(); failure = nil } catch { failure = (error as? LocalizedError)?.errorDescription ?? "That did not work. Try again." }
+            do { try await call(); failure = nil } catch { failure = OnlineWords.friendly(error) }
             await reload()
             await search()
         }

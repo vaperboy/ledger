@@ -41,8 +41,8 @@ struct PaywallView: View {
 }
 
 enum LedgerLinks {
-    static let terms: URL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") ?? URL(fileURLWithPath: "/")
-    static let privacy: URL = URL(string: "https://example.com/ledger/privacy") ?? URL(fileURLWithPath: "/")
+    static let terms: URL = URL(string: "https://ledger.vitoma.no/terms.html") ?? URL(fileURLWithPath: "/")
+    static let privacy: URL = URL(string: "https://ledger.vitoma.no/privacy.html") ?? URL(fileURLWithPath: "/")
 }
 
 struct PaywallHost: ViewModifier {
@@ -82,6 +82,6 @@ struct PostM7Paywall: ViewModifier {
         armed = false
         guard !shownBefore, !ent.isPro else { return }
         UserDefaults.standard.set(true, forKey: Self.shownKey)
-        ent.paywall = PaywallRequest(title: "Ledger Pro", lead: "Your first profitable month. Pro adds save slots, cloud backup, Insights and themes, and removes ads. The whole game stays free.")
+        ent.paywall = PaywallRequest(title: "Ledger Pro", lead: "Your first profitable month. Pro adds extra save slots. The whole game stays free.")
     }
 }

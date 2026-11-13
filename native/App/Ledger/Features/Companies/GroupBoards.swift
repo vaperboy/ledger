@@ -104,10 +104,7 @@ struct BoardDecisions: View {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 Text(d.title.tidyMoney).textStyle(.headline).fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    HStack(spacing: Theme.Space.s) {
-                        Chip(text: d.recommends ? "Recommended" : "Not recommended", tint: d.recommends ? Theme.gain : Theme.caution)
-                        Text(d.advisor).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
-                    }
+                    if !d.advisor.isEmpty { Text(d.advisor).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1) }
                     if !d.reason.isEmpty { Text(d.reason.tidyMoney).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {

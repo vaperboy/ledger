@@ -168,7 +168,7 @@ struct JVInviteSheet: View {
     private static let pctRange: ClosedRange<Double> = JVRules.smallestStakePercent...JVRules.largestInvitePercent
 
     private static func pctString(_ v: Double) -> String {
-        abs(v - v.rounded()) < 0.05 ? String(Int(v.rounded())) : String(format: "%.1f", v)
+        abs(v - v.rounded()) < 0.05 ? String(Int(saturating: v.rounded())) : String(format: "%.1f", v)
     }
 
     /// Keeps the price box in step with the slider and the share, unless the player is typing in it.
@@ -293,7 +293,7 @@ struct JVInviteSheet: View {
     private func summary(friend: PlayerProfile?, pct: Double, price: Double, fair: Double, cur: Currency) -> some View {
         let who: String = friend?.displayName ?? "Your friend"
         let diff: Double = fair > 0 ? (price / fair - 1) * 100 : 0
-        let note: String = abs(diff) < 0.5 ? "the fair value" : (diff < 0 ? "\(Int(abs(diff).rounded()))% under the fair value, which dilutes you" : "\(Int(diff.rounded()))% over the fair value")
+        let note: String = abs(diff) < 0.5 ? "the fair value" : (diff < 0 ? "\(Int(abs(diff).rounded()))% under the fair value, which dilutes you" : "\(Int(saturating: diff.rounded()))% over the fair value")
         return VStack(alignment: .leading, spacing: 2) {
             Text("\(who) gets \(Self.pctString(pct))% for \(cur.tidyDisplay(price))").popupText(.rowLabel)
             Text("That is \(note). They accept or decline.").popupText(.caption)

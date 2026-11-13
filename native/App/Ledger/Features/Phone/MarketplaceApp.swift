@@ -239,7 +239,9 @@ struct MarketplaceApp: View {
             if !online.isSignedIn {
                 ShopEmptyNote(text: "Sign in to see what other players are selling.", glyph: Glyph.marketplace)
             } else if shown.isEmpty {
-                ShopEmptyNote(text: players.loaded ? "Nothing here yet. Be the first to list something." : "Loading.", glyph: Glyph.marketplace)
+                if !players.loaded { OnlineWaiting { Task { await players.refresh(online) } } }
+                else if players.loadFailed { ShopEmptyNote(text: OnlineWords.loadFailed, glyph: Glyph.marketplace, buttonTitle: "Try again") { Task { await players.refresh(online) } } }
+                else { ShopEmptyNote(text: "Nothing here yet. Be the first to list something.", glyph: Glyph.marketplace) }
             }
             ShopGrid {
                 ForEach(shown) { (l: PlayerListing) in

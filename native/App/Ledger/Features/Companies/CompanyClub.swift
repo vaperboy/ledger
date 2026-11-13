@@ -85,7 +85,7 @@ struct CompanyClub: View {
         let nearest: Double = options.min { abs($0 - c.wageShare) < abs($1 - c.wageShare) } ?? 0.65
         return Binding<Double>(get: { nearest }, set: { (v: Double) in
             store.act { $0.setClubWageShare(companyID: company.id, share: v) }
-            store.saved("player wages \(Int(v * 100))% of revenue")
+            store.saved("player wages \(Int(saturating: v * 100))% of revenue")
         })
     }
 
@@ -454,7 +454,7 @@ struct ClubMarketView: View {
                             HStack {
                                 Text(cur.tidyShort((c.value * f / 100000).rounded() * 100000)).popupText(.button)
                                 Spacer()
-                                Text("\(Int(f * 100))% of value").popupText(.caption)
+                                Text("\(Int(saturating: f * 100))% of value").popupText(.caption)
                                 MoreChevron()
                             }.contentShape(Rectangle())
                         }

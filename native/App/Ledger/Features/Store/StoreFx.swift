@@ -151,7 +151,7 @@ struct CountingNumber: View, Animatable {
         get { value }
         set { value = newValue }
     }
-    var body: some View { Text(Int(value.rounded()).formatted()) }
+    var body: some View { Text(Int(saturating: value.rounded()).formatted()) }
 }
 
 struct BoxArt: View {

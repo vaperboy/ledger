@@ -40,10 +40,10 @@ struct BankStatementsTab: View {
         BankCard(title: s.title, trailing: s.range) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Button { back = min(back + 1, count - 1); Haptics.choose() } label: { Text("‹ Earlier").font(.system(size: 12)).foregroundStyle(back >= count - 1 ? P.inkDim : P.accent) }
+                    Button { back = min(back + 1, count - 1); Haptics.choose() } label: { Text("‹ Earlier").textStyle(.caption, tint: back >= count - 1 ? P.inkDim : P.accent).frame(minWidth: 44, minHeight: 44, alignment: .leading).contentShape(Rectangle()) }
                         .buttonStyle(PressableStyle()).disabled(back >= count - 1)
                     Spacer()
-                    Button { back = max(back - 1, 0); Haptics.choose() } label: { Text("Later ›").textStyle(.caption, tint: back == 0 ? P.inkDim : P.accent) }
+                    Button { back = max(back - 1, 0); Haptics.choose() } label: { Text("Later ›").textStyle(.caption, tint: back == 0 ? P.inkDim : P.accent).frame(minWidth: 44, minHeight: 44, alignment: .trailing).contentShape(Rectangle()) }
                         .buttonStyle(PressableStyle()).disabled(back == 0)
                 }
                 StatStrip(cells: [

@@ -34,7 +34,7 @@ struct CompanyHero: View {
             }
             if compareBefore != nil, let live {
                 HStack(spacing: Theme.Space.s) {
-                    ChangeNote(now: live, before: compareBefore, against: compareAgainst, format: liveFormat ?? { (v: Double) -> String in String(Int(v)) }, step: .body)
+                    ChangeNote(now: live, before: compareBefore, against: compareAgainst, format: liveFormat ?? { (v: Double) -> String in String(Int(saturating: v)) }, step: .body)
                     if !context.isEmpty { Text(context.tidyText).textStyle(.body, tint: P.inkSoft) }
                 }
             } else if !change.isEmpty || !context.isEmpty { contextLine }

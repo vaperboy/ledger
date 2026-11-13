@@ -107,7 +107,7 @@ struct OverviewRow: View {
                         .lineLimit(2).multilineTextAlignment(.trailing).minimumScaleFactor(0.8)
                 }
                 if let before = row.before, !row.against.isEmpty, let live = row.live {
-                    ChangeNote(now: live, before: before, isCost: row.isCost, against: row.against, format: row.liveText ?? { (v: Double) -> String in String(Int(v)) })
+                    ChangeNote(now: live, before: before, isCost: row.isCost, against: row.against, format: row.liveText ?? { (v: Double) -> String in String(Int(saturating: v)) })
                 } else if !row.note.isEmpty {
                     Text(row.note.tidyText).textStyle(.caption, tint: row.noteTint, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
                 }

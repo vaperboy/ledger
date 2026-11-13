@@ -13,6 +13,7 @@ final class PartnerSharesModel: ObservableObject {
     @Published private(set) var meetings: [VentureMeetingInfo] = []
     @Published private(set) var buybacks: VentureBuybacks = .empty
     @Published var busy = false
+    @Published private(set) var loadFailed = false
 
     private static let seenKey = "jv.partner.seenOffers"
     private var api: (any VentureBoardService)? { JointVentureCoordinator.shared.board }
@@ -28,10 +29,13 @@ final class PartnerSharesModel: ObservableObject {
     func refresh(_ online: OnlineSession) async {
         guard let api, online.isSignedIn else {
             if !isEmpty || !meetings.isEmpty { offers = []; held = []; meetings = []; buybacks = .empty }
+            loadFailed = false
             return
         }
-        if let o = try? await api.ventureOffers(), o != offers { offers = o }
-        if let all = try? await api.ventures() {
+        var failed = false
+        do { let o = try await api.ventureOffers(); if o != offers { offers = o } } catch { failed = true }
+        do {
+            let all = try await api.ventures()
             let mine: [VentureInfo] = all.filter { (v: VentureInfo) -> Bool in !v.isChair }
             var open: [VentureMeetingInfo] = []
             for v in mine {
@@ -42,8 +46,9 @@ final class PartnerSharesModel: ObservableObject {
             open.sort { (a: VentureMeetingInfo, b: VentureMeetingInfo) -> Bool in a.deadline < b.deadline }
             if mine != held { held = mine }
             if open != meetings { meetings = open }
-        }
-        if let b = try? await api.ventureBuybacks(), b != buybacks { buybacks = b }
+        } catch { failed = true }
+        do { let b = try await api.ventureBuybacks(); if b != buybacks { buybacks = b } } catch { failed = true }
+        if failed != loadFailed { loadFailed = failed }
     }
 
     // Offers that arrived since the player last heard of them, each reported once.
@@ -56,7 +61,7 @@ final class PartnerSharesModel: ObservableObject {
         return fresh
     }
 
-    private func text(_ error: Error) -> String { (error as? LocalizedError)?.errorDescription ?? "Could not reach the server." }
+    private func text(_ error: Error) -> String { OnlineWords.friendly(error) }
 
     // Books what the server settled, then reads the lists again.
     private func finish(_ store: GameStore, _ online: OnlineSession) async {
@@ -195,6 +200,9 @@ struct PartnerSharesSection: View {
         if !model.isEmpty {
             LedgerSection("Shares in other players' companies") {
                 VStack(alignment: .leading, spacing: 0) {
+                    if model.loadFailed {
+                        Text("Some of this could not be refreshed. It will try again by itself.").textStyle(.caption, tint: Theme.inkFaint).padding(.bottom, Theme.Space.s)
+                    }
                     ForEach(Array(rows.enumerated()), id: \.element.id) { item in
                         if item.offset > 0 { Hairline() }
                         item.element.view
@@ -203,6 +211,10 @@ struct PartnerSharesSection: View {
             }
             .centerSheet(item: $sheet, title: "", category: .medium, tone: .investment) { (s: PartnerSheet) in
                 content(s).environmentObject(store).environment(online)
+            }
+        } else if model.loadFailed {
+            LedgerSection("Shares in other players' companies") {
+                EmptyState(glyph: Glyph.cloud, title: "Your shares could not be loaded.", actionTitle: "Try again", action: { Task { await model.refresh(online) } }, centered: false)
             }
         }
     }

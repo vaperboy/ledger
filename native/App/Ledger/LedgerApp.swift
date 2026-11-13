@@ -53,6 +53,7 @@ struct LedgerApp: App {
                 .environment(purchases)
                 .environment(ads)
                 .environment(online)
+                .task { await store.loadInitialSave() }
                 .task { purchases.start() }
                 .task { OnlineWiring.install(); await online.start(); await OnlineDirectoryCache.refresh(from: online.service); store.syncPlayerCompanies() }
                 .task(id: online.isSignedIn && scenePhase == .active) {
@@ -67,7 +68,7 @@ struct LedgerApp: App {
                 .tint(Theme.gold)
                 .toggleStyle(LedgerToggleStyle())
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .background { store.scheduleReminders(); store.noteLeaving(); Task { await online.shareProgress(from: store.engine) } }
+                    if phase == .background { store.scheduleReminders(); store.noteLeaving(); store.saveNow(); Task { await online.shareProgress(from: store.engine) } }
                     if phase == .active { store.syncPlayerCompanies(); Reminders.cancelAll(); store.showReturnRecap(); Task { await purchases.refreshEntitlements() } }
                 }
             }

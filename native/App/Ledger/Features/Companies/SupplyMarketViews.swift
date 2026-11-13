@@ -9,7 +9,7 @@ enum SupplyMarketWords {
     static func price(_ tier: Int) -> String { ["Cheaper", "Usual price", "Dearer"][min(2, max(0, tier))] }
     static func quality(_ tier: Int) -> String { SupplyMarketCatalogue.qualityTiers[min(2, max(0, tier))] + " quality" }
     static func lead(_ days: Int) -> String { days <= 0 ? "Continuous" : days == 1 ? "Next day" : "\(days) days lead" }
-    static func percent(_ share: Double) -> String { "\(Int((share * 100).rounded()))%" }
+    static func percent(_ share: Double) -> String { "\(Int(saturating: (share * 100).rounded()))%" }
     static func place(_ l: SupplyListing) -> String { l.country.isEmpty ? l.city : "\(l.city), \(l.country)" }
 
     static func tint(_ w: DeliveryWord) -> Color {

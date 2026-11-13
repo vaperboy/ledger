@@ -20,7 +20,7 @@ enum StoreText {
     static func gold(_ n: Int) -> String { n == 1 ? "1 gold" : "\(n.formatted()) gold" }
 
     static func timeLeft(_ seconds: Double) -> String {
-        let s: Int = Int(seconds.rounded(.down))
+        let s: Int = Int(saturating: seconds.rounded(.down))
         if s <= 0 { return "Ended" }
         if s >= 3_600 { return "\(s / 3_600)h \(String(format: "%02d", (s % 3_600) / 60))m" }
         if s >= 60 { return "\(s / 60)m \(String(format: "%02d", s % 60))s" }

@@ -94,7 +94,7 @@ struct EquipmentDetailScreen: View {
         case .machine(_, let uid):
             guard let u = o.units.first(where: { (x: EquipmentMarket.UnitRow) -> Bool in x.id == uid }) else { return nil }
             if u.year > 0 { lines.append(Line(label: "Built", value: "\(u.year)")) }
-            if life > 0 { lines.append(Line(label: "Expected life", value: "about \(Int(life.rounded())) years")) }
+            if life > 0 { lines.append(Line(label: "Expected life", value: "about \(Int(saturating: life.rounded())) years")) }
             lines.append(Line(label: "Wear", value: u.daysInRepair > 0 ? "In repair \(u.daysInRepair) days" : u.wear))
             lines.append(Line(label: "Running cost", value: "Upkeep follows your maintenance setting"))
             if o.serviceCost > 0 && o.subscription == nil && o.licence == nil { lines.append(Line(label: "Service", value: cur.tidyShort(o.serviceCost) + " each time")) }
@@ -111,7 +111,7 @@ struct EquipmentDetailScreen: View {
             let perk: Bool = o.equipmentID == CompanyCarPerk.equipmentID
             if !v.driver.isEmpty { lines.append(Line(label: "Driver", value: v.driver)) }
             if v.kilometres > 0 { lines.append(Line(label: "Distance", value: "\(v.kilometres.formatted()) km")) }
-            if life > 0 { lines.append(Line(label: "Expected life", value: "about \(Int(life.rounded())) years")) }
+            if life > 0 { lines.append(Line(label: "Expected life", value: "about \(Int(saturating: life.rounded())) years")) }
             lines.append(Line(label: "Wear", value: v.daysInRepair > 0 ? "In repair \(v.daysInRepair) days" : v.wear))
             lines.append(Line(label: "Ownership", value: v.mode == "fin" ? "Financed" : v.mode == "lease" ? "Leased" : "Owned"))
             if v.mode == "lease" || perk { lines.append(Line(label: "Lease", value: cur.tidyShort(v.monthlyLease) + " a month")) }
@@ -138,7 +138,7 @@ struct EquipmentDetailScreen: View {
                 lines.append(Line(label: "On lease", value: "\(Int(o.leasedCount))"))
                 lines.append(Line(label: "Lease cost", value: cur.tidyShort(o.leaseMonthly) + " a month"))
             }
-            if life > 0 { lines.append(Line(label: "Expected life", value: "about \(Int(life.rounded())) years")) }
+            if life > 0 { lines.append(Line(label: "Expected life", value: "about \(Int(saturating: life.rounded())) years")) }
             if !use.isEmpty { lines.append(Line(label: "Used for", value: use)) }
             return Facts(name: o.name, kind: o.kind, glyph: o.kind == "soft" ? Glyph.software : Glyph.hardware, value: o.bookValue, condition: nil, wear: "", status: status, tone: tone,
                          lines: lines, hasSubscription: o.subscription != nil, hasLicence: o.licence != nil, outdated: o.outdated,

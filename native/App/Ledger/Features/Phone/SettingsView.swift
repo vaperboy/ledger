@@ -98,7 +98,7 @@ struct SettingsView: View {
     private var savingGroup: some View {
         group("Saves", footer: "The game saves itself after every day.") {
             NavigationLink {
-                PhonePageScroll(spacing: 14) { SaveSlotsView() }.appScreen(title: "Save slots", subtitle: "Your careers and cloud backup")
+                PhonePageScroll(spacing: 14) { SaveSlotsView() }.appScreen(title: "Save slots", subtitle: "Your careers")
             } label: {
                 plainRow(Glyph.save, "Save slots", detail: "Each slot is its own career", chevron: true)
             }.buttonStyle(PressableStyle())
@@ -150,7 +150,9 @@ struct SettingsView: View {
                 rule
             }
             plainRow(Glyph.info, "Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
+                #if DEBUG
                 .onLongPressGesture(minimumDuration: 1.5) { if !embedded { Haptics.tap(); showAdmin = true } }
+                #endif
         }
     }
 

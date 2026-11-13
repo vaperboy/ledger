@@ -39,7 +39,6 @@ final class AdCoordinator {
         if let t = readyTask { await t.value; return }
         let t: Task<Void, Never> = Task { @MainActor in
             let personalised: Bool = await provider.gatherConsent()
-            await TrackingPermission.requestOnce()
             await provider.start(nonPersonalised: AdPolicy.requestNonPersonalised(consentGranted: personalised))
         }
         readyTask = t

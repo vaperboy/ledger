@@ -16,6 +16,10 @@ final class FeatureToursTests: FeatureTourCase {
             }
             step("tab \(title): health") { health("tab \(title)", title: false) }
         }
+        step("store: the first tab opens on the plans") {
+            guard goTab("Store") else { return .fail("no Store tab") }
+            return find(wait: 4, { $0.id == "plan-plus" }) != nil ? .pass() : .fail("no plan-plus card on the Store tab")
+        }
         _ = goTab("Home")
         step("home: Next day is in view without scrolling") { primaryInView("next-day") }
         step("home: the companies list shows at most 6 rows or a 'Show all'") {

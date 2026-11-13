@@ -445,10 +445,10 @@ private struct TrustBar: View {
                     Capsule().fill(share >= 0.95 ? P.gain : share >= 0.88 ? P.accent : P.caution).frame(width: 36 * CGFloat(share))
                 }
                 .frame(width: 36, height: 5)
-                Text("\(Int((share * 100).rounded()))%").popupText(.caption)
+                Text("\(Int(saturating: (share * 100).rounded()))%").popupText(.caption)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(Int((share * 100).rounded()))% reliable")
+            .accessibilityLabel("\(Int(saturating: (share * 100).rounded()))% reliable")
         } else {
             Text("New").popupText(.caption)
         }

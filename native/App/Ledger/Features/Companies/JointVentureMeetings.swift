@@ -114,7 +114,7 @@ struct JointVentureMeetingsView: View {
             if it.takesMoneyOut { Text("Money leaves the company for its owners, so it needs the vote.").textStyle(.caption, tint: Theme.warn) }
             FlowVotes(votes: it.votes, names: names, closed: m.closed, sealed: !m.closed && it.remoteMeeting != nil)
             if !m.closed, let t = e.jvTally(companyID: co.id, meetingID: m.id, itemID: it.id) {
-                Text("Yes so far: \(Int(t.yesPercent.rounded()))% of all shares. It needs more than 50%.").textStyle(.caption, tint: Theme.inkSoft)
+                Text("Yes so far: \(Int(saturating: t.yesPercent.rounded()))% of all shares. It needs more than 50%.").textStyle(.caption, tint: Theme.inkSoft)
             }
             if let out = it.outcome {
                 HStack(spacing: 6) {
@@ -197,7 +197,7 @@ struct JVVoteSheet: View {
 
     private func standing(_ e: GameEngine, _ it: JointVenture.Item) -> some View {
         let t = e.jvTally(companyID: companyID, meetingID: meetingID, itemID: it.id)
-        let words: String = t.map { "Of all shares: for \(Int($0.yesPercent.rounded()))% · against \(Int($0.noPercent.rounded()))% · not voted \(Int((100 - $0.yesPercent - $0.noPercent).rounded()))%" } ?? ""
+        let words: String = t.map { "Of all shares: for \(Int(saturating: $0.yesPercent.rounded()))% · against \(Int(saturating: $0.noPercent.rounded()))% · not voted \(Int(saturating: (100 - $0.yesPercent - $0.noPercent).rounded()))%" } ?? ""
         return HStack(spacing: 6) {
             if let t, t.yes > t.no { StockArrow(up: true, good: true) } else if let t, t.no > t.yes { StockArrow(up: false, good: false) }
             Text(words).popupText(.caption)

@@ -198,7 +198,7 @@ struct HomeRecapCard: View {
                 Text("This week in the world").textStyle(.label, tint: Theme.inkFaint)
                 Spacer(minLength: Theme.Space.s)
                 Button { dismiss() } label: {
-                    LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: Theme.inkFaint).frame(width: 44, height: 28).contentShape(Rectangle())
+                    LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: Theme.inkFaint).frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
                 .accessibilityLabel("Dismiss the weekly recap")

@@ -50,7 +50,7 @@ struct CompanyStaffRoster: View {
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
             if staff.count > 12 { LedgerField(placeholder: "Search by name or role", text: $query) }
             if !attention.isEmpty {
-                group("Needs you \u{00B7} \(attention.count)", tint: P.caution) { rows(attention, cur, mood) }
+                group("To check \u{00B7} \(attention.count)", tint: P.caution) { rows(attention, cur, mood) }
             }
             if big {
                 group(attention.isEmpty ? "People" : "Everyone else") {

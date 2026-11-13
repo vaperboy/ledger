@@ -283,16 +283,10 @@ struct CompanyRow: View {
     var engine: GameEngine
     var company: Company
     var health: CompanyHealth
-    @Environment(Entitlements.self) private var ent
-    @AppStorage(CosmeticKeys.badge) private var badgeID: String = Cosmetics.defaultBadgeID
-    @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
     static let textInset: CGFloat = 28 + Theme.Space.m
 
     var body: some View {
         let co = company, h = health
-        let style: (theme: String, badge: String) = engine.companyStyle(companyID: co.id)
-        let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(style.badge.isEmpty ? badgeID : style.badge, earned: engine.careerCosmetics, pro: ent.isPro)
-        let accent: Color = Cosmetics.resolvedTheme(style.theme.isEmpty ? themeID : style.theme, pro: ent.isPro).accent
         let urgent = CompaniesView.urgency(co, h) == 0
         let weekProfits: [Int: Double] = store.memo("homeWeekProfit") { (g: GameEngine) -> [Int: Double] in
             var out: [Int: Double] = [:]
@@ -307,7 +301,6 @@ struct CompanyRow: View {
                 HStack(spacing: Theme.Space.xs) {
                     if urgent { LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.small, tint: Theme.loss).accessibilityLabel("Needs attention") }
                     Text(co.name).textStyle(.headline).lineLimit(1)
-                    CosmeticBadgeView(badge: badge, tint: accent, size: 14)
                 }
                 HStack(spacing: Theme.Space.xs) {
                     Circle().fill(statusTint(co, h)).frame(width: 6, height: 6).accessibilityHidden(true)

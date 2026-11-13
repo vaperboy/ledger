@@ -159,7 +159,7 @@ struct ChainAttention: View {
         let applicants = summary.franchisingCompanyID.map { engine.franchiseApplicants(companyID: $0).count } ?? 0
         let total: Int = (losing.isEmpty ? 0 : 1) + (unmanaged.isEmpty ? 0 : 1) + (boardItems > 0 ? 1 : 0) + (applicants > 0 ? 1 : 0)
         if total > 0 {
-            MoreBlock(title: "Needs you", card: false, trailing: { RedBubble(count: total, size: .small) }) {
+            MoreBlock(title: "Things to check", card: false, trailing: { RedBubble(count: total, size: .small) }) {
                 if !losing.isEmpty {
                     line("\(losing.count) of \(summary.stores.count) stores lost money last month", losing.prefix(4).map { $0.name }.joined(separator: ", ") + (losing.count > 4 ? "…" : "") + ". Compare them below.", glyph: Glyph.warning, tint: Theme.loss)
                 }

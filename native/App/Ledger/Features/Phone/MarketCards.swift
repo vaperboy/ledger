@@ -113,7 +113,7 @@ struct MarketSearchBox: View {
                 .accessibilityIdentifier("mk-search")
             if !text.isEmpty {
                 Button { text = "" } label: {
-                    LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: P.inkFaint).frame(width: 28, height: 28)
+                    LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: P.inkFaint).frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
                 .accessibilityLabel("Clear search")

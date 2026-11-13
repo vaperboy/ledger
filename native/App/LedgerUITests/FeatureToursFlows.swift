@@ -336,29 +336,13 @@ extension FeatureToursTests {
     }
 
     func testT24_OtherPopups() {
-        step("store: the plans open from the Store and close back to it") {
-            guard openPhoneApp("Store") else { return .skip("Store not opened") }
-            let before: TourSig = signature()
-            guard tapID("store-plans", wait: 4) else { return .skip("no plans row in the Store") }
-            let raw: [String] = rawProblems("paywall")
-            if popupUp(2) {
-                closePopup(prefer: ["paywall-pass", "popup-close"])
-                guard waitPopupGone(3) else { return .fail("the paywall popup did not close") }
-            } else if signature().back && !before.same(signature()) {
-                guard tapBack() else { return .fail("the paywall page has no Back") }
-            } else { return .fail("the tap opened neither a popup nor a page (\(signature().text))") }
-            if !before.same(signature(), strictText: false) { return .fail("closing changed the screen: \(before.text) -> \(signature().text)") }
-            return raw.isEmpty ? .pass() : .fail(raw.joined(separator: "; "))
+        step("store: the plans are on the Store tab") {
+            guard goTab("Store") else { return .fail("no Store tab") }
+            guard find(wait: 4, { $0.id == "plan-plus" }) != nil else { return .fail("no plan-plus card on the Store tab") }
+            return health("store plans")
         }
         roundTrip("luxury: item sheet closes and keeps the showroom", prepare: { openPhoneApp("Luxury") }) { tapPrefix("luxury-inspect-", wait: 4) || tapID("luxury-hero", wait: 2) }
         roundTrip("market: open a listing -> deal popup closes and keeps the listing", prepare: { openPhoneApp("Marketplace") && tapPrefix("mk-listing-", wait: 5) }) { tapID("mk-discuss", wait: 3) }
-        step("settings: the custom tab can be chosen from Settings") {
-            guard openPhoneApp("Settings"), tapID("settings-custom-tab", wait: 4) else { return .skip("no settings-custom-tab row") }
-            if popupUp(2) { let raw = rawProblems("custom tab picker"); closePopup(); return waitPopupGone(3) ? (raw.isEmpty ? .pass("popup") : .fail(raw.joined(separator: "; "))) : .fail("the picker did not close") }
-            let h: R = health("custom tab picker")
-            _ = tapBack()
-            return h
-        }
         step("news: the business paper link opens and Back returns") {
             guard openPhoneApp("News"), tapID("news-paper-link", wait: 4) else { return .skip("no paper link") }
             let h: R = health("news paper")

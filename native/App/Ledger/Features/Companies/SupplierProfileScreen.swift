@@ -151,7 +151,7 @@ struct ReliabilityMeter: View {
                     Capsule().fill(share >= 0.95 ? P.gain : share >= 0.88 ? P.accent : P.caution).frame(width: 48 * CGFloat(share))
                 }
                 .frame(width: 48, height: 5)
-                Text("\(Int((share * 100).rounded()))% delivered").textStyle(.caption)
+                Text("\(Int(saturating: (share * 100).rounded()))% delivered").textStyle(.caption)
             } else {
                 Text(word).textStyle(.caption, tint: P.inkSoft)
             }

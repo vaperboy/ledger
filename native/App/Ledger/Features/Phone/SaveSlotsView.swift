@@ -27,7 +27,7 @@ struct SaveSlotsView: View {
             }
             ForEach(rows) { (r: SlotRow) in slotCard(r) }
             newSlot
-            cloud
+            if CloudConfig.iCloudReady { cloud }
         }
         .onAppear { reload() }
         .confirmAction($pending)

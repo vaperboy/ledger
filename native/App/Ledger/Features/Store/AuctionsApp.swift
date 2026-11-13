@@ -21,7 +21,7 @@ struct AuctionsApp: View {
                 cashLine
                 SegmentedChoice(items: [Part.live, Part.mine], title: { (t: Part) -> String in t == .live ? "Live" : "Mine" }, selection: $tab)
                 if session.auctions == nil {
-                    ProgressView().frame(maxWidth: .infinity)
+                    OnlineWaiting { Task { await session.refreshAuctions() } }
                 } else if tab == .live {
                     LiveAuctionsList(rarity: $rarity, opened: $opened)
                 } else {
@@ -217,7 +217,7 @@ struct LiveAuctionsList: View {
                     } label: { Text(rarity?.title ?? "All rarities").textStyle(.body, tint: Theme.accent).frame(minHeight: 44) }
                 }
                 if list.isEmpty {
-                    Text("No auctions match.").textStyle(.body, tint: Theme.inkSoft).frame(maxWidth: .infinity)
+                    Text(rarity == nil ? "No auctions are running right now. Check back soon." : "No auctions match this rarity.").textStyle(.body, tint: Theme.inkSoft).multilineTextAlignment(.center).frame(maxWidth: .infinity)
                 } else {
                     LazyVStack(spacing: Theme.Space.l) {
                         ForEach(list) { (a: Auction) in
