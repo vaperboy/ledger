@@ -63,6 +63,7 @@ public extension GameEngine {
         let feed: [FeedLine] = state.feedLines
         let coCash: Double? = m.companyID != 0 ? state.company(m.companyID)?.cash : nil
         let myCash: Double = state.cash
+        let queued: Int = (state.rest["e27"]?["q"].array ?? []).count
         update { (s: inout GameState, _: GameData, _: FinanceContext) -> Void in s.rest[EventEngine.gambleKey] = nil }
         let link: DecisionLink? = DecisionLinks.link(m, option: option, state: state)
         guard answer(messageID: messageID, option: option) else { return DecisionAnswer(applied: false, lines: [], link: nil) }
@@ -80,6 +81,8 @@ public extension GameEngine {
         lines += newNotes.map { (n: JSONValue) -> String in n["t"].string }
         lines += Self.feedAdded(feed, state.feedLines).map { (l: FeedLine) -> String in l.text }
         lines += state.inbox.filter { (x: Message) -> Bool in !ids.contains(x.id) }.map { (x: Message) -> String in x.title }
+        // A story with a sequel: say when the result comes, so a quiet answer does not look like nothing happened.
+        if (state.rest["e27"]?["q"].array ?? []).count > queued { lines.append("More follows in the coming weeks.") }
         var seen: Set<String> = []
         lines = lines.filter { (l: String) -> Bool in !l.isEmpty && seen.insert(l).inserted }
         if lines.isEmpty { lines = ["Nothing changes for now."] }
