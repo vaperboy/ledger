@@ -310,8 +310,10 @@ final class IllegalRoutesTests: XCTestCase {
             let pf = conv[0].fine
             XCTAssertEqual(pf, 10_000, "half of what was taken")
             // The one account also carries the owner's other money: only the takings, the audit fine and the conviction fine leave it.
-            let lost = cashMe - s.cash
+            // Money clawed back for the company's creditors leaves the account too, but goes to them, not the treasury.
+            let lost = cashMe - s.cash - s.companies[i].num("clawBk")
             XCTAssertEqual(w.government?.treasury.balance ?? 0, lost, accuracy: 1.5, "what was taken went to the treasury")
+            XCTAssertNotNil(Banking.loanBanUntil(s), "a closure bans new bank loans like any bankruptcy")
             XCTAssertGreaterThan(lost, pf, "the takings and the audit fine come on top of the conviction fine")
             XCTAssertLessThan(lost, 1_000_000, "the rest of the account is not seized")
             _ = cashCo
