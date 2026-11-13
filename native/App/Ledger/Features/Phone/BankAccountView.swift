@@ -23,15 +23,18 @@ struct BankAccountScreen: View {
                 .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s)
                 .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
-                ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.m, maxWidth: 560) {
-                    switch tab {
-                    case .loans: BankLoansTab(account: id, loans: d.loans)
-                    case .statements:
-                        BankStatementsTab(account: id, detail: d)
-                        givingLink
+                SegmentPager(items: BankTab.allCases, selection: $tab) { (t: BankTab) in
+                    ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.m, maxWidth: 560) {
+                        switch t {
+                        case .loans: BankLoansTab(account: id, loans: d.loans)
+                        case .statements:
+                            BankStatementsTab(account: id, detail: d)
+                            givingLink
+                        }
                     }
                 }
             }
+            .navigationDestination(isPresented: $givingOpen) { GivingView() }
             .onAppear { clearLoanDot() }
             .onChange(of: tab) { _, _ in clearLoanDot() }
         } else {
@@ -49,7 +52,6 @@ struct BankAccountScreen: View {
             CardRow(glyph: Glyph.richList, title: "Giving back", subtitle: "")
         }
         .buttonStyle(PressableStyle())
-        .navigationDestination(isPresented: $givingOpen) { GivingView() }
         .accessibilityIdentifier("bank-giving")
     }
 }

@@ -39,17 +39,23 @@ struct ChainView: View {
     var body: some View {
         if let e = store.engine, let sum = e.chainSummary(id: chainID), let first = sum.stores.first.flatMap({ e.state.company($0.id) }) {
             let cur = e.currency(for: first)
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                    SegmentedPill(items: ChainPart.allCases, title: { $0.rawValue }, selection: $part)
-                    partBody(part, e, sum, cur)
+            VStack(spacing: 0) {
+                SegmentedPill(items: ChainPart.allCases, title: { $0.rawValue }, selection: $part)
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.m)
+                    .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+                SegmentPager(items: ChainPart.allCases, selection: $part) { (p: ChainPart) in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                            partBody(p, e, sum, cur)
+                        }
+                        .environment(\.insideCard, true)
+                        .padding(.horizontal, Theme.Space.margin).padding(.bottom, Theme.Space.page)
+                        .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+                    }
+                    .scrollIndicators(.hidden).noSidewaysDrag()
+                    .scrollDismissesKeyboard(.interactively)
                 }
-                .environment(\.insideCard, true)
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
-                .frame(maxWidth: 1100).frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden).noSidewaysDrag()
-            .scrollDismissesKeyboard(.interactively)
             .ledgerBackground()
             .appScreen(title: sum.name, subtitle: subtitle(e, sum), tab: .group) {
                 SmallOutlineButton(title: "Rename") { newName = sum.name; renaming = true }

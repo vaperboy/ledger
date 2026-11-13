@@ -39,10 +39,12 @@ struct LuxuryView: View {
         }
     }
 
-    @ViewBuilder private var content: some View {
-        switch tab {
-        case .showroom: LuxuryShowroom { itemSheet = $0 }
-        case .vault: LuxuryVaultTab(onInspect: { inspected = $0 }, onShowroom: { tab = .showroom })
+    private var content: some View {
+        SegmentPager(items: [Tab.showroom, Tab.vault], selection: $tab) { (t: Tab) in
+            switch t {
+            case .showroom: LuxuryShowroom { itemSheet = $0 }
+            case .vault: LuxuryVaultTab(onInspect: { inspected = $0 }, onShowroom: { tab = .showroom })
+            }
         }
     }
 

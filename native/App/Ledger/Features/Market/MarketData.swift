@@ -9,7 +9,7 @@ import Simulation
 
 enum MarketUI {
     enum Tab: String, CaseIterable, Hashable {
-        case overview = "Overview", companies = "Companies", invest = "Invest", exchange = "Exchange"
+        case overview = "Overview", invest = "Invest", exchange = "Exchange"
     }
 
     typealias Owner = PortfolioOwner

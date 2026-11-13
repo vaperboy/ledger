@@ -1,66 +1,19 @@
 import SwiftUI
 
+/// A flat translucent surface with a thin light edge. It keeps the frosted look without live blur,
+/// Liquid Glass or shadows, which were redrawn on every frame of every scroll and transition.
 struct LiquidGlass<S: InsettableShape>: ViewModifier {
     var shape: S
     var tint: Color? = nil
     var interactive = false
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
-    @ViewBuilder
     func body(content: Content) -> some View {
-        if reduceTransparency {
-            content
-                .background(shape.fill(Theme.walnutRaised))
-                .overlay(shape.strokeBorder(Color.white.opacity(0.3), lineWidth: 1))
-        } else {
-            glassBody(content)
-        }
-    }
-
-    @ViewBuilder
-    private func glassBody(_ content: Content) -> some View {
-        #if compiler(>=6.2)
-        if #available(iOS 26.0, *) {
-            content.glassEffect(glass, in: shape)
-        } else {
-            drawn(content)
-        }
-        #else
-        drawn(content)
-        #endif
-    }
-
-    #if compiler(>=6.2)
-    @available(iOS 26.0, *)
-    private var glass: Glass {
-        var g = Glass.regular
-        if let tint { g = g.tint(tint.opacity(0.35)) }
-        if interactive { g = g.interactive() }
-        return g
-    }
-    #endif
-
-    private func drawn(_ content: Content) -> some View {
-        content
-            .background(
-                ZStack {
-                    shape.fill(.ultraThinMaterial)
-                    shape.fill((tint ?? Theme.walnutRaised).opacity(tint == nil ? 0.55 : 0.42))
-                    shape.fill(LinearGradient(colors: [Color.white.opacity(0.10), Color.white.opacity(0.0)], startPoint: .top, endPoint: .center))
-                }
-            )
-            .overlay(
-                shape.strokeBorder(
-                    LinearGradient(stops: [
-                        .init(color: Color.white.opacity(0.42), location: 0),
-                        .init(color: Color.white.opacity(0.10), location: 0.35),
-                        .init(color: Color.white.opacity(0.04), location: 0.7),
-                        .init(color: Color.white.opacity(0.14), location: 1),
-                    ], startPoint: .top, endPoint: .bottom),
-                    lineWidth: 0.9
-                )
-            )
-            .shadow(color: .black.opacity(0.35), radius: 10, y: 5)
+        let base: Color = tint ?? Theme.walnutRaised
+        let fill: Double = reduceTransparency ? 1 : 0.88
+        return content
+            .background(shape.fill(base.opacity(fill)))
+            .overlay(shape.strokeBorder(Color.white.opacity(reduceTransparency ? 0.3 : 0.12), lineWidth: 1))
     }
 }
 
@@ -76,19 +29,10 @@ extension View {
     }
 }
 
+/// Kept for call sites that group glass shapes; with flat surfaces there is nothing to merge.
 struct GlassGroup<Content: View>: View {
     var spacing: CGFloat = 0
     @ViewBuilder var content: () -> Content
 
-    var body: some View {
-        #if compiler(>=6.2)
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: spacing) { content() }
-        } else {
-            content()
-        }
-        #else
-        content()
-        #endif
-    }
+    var body: some View { content() }
 }

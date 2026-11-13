@@ -209,8 +209,8 @@ enum DataDecisions {
         let note = x.d["note"].string
         if note.isEmpty { return }
         let tone = x.d["tone"].isNull ? "n" : x.d["tone"].string
-        let lines = EffectPreview.lines(resolved, currency: x.cur)
-        s.addMessage(from: co.name, title: note, body: lines.isEmpty ? "For your information. Nothing needs doing." : lines.joined(separator: ". ") + ".", companyID: co.id, tone: tone)
+        let lines = EffectPreview.story(resolved, currency: x.cur, money: true)
+        s.addMessage(from: co.name, title: note, body: lines.isEmpty ? "For your information. Nothing needs doing." : lines.joined(separator: " "), companyID: co.id, tone: tone)
         s.note(note, tone: tone, companyID: co.id)
     }
 }

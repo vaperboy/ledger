@@ -210,6 +210,7 @@ public struct GameEngine {
         sweepLadder()
         sweepCareer()
         sweepLevel()
+        syncMissions()
         checkMilestones(weekClosed: completed)
         routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })
         if Tutorial.isComplete(state) { DailyBeat.ensure(&state, fresh: state.inbox.filter { !before.contains($0.id) }, library: events, data: data, context: context) }

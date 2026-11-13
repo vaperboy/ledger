@@ -102,11 +102,8 @@ struct GroupEntityOwnership: View {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text(engine.displayText(m.title, companyID: m.companyID)).textStyle(.body, tint: Theme.ink, weight: .medium).fixedSize(horizontal: false, vertical: true)
                         Text(engine.displayText(m.body, companyID: m.companyID)).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-                        WrapRow {
-                            ForEach(Array(m.options.enumerated()), id: \.offset) { (i: Int, o: JSONValue) in
-                                Button(engine.displayText(o["l"].string, companyID: m.companyID)) { ask(m, i) }.buttonStyle(QuietButtonStyle())
-                            }
-                        }
+                        DecisionChoices(labels: m.options.map { (o: JSONValue) -> String in engine.displayText(o["l"].string, companyID: m.companyID) }, compact: true,
+                                        identifier: { (i: Int) -> String in "group-deal-\(i)" }, pick: { (i: Int) in ask(m, i) })
                     }
                 }
             }

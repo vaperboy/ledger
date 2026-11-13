@@ -208,12 +208,7 @@ struct DeskChoicePopup: View {
         GamePopup(title: today.item.title, showsClose: true, category: .medium, tone: .info, onClose: onClose) {
             PopupBody {
                 Text(today.text).popupText(.subtitle)
-                ForEach(Array(today.item.options.enumerated()), id: \.offset) { i, o in
-                    VStack(alignment: .leading, spacing: PopupSpace.tight) {
-                        DecisionAnswerButton(title: o.label, identifier: "desk-choice-\(i)") { onPick(i) }
-                        if !o.hint.isEmpty { Text(o.hint).popupText(.caption) }
-                    }
-                }
+                DecisionChoices(labels: today.item.options.map { (o: DeskStories.Option) -> String in o.label }, identifier: { (i: Int) -> String in "desk-choice-\(i)" }, pick: onPick)
             }
         }
     }

@@ -303,12 +303,8 @@ struct BoardMeetingScreen: View {
                     .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .accessibilityIdentifier("boardroom-meeting-next")
             } else {
-                HStack(spacing: Theme.Space.m) {
-                    Button("Vote yes") { vote(true) }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                        .accessibilityIdentifier("boardroom-vote-yes")
-                    Button("Vote no") { vote(false) }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
-                        .accessibilityIdentifier("boardroom-vote-no")
-                }
+                DecisionChoices(labels: ["Vote yes", "Vote no"], identifier: { (i: Int) -> String in i == 0 ? "boardroom-vote-yes" : "boardroom-vote-no" },
+                                pick: { (i: Int) in vote(i == 0) })
             }
         }
     }
