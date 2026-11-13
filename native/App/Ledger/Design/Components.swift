@@ -188,10 +188,6 @@ struct LedgerBackdrop: View {
             if palette == .game {
                 LinearGradient(colors: [Theme.page, Theme.pageLift], startPoint: .top, endPoint: .bottom)
                 if !reduceTransparency { photo }
-                if !reduceTransparency {
-                    RadialGradient(colors: [Theme.accent.opacity(0.07), Theme.accent.opacity(0)], center: .topTrailing, startRadius: 0, endRadius: 440)
-                        .mask(LinearGradient(stops: [.init(color: .clear, location: 0.07), .init(color: .black, location: 0.28)], startPoint: .top, endPoint: .bottom))
-                }
             } else {
                 palette.ground
             }
@@ -200,16 +196,15 @@ struct LedgerBackdrop: View {
         .accessibilityHidden(true)
     }
 
+    /// The photo ships already blurred, darkened and small, so no screen runs a live blur over it.
     private var photo: some View {
         Color.clear
             .overlay {
                 Image("HomeBackdrop")
                     .resizable()
+                    .interpolation(.medium)
                     .scaledToFill()
-                    .scaleEffect(1.12)
-                    .blur(radius: 18)
             }
-            .overlay { Color.black.opacity(0.26) }
             .overlay {
                 LinearGradient(stops: [.init(color: Theme.page.opacity(0.8), location: 0), .init(color: Theme.page.opacity(0.35), location: 0.14),
                                        .init(color: Theme.page.opacity(0), location: 0.3),

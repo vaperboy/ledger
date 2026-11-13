@@ -258,12 +258,9 @@ extension View {
         environment(\.containerInk, ink).foregroundStyle(ink)
     }
 
-    @ViewBuilder func elevation(_ level: Theme.Elevation) -> some View {
-        switch level {
-        case .flat: self
-        case .raised: self.shadow(color: Theme.Shadow.color, radius: Theme.Shadow.radius, x: 0, y: Theme.Shadow.y)
-        }
-    }
+    /// Raised surfaces are drawn flat: a soft shadow over a whole card is an offscreen pass on every frame.
+    /// Surfaces already separate from the page by their fill and hairline.
+    func elevation(_ level: Theme.Elevation) -> some View { self }
 }
 
 extension Font {

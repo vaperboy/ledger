@@ -223,7 +223,7 @@ struct PopupActionBar<Content: View>: View {
             .padding(.horizontal, PopupLayout.inset)
             .padding(.top, PopupSpace.block).padding(.bottom, PopupLayout.inset)
             .frame(maxWidth: .infinity)
-            .background(.ultraThinMaterial)
+            .background(P.page.opacity(0.96))
     }
 }
 

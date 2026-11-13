@@ -39,6 +39,7 @@ struct RootView: View {
         .overlay { PopupHostLayer(host: popups) }
         .environment(\.popupHost, popups)
         .environment(\.outcomeStore, store)
+        .transaction { t in if PowerMode.isLow { t.animation = nil; t.disablesAnimations = true } }
     }
 }
 

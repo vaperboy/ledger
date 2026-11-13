@@ -10,15 +10,32 @@ extension ArtLibrary {
 
     #if canImport(UIKit)
     static func catalogueImage(_ category: ArtCategory, _ id: String) -> UIImage? {
-        UIImage(named: catalogueName(category, id)) ?? droppedImage(category.rawValue + "." + id)
+        let key: NSString = (category.rawValue + "." + id) as NSString
+        if let hit = catalogue.object(forKey: key) { return hit }
+        if missing.object(forKey: key) != nil { return nil }
+        guard let img = UIImage(named: catalogueName(category, id)) ?? droppedImage(category.rawValue + "." + id) else {
+            missing.setObject(NSNumber(value: true), forKey: key)
+            return nil
+        }
+        catalogue.setObject(img, forKey: key)
+        return img
     }
 
+    private static let catalogue = NSCache<NSString, UIImage>()
     private static let dropped = NSCache<NSString, UIImage>()
+    /// Names already looked up and not found, so emblems do not hit the file system on every redraw.
+    private static let missing = NSCache<NSString, NSNumber>()
 
     static func droppedImage(_ name: String) -> UIImage? {
         let key: NSString = name as NSString
         if let hit = dropped.object(forKey: key) { return hit }
-        guard !name.isEmpty, let root = Bundle.main.resourcePath, let img = UIImage(contentsOfFile: root + "/Content/art/" + name + ".png") else { return nil }
+        if missing.object(forKey: ("file." + name) as NSString) != nil { return nil }
+        guard !name.isEmpty, let root = Bundle.main.resourcePath, let raw = UIImage(contentsOfFile: root + "/Content/art/" + name + ".png") else {
+            missing.setObject(NSNumber(value: true), forKey: ("file." + name) as NSString)
+            return nil
+        }
+        // Decoded once here and kept, instead of being decoded again on the main thread each time it is drawn.
+        let img: UIImage = raw.preparingForDisplay() ?? raw
         dropped.setObject(img, forKey: key)
         return img
     }

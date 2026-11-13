@@ -4,56 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-struct MarketCompaniesPage: View {
-    @EnvironmentObject var store: GameStore
-    @Environment(\.outsidePalette) private var P
-    var open: (MarketRoute) -> Void
-
-    var body: some View {
-        if let e = store.engine {
-            let lines: [MarketUI.CompanyLine] = store.memo("mk.lines") { MarketData.companyLines($0) } ?? []
-            ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
-                hero(lines)
-                if lines.isEmpty {
-                    EmptyState(glyph: Glyph.market, title: "No market yet")
-                } else {
-                    MarketLabel(title: "Your companies")
-                    VStack(spacing: 0) {
-                        ForEach(Array(lines.enumerated()), id: \.element.id) { (pair: (offset: Int, element: MarketUI.CompanyLine)) in
-                            if pair.offset > 0 { Hairline() }
-                            row(pair.element)
-                        }
-                    }
-                }
-                MarketLabel(title: "Analyst")
-                LedgerRow(leading: .glyph(Glyph.person), leadingTint: P.inkSoft, title: "Data analyst",
-                          value: e.hasDataAnalyst ? "Hired" : "Hire", identifier: "market-data-analyst", action: { open(.dataAnalyst) })
-            }
-        }
-    }
-
-    private func hero(_ lines: [MarketUI.CompanyLine]) -> some View {
-        let leading: Int = lines.filter { (l: MarketUI.CompanyLine) -> Bool in l.rank == 1 }.count
-        let measured: Int = lines.filter { (l: MarketUI.CompanyLine) -> Bool in l.level != .feeling }.count
-        let value: String = lines.isEmpty ? "None" : (measured > 0 ? "Leading \(leading) of \(lines.count)" : lines.count.countText("market"))
-        let context: String = measured == 0 ? "Share unknown" : "\(measured) of \(lines.count) measured"
-        return MarketHero(label: "Your markets", value: value, context: lines.isEmpty ? "" : context, identifier: "market-companies-hero")
-    }
-
-    private func row(_ l: MarketUI.CompanyLine) -> some View {
-        let rank: String = l.rank.map { (r: Int) -> String in "#\(r) of \(l.players)" } ?? "\(l.players) in the market"
-        var notes: [String] = []
-        if let g = l.priceGap { notes.append(abs(g) < 0.03 ? "price as market" : "price " + MarketFormat.percent(g, decimals: 0)) }
-        if let r = l.ratingGap { notes.append(String(format: "\u{2605} %+.1f", r)) }
-        let arrow: String = l.trend.map { (t: Double) -> String in t > 0.05 ? "\u{2191} " : (t < -0.05 ? "\u{2193} " : "") } ?? ""
-        let tint: Color? = l.trend.map { (t: Double) -> Color in P.change(t) }
-        return LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: store.engine?.state.company(l.id)?.type ?? "", glyph: Glyph.home)),
-                         title: l.name, subtitle: "\(l.trade) \u{00B7} \(l.city) \u{00B7} \(rank)", value: arrow + l.shareText, valueTint: tint,
-                         valueNote: notes.joined(separator: " \u{00B7} "), lineLimit: 1, identifier: "market-company-\(l.id)",
-                         action: { open(.company(l.id)) })
-    }
-}
-
 struct CompanyInMarketPage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

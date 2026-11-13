@@ -182,11 +182,12 @@ final class GameStore: ObservableObject {
         guard !items.isEmpty else { return }
         homeEvents = Array((items + homeEvents).prefix(12))
     }
-    @Published private(set) var transferChip: TransferChip?
+    /// Lives in its own small object so a flying money chip redraws only the overlay, not every screen.
+    var transferChip: TransferChip? { ChipFlight.shared.chip }
     func flyChip(_ label: String, amount: Double, from origin: CGPoint? = nil, outgoing: Bool = false, text: String? = nil) {
-        transferChip = TransferChip(label: label, amount: amount, origin: origin, outgoing: outgoing, text: text)
+        ChipFlight.shared.chip = TransferChip(label: label, amount: amount, origin: origin, outgoing: outgoing, text: text)
     }
-    func clearChip() { transferChip = nil }
+    func clearChip() { ChipFlight.shared.chip = nil }
     @Published private(set) var dailySheet: DailyDigest?
 
     @Published var tab: AppTab = AppTab.launch
@@ -742,6 +743,7 @@ final class GameStore: ObservableObject {
         } else {
             if resetRoot { popToRoot(t) }
             previousTab = tab
+            TabSwitchTimer.begin(t)
             tab = t
         }
         appRequest = nil

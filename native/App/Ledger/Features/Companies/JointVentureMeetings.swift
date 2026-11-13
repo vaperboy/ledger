@@ -26,23 +26,25 @@ struct JointVentureMeetingsView: View {
                     SegmentedPill(items: Part.allCases, title: { $0.rawValue }, selection: $part, identifier: { "jv-part-\($0.rawValue.lowercased())" },
                                   badges: { (p: Part) -> Bool in p == .upcoming ? waiting(false) : p == .urgent ? waiting(true) : false })
                         .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xxs).padding(.bottom, Theme.Space.s)
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: Theme.Space.m) {
-                            switch part {
-                            case .upcoming: upcoming(e, co, st, live.filter { !$0.urgent }, week)
-                            case .urgent: urgent(e, co, st, live.filter { $0.urgent }, week)
-                            case .history: history(e, co, st)
+                    SegmentPager(items: Part.allCases, selection: $part) { (p: Part) in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                                switch p {
+                                case .upcoming: upcoming(e, co, st, live.filter { !$0.urgent }, week)
+                                case .urgent: urgent(e, co, st, live.filter { $0.urgent }, week)
+                                case .history: history(e, co, st)
+                                }
+                                if p != .history && st.members.count > 1 {
+                                    Button { Haptics.tap(); callOpen = true } label: { Text("Put something to the board").frame(maxWidth: .infinity) }
+                                        .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                                        .accessibilityIdentifier("jv-call")
+                                }
                             }
-                            if part != .history && st.members.count > 1 {
-                                Button { Haptics.tap(); callOpen = true } label: { Text("Put something to the board").frame(maxWidth: .infinity) }
-                                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
-                                    .accessibilityIdentifier("jv-call")
-                            }
+                            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
+                            .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                         }
-                        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
-                        .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+                        .scrollIndicators(.hidden)
                     }
-                    .scrollIndicators(.hidden)
                 }
                 .appScreen(title: "Board meetings", subtitle: co.name)
             } else {
