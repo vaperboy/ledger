@@ -14,7 +14,7 @@ struct SlimWorkerRow: View {
 
     private var mark: (text: String, tint: Color)? {
         if onNotice { return ("Leaving", P.loss) }
-        if attention { return ("Needs you", P.caution) }
+        if attention { return ("Check", P.caution) }
         switch mood ?? "" {
         case "Leaving": return ("Leaving", P.loss)
         case "Unhappy": return ("Unhappy", P.caution)

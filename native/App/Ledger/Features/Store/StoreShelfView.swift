@@ -31,7 +31,7 @@ struct StoreShelfView: View {
 
     private var cosmeticsGroup: some View {
         let owned: Set<String> = SeasonModel.shared.pass.owned
-        let items: [GoldCosmetic] = GoldCosmetics.storeItems
+        let items: [GoldCosmetic] = GoldCosmetics.shelfItems
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text("Cosmetics and comfort").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.m), GridItem(.flexible())], spacing: Theme.Space.m) {
@@ -43,7 +43,7 @@ struct StoreShelfView: View {
     }
 
     private func isLockedSlot(_ c: GoldCosmetic, owned: Set<String>) -> Bool {
-        let slots: [GoldCosmetic] = GoldCosmetics.storeItems.filter { $0.item.kind == .saveSlot }
+        let slots: [GoldCosmetic] = GoldCosmetics.shelfItems.filter { $0.item.kind == .saveSlot }
         guard c.item.kind == .saveSlot, let i = slots.firstIndex(where: { $0.id == c.id }), i > 0 else { return false }
         return !owned.contains(slots[i - 1].id)
     }
@@ -118,4 +118,9 @@ struct StoreShelfView: View {
         shortNeed = price
         shortOfGold = true
     }
+}
+
+extension GoldCosmetics {
+    /// What the Store sells. Trade plates have nowhere to be worn, so they are left out.
+    static var shelfItems: [GoldCosmetic] { storeItems.filter { (c: GoldCosmetic) -> Bool in c.item.kind != .tradePlate } }
 }

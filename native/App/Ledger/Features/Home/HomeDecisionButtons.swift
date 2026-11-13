@@ -4,32 +4,6 @@ import Countries
 import Events
 import Simulation
 
-struct HomeDecisionButtons: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var message: Message
-    @State private var pending: PendingAction?
-
-    static func fits(_ e: GameEngine, _ m: Message) -> Bool {
-        guard m.status == "open", m.options.count == 2 else { return false }
-        return m.options.allSatisfy { (o: JSONValue) -> Bool in e.displayText(o["l"].string, companyID: m.companyID).count <= 26 }
-    }
-
-    var body: some View {
-        HStack(spacing: Theme.Space.s) {
-            ForEach(DecisionOrder.shown(message), id: \.self) { (index: Int) in
-                let label: String = engine.displayText(message.options[index]["l"].string, companyID: message.companyID)
-                DecisionAnswerButton(title: label, compact: true, identifier: "home-decision-\(index)") { answer(index) }
-            }
-        }
-        .confirmAction($pending)
-    }
-
-    private func answer(_ index: Int) {
-        DecisionAnswering.choose(store, engine, message, index, ask: { (a: PendingAction) in pending = a }, done: { })
-    }
-}
-
 /// One decision on Home: its answers, plus "Later", which moves it to the inbox until it expires.
 struct HomeDecisionPopup: View {
     @EnvironmentObject var store: GameStore

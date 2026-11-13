@@ -12,7 +12,7 @@ enum FirstRunFlags {
 }
 
 enum CoachStop: Hashable {
-    case nextDay, happened, needsYou, homeCompany
+    case nextDay, happened, homeCompany
     case firstPick, firstItemRow, itemPrice, itemSupplier, goalCard, inboxGuided
     case tabBar, customTab
     case groupAdd, groupStructure, groupPeople, groupCard
@@ -167,13 +167,13 @@ enum CoachTours {
         case .pickSupplier:
             return [
                 CoachMark(stop: .itemSupplier, text: "Who supplies it? Keep the suggested supplier, or pick another.", passThrough: true, button: ""),
-                CoachMark(stop: .firstPick, text: "Tap the product you want to start with, then press Start with this product.", passThrough: true, button: ""),
-                CoachMark(stop: .companyTabs, text: "Tap Sales to choose your first product. Supply is where you change suppliers later.", passThrough: true, button: ""),
+                CoachMark(stop: .firstPick, text: "Tap what you want to sell first, then press the Start button under the list.", passThrough: true, button: ""),
+                CoachMark(stop: .companyTabs, text: "Tap Sales to choose your first product. You can change its supplier there later.", passThrough: true, button: ""),
                 CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: ""),
             ]
         case .setPrice:
             return [
-                CoachMark(stop: .itemPrice, text: "Set your price: type it, tap Use market price, or press Keep this price.", passThrough: true, button: ""),
+                CoachMark(stop: .itemPrice, text: "Set your price: slide it, or tap Cheap, Market or Premium, then press Keep this price.", passThrough: true, button: ""),
                 CoachMark(stop: .firstItemRow, text: "Tap your product to set its price.", passThrough: true, button: ""),
                 CoachMark(stop: .companyTabs, text: "Tap Sales to find your product.", passThrough: true, button: ""),
                 CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: ""),
@@ -196,8 +196,8 @@ enum CoachTours {
             ]
         case .claimGoal:
             return [
-                CoachMark(stop: .goalCard, text: "Open your Mission card and claim your first goal when it is ready.", passThrough: true, button: "", blocking: false),
-                CoachMark(stop: .tabBar, text: "Open the Home tab: your Mission card is there.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .goalCard, text: "Open the goal strip and claim your first goal when it is ready.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .tabBar, text: "Open the Home tab: the goal strip is there.", passThrough: true, button: "", blocking: false),
             ]
         }
     }
@@ -222,8 +222,8 @@ enum CoachTours {
             CoachMark(stop: .customTab, text: "The Store: the season pass, plans, gold and boxes.", button: "Done", fallback: .tabBar),
         ]),
         CoachTour(id: "company", trigger: .route(.company), marks: [
-            CoachMark(stop: .companyTabs, text: "Overview is the summary, Team the people, Manage how it runs, Sales what it sells and what you charge, Supply who you buy from and Stats the money."),
-            CoachMark(stop: .companyPage, text: "Start on Overview: it shows the cash and what needs you.", button: "Done"),
+            CoachMark(stop: .companyTabs, text: "Overview is the summary, Team the people, Manage how it runs, Sales what it sells and what you charge, and Stats the money."),
+            CoachMark(stop: .companyPage, text: "Start on Overview: it shows the cash and what to look at.", button: "Done"),
         ]),
         appTour(.bank),
         appTour(.market),

@@ -101,7 +101,7 @@ struct GroupOverviewTab: View {
         }
         if !waiting.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Needs you").textStyle(.label, tint: P.inkFaint)
+                Text("Decisions waiting").textStyle(.label, tint: P.inkFaint)
                 ForEach(waiting) { (w: Waiting) in tile(w) }
             }
         }

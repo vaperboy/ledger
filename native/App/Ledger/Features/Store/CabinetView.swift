@@ -296,24 +296,6 @@ extension LookKit {
     }
 }
 
-struct LookTradeChip: View {
-    var look: [String: String]
-    var company: String
-
-    var body: some View {
-        if let plate = LookKit.reward(look, .tradePlate), !company.isEmpty {
-            HStack(spacing: Theme.Space.xs) {
-                Image(systemName: "storefront.fill").font(.caption.weight(.semibold))
-                Text(company).textStyle(.caption, tint: LookKit.ink(plate), weight: .semibold).lineLimit(1)
-            }
-            .foregroundStyle(LookKit.ink(plate))
-            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xxs + 2)
-            .background(Capsule().fill(LookKit.plate(plate)))
-            .accessibilityElement(children: .combine)
-        }
-    }
-}
-
 struct CardMotion: View {
     var def: CardDef
 

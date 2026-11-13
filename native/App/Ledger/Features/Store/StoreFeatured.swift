@@ -138,7 +138,7 @@ struct StoreCosmeticsSection: View {
 
     private var picks: [GoldCosmetic] {
         let owned: Set<String> = SeasonModel.shared.pass.owned
-        let items: [GoldCosmetic] = GoldCosmetics.storeItems.filter { (c: GoldCosmetic) -> Bool in
+        let items: [GoldCosmetic] = GoldCosmetics.shelfItems.filter { (c: GoldCosmetic) -> Bool in
             !owned.contains(c.id) && c.item.kind != .saveSlot
         }
         return Array(items.sorted { (a: GoldCosmetic, b: GoldCosmetic) -> Bool in a.rarity > b.rarity }.prefix(6))
