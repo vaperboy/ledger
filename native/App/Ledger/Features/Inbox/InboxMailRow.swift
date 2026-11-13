@@ -2,6 +2,7 @@ import SwiftUI
 import GameCore
 import Simulation
 import Businesses
+import Events
 
 extension Message {
     var inboxGlyph: String {
@@ -86,10 +87,11 @@ struct InboxMailRow: View {
 
     static let avatar: CGFloat = 36
 
+    /// Answers in the shared order ("No" first), each the same secondary button; a tap sends the answer's own index.
     private func optionButtons(_ labels: [String], _ answer: @escaping (Int) -> Void, fullWidth: Bool) -> some View {
-        ForEach(Array(labels.enumerated()), id: \.offset) { (i: Int, label: String) in
-            Button(label) { Haptics.tap(); answer(i) }
-                .buttonStyle(TertiaryButtonStyle(size: .compact, tint: P.inkSoft))
+        ForEach(DecisionOrder.shown(labels), id: \.self) { (i: Int) in
+            Button { Haptics.tap(); answer(i) } label: { Text(labels[i]).lineLimit(2).multilineTextAlignment(.center) }
+                .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: fullWidth))
                 .accessibilityIdentifier("inbox-inline-option")
         }
     }
