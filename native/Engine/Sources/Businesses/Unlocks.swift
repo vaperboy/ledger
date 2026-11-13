@@ -68,9 +68,16 @@ public enum FeatureUnlocks {
 
     /// Saves without the ladder are never gated; features a save already opened under older rules stay open.
     public static func isUnlocked(_ f: LevelFeature, _ s: GameState) -> Bool {
-        guard s.rest["ldr"] != nil else { return true }
+        guard s.rest["ldr"] != nil, s.rest[allOpenKey] == nil else { return true }
         return LevelCurve.level(s) >= unlockLevel(f) || openedBefore(f, s)
     }
+
+    /// Set on the save of an administrator account: every level gate is open.
+    public static let allOpenKey = "lvlAll"
+
+    public static func allOpen(_ s: GameState) -> Bool { s.rest[allOpenKey] != nil }
+
+    public static func setAllOpen(_ s: inout GameState, _ on: Bool) { s.rest[allOpenKey] = on ? .bool(true) : nil }
 
     /// The next feature the player will open, lowest level first.
     public static func nextUnlock(_ s: GameState) -> Row? {

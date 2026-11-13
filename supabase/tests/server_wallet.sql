@@ -86,14 +86,15 @@ end $$;
 do $$
 declare a uuid := pg_temp.id('a'); c uuid := pg_temp.id('c'); before int; r jsonb; cos text;
 begin
-  select id into cos from private.store_cosmetics where source = 'store' and price is not null and private.theme_live(theme) order by price, id limit 1;
+  -- Store cosmetics are sold from the day's shelf.
+  select id into cos from private.store_shelf(private.era_day()) order by price, id limit 1;
   perform pg_temp.as_user(c);
   perform pg_temp.expect_error(format('select public.store_buy(%L, %L, %L)', 'cosmetic', cos, 'req-c-0001'), 'not_enough_gold');
   perform pg_temp.as_user(a);
   before := pg_temp.gold(a);
   r := public.store_buy('cosmetic', cos, 'req-a-0001');
   r := public.store_buy('cosmetic', cos, 'req-a-0001');
-  if pg_temp.gold(a) <> before - (select price from private.store_cosmetics where id = cos) then raise exception 'repeated request spent twice: % -> %', before, pg_temp.gold(a); end if;
+  if pg_temp.gold(a) <> before - (select price from private.store_shelf(private.era_day()) where id = cos) then raise exception 'repeated request spent twice: % -> %', before, pg_temp.gold(a); end if;
   perform pg_temp.expect_error(format('select public.store_buy(%L, %L, %L)', 'cosmetic', cos, 'req-a-0002'), 'already_owned');
   perform pg_temp.expect_error(format('select public.store_buy(%L, %L, %L)', 'cosmetic', 'no.such.thing', 'req-a-0003'), 'unknown_item');
   perform pg_temp.expect_error(format('select public.store_buy(%L, %L, %L)', 'cosmetic', cos, 'short'), 'invalid_request');
