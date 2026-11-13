@@ -1,4 +1,5 @@
 # What's new
+- Faster and safer saving in the background, iPhone portrait only, and clearer loading and retry on online screens
 - Your first company is one of 12 simple starter trades, and the start-up grant only ever covers those; bigger trades such as hotels, factories, airlines and oil and gas open later as you level up
 - Insurance now opens at level 3 and Rivals at level 6, still one new feature per level
 - The country list starts with the country of your phone, and the last setup step is skipped when your trade sells one way only
