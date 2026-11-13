@@ -98,6 +98,12 @@ final class PurchaseManager {
             notice = PurchaseNotice(kind: .failure, title: "Not available", lines: [catalogError ?? "This is not available right now. Try again later."])
             return
         }
+        // Gold and the pass are delivered to the account on the server, so they are only sold while it answers.
+        if PurchaseCatalog.isConsumable(item), StoreSession.shared.isServerBacked, !StoreSession.shared.canSpend {
+            notice = PurchaseNotice(kind: .info, title: "Connect first", lines: ["Gold and the Battle Pass are kept on your account. Connect to the internet, then try again."])
+            Task { await StoreSession.shared.load() }
+            return
+        }
         confirmation = PendingAction(title: Self.confirmTitle(item), message: Self.confirmMessage(item, product: product), button: "Buy for \(product.displayPrice)",
                                      alwaysAsk: true, tone: .investment, icon: Self.icon(item)) { [weak self] in
             guard let self else { return }

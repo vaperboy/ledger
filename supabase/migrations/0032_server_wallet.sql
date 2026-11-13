@@ -1050,11 +1050,17 @@ begin
   return least(30, xp / 300);
 end $$;
 
+-- The account (its sign-up or its profile, whichever came first) existed before this migration ran.
+create or replace function private.made_before_cutoff(uid uuid) returns boolean language sql stable security definer set search_path = '' as $$
+  select coalesce((select least(coalesce(u.created_at, p.created_at), p.created_at) <= c.at
+                     from public.profiles p left join auth.users u on u.id = p.id, private.store_config c
+                    where p.id = uid and c.key = 'import_cutoff'), false);
+$$;
+
 create or replace function private.store_state_for(uid uuid) returns jsonb language plpgsql security definer set search_path = '' as $$
-declare w public.gold_wallets := private.wallet(uid); v_season int := private.current_season(); v_today int := private.era_day(); used int; cutoff timestamptz;
+declare w public.gold_wallets := private.wallet(uid); v_season int := private.current_season(); v_today int := private.era_day(); used int;
 begin
   used := coalesce((select sum(gold) from public.money_claims where user_id = uid and kind = 'pack' and created_at > now() - interval '7 days'), 0);
-  select at into cutoff from private.store_config where key = 'import_cutoff';
   return jsonb_build_object(
     'account', uid,
     'serverTime', extract(epoch from now()),
@@ -1082,7 +1088,7 @@ begin
     'unpaidMoney', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'kind', kind, 'pack', pack_id, 'amount', amount) order by created_at)
                                from public.money_claims where user_id = uid and paid_at is null and created_at > now() - interval '14 days'), '[]'::jsonb),
     'imported', exists (select 1 from public.store_imports where user_id = uid),
-    'importsGold', coalesce((select created_at from public.profiles where id = uid) <= cutoff, false));
+    'importsGold', private.made_before_cutoff(uid));
 end $$;
 
 create or replace function public.store_state() returns jsonb language plpgsql security definer set search_path = '' as $$
@@ -1461,7 +1467,7 @@ begin
   if exists (select 1 from public.store_imports where device_hash = dh) then
     return jsonb_build_object('imported', false, 'reason', 'device', 'state', private.store_state_for(uid));
   end if;
-  full_import := coalesce((select p.created_at <= c.at from public.profiles p, private.store_config c where p.id = uid and c.key = 'import_cutoff'), false);
+  full_import := private.made_before_cutoff(uid);
   perform private.wallet(uid);
 
   if full_import then
