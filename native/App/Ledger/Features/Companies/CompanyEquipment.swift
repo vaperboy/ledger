@@ -96,7 +96,7 @@ struct CompanyEquipmentScreen: View {
                     let none: Bool = x.have + x.leased < 1
                     if n > 0 { RowRule(inset: 0) }
                     EquipmentListRow(equipmentID: x.equipmentID, name: x.name, detail: priceText(x, cur), condition: nil,
-                                     status: none ? (x.required ? "Blocks trading" : "Missing") : "\(Int((x.have + x.leased).rounded())) of \(Int(x.need))",
+                                     status: none ? (x.required ? "Blocks trading" : "Missing") : "\(Int(saturating: (x.have + x.leased).rounded())) of \(Int(x.need))",
                                      tone: none && x.required ? .bad : .warn, glyph: glyph(for: x.kind), identifier: "equipment-missing-\(x.equipmentID)") {
                         store.openTechPro(companyID: companyID, equipmentID: x.equipmentID)
                     }

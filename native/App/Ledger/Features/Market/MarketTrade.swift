@@ -173,7 +173,7 @@ struct MarketTradeFlow: View {
                 bigAmount(cur)
                 HStack(spacing: Theme.Space.s) {
                     ForEach([0.1, 0.25, 0.5], id: \.self) { (f: Double) in
-                        Button("\(Int(f * 100))%") { Haptics.choose(); setAmount(q.available * f, cur) }
+                        Button("\(Int(saturating: f * 100))%") { Haptics.choose(); setAmount(q.available * f, cur) }
                             .buttonStyle(SecondaryButtonStyle(size: .compact))
                     }
                     Button("Max") { Haptics.choose(); setAmount(max(0, q.available - (a.kind == .crypto ? q.available * 0.004 : cur.scaledPrice(29))), cur) }
@@ -213,8 +213,8 @@ struct MarketTradeFlow: View {
                 Text("\(p.name) \u{00B7} held by \(p.ownerName)").textStyle(.caption, tint: P.inkFaint)
                 Figure(label: "You sell", value: cur.tidyDisplay(q.amount), note: "\(cur.tidyDisplay(q.cashChange)) after costs", size: .display)
                 if !p.wholeOnly {
-                    SegmentedPill(items: [0.25, 0.5, 0.75, 1.0], title: { (f: Double) -> String in f >= 1 ? "All" : "\(Int(f * 100))%" }, selection: $fraction,
-                                  identifier: { (f: Double) -> String in "trade-fraction-\(Int(f * 100))" })
+                    SegmentedPill(items: [0.25, 0.5, 0.75, 1.0], title: { (f: Double) -> String in f >= 1 ? "All" : "\(Int(saturating: f * 100))%" }, selection: $fraction,
+                                  identifier: { (f: Double) -> String in "trade-fraction-\(Int(saturating: f * 100))" })
                 } else {
                     Text("Sells whole").textStyle(.caption)
                 }

@@ -260,7 +260,7 @@ struct WeeklyPlanCard: View {
             EffectArrow(effect: change.map { $0 > 0.005 ? 1 : $0 < -0.005 ? -1 : 0 } ?? 0, size: 14)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).textStyle(.body, weight: .medium)
-                Text(name + (change.map { " \u{00B7} takings " + (($0 >= 0 ? "+" : "") + String(Int(($0 * 100).rounded())) + "%") + " on a usual week" } ?? " \u{00B7} too early to compare"))
+                Text(name + (change.map { " \u{00B7} takings " + (($0 >= 0 ? "+" : "") + String(Int(saturating: ($0 * 100).rounded())) + "%") + " on a usual week" } ?? " \u{00B7} too early to compare"))
                     .textStyle(.caption)
             }
             Spacer(minLength: 6)

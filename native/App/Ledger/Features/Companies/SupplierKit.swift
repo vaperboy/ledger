@@ -144,7 +144,7 @@ struct SupplierCompanyCard: View {
             VStack(spacing: Theme.Space.xxs) {
                 if !company.size.isEmpty { SupplierFact(label: "Size", value: company.staff > 0 ? "\(company.size), \(company.staff) staff" : company.size) }
                 if company.weeksTrading > 0 { SupplierFact(label: "Trading for", value: Self.age(company.weeksTrading)) }
-                SupplierFact(label: "Reliability", value: company.reliability.map { (r: Double) -> String in "\(Int((r * 100).rounded()))% delivered" } ?? "Not tested yet",
+                SupplierFact(label: "Reliability", value: company.reliability.map { (r: Double) -> String in "\(Int(saturating: (r * 100).rounded()))% delivered" } ?? "Not tested yet",
                              tint: (company.reliability ?? 1) < 0.9 ? P.caution : nil)
                 if !company.priceLevel.isEmpty { SupplierFact(label: "Price level", value: company.priceLevel) }
             }

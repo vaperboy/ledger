@@ -81,7 +81,7 @@ struct DocumentView: View {
     }
 
     static func figure(_ v: Double) -> String {
-        if v == v.rounded() && abs(v) < 1_000_000 { return String(Int(v)) }
+        if v == v.rounded() && abs(v) < 1_000_000 { return String(Int(saturating: v)) }
         return String(format: "%.1f", v)
     }
 }

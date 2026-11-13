@@ -180,7 +180,7 @@ struct BuyerTalkSheet: View {
                                 AmountField(title: "Your price for the whole company", currency: cur, amount: $ask)
                                 WrapRow {
                                     ForEach([0.03, 0.08, 0.15], id: \.self) { f in
-                                        Button("+\(Int(f * 100))%") { ask = (o.price * (1 + f) / 1000).rounded() * 1000 }.buttonStyle(QuietButtonStyle())
+                                        Button("+\(Int(saturating: f * 100))%") { ask = (o.price * (1 + f) / 1000).rounded() * 1000 }.buttonStyle(QuietButtonStyle())
                                     }
                                 }
                                 Text("At or below the offer they ask you to sign. A little above, they may agree or stretch half way; far above, they lose patience and may walk away.").popupText(.caption)

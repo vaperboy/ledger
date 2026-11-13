@@ -201,6 +201,9 @@ final class GameStore: ObservableObject {
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
     @Published private(set) var appRequest: AppRequest?
     @Published private(set) var loadProblem: String?
+    /// True from launch until the saved game has been read, so the first frame never waits for the file.
+    @Published private(set) var isLoadingSave: Bool = false
+    private let writer: SaveWriter?
 
     let saves: SaveStore?
     private let isShowcase = ProcessInfo.processInfo.arguments.contains("-showcase")
@@ -212,10 +215,13 @@ final class GameStore: ObservableObject {
 
     init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Ledger/Saves", isDirectory: true)
-        saves = try? SaveStore(directory: base)
+        let store: SaveStore? = try? SaveStore(directory: base)
+        saves = store
+        writer = store.map { SaveWriter(store: $0) }
         if isShowcase, let e = try? GameEngine.showcase(wealthy: ProcessInfo.processInfo.arguments.contains("-showcase-rich"), board: ProcessInfo.processInfo.arguments.contains("-showcase-board"),
                                                         extraTrades: Self.showcaseTrades) { engine = e }
-        else if let saves, saves.hasSave() { loadCurrent() }
+        else if let saves, saves.hasSave() { isLoadingSave = true }
+        writer?.onFailure = { [weak self] (message: String) -> Void in self?.errorText = message }
         ConfirmThreshold.delegated = { [weak self] () -> (limit: Double, rate: Double) in self?.engine?.delegatedSpendLimit() ?? (limit: 0, rate: 0) }
         StoreSession.shared.moneyPrizeHandler = { [weak self] (amount: Int, id: String) -> Void in self?.claimBoxMoney(amount, claimID: id) }
         StoreSession.shared.moneyPackHandler = { [weak self] (pack: String, id: String) -> Double? in self?.claimMoneyPack(pack, claimID: id) }
@@ -239,18 +245,38 @@ final class GameStore: ObservableObject {
     var hasGame: Bool { engine != nil }
     var hasSavedGame: Bool { saves?.hasSave() ?? false }
 
-    func money(_ v: Double) -> String { (engine?.homeCurrency.display(v) ?? String(Int(v))).tidyMoney }
-    func short(_ v: Double) -> String { (engine?.homeCurrency.short(v) ?? String(Int(v))).tidyMoney }
-    func money(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).display(v) ?? String(Int(v))).tidyMoney }
-    func short(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).short(v) ?? String(Int(v))).tidyMoney }
+    func money(_ v: Double) -> String { (engine?.homeCurrency.display(v) ?? String(Int(saturating: v))).tidyMoney }
+    func short(_ v: Double) -> String { (engine?.homeCurrency.short(v) ?? String(Int(saturating: v))).tidyMoney }
+    func money(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).display(v) ?? String(Int(saturating: v))).tidyMoney }
+    func short(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).short(v) ?? String(Int(saturating: v))).tidyMoney }
 
     func loadCurrent() {
         guard let saves else { return }
+        writer?.flush()
         do { try start(with: saves.load()); loadProblem = nil; resetNavigation() }
-        catch {
-            let kept: Bool = saves.keepUnreadable()
-            loadProblem = Self.describe(error) + (kept ? " A copy of your save was kept on this device." : "")
+        catch { noteLoadFailure(error, saves: saves) }
+    }
+
+    /// Reads the saved game off the main thread, after the first frame is on screen.
+    func loadInitialSave() async {
+        guard isLoadingSave, let saves else { isLoadingSave = false; return }
+        let result: Result<GameState, Error> = await Task.detached { () -> Result<GameState, Error> in
+            Result { try saves.load() }
+        }.value
+        switch result {
+        case .success(let state):
+            do { try start(with: state); loadProblem = nil; resetNavigation() }
+            catch { noteLoadFailure(error, saves: saves) }
+        case .failure(let error):
+            noteLoadFailure(error, saves: saves)
         }
+        isLoadingSave = false
+        syncPlayerCompanies()
+    }
+
+    private func noteLoadFailure(_ error: Error, saves: SaveStore) {
+        let kept: Bool = saves.keepUnreadable()
+        loadProblem = Self.describe(error) + (kept ? " A copy of your save was kept on this device." : "")
     }
 
     func currentSaveSummary() -> SaveSummary? {
@@ -275,13 +301,16 @@ final class GameStore: ObservableObject {
         engine = e
     }
 
+    /// Queues a save; the file is written in the background a moment later.
     func save(backup: Bool = false) {
-        guard !isShowcase, let saves, let engine else { return }
-        do {
-            let summary = saves.summary(of: engine.state, trades: engine.data.catalog)
-            try saves.save(engine.state, summary: summary)
-            if backup { try saves.backup(engine.state, summary: summary) }
-        } catch { errorText = "Saving failed: \(error)" }
+        guard !isShowcase, let saves, let engine, let writer else { return }
+        writer.schedule(engine.state, summary: saves.summary(of: engine.state, trades: engine.data.catalog), backup: backup)
+    }
+
+    /// Writes the save now. Used before leaving the app or touching save files.
+    func saveNow() {
+        save()
+        writer?.flush()
     }
 
     func slotList() -> [(slot: String, summary: SaveSummary?)] { saves?.slots() ?? [] }
@@ -289,7 +318,7 @@ final class GameStore: ObservableObject {
     /// Slots are separate careers: the current one is parked under its own name and the chosen one continues from its latest state.
     func switchCareer(to slot: String) {
         guard !isShowcase, let saves, slot != "current", saves.hasSave(slot: slot) else { return }
-        save()
+        saveNow()
         do {
             if saves.hasSave() { guard try saves.park(as: careerName) != nil else { errorText = "Your career could not be put aside."; return } }
             guard try saves.unpark(slot) else { errorText = "That career could not be opened."; return }
@@ -301,7 +330,7 @@ final class GameStore: ObservableObject {
     @discardableResult
     func parkForNewCareer() -> Bool {
         guard !isShowcase, let saves, engine != nil else { return false }
-        save()
+        saveNow()
         do {
             guard try saves.park(as: careerName) != nil else { return false }
             resetNavigation(); engine = nil
@@ -341,7 +370,8 @@ final class GameStore: ObservableObject {
             for row in saves.slots() where row.slot != "current" {
                 if let parked = try? saves.load(slot: row.slot), Self.saveID(parked) == id { return "This career is in the slot \(row.slot). Open it there." }
             }
-            if engine != nil { save() }
+            if engine != nil { saveNow() }
+            writer?.flush()
             var here: GameState? = engine?.state
             if here == nil, saves.hasSave() { here = try? saves.load() }
             if let here {
@@ -362,7 +392,7 @@ final class GameStore: ObservableObject {
         return String(data: d, encoding: .utf8)
     }
 
-    func quitToMenu() { save(); resetNavigation(); engine = nil }
+    func quitToMenu() { saveNow(); resetNavigation(); engine = nil }
 
     func nextDay() {
         guard !isAdvancing, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, engine != nil else { return }

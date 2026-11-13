@@ -17,6 +17,8 @@ struct RootView: View {
         Group {
             if !termsAccepted && !Self.showcase {
                 TermsView { termsAccepted = true }
+            } else if store.isLoadingSave {
+                ProgressView().tint(Theme.gold).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let e = store.engine {
                 if e.state.isGameOver || Self.showsGameOver { GameOverView(engine: e) } else { GameShell() }
             } else { StartView() }

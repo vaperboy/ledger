@@ -198,7 +198,7 @@ struct MarketPriceField: View {
         }
         .padding(.vertical, Theme.Space.s)
         .overlay(alignment: .bottom) { Rectangle().fill(P.hairline).frame(height: 0.5) }
-        .onAppear { if value > 0, text.isEmpty { text = String(Int(value.rounded())) } }
+        .onAppear { if value > 0, text.isEmpty { text = String(Int(saturating: value.rounded())) } }
     }
 }
 

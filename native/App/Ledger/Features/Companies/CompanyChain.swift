@@ -116,7 +116,7 @@ struct StoreRules: View {
                 Text("Local marketing").textStyle(.caption, tint: Theme.inkSoft)
                 Spacer()
                 ForEach([0.0, 0.01, 0.02], id: \.self) { v in
-                    Button(v == 0 ? "None extra" : "+\(Int(v * 100))%") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .marketing(v)) }, "Store marketing rule saved.", same: "That marketing rule is already set.") }
+                    Button(v == 0 ? "None extra" : "+\(Int(saturating: v * 100))%") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .marketing(v)) }, "Store marketing rule saved.", same: "That marketing rule is already set.") }
                         .buttonStyle(TinyButtonStyle(tint: off["mkt"].double == v ? Theme.gold : Theme.ivoryFaint))
                 }
             }

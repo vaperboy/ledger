@@ -39,6 +39,20 @@ final class SaveStoreTests: XCTestCase {
         XCTAssertEqual(store.slots().count, 1)
     }
 
+    func testSlotListReadsSummariesOnly() throws {
+        let (store, dir) = try tempStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (s, _) = try legacyState()
+        let sum = store.summary(of: s, trades: try TradeCatalog.bundled())
+        try store.save(s, summary: sum)
+        try "garbage".write(to: dir.appendingPathComponent("broken.ledgersave"), atomically: true, encoding: .utf8)
+        let rows = store.slots()
+        XCTAssertEqual(rows.count, 2)
+        XCTAssertEqual(rows.first { $0.slot == "current" }?.summary?.week, sum.week)
+        XCTAssertEqual(rows.first { $0.slot == "current" }?.summary?.playerName, sum.playerName)
+        XCTAssertNil(rows.first { $0.slot == "broken" }?.summary)
+    }
+
     func testSlotsRenameAndDelete() throws {
         let (store, dir) = try tempStore()
         defer { try? FileManager.default.removeItem(at: dir) }

@@ -250,7 +250,7 @@ struct PlayerCompanyOfferSheet: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text("\(e.data.catalog[l.tradeID]?.name ?? l.tradeID) · sold by \(l.ownerName) (\(l.profileCode))").popupText(.subtitle)
             KeyFigures(items: figures)
-            Text("\(l.staff) \(l.staff == 1 ? "person" : "people") · reputation \(Int(l.reputation.rounded())) of 100 · trading \(l.weeksTrading) weeks · on offer for \(left) more \(left == 1 ? "day" : "days")")
+            Text("\(l.staff) \(l.staff == 1 ? "person" : "people") · reputation \(Int(saturating: l.reputation.rounded())) of 100 · trading \(l.weeksTrading) weeks · on offer for \(left) more \(left == 1 ? "day" : "days")")
                 .popupText(.caption)
             Text("You buy the business and its customers. It opens as a new company of yours, and you pay for its set-up and for merging suppliers and systems.").popupText(.caption)
             Hairline()

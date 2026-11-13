@@ -168,7 +168,7 @@ struct InvestStartupSheet: View {
         pending = StartupPopup.ask(title: "Invest in \(st.name)?", lines: [
             "\(cur.tidyDisplay(amt)) leaves your cash now and waits in escrow until \(q.releasedAtMilestone.lowercased()).",
             String(format: "You own %.2f%% of the startup afterwards, bought at the fixed price of %@ for each 1%%.", q.percent, cur.tidyShort(q.pricePerPercent)),
-            "You cannot resell for \(CrowdStartupRules.lockWeeks) game weeks. A sale must then be near the real value, and costs a transfer tax of \(Int(CrowdStartupRules.transferTax * 100))% paid by the buyer and tax on any gain.",
+            "You cannot resell for \(CrowdStartupRules.lockWeeks) game weeks. A sale must then be near the real value, and costs a transfer tax of \(Int(saturating: CrowdStartupRules.transferTax * 100))% paid by the buyer and tax on any gain.",
             "If the startup fails before the milestone, the escrow comes back to you. If it fails after, that money is lost.",
         ], button: "Invest \(cur.tidyShort(amt))", risk: "In total you would have \(cur.tidyShort(total)) in this startup, the most one investor may put in is \(cur.tidyShort(CrowdStartupRules.perInvestorCap(st.plan))).") {
             var st2: CrowdStartup = market.service.startup(st.id) ?? st
@@ -296,7 +296,7 @@ struct SellSharesSheet: View {
         let buyer: StartupBuyer? = market.service.buyer(startupID: st.id)
         VStack(alignment: .leading, spacing: PopupSpace.card) {
             Text(st.name).popupText(.figure)
-            SegmentedPill(items: [0.25, 0.5, 1.0], title: { (v: Double) -> String in v == 1.0 ? "All" : "\(Int(v * 100))%" }, selection: $share)
+            SegmentedPill(items: [0.25, 0.5, 1.0], title: { (v: Double) -> String in v == 1.0 ? "All" : "\(Int(saturating: v * 100))%" }, selection: $share)
             SegmentedPill(items: [CrowdStartupRules.bandLow, 1.0, CrowdStartupRules.bandHigh], title: { (v: Double) -> String in v < 1 ? "Low" : v == 1 ? "Fair" : "High" }, selection: $position)
             PopupRow(label: "Real value of these shares", value: cur.tidyShort(fair))
             PopupRow(label: "A sale must be between", value: cur.tidyShort(band.low) + " and " + cur.tidyShort(band.high))
