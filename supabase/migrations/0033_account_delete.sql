@@ -1,5 +1,5 @@
 -- Deleting an account always works: whatever the player still has open with other players is settled first, then the account is removed.
--- The player's own side of a settlement can no longer be booked, so other players are made whole without anyone gaining from the deletion.
+-- The leaving player's side of a payout can no longer be booked, so others get back what they put in, at most what their stake is worth.
 
 create or replace function private.acct_count(n bigint, one text, many text) returns text language sql immutable as $$
   select n::text || ' ' || case when n = 1 then one else many end;
@@ -193,9 +193,9 @@ declare uid uuid := private.require_user();
 begin
   return jsonb_build_object(
     'exportedAt', now(),
-    'account', (select jsonb_build_object('id', u.id, 'email', u.email, 'createdAt', u.created_at,
-                  'signIns', coalesce((select jsonb_agg(i.provider) from auth.identities i where i.user_id = u.id), '[]'::jsonb))
-                  from auth.users u where u.id = uid),
+    'account', (select jsonb_build_object('id', u.id, 'email', u.email, 'createdAt', u.created_at) from auth.users u where u.id = uid),
+    'signIns', case when to_regclass('auth.identities') is null then '[]'::jsonb
+                    else private.acct_rows('select provider from auth.identities where user_id = $1', uid) end,
     'profile', (select to_jsonb(p) from public.profiles p where id = uid),
     'username', private.acct_rows('select name_key, claimed_at from public.username_reservations where owner_id = $1', uid),
     'companies', private.acct_rows('select * from public.companies_public where owner_id = $1', uid),
