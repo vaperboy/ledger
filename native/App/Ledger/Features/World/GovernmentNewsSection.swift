@@ -8,7 +8,7 @@ struct GovernmentNewsSection: View {
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
-        let read: WorldRead? = engine.worldRead()
+        let read: WorldRead? = store.cachedWorldRead ?? engine.worldRead()
         let list: [GovNews] = read.map { (r: WorldRead) -> [GovNews] in Array(r.gov.news.prefix(40)) } ?? []
         VStack(alignment: .leading, spacing: 0) {
             Text("Source: the government. Rates, inflation, elections, terms of office and the courts, as it announces them.")
