@@ -106,6 +106,11 @@ protocol IdentityTokenProvider: Sendable {
     func validSession() async throws -> SupabaseSession
     func renewed(rejected: SupabaseSession) async throws -> SupabaseSession
     func link(_ provider: SignInProvider) async throws -> SupabaseSession
+    func linkApple(idToken: String, nonce: String) async throws -> SupabaseSession
+    func signInExisting(_ request: SignInRequest) async throws -> SupabaseSession
+    func adopt(_ session: SupabaseSession) async
+    func release(_ session: SupabaseSession) async
+    func enabledProviders() async -> [SignInProvider]?
     func discard() async
 }
 
@@ -147,7 +152,75 @@ actor SupabaseIdentityProvider: IdentityTokenProvider {
 
     func discard() async { store.clear() }
 
+    // Apple's token is attached to the current account, which keeps its id and stops being anonymous.
+    func linkApple(idToken: String, nonce: String) async throws -> SupabaseSession {
+        let current: SupabaseSession = try await validSession()
+        let linked: SupabaseSession = try await idTokenGrant(idToken: idToken, nonce: nonce, linkingTo: current)
+        store.save(linked)
+        return linked
+    }
+
+    // Signs in to the account that already owns this sign-in. The session is returned, not kept, until the player decides to switch.
+    func signInExisting(_ request: SignInRequest) async throws -> SupabaseSession {
+        switch request {
+        case .apple(let idToken, let nonce):
+            return try await idTokenGrant(idToken: idToken, nonce: nonce, linkingTo: nil)
+        case .google:
+            let pkce: PKCE = .make()
+            let query: [URLQueryItem] = [
+                URLQueryItem(name: "provider", value: SignInProvider.google.rawValue),
+                URLQueryItem(name: "redirect_to", value: OnlineConfig.callbackURL),
+                URLQueryItem(name: "code_challenge", value: pkce.challenge),
+                URLQueryItem(name: "code_challenge_method", value: "s256"),
+            ]
+            var comps = URLComponents(url: base, resolvingAgainstBaseURL: false) ?? URLComponents()
+            comps.path = (comps.path.hasSuffix("/") ? String(comps.path.dropLast()) : comps.path) + "/auth/v1/authorize"
+            comps.queryItems = query
+            guard let url = comps.url else { throw OnlineError.offline }
+            let callback: URL = try await authenticator.authenticate(url: url, callbackScheme: OnlineConfig.callbackScheme)
+            let code: String = try SupabaseWire.authorizationCode(from: callback, provider: .google)
+            return try await exchangeCode(code, verifier: pkce.verifier, provider: .google)
+        }
+    }
+
+    func adopt(_ session: SupabaseSession) async { store.save(session) }
+
+    // Ends a session that was opened for a switch the player turned down.
+    func release(_ session: SupabaseSession) async {
+        let request: URLRequest = SupabaseWire.request(base: base, path: "/auth/v1/logout", method: "POST", query: [URLQueryItem(name: "scope", value: "local")],
+                                                       apiKey: apiKey, accessToken: session.accessToken)
+        _ = try? await perform(request)
+    }
+
+    // The sign-in providers switched on for this project, or nil when the server cannot be asked.
+    func enabledProviders() async -> [SignInProvider]? {
+        let request: URLRequest = SupabaseWire.request(base: base, path: "/auth/v1/settings", apiKey: apiKey)
+        guard let (data, status) = try? await perform(request), (200..<300).contains(status),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let external = json["external"] as? [String: Any] else { return nil }
+        return SignInProvider.allCases.filter { (p: SignInProvider) -> Bool in (external[p.rawValue] as? Bool) == true }
+    }
+
+    private func idTokenGrant(idToken: String, nonce: String, linkingTo current: SupabaseSession?) async throws -> SupabaseSession {
+        var fields: [String: Any] = ["provider": SignInProvider.apple.rawValue, "id_token": idToken, "nonce": nonce]
+        if current != nil { fields["link_identity"] = true }
+        let request: URLRequest = SupabaseWire.request(base: base, path: "/auth/v1/token", method: "POST", query: [URLQueryItem(name: "grant_type", value: "id_token")],
+                                                       body: try JSONSerialization.data(withJSONObject: fields), apiKey: apiKey, accessToken: current?.accessToken)
+        let (data, status) = try await perform(request)
+        guard (200..<300).contains(status) else { throw linkError(status: status, body: data, provider: .apple) }
+        return try parse(data, fallback: .apple)
+    }
+
+    private func exchangeCode(_ code: String, verifier: String, provider: SignInProvider) async throws -> SupabaseSession {
+        let body: Data = try JSONSerialization.data(withJSONObject: ["auth_code": code, "code_verifier": verifier])
+        let exchange: URLRequest = SupabaseWire.request(base: base, path: "/auth/v1/token", method: "POST", query: [URLQueryItem(name: "grant_type", value: "pkce")],
+                                                        body: body, apiKey: apiKey)
+        let (reply, replyStatus) = try await perform(exchange)
+        guard (200..<300).contains(replyStatus) else { throw linkError(status: replyStatus, body: reply, provider: provider) }
+        return try parse(reply, fallback: provider)
+    }
+
     func link(_ provider: SignInProvider) async throws -> SupabaseSession {
+        guard provider == .google else { throw OnlineError.rejected("Use the Sign in with Apple button.") }
         let current: SupabaseSession = try await validSession()
         let pkce: PKCE = .make()
         let query: [URLQueryItem] = [
@@ -166,12 +239,7 @@ actor SupabaseIdentityProvider: IdentityTokenProvider {
         }
         let callback: URL = try await authenticator.authenticate(url: url, callbackScheme: OnlineConfig.callbackScheme)
         let code: String = try SupabaseWire.authorizationCode(from: callback, provider: provider)
-        let body: Data = try JSONSerialization.data(withJSONObject: ["auth_code": code, "code_verifier": pkce.verifier])
-        let exchange: URLRequest = SupabaseWire.request(base: base, path: "/auth/v1/token", method: "POST", query: [URLQueryItem(name: "grant_type", value: "pkce")],
-                                                        body: body, apiKey: apiKey)
-        let (reply, replyStatus) = try await perform(exchange)
-        guard (200..<300).contains(replyStatus) else { throw linkError(status: replyStatus, body: reply, provider: provider) }
-        let linked: SupabaseSession = try parse(reply, fallback: provider)
+        let linked: SupabaseSession = try await exchangeCode(code, verifier: pkce.verifier, provider: provider)
         store.save(linked)
         return linked
     }

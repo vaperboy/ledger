@@ -8,8 +8,4 @@ enum OnlineConfig {
 
     static let callbackScheme: String = "ledger"
     static let callbackURL: String = "ledger://auth-callback"
-
-    static let serverLinkProviders: [SignInProvider] = [.google]
-
-    static var linkProviders: [SignInProvider] { useServer ? serverLinkProviders : SignInProvider.allCases }
 }

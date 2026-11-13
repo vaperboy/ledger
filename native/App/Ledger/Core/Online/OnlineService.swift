@@ -136,6 +136,7 @@ enum OnlineError: Error, Equatable, LocalizedError, Sendable {
     case notAdmin
     case cancelled
     case rejected(String)
+    case identityTaken(SignInProvider)
     var errorDescription: String? {
         switch self {
         case .notSignedIn: return "Sign in to use this."
@@ -150,6 +151,7 @@ enum OnlineError: Error, Equatable, LocalizedError, Sendable {
         case .notAdmin: return "This account is not an administrator."
         case .cancelled: return nil
         case .rejected(let why): return why
+        case .identityTaken(let p): return "That \(p.title) account already has a Ledger account."
         }
     }
 }
@@ -245,7 +247,7 @@ protocol OnlineWorldService: Sendable {
     func acknowledgeSettlements(_ ids: [String]) async throws
 }
 
-protocol OnlineService: AdminService, OnlineWorldService, FriendPlayService, PushService, MarketplaceService, Sendable {
+protocol OnlineService: AdminService, OnlineWorldService, FriendPlayService, PushService, MarketplaceService, AccountService, Sendable {
     var createsAccountsItself: Bool { get }
     func currentAccount() async -> OnlineAccount?
     func startSession(createIfMissing: Bool) async throws -> OnlineAccount

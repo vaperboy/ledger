@@ -19,10 +19,7 @@ struct AccountSettingsGroup: View {
             statusLine
             if online.canLink {
                 if showsStatus { Hairline() }
-                ForEach(Array(online.linkProviders.enumerated()), id: \.element) { (i: Int, provider: SignInProvider) in
-                    if i > 0 { Hairline() }
-                    providerRow(provider)
-                }
+                SignInButtons().padding(.vertical, Theme.Space.m)
             }
             if let note = online.notice {
                 Text(note).textStyle(.caption, tint: Theme.inkSoft).padding(.bottom, Theme.Space.s)
@@ -65,29 +62,15 @@ struct AccountSettingsGroup: View {
     private var footer: String {
         let reward: String = online.linkRewardGold > 0 ? "\(online.linkRewardGold) gold" : "gold"
         guard online.canLink else { return "" }
-        return "Your profile is already saved for this device. Linking keeps it and your progress across devices and pays a one-time reward of \(reward). It is not used to find friends. Your game stays on this device either way."
-    }
-
-    private func providerRow(_ provider: SignInProvider) -> some View {
-        Button {
-            Haptics.tap()
-            pending = PendingAction.online(
-                title: "Link " + provider.title + "?",
-                effect: "your profile and progress are saved to this \(provider.title) account and follow you to other devices, and you receive a one-time gold reward.",
-                button: "Continue with " + provider.title, tone: .info, icon: "person.crop.circle") {
-                Task { _ = await online.signIn(with: provider) }
-            }
-        } label: {
-            OnlineLine(glyph: Glyph.person, title: "Link " + provider.title, note: "Profile and progress, one-time gold reward", chevron: true)
-        }
-        .buttonStyle(PressableStyle())
-        .disabled(online.isLinking)
-        .accessibilityIdentifier("settings-link-" + provider.rawValue)
+        return "Sign in to save your profile and game to your account. On a new phone, sign in the same way to get them back. The first sign-in pays a one-time reward of \(reward). It is not used to find friends."
     }
 
     private var linked: some View {
-        OnlineGroup(title: "Account", footer: "") {
-            OnlineLine(glyph: Glyph.person, title: "Linked with " + (online.provider?.title ?? ""), note: online.profile?.displayName ?? "")
+        OnlineGroup(title: "Account", footer: "Your game is saved to this account as you play, so you can load it on a new phone.") {
+            OnlineLine(glyph: Glyph.person, title: "Signed in with " + (online.provider?.title ?? ""), note: online.profile?.displayName ?? "")
+            if let note = online.notice {
+                Text(note).textStyle(.caption, tint: Theme.inkSoft).padding(.bottom, Theme.Space.s)
+            }
             Hairline()
             exportRow
             if let problem = online.problem {
@@ -120,12 +103,14 @@ struct DeleteAccountGroup: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
     @State private var pending: PendingAction?
+    @State private var checking = false
 
     var body: some View {
         if online.isSignedIn {
-            OnlineGroup(title: "", footer: "Deleting the account removes your profile, friends and requests from the server. The game on this device is not touched.") {
+            OnlineGroup(title: "", footer: "Deleting the account removes your profile, friends and everything saved online. Anything still open with other players is settled first. The game on this device is not touched.") {
                 Button { askToDelete() } label: { OnlineLine(glyph: Glyph.warning, title: "Delete account", note: "Removes everything online", tint: Theme.loss, chevron: true) }
                     .buttonStyle(PressableStyle())
+                    .disabled(checking)
                     .accessibilityIdentifier("settings-delete-account")
                 if let problem = online.problem {
                     Text(problem).textStyle(.caption, tint: Theme.loss).padding(.bottom, Theme.Space.s)
@@ -135,19 +120,21 @@ struct DeleteAccountGroup: View {
         }
     }
 
+    // The server lists what it will settle with other players, so the player sees all of it before confirming.
     private func askToDelete() {
-        let market: SupplyMarketStore = SupplyMarketStore.shared
-        let rule = SupplyGuards.accountDeletion(openContracts: market.service.openContractsAsSupplier(ownerID: market.service.ownerID))
-        guard rule.allowed else {
-            Haptics.warning()
-            store.tell("The account cannot be deleted yet", rule.reason ?? "", tone: "warn")
-            return
-        }
-        pending = PendingAction(title: "Delete your account?", message: "Your profile, friends and requests are removed for good, and your supply listings stop. Your game on this device is kept.",
-                                button: "Delete account", destructive: true, alwaysAsk: true, risk: "This cannot be undone.") {
-            Task {
-                await online.deleteAccount()
-                if !online.isSignedIn { market.accountDeleted(store) }
+        checking = true
+        Task {
+            let preview: DeletionPreview? = await online.deletionPreview()
+            checking = false
+            guard let preview else { Haptics.warning(); return }
+            let settled: String = preview.items.isEmpty ? "" : "\n\nSettled first:\n" + preview.items.map { (line: String) -> String in "• " + line }.joined(separator: "\n")
+            pending = PendingAction(title: "Delete your account?",
+                                    message: "Your profile, friends, saved game and everything else online are removed for good. Your game on this device is kept." + settled,
+                                    button: "Delete account", destructive: true, alwaysAsk: true, risk: "This cannot be undone.") {
+                Task {
+                    await online.deleteAccount()
+                    if !online.isSignedIn { SupplyMarketStore.shared.accountDeleted(store) }
+                }
             }
         }
     }

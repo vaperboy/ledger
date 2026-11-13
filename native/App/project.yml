@@ -34,6 +34,7 @@ targets:
       path: Entitlements/Ledger.entitlements
       properties:
         aps-environment: development
+        com.apple.developer.applesignin: [Default]
     info:
       path: InfoPlists/Ledger.plist
       properties:

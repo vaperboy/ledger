@@ -143,12 +143,10 @@ struct ProfileView: View {
             }
             if online.canLink {
                 if online.isSignedIn {
-                    Text("Link an account to keep your profile and progress across devices. Your game stays on this device.").textStyle(.caption)
+                    Text("Sign in to save your profile and game to your account and get them back on a new phone.").textStyle(.caption)
                         .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 }
-                HStack(spacing: Theme.Space.s) {
-                    ForEach(online.linkProviders, id: \.self) { (provider: SignInProvider) in linkButton(provider) }
-                }
+                SignInButtons()
             }
             if let problem = online.problem, online.canLink || !online.isSignedIn {
                 Text(problem).textStyle(.caption, tint: Theme.loss).multilineTextAlignment(.center)
@@ -161,21 +159,6 @@ struct ProfileView: View {
         if online.offline { return "Offline. Your game stays on this device and the online world returns by itself." }
         if online.service.createsAccountsItself { return online.pausedByPlayer ? "You are offline by choice. Go online from Settings." : "Setting up your online profile." }
         return "Link an account to get a friend code and use the online world. Your game stays on this device."
-    }
-
-    private func linkButton(_ provider: SignInProvider) -> some View {
-        Button {
-            Haptics.tap()
-            pending = PendingAction.online(
-                title: "Link " + provider.title + "?",
-                effect: "your profile and progress are saved to this \(provider.title) account and follow you to other devices, and you receive a one-time gold reward. The account is not used to find friends.",
-                button: "Continue with " + provider.title, tone: .info, icon: "person.crop.circle") {
-                Task { _ = await online.signIn(with: provider) }
-            }
-        } label: { Text(provider.title).frame(maxWidth: .infinity) }
-            .buttonStyle(SecondaryButtonStyle(size: .compact))
-            .disabled(online.isLinking)
-            .accessibilityIdentifier("profile-link-" + provider.rawValue)
     }
 
     private func privacySection(_ p: PlayerProfile) -> some View {
