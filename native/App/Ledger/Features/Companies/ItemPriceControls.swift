@@ -138,6 +138,15 @@ enum ItemPriceWords {
         return "Normal"
     }
 
+    /// Units a week as the player reads them: whole numbers when many, one decimal when few, never a bare 0 for a small sale.
+    static func units(_ u: Double) -> String {
+        if u <= 0 { return "0" }
+        if u < 0.1 { return "< 0.1" }
+        if u >= 10 { return String(format: "%.0f", u) }
+        let t: String = String(format: "%.1f", u)
+        return t.hasSuffix(".0") ? String(t.dropLast(2)) : t
+    }
+
     /// A step for the plus and minus buttons: about two percent of the market price, rounded to 1, 2 or 5 of a round unit.
     static func step(market: Double, cur: Currency) -> Double {
         let cent: Double = 0.01 * cur.rate

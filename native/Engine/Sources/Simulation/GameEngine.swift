@@ -215,6 +215,7 @@ public struct GameEngine {
         if Tutorial.isComplete(state) { DailyBeat.ensure(&state, fresh: state.inbox.filter { !before.contains($0.id) }, library: events, data: data, context: context) }
         Tutorial.advance(&state, from: .nextDay)
         Tutorial.sync(&state)
+        settleTutorial()
         let fresh = state.inbox.filter { !before.contains($0.id) }
         return DayOutcome(newMessages: fresh, completedWeek: completed, gameOver: state.isGameOver)
     }

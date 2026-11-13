@@ -162,31 +162,32 @@ enum CoachTours {
             return [
                 CoachMark(stop: .homeCompany, text: "Tap your company to open it.", passThrough: true, button: ""),
                 CoachMark(stop: .groupCard, text: "Tap your company to open it.", passThrough: true, button: ""),
-                CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: ""),
+                CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: "", blocking: false),
             ]
         case .pickSupplier:
             return [
-                CoachMark(stop: .itemSupplier, text: "Who supplies it? Keep the suggested supplier, or pick another.", passThrough: true, button: ""),
+                CoachMark(stop: .itemSupplier, text: "Who supplies it? Tap it, then keep the supplier or pick another.", passThrough: true, button: ""),
                 CoachMark(stop: .firstPick, text: "Tap what you want to sell first, then press the Start button under the list.", passThrough: true, button: ""),
-                CoachMark(stop: .companyTabs, text: "Tap Sales to choose your first product. You can change its supplier there later.", passThrough: true, button: ""),
-                CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: ""),
+                CoachMark(stop: .firstItemRow, text: "Tap what you sell, then choose who supplies it.", passThrough: true, button: ""),
+                CoachMark(stop: .companyTabs, text: "Tap Sales to choose your first product and who supplies it.", passThrough: true, button: ""),
+                CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: "", blocking: false),
             ]
         case .setPrice:
             return [
-                CoachMark(stop: .itemPrice, text: "Set your price: slide it, or tap Cheap, Market or Premium, then press Keep this price.", passThrough: true, button: ""),
+                CoachMark(stop: .itemPrice, text: "Set your price: slide it, or tap Cheap, Market or Premium, then press Done.", passThrough: true, button: ""),
                 CoachMark(stop: .firstItemRow, text: "Tap your product to set its price.", passThrough: true, button: ""),
                 CoachMark(stop: .companyTabs, text: "Tap Sales to find your product.", passThrough: true, button: ""),
-                CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: ""),
+                CoachMark(stop: .tabBar, text: "Open the Home tab, then tap your company.", passThrough: true, button: "", blocking: false),
             ]
         case .nextDay:
             return [
                 CoachMark(stop: .nextDay, text: "Press Next day. One day passes: customers buy and the books move.", passThrough: true, button: ""),
-                CoachMark(stop: .tabBar, text: "Go back to the Home tab: Next day is there.", passThrough: true, button: ""),
+                CoachMark(stop: .tabBar, text: "Go back to the Home tab: Next day is there.", passThrough: true, button: "", blocking: false),
             ]
         case .openInbox:
             return [
                 CoachMark(stop: .phoneInbox, text: "Open the Inbox. Questions and news from your business arrive here.", passThrough: true, button: ""),
-                CoachMark(stop: .tabBar, text: "Open the Phone tab. The Inbox is an app on it.", passThrough: true, button: ""),
+                CoachMark(stop: .tabBar, text: "Open the Phone tab. The Inbox is an app on it.", passThrough: true, button: "", blocking: false),
             ]
         case .readInbox:
             return [
@@ -196,7 +197,7 @@ enum CoachTours {
             ]
         case .claimGoal:
             return [
-                CoachMark(stop: .goalCard, text: "Open the goal strip and claim your first goal when it is ready.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .goalCard, text: "A reward is ready. Tap the goal strip and claim it.", passThrough: true, button: "", blocking: false),
                 CoachMark(stop: .tabBar, text: "Open the Home tab: the goal strip is there.", passThrough: true, button: "", blocking: false),
             ]
         }

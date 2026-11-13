@@ -38,10 +38,104 @@ final class TutorialTests: XCTestCase {
         XCTAssertEqual(e.tutorialStep, .openInbox)
         e.tutorialAdvance(from: .openInbox)
         XCTAssertEqual(e.tutorialStep, .readInbox)
+        let ready: Bool = !e.claimableGoals().isEmpty
+        e.tutorialAdvance(from: .readInbox)
+        if ready {
+            XCTAssertEqual(e.tutorialStep, .claimGoal)
+            e.tutorialAdvance(from: .claimGoal)
+        }
+        XCTAssertTrue(e.tutorialComplete)
+    }
+
+    private func atReadInbox() throws -> GameEngine {
+        var e = try fresh()
+        e.update { s, _, _ in
+            for step in [TutorialStep.openCompany, .pickSupplier, .setPrice, .nextDay, .openInbox] { Tutorial.advance(&s, from: step) }
+        }
+        XCTAssertEqual(e.tutorialStep, .readInbox)
+        return e
+    }
+
+    func testReadingTheInboxEndsTheGuideWhenNoRewardIsReady() throws {
+        var e = try atReadInbox()
+        e.update { s, _, _ in
+            s.rest["ldr"] = .object(["done": .object([:])])
+            PlayerGoals.setDailyGoalsOff(&s, true)
+        }
+        if !e.claimableGoals().isEmpty { throw XCTSkip("a career goal is ready on day one") }
+        e.tutorialAdvance(from: .readInbox)
+        XCTAssertTrue(e.tutorialComplete, "the guide must not wait days for a goal")
+    }
+
+    func testAReadyRewardKeepsTheClaimStepUntilItIsClaimed() throws {
+        var e = try atReadInbox()
+        e.update { s, _, _ in s.rest["ldr"] = .object(["done": .object(["M1": .object(["w": .number(Double(s.week)), "u": .number(1)])])]) }
+        XCTAssertTrue(e.claimableGoals().contains { $0.kind == .ladder && $0.goalID == "M1" })
         e.tutorialAdvance(from: .readInbox)
         XCTAssertEqual(e.tutorialStep, .claimGoal)
-        e.tutorialAdvance(from: .claimGoal)
+        e.nextDay()
+        XCTAssertEqual(e.tutorialStep, .claimGoal, "a ready reward stays to be claimed")
+        if case .notReady = e.claimGoal(kind: .ladder, id: "M1") { XCTFail("M1 should be claimable") }
         XCTAssertTrue(e.tutorialComplete)
+    }
+
+    func testAClaimStepWithNothingReadyEndsOnTheNextDay() throws {
+        var e = try fresh()
+        e.update { s, _, _ in
+            for step in [TutorialStep.openCompany, .pickSupplier, .setPrice, .nextDay, .openInbox, .readInbox] { Tutorial.advance(&s, from: step) }
+            s.rest["ldr"] = .object(["done": .object([:])])
+            PlayerGoals.setDailyGoalsOff(&s, true)
+        }
+        XCTAssertEqual(e.tutorialStep, .claimGoal)
+        e.nextDay()
+        if e.claimableGoals().isEmpty { XCTAssertTrue(e.tutorialComplete) } else { XCTAssertEqual(e.tutorialStep, .claimGoal) }
+    }
+
+    func testOnlyAChosenSupplierMovesThePickStepOn() throws {
+        var e = try fresh()
+        let id = try XCTUnwrap(e.state.companies.first?.id)
+        e.tutorialAdvance(from: .openCompany)
+        let choice = try XCTUnwrap(e.firstItemChoices(companyID: id).first)
+        XCTAssertFalse(e.chooseFirstItem(companyID: id, itemID: choice.id).isRefused)
+        let item = try XCTUnwrap(e.salesItems(companyID: id).first)
+        e.tutorialAdvance(from: .setPrice)
+        e.tutorialAdvance(from: .nextDay)
+        XCTAssertEqual(e.tutorialStep, .pickSupplier, "pricing or other steps never stand in for choosing a supplier")
+        guard let ask = e.supplyAsk(companyID: id, itemID: item.id) else {
+            e.tutorialAdvance(from: .pickSupplier)
+            XCTAssertEqual(e.tutorialStep, .setPrice)
+            return
+        }
+        switch ask {
+        case .item:
+            let offer = try XCTUnwrap(e.itemPage(companyID: id, itemID: item.id)?.offers.first { $0.fit != .cannot })
+            XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: item.id, vendorID: offer.vendorID).isRefused)
+        case .line(let line):
+            let row = try XCTUnwrap(e.supplyLines(companyID: id).flatMap { $0.rows }.first { $0.id == line })
+            let other = try XCTUnwrap(row.offers.first { !$0.isCurrent && $0.blocked == nil })
+            XCTAssertEqual(e.chooseSupply(companyID: id, change: other.change), .ok)
+        }
+        XCTAssertEqual(e.tutorialStep, .setPrice)
+    }
+
+    func testAHandymanFirstServiceAsksForASupplierAndPricesAfter() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 5, story: .fresh, tradeID: "handy", chooseFirstItem: true)
+        let id = try XCTUnwrap(e.state.companies.first?.id)
+        e.tutorialAdvance(from: .openCompany)
+        let choice = try XCTUnwrap(e.firstItemChoices(companyID: id).first)
+        XCTAssertFalse(e.chooseFirstItem(companyID: id, itemID: choice.id).isRefused)
+        let item = try XCTUnwrap(e.salesItems(companyID: id).first)
+        if let ask = e.supplyAsk(companyID: id, itemID: item.id), case .line(let line) = ask {
+            let row = try XCTUnwrap(e.supplyLines(companyID: id).flatMap { $0.rows }.first { $0.id == line })
+            let other = try XCTUnwrap(row.offers.first { !$0.isCurrent && $0.blocked == nil })
+            XCTAssertEqual(e.chooseSupply(companyID: id, change: other.change), .ok)
+        } else {
+            e.tutorialAdvance(from: .pickSupplier)
+        }
+        XCTAssertEqual(e.tutorialStep, .setPrice)
+        let page = try XCTUnwrap(e.itemPage(companyID: id, itemID: item.id))
+        XCTAssertFalse(e.setItemPrice(companyID: id, itemID: item.id, price: page.item.marketPrice).isRefused, "the market price is always a valid choice")
+        XCTAssertEqual(e.tutorialStep, .nextDay)
     }
 
     func testSkipEndsTheTutorialAtAnyStep() throws {

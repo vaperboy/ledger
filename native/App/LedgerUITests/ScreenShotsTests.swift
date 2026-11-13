@@ -341,15 +341,19 @@ final class ScreenShotsTests: FeatureTourCase {
             let row: (Hit) -> Bool = { (h: Hit) -> Bool in h.type == .button && h.id.hasPrefix("first-item-") && h.id != "first-item-confirm" }
             guard tapWhere(wait: 2, row) else { return "no product row to pick" }
             guard seekEnabled("first-item-confirm") else { return "no enabled Start with this product button" }
-            return ok(has("item-supplier-keep", wait: 5) || has("item-supplier-done"), "no supplier question for the first product")
+            return ok(has("item-supplier-keep", wait: 5) || has("item-supplier-use") || has("item-supplier-done"), "no supplier question for the first product")
         }
         act {
-            if !pressButton("item-supplier-keep", wait: 1) { _ = pressButton("item-supplier-done", wait: 1) }
+            if pressButton("item-supplier-use", wait: 1) {
+                _ = pressButton("supply-order-confirm", wait: 3)
+            } else if !pressButton("item-supplier-keep", wait: 1) {
+                _ = pressButton("item-supplier-done", wait: 1)
+            }
             pause(0.8)
         }
-        screen("tutorial-price") { ok(has("item-keep-price", wait: 6) || has("item-price-done"), "the price sheet did not open") }
+        screen("tutorial-price") { ok(has("item-price-done", wait: 6), "the price sheet did not open") }
         act {
-            if !pressButton("item-keep-price", wait: 1) { _ = pressButton("item-price-done", wait: 1) }
+            _ = pressButton("item-price-done", wait: 1)
             pause(0.8)
             clearPopups()
         }

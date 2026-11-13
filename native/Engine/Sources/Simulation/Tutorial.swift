@@ -60,7 +60,16 @@ public extension GameEngine {
     var tutorialPosition: Int? { Tutorial.position(state) }
     var tutorialComplete: Bool { Tutorial.isComplete(state) }
 
-    mutating func tutorialAdvance(from step: TutorialStep) { update { s, _, _ in Tutorial.advance(&s, from: step) } }
+    mutating func tutorialAdvance(from step: TutorialStep, now: Date = Date()) {
+        update { s, _, _ in Tutorial.advance(&s, from: step) }
+        settleTutorial(now: now)
+    }
+
+    /// The last step asks for a reward that is ready; with none ready the guide ends instead of waiting days.
+    mutating func settleTutorial(now: Date = Date()) {
+        guard tutorialStep == .claimGoal, claimableGoals(now: now).isEmpty else { return }
+        update { s, _, _ in Tutorial.finish(&s) }
+    }
 
     mutating func tutorialRestart() { update { s, _, _ in Tutorial.start(&s) } }
 

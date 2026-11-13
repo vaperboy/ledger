@@ -32,6 +32,15 @@ private struct CoachTourLayer: View {
         host.hasVisible || store.popupOpen || !store.unlockQueue.isEmpty || store.workerPopup != nil || store.isAdvancing
     }
 
+    /// Supplier pages are a side trip inside a guide step: the player chooses or looks there, so no mark covers them.
+    private var onSupplierPage: Bool {
+        guard let r = store.path(for: store.tab).last else { return false }
+        switch r {
+        case .supplier, .supplierOwner: return true
+        default: return false
+        }
+    }
+
     private func atRoot(_ t: AppTab) -> Bool { store.tab == t && store.path(for: t).isEmpty }
 
     private var companyOnTop: Bool {
@@ -117,7 +126,7 @@ private struct CoachTourLayer: View {
             let tour: CoachTour? = step == nil ? pick(geo) : nil
             let index: Int? = tour.flatMap { (t: CoachTour) -> Int? in nextIndex(t, from: cursor[t.id] ?? 0, geo) }
             let tutKey: String = step.flatMap { (s: TutorialStep) -> String? in tutMark.map { (m: CoachMark) -> String in "tutorial.\(s.rawValue).\(m.stop)" } } ?? ""
-            let key: String = blocked ? "" : (step != nil ? tutKey : (tour?.id ?? ""))
+            let key: String = blocked ? "" : (step != nil ? (onSupplierPage ? "" : tutKey) : (tour?.id ?? ""))
             let drawn: Bool = !key.isEmpty && readyKey == key
             ZStack {
                 if let m = tutMark {
