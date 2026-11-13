@@ -6,15 +6,14 @@ import Businesses
 import Simulation
 
 extension PlayerCardData {
-    /// Your own card. `trial` holds items being tried on (kind to item id, empty id for none) and `trialOutfit` an outfit being tried.
-    @MainActor static func mine(_ e: GameEngine, store: GameStore, trial: [String: String] = [:], trialOutfit: String? = nil) -> PlayerCardData {
+    /// Your own card. `trial` holds items being tried on (kind to item id, empty id for none) and `trialLook` an avatar look being tried.
+    @MainActor static func mine(_ e: GameEngine, store: GameStore, trial: [String: String] = [:], trialLook: AvatarLook? = nil) -> PlayerCardData {
         let local: ProfileLocal = ProfileLocal.shared
         let cabinet: Cabinet = StoreSession.shared.state.cabinet
         var worn: [String: String] = SeasonModel.shared.pass.equipped
         if let card = worn[SeasonPass.profileCardKey], !cabinet.contains(card) { worn[SeasonPass.profileCardKey] = nil }
         for (kind, id) in trial { worn[kind] = id.isEmpty ? nil : id }
-        var avatar: AvatarLook = local.avatar
-        if let o = trialOutfit { avatar.outfit = o }
+        let avatar: AvatarLook = trialLook ?? local.avatar
         let name: String = local.name.isEmpty ? e.state.player.name : local.name
         let live: Int = e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }.count
         return PlayerCardData(name: name,

@@ -74,6 +74,10 @@ struct ItemArt: View {
         case .advisorLine: return .advisor
         case .richListFlair: return .flair
         case .tradePlate: return .tradePlate
+        case .outfit: return .outfit
+        case .face: return .face
+        case .hair: return .hair
+        case .skin: return .skin
         case .box: return .box
         case .profileCard, .companyCard, .artifact: return .artifact
         case .gold, .xp: return .gold

@@ -100,7 +100,7 @@ final class GoldBoxesTests: XCTestCase {
         let a = BoxOdds.open(.grand, pity: BoxPity(), ownedCosmetics: [], seed: "same")
         let b = BoxOdds.open(.grand, pity: BoxPity(), ownedCosmetics: [], seed: "same")
         XCTAssertEqual(a.result, b.result)
-        let everything = Set(GoldCosmetics.all.map(\.id))
+        let everything = Set(GoldCosmetics.everything.map(\.id))
         for n in 0..<2_000 {
             if case .cosmetic = BoxOdds.open(.grand, pity: BoxPity(), ownedCosmetics: everything, seed: "o\(n)").result.content { XCTFail("owned cosmetic offered") }
         }

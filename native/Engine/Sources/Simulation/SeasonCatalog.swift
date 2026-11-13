@@ -57,6 +57,27 @@ public enum SeasonCatalog {
         return max(1, (day - first) / SeasonPass.seasonDays + 1)
     }
 
+    /// Today as an era day, the same count the pass uses.
+    public static func today() -> Int { Calendar(identifier: .gregorian).ordinality(of: .day, in: .era, for: Date()) ?? 0 }
+
+    /// A season is live from its start day; before that none of its items may be shown anywhere.
+    public static func isLive(_ number: Int, today: Int = SeasonCatalog.today()) -> Bool {
+        guard let start = startDay(of: number) else { return true }
+        return today >= start
+    }
+
+    /// Look themes that belong only to seasons that have not started yet.
+    public static func hiddenThemes(today: Int = SeasonCatalog.today()) -> Set<String> {
+        let live: Set<String> = Set(all.filter { isLive($0.number, today: today) }.map { $0.theme })
+        let future: Set<String> = Set(all.filter { !isLive($0.number, today: today) }.map { $0.theme })
+        return future.subtracting(live).subtracting([ItemThemes.classicID])
+    }
+
+    /// False for any item of a season that has not started. The one check every list of items uses.
+    public static func isVisible(theme: String, today: Int = SeasonCatalog.today()) -> Bool {
+        !hiddenThemes(today: today).contains(theme)
+    }
+
     public static func def(_ number: Int) -> SeasonDef? { all.first { $0.number == number } }
 
     public static func active(_ number: Int) -> SeasonDef? {

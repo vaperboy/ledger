@@ -3,7 +3,7 @@ import GameCore
 
 public enum TradeRules {
     public static func isAccountBound(_ defID: String) -> Bool {
-        LevelRewards.isLevelIcon(defID) || SeasonRewards.item(defID)?.accountBound == true || GoldCosmetics.cosmetic(defID)?.item.accountBound == true
+        LevelRewards.isLevelOutfit(defID) || SeasonRewards.item(defID)?.accountBound == true || GoldCosmetics.cosmetic(defID)?.item.accountBound == true
     }
 
     public static func isSellable(_ item: ArtifactItem) -> Bool { item.origin != .bought && !isAccountBound(item.defID) }

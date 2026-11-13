@@ -23,6 +23,7 @@ public struct ArtifactDef: Equatable, Sendable, Identifiable {
     public var rarity: BoxRarity
     public var note: String
     public var symbol: String = ""
+    public var theme: String = ItemThemes.classicID
     public var edition: Int { ArtifactCatalog.edition(rarity) }
 }
 
@@ -39,6 +40,7 @@ public struct ArtifactCollection: Equatable, Sendable, Identifiable {
     public var blurb: String
     public var rewardID: String
     public var members: [String]
+    public var theme: String = ItemThemes.classicID
     public var look: CollectionLook = CollectionLook(top: 0x9C957F, bottom: 0x45423A, ink: 0xF1ECDD, motif: "grid")
 }
 
@@ -85,22 +87,46 @@ public enum ArtifactCatalog {
         }
     }
 
-    public static let defs: [ArtifactDef] = ContentFile.load("artifacts", "artifacts")["artifacts"].array.map { (e: JSONValue) -> ArtifactDef in
+    private static let file: JSONValue = ContentFile.load("artifacts", "artifacts")
+
+    private static let collectionThemes: [String: String] = {
+        var out: [String: String] = [:]
+        for c in ArtifactCatalog.file["collections"].array { out[c["id"].string] = ItemThemes.id(c) }
+        return out
+    }()
+
+    /// Every artifact, including those of seasons that have not started. For lookups of ids only.
+    public static let defs: [ArtifactDef] = ArtifactCatalog.file["artifacts"].array.map { (e: JSONValue) -> ArtifactDef in
         ArtifactDef(id: e["id"].string, name: e["name"].string, collection: e["collection"].string, rarity: ContentFile.rarity(e["rarity"].string),
-                    note: e["note"].string, symbol: e["symbol"].string)
+                    note: e["note"].string, symbol: e["symbol"].string, theme: collectionThemes[e["collection"].string] ?? ItemThemes.classicID)
     }
 
-    public static let collections: [ArtifactCollection] = ContentFile.load("artifacts", "artifacts")["collections"].array.map { (c: JSONValue) -> ArtifactCollection in
+    /// Every collection, including those of seasons that have not started.
+    public static let everyCollection: [ArtifactCollection] = ArtifactCatalog.file["collections"].array.map { (c: JSONValue) -> ArtifactCollection in
         let id: String = c["id"].string
         let l: JSONValue = c["look"]
         return ArtifactCollection(id: id, name: c["name"].string, blurb: c["blurb"].string, rewardID: c["reward"].string,
                                   members: ArtifactCatalog.defs.filter { (d: ArtifactDef) -> Bool in d.collection == id }.map { (d: ArtifactDef) -> String in d.id },
+                                  theme: ItemThemes.id(c),
                                   look: CollectionLook(top: ContentFile.color(l["top"]), bottom: ContentFile.color(l["bottom"]), ink: ContentFile.color(l["ink"]), motif: l["motif"].string))
     }
 
+    /// The collections a player can see today.
+    public static var collections: [ArtifactCollection] { visibleCollections() }
+
+    public static func visibleCollections(today: Int = SeasonCatalog.today()) -> [ArtifactCollection] {
+        let hidden: Set<String> = SeasonCatalog.hiddenThemes(today: today)
+        return everyCollection.filter { !hidden.contains($0.theme) }
+    }
+
     public static func def(_ id: String) -> ArtifactDef? { defs.first { $0.id == id } ?? CardCatalog.artifactDef(id) }
-    public static func collection(_ id: String) -> ArtifactCollection? { collections.first { $0.id == id } }
-    public static func defs(of rarity: BoxRarity) -> [ArtifactDef] { defs.filter { $0.rarity == rarity } }
+    public static func collection(_ id: String) -> ArtifactCollection? { everyCollection.first { $0.id == id } }
+
+    /// Artifacts a box can drop today.
+    public static func defs(of rarity: BoxRarity, today: Int = SeasonCatalog.today()) -> [ArtifactDef] {
+        let hidden: Set<String> = SeasonCatalog.hiddenThemes(today: today)
+        return defs.filter { $0.rarity == rarity && !hidden.contains($0.theme) }
+    }
 
     public static func serial(of def: ArtifactDef, roll: Double) -> Int {
         min(def.edition, max(1, 1 + Int(max(0, min(0.999999, roll)) * Double(def.edition))))

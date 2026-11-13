@@ -19,6 +19,8 @@ public enum Luxury {
         public var upkeep: Double
         public var growth: Double
         public var volatility: Double
+        /// For cars, yachts and jets: the one picture (sheet/cell) this model name belongs to. Empty when it has none yet.
+        public var art: String = ""
         public var monthlyUpkeep: Double { upkeep * price / 12 }
         public var trend: String { growth >= 0.04 ? "Usually rises" : growth > 0 ? "Holds its value" : growth > -0.06 ? "Loses some value" : "Loses value fast" }
     }
@@ -32,9 +34,11 @@ public enum Luxury {
     public static let categories: [Category] = book["categories"].array.map { c in
         Category(id: c["id"].string, name: c["name"].string, items: c["items"].array.map {
             Item(id: $0["id"].string, category: c["id"].string, name: $0["name"].string, detail: $0["detail"].string, price: $0["price"].double,
-                 upkeep: $0["upkeep"].double, growth: $0["growth"].double, volatility: $0["volatility"].double)
+                 upkeep: $0["upkeep"].double, growth: $0["growth"].double, volatility: $0["volatility"].double, art: $0["art"].string)
         })
     }
+    /// Items whose picture is fixed by their own art field.
+    public static let pictureCategories: Set<String> = ["cars", "yachts", "jets"]
     public static func item(_ id: String) -> Item? { categories.lazy.flatMap { $0.items }.first { $0.id == id } }
     public static var sellFee: Double { book["sellFee"].double }
 

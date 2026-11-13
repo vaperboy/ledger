@@ -33,7 +33,8 @@ public enum CardCatalog {
 
     private static let file: JSONValue = ContentFile.load("cards", "cards")
 
-    public static let all: [CardDef] = CardCatalog.file["cards"].array.map { (e: JSONValue) -> CardDef in
+    /// Every card, including those of seasons that have not started. For lookups of ids only.
+    public static let everything: [CardDef] = CardCatalog.file["cards"].array.map { (e: JSONValue) -> CardDef in
         CardDef(id: e["id"].string, kind: e["kind"].string == "company" ? .company : .profile, name: e["name"].string, rarity: ContentFile.rarity(e["rarity"].string),
                 colors: ContentFile.colors(e["colors"]), motion: CardDef.Motion(rawValue: e["motion"].string) ?? .none, logo: e["logo"].string,
                 theme: ItemThemes.id(e), founderEdition: e["founderEdition"].bool)
@@ -43,7 +44,15 @@ public enum CardCatalog {
         LevelReward(level: e["level"].int, defID: e["card"].string)
     }
 
-    public static func def(_ id: String) -> CardDef? { all.first { $0.id == id } }
+    /// The cards a player can see today.
+    public static var all: [CardDef] { visible() }
+
+    public static func visible(today: Int = SeasonCatalog.today()) -> [CardDef] {
+        let hidden: Set<String> = SeasonCatalog.hiddenThemes(today: today)
+        return everything.filter { !hidden.contains($0.theme) }
+    }
+
+    public static func def(_ id: String) -> CardDef? { everything.first { $0.id == id } }
 
     public static func defID(ofItem itemID: String) -> String {
         itemID.firstIndex(of: "#").map { String(itemID[itemID.startIndex..<$0]) } ?? itemID
@@ -51,8 +60,8 @@ public enum CardCatalog {
 
     public static func def(forItem itemID: String) -> CardDef? { def(defID(ofItem: itemID)) }
 
-    public static func defs(_ kind: CardDef.Kind, _ rarity: BoxRarity) -> [CardDef] {
-        all.filter { $0.kind == kind && $0.rarity == rarity }
+    public static func defs(_ kind: CardDef.Kind, _ rarity: BoxRarity, today: Int = SeasonCatalog.today()) -> [CardDef] {
+        visible(today: today).filter { $0.kind == kind && $0.rarity == rarity }
     }
 
     public static func levelRewards(upTo level: Int) -> [LevelReward] { levelRewards.filter { $0.level <= level } }

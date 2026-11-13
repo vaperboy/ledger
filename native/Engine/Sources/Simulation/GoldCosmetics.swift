@@ -2,12 +2,16 @@ import Foundation
 import GameCore
 
 public struct GoldCosmetic: Equatable, Sendable, Identifiable {
-    public enum Source: String, Sendable { case box, store, collection, plan }
+    /// box and store drop from boxes (store ones are also sold for gold); collection, plan, level, rank and goal are earned; free is owned from the start.
+    public enum Source: String, Sendable { case box, store, collection, plan, free, level, rank, goal }
     public var item: SeasonReward
     public var rarity: BoxRarity
     public var source: Source
     public var price: Int?
+    /// The level, rank number or goal id that unlocks it, for level, rank and goal items.
+    public var value: String = ""
     public var id: String { item.id }
+    public var art: String { item.art }
 }
 
 public enum GoldCosmetics {
@@ -15,27 +19,49 @@ public enum GoldCosmetics {
         GoldPrices.cosmetic(rarity: rarity)
     }
 
-    public static let all: [GoldCosmetic] = ContentFile.load("cosmetics", "gold_cosmetics")["cosmetics"].array.map { (e: JSONValue) -> GoldCosmetic in
+    private static let file: JSONValue = ContentFile.load("cosmetics", "gold_cosmetics")
+
+    private static func parse(_ e: JSONValue) -> GoldCosmetic {
         let rarity: BoxRarity = ContentFile.rarity(e["rarity"].string)
         let source: GoldCosmetic.Source = GoldCosmetic.Source(rawValue: e["source"].string) ?? .store
         let price: Int? = GoldPrices.item(e["id"].string) ?? (source == .store ? GoldCosmetics.storePrice(rarity) : nil)
-        let item: SeasonReward = SeasonReward(id: e["id"].string, tier: 0, premium: false, kind: SeasonReward.Kind(rawValue: e["kind"].string) ?? .badge,
+        let earned: Bool = source != .box && source != .collection && source != .free
+        var item: SeasonReward = SeasonReward(id: e["id"].string, tier: 0, premium: false, kind: SeasonReward.Kind(rawValue: e["kind"].string) ?? .badge,
                                               title: e["title"].string, detail: e["detail"].string, colors: ContentFile.colors(e["colors"]),
-                                              season: 0, theme: ItemThemes.id(e), founderEdition: e["founderEdition"].bool, accountBound: e["bound"].bool || source == .store || source == .plan)
-        return GoldCosmetic(item: item, rarity: rarity, source: source, price: price)
+                                              season: 0, theme: ItemThemes.id(e), founderEdition: e["founderEdition"].bool, accountBound: e["bound"].bool || earned)
+        item.art = e["art"].string
+        item.style = e["style"].string
+        item.rarity = rarity
+        return GoldCosmetic(item: item, rarity: rarity, source: source, price: price, value: e["value"].string)
     }
 
-    public static func cosmetic(_ id: String) -> GoldCosmetic? { all.first { $0.id == id } }
+    /// Every current cosmetic, including those of seasons that have not started. For lookups of ids only.
+    public static let everything: [GoldCosmetic] = GoldCosmetics.file["cosmetics"].array.map { (e: JSONValue) -> GoldCosmetic in parse(e) }
 
-    public static func boxPool(_ rarity: BoxRarity, owned: Set<String>) -> [GoldCosmetic] {
-        all.filter { $0.rarity == rarity && $0.item.kind != .saveSlot && $0.source != .collection && $0.source != .plan && !owned.contains($0.id) }
+    /// Items that are no longer given out (frames). They stay known so saves that own them still load and can be refunded.
+    public static let retired: [GoldCosmetic] = GoldCosmetics.file["retired"].array.map { (e: JSONValue) -> GoldCosmetic in parse(e) }
+
+    /// What a player can see today: nothing of a season that has not started.
+    public static var all: [GoldCosmetic] { visible() }
+
+    public static func visible(today: Int = SeasonCatalog.today()) -> [GoldCosmetic] {
+        let hidden: Set<String> = SeasonCatalog.hiddenThemes(today: today)
+        return everything.filter { !hidden.contains($0.item.theme) }
     }
 
-    public static var storeItems: [GoldCosmetic] { all.filter { $0.price != nil } }
+    public static func cosmetic(_ id: String) -> GoldCosmetic? { everything.first { $0.id == id } ?? retired.first { $0.id == id } }
+
+    public static func boxPool(_ rarity: BoxRarity, owned: Set<String>, today: Int = SeasonCatalog.today()) -> [GoldCosmetic] {
+        visible(today: today).filter { (c: GoldCosmetic) -> Bool in
+            c.rarity == rarity && c.item.kind != .saveSlot && (c.source == .box || c.source == .store) && !owned.contains(c.id)
+        }
+    }
+
+    public static var storeItems: [GoldCosmetic] { visible().filter { $0.price != nil } }
 }
 
 extension SeasonRewards {
     public static func item(_ id: String) -> SeasonReward? {
-        all.first { $0.id == id } ?? GoldCosmetics.cosmetic(id)?.item
+        everything.first { $0.id == id } ?? GoldCosmetics.cosmetic(id)?.item
     }
 }

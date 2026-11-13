@@ -34,13 +34,15 @@ jobs:
       - name: Swift version
         run: swift --version
       - name: Test the game engine
+        timeout-minutes: 110
         working-directory: native/Engine
         env:
           LEDGER_PROGRESS: "1"
           LEDGER_DEBUG_TOOLS: "1"
         run: |
           set -o pipefail
-          if ! swift test -c release -Xswiftc -enable-testing > test.log 2>&1; then
+          # Failures and suite starts are shown as they happen, so a run that times out still says where it was.
+          if ! swift test -c release -Xswiftc -enable-testing 2>&1 | tee test.log | grep --line-buffered -E "error: -\[|error:|Test Suite '[A-Za-z]+' started|Fatal error|signal code"; then
             { grep -E "error:" test.log | grep -v "error: -\[" | sed -E "s#.*/native/##" | sort -u | head -n 60; } || true
             { grep -E "error: -\[" test.log | sed -E "s#.*Tests/LedgerTests/##" | head -n 400; } || true
             { grep -nE "Fatal error|fatalError|Exited with|signal|crash" test.log | tail -n 10; } || true

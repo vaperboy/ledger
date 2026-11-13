@@ -353,7 +353,7 @@ struct TechProApp: View {
     private func tileItem(_ e: GameEngine, _ co: Company, _ n: EquipmentMarket.Need) -> String {
         if n.isVehicle {
             let model: String = e.data.catalog[co.type]?.equipment.first(where: { (x: EquipmentSpec) -> Bool in x.id == n.equipmentID })?.vehicleModels?.first ?? ""
-            return ArtLibrary.itemKey(group: "vehicle", familyKey: model, seed: n.equipmentID) ?? ""
+            return ArtLibrary.vehicleCell(VehicleCatalog.variant(modelID: model, index: 0)?.art ?? "")
         }
         return ArtAsset.cellFallback(n.equipmentID, group: n.kind == "soft" ? "software" : "equipment", seed: n.equipmentID + "|" + co.type)
     }

@@ -24,16 +24,21 @@ struct HalfBodyAvatar: View {
     var width: CGFloat
 
     var body: some View {
-        let outfit: OutfitDef = AvatarParts.outfit(look.outfit) ?? AvatarParts.outfits[0]
-        let face: FaceDef = AvatarParts.faces[AvatarParts.clamp(look.face, AvatarParts.faces.count)]
-        let hairKey: String = AvatarParts.hairStyles[AvatarParts.clamp(look.hair, AvatarParts.hairStyles.count)].key
+        let outfit: OutfitDef? = AvatarParts.outfit(look.outfit) ?? AvatarParts.outfits.first
+        let face: FaceDef? = AvatarParts.face(look.face) ?? AvatarParts.faces.first
+        let hairKey: String = AvatarParts.hair(look.hair)?.id ?? "short"
         let tint: Color = AvatarParts.hairColour(look.hairColour)
-        let skin: Color = look.skin >= 0 ? AvatarParts.skinTone(look.skin) : Color(hex: face.skin)
+        let tone: SkinDef? = AvatarParts.skin(look.skin)
+        let skin: Color = tone.map { (t: SkinDef) -> Color in Color(hex: t.colour) } ?? Color(hex: face?.skin ?? 0xE0B48E)
         ZStack {
             tinted("avatar.hair." + hairKey + ".back", tint: tint) { AvatarHairBack(key: hairKey, w: width).foregroundStyle(tint) }
-            plain("avatar.body." + outfit.id) { AvatarBodyArt(outfit: outfit, skin: skin, w: width) }
-            if look.skin >= 0 { tinted("avatar.skin.\(face.id)", tint: skin) { EmptyView() } }
-            plain("avatar.face.\(face.id)") { AvatarFaceArt(face: face, skin: skin, w: width) }
+            if let outfit {
+                plain("avatar.body." + outfit.id) { AvatarBodyArt(outfit: outfit, skin: skin, w: width) }
+            }
+            if let tone, let img = AvatarArt.image("avatar.skin." + tone.id) { img.resizable().scaledToFit() }
+            if let face {
+                plain("avatar.face.\(face.id)") { AvatarFaceArt(face: face, skin: skin, w: width) }
+            }
             tinted("avatar.hair." + hairKey, tint: tint) { AvatarHairFront(key: hairKey, w: width).foregroundStyle(tint) }
         }
         .frame(width: width, height: width * AvatarArt.aspect)

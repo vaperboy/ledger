@@ -90,6 +90,7 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public var loginDay: Int?
     public var missionProgress: [String: Int]?
     public var missionDone: Set<String>?
+    public var refunded: Set<String>?
 
     public init(today: Int) {
         firstDay = today; season = 0; xp = 0; claimed = []; owned = []; equipped = [:]
@@ -103,7 +104,7 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public var seasonNumber: Int { season + 1 }
     public var seasonDef: SeasonDef? { SeasonCatalog.active(seasonNumber) }
 
-    public func reward(_ track: Track, tier t: Int) -> SeasonReward? { SeasonRewards.reward(track, tier: t, season: seasonNumber) }
+    public func reward(_ track: Track, tier t: Int, today: Int = SeasonCatalog.today()) -> SeasonReward? { SeasonRewards.reward(track, tier: t, season: seasonNumber, today: today) }
 
     @discardableResult
     public mutating func rollover(today: Int) -> Bool {

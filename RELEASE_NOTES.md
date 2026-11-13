@@ -1,4 +1,8 @@
 # What's new
+- Player card redesign: the backdrop fills the whole card, real name plates, tap any part (or the +) to change it, and a Character tab with face, skin colour, hair and outfit; frames and badges are retired (gold spent on frames is refunded)
+- Many more cosmetics: 80 outfits, faces, hair styles, skin tones, backdrops, plates and flairs from boxes, the pass and levels; future season items stay hidden until the season starts
+- Company customise opens from the wrench and holds rename, logo and banner; the banner fills the full width
+- Decisions wait until the daily brief is closed, answers are never highlighted, partner invites let you set the share and price, and the battle pass has a card on Home
 - Decisions wait for the daily brief and all answers look equal; invites let you set the share and the price by typing; Group has one Overview with the structure below; Home shows the Battle Pass with a Get the pass button
 - Realistic closing and bankruptcy: closing a company repays all its debts first, a company that owes more than it has can only go bankrupt, guaranteed loans pass to the owner, money taken out while insolvent is clawed back, and no bank loans for 2 years after a bankruptcy
 - One fair game for everyone: no difficulty modes, retries or rolling back to older saves; save slots are separate careers, and every company type starts with the same 12-week runway from your savings plus a government start-up grant

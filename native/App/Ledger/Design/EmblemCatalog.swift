@@ -3,7 +3,7 @@ import GameCore
 import Simulation
 
 enum ArtCategory: String, CaseIterable {
-    case trade, artifact, theme, backdrop, namePlate, tradePlate, flair, box, badge, advisor, saveSlot, gold, avatar
+    case trade, artifact, theme, backdrop, namePlate, tradePlate, flair, box, badge, advisor, saveSlot, gold, avatar, outfit, face, hair, skin
 }
 
 enum AppContent {
@@ -60,6 +60,10 @@ enum EmblemCatalog {
         case .saveSlot: return EmblemSpec(symbol: "externaldrive.fill", badge: "plus", top: 0x55606B, bottom: 0x262C33, ink: 0xDCE4EC, motif: .grid, shape: .tile)
         case .gold: return EmblemSpec(symbol: "dollarsign.circle.fill", top: 0xE0BC5E, bottom: 0x7A5A1C, ink: 0xFFF4CF, motif: .rings, shape: .round)
         case .avatar: return AvatarCatalog.def(id)?.spec
+        case .outfit: return costume(colors, symbol: "tshirt.fill")
+        case .face: return costume(colors, symbol: "face.smiling.fill")
+        case .hair: return costume(colors, symbol: "comb.fill")
+        case .skin: return costume(colors, symbol: "hand.raised.fill")
         }
     }
 
@@ -111,6 +115,12 @@ enum EmblemCatalog {
         let tint: UInt32 = colors.first ?? 0xD6B889
         let deep: UInt32 = colors.count > 1 ? colors[1] : mix(tint, 0x000000, 0.7)
         return (tint, deep)
+    }
+
+    /// Placeholder tile for an avatar part until its picture exists.
+    static func costume(_ colors: [UInt32], symbol: String) -> EmblemSpec {
+        let p = pair(colors)
+        return EmblemSpec(symbol: symbol, top: mix(p.tint, 0x000000, 0.15), bottom: p.deep, ink: mix(p.tint, 0xFFFFFF, 0.55), motif: .dots, shape: .tile)
     }
 
     static func theme(_ id: String, _ colors: [UInt32]) -> EmblemSpec {

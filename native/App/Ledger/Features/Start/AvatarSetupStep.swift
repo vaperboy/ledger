@@ -3,9 +3,9 @@ import SwiftUI
 /// First step of a new game: build a half-body avatar and pick a unique username.
 struct AvatarSetupStep: View {
     enum Part: String, CaseIterable, Identifiable {
-        case face, hair, outfit
+        case face, skin, hair, outfit
         var id: String { rawValue }
-        var title: String { rawValue.capitalized }
+        var title: String { self == .skin ? "Skin" : rawValue.capitalized }
     }
 
     var onDone: () -> Void
@@ -64,13 +64,15 @@ struct AvatarSetupStep: View {
 
     @ViewBuilder private var picker: some View {
         switch part {
-        case .face: AvatarFacePicker(look: look, onChange: { (l: AvatarLook) in look = l; note = "" })
-        case .hair: AvatarHairPicker(look: look, onChange: { (l: AvatarLook) in look = l; note = "" })
-        case .outfit:
-            AvatarOutfitPicker(look: look, onPick: { (o: OutfitDef, open: Bool) in
-                if open { look.outfit = o.id; note = "" } else { note = o.title + " unlocks at level \(o.level)." }
-            })
+        case .face: AvatarFacePicker(look: look, onPick: { (p: AvatarPick) in choose(p) })
+        case .skin: AvatarSkinPicker(look: look, onPick: { (p: AvatarPick) in choose(p) })
+        case .hair: AvatarHairPicker(look: look, onPick: { (p: AvatarPick) in choose(p) })
+        case .outfit: AvatarOutfitPicker(look: look, onPick: { (p: AvatarPick) in choose(p) })
         }
+    }
+
+    private func choose(_ p: AvatarPick) {
+        if p.owned { p.apply(&look); note = "" } else { note = p.title + ": " + p.how + "." }
     }
 
     private var usernameField: some View {

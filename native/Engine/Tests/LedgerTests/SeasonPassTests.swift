@@ -103,15 +103,15 @@ final class SeasonPassTests: XCTestCase {
         XCTAssertEqual(p.claim(.free, tier: 1, isPlus: false), .tierNotReached)
         p.xp = SeasonPass.xpPerTier * 3
         guard case .claimed(let r) = p.claim(.free, tier: 1, isPlus: false) else { return XCTFail("free tier 1 should claim") }
-        XCTAssertEqual(r.id, "badge.s1.first")
+        XCTAssertEqual(r.id, "outfit.s1.pennant")
         XCTAssertEqual(p.claim(.free, tier: 1, isPlus: false), .alreadyClaimed)
         XCTAssertEqual(p.claim(.free, tier: 2, isPlus: false), .noReward)
         XCTAssertEqual(p.claim(.premium, tier: 1, isPlus: false), .needsPlus, "Pro-once and free players get the free track only")
         XCTAssertFalse(p.canClaim(.premium, tier: 1, isPlus: false))
         XCTAssertTrue(p.canClaim(.premium, tier: 1, isPlus: true))
         guard case .claimed = p.claim(.premium, tier: 1, isPlus: true) else { return XCTFail("premium should claim with Plus") }
-        XCTAssertTrue(p.owned.contains("theme.moss"))
-        XCTAssertEqual(p.equipped["theme"], "theme.moss", "the first of a kind is equipped")
+        XCTAssertTrue(p.owned.contains("outfit.s1.moss"))
+        XCTAssertNil(p.equipped["outfit"], "an outfit is collected and worn from the avatar editor, not equipped here")
         XCTAssertEqual(p.claimableCount(isPlus: true), 3)
         XCTAssertEqual(p.claimableCount(isPlus: false), 1)
         XCTAssertEqual(p.claimAll(isPlus: false).map(\.id), ["plate.ledger"])
@@ -133,13 +133,13 @@ final class SeasonPassTests: XCTestCase {
         p.xp = SeasonPass.tierCount * SeasonPass.xpPerTier
         _ = p.claimAll(isPlus: true)
         XCTAssertEqual(p.bonusSaveSlots, 1)
-        p.equip("theme.ocean")
-        XCTAssertEqual(p.equipped["theme"], "theme.ocean")
-        p.equip("badge.s1.first")
-        XCTAssertNil(p.equipped["badge"], "a badge is collected, not equipped")
+        p.equip("plate.marble")
+        XCTAssertEqual(p.equipped["namePlate"], "plate.marble")
+        p.equip("outfit.s1.pennant")
+        XCTAssertNil(p.equipped["outfit"], "an outfit is collected, then worn from the avatar editor")
         var q = SeasonPass(today: day0)
-        q.equip("theme.ocean")
-        XCTAssertNil(q.equipped["theme"], "an unowned reward cannot be equipped")
+        q.equip("plate.marble")
+        XCTAssertNil(q.equipped["namePlate"], "an unowned reward cannot be equipped")
     }
 
     func testSeasonRollover() {
@@ -193,7 +193,7 @@ final class SeasonPassTests: XCTestCase {
 
     func testCodableRoundTrip() throws {
         var p = SeasonPass(today: day0)
-        p.xp = 700; p.observe(snap(), today: day0); p.claimed = ["f1"]; p.owned = ["badge.s1.first"]
+        p.xp = 700; p.observe(snap(), today: day0); p.claimed = ["f1"]; p.owned = ["outfit.s1.pennant"]
         let back = try JSONDecoder().decode(SeasonPass.self, from: JSONEncoder().encode(p))
         XCTAssertEqual(back, p)
     }

@@ -20,7 +20,7 @@ struct AvatarPickTile<Art: View>: View {
                         if locked { LedgerGlyph(glyph: Glyph.lock, size: 11, tint: Theme.ink).padding(3).background(Circle().fill(Theme.surfaceRaised)) }
                     }
                 Text(title).textStyle(.caption, tint: locked ? Theme.inkFaint : Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
-                if !note.isEmpty { Text(note).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.7) }
+                if !note.isEmpty { Text(note).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2).minimumScaleFactor(0.7) }
             }
             .frame(maxWidth: .infinity, minHeight: 88, alignment: .top).padding(.vertical, Theme.Space.xs)
             .background(shape.fill(selected ? Theme.accentWash : Color.clear))
@@ -36,19 +36,88 @@ struct AvatarPickTile<Art: View>: View {
 
 private let avatarColumns: [GridItem] = [GridItem(.adaptive(minimum: 76), spacing: Theme.Space.s)]
 
+/// One tap in a picker: what was picked, whether the player has it, and how to apply it to a look. A pick the player does not own can
+/// still be tried on; the screen decides what to do with it.
+struct AvatarPick {
+    var title: String
+    var owned: Bool
+    /// Where the item comes from, for items the player does not have.
+    var how: String
+    var apply: (inout AvatarLook) -> Void
+}
+
+/// An item in a picker and whether the player has it.
+struct PickRow<T: Identifiable>: Identifiable {
+    var item: T
+    var owned: Bool
+    var id: T.ID { item.id }
+}
+
+/// The items of a part, the ones the player has first, then the others; each group keeps its catalogue order.
+@MainActor
+private func ownedFirst<T: Identifiable>(_ items: [T], itemID: (T) -> String, own: AvatarOwnership, shown: Set<String>) -> [PickRow<T>] {
+    let visible: [T] = items.filter { (x: T) -> Bool in shown.contains(itemID(x)) }
+    let mine: [PickRow<T>] = visible.filter { (x: T) -> Bool in own.owns(itemID(x)) }.map { (x: T) -> PickRow<T> in PickRow(item: x, owned: true) }
+    let other: [PickRow<T>] = visible.filter { (x: T) -> Bool in !own.owns(itemID(x)) }.map { (x: T) -> PickRow<T> in PickRow(item: x, owned: false) }
+    return mine + other
+}
+
+@MainActor
+private func pick(_ title: String, _ itemID: String, _ owned: Bool, _ apply: @escaping (inout AvatarLook) -> Void) -> AvatarPick {
+    AvatarPick(title: title, owned: owned, how: owned ? "" : AvatarOwnership.how(itemID), apply: apply)
+}
+
 struct AvatarFacePicker: View {
     var look: AvatarLook
-    var onChange: (AvatarLook) -> Void
+    var onPick: (AvatarPick) -> Void
+    @ObservedObject private var avatars = AvatarModel.shared
+    @ObservedObject private var season = SeasonModel.shared
 
     var body: some View {
+        let rows = ownedFirst(AvatarParts.faces, itemID: { (f: FaceDef) -> String in f.itemID }, own: AvatarOwnership(), shown: AvatarParts.shown())
         LazyVGrid(columns: avatarColumns, spacing: Theme.Space.s) {
-            ForEach(AvatarParts.faces) { (f: FaceDef) in
-                AvatarPickTile(title: f.title, selected: look.face == f.id, identifier: "avatar-face-\(f.id)", action: {
+            ForEach(rows) { (row: PickRow<FaceDef>) in
+                let f: FaceDef = row.item
+                AvatarPickTile(title: f.title, selected: look.face == f.id, locked: !row.owned, note: row.owned ? "" : AvatarOwnership.how(f.itemID), identifier: "avatar-face-\(f.id)", action: {
                     Haptics.choose()
-                    var next: AvatarLook = look
-                    next.face = f.id
-                    onChange(next)
+                    onPick(pick(f.title, f.itemID, row.owned) { (l: inout AvatarLook) in l.face = f.id })
                 }) { AvatarHead(look: AvatarLook(face: f.id, hair: look.hair, hairColour: look.hairColour, outfit: look.outfit, skin: look.skin), size: 56) }
+            }
+        }
+    }
+}
+
+/// Skin tones. A picked tone tints the face and body layers.
+struct AvatarSkinPicker: View {
+    var look: AvatarLook
+    var onPick: (AvatarPick) -> Void
+    @ObservedObject private var avatars = AvatarModel.shared
+    @ObservedObject private var season = SeasonModel.shared
+
+    var body: some View {
+        let rows = ownedFirst(AvatarParts.skins, itemID: { (s: SkinDef) -> String in s.itemID }, own: AvatarOwnership(), shown: AvatarParts.shown())
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
+            ForEach(rows) { (row: PickRow<SkinDef>) in
+                let t: SkinDef = row.item
+                let on: Bool = look.skin == t.id
+                Button {
+                    Haptics.choose()
+                    onPick(pick(t.title, t.itemID, row.owned) { (l: inout AvatarLook) in l.skin = t.id })
+                } label: {
+                    VStack(spacing: 2) {
+                        Circle().fill(Color(hex: t.colour)).frame(width: 40, height: 40)
+                            .padding(4)
+                            .overlay(Circle().strokeBorder(on ? Theme.ink : Color.clear, lineWidth: 2))
+                            .opacity(row.owned ? 1 : 0.5)
+                        Text(t.title).textStyle(.caption, tint: row.owned ? Theme.inkSoft : Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.7)
+                    }
+                    .frame(minWidth: 48, minHeight: 64)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel("Skin colour " + t.title + (row.owned ? "" : ", locked"))
+                .accessibilityAddTraits(on ? .isSelected : [])
+                .accessibilityIdentifier("avatar-skin-" + t.id)
             }
         }
     }
@@ -56,19 +125,21 @@ struct AvatarFacePicker: View {
 
 struct AvatarHairPicker: View {
     var look: AvatarLook
-    var onChange: (AvatarLook) -> Void
+    var onPick: (AvatarPick) -> Void
+    @ObservedObject private var avatars = AvatarModel.shared
+    @ObservedObject private var season = SeasonModel.shared
 
     var body: some View {
+        let rows = ownedFirst(AvatarParts.hairStyles, itemID: { (h: HairStyleDef) -> String in h.itemID }, own: AvatarOwnership(), shown: AvatarParts.shown())
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Style").textStyle(.label, tint: Theme.inkFaint)
                 LazyVGrid(columns: avatarColumns, spacing: Theme.Space.s) {
-                    ForEach(AvatarParts.hairStyles) { (h: HairStyleDef) in
-                        AvatarPickTile(title: h.title, selected: look.hair == h.id, identifier: "avatar-hair-\(h.id)", action: {
+                    ForEach(rows) { (row: PickRow<HairStyleDef>) in
+                        let h: HairStyleDef = row.item
+                        AvatarPickTile(title: h.title, selected: look.hair == h.id, locked: !row.owned, note: row.owned ? "" : AvatarOwnership.how(h.itemID), identifier: "avatar-hair-" + h.id, action: {
                             Haptics.choose()
-                            var next: AvatarLook = look
-                            next.hair = h.id
-                            onChange(next)
+                            onPick(pick(h.title, h.itemID, row.owned) { (l: inout AvatarLook) in l.hair = h.id })
                         }) { AvatarHead(look: AvatarLook(face: look.face, hair: h.id, hairColour: look.hairColour, outfit: look.outfit, skin: look.skin), size: 56) }
                     }
                 }
@@ -79,9 +150,7 @@ struct AvatarHairPicker: View {
                     ForEach(0..<AvatarParts.hairColours.count, id: \.self) { (i: Int) in
                         Button {
                             Haptics.choose()
-                            var next: AvatarLook = look
-                            next.hairColour = i
-                            onChange(next)
+                            onPick(AvatarPick(title: "Hair colour", owned: true, how: "", apply: { (l: inout AvatarLook) in l.hairColour = i }))
                         } label: {
                             Circle().fill(AvatarParts.hairColour(i)).frame(width: 28, height: 28)
                                 .padding(4)
@@ -102,51 +171,22 @@ struct AvatarHairPicker: View {
 
 struct AvatarOutfitPicker: View {
     var look: AvatarLook
-    /// Called with the outfit and whether the player owns it. Locked outfits can still be tried on.
-    var onPick: (OutfitDef, Bool) -> Void
+    var onPick: (AvatarPick) -> Void
     @ObservedObject private var avatars = AvatarModel.shared
+    @ObservedObject private var season = SeasonModel.shared
 
     var body: some View {
+        let rows = ownedFirst(AvatarParts.outfits, itemID: { (o: OutfitDef) -> String in o.itemID }, own: AvatarOwnership(), shown: AvatarParts.shown())
         LazyVGrid(columns: avatarColumns, spacing: Theme.Space.s) {
-            ForEach(AvatarParts.outfits) { (o: OutfitDef) in
-                let open: Bool = avatars.bestLevel >= o.level
-                AvatarPickTile(title: o.title, selected: look.outfit == o.id, locked: !open, note: open ? "" : "Level \(o.level)", identifier: "avatar-outfit-" + o.id, action: {
+            ForEach(rows) { (row: PickRow<OutfitDef>) in
+                let o: OutfitDef = row.item
+                AvatarPickTile(title: o.title, selected: look.outfit == o.id, locked: !row.owned, note: row.owned ? "" : AvatarOwnership.how(o.itemID), identifier: "avatar-outfit-" + o.id, action: {
                     Haptics.choose()
-                    onPick(o, open)
+                    onPick(pick(o.title, o.itemID, row.owned) { (l: inout AvatarLook) in l.outfit = o.id })
                 }) {
                     HalfBodyAvatar(look: AvatarLook(face: look.face, hair: look.hair, hairColour: look.hairColour, outfit: o.id, skin: look.skin), width: 66)
                         .frame(width: 66, height: 66, alignment: .top).clipped()
                 }
-            }
-        }
-    }
-}
-
-/// A row of skin tones. The picked tone tints the face and body layers.
-struct AvatarSkinPicker: View {
-    var look: AvatarLook
-    var onChange: (AvatarLook) -> Void
-
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
-            ForEach(0..<AvatarParts.skinTones.count, id: \.self) { (i: Int) in
-                let on: Bool = look.skin == i
-                Button {
-                    Haptics.choose()
-                    var next: AvatarLook = look
-                    next.skin = i
-                    onChange(next)
-                } label: {
-                    Circle().fill(AvatarParts.skinTone(i)).frame(width: 40, height: 40)
-                        .padding(4)
-                        .overlay(Circle().strokeBorder(on ? Theme.ink : Color.clear, lineWidth: 2))
-                        .frame(minWidth: 48, minHeight: 48)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
-                .accessibilityLabel("Skin colour \(i + 1)")
-                .accessibilityAddTraits(on ? .isSelected : [])
-                .accessibilityIdentifier("avatar-skin-\(i)")
             }
         }
     }

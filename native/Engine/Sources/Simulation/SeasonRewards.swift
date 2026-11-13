@@ -5,6 +5,7 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
     public enum Kind: String, Sendable {
         case badge, theme, namePlate, backdrop, saveSlot, advisorLine, richListFlair, tradePlate
         case box, gold
+        case outfit, face, hair, skin
         case profileCard, companyCard
         case artifact, xp
         public var isEquippable: Bool { self == .theme || self == .namePlate || self == .backdrop || self == .richListFlair || self == .tradePlate }
@@ -18,6 +19,10 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
             case .advisorLine: return "Advisor line"
             case .richListFlair: return "Rich-list flair"
             case .tradePlate: return "Trade-name plate"
+            case .outfit: return "Outfit"
+            case .face: return "Face"
+            case .hair: return "Hair style"
+            case .skin: return "Skin tone"
             case .box: return "Box"
             case .gold: return "Gold"
             case .profileCard: return "Profile card"
@@ -40,10 +45,23 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
     public var founderEdition: Bool = false
     public var accountBound: Bool = false
     public var rarity: BoxRarity?
+    /// Art slot, for example avatar.body.suit or plate.brass. Empty for items without a picture slot.
+    public var art: String = ""
+    /// How a name plate is drawn (ribbon, chalkboard, wood, ...). Empty when the file gives none.
+    public var style: String = ""
 }
 
 public enum SeasonRewards {
-    public static let all: [SeasonReward] = SeasonCatalog.all.flatMap { (s: SeasonDef) -> [SeasonReward] in s.rewards }
+    /// Every reward of every season file, including seasons that have not started. For lookups of ids only.
+    public static let everything: [SeasonReward] = SeasonCatalog.all.flatMap { (s: SeasonDef) -> [SeasonReward] in s.rewards }
+
+    /// Rewards of seasons that are live today; a future season shows nowhere.
+    public static var all: [SeasonReward] { visible() }
+
+    public static func visible(today: Int = SeasonCatalog.today()) -> [SeasonReward] {
+        let hidden: Set<Int> = Set(SeasonCatalog.all.filter { !SeasonCatalog.isLive($0.number, today: today) }.map { $0.number })
+        return everything.filter { !hidden.contains($0.season) }
+    }
 
     static func parse(_ e: JSONValue, season: Int, theme: String, founder: Bool) -> SeasonReward {
         var r: SeasonReward = entry(e)
@@ -56,6 +74,8 @@ public enum SeasonRewards {
             r.founderEdition = e["founderEdition"].isNull ? founder : e["founderEdition"].bool
         }
         r.accountBound = e["bound"].bool
+        r.art = e["art"].string
+        r.style = e["style"].string
         if r.kind == .profileCard || r.kind == .companyCard || r.kind == .artifact {
             r.rarity = CardCatalog.def(r.id)?.rarity ?? ArtifactCatalog.defs.first(where: { (d: ArtifactDef) -> Bool in d.id == r.id })?.rarity
         } else if !e["rarity"].isNull {
@@ -80,8 +100,9 @@ public enum SeasonRewards {
         }
     }
 
-    public static func reward(_ track: SeasonPass.Track, tier: Int, season: Int = 1) -> SeasonReward? {
-        SeasonCatalog.active(season)?.rewards.first { $0.tier == tier && $0.premium == (track == .premium) }
+    public static func reward(_ track: SeasonPass.Track, tier: Int, season: Int = 1, today: Int = SeasonCatalog.today()) -> SeasonReward? {
+        guard let def = SeasonCatalog.active(season), SeasonCatalog.isLive(def.number, today: today) else { return nil }
+        return def.rewards.first { $0.tier == tier && $0.premium == (track == .premium) }
     }
 
     private static func b(_ id: String, _ tier: Int, _ prem: Bool, _ count: Int) -> SeasonReward {

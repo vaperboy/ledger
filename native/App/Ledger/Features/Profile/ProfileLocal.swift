@@ -26,7 +26,7 @@ final class ProfileLocal: ObservableObject {
         hasAvatar = saved != nil
         avatar = saved ?? AvatarLook.generated(for: storedName)
         // The icon a player used to wear becomes a badge on the card.
-        cardBadges = UserDefaults.standard.stringArray(forKey: Self.badgesKey) ?? AvatarModel.shared.equipped.map { (id: String) -> [String] in [id] } ?? []
+        cardBadges = UserDefaults.standard.stringArray(forKey: Self.badgesKey) ?? AvatarModel.shared.equipped.flatMap { (id: String) -> [String]? in AvatarCatalog.def(id) == nil ? nil : [id] } ?? []
     }
 
     func setAvatar(_ look: AvatarLook) {
