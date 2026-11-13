@@ -255,10 +255,15 @@ public enum EnergyModel {
     static func developmentCash(_ s: inout GameState, _ i: Int, field f: inout JSONValue, _ c: Double, data: GameData) {
         let co = s.companies[i]
         if co.cash >= c { return }
-        let need = max(c - co.cash, c * 26)
+        // Borrow at most the next quarter of development, against the reserves, under the usual bank rules.
+        let need = max(c - co.cash, c * min(13, max(1, f["wl"].double)))
         let limit = f["res"].double * 1000 * 100 - f["rbl"].double
-        let amt = jsRound(min(need, limit) / 1e5) * 1e5
+        let amt = min((need / 1e5).rounded(.up), (limit / 1e5).rounded(.down)) * 1e5
         if amt <= 0 { return }
+        guard LoanChecks.approves(s, companyID: co.id, amount: amt, security: amt, data: data) else {
+            s.note("The bank will not lend against \(f["name"].string) now. Development waits for cash.", tone: "bad", companyID: co.id)
+            return
+        }
         var l = Loan(raw: [:])
         l.id = s.makeID(); l.kind = "biz"; l.name = "Reserve-based loan: \(f["name"].string)"
         l.balance = amt; l.originalAmount = amt
@@ -266,7 +271,7 @@ public enum EnergyModel {
         l.termMonths = 84; l.companyID = co.id
         l.startWeek = s.week + f["wl"].int
         l.graceUntilWeek = s.week + f["wl"].int + 13
-        l.isGuaranteed = false
+        l.isGuaranteed = LoanChecks.needsGuarantee(s, companyID: co.id, amount: amt)
         l.monthlyPayment = Loans.annuity(principal: amt, yearlyRate: s.economy.policyRate + l.margin, months: 84)
         s.loans.append(l)
         Payments.companyReceives(&s, companyID: co.id, amount: amt, category: nil, label: "Loan drawn")

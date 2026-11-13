@@ -201,7 +201,7 @@ public enum PlayerInventory {
         return amount
     }
 
-    public static func heldTotal(_ s: GameState) -> Double { holds(s).values.reduce(0, +) }
+    public static func heldTotal(_ s: GameState) -> Double { holds(s).sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value } }
 
     @discardableResult
     public static func takeDelivery(_ s: inout GameState, dealID: String, wire: JSONValue, price: Double, currency: String, data: GameData) -> InventoryItem? {

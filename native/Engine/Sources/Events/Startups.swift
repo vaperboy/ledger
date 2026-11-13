@@ -425,8 +425,28 @@ public enum Startups {
                                    "Two engineers with a working prototype.", "Early customers and a waitlist.", "Serial founder, second company.", "University spin-out with a patent."])
         return .object(["id": .number(Double(s.makeID())), "name": .string(name), "sec": .string(sec), "q": .number(q), "raise": .number(raise), "pre": .number(pre), "post": .number(pre + raise),
                         "stage": 0, "blurb": .string(blurb),
-                        "sig": .object(["team": .number(clamp(jsRound(q * 100 + s.random.gauss() * 12), 5, 99)), "market": .number(clamp(jsRound(s.random.range(35, 90)), 5, 99)),
-                                        "traction": .number(clamp(jsRound(q * 90 + s.random.gauss() * 18), 3, 99))])])
+                        "sig": .object(["team": .number(pitchSignal(q, weight: 45, base: 30, noise: s.random.gauss() * 22)), "market": .number(clamp(jsRound(s.random.range(35, 90)), 5, 99)),
+                                        "traction": .number(pitchSignal(q, weight: 35, base: 25, noise: s.random.gauss() * 28))])])
+    }
+
+    /// A pitch score hints at hidden quality but mostly reflects how well the founders sell: half of it is presentation and noise.
+    static func pitchSignal(_ q: Double, weight: Double, base: Double, noise: Double) -> Double {
+        clamp(jsRound(base + q * weight + noise), 3, 99)
+    }
+
+    /// Chance a startup reaches its next stage. Most fail: an average one exits about one time in seven, the best about one in three.
+    static func survivalChance(quality q: Double, help: Double, stage: Int, demand: Double, bear: Bool) -> Double {
+        clamp(0.35 + q * 0.4 + help * 0.04 + (demand - 1) * 0.3 - Double(stage) * 0.04 + (bear ? -0.08 : 0), 0.1, 0.8)
+    }
+
+    /// How much the valuation grows when a stage is reached.
+    static func stageMultiple(_ roll: Double) -> Double { 1.3 + roll * 0.7 }
+
+    /// The sale price at exit as a multiple of the last valuation: usually a modest trade sale, sometimes a fire sale, rarely a big win.
+    static func exitMultiple(quality q: Double, kind: Double, roll: Double) -> Double {
+        if kind < 0.02 { return 5 + roll * 7 }
+        if kind < 0.02 + q * 0.5 { return 1 + roll * 1.5 }
+        return 0.3 + roll * 0.7
     }
 
     public static func pitches(_ s: inout GameState, data: GameData) -> [Pitch] {
@@ -495,7 +515,7 @@ public enum Startups {
             var f = list[k]
             if f["st"].string != "live" || s.week < f["wNext"].int { continue }
             let bear = s.rest["mkt"]?["regime"].string == "bear"
-            let pS = clamp(f["q"].double * 0.85 + f["help"].double * 0.08 + (s.economy.demand - 1) * 0.5 - f["stage"].double * 0.06 + (bear ? -0.1 : 0), 0.08, 0.92)
+            let pS = survivalChance(quality: f["q"].double, help: f["help"].double, stage: f["stage"].int, demand: s.economy.demand, bear: bear)
             let name = f["name"].string
             if !s.random.chance(pS) {
                 if f["stage"].int <= 2 && !f["bridged"].bool && s.random.chance(0.5) {
@@ -514,11 +534,11 @@ public enum Startups {
                 list[k] = f; continue
             }
             f["stage"] = .number(f["stage"].double + 1)
-            let mult = s.random.range(1.8, 4.2) * (f["stage"].int >= 3 ? 1.5 : 1)
+            let mult = stageMultiple(s.random.next())
             f["val"] = .number(f["val"].double * mult)
             if f["stage"].int >= 3 {
-                let acq = s.random.chance(f["q"].double * 0.7)
-                let exitV = f["val"].double * (acq ? s.random.range(1.5, 4) : s.random.range(0.7, 1.4))
+                let kind = s.random.next(), roll = s.random.next()
+                let exitV = f["val"].double * exitMultiple(quality: f["q"].double, kind: kind, roll: roll)
                 let proceeds = exitV * f["pct"].double / 100
                 f["st"] = "exit"; f["val"] = 0
                 Payments.playerReceives(&s, proceeds, label: "Exit: \(name)")

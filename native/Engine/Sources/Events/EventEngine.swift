@@ -266,7 +266,7 @@ public enum EventEngine {
         let line: String = insuranceLine(co, e, currency: currency)
         if !line.isEmpty { parts.append(line) }
         let weeks: Int = max(1, e.expiresAfterWeeks)
-        parts.append("Answer within \(weeks) week\(weeks == 1 ? "" : "s"), or the cheapest answer is taken.")
+        parts.append("Answer within \(weeks) week\(weeks == 1 ? "" : "s"), or nothing is done and it plays out.")
         return parts.joined(separator: " ")
     }
 
@@ -345,17 +345,13 @@ public enum EventEngine {
             let i = s.companyIndex(m.companyID)
             if m.kind == "decision" {
                 guard let ci = i else { s.inbox[k].set("status", "done"); continue }
-                var bestIndex = 0, best = -Double.infinity
-                for (n, o) in m.options.enumerated() where o["fx"]["tier"].isNull {
-                    let v = -abs(o["fx"]["cash"].double)
-                    if v > best { best = v; bestIndex = n }
-                }
                 let ctx = context(for: s.companies[ci], data: data, country: fc.country(of: s.companies[ci], s))
+                let bestIndex = passiveOption(m.options, ctx)
                 let e = GameEvent(id: m.str("ev"), json: .object(["cat": .string(m.str("cat", "none"))]))
                 apply(&s, companyIndex: ci, m.options[bestIndex]["fx"], ctx: ctx, event: e, data: data, context: fc)
                 if let k2 = s.inbox.firstIndex(where: { $0.id == due }) { k = k2 }
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", bestIndex); s.inbox[k].set("auto", 1)
-                s.note("No answer in time on \"\(m.title)\". Default taken: \(m.options[bestIndex]["l"].string).", tone: "bad", companyID: m.companyID)
+                s.note("No answer in time on \"\(m.title)\". Nothing was done: \(m.options[bestIndex]["l"].string).", tone: "bad", companyID: m.companyID)
             } else if m.actionID == StrategicDecisions.action {
                 let pick = StrategicDecisions.expired(&s, message: m, data: data, context: fc)
                 if let k2 = s.inbox.firstIndex(where: { $0.id == due }) { k = k2 }
@@ -369,6 +365,32 @@ public enum EventEngine {
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", -1); s.inbox[k].set("auto", 1)
             }
         }
+    }
+
+    /// The answer an unanswered decision gets: the option that does nothing if there is one; otherwise, of the options that spend
+    /// nothing, the one that plays out worst; if every option spends, the cheapest. Leaving a choice open never earns more than answering it.
+    public static func passiveOption(of m: Message, _ s: GameState, data: GameData, context fc: FinanceContext) -> Int {
+        guard let co = s.company(m.companyID) else { return 0 }
+        return passiveOption(m.options, context(for: co, data: data, country: fc.country(of: co, s)))
+    }
+
+    static func passiveOption(_ options: [JSONValue], _ ctx: Context) -> Int {
+        let open = options.indices.filter { options[$0]["fx"]["tier"].isNull }
+        guard let first = open.first else { return 0 }
+        if let idle = open.last(where: { options[$0]["fx"].object.isEmpty }) { return idle }
+        let free = open.filter { options[$0]["fx"]["cash"].double >= 0 && options[$0]["fx"]["raise"].double <= 0 }
+        var pick = first
+        if free.isEmpty {
+            var cheapest = -Double.infinity
+            for n in open where options[n]["fx"]["cash"].double > cheapest { cheapest = options[n]["fx"]["cash"].double; pick = n }
+            return pick
+        }
+        var worst = Double.infinity
+        for n in free {
+            let v = score(options[n]["fx"], ctx)
+            if v <= worst { worst = v; pick = n }
+        }
+        return pick
     }
 
     public static func openDecisionCount(_ s: GameState) -> Int { s.inbox.filter { $0.status == "open" }.count }

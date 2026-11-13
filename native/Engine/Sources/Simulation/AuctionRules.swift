@@ -68,6 +68,11 @@ public enum AuctionRules {
     public static let bidExtension: Double = 15
     public static let maxExtensions = 12
     public static let minimumStartPrice = 1
+    /// No start price, reserve or buy-now price may be set above this multiple of the piece's market value.
+    public static let maxValueMultiple = 3
+
+    /// The highest price a listing may ask for a piece worth `value`.
+    public static func maxAsk(value: Int) -> Int { max(minimumStartPrice, value) * maxValueMultiple }
 
     public static func increment(at price: Int) -> Int {
         let raw: Int = max(1, price / 20)
@@ -87,8 +92,12 @@ public enum AuctionRules {
         return (endsAt + bidExtension, true)
     }
 
-    public static func listingProblem(startPrice: Int, reserve: Int?, buyNow: Int? = nil) -> String? {
+    public static func listingProblem(startPrice: Int, reserve: Int?, buyNow: Int? = nil, value: Int? = nil) -> String? {
         if startPrice < minimumStartPrice { return "Set a start price." }
+        if let value {
+            let cap: Int = maxAsk(value: value)
+            if startPrice > cap || (reserve ?? 0) > cap || (buyNow ?? 0) > cap { return "No price can be above \(cap), three times the market value." }
+        }
         if let r = reserve {
             if r < startPrice { return "The reserve cannot be below the start price." }
             if r > startPrice * 50 { return "The reserve is too far above the start price." }
@@ -157,8 +166,8 @@ extension AuctionRules {
         public var lines: [String]
     }
 
-    public static func listingPreview(startPrice: Int, reserve: Int?, buyNow: Int? = nil, duration: AuctionDuration) -> ListingPreview {
-        let problem = listingProblem(startPrice: startPrice, reserve: reserve, buyNow: buyNow)
+    public static func listingPreview(startPrice: Int, reserve: Int?, buyNow: Int? = nil, duration: AuctionDuration, value: Int? = nil) -> ListingPreview {
+        let problem = listingProblem(startPrice: startPrice, reserve: reserve, buyNow: buyNow, value: value)
         var lines: [String] = [
             "The piece leaves your cabinet while it is on sale, for \(duration.title).",
             "Bids are in cash. A bidder's cash is set aside while they lead and is free again when they are beaten.",
@@ -202,6 +211,8 @@ public struct AuctionBook: Codable, Equatable, Sendable {
     public var feesBurned = 0
     public var nextNumber = 1
     public var linkKeys: [String: String]?
+    /// The price level seen at the last market update, so a listing can be checked against market value.
+    public var priceLevel: Double?
 
     public init(me: String) { self.me = me }
 
@@ -246,9 +257,11 @@ public struct AuctionBook: Codable, Equatable, Sendable {
     }
 
     @discardableResult
-    public mutating func list(_ itemID: String, startPrice: Int, reserve: Int?, buyNow: Int? = nil, duration: AuctionDuration, now: Double, cabinet: inout Cabinet) throws -> Auction {
-        if let problem = AuctionRules.listingProblem(startPrice: startPrice, reserve: reserve, buyNow: buyNow) { throw AuctionError.badPrice(problem) }
+    public mutating func list(_ itemID: String, startPrice: Int, reserve: Int?, buyNow: Int? = nil, duration: AuctionDuration, now: Double, cabinet: inout Cabinet,
+                              priceLevel level: Double? = nil) throws -> Auction {
         guard let piece = cabinet.items.first(where: { $0.id == itemID }) else { throw AuctionError.notYours }
+        let value: Int = AuctionMarket.value(of: piece, priceLevel: level ?? priceLevel ?? 1)
+        if let problem = AuctionRules.listingProblem(startPrice: startPrice, reserve: reserve, buyNow: buyNow, value: value) { throw AuctionError.badPrice(problem) }
         guard TradeRules.isSellable(piece) else { throw AuctionError.accountBound }
         guard let item = cabinet.remove(itemID) else { throw AuctionError.notYours }
         let a = Auction(id: "A\(nextNumber)", item: item, seller: me, startPrice: startPrice, reserve: reserve, buyNow: buyNow, startsAt: now,
@@ -316,6 +329,11 @@ public enum AuctionMarket {
 
     public static func suggestedStart(_ r: BoxRarity, priceLevel: Double) -> Int { tidy(Double(basePrice(r)) * priceLevel) }
 
+    /// Market value of one piece (artifact or card) at the given price level.
+    public static func value(of item: ArtifactItem, priceLevel: Double) -> Int {
+        suggestedStart(ArtifactCatalog.def(item.defID)?.rarity ?? .common, priceLevel: priceLevel)
+    }
+
     /// Market value in game money: the rarity's worth in gold at the one in-game gold rate.
     static func basePrice(_ r: BoxRarity) -> Int { Int(GoldValue.gameMoney(gold: GoldPrices.artifactValue(r)).rounded()) }
 
@@ -329,6 +347,7 @@ public enum AuctionMarket {
     @discardableResult
     public static func advance(_ book: inout AuctionBook, cash: Int, cabinet: inout Cabinet, from last: Double, to now: Double,
                                players: [String], priceLevel: Double = 1) -> [AuctionSettlement] {
+        book.priceLevel = priceLevel
         guard now > last, players.count >= 3 else { return [] }
         var settled: [AuctionSettlement] = []
         var money: Int = cash
@@ -343,7 +362,7 @@ public enum AuctionMarket {
         while slot <= lastSlot {
             let t: Double = Double(slot) * slotSeconds
             settle(t)
-            for i in book.auctions.indices where book.auctions[i].status == .live && book.auctions[i].startsAt <= t { botTurn(&book, i, slot: slot, t: t, players: players) }
+            for i in book.auctions.indices where book.auctions[i].status == .live && book.auctions[i].startsAt <= t { botTurn(&book, i, slot: slot, t: t, players: players, priceLevel: priceLevel) }
             slot += 1
         }
         settle(now)
@@ -351,12 +370,17 @@ public enum AuctionMarket {
         return settled
     }
 
-    private static func botTurn(_ book: inout AuctionBook, _ i: Int, slot: Int, t: Double, players: [String]) {
+    /// Computer bidders value a piece at 75-100% of its market value and never bid above that, whatever the seller asks.
+    static func botCeiling(_ a: Auction, priceLevel: Double) -> Double {
+        let worth = Double(value(of: a.item, priceLevel: priceLevel))
+        return worth * (0.75 + roll(a.id + "|cap") * 0.25)
+    }
+
+    private static func botTurn(_ book: inout AuctionBook, _ i: Int, slot: Int, t: Double, players: [String], priceLevel: Double) {
         let a: Auction = book.auctions[i]
         let key: String = a.id
         let appetite: Double = 0.4 + roll(key + "|app") * 1.2
-        var ceiling = Double(a.startPrice) * (1.3 + roll(key + "|cap") * 2.2)
-        if let r = a.reserve { ceiling = roll(key + "|res") < 0.6 ? max(ceiling, Double(r) * 1.25) : min(ceiling, Double(r) * 0.9) }
+        let ceiling: Double = botCeiling(a, priceLevel: priceLevel)
         var p: Double = 0.025 * appetite
         let left: Double = a.endsAt - t
         if left < 300 { p += 0.10 * appetite }
@@ -387,9 +411,10 @@ public enum AuctionMarket {
             if roll(key + "|card") < 0.25, !cardPool.isEmpty {
                 item = CardCatalog.item(cardPool[min(cardPool.count - 1, Int(roll(key + "|cdef") * Double(cardPool.count)))], roll: roll(key + "|ser"))
             }
-            let startPrice: Int = tidy(Double(basePrice(rarity)) * priceLevel * (0.7 + roll(key + "|sp") * 0.7))
-            let reserve: Int? = roll(key + "|hasres") < 0.3 ? tidy(Double(startPrice) * (1.4 + roll(key + "|rs") * 1.2)) : nil
-            let buyNow: Int? = roll(key + "|hasbn") < 0.3 ? max(tidy(Double(startPrice) * (2.2 + roll(key + "|bn") * 1.6)), reserve ?? 0) : nil
+            let worth = Double(basePrice(rarity)) * priceLevel
+            let startPrice: Int = tidy(worth * (0.6 + roll(key + "|sp") * 0.6))
+            let reserve: Int? = roll(key + "|hasres") < 0.3 ? tidy(min(worth * 2, Double(startPrice) * (1.1 + roll(key + "|rs") * 0.5))) : nil
+            let buyNow: Int? = roll(key + "|hasbn") < 0.3 ? max(tidy(min(worth * 3, Double(startPrice) * (1.6 + roll(key + "|bn") * 1.4))), (reserve ?? 0) + 1, startPrice + 1) : nil
             let duration: AuctionDuration = AuctionDuration.allCases[min(2, Int(roll(key + "|dur") * 3))]
             let elapsedShare: Double = book.auctions.isEmpty || live < targetListings / 2 ? roll(key + "|el") * 0.9 : roll(key + "|el") * 0.15
             let started: Double = now - duration.seconds * elapsedShare
@@ -398,7 +423,7 @@ public enum AuctionMarket {
             var slot: Int = Int((started / slotSeconds).rounded(.down)) + 1
             let lastSlot: Int = Int((now / slotSeconds).rounded(.down))
             while slot <= lastSlot, book.auctions[idx].status == .live {
-                botTurn(&book, idx, slot: slot, t: Double(slot) * slotSeconds, players: players)
+                botTurn(&book, idx, slot: slot, t: Double(slot) * slotSeconds, players: players, priceLevel: priceLevel)
                 slot += 1
             }
             live += 1

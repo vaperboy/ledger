@@ -59,9 +59,10 @@ public extension GameEngine {
     private func unlistedSnapshot(companyID: Int) -> PlayerDeals.CompanyListing? {
         guard let co = state.company(companyID) else { return nil }
         let rev: Double = (co.books.year["rev"] ?? 0) > 0 ? co.books.year["rev"]! : co.lastWeekRevenue * 52
-        return PlayerDeals.CompanyListing(id: "C\(co.id)", ownerID: "me", ownerName: "", profileCode: "", linkKey: "", companyName: co.name, tradeID: co.type, cityID: co.cityID,
-                                          countryCode: co.countryCode, size: co.size, yearlyRevenue: rev, yearlyProfit: CompanyFigures.yearlyProfitEstimate(co, currentWeek: state.week), staff: co.staff.count,
-                                          reputation: co.reputation, weeksTrading: 0, askPrice: 0, expiresDay: 0)
+        let l = PlayerDeals.CompanyListing(id: "C\(co.id)", ownerID: "me", ownerName: "", profileCode: "", linkKey: "", companyName: co.name, tradeID: co.type, cityID: co.cityID,
+                                           countryCode: co.countryCode, size: co.size, yearlyRevenue: rev, yearlyProfit: CompanyFigures.yearlyProfitEstimate(co, currentWeek: state.week), staff: co.staff.count,
+                                           reputation: co.reputation, weeksTrading: 0, askPrice: 0, expiresDay: 0)
+        return PlayerDeals.withBalanceSheet(l, co, state: state)
     }
 
     @discardableResult

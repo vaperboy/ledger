@@ -119,13 +119,9 @@ public extension GameEngine {
         guard m.status == "open", m.expiresWeek != nil else { return nil }
         if m.actionID == PersonalFinance.dueAction { return "If you leave it, the tax office takes the balance from your account and the overdraft rules apply." }
         if m.kind == "decision" {
-            var bestIndex = 0, best = -Double.infinity
-            for (n, o) in m.options.enumerated() {
-                let v = -abs(o["fx"]["cash"].double)
-                if v > best { best = v; bestIndex = n }
-            }
-            let label = m.options.indices.contains(bestIndex) ? localized(m.options[bestIndex]["l"].string, companyID: m.companyID) : ""
-            return label.isEmpty ? "If you leave it, the cheapest answer is taken." : "If you leave it, the cheapest answer is taken: \(label)."
+            let pick = EventEngine.passiveOption(of: m, state, data: data, context: context)
+            let label = m.options.indices.contains(pick) ? localized(m.options[pick]["l"].string, companyID: m.companyID) : ""
+            return label.isEmpty ? "If you leave it, nothing is done and it plays out." : "If you leave it, nothing is done: \(label)."
         }
         if m.actionID == StrategicDecisions.action { return "If you leave it, the default answer is taken." }
         if m.actionID == Shareholders.action { return "If you leave it, it counts as a refusal." }

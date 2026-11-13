@@ -366,6 +366,8 @@ public enum FootballModel {
         guard let club = findClub(s, id: clubID), club["owner"].string == "ai", let country = data.countries[club["country"].string] else { return .notAvailable }
         if Payments.liquid(s) < price { return .notEnoughCash }
         let debt = clubDebt(club, seed: s.seed)
+        // Lenders must agree to a new owner taking over the club's debt; they refuse during a bankruptcy ban or on a poor credit score.
+        if debt > 0 && LoanChecks.lendingBlocked(s) { return .notAvailable }
         Payments.playerPays(&s, price, label: "Purchase of \(club["name"].string)")
         setClub(&s, country.code, id: clubID) { $0["owner"] = "you"; $0["listed"] = false }
         guard let id = makeClubCompany(&s, club: club, division: 1, country: country, data: data) else { return .notAvailable }
@@ -374,7 +376,7 @@ public enum FootballModel {
             l.id = s.makeID(); l.kind = "biz"; l.name = "Club debt taken over"
             l.balance = debt; l.originalAmount = debt
             l.margin = Banking.creditMargin(s.credit) + 0.015
-            l.termMonths = 240; l.companyID = id; l.startWeek = s.week; l.isGuaranteed = false
+            l.termMonths = 240; l.companyID = id; l.startWeek = s.week; l.isGuaranteed = LoanChecks.needsGuarantee(s, companyID: id, amount: debt)
             l.monthlyPayment = Loans.annuity(principal: debt, yearlyRate: s.economy.policyRate + l.margin, months: 240)
             s.loans.append(l)
             setClub(&s, country.code, id: clubID) { $0["debt"] = 0 }

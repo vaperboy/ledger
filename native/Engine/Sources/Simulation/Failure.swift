@@ -15,6 +15,7 @@ public enum Failure {
         let p = co.payables
         let ownLoans = s.loans.filter { $0.companyID == co.id }
         let loanBalance = ownLoans.reduce(0) { $0 + $1.balance }
+        let borrowedHeld = ClawBack.borrowedStillHeld(s, co)
         let debts: Double = loanBalance + CompanyFigures.billsOwed(co)
         var personalHit = 0.0
         var pool = assets
@@ -50,8 +51,8 @@ public enum Failure {
         let rest = assets - billsDue - repaidToLoans
         let billsLost = max(0, billsDue - max(0, assets - repaidToLoans))
         if rest > 0 && co.ownership > 0 { Payments.playerReceives(&s, rest * co.ownership / 100 * 0.2, label: "Remaining value from \(co.name)") }
-        // Money the company handed its owner while insolvent goes back to the creditors who lost out; a closure by the authorities seizes instead.
-        let claw = reason == "closed" ? 0 : jsRound(min(ClawBack.takenOut(s, co), lendersLost + billsLost))
+        // Money the company handed its owner while insolvent, and borrowed money it still owed, goes back to the creditors who lost out.
+        let claw = jsRound(min(max(ClawBack.takenOut(s, co), borrowedHeld), lendersLost + billsLost))
         let back = ClawBack.collect(&s, amount: claw, from: co)
         s.companies[i].set("clawBk", claw)
         s.companies[i].retainedCash = 0

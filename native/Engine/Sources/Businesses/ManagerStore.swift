@@ -59,7 +59,7 @@ enum ManagerStore {
         guard FranchiseStandards.campaignRefusal(co, channel: ch) == nil, !Marketing.runByChain(co, channel: ch, state: s) else { return }
         let cur = World(state: s, data: data).currency(co)
         var mkt = co.value("mkt")
-        let others = mkt.object.filter { $0.key != ch }.reduce(0.0) { $0 + $1.value["b"].double }
+        let others = mkt.object.filter { $0.key != ch }.sorted(by: { $0.key < $1.key }).reduce(0.0) { $0 + $1.value["b"].double }
         let room = weeklyCeiling(co) - others
         let now = mkt[ch]["b"].double
         let steps = ManagerModel.marketingSteps(ch, cur)
