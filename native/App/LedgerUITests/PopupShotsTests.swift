@@ -108,10 +108,9 @@ final class PopupShotsTests: CompanyBatchTourCase {
             popup("save-slots")
             return true
         }
-        site("paywall") {
-            guard openPhoneApp("Store") else { return false }
-            guard tapID("store-plans", wait: 3) else { return false }
-            popup("paywall"); closeAny(); return true
+        site("store-plans") {
+            guard goTab("Store"), exists("plan-plus", 4) else { return false }
+            popup("store-plans"); return true
         }
     }
 

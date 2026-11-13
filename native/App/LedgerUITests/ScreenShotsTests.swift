@@ -1,7 +1,7 @@
 import XCTest
 
 final class ScreenShotsTests: FeatureTourCase {
-    static let seenFlags: [String] = ["firstRun.tour.group", "firstRun.tour.ventures", "firstRun.tour.phone", "firstRun.tour.custom", "firstRun.tour.company", "firstRun.customTabTip",
+    static let seenFlags: [String] = ["firstRun.tour.group", "firstRun.tour.ventures", "firstRun.tour.phone", "firstRun.tour.custom", "firstRun.tour.company",
                                       "firstRun.appHelp.bank", "firstRun.appHelp.market", "firstRun.appHelp.atlas", "firstRun.appHelp.inbox", "firstRun.appHelp.news",
                                       "firstRun.appHelp.competition", "firstRun.appHelp.techPro", "firstRun.appHelp.airStay", "firstRun.appHelp.luxury",
                                       "firstRun.appHelp.marketplace", "firstRun.appHelp.auctions"]
@@ -395,11 +395,7 @@ final class ScreenShotsTests: FeatureTourCase {
         screen("fresh-tab-ventures") { ok(openTab("Ventures"), "no Ventures tab") }
         act { clearPopups() }
         screen("fresh-tab-group") { ok(goTab("Group"), "no Group tab") }
-        screen("fresh-tab-custom") {
-            guard let t = customTab() else { return "no fourth tab" }
-            touch(t)
-            return nil
-        }
+        screen("fresh-tab-store") { ok(goTab("Store"), "no Store tab") }
         screen("fresh-phone-grid") {
             guard goTab("Phone") else { return "no Phone tab" }
             return ok(gridUp(6), "the Phone grid did not show")
@@ -446,16 +442,7 @@ final class ScreenShotsTests: FeatureTourCase {
             guard goGroup("Overview") else { return "no Group overview" }
             return ok(tapID("group-add", wait: 2), "no group-add button")
         }
-        screen("tab-custom") {
-            guard let t = customTab() else { return "no fourth tab" }
-            touch(t)
-            return nil
-        }
-        popup("custom-tab-picker") {
-            guard let t = customTab() else { return "no fourth tab" }
-            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: t.frame.midX, dy: t.frame.midY)).press(forDuration: 1.2)
-            return ok(has("custom-picker", wait: 3) || popupUp(1), "the picker did not open")
-        }
+        screen("tab-store") { ok(goTab("Store"), "no Store tab") }
         screen("tab-phone") {
             guard goTab("Phone") else { return "no Phone tab" }
             return ok(gridUp(6), "the Phone grid did not show")

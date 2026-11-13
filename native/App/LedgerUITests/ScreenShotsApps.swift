@@ -72,14 +72,12 @@ extension ScreenShotsTests {
     func testG_StoreSeasonAndLootBox() {
         letter = "G"
         act { playOneDay() }
-        phoneApp("Store", "app-store")
-        lower("app-store-lower", on: appOpen, why: "the Store did not open")
-        screen("store-plans") { inApp("the plans sheet did not open") { tapID("store-plans") && popupUp(3) } }
-        screen("store-plans-lower") {
-            guard popupUp() else { return "the plans sheet is not open" }
-            dragPage(-420)
-            return nil
+        screen("app-store") {
+            appOpen = goTab("Store")
+            return ok(appOpen, "no Store tab")
         }
+        lower("app-store-lower", on: appOpen, why: "the Store did not open")
+        screen("store-plans") { ok(has("plan-plus", wait: 4), "the plans are not in the Store") }
         act { clearPopups() }
         var season = false
         screen("app-goals") {
