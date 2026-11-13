@@ -26,6 +26,7 @@ enum MiscWeekly {
         PlayerSupply.weekly(&s)
         Shipments.weekly(&s, data: data)
         StockInsurance.weekly(&s, data: data)
+        SaveTrim.weekly(&s)
     }
 
     static func monthly(_ s: inout GameState, data: GameData, context: FinanceContext) {

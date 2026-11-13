@@ -285,7 +285,7 @@ public enum EventPack {
         var body = story
         if !cover.isEmpty { body += " " + cover }
         let weeks = max(1, e.event.expiresAfterWeeks)
-        body += " Answer within \(weeks) week\(weeks == 1 ? "" : "s"), or the cheapest answer is taken."
+        body += " Answer within \(weeks) week\(weeks == 1 ? "" : "s"), or nothing is done and it plays out."
         let id = s.addMessage(kind: "decision", from: co.name, title: title, body: body, companyID: co.id, tone: e.tone,
                               status: "open", options: options, expiresWeek: s.week + weeks)
         mark(&s, id, e)
