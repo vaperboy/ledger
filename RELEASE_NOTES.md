@@ -1,4 +1,5 @@
 # What's new
+- Sign in with Apple, sign back into your account on a new phone, and account deletion that settles your deals first
 - Safer online play: partner payments and company values are capped, ranking scores are checked, and marketplace listings must be real items at fair prices
 - Faster and safer saving in the background, iPhone portrait only, and clearer loading and retry on online screens
 - Your first company is one of 12 simple starter trades, and the start-up grant only ever covers those; bigger trades such as hotels, factories, airlines and oil and gas open later as you level up
