@@ -18,6 +18,18 @@ final class PayPlansTests: XCTestCase {
         return (e, id)
     }
 
+    // Someone may turn down a less secure way of being paid; asked again some weeks later they may agree.
+    private func agreeing(_ e: inout GameEngine, _ id: Int, _ pid: Int, _ p: ContractTalk.Proposal) -> ContractTalk.Reply {
+        var r = e.contractPropose(companyID: id, personID: pid, proposal: p)
+        var tries = 0
+        while case .unwilling = r, tries < 6 {
+            e.update { s, _, _ in s.week += 8 }
+            r = e.contractPropose(companyID: id, personID: pid, proposal: p)
+            tries += 1
+        }
+        return r
+    }
+
     private func candidate(_ e: inout GameEngine, _ id: Int, role: String, sec: Double = 0.1) -> Int {
         var pid = 0
         e.update { s, d, _ in
@@ -52,7 +64,8 @@ final class PayPlansTests: XCTestCase {
         let pid = candidate(&e, id, role: "cashier")
         XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: e.state.people[pid]!.askingMonthlyWage * 1.5), .ok)
         XCTAssertEqual(e.contractTopics(companyID: id, personID: pid).first { $0.topic == .payBasis }?.available, true)
-        guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, amount: 0.05, choice: "com")) else { return XCTFail("com") }
+        let reply = agreeing(&e, id, pid, .init(.payBasis, amount: 0.05, choice: "com"))
+        guard case .agreed = reply else { return XCTFail("com: \(reply)") }
         let m = e.state.company(id)!.staff.first { $0.id == pid }!
         XCTAssertEqual(m.monthlyWage, 0, "commission only means no base")
         XCTAssertEqual(m.commissionMode, "com"); XCTAssertEqual(m.commissionRate, 0.05, accuracy: 1e-12)

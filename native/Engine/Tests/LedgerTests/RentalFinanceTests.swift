@@ -136,7 +136,8 @@ final class RentalFinanceTests: XCTestCase {
             fm["book"] = 1_000_000; fm["dep"] = 900_000_000; fm["depPrev"] = 900_000_000
             s.companies[i].set("fm", fm)
         }
-        for _ in 0..<(12 * 7) { e.nextDay() }
+        // One account: the bank's capital is the account it draws on, so the account is emptied as well.
+        for _ in 0..<(12 * 7) { e.update { s, _, _ in Ledger.set(&s, to: 0) }; e.nextDay() }
         XCTAssertEqual(e.state.company(id)?.status, .bust, "capital gone for eight weeks: the regulator closes the bank")
         XCTAssertFalse(e.state.inbox.filter { $0.companyID == id && $0.title.contains("bankrupt") }.isEmpty)
     }

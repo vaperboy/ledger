@@ -21,8 +21,13 @@ final class VenturesTests: XCTestCase {
         return (e, id)
     }
 
+    // Only a start-up sells shares to investors.
     func testInvestorsNeverValueTheCompanyAboveWhatItIsWorth() throws {
-        var (e, id) = try engine()
+        var (e, _) = try engine()
+        guard case .ok(let id) = e.foundStartup(name: "Pitchly", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 2) else { return XCTFail("founding") }
+        let cafe: Int = try XCTUnwrap(e.state.companies.first { $0.type != StartupModel.tradeID }?.id)
+        let refused: Funding.PitchResult = e.pitchToInvestors(companyID: cafe, amount: 1_000_000)
+        XCTAssertEqual(refused, .notLimited, "a cafe does not sell shares to investors")
         var seen = 0
         for _ in 0..<12 {
             let value = e.state.company(id).map { Valuation.companyValue($0, state: e.state, trades: e.data.catalog) } ?? 0

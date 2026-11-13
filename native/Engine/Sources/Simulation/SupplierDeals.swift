@@ -189,7 +189,10 @@ public extension GameEngine {
                                       quality: nil, reliability: outsideRel ?? "Dependable",
                                       terms: k.delivered ? "Usual price per delivered order (\(supplierPct(k.buyers[co.type] ?? 0)) of the order value), paid as you deliver" : "Usual price, paid as you buy",
                                       delivery: k.delivered ? "Orders that are not delivered bring no customers" : (k.local ? "Same city" : "Same country"), risks: outsideRisk, blocked: nil))
-        for sp in IntercompanySupply.suppliers(state, for: co, kind: k) {
+        // The own company that supplies now is always listed, also while it is not trading, so the current arrangement and its risks show.
+        var own: [Company] = IntercompanySupply.suppliers(state, for: co, kind: k)
+        if let l = link, !own.contains(where: { (c: Company) -> Bool in c.id == l.supplierID }), let sp = state.company(l.supplierID) { own.append(sp) }
+        for sp in own {
             for m in IntercompanySupply.modes {
                 let pf = IntercompanySupply.priceFactor(mode: m.id, supplier: sp, data: data, perkCut: Ambitions.supplyCostCut(state, data))
                 let isCur = link?.supplierID == sp.id && link?.mode == m.id
