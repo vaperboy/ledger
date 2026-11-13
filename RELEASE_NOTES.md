@@ -1,4 +1,5 @@
 # What's new
+- Decisions: every answer has its own result, shown after you choose; which answer is best depends on your company; equal answer buttons with No always first; a few bigger stories each month with a follow-up
 - Suppliers are always player companies: plain Stock, Upkeep, Transport and Services lines, no quantities to pick, a yellow or red mark when a supplier may not or cannot deliver, your own companies first, and a company card for every supplier
 - New trades: Wholesaler, Filling station and Laundry service; Security is now a Security company
 - A Store tab on the far left with offers, bundles, boxes, cosmetics and gold; Ventures now sits right of Home
