@@ -164,6 +164,12 @@ struct OutcomePopup: View {
                 ForEach(Array(lines.enumerated()), id: \.offset) { (pair: (offset: Int, element: String)) in
                     Text(pair.element.tidyMoney).popupText(.body).fixedSize(horizontal: false, vertical: true)
                 }
+                if let link = note.link {
+                    PopupOptionButton(title: link.title, identifier: "outcome-link") {
+                        store.dismissOutcome()
+                        store.openDecisionLink(link)
+                    }
+                }
                 PopupOptionButton(title: "OK", highlighted: true, identifier: "outcome-ok") { store.dismissOutcome() }
             }
         }
@@ -196,8 +202,8 @@ struct DecisionPopup: View {
         PopupBody {
             let intro: String = e.displayText(m.body, companyID: m.companyID)
             if !intro.isEmpty { Text(intro.tidyMoney).popupText(.subtitle) }
-            ForEach(Array(m.options.enumerated()), id: \.offset) { pair in
-                optionRow(e, m, pair.offset, pair.element)
+            ForEach(DecisionOrder.shown(m), id: \.self) { (index: Int) in
+                optionRow(e, m, index, m.options[index])
             }
         }
     }
@@ -205,9 +211,9 @@ struct DecisionPopup: View {
     private func optionRow(_ e: GameEngine, _ m: Message, _ index: Int, _ opt: JSONValue) -> some View {
         let label: String = e.displayText(opt["l"].string, companyID: m.companyID)
         let detail: String = e.displayText(opt["d"].string, companyID: m.companyID)
-        let lines: [String] = MessageCard.preview(e, m, opt)
+        let lines: [String] = MessageCard.preview(e, m, opt).filter { (l: String) -> Bool in !detail.contains(l) }
         return VStack(alignment: .leading, spacing: PopupSpace.tight) {
-            PopupOptionButton(title: label) { choose(e, m, index) }
+            DecisionAnswerButton(title: label, identifier: "decision-\(index)") { choose(e, m, index) }
             if !detail.isEmpty { Text(detail.tidyMoney).popupText(.caption) }
             ForEach(lines, id: \.self) { line in
                 Text(line.tidyMoney).popupText(.effect)
@@ -246,15 +252,11 @@ enum DecisionAnswering {
         ask(action)
     }
 
+    /// Applies exactly the tapped answer and shows what it actually did.
     @MainActor private static func send(_ store: GameStore, _ e: GameEngine, _ m: Message, _ index: Int, _ label: String, _ done: () -> Void) {
-        var effects: [String] = m.options.indices.contains(index) ? MessageCard.preview(e, m, m.options[index]) : []
-        if effects.isEmpty, m.options.indices.contains(index) {
-            let d: String = e.displayText(m.options[index]["d"].string, companyID: m.companyID)
-            if !d.isEmpty { effects = [d] }
-        }
-        let ok: Bool = store.act { $0.answer(messageID: m.id, option: index) } ?? false
+        let result: DecisionAnswer? = store.act { (g: inout GameEngine) -> DecisionAnswer in g.answerDecision(messageID: m.id, option: index) }
         done()
-        store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: m.title, companyID: m.companyID)
+        store.announceDecision(label: label, answer: result)
     }
 }
 

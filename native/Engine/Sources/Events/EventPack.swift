@@ -111,13 +111,14 @@ public enum EventPack {
         let g = fx["gamble"]
         if !g.isNull {
             let ok = outflow(g["ok"], vars, worst: worst), bad = outflow(g["bad"], vars, worst: worst)
-            out += worst ? max(ok, bad) : g["p"].double * ok + (1 - g["p"].double) * bad
+            let chance: Double = clamp(amount(g["p"], vars), 0, 1)
+            out += worst ? max(ok, bad) : chance * ok + (1 - chance) * bad
         }
         return out
     }
 
     public static func expectedOutflowWeeksPerYear(trade bd: Trade, country cc: String) -> Double {
-        let vars: [String: Double] = ["wk": 1, "pay": 0.5, "eqv": 20, "k": 1]
+        let vars: [String: Double] = typicalSituation.merging(["wk": 1, "pay": 0.5, "eqv": 20, "k": 1]) { (_: Double, b: Double) -> Double in b }
         var total = 0.0
         for e in events where appliesTo(e, trade: bd, country: cc) && e.tone != "good" {
             var p = e.weight
@@ -133,6 +134,10 @@ public enum EventPack {
         }
         return total
     }
+
+    /// A middling company, for reading odds that depend on the situation when no company is at hand.
+    public static let typicalSituation: [String: Double] = ["co.eqc": 0.8, "co.q": 55, "co.mgrQ": 0.5, "co.payGap": 0, "co.books": 0.5, "co.rep": 50,
+                                                            "co.mood": 60, "co.cashWk": 6, "co.util": 0.75, "co.staffN": 4]
 
     static func lastFired(_ co: Company, _ id: String) -> Int {
         let v = co.value("pkc")["ev"][id]

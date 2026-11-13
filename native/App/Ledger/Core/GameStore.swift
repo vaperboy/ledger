@@ -58,6 +58,8 @@ struct OutcomeNote: Identifiable, Equatable {
     let id = UUID()
     var chosen: String
     var result: String
+    /// The one screen an answered decision is about, shown as a link under the result.
+    var link: DecisionLink? = nil
 }
 
 struct OutcomeCapture {
@@ -598,12 +600,12 @@ final class GameStore: ObservableObject {
         outcome(chosen: label, result: effects.joined(separator: "\n"))
     }
 
-    func outcome(chosen: String, result: String) {
+    func outcome(chosen: String, result: String, link: DecisionLink? = nil) {
         let c: String = chosen.tidyText
         let r: String = result.tidyText
         outcomeCapture?.told = true
         if r.isEmpty { Haptics.success(); return }
-        outcomes.append(OutcomeNote(chosen: c, result: r.isEmpty ? "Done: " + c : r))
+        outcomes.append(OutcomeNote(chosen: c, result: r.isEmpty ? "Done: " + c : r, link: link))
     }
 
     func runConfirmed(_ action: PendingAction) {

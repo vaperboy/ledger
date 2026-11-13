@@ -94,23 +94,17 @@ struct InboxView: View {
         pending = action
     }
 
+    /// Applies exactly the tapped answer and shows what it actually did.
     private func answer(_ message: Message, _ index: Int, _ label: String, inline: Bool = false) {
-        var effects: [String] = []
-        if let e = store.engine, message.options.indices.contains(index) { effects = MessageCard.preview(e, message, message.options[index]) }
-        if effects.isEmpty, let e = store.engine, message.options.indices.contains(index) {
-            let d: String = e.displayText(message.options[index]["d"].string, companyID: message.companyID)
-            if !d.isEmpty { effects = [d] }
-        }
-        let ok = store.act { $0.answer(messageID: message.id, option: index) } ?? false
+        let result: DecisionAnswer? = store.act { (g: inout GameEngine) -> DecisionAnswer in g.answerDecision(messageID: message.id, option: index) }
+        let ok: Bool = result?.applied ?? false
         if ok { Haptics.option() }
         detailID = nil
-        if ok {
-            store.announceAnswer(label: label, effects: effects, ok: true, messageTitle: message.title, companyID: message.companyID)
-        } else if message.actionID == PersonalFinance.dueAction {
+        if !ok && message.actionID == PersonalFinance.dueAction {
             Haptics.warning()
             store.tell("Not applied", "That way of paying could not cover the bill, so it is still open. Choose another way.", tone: "warn")
         } else {
-            store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: message.title, companyID: message.companyID)
+            store.announceDecision(label: label, answer: result)
         }
     }
 
@@ -455,7 +449,7 @@ struct MessageCard: View {
                     Text("Handled by " + message.handledBy).textStyle(.caption, tint: P.accent, weight: .medium)
                 }
             }
-            if let link { QuietButton(title: link.title) { link.run() } }
+            if let link, !open || message.options.isEmpty { QuietButton(title: link.title) { link.run() } }
             if open { decision }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -500,27 +494,21 @@ struct MessageCard: View {
         if opts.isEmpty {
             Text("Dealt with in the company.").popupText(.caption)
         }
-        VStack(spacing: Theme.Space.s) {
-            ForEach(opts, id: \.offset) { idx, opt in
-                optionButton(idx, opt)
+        VStack(spacing: Theme.Space.m) {
+            ForEach(DecisionOrder.shown(message), id: \.self) { (idx: Int) in
+                optionButton(idx, message.options[idx])
             }
         }
     }
 
+    /// One answer: the shared answer button, then what it does in plain words.
     private func optionButton(_ idx: Int, _ opt: JSONValue) -> some View {
-        let effect: String = preview(opt).joined(separator: ". ")
-        let detail: String = effect.isEmpty ? text(opt["d"].string) : effect + "."
-        return Button { ask(message, idx) } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(text(opt["l"].string)).popupText(.button)
-                if !detail.isEmpty { Text(detail).popupText(.caption).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true) }
-            }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .padding(.vertical, Theme.Space.s).padding(.leading, Theme.Space.m).padding(.trailing, Theme.Space.xxl)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(Color.clear, lineWidth: 1))
-            .overlay(alignment: .trailing) { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).padding(.trailing, Theme.Space.m) }
-            .contentShape(Rectangle())
-        }.buttonStyle(PressableStyle()).accessibilityIdentifier("inbox-option")
+        let effect: String = preview(opt).filter { (l: String) -> Bool in !text(opt["d"].string).contains(l) }.joined(separator: ". ")
+        let words: String = text(opt["d"].string)
+        let detail: String = [words, effect.isEmpty ? "" : effect + "."].filter { (t: String) -> Bool in !t.isEmpty }.joined(separator: " ")
+        return VStack(alignment: .leading, spacing: PopupSpace.tight) {
+            DecisionAnswerButton(title: text(opt["l"].string), identifier: "inbox-option") { ask(message, idx) }
+            if !detail.isEmpty { Text(detail).popupText(.caption).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true) }
+        }
     }
 }

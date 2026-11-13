@@ -210,7 +210,7 @@ struct DeskChoicePopup: View {
                 Text(today.text).popupText(.subtitle)
                 ForEach(Array(today.item.options.enumerated()), id: \.offset) { i, o in
                     VStack(alignment: .leading, spacing: PopupSpace.tight) {
-                        PopupOptionButton(title: o.label) { onPick(i) }
+                        DecisionAnswerButton(title: o.label, identifier: "desk-choice-\(i)") { onPick(i) }
                         if !o.hint.isEmpty { Text(o.hint).popupText(.caption) }
                     }
                 }

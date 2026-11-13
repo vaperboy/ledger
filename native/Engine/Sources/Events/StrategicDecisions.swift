@@ -555,13 +555,14 @@ public enum StrategicDecisions {
         choice("DE_quality", def: 2, cond: { _, co, data in data.catalog[co.type]?.family == "prod" }, title: { co, _, _ in "A key part for \(co.name) fails quality checks" },
                body: { _, _, _ in "A batch from your main parts supplier does not meet spec." },
                opts: [Opt(label: "Stop production to inspect", detail: "A week lost; no faulty goods ship.") { s, x in cap(&s, x, 0.3, 1) },
-                      Opt(label: "Switch supplier", detail: "Dearer, but safe.") { s, x in cost(&s, x, 1.04, 26) },
+                      Opt(label: "Switch supplier", detail: "Dearer, with no wait.") { s, x in cost(&s, x, 1.04, 26) },
                       Opt(label: "Controlled delay and claim compensation", detail: "") { s, x in
                           cap(&s, x, 0.8, 2)
                           if s.random.chance(0.6) { Payments.companyReceives(&s, companyID: s.companies[x.i].id, amount: jsRound(x.wk(s) * 0.2), category: "rev", label: "Compensation from supplier") } }])
         L += corporateDecisions()
         L += misconductDecisions()
         L += dataDecisions()
+        L += stakeDecisions()
         return L
     }
 
@@ -600,7 +601,9 @@ public enum StrategicDecisions {
         case "dfx": DataDecisions.finish(&s, x)
         case "rate_back":
             for v in d["ids"].array { if let l = s.loans.firstIndex(where: { $0.id == v.int }) { s.loans[l].margin = max(0.005, s.loans[l].margin - d["add"].double) } }
-        default: followUpCorporate(&s, id: id, index: k, d: d, data: data, context: fc)
+        default:
+            if followUpStake(&s, id: id, index: k, d: d, x: x) { return }
+            followUpCorporate(&s, id: id, index: k, d: d, data: data, context: fc)
         }
     }
 
@@ -616,6 +619,7 @@ public enum StrategicDecisions {
         st["q"] = .array(st["q"].array.filter { s.week < $0["w"].int })
         s.rest["e27"] = st
         for f in due { followUp(&s, id: f["id"].string, companyID: f["co"].int, d: f["d"], data: data, context: fc) }
+        StakeStories.weekly(&s, data: data, context: fc)
         Misconduct.weekly(&s, data: data, context: fc)
         guard GameCalendar.isMonthEnd(week: s.week) else { return }
         monthly(&s, data: data, context: fc)

@@ -17,18 +17,15 @@ struct HomeDecisionButtons: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.s) {
-            ForEach(Array(message.options.enumerated()), id: \.offset) { (pair: (offset: Int, element: JSONValue)) in
-                let label: String = engine.displayText(pair.element["l"].string, companyID: message.companyID)
-                Button(label) { answer(pair.offset) }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
-                    .accessibilityIdentifier("home-decision-\(pair.offset)")
+            ForEach(DecisionOrder.shown(message), id: \.self) { (index: Int) in
+                let label: String = engine.displayText(message.options[index]["l"].string, companyID: message.companyID)
+                DecisionAnswerButton(title: label, compact: true, identifier: "home-decision-\(index)") { answer(index) }
             }
         }
         .confirmAction($pending)
     }
 
     private func answer(_ index: Int) {
-        Haptics.tap()
         DecisionAnswering.choose(store, engine, message, index, ask: { (a: PendingAction) in pending = a }, done: { })
     }
 }
@@ -58,8 +55,8 @@ struct HomeDecisionPopup: View {
             if m.companyID != 0, let co = e.state.company(m.companyID) {
                 Text(co.name).popupText(.caption)
             }
-            ForEach(Array(m.options.enumerated()), id: \.offset) { (pair: (offset: Int, element: JSONValue)) in
-                option(e, m, pair.offset, pair.element)
+            ForEach(DecisionOrder.shown(m), id: \.self) { (index: Int) in
+                option(e, m, index, m.options[index])
             }
             PopupOptionButton(title: "Later", identifier: "home-decision-later") { store.laterDecision(m) }
             Text(laterLine(e, m)).popupText(.caption)
@@ -69,10 +66,9 @@ struct HomeDecisionPopup: View {
     private func option(_ e: GameEngine, _ m: Message, _ index: Int, _ opt: JSONValue) -> some View {
         let label: String = e.displayText(opt["l"].string, companyID: m.companyID)
         let detail: String = e.displayText(opt["d"].string, companyID: m.companyID)
-        let lines: [String] = MessageCard.preview(e, m, opt)
+        let lines: [String] = MessageCard.preview(e, m, opt).filter { (l: String) -> Bool in !detail.contains(l) }
         return VStack(alignment: .leading, spacing: PopupSpace.tight) {
-            PopupOptionButton(title: label, identifier: "home-decision-\(index)") {
-                Haptics.tap()
+            DecisionAnswerButton(title: label, identifier: "home-decision-\(index)") {
                 DecisionAnswering.choose(store, e, m, index, ask: { (a: PendingAction) in pending = a }, done: { })
             }
             if !detail.isEmpty { Text(detail.tidyMoney).popupText(.caption) }
