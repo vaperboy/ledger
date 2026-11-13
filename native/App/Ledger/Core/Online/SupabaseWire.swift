@@ -135,7 +135,7 @@ enum SupabaseWire {
         case "already_rated": return .rejected("You have already rated this accountant.")
         case "too_early": return .rejected("Rate an accountant after a week of working together.")
         case "new_account": return .rejected("Shared deals open after the account is four weeks old.")
-        case "open_contracts": return .nameRejected("Close your open supply contracts before deleting the account.")
+        case "open_contracts": return .rejected("Something is still open with other players. Try again in a moment.")
         case "price_outside_market": return .rejected("That price is far from what the market pays.")
         case "too_many_orders": return .rejected("You have too many open orders. Cancel some first.")
         case "outside_band": return .rejected("That price is outside the range around the company's value.")
@@ -202,7 +202,11 @@ enum SupabaseWire {
     static func linkFailure(code: String, text: String, provider: SignInProvider) -> OnlineError? {
         let lower: String = text.lowercased()
         if code == "identity_already_exists" || lower.contains("already linked") || lower.contains("already been linked") {
-            return .rejected("That \(provider.title) account is already linked to another player.")
+            let mine: Bool = !lower.isEmpty && !lower.contains("another")
+            return mine ? .rejected("This \(provider.title) account is already linked to you.") : .identityTaken(provider)
+        }
+        if code == "email_exists" || lower.contains("email address has already been registered") {
+            return .rejected("Another Ledger account already uses the email of this \(provider.title) account. Sign in the way you did before.")
         }
         if code == "manual_linking_disabled" || lower.contains("manual linking") {
             return .rejected("Linking accounts is not switched on for the server yet.")

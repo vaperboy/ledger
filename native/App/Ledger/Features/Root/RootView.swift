@@ -32,6 +32,7 @@ struct RootView: View {
         }
         .modifier(PostM7Paywall())
         .overlay(alignment: .top) { LinkRewardBanner() }
+        .modifier(AccountChoiceHost())
         .overlay { PopupLayer() }
         .overlay { PopupHostLayer(host: popups) }
         .environment(\.popupHost, popups)
