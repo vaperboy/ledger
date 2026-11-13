@@ -108,11 +108,6 @@ struct InboxView: View {
         }
     }
 
-    private func openOnInformation() {
-        guard store.tutorialActive, detailID == nil else { return }
-        if store.tutorialStep == .readInbox, (store.engine?.tutorialInboxGuide ?? []).isEmpty { store.tutorialAdvance(from: .readInbox) }
-    }
-
     private func takeRequest() {
         guard let id = store.takeMessageRequest() else { return }
         query = ""; companyFilter = nil
@@ -137,10 +132,7 @@ struct InboxView: View {
                 page(e)
             }
         }
-        .onAppear {
-            takeRequest()
-            openOnInformation()
-        }
+        .onAppear { takeRequest() }
         .onChange(of: store.appRequest) { _, _ in takeRequest() }
         .onChange(of: query) { _, _ in limit = Self.page }
         .onChange(of: store.depth(store.tab)) { _, _ in detailID = nil }
@@ -201,10 +193,7 @@ struct InboxView: View {
         let pinnedNow: Bool = pinned.contains(m.id)
         let answer: ((Int) -> Void)? = inline && m.isOwnerAddressed ? { (i: Int) in ask(m, i, inline: true) } : nil
         let marked: Bool = guide.contains(m.id)
-        return InboxMailRow(message: m, week: week, pinned: pinnedNow, openDetail: {
-            detailID = m.id
-            if marked { store.tutorialAdvance(from: .readInbox) }
-        }, answer: answer, guided: marked)
+        return InboxMailRow(message: m, week: week, pinned: pinnedNow, openDetail: { detailID = m.id }, answer: answer, guided: marked)
             .coachAnchor(.inboxGuided, enabled: marked && m.id == guide.first)
             .id(m.id)
             .mailRowStyle()

@@ -41,7 +41,6 @@ public extension GameEngine {
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             ItemModels.migrateItem(&s, companyID: companyID, itemID: itemID, data: d)
             ItemModels.pick(&s, companyID: companyID, itemID: itemID, vendorID: vendorID, data: d)
-            Tutorial.advance(&s, from: .pickSupplier)
         }
     }
 

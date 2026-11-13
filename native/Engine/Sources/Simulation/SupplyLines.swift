@@ -129,7 +129,6 @@ public extension GameEngine {
             }
             var ok = false
             update { s, d, _ in ok = SupplyCatalogue.choose(&s, companyID: companyID, line: line, offer: offer, data: d) }
-            if ok { update { s, _, _ in Tutorial.advance(&s, from: .pickSupplier) } }
             return ok ? .ok : .notAllowed
         }
     }

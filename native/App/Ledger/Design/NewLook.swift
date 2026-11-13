@@ -699,7 +699,7 @@ struct PillTabBar: View {
                     }
                 }, including: item.changeable ? .all : .subviews)
                 .animation(reduceMotion ? nil : Motion.moveAnimation, value: on)
-                .coachAnchor(.customTab, enabled: item.id == AppTab.custom.rawValue)
+                .coachAnchor(item.id == AppTab.custom.rawValue ? CoachStop.customTab : CoachStop.tabItem(item.id))
                 .accessibilityLabel(item.title)
                 .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
                 .accessibilityValue(item.locked ? "Locked" : (item.badge > 0 ? "\(item.badge) waiting" : ""))
