@@ -209,29 +209,6 @@ private struct StartupPanel: View {
                     .frame(maxWidth: 200)
             }
         }
-        let rivals = engine.rivalTargetsForProduct(startupID: f.id)
-        if !rivals.isEmpty {
-            Text("Sell it to rivals").capsLabel(Theme.inkFaint).padding(.top, Theme.Space.xs)
-            ForEach(rivals) { r in
-                HStack {
-                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                        Text(r.name).textStyle(.body)
-                        Text(r.alreadyCustomer ? "Already a customer" : r.waitWeeks > 0 ? "Asked recently: try again in \(r.waitWeeks.weeksText)" : "\(Int(saturating: (r.odds * 100).rounded()))% chance they sign \u{00B7} relationship: \(Words.level(r.relationship, scale: .quality).lowercased())")
-                            .textStyle(.caption, tint: Theme.inkFaint)
-                    }
-                    Spacer()
-                    if !r.alreadyCustomer {
-                        Button("Pitch") {
-                            switch store.act({ $0.pitchProductToRival(startupID: f.id, rivalID: r.id) }) {
-                            case .some(.some(true)): Haptics.success(); store.show("\(r.name) signed up for \(f.name).", tone: "good")
-                            case .some(.some(false)): store.show("\(r.name) said no this time. You can ask again in a few weeks.", tone: "warn")
-                            default: store.show("That pitch is not possible now.", tone: "warn")
-                            }
-                        }.buttonStyle(SecondaryButtonStyle(size: .compact)).disabled(r.waitWeeks > 0)
-                    }
-                }
-            }
-        }
     }
 
     private func productLine(_ p: Startups.Product, _ cur: Currency) -> String {

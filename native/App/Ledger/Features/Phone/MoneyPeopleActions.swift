@@ -61,7 +61,7 @@ struct HostingSection: View {
 
     private func askToHost(_ v: Luxury.Piece, _ g: StaffPerks.GuestOption, _ cur: Currency) {
         let cost: Double = engine.hostingCost(pieceID: v.id) ?? 0
-        let effect: String = "The evening is paid from your cash. For about three months the guests deal with you on better terms (a rival takes your offers more seriously, buyers come sooner, applicants come keener)."
+        let effect: String = "The evening is paid from your cash. For about three months the guests deal with you on better terms: buyers come sooner and applicants come keener."
         pending = PendingAction(title: "Host \(g.title) on \(v.item.name)?", message: effect, button: "Host for \(cur.tidyShort(cost))",
                                 amount: cost, currency: cur, risk: "It does not guarantee a deal, and the effect fades.") {
             switch store.act({ $0.hostDeal(pieceID: v.id, guest: g.guest) }) {

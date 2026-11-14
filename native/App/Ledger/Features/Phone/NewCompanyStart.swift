@@ -57,9 +57,6 @@ struct TradeDetailView: View {
                         } else if ban == nil {
                             EmptyState(title: "This trade cannot be priced here.", centered: false)
                         }
-                        if brands.isEmpty {
-                            NoteCard(text: "No franchise brand is looking for operators in this trade right now. Another way in: buying a rival that is already trading, from the rival's page under Market.")
-                        }
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)

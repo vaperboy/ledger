@@ -46,7 +46,6 @@ struct GroupView: View {
     @ViewBuilder private func addScreen(_ d: GroupAddDestination) -> some View {
         switch d {
         case .newCompany: NewCompanyRoute()
-        case .outlet: GroupOutletPicker()
         case .franchise: FranchisesView()
         case .club: ClubMarketView()
         }

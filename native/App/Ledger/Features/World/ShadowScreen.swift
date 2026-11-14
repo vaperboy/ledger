@@ -196,7 +196,7 @@ struct ShadowScreen: View {
         let names: [String] = e.rivalsOpen ? e.rivalMarkets().flatMap { (m: RivalMarket) -> [String] in m.cards.map { (c: RivalStories.Card) -> String in c.name } } : []
         let clean: String = target.trimmingCharacters(in: .whitespacesAndNewlines)
         return VStack(alignment: .leading, spacing: 14) {
-            Text("Who is it aimed at? Name a rival or another company.").textStyle(.body)
+            Text("Who is it aimed at?").textStyle(.body)
             TextField("Name", text: $target)
                 .font(.system(size: 18, weight: .medium)).foregroundStyle(P.ink).tint(P.accent)
                 .padding(.horizontal, 14).frame(minHeight: 52)

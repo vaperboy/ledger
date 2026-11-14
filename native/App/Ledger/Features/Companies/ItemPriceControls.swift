@@ -131,13 +131,6 @@ struct PriceBar: View {
 }
 
 enum ItemPriceWords {
-    /// How strong demand is at this price compared with the market price.
-    static func demand(_ change: Double) -> String {
-        if change > 0.1 { return "High" }
-        if change < -0.1 { return "Low" }
-        return "Normal"
-    }
-
     /// Units a week as the player reads them: whole numbers when many, one decimal when few, never a bare 0 for a small sale.
     static func units(_ u: Double) -> String {
         if u <= 0 { return "0" }

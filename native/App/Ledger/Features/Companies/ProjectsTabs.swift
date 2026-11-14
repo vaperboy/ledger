@@ -436,7 +436,7 @@ struct ProjectsBidsTab: View {
                 Spacer(minLength: Theme.Space.s)
                 Text(closes).textStyle(.caption, tint: t.weeksToBid <= 1 ? Theme.warn : Theme.inkFaint)
             }
-            ProjectFigures(items: [("Budget", store.short(t.worth, in: x.co), Theme.ivory), ("Your cost est.", t.costEstimate.map { store.short($0, in: x.co) } ?? "n/a", Theme.ivory), ("Rivals bidding", t.rivals, Theme.ivory)])
+            ProjectFigures(items: [("Budget", store.short(t.worth, in: x.co), Theme.ivory), ("Your cost est.", t.costEstimate.map { store.short($0, in: x.co) } ?? "n/a", Theme.ivory), ("Other bidders", t.rivals, Theme.ivory)])
             HStack(spacing: Theme.Space.s) {
                 NavigationLink { ProjectTimelineDetail(lineID: "t\(x.co.id)-\(t.id)") } label: { Text("Details") }
                     .buttonStyle(SecondaryButtonStyle(fullWidth: true))

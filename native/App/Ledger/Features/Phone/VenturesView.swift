@@ -80,7 +80,7 @@ struct VenturesFigures {
 }
 
 enum VentureSheet: Identifiable, Equatable {
-    case found, launch(Int), back(Int), sellStake(Int), fund(String), sellFund(Int), groupBuy(String)
+    case found, launch(Int), back(Int), sellStake(Int), fund(String), sellFund(Int)
     var id: String {
         switch self {
         case .found: return "found"
@@ -89,7 +89,6 @@ enum VentureSheet: Identifiable, Equatable {
         case .sellStake(let n): return "sell-\(n)"
         case .fund(let s): return "fund-\(s)"
         case .sellFund(let n): return "sellfund-\(n)"
-        case .groupBuy(let s): return "group-\(s)"
         }
     }
 }
@@ -135,7 +134,7 @@ struct VenturesHome: View {
             if !fig.isEmpty || fig.fundOffers > 0 {
                 VenturesFundsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
             }
-            if fig.groupCount > 0 || fig.bigOffer != nil || !e.rivalGroupsAround().isEmpty {
+            if fig.groupCount > 0 || fig.bigOffer != nil {
                 VenturesGroupsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
             }
             StartupMarketEntry()
@@ -156,7 +155,6 @@ struct VenturesHome: View {
         case .sellStake(let id): SellStakeSheet(stakeID: id)
         case .fund(let id): FundCommitSheet(offerID: id)
         case .sellFund(let id): FundSellSheet(fundID: id)
-        case .groupBuy(let id): GroupStakeSheet(groupID: id)
         }
     }
 }

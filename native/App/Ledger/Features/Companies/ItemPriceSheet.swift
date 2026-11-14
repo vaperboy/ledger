@@ -106,7 +106,6 @@ struct ItemPriceSheet: View {
     var companyID: Int
     var itemID: String
     var onClose: () -> Void
-    var onRestock: (() -> Void)? = nil
     @State private var draftPrice: Double?
     @State private var draftPercent: Int?
     @State private var weeks = 4
@@ -129,8 +128,6 @@ struct ItemPriceSheet: View {
         let pg: ItemPageData = draftPrice == nil ? base : (e.itemPage(companyID: companyID, itemID: itemID, price: price) ?? base)
         let f: ItemForecast = e.itemForecast(companyID: companyID, itemID: itemID, price: price, discountPercent: base.item.discountPercent)
         let setBy: String? = pg.item.priceSetter.isOwner || overriding ? nil : pg.item.priceSetter.label
-        let move: Double = base.item.price > 0 ? price / base.item.price - 1 : 0
-        let facts: [TradeFact] = TradeItemFactRows.rows(e, companyID: companyID, page: pg, price: price, cur: cur)
         return VStack(alignment: .leading, spacing: PopupSpace.block) {
             VStack(alignment: .leading, spacing: PopupSpace.block) {
                 if let who = setBy {
@@ -151,7 +148,7 @@ struct ItemPriceSheet: View {
                 }
             }
             .coachAnchor(.itemPrice)
-            moreSection(e, co, pg, cur, f, move: move, facts: facts)
+            moreSection(co, pg)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .centerSheetTitle(base.item.name.tidyText)
@@ -216,80 +213,38 @@ struct ItemPriceSheet: View {
         return min(max((v / cent).rounded() * cent, lo), hi)
     }
 
-    /// What this price is expected to do in a week, and how strong demand is at it. Units and profit come from the same forecast.
+    /// What this price is expected to do in a week. Units and profit come from the same forecast.
     private func liveLine(_ f: ItemForecast, _ p: ItemPageData, _ cur: Currency, _ price: Double) -> some View {
         let weekly: Double = f.units * (price - p.unitCost)
         let word: String = weekly >= 0 ? "profit" : "loss"
         let sold: String = ItemPriceWords.units(f.units)
-        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            Text("\u{2248} \(sold) sold a week \u{00B7} \(word) \(cur.tidyShort(abs(weekly))) a week")
-                .popupText(.rowValue).foregroundStyle(weekly >= 0 ? P.gain : P.loss)
-            Text("Demand: " + ItemPriceWords.demand(f.demandChange)).popupText(.caption)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("item-price-live")
+        return Text("\u{2248} \(sold) sold a week \u{00B7} \(word) \(cur.tidyShort(abs(weekly))) a week")
+            .popupText(.rowValue).foregroundStyle(weekly >= 0 ? P.gain : P.loss)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("item-price-live")
     }
 
-    /// Stock, promotion, group listing and the item's facts, folded away until asked for.
-    @ViewBuilder private func moreSection(_ e: GameEngine, _ co: Company, _ pg: ItemPageData, _ cur: Currency, _ f: ItemForecast, move: Double, facts: [TradeFact]) -> some View {
-        Button { Haptics.tap(); Motion.animate(Motion.quickAnimation) { showMore.toggle() } } label: {
-            HStack {
-                Text("More").popupText(.rowLabel)
-                Spacer(minLength: PopupSpace.row)
-                Image(systemName: showMore ? "chevron.up" : "chevron.down").font(.system(size: 12, weight: .semibold)).foregroundStyle(P.inkFaint)
+    /// Promotion and group listing, folded away until asked for.
+    @ViewBuilder private func moreSection(_ co: Company, _ pg: ItemPageData) -> some View {
+        if !PriceMoves.discountOptions(co.type).isEmpty || Self.listingTrades.contains(co.type) || pg.item.listedForGroup {
+            Button { Haptics.tap(); Motion.animate(Motion.quickAnimation) { showMore.toggle() } } label: {
+                HStack {
+                    Text("More").popupText(.rowLabel)
+                    Spacer(minLength: PopupSpace.row)
+                    Image(systemName: showMore ? "chevron.up" : "chevron.down").font(.system(size: 12, weight: .semibold)).foregroundStyle(P.inkFaint)
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("item-price-more")
-        if showMore {
-            VStack(alignment: .leading, spacing: PopupSpace.block) {
-                stockAndTrend(e, co, pg, cur)
-                if let line = hint(e, pg, f, move: move) { Text(line).popupText(.caption) }
-                promotion(co, pg.item)
-                listToggle(co, pg.item)
-                if !facts.isEmpty { TradeItemFacts(rows: facts, plans: TradeItemFactRows.plans(pg)) }
-            }
-        }
-    }
-
-    private func stockFigures(_ co: Company, _ p: ItemPageData, _ cur: Currency) -> [KeyFigures.Item] {
-        var figures: [KeyFigures.Item] = []
-        if let rec = p.record, !p.item.isService {
-            figures.append(KeyFigures.Item(label: "In stock", value: String(rec.stock), tint: rec.stock == 0 ? P.loss : P.ink, sub: rec.onOrder > 0 ? "\(rec.onOrder) on order" : ""))
-        }
-        figures.append(KeyFigures.Item(label: "Quality", value: Words.level(co.quality, scale: .quality)))
-        figures.append(KeyFigures.Item(label: "Sales last week", value: cur.tidyShort(p.item.weeklyRevenue)))
-        return figures
-    }
-
-    /// Stock, quality and the weekly sales line, with the restock action when the item has a supplier to ask.
-    @ViewBuilder private func stockAndTrend(_ e: GameEngine, _ co: Company, _ p: ItemPageData, _ cur: Currency) -> some View {
-        let weeks: [ItemModels.Week] = Array((p.record?.history ?? []).suffix(12))
-        let units: [Double] = weeks.map { (w: ItemModels.Week) -> Double in w.units }
-        VStack(alignment: .leading, spacing: PopupSpace.row) {
-            FigureRow(items: stockFigures(co, p, cur), columns: 3, combineCells: true)
-            if units.count >= 2 {
-                Text("Sold each week, last \(units.count) weeks").popupText(.caption)
-                Sparkline(values: units, tint: P.accent).frame(height: 44).accessibilityHidden(true)
-            }
-            if let onRestock, e.supplyAsk(companyID: companyID, itemID: itemID) != nil {
-                Button { Haptics.tap(); onRestock() } label: { Text(p.supply == nil ? "Choose a supplier" : "Restock or change supplier") }
-                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
-                    .accessibilityIdentifier("item-restock")
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("item-price-more")
+            if showMore {
+                VStack(alignment: .leading, spacing: PopupSpace.block) {
+                    promotion(co, pg.item)
+                    listToggle(co, pg.item)
+                }
             }
         }
-    }
-
-    private func hint(_ e: GameEngine, _ p: ItemPageData, _ f: ItemForecast, move: Double) -> String? {
-        guard abs(move) > 0.001, let pf = e.priceForecast(companyID: companyID, byShare: move * p.item.revenueWeight)?.forecast else { return nil }
-        let later: Double = f.demandChange + (pf.customersLater - pf.customersAtFirst)
-        var parts: [String] = [String(format: "Once customers are used to it: demand %+.0f%%", later * 100)]
-        if let m = pf.marginAfter { parts.append(String(format: "margin %.0f%%", m * 100)) }
-        if move < -0.08 { parts.append("rivals may match") }
-        return parts.joined(separator: " \u{00B7} ")
     }
 
     private func footer(owner: Bool, current: Double) -> some View {

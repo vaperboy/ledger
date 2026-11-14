@@ -52,7 +52,7 @@ struct WorldCountriesPage: View {
         let pop: String = c.population >= 10 ? String(format: "%.0f m", c.population) : String(format: "%.1f m", c.population)
         let tax: String = "tax " + Currency.percent(c.corporateTax, decimals: 0)
         let value: String = c.yourCompanies > 0 ? c.yourCompanies.countText("company", plural: "companies") : (c.isHome ? "Home" : "")
-        let note: String = MarketWords.level(c.demand) + " demand" + (c.rivalGroups > 0 ? " \u{00B7} \(c.rivalGroups.countText("group"))" : "")
+        let note: String = MarketWords.level(c.demand) + " demand"
         return LedgerRow(title: c.flag + "  " + c.name + (c.isHome && c.yourCompanies > 0 ? " \u{00B7} home" : ""),
                          subtitle: "\(pop) people \u{00B7} \(c.currency) \u{00B7} \(tax)", value: value, valueNote: note, lineLimit: 1,
                          identifier: "world-country-\(c.id)", action: { open(.country(c.id)) })
@@ -152,9 +152,8 @@ struct CountryPage: View {
             ForEach(Array(list.prefix(12).enumerated()), id: \.element.id) { (pair: (offset: Int, element: MarketCity)) in
                 if pair.offset > 0 { Hairline() }
                 let city: MarketCity = pair.element
-                let rivals: String = city.rivals.map { (n: Int) -> String in " \u{00B7} " + n.countText("rival") } ?? ""
                 LedgerRow(title: city.name,
-                          subtitle: "\(Int(saturating: city.population.rounded()).formatted())k \u{00B7} \(MarketWords.level(city.tradeDemand ?? city.demand)) demand \u{00B7} \(MarketWords.cost(city.rentLevel)) rent" + rivals,
+                          subtitle: "\(Int(saturating: city.population.rounded()).formatted())k \u{00B7} \(MarketWords.level(city.tradeDemand ?? city.demand)) demand \u{00B7} \(MarketWords.cost(city.rentLevel)) rent",
                           value: city.yourCompanies > 0 ? city.yourCompanies.countText("company", plural: "companies") : "", lineLimit: 1)
             }
         }
@@ -290,7 +289,7 @@ struct WorldAroundView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             circle("Inside", infl.inner)
                             circle("Allies", infl.allies)
-                            circle("Rivals and the wary", infl.others)
+                            circle("The wary", infl.others)
                         }
                     }
                 }
