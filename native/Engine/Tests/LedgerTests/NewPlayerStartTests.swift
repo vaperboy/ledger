@@ -32,7 +32,9 @@ final class NewPlayerStartTests: XCTestCase {
             let co = try XCTUnwrap(e.state.companies.first)
             let weekly = e.context.weeklyCost(co, e.state)
             let own = try XCTUnwrap(e.state.rest["start"]?["own"].double)
-            XCTAssertGreaterThanOrEqual(co.cash, min(own, weekly * Double(e.data.balance.firstYear.startRunwayWeeks)) - 1, code)
+            let fy = e.data.balance.firstYear
+            XCTAssertGreaterThan(weekly, 0, code)
+            XCTAssertGreaterThanOrEqual(co.cash, own * fy.startKeepShare + StartGrant.amount(e.state) - 1, "\(code): part of the savings plus the grant is left after setup")
         }
     }
 
