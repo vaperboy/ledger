@@ -15,20 +15,24 @@ struct StoreApp: View {
     @State private var pending: PendingAction?
     @State private var shortOfGold = false
     @State private var shortNeed = 0
+    @State private var bundleRun: BundleRun?
 
     var body: some View {
         let paid: Bool = paidBoxesAllowed
+        let prices: Int = session.priceVersion
         PhonePageScroll(spacing: Theme.Space.xl) {
             RedeemGiftRow { (start: String) in redeemStart = start; showRedeem = true }
-            StoreOffersSection(ask: ask).storeAppear(0)
+            StoreOffersSection(ask: ask).id(prices).storeAppear(0)
             StoreShelfSection(ask: ask).storeAppear(1)
+            if paid { EventBoxesSection().id(prices) }
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 StoreBand(title: "Boxes", glyph: Glyph.luxury, tint: StoreColors.orange)
                 lootBoxes(paid: paid)
             }
+            .id(prices)
             .storeAppear(2)
             stockGroup(paid: paid)
-            StoreBundlesSection(ask: ask)
+            StoreBundlesSection(ask: ask).id(prices)
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 StoreBand(title: "Gold", glyph: Glyph.bank, tint: StoreColors.red)
                 ProPlansView(part: .packs)
@@ -47,7 +51,8 @@ struct StoreApp: View {
         .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") {
             ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false })
         }
-        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: .cabinet, others: [.grand] + BoxKind.cardPacks) }
+        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: .cabinet, others: [.grand, .elite] + BoxKind.cardPacks) }
+        .centerSheet(item: $bundleRun, title: "Opening your bundle", size: .tall) { (r: BundleRun) in BundleOpenSequence(run: r) }
         .centerSheet(isPresented: $showRedeem, title: "Redeem a code") {
             RedeemCodeCard(startCode: redeemStart,
                            onGift: { (reward: ServerGiftReward) in showRedeem = false; StorePurchase.afterPopup { gift = reward; showGift = true } },
@@ -60,8 +65,12 @@ struct StoreApp: View {
         .task { await session.load(); await purchases.loadProducts() }
     }
 
+    /// A bought bundle is opened straight away, box by box.
     private func ask(_ good: GoldGood) {
-        StorePurchase.ask(good, pending: $pending, onShort: { (price: Int) in shortNeed = price; shortOfGold = true })
+        StorePurchase.ask(good, pending: $pending, onShort: { (price: Int) in shortNeed = price; shortOfGold = true }, then: { (ok: Bool) in
+            guard ok, case .boxBundle(let b) = good else { return }
+            StorePurchase.afterPopup { bundleRun = BundleRun(kind: b.kind, total: b.count) }
+        })
     }
 
     private var paidBoxesAllowed: Bool {
@@ -82,6 +91,7 @@ struct StoreApp: View {
                     ForEach(Array(BoxKind.standard.filter { $0.isPaid }.enumerated()), id: \.element) { (i: Int, kind: BoxKind) in
                         NavigationLink { BoxView(kind: kind, paidBoxesAllowed: true) } label: { BoxTile(kind: kind, index: i) }
                             .buttonStyle(PressableStyle())
+                            .adminPrice(kind: "box", id: kind.rawValue, current: kind.price)
                             .accessibilityIdentifier("store-box-" + kind.rawValue)
                     }
                 }
@@ -89,8 +99,9 @@ struct StoreApp: View {
                 Text("Card packs").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m).padding(.top, Theme.Space.s)
                 HStack(alignment: .top, spacing: Theme.Space.s) {
                     ForEach(Array(BoxKind.cardPacks.enumerated()), id: \.element) { (i: Int, kind: BoxKind) in
-                        NavigationLink { BoxView(kind: kind, paidBoxesAllowed: true) } label: { BoxTile(kind: kind, index: i + 2) }
+                        NavigationLink { BoxView(kind: kind, paidBoxesAllowed: true) } label: { BoxTile(kind: kind, index: i + 3) }
                             .buttonStyle(PressableStyle())
+                            .adminPrice(kind: "box", id: kind.rawValue, current: kind.price)
                             .accessibilityIdentifier("store-box-" + kind.rawValue)
                     }
                 }

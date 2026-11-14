@@ -127,6 +127,7 @@ struct StoreOffersSection: View {
                        tag: "BEST SAVING", rewards: [.boxes(b.count, b.kind)]) {
             Button { Haptics.tap(); ask(.boxBundle(b)) } label: { StorePriceBar(gold: b.price) }
                 .buttonStyle(PressableStyle())
+                .adminPrice(kind: "bundle", id: b.id, current: b.price)
                 .accessibilityIdentifier("store-featured-bundle")
         }
     }
@@ -144,7 +145,8 @@ struct StoreBundlesSection: View {
                 ForEach(GoldStore.boxBundles) { (b: BoxBundle) in card(b) }
             }
             .padding(.horizontal, Theme.Space.m)
-            Text("The boxes wait in your stock until you open them.").textStyle(.caption).padding(.horizontal, Theme.Space.m)
+            Text("You open a bundle's boxes one by one right after buying it; any you leave wait in your stock.").textStyle(.caption)
+                .fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
         }
     }
 
@@ -161,6 +163,7 @@ struct StoreBundlesSection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
+        .adminPrice(kind: "bundle", id: b.id, current: b.price)
         .accessibilityIdentifier("store-bundle-\(b.id)")
     }
 }
@@ -179,7 +182,10 @@ struct StoreShelfSection: View {
                 Text("Today's shelf appears once the Store is online.").textStyle(.body, tint: Theme.inkSoft).padding(.horizontal, Theme.Space.m)
             } else {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 3), spacing: Theme.Space.s) {
-                    ForEach(picks) { (p: ShelfPick) in ShelfTile(pick: p, owned: owned.contains(p.id)) { ask(.cosmetic(p.item)) } }
+                    ForEach(picks) { (p: ShelfPick) in
+                        ShelfTile(pick: p, owned: owned.contains(p.id)) { ask(.cosmetic(p.item)) }
+                            .adminPrice(kind: "item", id: p.id, current: p.price)
+                    }
                 }
                 .padding(.horizontal, Theme.Space.m)
             }

@@ -24,7 +24,7 @@ final class PricingTests: XCTestCase {
     func testTheTableLoads() {
         XCTAssertEqual(GoldPrices.goldPerNok, 1)
         XCTAssertEqual(GoldPrices.goldPacks.count, 5)
-        XCTAssertEqual(GoldPrices.boxBundles.count, 3)
+        XCTAssertEqual(GoldPrices.boxBundles.count, 4)
         XCTAssertFalse(GoldPrices.seasonBundle.boxes.isEmpty)
     }
 
@@ -74,12 +74,15 @@ final class PricingTests: XCTestCase {
     }
 
     func testCosmeticAndServicePricesAreSane() throws {
-        for r in BoxRarity.allCases where r != .legendary {
+        // A guaranteed item costs clearly more than a box that may drop it: an epic over three premium boxes, a legendary more again.
+        var last: Int = 0
+        for r in BoxRarity.allCases {
             let price: Int = try XCTUnwrap(GoldPrices.cosmetic(rarity: r))
-            XCTAssertGreaterThan(price, 0)
-            XCTAssertLessThan(price, BoxKind.grand.price * 2)
+            XCTAssertGreaterThan(price, last, r.rawValue)
+            last = price
         }
-        XCTAssertNil(GoldPrices.cosmetic(rarity: .legendary))
+        XCTAssertGreaterThan(try XCTUnwrap(GoldPrices.cosmetic(rarity: .epic)), BoxKind.grand.price * 3)
+        XCTAssertGreaterThan(try XCTUnwrap(GoldPrices.cosmetic(rarity: .legendary)), try XCTUnwrap(GoldPrices.cosmetic(rarity: .epic)))
         XCTAssertEqual(GoldPrices.service("usernameChange"), 20)
         XCTAssertGreaterThan(GoldPrices.service("companyNameSkip"), 0)
         for slot in GoldCosmetics.all where slot.item.kind == .saveSlot { XCTAssertEqual(slot.price, GoldPrices.item(slot.id), slot.id) }

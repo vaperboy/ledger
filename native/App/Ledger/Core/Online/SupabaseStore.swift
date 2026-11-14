@@ -33,6 +33,17 @@ struct ServerStoreInfo: Codable, Equatable, Sendable {
     var ads: AdTerms?
     var shelf: Shelf?
     var betaRedeemed: Bool?
+    /// Prices in force (catalogue or an administrator's), by group: boxes, bundles, rarity, items, services.
+    var prices: [String: [String: Int]]?
+    var events: Events?
+
+    /// The event boxes on sale: the rotation number and the first server day of the next one.
+    struct Events: Codable, Equatable, Sendable {
+        struct Box: Codable, Equatable, Sendable { var slot: Int; var id: String; var title: String }
+        var rotation: Int
+        var nextDay: Int
+        var boxes: [Box]
+    }
 
     /// Rewarded-ad gold right now, with the plain and supporter terms the Store explains.
     struct AdTerms: Codable, Equatable, Sendable {
@@ -113,7 +124,7 @@ struct ServerRedeem: Decodable, Sendable { var ok: Bool; var kind: String?; var 
 /// What a gift code paid: gold, the cosmetic ids that were new to the account, and boxes by kind.
 struct ServerGiftReward: Decodable, Sendable, Equatable { var gold: Int; var items: [String]; var boxes: [String: Int] }
 /// The answer to an ad or mission gold claim.
-struct ServerGoldClaim: Decodable, Sendable { var ok: Bool; var gold: Int?; var reason: String?; var wait: Int? }
+struct ServerGoldClaim: Decodable, Sendable { var ok: Bool; var gold: Int?; var reason: String?; var wait: Int?; var cosmetic: String? }
 struct ServerImport: Decodable, Sendable { var imported: Bool; var reason: String?; var gold: Int?; var items: Int? }
 struct ServerPurchase: Decodable, Sendable {
     var granted: Bool?
@@ -177,6 +188,11 @@ extension SupabaseOnlineService {
         try await rpcData("claim_mission_gold", ["mission_id": id, "period_key": period, "gold": gold])
     }
     func storePurchase(jws: String) async throws -> Data { try await functionData("store-purchase", ["jws": jws]) }
+    /// Administrator only: a new store price for everyone, or nil to go back to the catalogue price.
+    func storeSetPrice(kind: String, id: String, price: Int?) async throws -> Data {
+        let value: Any = price.map { (p: Int) -> Any in p } ?? NSNull()
+        return try await rpcData("admin_set_price", ["p_kind": kind, "p_id": id, "p_price": value])
+    }
 }
 
 /// Talks to the server wallet. Every answer carries the account's fresh state.

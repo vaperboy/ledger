@@ -322,6 +322,8 @@ struct CustomiseView: View {
         case .level: return "Reach level " + g.value
         case .rank: return "Reach rank " + g.value
         case .goal: return "Career goal"
+        case .mission: return "Sometimes found with a mission reward"
+        case .event: return EventBoxes.home(of: g.id).map { (b: EventBox) -> String in "Event box: " + b.title } ?? "Event boxes"
         }
     }
 

@@ -160,6 +160,7 @@ enum EmblemCatalog {
     static func box(_ id: String) -> EmblemSpec {
         switch id {
         case "grand": return EmblemSpec(symbol: "shippingbox.fill", badge: "sparkles", top: 0xC2A24A, bottom: 0x4E3A10, ink: 0xFFF0BF, motif: .rays, shape: .tile)
+        case "elite": return EmblemSpec(symbol: "shippingbox.fill", badge: "crown.fill", top: 0xF0CF6A, bottom: 0x3A2A08, ink: 0xFFF4C8, motif: .stars, shape: .tile)
         case "cardElite": return EmblemSpec(symbol: "rectangle.on.rectangle.fill", badge: "sparkles", top: 0xC2A24A, bottom: 0x4E3A10, ink: 0xFFF0BF, motif: .stars, shape: .tile)
         case "cardPremium": return EmblemSpec(symbol: "rectangle.on.rectangle.fill", top: 0x8C6FD6, bottom: 0x2A1E4F, ink: 0xE4DAFA, motif: .rings, shape: .tile)
         case "cardBasic": return EmblemSpec(symbol: "rectangle.on.rectangle.fill", top: 0x4C7C96, bottom: 0x1B3040, ink: 0xD2E6F2, motif: .dots, shape: .tile)

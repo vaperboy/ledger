@@ -7,15 +7,15 @@ import GameCore
 public enum StoreRotation {
     public static let size: Int = 6
 
-    /// The gold price on the shelf: the item's own price, else the store price of its rarity. Nil when it is not sold
-    /// (legendary items stay box-only).
-    public static func price(_ c: GoldCosmetic) -> Int? { c.price ?? GoldCosmetics.storePrice(c.rarity) }
+    /// The gold price on the shelf: the item's own price, else the store price of its rarity (a guaranteed item always costs clearly
+    /// more than a box that may drop it). Legendary items stay box-only.
+    public static func price(_ c: GoldCosmetic) -> Int? { c.price ?? GoldPrices.item(c.id) ?? GoldCosmetics.storePrice(c.rarity) }
 
     /// Every item that may come up on the shelf.
     public static func eligible(today: Int = SeasonCatalog.today()) -> [GoldCosmetic] {
         let pass: Set<String> = Set(SeasonRewards.everything.map { (r: SeasonReward) -> String in r.id })
         return GoldCosmetics.visible(today: today).filter { (c: GoldCosmetic) -> Bool in
-            (c.source == .box || c.source == .store) && c.item.kind != .saveSlot && c.item.kind != .tradePlate
+            (c.source == .box || c.source == .store) && c.item.kind != .saveSlot && c.item.kind != .tradePlate && c.rarity != .legendary
                 && !pass.contains(c.id) && (price(c) ?? 0) > 0
         }
     }

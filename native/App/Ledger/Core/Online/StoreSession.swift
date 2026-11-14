@@ -45,6 +45,8 @@ final class StoreSession {
     @ObservationIgnored var cashHandler: ((Int, String, String) -> Void)?
     /// Told whether the account is an administrator each time the server answers, so the game can open every level gate.
     @ObservationIgnored var adminHandler: ((Bool) -> Void)?
+    /// Told the cosmetic id when a mission claim also found a clothing item.
+    @ObservationIgnored var lootHandler: ((String) -> Void)?
     @ObservationIgnored private let store: any StoreService
     @ObservationIgnored private let market: any AuctionService
     @ObservationIgnored private let remote: ServerStore?
@@ -64,6 +66,7 @@ final class StoreSession {
             state = cached.state
             server = cached.info
             readOnly = true
+            applyPrices(cached.info)
         }
     }
 
@@ -115,12 +118,27 @@ final class StoreSession {
         state = snap.state
         server = snap.info
         readOnly = false
+        applyPrices(snap.info)
         TrustedClock.sync(serverTime: snap.info.serverTime)
         ServerStoreCache.save(snap)
         SeasonModel.shared.syncServer(snap.info, replace: snap.info.imported || UserDefaults.standard.bool(forKey: Self.importedKey))
         for id in snap.info.cosmetics where AvatarCatalog.def(id) != nil { AvatarModel.shared.grant(id) }
         adminHandler?(snap.info.isAdmin ?? false)
     }
+
+    /// The server's prices and event rotation win over the content tables everywhere the app shows a price.
+    private func applyPrices(_ info: ServerStoreInfo) {
+        var groups: [String: [String: Int]] = info.prices ?? [:]
+        if let ev = info.events { groups["events"] = ["rotation": ev.rotation, "nextDay": ev.nextDay] }
+        guard groups != appliedPrices else { return }
+        appliedPrices = groups
+        ServerPriceBook.shared.replace(groups)
+        priceVersion += 1
+    }
+
+    @ObservationIgnored private var appliedPrices: [String: [String: Int]] = [:]
+    /// Bumped whenever the prices or the event rotation change, so price rows redraw.
+    private(set) var priceVersion = 0
 
     private func run<T>(_ call: () async throws -> T) async -> T? {
         problem = nil
@@ -573,6 +591,33 @@ final class StoreSession {
         }
     }
 
+    // MARK: Event boxes and prices
+
+    /// The six event boxes on sale now (the server's rotation once it has answered).
+    var eventBoxes: [EventBox] {
+        _ = priceVersion
+        return EventBoxes.current()
+    }
+
+    /// When the event boxes change, as the start of that server day.
+    var eventsEnd: Date {
+        _ = priceVersion
+        let left: Int = max(0, EventBoxes.nextChangeDay() - EventBoxes.utcDay())
+        var cal: Calendar = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC") ?? cal.timeZone
+        return cal.date(byAdding: .day, value: left, to: cal.startOfDay(for: TrustedClock.now())) ?? TrustedClock.now()
+    }
+
+    /// Administrator only: sets a store price for every player (nil goes back to the catalogue price). Other players see it on
+    /// their next store refresh.
+    @discardableResult
+    func setPrice(kind: String, id: String, price: Int?) async -> Bool {
+        guard let remote, isAdmin else { return false }
+        guard let data = await run({ try await remote.online.storeSetPrice(kind: kind, id: id, price: price) }) else { return false }
+        if let snap = try? remote.snapshot(data) { adopt(snap) }
+        return true
+    }
+
     enum CodeResult: Equatable { case admin, beta(Int), gift(ServerGiftReward), alreadyAdmin, betaUsed, giftUsed, expired, owned, invalid, locked, offline }
 
     /// Spends a typed code: an administrator code, a beta key or a gift code. Only the server can check it.
@@ -649,6 +694,10 @@ final class StoreSession {
             do {
                 let data: Data = try await remote.online.storeClaimMission(id: m.id, period: m.period, gold: m.gold)
                 if let snap = try? remote.snapshot(data) { adopt(snap) }
+                if let found = (try? remote.body(ServerGoldClaim.self, data))?.cosmetic, !found.isEmpty {
+                    SeasonModel.shared.grantOwned(found)
+                    lootHandler?(found)
+                }
             } catch OnlineError.rejected(_) {
                 // A refused claim is never paid; it is dropped.
             } catch {

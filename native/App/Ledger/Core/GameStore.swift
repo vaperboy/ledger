@@ -233,6 +233,10 @@ final class GameStore: ObservableObject {
         }
         StoreSession.shared.cashHandler = { [weak self] (amount: Int, id: String, label: String) -> Void in self?.settleAuctionCash(amount, claimID: id, label: label) }
         StoreSession.shared.adminHandler = { [weak self] (on: Bool) -> Void in self?.applyAdminLevels(on) }
+        StoreSession.shared.lootHandler = { [weak self] (id: String) -> Void in
+            let name: String = GoldCosmetics.cosmetic(id)?.item.title ?? "a new look"
+            self?.tell("Mission find", "You found \(name) with your mission reward. Wear it in Customise.", tone: "good")
+        }
     }
 
     func settleAuctionCash(_ amount: Int, claimID: String, label: String) {

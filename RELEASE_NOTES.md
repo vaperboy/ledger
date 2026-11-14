@@ -1,4 +1,6 @@
 # What's new
+- New Store prices that make sense: Basic, Premium and Elite boxes (Elite has the best odds and its own bundle), the rarest box prizes are cosmetics, and a guaranteed epic now costs more than three Premium boxes; a bought bundle opens box by box with a "Skip to results" summary
+- Six event boxes with their own exclusive epic and legendary items, changing every two weeks; most starter clothes are now found with mission rewards (what you already have stays yours)
 - Redeem gift codes at the top of the Store: gold, cosmetics or boxes, with a reward popup
 - Brighter Store: clear offer cards with big reward icons and prices, a new cosmetics shelf every day (never Battle Pass items), a small "watch an ad for gold" button on Home and the Store, open Supporter perks, and one Redeem a code field for beta keys
 - Battle pass grows to 50 tiers with more costumes, Season 3 "Riviera Summer" starts on its own by date, 38 new store cosmetics, Creator and Beta tester badges, work uniforms per trade, and animated legendary items
