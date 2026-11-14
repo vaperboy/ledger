@@ -31,7 +31,7 @@ public extension GameEngine {
     @discardableResult
     mutating func chooseFirstItem(companyID: Int, itemID: String) -> SettingResult {
         let data = self.data
-        return applySetting(refuse: { s in
+        let result = applySetting(refuse: { s in
             guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return "That company no longer exists." }
             guard co.status == .open else { return "Only an open company sells things." }
             guard SalesItems.firstChoicePending(co), let i = s.companyIndex(companyID) else { return "You have already chosen what to sell." }
@@ -41,6 +41,9 @@ public extension GameEngine {
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.settlePick(&s, companyID: companyID, keeping: itemID, data: d)
         }
+        // Picking the first product happens on the company page, so the guide's open-company step is done too.
+        if !result.isRefused { tutorialSaw(.company) }
+        return result
     }
 
     func itemForecast(companyID: Int, itemID: String, price: Double, discountPercent: Double) -> ItemForecast {
@@ -67,6 +70,8 @@ public extension GameEngine {
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.setPrice(&s, companyID: companyID, itemID: itemID, price: price, data: d)
             if let i = s.companyIndex(companyID) { s.companies[i].set("chose", 1) }
+            // A price set by hand stays the owner's: the manager or advisor stops changing prices until handed back.
+            if let co = s.company(companyID), !SalesItems.helper(s, co).isOwner { SalesItems.setPricesTakenBack(&s, companyID: companyID, true) }
         }
         if !result.isRefused { tutorialAdvance(from: .setPrice) }
         return result
@@ -111,6 +116,24 @@ public extension GameEngine {
 
     func newItemOptions(companyID: Int, isService: Bool) -> NewItemOptionList {
         NewItemOptions.list(state, companyID: companyID, isService: isService, data: data)
+    }
+
+    /// Who would set prices for the owner (manager or market advisor), or nil when nobody can.
+    func priceHelper(companyID: Int) -> SalesItems.PriceSetter? {
+        guard let co = state.company(companyID) else { return nil }
+        let h = SalesItems.helper(state, co)
+        return h.isOwner ? nil : h
+    }
+
+    /// Lets the manager or market advisor set prices again after the owner took them back.
+    @discardableResult
+    mutating func handPricesBack(companyID: Int) -> SettingResult {
+        applySetting(refuse: { s in
+            guard let co = s.company(companyID) else { return "That company no longer exists." }
+            return SalesItems.pricesTakenBack(co) ? nil : "Prices are already set for you."
+        }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
+            SalesItems.setPricesTakenBack(&s, companyID: companyID, false)
+        }
     }
 
     func hasMarketAdvisor(companyID: Int) -> Bool { state.company(companyID).map(NewItemOptions.hasAdvisor) ?? false }

@@ -67,11 +67,13 @@ final class PassPacingTests: XCTestCase {
     }
 
     func testFreeTrackRewardsAreRarerThanPremium() {
-        for season in [1, 2] {
-            let free: [Int] = (1...SeasonPass.tierCount).filter { SeasonRewards.reward(.free, tier: $0, season: season) != nil }
-            let premium: [Int] = (1...SeasonPass.tierCount).filter { SeasonRewards.reward(.premium, tier: $0, season: season) != nil }
-            XCTAssertLessThanOrEqual(free.count, 10, "free every three or four tiers")
-            XCTAssertGreaterThanOrEqual(premium.count, 28, "premium nearly every tier")
+        for season in 1...SeasonCatalog.all.count {
+            // Read on the season's own start day: a season that has not started yet shows nothing.
+            let day: Int = SeasonCatalog.startDay(of: season) ?? SeasonCatalog.today()
+            let free: [Int] = (1...SeasonPass.tierCount).filter { SeasonRewards.reward(.free, tier: $0, season: season, today: day) != nil }
+            let premium: [Int] = (1...SeasonPass.tierCount).filter { SeasonRewards.reward(.premium, tier: $0, season: season, today: day) != nil }
+            XCTAssertLessThanOrEqual(free.count, 16, "free every three or four tiers")
+            XCTAssertGreaterThanOrEqual(premium.count, 48, "premium nearly every tier")
             for (a, b) in zip(free, free.dropFirst()) { XCTAssertLessThanOrEqual(b - a, 5, "season \(season) free gap \(a) to \(b)") }
         }
     }

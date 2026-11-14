@@ -22,10 +22,8 @@ struct GroupStructureTab: View {
         let mgmt: GroupManagement? = store.memo("groupMgmt") { (e: GameEngine) -> GroupManagement in e.groupManagement() }
         let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(engine)
         let firstCardID: String? = rows(nodes).first?.id
-        VStack(alignment: .leading, spacing: Theme.Space.xl) {
-            if nodes.count <= 1 {
-                EmptyState(glyph: Glyph.group, title: "No companies yet", message: "Add one from Overview.")
-            } else {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            if nodes.count > 1 {
                 hero(nodes, mgmt)
                 VStack(spacing: Theme.Space.xs) {
                     ForEach(rows(nodes)) { (r: Row) in
@@ -112,10 +110,6 @@ struct GroupStructureTab: View {
     }
 
     private func hero(_ nodes: [StructureNode], _ mgmt: GroupManagement?) -> some View {
-        let value: Double = (store.netWorthNow ?? engine.netWorth).companies
-        let hist: DayHistory = store.dayHistoryNow ?? engine.dayHistory
-        let vc = DayHistory.change(hist.companies, days: 30)
-        let vt = GroupFmt.change(vc?.amount ?? 0, vc?.share, has: vc != nil, store)
         let split: (control: Double, influence: Double, passive: Double) = tierShares(nodes)
         let managers: Int = mgmt?.managerCount ?? 0
         let byYou: Int = mgmt?.runByYou.count ?? 0
@@ -123,14 +117,6 @@ struct GroupStructureTab: View {
         let line: String = "\(managers) \(managers == 1 ? "manager" : "managers") \u{00B7} you run \(byYou) yourself \u{00B7} \(waiting) \(waiting == 1 ? "decision" : "decisions") waiting"
         return Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Group value").textStyle(.label, tint: P.inkFaint)
-                LiveFigure(value: value, text: store.short(value)).textStyle(.display)
-                    .lineLimit(1).minimumScaleFactor(0.6)
-                    .accessibilityLabel("Group value " + store.short(value))
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                    Text(vt.text).textStyle(.caption, tint: vt.tint, numeric: true).lineLimit(1)
-                    if vc != nil { Text("in 30 days").textStyle(.caption, tint: P.inkFaint).lineLimit(1) }
-                }
                 if split.control + split.influence + split.passive > 0 {
                     StructureSplitBar(control: split.control, influence: split.influence, passive: split.passive)
                     WrapRow(spacing: Theme.Space.m) {

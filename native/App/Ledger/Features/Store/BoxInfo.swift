@@ -34,11 +34,11 @@ struct LootBoxInfoContent: View {
 
     static let rules: [String] = [
         "Boxes are opened with gold. Gold is bought with real money through the App Store: the price is shown and you confirm before anything is charged.",
-        "Gold has no cash value, cannot be cashed out and never turns into in-game money. A box can also hold a cash prize in the game's money, paid into your personal account, and numbered artifacts you can sell at once or at auction for cash.",
+        "Gold has no cash value and cannot be cashed out. It can buy in-game money in the Store. A box can also hold a cash prize in the game's money, paid into your personal account, and numbered artifacts you can sell at once or at auction for cash.",
         "These are the exact odds used for every opening. They do not change with how much you spend or how often you open.",
         "A cosmetic you already own is replaced by an artifact of the same rarity, so no opening is wasted.",
         "Card packs hold only profile cards and company cards. Cards are numbered like artifacts, can be sold at auction, and a company card is used by one company at a time. A pricier pack has a better chance of rare, epic and animated cards. The odds above are exact and do not change with how much you spend.",
-        "Loot boxes are for players aged 18 or older, which you confirmed when you accepted the terms. They are not offered where the law restricts them.",
+        "Loot boxes are for players aged 18 or older, which you confirmed when you accepted the terms. Ledger is not offered in regions where the law restricts them.",
         "Refunds for gold purchases follow Apple's refund policy and the consumer law where you live.",
         "Spend only what you are comfortable with.",
     ]

@@ -56,7 +56,7 @@ struct ConfettiBurst: View {
 
     var body: some View {
         Group {
-            if !finished {
+            if !finished && !PowerMode.isLow {
                 TimelineView(.animation) { timeline in
                     canvas(elapsed: timeline.date.timeIntervalSince(start))
                 }
@@ -116,8 +116,6 @@ struct ClaimButton: View {
     var title: String = "Claim"
     var identifier: String = "claim"
     var action: () -> Void
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var breathe = false
 
     var body: some View {
         Button {
@@ -128,9 +126,6 @@ struct ClaimButton: View {
         }
         .buttonStyle(PopupPrimaryButtonStyle())
         .accessibilityIdentifier(identifier)
-        .scaleEffect(breathe && !reduceMotion ? 1.03 : 1)
-        .animation(reduceMotion ? nil : Motion.pulseAnimation, value: breathe)
-        .onAppear { breathe = true }
     }
 }
 
@@ -147,7 +142,7 @@ struct FullScreenCelebration<Badge: View>: View {
 
     var body: some View {
         ZStack {
-            ZStack { Rectangle().fill(.regularMaterial); Color.black.opacity(0.55) }.ignoresSafeArea().contentShape(Rectangle())
+            Color.black.opacity(0.82).ignoresSafeArea().contentShape(Rectangle())
             ConfettiBurst(count: 110, goldOnly: true, originFraction: 0.42).ignoresSafeArea()
             VStack(spacing: Theme.Space.l) {
                 Text(kicker).font(.footnote.weight(.semibold)).textCase(.uppercase).tracking(1.2).foregroundStyle(Theme.gold)

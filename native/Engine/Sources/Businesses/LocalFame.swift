@@ -43,7 +43,8 @@ public enum LocalFame {
         guard !reputations.isEmpty else { return 0 }
         let avg = reputations.reduce(0, +) / Double(reputations.count)
         let gap = avg - 50
-        let lean = abs(gap) <= deadBand ? 0 : (gap > 0 ? gap - deadBand : gap + deadBand) * 2.2
+        // Past the dead band the lean spans the whole scale: a perfect reputation reaches the top, the worst the bottom.
+        let lean = abs(gap) <= deadBand ? 0 : (gap > 0 ? gap - deadBand : gap + deadBand) * 100 / (50 - deadBand)
         return clamp(lean - Double(fined) * fineHit, -100, 100)
     }
 

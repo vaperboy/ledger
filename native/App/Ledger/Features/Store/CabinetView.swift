@@ -18,27 +18,11 @@ struct CabinetView: View {
     }
 
     private func collections(_ cabinet: Cabinet) -> some View {
-        OnlineGroup(title: "Collections", footer: "Own every artifact in a collection to receive its cosmetic, once.") {
-            ForEach(Array(ArtifactCatalog.collections.enumerated()), id: \.element.id) { (i: Int, col: ArtifactCollection) in
-                if i > 0 { Hairline() }
-                let p = cabinet.progress(col)
-                let done: Bool = cabinet.isComplete(col)
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    HStack {
-                        Text(col.name).textStyle(.headline)
-                        Spacer()
-                        Text(done ? "Complete" : "\(p.have) of \(p.total)").textStyle(.caption, tint: done ? Theme.gain : Theme.inkSoft, numeric: true)
-                    }
-                    HStack(spacing: Theme.Space.s) {
-                        ForEach(col.members, id: \.self) { (id: String) in
-                            if let def = ArtifactCatalog.def(id) { ItemArt(artifact: def, size: 40).opacity(cabinet.owns(id) ? 1 : 0.3) }
-                        }
-                    }
-                    ProgressView(value: Double(p.have), total: Double(p.total)).tint(done ? Theme.gain : Theme.accent)
-                }
-                .padding(.vertical, Theme.Space.s)
-                .accessibilityElement(children: .combine)
+        OnlineGroup(title: "Collections", footer: "Own every artifact in a collection to earn its reward, once.") {
+            VStack(spacing: Theme.Space.s) {
+                ForEach(ArtifactCatalog.collections) { (col: ArtifactCollection) in CollectionCard(collection: col, cabinet: cabinet) }
             }
+            .padding(.vertical, Theme.Space.s)
         }
     }
 
@@ -243,23 +227,33 @@ enum LookKit {
     }
 }
 
+/// A banner or backdrop picture, aspect-fill and clipped to whatever space it is given: the picture is sized to the full width and height
+/// of that space, so there are never empty sides, whatever the picture's own proportions.
 struct BackdropFill: View {
     var reward: SeasonReward
     var scrim: Double = 0.4
 
     var body: some View {
-        ZStack {
-            LinearGradient(colors: [Color(hex: EmblemCatalog.mix(LookKit.tint(reward), 0x000000, 0.1)), Color(hex: LookKit.deep(reward))], startPoint: .top, endPoint: .bottom)
-            picture
-            LinearGradient(colors: [Color.black.opacity(scrim), Color.black.opacity(scrim * 0.6)], startPoint: .top, endPoint: .bottom)
+        GeometryReader { (g: GeometryProxy) in
+            ZStack {
+                LinearGradient(colors: [Color(hex: EmblemCatalog.mix(LookKit.tint(reward), 0x000000, 0.1)), Color(hex: LookKit.deep(reward))], startPoint: .top, endPoint: .bottom)
+                picture(g.size)
+                if g.size.height >= ItemArt.loopMinSize {
+                    AnimatedClip(category: .backdrop, id: reward.id, fill: true).frame(width: g.size.width, height: g.size.height).clipped()
+                }
+                LinearGradient(colors: [Color.black.opacity(scrim), Color.black.opacity(scrim * 0.6)], startPoint: .top, endPoint: .bottom)
+            }
+            .frame(width: g.size.width, height: g.size.height)
+            .clipped()
         }
-        .clipped()
     }
 
-    @ViewBuilder private var picture: some View {
+    @ViewBuilder private func picture(_ size: CGSize) -> some View {
         #if canImport(UIKit)
         if let ui = ArtLibrary.catalogueImage(.backdrop, reward.id) {
-            Color.clear.overlay { Image(uiImage: ui).resizable().scaledToFill() }.clipped()
+            Image(uiImage: ui).resizable().scaledToFill()
+                .frame(width: size.width, height: size.height)
+                .clipped()
         }
         #endif
     }
@@ -280,19 +274,16 @@ struct LookBackdrop: View {
     }
 }
 
+/// The company banner behind a header bar. It fills the bar's full width and height, including the status-bar area when the caller ignores
+/// the top safe area; the picture is aspect-fill and clipped, so there are never empty sides. The scrim darkens toward the bottom so the
+/// title stays readable. Art spec: same as the card backdrop (4:3, 1600 x 1200 px, subject in the middle 70%), cropped to a wide strip.
 struct HeaderBackdropFill: View {
     var reward: SeasonReward
-    static let height: CGFloat = 240
 
     var body: some View {
-        GeometryReader { (g: GeometryProxy) in
-            let top: CGFloat = g.frame(in: .global).minY
-            BackdropFill(reward: reward, scrim: 0.55)
-                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.7), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
-                .frame(width: g.size.width, height: Self.height)
-                .offset(y: -top)
-        }
-        .clipped()
+        BackdropFill(reward: reward, scrim: 0.35)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -305,46 +296,6 @@ extension LookKit {
 
     static func companyBackdrop(_ e: GameEngine, _ companyID: Int) -> SeasonReward? {
         item(e.companyBackdrop(companyID: companyID))
-    }
-}
-
-struct LookNamePlate: View {
-    var look: [String: String]
-    var name: String
-
-    var body: some View {
-        let plate: SeasonReward? = LookKit.reward(look, .namePlate)
-        let flair: SeasonReward? = LookKit.reward(look, .richListFlair)
-        HStack(spacing: Theme.Space.xs) {
-            if let plate {
-                Text(name).textStyle(.title, tint: LookKit.ink(plate)).lineLimit(1).minimumScaleFactor(0.7)
-                    .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.xs)
-                    .background(Capsule().fill(LookKit.plate(plate)))
-                    .overlay(Capsule().strokeBorder(LookKit.ink(plate).opacity(0.5), lineWidth: 1))
-            } else {
-                Text(name).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
-            }
-            if let flair { ItemArt(reward: flair, rarity: GoldCosmetics.cosmetic(flair.id)?.rarity, size: 24) }
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-struct LookTradeChip: View {
-    var look: [String: String]
-    var company: String
-
-    var body: some View {
-        if let plate = LookKit.reward(look, .tradePlate), !company.isEmpty {
-            HStack(spacing: Theme.Space.xs) {
-                Image(systemName: "storefront.fill").font(.caption.weight(.semibold))
-                Text(company).textStyle(.caption, tint: LookKit.ink(plate), weight: .semibold).lineLimit(1)
-            }
-            .foregroundStyle(LookKit.ink(plate))
-            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xxs + 2)
-            .background(Capsule().fill(LookKit.plate(plate)))
-            .accessibilityElement(children: .combine)
-        }
     }
 }
 
@@ -445,36 +396,70 @@ struct CardThumb: View {
     }
 }
 
+/// A company as other players see it: the banner fills the whole card, the logo and name sit on a darkened lower area.
+/// When the tap closures are set (company customise) the logo, the name and the banner each open their own tab, and an empty banner shows a "+".
 struct CompanyCardView: View {
     var name: String
     var def: CardDef?
     var logoID: String = ""
     var backdrop: SeasonReward? = nil
+    var onLogo: (() -> Void)? = nil
+    var onName: (() -> Void)? = nil
+    var onBanner: (() -> Void)? = nil
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-        HStack(spacing: Theme.Space.m) {
-            if logoID.isEmpty {
-                Image(systemName: def?.logo ?? "briefcase.fill")
-                    .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.white.opacity(0.92))
-                    .frame(width: 40, height: 40).background(Circle().fill(Color.white.opacity(0.16)))
-            } else {
-                LogoBadge(logoID: logoID, size: 40)
+        let editing: Bool = onBanner != nil
+        VStack(spacing: 0) {
+            Color.clear.frame(height: editing ? 56 : 0)
+                .overlay(alignment: .topTrailing) {
+                    if let onBanner, backdrop == nil, def == nil { AddChip(title: "Banner", action: onBanner).padding(Theme.Space.s) }
+                }
+            HStack(spacing: Theme.Space.m) {
+                tap(onLogo, label: "Logo") { logo }
+                tap(onName, label: "Company name") {
+                    Text(name).textStyle(.headline, tint: def == nil ? Theme.ink : Color.white).lineLimit(1)
+                        .shadow(color: Color.black.opacity(0.5), radius: 4, x: 0, y: 1)
+                }
+                Spacer(minLength: 0)
+                if let def { RarityTag(rarity: def.rarity) }
             }
-            Text(name).textStyle(.headline, tint: def == nil ? Theme.ink : Color.white).lineLimit(1)
-            Spacer(minLength: 0)
-            if let def { RarityTag(rarity: def.rarity) }
+            .padding(Theme.Space.m)
+            .frame(minHeight: 64)
         }
-        .padding(Theme.Space.m)
-        .frame(minHeight: 64)
+        .frame(maxWidth: .infinity)
         .background {
             ZStack {
                 if let def { CardFace(def: def) } else { shape.fill(Theme.inset) }
-                if let backdrop { BackdropFill(reward: backdrop, scrim: 0.45) }
+                if let backdrop { BackdropFill(reward: backdrop, scrim: 0.12) }
+                if backdrop != nil || def != nil {
+                    LinearGradient(stops: [.init(color: Color.black.opacity(0), location: 0.35), .init(color: Color.black.opacity(0.7), location: 1)], startPoint: .top, endPoint: .bottom)
+                }
             }
+            .contentShape(Rectangle())
+            .onTapGesture { if let onBanner { Haptics.tap(); onBanner() } }
         }
         .clipShape(shape)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: editing ? .contain : .combine)
+    }
+
+    @ViewBuilder private var logo: some View {
+        if logoID.isEmpty {
+            Image(systemName: def?.logo ?? "briefcase.fill")
+                .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.white.opacity(0.92))
+                .frame(width: 40, height: 40).background(Circle().fill(Color.white.opacity(0.16)))
+        } else {
+            LogoBadge(logoID: logoID, size: 40)
+        }
+    }
+
+    @ViewBuilder private func tap<C: View>(_ action: (() -> Void)?, label: String, @ViewBuilder content: () -> C) -> some View {
+        if let action {
+            Button { Haptics.tap(); action() } label: { content().frame(minHeight: 44).contentShape(Rectangle()) }
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel(label)
+        } else {
+            content()
+        }
     }
 }
-

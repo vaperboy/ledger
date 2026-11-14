@@ -12,9 +12,6 @@ struct FriendsScreen: View {
     @State private var searching = false
     @State private var failure: String?
     @State private var pending: PendingAction?
-    @State private var venturePicker = false
-    @State private var ventureCompany: Int?
-    @State private var ventureOpen = false
     @State private var giftOpen = false
     @State private var giftFriend: PlayerProfile?
 
@@ -24,10 +21,6 @@ struct FriendsScreen: View {
         }
         .confirmAction($pending)
         .appScreen(title: "Friends", subtitle: "Requests, search and your friends")
-        .centerSheet(isPresented: $venturePicker, title: "Start a company together") { ventureChoices }
-        .centerSheet(isPresented: $ventureOpen, title: "Invite a friend", size: .tall) {
-            JVInviteSheet(companyID: ventureCompany ?? 0).environmentObject(store).environment(online)
-        }
         .centerSheet(isPresented: $giftOpen, title: "Send a gift", size: .tall) {
             if let f = giftFriend { GiftChoices(friend: f) { (item: ArtifactItem) in sendGift(item, to: f) } }
         }
@@ -43,11 +36,12 @@ struct FriendsScreen: View {
             if !o.outgoing.isEmpty { outgoingGroup(o.outgoing) }
             friendsGroup(o.friends)
             FriendPlayGroups(friends: o.friends)
-            togetherGroup
-        } else if failure == nil {
-            ProgressView().frame(maxWidth: .infinity)
+        } else if let failure {
+            OnlineListState(phase: .failed(failure)) { self.failure = nil; Task { await reload() } }
+        } else {
+            OnlineWaiting { Task { await reload() } }
         }
-        if let failure { Text(failure).textStyle(.caption, tint: Theme.loss).frame(maxWidth: .infinity) }
+        if overview != nil, let failure { Text(failure).textStyle(.caption, tint: Theme.loss).frame(maxWidth: .infinity) }
     }
 
     private var searchGroup: some View {
@@ -173,34 +167,6 @@ struct FriendsScreen: View {
         }
     }
 
-    private var togetherGroup: some View {
-        OnlineGroup(title: "Together", footer: "Each friend gets a private price of their own, and big decisions go to a vote by shares.") {
-            Button { Haptics.tap(); venturePicker = true } label: {
-                OnlineLine(glyph: Glyph.group, title: "Start a company together", note: "Own one of your companies with friends", chevron: true)
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("friends-together")
-        }
-    }
-
-    @ViewBuilder private var ventureChoices: some View {
-        let list: [Company] = store.engine.map { (e: GameEngine) -> [Company] in e.state.companies.filter { (c: Company) -> Bool in e.jvCanStart(companyID: c.id) } } ?? []
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            if list.isEmpty {
-                Text("Open a company first. Then you can bring friends in as partners from its Partners section.").popupText(.body)
-            } else {
-                Text("Pick the company to share").popupText(.caption)
-                ForEach(list, id: \.id) { (c: Company) in
-                    ChoiceCard(title: c.name, selected: false) {
-                        ventureCompany = c.id
-                        venturePicker = false
-                        StorePurchase.afterPopup { ventureOpen = true }
-                    }
-                }
-            }
-        }
-    }
-
     private func sendGift(_ item: ArtifactItem, to friend: PlayerProfile) {
         giftOpen = false
         Task { @MainActor in failure = await GiftSender.send(item, to: friend, online: online, store: store) }
@@ -213,7 +179,7 @@ struct FriendsScreen: View {
 
     private func reload() async {
         guard online.isSignedIn else { overview = nil; return }
-        do { overview = try await online.service.friends(); failure = nil } catch { failure = (error as? LocalizedError)?.errorDescription ?? "Could not load friends." }
+        do { overview = try await online.service.friends(); failure = nil } catch { failure = OnlineWords.friendly(error) }
     }
 
     private func search() async {
@@ -222,7 +188,7 @@ struct FriendsScreen: View {
         searching = true
         try? await Task.sleep(nanoseconds: 300_000_000)
         guard !Task.isCancelled else { return }
-        do { results = try await online.service.searchPlayers(query: q); failure = nil } catch { if !Task.isCancelled { failure = (error as? LocalizedError)?.errorDescription } }
+        do { results = try await online.service.searchPlayers(query: q); failure = nil } catch { if !Task.isCancelled { failure = OnlineWords.friendly(error) } }
         if !Task.isCancelled { searching = false }
     }
 
@@ -234,7 +200,7 @@ struct FriendsScreen: View {
 
     private func act(_ call: @escaping () async throws -> Void) {
         Task {
-            do { try await call(); failure = nil } catch { failure = (error as? LocalizedError)?.errorDescription ?? "That did not work. Try again." }
+            do { try await call(); failure = nil } catch { failure = OnlineWords.friendly(error) }
             await reload()
             await search()
         }

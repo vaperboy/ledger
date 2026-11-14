@@ -134,12 +134,13 @@ final class SalesItemsTests: XCTestCase {
         let listing = try XCTUnwrap(e.ownCompanyListings(forBuyer: buyer).first)
         XCTAssertEqual(listing.sellerID, seller)
         XCTAssertEqual(listing.price, item.price, accuracy: 1e-6)
-        let sellerCash = e.state.company(seller)!.cash, buyerCash = e.state.company(buyer)!.cash
+        // The two companies draw on the one account, so each side is read from its own cash flow.
+        let sellerCash: Double = e.state.cashFlow["co\(seller)"] ?? 0, buyerCash: Double = e.state.cashFlow["co\(buyer)"] ?? 0
         let sellerRev = e.state.company(seller)!.books.month["rev"] ?? 0
         let owned = e.state.company(buyer)!.value("eq")[listing.equipmentID]["n"].double
         XCTAssertEqual(e.buyFromOwnCompany(buyer: buyer, seller: seller, itemID: item.id, quantity: 1), .applied)
-        XCTAssertLessThan(e.state.company(buyer)!.cash, buyerCash - listing.price + 1)
-        XCTAssertGreaterThan(e.state.company(seller)!.cash, sellerCash)
+        XCTAssertLessThan(e.state.cashFlow["co\(buyer)"] ?? 0, buyerCash - listing.price + 1)
+        XCTAssertGreaterThan(e.state.cashFlow["co\(seller)"] ?? 0, sellerCash)
         XCTAssertEqual((e.state.company(seller)!.books.month["rev"] ?? 0) - sellerRev, listing.price.rounded(), accuracy: 1)
         XCTAssertGreaterThan(e.state.company(buyer)!.value("eq")[listing.equipmentID]["n"].double, owned)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
@@ -213,6 +214,22 @@ final class SalesItemsTests: XCTestCase {
         let it = b.salesItems(companyID: id)[0]
         XCTAssertEqual(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 1.1), .applied)
         XCTAssertEqual(b.salesItems(companyID: id).first { $0.id == it.id }?.price ?? 0, it.marketPrice * 1.1, accuracy: 1e-6)
+    }
+
+    func testOwnerTakesPricesBackFromAHelperAndCanHandThemBack() throws {
+        var (e, id) = try engine("estate", weeks: 1, opened: true)
+        e.update { s, _, _ in
+            let i = s.companyIndex(id)!
+            var m = StaffMember(raw: [:]); m.id = 9_998; m.role = NewItemOptions.advisorRole
+            s.companies[i].staff = s.companies[i].staff + [m]
+        }
+        XCTAssertEqual(e.priceHelper(companyID: id), .advisor)
+        XCTAssertTrue(e.handPricesBack(companyID: id).isRefused, "nothing to hand back yet")
+        let it = e.salesItems(companyID: id)[0]
+        XCTAssertEqual(e.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 1.1), .applied)
+        XCTAssertTrue(e.salesItems(companyID: id).allSatisfy { $0.priceSetter.isOwner }, "a hand-set price makes the owner the price setter")
+        XCTAssertEqual(e.handPricesBack(companyID: id), .applied)
+        XCTAssertTrue(e.salesItems(companyID: id).allSatisfy { $0.priceSetter == .advisor })
     }
 
     func testPriceCeilingVariesByTrade() throws {

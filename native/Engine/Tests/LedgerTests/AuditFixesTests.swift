@@ -121,29 +121,35 @@ final class AuditFixesTests: XCTestCase {
         for _ in 0..<(7 * 30) {
             e.nextDay()
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-            if e.state.company(id)?.status == .open, abs(HeldMoney.remaining(e.state, companyID: id)) > 50 { return }
+            if e.state.company(id)?.status == .open, abs(HeldMoney.playerRemaining(e.state)) > 50 { return }
         }
     }
 
-    func testHeldWeekMoneyIsSettledWhenACompanyIsWoundUp() throws {
+    func testHeldWeekMoneyStaysWithTheAccountWhenACompanyIsWoundUp() throws {
         var (e, id) = try cafe()
         playToHeldMoney(&e, id)
-        let held = HeldMoney.remaining(e.state, companyID: id)
-        XCTAssertNotEqual(held, 0, "part of the company's seven-day change is still held")
-        let before = e.state.companies[e.state.companyIndex(id)!].cash
+        XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, accuracy: 0.01, "money is held for the one account, never for a company")
+        let held = HeldMoney.playerRemaining(e.state)
+        XCTAssertNotEqual(held, 0, "part of the seven-day change is still held")
         XCTAssertTrue(e.windUpCompany(companyID: id))
         XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, "nothing is left held for a company that is gone")
+        XCTAssertEqual(HeldMoney.playerRemaining(e.state), held, accuracy: 0.01, "what was held still lands in the account")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        _ = before
         for _ in 0..<7 { e.nextDay() }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        XCTAssertEqual(e.state.company(id)?.cash ?? 0, 0, accuracy: 1)
     }
 
     func testGapCheckShowsMoneyHeldForAGoneCompany() throws {
         var (e, id) = try cafe()
-        playToHeldMoney(&e, id)
+        // Saves from before the one account can still hold a week's change for a company.
+        e.update { s, _, _ in
+            var pend = s.rest["pend"] ?? .null
+            if pend.isNull { pend = .object(["v": .number(2), "rows": .array([]), "co": .array([]), "msgs": .array([]), "news": .array([])]) }
+            pend["co"] = .array(pend["co"].array + [.array([.number(Double(id)), .number(7_000), .number(0), .number(Double(HeldMoney.today(s)))])])
+            s.rest["pend"] = pend
+        }
         XCTAssertNotEqual(HeldMoney.remaining(e.state, companyID: id), 0)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "held for a live company is not a gap")
         e.update { s, _, _ in s.companies[s.companyIndex(id)!].status = .sold }
         XCTAssertFalse(Ledger.gaps(e.state).isEmpty)
     }

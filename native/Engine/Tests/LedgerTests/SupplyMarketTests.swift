@@ -9,7 +9,7 @@ final class SupplyMarketTests: XCTestCase {
                          record: DeliveryRecord = DeliveryRecord(weeksTrading: 20, ordersTotal: 60, ordersOnTime: 58, unitsPromised: 1000, unitsDelivered: 990, cleanWeeks: 12, lifetimeUnits: 990),
                          link: String? = nil, cap: Int = 200) -> SupplyListing {
         SupplyListing(id: id, ownerID: owner, ownerName: "Name \(id)", profileCode: "P-\(id)", companyName: "Co \(id)", tradeID: "bakery", tradeName: "Bakery", city: "Leeds", region: "North",
-                      lineID: "goods", lineName: "Stock and ingredients", priceTier: tier, qualityTier: 1, capacityPerWeek: cap, leadDays: 2, minOrder: 10, termsDays: 14,
+                      lineID: "bread", lineName: "Bread and pastries", priceTier: tier, qualityTier: 1, capacityPerWeek: cap, leadDays: 2, minOrder: 10, termsDays: 14,
                       linkKey: link ?? "link-\(id)", record: record)
     }
 
@@ -116,13 +116,14 @@ final class SupplyMarketTests: XCTestCase {
     }
 
     func testSupplierStoppingEndsContractsAtOnceAndFallsBack() {
-        let c1 = SupplyContract(id: "c1", buyerCompanyID: 1, lineID: "goods", listingID: "L1", supplierOwnerID: "ownerA", supplierName: "Ann Baker", unitsPerWeek: 50, startDay: 0)
-        let c2 = SupplyContract(id: "c2", buyerCompanyID: 2, lineID: "pack", listingID: "L2", supplierOwnerID: "ownerB", supplierName: "Bo Pack", unitsPerWeek: 20, startDay: 0)
+        let c1 = SupplyContract(id: "c1", buyerCompanyID: 1, lineID: "bread", listingID: "L1", supplierOwnerID: "ownerA", supplierName: "Ann Baker", unitsPerWeek: 50, startDay: 0)
+        let c2 = SupplyContract(id: "c2", buyerCompanyID: 2, lineID: "parts", listingID: "L2", supplierOwnerID: "ownerB", supplierName: "Bo Pack", unitsPerWeek: 20, startDay: 0)
         let r = SupplyContracts.end([c1, c2], supplierOwnerID: "ownerA", reason: .bankrupt)
         XCTAssertEqual(r.kept, [c2])
         XCTAssertEqual(r.fallbacks.count, 1)
         XCTAssertEqual(r.fallbacks[0].title, "Your supplier stopped supplying")
-        XCTAssertTrue(r.fallbacks[0].body.contains("standard supplier at its price"))
+        XCTAssertTrue(r.fallbacks[0].body.contains("goes back to your usual supplier"))
+        XCTAssertFalse(r.fallbacks[0].body.contains("standard supplier"), "no system supplier is named")
         XCTAssertTrue(r.fallbacks[0].body.contains("went bankrupt"))
         XCTAssertEqual(SupplyContracts.end([c1, c2], listingID: "L2", reason: .stopped).kept, [c1])
     }

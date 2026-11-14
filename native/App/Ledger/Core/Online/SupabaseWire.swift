@@ -135,7 +135,7 @@ enum SupabaseWire {
         case "already_rated": return .rejected("You have already rated this accountant.")
         case "too_early": return .rejected("Rate an accountant after a week of working together.")
         case "new_account": return .rejected("Shared deals open after the account is four weeks old.")
-        case "open_contracts": return .nameRejected("Close your open supply contracts before deleting the account.")
+        case "open_contracts": return .rejected("Something is still open with other players. Try again in a moment.")
         case "price_outside_market": return .rejected("That price is far from what the market pays.")
         case "too_many_orders": return .rejected("You have too many open orders. Cancel some first.")
         case "outside_band": return .rejected("That price is outside the range around the company's value.")
@@ -170,6 +170,36 @@ enum SupabaseWire {
         case "already_discussing": return .rejected("A price is already on the table.")
         case "invalid_action": return .rejected("That cannot be done now.")
         case "listing_closed": return .rejected("This listing is closed.")
+        case "not_friends": return .rejected("Only a friend can be invited as a partner.")
+        case "already_partner": return .rejected("That player is a partner already.")
+        case "too_many_partners": return .rejected("The company has as many partners as it can have.")
+        case "invalid_stake": return .rejected("That share is not allowed: a partner holds 2% to 49%.")
+        case "worthless": return .rejected("The company is worth nothing yet, so its shares cannot be priced.")
+        case "offer_open": return .rejected("An offer for these shares is already waiting for an answer.")
+        case "locked": return .rejected("These shares cannot be sold yet.")
+        case "meeting_open": return .rejected("An emergency meeting is already open. Let it finish first.")
+        case "agenda_full": return .rejected("The next board meeting is full. Try again after it.")
+        case "vote_closed", "already_closed": return .rejected("Voting has closed.")
+        case "offer_expired": return .rejected("That offer is no longer open.")
+        case "already_set": return .rejected("That is already how it is set.")
+        case "no_partners": return .rejected("There is no board yet: the company has no partners.")
+        case "invalid_agenda", "too_many_settings": return .rejected("That cannot be put to the board.")
+        case "barred": return .rejected("Your account cannot trade with other players right now.")
+        case "not_enough_gold": return .rejected(amount.isEmpty ? "You do not have enough gold." : "You need \(amount) more gold.")
+        case "in_debt": return .rejected("A refunded purchase left \(amount.isEmpty ? "some" : amount) gold owed. Spending opens again once new gold has covered it.")
+        case "weekly_limit": return .rejected(amount == "0" || amount.isEmpty ? "You have bought all the money allowed this week. Try again in a few days." : "This week you can spend \(amount) more gold on money.")
+        case "daily_limit": return .rejected("That is all for today. Come back tomorrow.")
+        case "already_owned": return .rejected("You already have this.")
+        case "already_claimed": return .rejected(StoreWireText.alreadyClaimed)
+        case "no_reward": return .rejected(StoreWireText.noReward)
+        case "unknown_item", "unknown_product": return .rejected("That is not in the store.")
+        case "no_box": return .rejected("You have no box of that kind.")
+        case "needs_premium": return .rejected("This reward is on the premium track.")
+        case "tier_not_reached": return .rejected("This tier is not reached yet.")
+        case "season_over": return .rejected("That season has ended.")
+        case "invalid_receipt", "wrong_app", "mismatch": return .rejected("The App Store could not confirm this purchase.")
+        case "wrong_account": return .rejected("This purchase belongs to another player account.")
+        case "invalid_request", "too_many_accounts": return .rejected("That did not work. Try again.")
         default:
             if key.hasPrefix("listing_") { return .rejected("That offer is not available.") }
         }
@@ -187,7 +217,11 @@ enum SupabaseWire {
     static func linkFailure(code: String, text: String, provider: SignInProvider) -> OnlineError? {
         let lower: String = text.lowercased()
         if code == "identity_already_exists" || lower.contains("already linked") || lower.contains("already been linked") {
-            return .rejected("That \(provider.title) account is already linked to another player.")
+            let mine: Bool = !lower.isEmpty && !lower.contains("another")
+            return mine ? .rejected("This \(provider.title) account is already linked to you.") : .identityTaken(provider)
+        }
+        if code == "email_exists" || lower.contains("email address has already been registered") {
+            return .rejected("Another Ledger account already uses the email of this \(provider.title) account. Sign in the way you did before.")
         }
         if code == "manual_linking_disabled" || lower.contains("manual linking") {
             return .rejected("Linking accounts is not switched on for the server yet.")

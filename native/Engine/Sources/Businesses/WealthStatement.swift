@@ -31,7 +31,7 @@ public enum Wealth {
         var listedNames: [String] = []
         for co in s.companies where co.status.isLive {
             guard let inst = book.instruments[PublicExchange.id(of: co.id)], !inst.halted else { continue }
-            let paper = (Valuation.companyValue(co, state: s, trades: trades) + HeldMoney.remaining(s, companyID: co.id)) * co.ownership / 100
+            let paper = (Valuation.valueBeforeLoans(co, state: s, trades: trades) + HeldMoney.remaining(s, companyID: co.id)) * co.ownership / 100
             listedPaper += paper
             listedMarket += Double(CapTable.table(co).you) * inst.close * (1 - blockDiscount)
             listedNames.append(co.name)
@@ -52,7 +52,7 @@ public enum Wealth {
         add("private", "Private companies", privateCounted, "Your share of what your companies are worth is \(cur.display(privatePaper)). A private company cannot be sold in a day, so it counts at \(Currency.percent(1 - privateDiscount, decimals: 0)) of that.")
         add("minority", "Stakes in other companies", minorityCounted, "Shares you hold in startups and other people's companies are worth \(cur.display(minority)) on paper. You do not control them, so they count at \(Currency.percent(1 - minorityDiscount, decimals: 0)).")
         add("luxury", "Things you own", nw.luxury, "Cars, watches and houses, at their current value.")
-        add("debt", "Loans", -nw.debt, "Private loans you still owe. Company loans are already inside the company values.")
+        add("debt", "Loans", -nw.debt, "Every loan you and your companies still owe. Company values are counted before their loans.")
         add("tax", "Tax to pay", -nw.pendingTax, "Tax assessed and not yet paid.")
         let total = lines.reduce(0) { $0 + $1.amount }
         let assets = lines.filter { $0.amount > 0 }.reduce(0) { $0 + $1.amount }

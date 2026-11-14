@@ -241,7 +241,7 @@ struct BrandMeetingView: View {
 
     @ViewBuilder private func termSteppers(_ b: FranchiseBrands.Brand, _ bd: Trade?) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            stepper("Entry fee", feeSteps, current: ask.fee, label: { v in v < 0 ? "Pay \(Int(-v * 100))% more" : v > 0 ? "\(Int(v * 100))% off" : "Standard" }) { ask.fee = $0 }
+            stepper("Entry fee", feeSteps, current: ask.fee, label: { v in v < 0 ? "Pay \(Int(saturating: -v * 100))% more" : v > 0 ? "\(Int(saturating: v * 100))% off" : "Standard" }) { ask.fee = $0 }
             CardLine()
             stepper("Royalty", royaltySteps, current: ask.royalty, label: { v in Currency.percent(max(0, b.royalty - v), decimals: 1) + (v == 0 ? " (standard)" : "") }) { ask.royalty = $0 }
             CardLine()

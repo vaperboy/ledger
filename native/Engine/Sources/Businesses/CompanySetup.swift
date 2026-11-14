@@ -122,6 +122,8 @@ public enum CompanySetup {
         var t = t0
         if franchiseBuilding { t.rentPerM2Year *= 0.85; t.monthlyRent *= 0.85; t.deposit = 0 }
         if co.cash + refund < (buy ? t.downPayment : t.deposit) + t.fitOut { return .notEnoughCash }
+        // The mortgage is secured by the building, so only the ban, credit score and freeze rules can refuse it.
+        if buy, !LoanChecks.approves(s, companyID: companyID, amount: t.purchasePrice - t.downPayment, security: t.purchasePrice - t.downPayment, data: data) { return .bad }
         if refund > 0 { Payments.companyReceives(&s, companyID: companyID, amount: refund, category: nil, label: "Lease deposit returned") }
         let m2 = lst.squareMetres
         if buy {
@@ -224,6 +226,10 @@ public enum CompanySetup {
                            brand: EquipmentMarket.Brand?, prepaid: Bool = false, data: GameData) -> Bool {
         let companyID = s.companies[i].id
         var loanID = 0, lease = 0.0, bookValue = price
+        var mode = mode
+        if mode == "fin" && !prepaid && !EquipmentMarket.financeApproved(s, companyID: companyID, price: price, data: data) {
+            mode = s.companies[i].cash >= price ? "own" : "lease"
+        }
         let name = brand?.name ?? modelName
         switch mode {
         case "own":
@@ -298,6 +304,7 @@ public enum CompanySetup {
         let used = CapacityModel.ownerHoursCommitted(s, except: id)
         let hours = max(0, (min(s.companies[i].ownerHours, 80 - used, max(10, 55 - used)) / 5).rounded(.down) * 5)
         s.companies[i].ownerHours = hours
+        SupplyAutoPick.assign(&s, companyID: id, data: data)
         return .success(id)
     }
 

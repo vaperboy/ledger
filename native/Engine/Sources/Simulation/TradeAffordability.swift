@@ -23,7 +23,7 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
         let available = Payments.liquid(s)
         var probe = s; probe.cash += Double(Int32.max)
         let rows: [TradeAffordability] = data.catalog.all.filter { !SpecialFamilies.isRetired($0) }.map { t in
-            let blocked = CompanySetup.banReason(t.id, country: country) ?? (SpecialFamilies.isStartable(t) ? nil : "Coming in a later update")
+            let blocked = CompanySetup.banReason(t.id, country: country) ?? TradeUnlocks.refusal(t, s) ?? (SpecialFamilies.isStartable(t) ? nil : "Coming in a later update")
             guard blocked == nil else { return TradeAffordability(tradeID: t.id, cost: nil, available: available, blocked: blocked) }
             let rec = CompanySetup.recommendedSize(t, city: city)
             func price(_ size: Double) -> CompanySetup.Estimate? {

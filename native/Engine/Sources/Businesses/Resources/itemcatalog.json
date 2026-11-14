@@ -2079,6 +2079,76 @@
     "n": "Coaching sessions",
     "svc": true
    }
+  ],
+  "wholesale": [
+   {
+    "n": "Food and drink range"
+   },
+   {
+    "n": "Household and care range"
+   },
+   {
+    "n": "Clothing and goods range"
+   },
+   {
+    "n": "Pallet deal"
+   },
+   {
+    "n": "Next-day delivery",
+    "svc": true
+   },
+   {
+    "n": "Trade account credit",
+    "svc": true
+   }
+  ],
+  "fuelstation": [
+   {
+    "n": "Petrol"
+   },
+   {
+    "n": "Diesel"
+   },
+   {
+    "n": "Car wash",
+    "svc": true
+   },
+   {
+    "n": "Coffee to go"
+   },
+   {
+    "n": "Snacks and drinks"
+   },
+   {
+    "n": "Fleet fuel card",
+    "svc": true
+   }
+  ],
+  "laundry": [
+   {
+    "n": "Hotel linen wash",
+    "svc": true
+   },
+   {
+    "n": "Restaurant table linen",
+    "svc": true
+   },
+   {
+    "n": "Gym towel service",
+    "svc": true
+   },
+   {
+    "n": "Salon gown wash",
+    "svc": true
+   },
+   {
+    "n": "Uniform cleaning",
+    "svc": true
+   },
+   {
+    "n": "Wash and fold for homes",
+    "svc": true
+   }
   ]
  }
 }

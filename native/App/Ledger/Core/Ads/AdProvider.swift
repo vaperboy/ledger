@@ -1,6 +1,6 @@
 import Foundation
+import SwiftUI
 import UIKit
-import AppTrackingTransparency
 
 enum AdConfig {
     static let testAppID = "ca-app-pub-3940256099942544~1458002511"
@@ -35,6 +35,19 @@ protocol AdProvider: AnyObject {
 }
 
 @MainActor
+enum AdProviders {
+    /// The one place that picks the ad network. To connect a real network, return its provider here.
+    static func make() -> AdProvider {
+        #if canImport(GoogleMobileAds) && canImport(UserMessagingPlatform)
+        return AdMobProvider()
+        #else
+        return PlaceholderAdProvider()
+        #endif
+    }
+}
+
+/// Stands in until an ad network is connected. Debug builds show a plainly marked test ad; release builds show none.
+@MainActor
 final class PlaceholderAdProvider: AdProvider {
     var isAvailable: Bool {
         #if DEBUG
@@ -48,24 +61,51 @@ final class PlaceholderAdProvider: AdProvider {
     func showInterstitial() async -> Bool { false }
     func showRewarded() async -> Bool {
         #if DEBUG
-        try? await Task.sleep(nanoseconds: 600_000_000)
-        return true
+        return await TestAdScreen.present()
         #else
         return false
         #endif
     }
 }
 
-enum TrackingPermission {
-    private static let key = "ledger.attAsked"
-    static var asked: Bool { UserDefaults.standard.bool(forKey: key) }
+#if DEBUG
+/// A full-screen "TEST AD" card for debug builds: counts down, then closes and counts as watched.
+private struct TestAdScreen: View {
+    var done: () -> Void
+    @State private var left = 3
 
-    static let enabled = false
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("TEST AD").font(.system(size: 34, weight: .black)).foregroundStyle(.white)
+            Text("Debug build only. A real ad network is not connected.").font(.body).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center)
+            Text(left > 0 ? "Closes in \(left)" : "Done").font(.headline.monospacedDigit()).foregroundStyle(.white)
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(red: 0.45, green: 0.18, blue: 0.75).ignoresSafeArea())
+        .accessibilityIdentifier("test-ad")
+        .task {
+            while left > 0 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                left -= 1
+            }
+            done()
+        }
+    }
 
-    static func requestOnce() async {
-        guard enabled, !asked else { return }
-        UserDefaults.standard.set(true, forKey: key)
-        guard ATTrackingManager.trackingAuthorizationStatus == .notDetermined else { return }
-        _ = await ATTrackingManager.requestTrackingAuthorization()
+    static func present() async -> Bool {
+        let root: UIViewController? = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.rootViewController
+        var top: UIViewController? = root
+        while let p = top?.presentedViewController { top = p }
+        guard let host = top else { return false }
+        return await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+            var shown: UIViewController?
+            let screen = TestAdScreen { shown?.dismiss(animated: true) { cont.resume(returning: true) } }
+            let vc = UIHostingController(rootView: screen)
+            vc.modalPresentationStyle = .fullScreen
+            shown = vc
+            host.present(vc, animated: true)
+        }
     }
 }
+#endif

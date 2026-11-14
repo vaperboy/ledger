@@ -3,6 +3,135 @@ import GameCore
 import Countries
 import Finance
 
+/// Every feature outside the core game. Each opens at its own player level, one per level.
+public enum LevelFeature: String, CaseIterable, Sendable {
+    case marketing, marketplace, management, newCompany, techpro, insurance, auctions, weeklyPlan, research, rivals, desk
+    case exchange, chain, ventures, franchise, jointVentures, government, abroad, politics, luxury
+}
+
+/// The XP curve shared by the level bar and the unlock table.
+public enum LevelCurve {
+    public static let maxLevel = 100
+
+    public static func threshold(_ level: Int) -> Int { 25 * level * max(0, level - 1) }
+
+    public static func level(forXP xp: Int) -> Int {
+        var l = 1
+        while l < maxLevel && threshold(l + 1) <= xp { l += 1 }
+        return l
+    }
+
+    public static func xp(_ s: GameState) -> Int { max(0, s.rest["lvl"]?["xp"].int ?? 0) }
+    public static func level(_ s: GameState) -> Int { level(forXP: xp(s)) }
+}
+
+/// The one unlock table. Level 1 is the core game (products, prices, staff, premises, bank, suppliers, inbox, goals);
+/// every other feature opens at its listed level and stays shut until then.
+public enum FeatureUnlocks {
+    public struct Row: Equatable, Sendable {
+        public var feature: LevelFeature
+        public var level: Int
+        public var title: String
+        public var gives: String
+    }
+
+    public static let table: [Row] = [
+        Row(feature: .marketing, level: 2, title: "Marketing", gives: "advertise to bring in more customers and see what they say about you"),
+        Row(feature: .insurance, level: 3, title: "Insurance", gives: "cover your companies against fire, theft and lawsuits"),
+        Row(feature: .management, level: 4, title: "Managers", gives: "hire a manager to run a company day to day"),
+        Row(feature: .newCompany, level: 5, title: "More companies", gives: "start a second company and see them all as one group"),
+        Row(feature: .rivals, level: 6, title: "Rivals", gives: "watch the competition in your market and answer their moves"),
+        Row(feature: .techpro, level: 7, title: "TechPro", gives: "buy software, equipment and vehicles that make a company work better"),
+        Row(feature: .auctions, level: 8, title: "Auctions", gives: "sell your artifacts or bid on other players' pieces"),
+        Row(feature: .weeklyPlan, level: 9, title: "Weekly plan", gives: "pick one thing each company focuses on this week"),
+        Row(feature: .research, level: 10, title: "Market research", gives: "study a market before you spend on it"),
+        Row(feature: .marketplace, level: 11, title: "Marketplace", gives: "buy used items from private sellers and haggle"),
+        Row(feature: .desk, level: 12, title: "Desk", gives: "answer one small question a day that shapes a company's story"),
+        Row(feature: .exchange, level: 13, title: "Stock exchange", gives: "list a company, sell shares in it and open big trades such as hotels, store chains and factories"),
+        Row(feature: .chain, level: 14, title: "Start a chain", gives: "turn a company into a chain of stores under one name"),
+        Row(feature: .ventures, level: 15, title: "Ventures", gives: "start startups, back funds and make group deals"),
+        Row(feature: .franchise, level: 16, title: "Franchise this company", gives: "let other owners open units under your name"),
+        Row(feature: .jointVentures, level: 17, title: "Joint ventures", gives: "start a company together with a friend"),
+        Row(feature: .government, level: 18, title: "Government", gives: "see the treasury, tax rates and the president"),
+        Row(feature: .abroad, level: 19, title: "Expand abroad", gives: "open a subsidiary in another country and open the largest trades such as airlines and oil and gas"),
+        Row(feature: .politics, level: 20, title: "Politics", gives: "donate, stand in elections and shape the law"),
+        Row(feature: .luxury, level: 21, title: "Luxury", gives: "spend your wealth on cars, art, yachts and homes"),
+    ]
+
+    public static func row(_ f: LevelFeature) -> Row {
+        table.first { (r: Row) -> Bool in r.feature == f } ?? Row(feature: f, level: LevelCurve.maxLevel, title: f.rawValue, gives: "")
+    }
+
+    public static func unlockLevel(_ f: LevelFeature) -> Int { row(f).level }
+
+    public static func lockLine(_ f: LevelFeature) -> String { "Unlocks at level \(unlockLevel(f))" }
+
+    /// Saves without the ladder are never gated; features a save already opened under older rules stay open.
+    public static func isUnlocked(_ f: LevelFeature, _ s: GameState) -> Bool {
+        guard s.rest["ldr"] != nil, s.rest[allOpenKey] == nil else { return true }
+        return LevelCurve.level(s) >= unlockLevel(f) || openedBefore(f, s)
+    }
+
+    /// Set on the save of an administrator account: every level gate is open.
+    public static let allOpenKey = "lvlAll"
+
+    public static func allOpen(_ s: GameState) -> Bool { s.rest[allOpenKey] != nil }
+
+    public static func setAllOpen(_ s: inout GameState, _ on: Bool) { s.rest[allOpenKey] = on ? .bool(true) : nil }
+
+    /// The next feature the player will open, lowest level first.
+    public static func nextUnlock(_ s: GameState) -> Row? {
+        table.filter { (r: Row) -> Bool in !isUnlocked(r.feature, s) }.min { (a: Row, b: Row) -> Bool in a.level < b.level }
+    }
+
+    public static func unlocks(atLevel l: Int) -> [Row] { table.filter { (r: Row) -> Bool in r.level == l } }
+
+    public static var highestLevel: Int { table.map { (r: Row) -> Int in r.level }.max() ?? 1 }
+
+    /// A refusal line for engine actions behind a locked feature, nil when it is open.
+    public static func refusal(_ f: LevelFeature, _ s: GameState) -> String? {
+        isUnlocked(f, s) ? nil : row(f).title + " " + lockLine(f).lowercased()
+    }
+
+    static func openedBefore(_ f: LevelFeature, _ s: GameState) -> Bool {
+        let seen: [JSONValue] = s.rest["lvl"]?["seen"].array ?? []
+        if seen.contains(where: { (v: JSONValue) -> Bool in v.string == "level." + f.rawValue }) { return true }
+        let gates: JSONValue = s.rest[Gates.openKey] ?? .null
+        if Gate.allCases.contains(where: { (g: Gate) -> Bool in g.feature == f && !gates[g.rawValue].isNull }) { return true }
+        let opened: JSONValue = s.rest[Unlocks.globalKey] ?? .null
+        return Unlocks.defs.contains { (d: Unlocks.Def) -> Bool in d.feature == f && !opened[d.id].isNull }
+    }
+}
+
+/// Which trades a player can open. The first company is always a starter trade; the biggest trades wait behind a level feature in the table above.
+public enum TradeUnlocks {
+    /// The cheap, simple trades a new player can open on day one. The gym is left out: its hall fit-out and machines cost
+    /// many times the starting savings, so it opens later, as a second company.
+    public static let starterIDs: [String] = ["cafe", "barber", "foodtruck", "cleaning", "handy", "webdev", "photo", "kiosk", "bakery", "boutique", "carclean"]
+    /// Small trades whose opening costs far more than a first start: they open with the second-company level.
+    public static let secondCompanyIDs: Set<String> = ["gym"]
+    /// Reference-currency opening cost from which a trade counts as big, and as one of the largest.
+    public static let bigOpeningCost = 300_000.0
+    public static let largestOpeningCost = 1_500_000.0
+
+    public static func isStarter(_ tradeID: String) -> Bool { starterIDs.contains(tradeID) }
+
+    /// The level feature that opens this trade; nil when it needs none.
+    public static func feature(for t: Trade) -> LevelFeature? {
+        if isStarter(t.id) { return nil }
+        if secondCompanyIDs.contains(t.id) { return .newCompany }
+        if t.openingCost > largestOpeningCost { return .abroad }
+        if t.openingCost >= bigOpeningCost { return .exchange }
+        return nil
+    }
+
+    /// A refusal line when the trade is still locked, nil when it can be opened.
+    public static func refusal(_ t: Trade, _ s: GameState) -> String? {
+        guard let f = feature(for: t), !FeatureUnlocks.isUnlocked(f, s) else { return nil }
+        return t.name + " " + FeatureUnlocks.lockLine(f).lowercased()
+    }
+}
+
 public struct UnlockItem: Equatable, Sendable {
     public var id: String
     public var companyID: Int
@@ -18,8 +147,6 @@ public struct UnlockItem: Equatable, Sendable {
 public enum Unlocks {
     static let key = "unlk"
     static let globalKey = "unlkG"
-    public static let weeksResearch = 8
-    public static let weeksDesk = 6, weeksFocus = 8, weeksRivals = 12
 
     struct Def {
         var id: String
@@ -27,15 +154,17 @@ public enum Unlocks {
         var hidden: Bool
         var silent: Bool
         var target: String
+        var feature: LevelFeature
     }
 
+    /// Per-company pages. Each opens with its level feature; the board also needs someone who could take a seat.
     static let defs: [Def] = [
-        Def(id: "board", title: "Board", hidden: true, silent: false, target: "board"),
-        Def(id: "research", title: "Market research", hidden: false, silent: false, target: "research"),
-        Def(id: "marketplace", title: "Marketplace", hidden: false, silent: true, target: "marketplace"),
-        Def(id: "desk", title: "Desk", hidden: true, silent: true, target: "desk"),
-        Def(id: "focus", title: "Weekly plan", hidden: true, silent: true, target: "focus"),
-        Def(id: "rivals", title: "Rivals", hidden: true, silent: true, target: "rivals"),
+        Def(id: "board", title: "Board", hidden: true, silent: false, target: "board", feature: .management),
+        Def(id: "research", title: "Market research", hidden: false, silent: true, target: "research", feature: .research),
+        Def(id: "marketplace", title: "Marketplace", hidden: false, silent: true, target: "marketplace", feature: .marketplace),
+        Def(id: "desk", title: "Desk", hidden: true, silent: true, target: "desk", feature: .desk),
+        Def(id: "focus", title: "Weekly plan", hidden: true, silent: true, target: "focus", feature: .weeklyPlan),
+        Def(id: "rivals", title: "Rivals", hidden: true, silent: true, target: "rivals", feature: .rivals),
     ]
 
     static func playerHas(_ s: GameState, _ id: String) -> Bool {
@@ -66,23 +195,17 @@ public enum Unlocks {
         }
     }
 
-    static let weeksLadderPast = 13
-
-    static func ladderPast(_ s: GameState) -> Bool { !Gates.ladderOn(s) || Gates.goalDone(s, 7) || s.week >= weeksLadderPast }
-
-    public static func isOpen(_ s: GameState, _ id: String) -> Bool { playerHas(s, id) }
+    /// A page is open once its level is reached or once it was opened before; the board waits for a seat to fill.
+    public static func isOpen(_ s: GameState, _ id: String) -> Bool {
+        if playerHas(s, id) { return true }
+        guard let d = defs.first(where: { (x: Def) -> Bool in x.id == id }), d.id != "board" else { return false }
+        return FeatureUnlocks.isUnlocked(d.feature, s)
+    }
 
     static func check(_ d: Def, _ s: GameState, _ co: Company, context: FinanceContext) -> (ok: Bool, reason: String) {
-        if d.id == "desk" || d.id == "focus" || d.id == "rivals" {
-            let need: Int = d.id == "desk" ? weeksDesk : d.id == "focus" ? weeksFocus : weeksRivals
-            let weeks: Int = weeksTraded(s, co)
-            return (weeks >= need && ladderPast(s), "Unlocks when the company has traded \(need) weeks (\(weeks) so far) and the first steps are done")
-        }
-        let e: RuleEntry = Gates.entry(.unlock(d.id))
-        let ok: Bool = Gates.met(e.rule, s, data: nil, company: co, context: context) || alreadyUses(d.id, s, co)
-        var reason: String = e.text
-        if case .weeksTraded = e.rule { reason += " (\(weeksTraded(s, co)) so far)" }
-        return (ok, reason)
+        guard FeatureUnlocks.isUnlocked(d.feature, s) || alreadyUses(d.id, s, co) else { return (false, FeatureUnlocks.lockLine(d.feature)) }
+        if d.id == "board" { return (boardPossible(s, co), "Opens when a manager or candidate could take a seat") }
+        return (true, "")
     }
 
     static func record(_ s: GameState, _ id: String) -> JSONValue? {

@@ -73,7 +73,7 @@ final class WorldLifeTests: XCTestCase {
         XCTAssertEqual(FriendRace.reward(place: 4, racers: 5), 0)
         XCTAssertEqual(FriendRace.reward(place: 1, racers: 1), 0, "racing alone pays nothing")
         XCTAssertEqual(FriendRace.reward(place: 2, racers: 2), 0)
-        XCTAssertEqual(FriendRace.reward(place: 1, racers: 2), 15)
+        XCTAssertEqual(FriendRace.reward(place: 1, racers: 2), 3, "the top prize in gold at the one gold rate")
         XCTAssertEqual(FriendRace.growth(base: 1000, now: 1100), 0.1, accuracy: 1e-9)
         XCTAssertEqual(FriendRace.growth(base: 0, now: 5), 0)
     }

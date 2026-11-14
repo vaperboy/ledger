@@ -42,6 +42,8 @@ public enum EquipmentMarket {
         public var rating: Double
         public var reviews: Int
         public var reliability: Double
+        /// The picture this model name belongs to (see VehicleCatalog); a key starting with vehicle. has no picture yet.
+        public var art: String = ""
         public var name: String { brand + " " + model }
     }
 
@@ -205,11 +207,13 @@ public enum EquipmentMarket {
         for i in 0..<2 {
             let brand = makerName(vehicleMakerCategory(m), cc, &r, &used, countries)
             let rating = jsRound(clamp(3.6 + (r.next() - 0.35) * 1.5 + Double(i) * 0.1, 2.7, 4.9) * 10) / 10
-            let model = words[Int(r.next() * 5)] + " " + String(Int(r.next() * 8) + 2) + "00"
+            let randomModel = words[Int(r.next() * 5)] + " " + String(Int(r.next() * 8) + 2) + "00"
+            let fixed = VehicleCatalog.variant(modelID: m, index: i)
+            let model = fixed?.model ?? randomModel
             let f = jsRound((0.92 + r.next() * 0.2 + (rating - 3.6) * 0.08) * 100) / 100
             let reviews = Int(saturating: jsRound(40 + r.next() * r.next() * 1500))
             list.append(VehicleOffer(modelID: m, index: i, brand: brand, model: model, modelName: modelName, priceFactor: f, rating: rating, reviews: reviews,
-                                     reliability: jsRound((1.4 - 0.3 * (rating - 2.6)) * 100) / 100))
+                                     reliability: jsRound((1.4 - 0.3 * (rating - 2.6)) * 100) / 100, art: fixed?.art ?? ""))
         }
         return list
     }
@@ -433,11 +437,47 @@ public enum EquipmentMarket {
         loan.termMonths = months
         loan.companyID = companyID
         loan.startWeek = s.week
-        loan.isGuaranteed = false
+        loan.isGuaranteed = LoanChecks.needsGuarantee(s, companyID: companyID, amount: amount)
         loan.monthlyPayment = Loans.annuity(principal: amount, yearlyRate: s.economy.policyRate + loan.margin, months: Double(months))
         s.loans.append(loan)
         return loan.id
     }
+
+    /// Whether the bank finances 80% of `price`; the equipment itself secures half its price.
+    public static func financeApproved(_ s: GameState, companyID: Int, price: Double, data: GameData) -> Bool {
+        LoanChecks.approves(s, companyID: companyID, amount: price * 0.8, security: price * 0.5, data: data)
+    }
+
+    /// Remembers which loan financed this equipment, so selling it repays the loan.
+    static func linkLoan(_ s: inout GameState, companyIndex i: Int, equipmentID: String, loanID: Int) {
+        guard loanID != 0 else { return }
+        var eq = s.companies[i].value("eq")
+        guard !eq[equipmentID].isNull else { return }
+        var ids = eq[equipmentID]["fl"].array
+        ids.append(.number(Double(loanID)))
+        eq[equipmentID]["fl"] = .array(ids)
+        s.companies[i].set("eq", eq)
+    }
+
+    /// Repays `share` of every loan that financed this equipment from the company account, so a sale never keeps borrowed money.
+    @discardableResult
+    static func repayLinkedLoans(_ s: inout GameState, companyID: Int, loanIDs: [Int], share: Double) -> Double {
+        var paid = 0.0
+        for id in loanIDs {
+            guard let li = s.loans.firstIndex(where: { $0.id == id }) else { continue }
+            let amount = jsRound(s.loans[li].balance * min(1, max(0, share)))
+            guard amount > 0 else { continue }
+            Payments.companyPays(&s, companyID: companyID, amount: amount, category: nil, label: "Equipment loan settled")
+            paid += amount
+            guard let lj = s.loans.firstIndex(where: { $0.id == id }) else { continue }
+            s.loans[lj].balance -= amount
+            s.loans[lj].monthlyPayment *= max(0, 1 - share)
+            if s.loans[lj].balance < 1 { s.loans.remove(at: lj) }
+        }
+        return paid
+    }
+
+    static func linkedLoanIDs(_ record: JSONValue) -> [Int] { record["fl"].array.map { $0.int }.filter { $0 != 0 } }
 
     @discardableResult
     public static func buyNew(_ s: inout GameState, companyID: Int, equipmentID: String, offer: Offer, quantity: Int, payment: Payment, prepaid: Bool = false, dealWeek: Int? = nil, data: GameData) -> Result {
@@ -453,6 +493,7 @@ public enum EquipmentMarket {
         var pay = payment
         if !prepaid, one || (pay == .lease && !canLease(e, tradeID: c.bd.id, unitPrice: unit, company: c.co, c.w, tables: c.tables)) { pay = .cash }
         if !prepaid, pay == .finance && !canFinance(e, tradeID: c.bd.id, total: total, company: c.co, c.w, tables: c.tables) { pay = .cash }
+        if !prepaid, pay == .finance && !financeApproved(s, companyID: companyID, price: total, data: data) { pay = .cash }
         let brand = Brand(name: offer.name, cls: offer.cls, reliability: offer.reliability, performance: offer.performance, rating: offer.rating)
         if pay == .lease {
             var lease = s.companies[i].value("lease")
@@ -473,16 +514,18 @@ public enum EquipmentMarket {
             s.companies[i].set("eq", rec)
             return .ok
         }
+        var loanID = 0
         if pay == .finance {
             let down = total * 0.2
             if !prepaid && c.co.cash < down { return .notEnoughCash }
             if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: down, category: nil, label: "Down payment: \(e.name)") }
-            openLoan(&s, companyID: companyID, name: "Equipment loan: \(e.name)", amount: total - down, months: 48, extraMargin: 0.02)
+            loanID = openLoan(&s, companyID: companyID, name: "Equipment loan: \(e.name)", amount: total - down, months: 48, extraMargin: 0.02)
         } else {
             if !prepaid && c.co.cash < total { return .notEnoughCash }
             if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: total, category: nil, label: "\(e.name) x\(q)") }
         }
         CompanySetup.addEquipment(&s, companyIndex: i, e, tradeID: c.bd.id, quantity: Double(q), totalPrice: total, brand: brand, used: nil, data: data)
+        linkLoan(&s, companyIndex: i, equipmentID: e.id, loanID: loanID)
         if one {
             var eq = s.companies[i].value("eq")
             eq[e.id]["soft"] = .string(k == "svc" ? "svc" : (mode == .upfront ? "upfront" : "once"))
@@ -497,17 +540,20 @@ public enum EquipmentMarket {
     @discardableResult
     public static func buyUsed(_ s: inout GameState, companyID: Int, equipmentID: String, listing L: UsedOffer, payment: Payment, prepaid: Bool = false, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }) else { return .notPossible }
-        if e.vehicleModels != nil { return buyUsedVehicle(&s, companyIndex: i, e, L, payment: payment, prepaid: prepaid, data: data) }
-        if payment == .finance {
+        let pay: Payment = payment == .finance && !prepaid && !financeApproved(s, companyID: companyID, price: L.price, data: data) ? .cash : payment
+        if e.vehicleModels != nil { return buyUsedVehicle(&s, companyIndex: i, e, L, payment: pay, prepaid: prepaid, data: data) }
+        var loanID = 0
+        if pay == .finance {
             if !prepaid && c.co.cash < L.price * 0.2 { return .notEnoughCash }
             if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: L.price * 0.2, category: nil, label: "Down payment: used \(L.name)") }
-            openLoan(&s, companyID: companyID, name: "Equipment loan: \(L.name)", amount: L.price * 0.8, months: 36, extraMargin: 0.025)
+            loanID = openLoan(&s, companyID: companyID, name: "Equipment loan: \(L.name)", amount: L.price * 0.8, months: 36, extraMargin: 0.025)
         } else {
             if !prepaid && c.co.cash < L.price { return .notEnoughCash }
             if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: L.price, category: nil, label: "Used \(L.name) (\(L.year))") }
         }
         let brand = Brand(name: L.name, cls: L.cls, reliability: L.reliability, performance: L.performance, rating: L.rating)
         CompanySetup.addEquipment(&s, companyIndex: i, e, tradeID: c.bd.id, quantity: 1, totalPrice: L.price, brand: brand, used: L, data: data)
+        linkLoan(&s, companyIndex: i, equipmentID: e.id, loanID: loanID)
         markTaken(&s, i, L)
         return .ok
     }
@@ -538,9 +584,10 @@ public enum EquipmentMarket {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }),
               let vm = c.tables.vehicles[offer.modelID] else { return .notPossible }
         let base = vehiclePrice(vm, factor: offer.priceFactor, c.w, dealWeek: dealWeek)
-        let mode = payment == .lease ? "lease" : payment == .finance ? "fin" : "own"
-        if !prepaid && payment == .finance && c.co.cash < base * 0.2 { return .notEnoughCash }
-        if !prepaid && payment == .cash && c.co.cash < base { return .notEnoughCash }
+        let financeOK = prepaid || payment != .finance || financeApproved(s, companyID: companyID, price: base, data: data)
+        let mode = payment == .lease ? "lease" : payment == .finance && financeOK ? "fin" : "own"
+        if !prepaid && mode == "fin" && c.co.cash < base * 0.2 { return .notEnoughCash }
+        if !prepaid && mode == "own" && c.co.cash < base { return .notEnoughCash }
         return CompanySetup.addVehicle(&s, companyIndex: i, e, model: offer.modelID, modelName: vm.name, price: base, mode: mode, brand: Brand(name: offer.name, cls: 1, reliability: offer.reliability, performance: 1, rating: offer.rating), prepaid: prepaid, data: data) ? .ok : .notEnoughCash
     }
 
@@ -554,6 +601,7 @@ public enum EquipmentMarket {
         let r = eq[equipmentID]
         let n = max(1, r["n"].double)
         let bvU = r["bv"].double / n, cU = r["cost"].double / n
+        let financed = linkedLoanIDs(r)
         let u = list[at]
         let val = jsRound(bvU * 0.7 * (0.6 + 0.4 * seen(u)))
         list.remove(at: at)
@@ -567,6 +615,7 @@ public enum EquipmentMarket {
         if r["n"].double - 1 > 0 { EquipmentUnits.syncCondition(&s, companyIndex: i, equipmentID: equipmentID) }
         if bvU > val { Payments.book(&s, companyID: companyID, category: "loss", amount: bvU - val) }
         if val > 0 { Payments.companyReceives(&s, companyID: companyID, amount: val, category: nil, label: "Sold used \(equipmentID)") }
+        repayLinkedLoans(&s, companyID: companyID, loanIDs: financed, share: 1 / n)
         return val
     }
 
@@ -584,11 +633,13 @@ public enum EquipmentMarket {
         guard !eq[equipmentID].isNull, equipmentID != "fit" else { return 0 }
         let bookValue = eq[equipmentID]["bv"].double
         let v = jsRound(bookValue * 0.7)
+        let financed = linkedLoanIDs(eq[equipmentID])
         eq = .object(eq.object.filter { $0.key != equipmentID })
         s.companies[i].set("eq", eq)
         s.companies[i].set("units", EquipmentUnits.removing(s.companies[i].value("units"), equipmentID))
         if bookValue > v { Payments.book(&s, companyID: companyID, category: "loss", amount: bookValue - v) }
         Payments.companyReceives(&s, companyID: companyID, amount: v, category: nil, label: "Sold equipment")
+        repayLinkedLoans(&s, companyID: companyID, loanIDs: financed, share: 1)
         return v
     }
 

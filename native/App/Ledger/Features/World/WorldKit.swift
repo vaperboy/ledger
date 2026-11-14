@@ -73,6 +73,13 @@ struct WorldRead {
     func shown(_ name: String, account acct: String) -> String { isMe(acct) ? "You" : name }
 }
 
+extension GameStore {
+    /// The government world is decoded from the save on each read, so screens share one copy per game change.
+    var cachedWorldRead: WorldRead? {
+        memo("worldRead") { (g: GameEngine) -> WorldRead? in g.worldRead() } ?? nil
+    }
+}
+
 extension GameEngine {
     func worldRead() -> WorldRead? {
         let w: GovernmentWorld = GovernmentBridge.world(state)

@@ -76,7 +76,14 @@ final class DecisionsTests: XCTestCase {
 
     func testSellingACompany() throws {
         var (e, id) = try engineWithCompany(weeks: 10)
-        e.update { s, _, _ in XCTAssertTrue(CompanySale.startListing(&s, companyID: id)) }
+        // Buyers come at a weekly chance that is low for a loss-making shop, so the shop is given a profitable year behind it.
+        e.update { s, _, _ in
+            if let i = s.companyIndex(id) {
+                s.companies[i].reputation = 70
+                s.companies[i].monthlyHistory = (0..<12).map { MonthRecord(monthIndex: $0, revenue: 400_000, profit: 90_000, cash: 0) }
+            }
+            XCTAssertTrue(CompanySale.startListing(&s, companyID: id))
+        }
         var offer: CompanySale.Offer? = nil
         for _ in 0..<(40 * 7) where offer == nil {
             e.nextDay()

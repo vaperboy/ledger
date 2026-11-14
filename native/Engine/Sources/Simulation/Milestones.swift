@@ -17,14 +17,17 @@ public enum Milestones {
     static func threshold(_ i: Int, _ cur: Currency) -> Double { cur.scaledPrice([1.0, 2.5, 5.0][i % 3] * 100_000 * pow(10, Double(i / 3))) }
 
     static func check(_ s: inout GameState, data: GameData, currency cur: Currency, weekClosed: Bool) {
-        let nw = Valuation.netWorth(s, trades: data.catalog, forGoals: true).total
         let firstCheck = s.rest["miles"] == nil && s.rest["start"] != nil
+        // The own savings are no achievement: on the first look every step they reach counts as already passed. The grant is never counted.
+        let startMoney: Double = firstCheck ? (s.rest["start"]?["own"].double ?? 0) : 0
+        let nw = Valuation.netWorth(s, trades: data.catalog, forGoals: true).total
+        let reach = max(nw, startMoney)
         var m = s.rest["miles"] ?? .object(["w": .number(nw)])
         let today = s.week * 7 + s.day
         var reached = m["r"].array ?? []
         var top = -1
         var i = reached.count
-        while i < 80, threshold(i, cur) <= nw { reached.append(.number(Double(today))); top = i; i += 1 }
+        while i < 80, threshold(i, cur) <= reach { reached.append(.number(Double(today))); top = i; i += 1 }
         if top >= 0 {
             m["r"] = .array(reached)
             if !firstCheck { Celebrations.add(&s, kind: "milestone", title: "Net worth passed \(cur.display(threshold(top, cur)))", detail: "Reached on day \(today + 1) of your game", art: "milestone.networth", tier: 2) }

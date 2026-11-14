@@ -7,38 +7,42 @@ import Simulation
 
 struct NewPlayerSetup: View {
     enum Step { case country, trade, detail, name, options }
-    enum Field { case company, player }
+    enum Field { case company }
 
     var onClose: () -> Void
-    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ channel: SalesChannel, _ difficulty: Difficulty) -> Void
+    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ channel: SalesChannel) -> Void
 
     @State private var step: Step = .country
+    @State private var avatarDone = false
     @State private var countryCode = ""
     @State private var tradeID = ""
     @State private var companyName = ""
-    @State private var playerName = ""
     @State private var suggested = ""
-    @State private var difficulty: Difficulty = .classic
     @State private var channel: SalesChannel = .consumers
     @State private var allTrades: [StarterTrade] = []
     @State private var loading = false
-    @State private var showAll = false
     @State private var picked: StarterTrade?
     @State private var startCash: Double?
     @State private var countryQuery = ""
     @State private var countryPage = 0
     @State private var tradePage = 0
     @FocusState private var field: Field?
-    @Environment(OnlineSession.self) private var online
-    @StateObject private var checker = UsernameChecker()
     private static let countryRows = 6
     private static let tradeRows = 5
-    private static let sizeOrder: [Country] = GameEngine.countriesBySize()
+    /// Biggest countries first, with the country of the phone's region on top.
+    private static let sizeOrder: [Country] = {
+        let all: [Country] = GameEngine.countriesBySize()
+        let region: String = Locale.current.region?.identifier ?? ""
+        guard let home = all.first(where: { (c: Country) -> Bool in c.code == region }) else { return all }
+        return [home] + all.filter { (c: Country) -> Bool in c.code != home.code }
+    }()
     private var countries: [Country] { Self.sizeOrder }
+    private var deviceRegion: String { Locale.current.region?.identifier ?? "" }
+    /// Only one way to sell: the last step is skipped.
+    private var asksChannel: Bool { SalesChannel.options(tradeID: tradeID).count > 1 }
 
     private var country: Country? { countries.first { $0.code == countryCode } }
     private var currency: Currency? { country.map { Currency(country: $0, rates: ExchangeRates()) } }
-    private var starters: [StarterTrade] { GameEngine.starterTradeIDs.compactMap { id in allTrades.first { $0.id == id } } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -56,11 +60,13 @@ struct NewPlayerSetup: View {
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
         .keyboardDismissable()
+        .overlay { if !avatarDone && !ProfileLocal.shared.hasAvatar { AvatarSetupStep(onDone: { avatarDone = true }, onBack: onClose) } }
     }
 
     private var header: some View {
         let title: String
         let number: Int
+        let total: Int = tradeID.isEmpty || asksChannel ? 5 : 4
         switch step {
         case .country: title = "Where do you live?"; number = 1
         case .trade: title = "What do you open?"; number = 2
@@ -68,14 +74,14 @@ struct NewPlayerSetup: View {
         case .name: title = "Name your company"; number = 4
         case .options: title = "How you play"; number = 5
         }
-        return AppHeader(title: title, subtitle: "Step \(number) of 5", onBack: { goBack() })
+        return AppHeader(title: title, subtitle: "Step \(number) of \(total)", onBack: { goBack() })
             .padding(.top, 24)
     }
 
     private func goBack() {
         switch step {
         case .country: onClose()
-        case .trade: showAll = false; step = .country
+        case .trade: step = .country
         case .detail: picked = nil; step = .trade
         case .name: field = nil; step = .detail
         case .options: step = .name
@@ -99,6 +105,7 @@ struct NewPlayerSetup: View {
                         HStack(spacing: Theme.Space.m) {
                             Text(c.flag).font(.title2).frame(width: 32)
                             Text(c.name).textStyle(.headline)
+                            if c.code == deviceRegion { Text("Your region").textStyle(.caption, tint: Theme.inkFaint) }
                             Spacer(minLength: Theme.Space.s)
                             LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
                         }
@@ -130,17 +137,14 @@ struct NewPlayerSetup: View {
         Haptics.choose()
         countryCode = c.code
         allTrades = []
-        showAll = false
         tradePage = 0
         step = .trade
     }
 
     private var tradeStep: some View {
-        let rest: [StarterTrade] = allTrades.filter { !GameEngine.starterTradeIDs.contains($0.id) }
-        let shown: [StarterTrade] = showAll ? starters + rest : starters
-        let pages: Int = max(1, (shown.count + Self.tradeRows - 1) / Self.tradeRows)
+        let pages: Int = max(1, (allTrades.count + Self.tradeRows - 1) / Self.tradeRows)
         let page: Int = min(tradePage, pages - 1)
-        let slice: [StarterTrade] = Array(shown.dropFirst(page * Self.tradeRows).prefix(Self.tradeRows))
+        let slice: [StarterTrade] = Array(allTrades.dropFirst(page * Self.tradeRows).prefix(Self.tradeRows))
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             if loading && allTrades.isEmpty { LoadingState(text: "Pricing the trades", rows: 5) }
             if !allTrades.isEmpty {
@@ -157,9 +161,8 @@ struct NewPlayerSetup: View {
                 }
                 pager(page: $tradePage, pages: pages)
             }
-            if allTrades.count > starters.count {
-                Button(showAll ? "Show fewer" : "All \(allTrades.count) trades") { Haptics.tap(); showAll.toggle(); tradePage = 0 }
-                    .buttonStyle(TertiaryButtonStyle(fullWidth: true))
+            if !allTrades.isEmpty {
+                Text("Bigger trades open as you level up.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
         .task(id: countryCode) { await loadTrades() }
@@ -169,7 +172,7 @@ struct NewPlayerSetup: View {
         guard !countryCode.isEmpty, allTrades.isEmpty else { return }
         loading = true
         let code: String = countryCode
-        let list: [StarterTrade] = await Task.detached { GameEngine.startableTrades(countryCode: code, all: true) }.value
+        let list: [StarterTrade] = await Task.detached { GameEngine.startableTrades(countryCode: code) }.value
         if code == countryCode { allTrades = list }
         loading = false
     }
@@ -215,6 +218,7 @@ struct NewPlayerSetup: View {
                 }
                 Button("Open \(t.name)") { Haptics.tap(); open(t) }
                     .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .disabled(startCash == nil)
                     .accessibilityIdentifier("trade-open")
                     .task(id: t.id) {
                         let code: String = countryCode
@@ -240,58 +244,31 @@ struct NewPlayerSetup: View {
             TextField("Company name", text: $companyName)
                 .textInputAutocapitalization(.words)
                 .focused($field, equals: .company)
-                .submitLabel(.next)
-                .onSubmit { field = .player }
+                .submitLabel(.done)
+                .onSubmit { field = nil }
                 .textStyle(.figure)
                 .padding(.vertical, Theme.Space.s)
                 .overlay(alignment: .bottom) { Hairline() }
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                TextField("Username (optional)", text: $playerName)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .focused($field, equals: .player)
-                    .submitLabel(.done)
-                    .onSubmit { field = nil }
-                    .textStyle(.figure)
-                    .padding(.vertical, Theme.Space.s)
-                    .overlay(alignment: .bottom) { Hairline() }
-                    .onChange(of: playerName) { _, new in checker.check(new, current: ProfileLocal.shared.name, online: online) }
-                    .accessibilityIdentifier("setup-username")
-                UsernameStatusLine(checker: checker)
-            }
-            Button("Next") { Haptics.tap(); field = nil; step = .options }
+            Button(asksChannel ? "Next" : "Start") { Haptics.tap(); field = nil; if asksChannel { step = .options } else { start() } }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                .disabled(!playerName.isEmpty && !checker.canUse && checker.verdict != .unchanged)
                 .accessibilityIdentifier("setup-next")
         }
-        .onAppear { field = .company; if playerName.isEmpty { playerName = ProfileLocal.shared.name } }
+        .onAppear { field = .company }
     }
 
     private var optionsStep: some View {
         VStack(alignment: .leading, spacing: 16) {
             SalesChannelPicker(tradeID: tradeID, channel: $channel)
-            difficultyRow
             Button("Start") { Haptics.tap(); start() }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                 .accessibilityIdentifier("setup-start")
         }
     }
 
-    private var difficultyRow: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Text("Difficulty").textStyle(.label, tint: Theme.inkFaint)
-            Picker("Difficulty", selection: $difficulty) {
-                ForEach(Difficulty.allCases) { (d: Difficulty) in Text(d.name).tag(d) }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("setup-difficulty")
-            Text(difficulty.blurb).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     private func start() {
         let n: String = companyName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let player: String = ProfileRules.clean(playerName)
-        if !player.isEmpty, ProfileLocal.shared.name.isEmpty, ProfileRules.problem(with: player) == nil { ProfileLocal.shared.setName(player) }
-        begin(countryCode, tradeID, n.isEmpty ? suggested : n, player, channel, difficulty)
+        let player: String = ProfileLocal.shared.name
+        let way: SalesChannel = SalesChannel.options(tradeID: tradeID).first ?? .consumers
+        begin(countryCode, tradeID, n.isEmpty ? suggested : n, player, asksChannel ? channel : way)
     }
 }

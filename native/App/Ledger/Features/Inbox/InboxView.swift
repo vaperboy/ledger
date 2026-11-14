@@ -35,6 +35,7 @@ struct InboxView: View {
     private func filtered(_ e: GameEngine) -> [Message] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         return e.state.inbox.filter { m in
+            if !store.showsInInbox(m) { return false }
             if let c = companyFilter, m.companyID != c { return false }
             if q.isEmpty { return true }
             let co = m.companyID != 0 ? (e.state.company(m.companyID)?.name ?? "") : ""
@@ -62,60 +63,32 @@ struct InboxView: View {
         return (out, hidden)
     }
 
-    private func ask(_ message: Message, _ index: Int, inline: Bool = false) {
+    private func ask(_ message: Message, _ index: Int) {
         guard let e = store.engine, message.options.indices.contains(index) else { return }
-        let opt = message.options[index]
-        let label = e.displayText(opt["l"].string, companyID: message.companyID)
-        if message.actionID == PersonalFinance.dueAction {
-            pending = PendingAction(title: label, message: e.displayText(opt["d"].string, companyID: message.companyID), button: label, alwaysAsk: true) {
-                answer(message, index, label, inline: inline)
-            }
+        guard message.actionID == PersonalFinance.dueAction else {
+            DecisionAnswering.choose(store, e, message, index, ask: { (a: PendingAction) in pending = a }, done: { detailID = nil })
             return
         }
-        let need: DecisionConfirmation = DecisionConfirm.confirmation(for: message, option: index)
-        guard need.needsQuestion else { answer(message, index, label, inline: inline); return }
-        var lines: [String] = []
-        let d = e.displayText(opt["d"].string, companyID: message.companyID)
-        if !d.isEmpty { lines.append(d) }
-        lines += MessageCard.preview(e, message, opt)
-        if index == 0 || message.options.count == 1 { lines += e.messageFacts(message) }
-        let company: Company? = message.companyID != 0 ? e.state.company(message.companyID) : nil
-        let where_: String = company?.name ?? ""
-        let fallback: String = e.displayText(message.title, companyID: message.companyID)
-        let title: String = label + (where_.isEmpty ? "" : " · " + where_)
-        let body: String = lines.isEmpty ? fallback : lines.joined(separator: "\n")
-        var action = MessageCard.answerConfirm(title: title, message: body, button: label, need: need) { answer(message, index, label, inline: inline) }
-        if !need.irreversible, let amount = need.amount {
-            action.amount = amount
-            action.currency = company.map { e.currency(for: $0) } ?? e.homeCurrency
+        // A tax bill: the answer is how to pay it, so the question says which account it comes from.
+        let opt: JSONValue = message.options[index]
+        let label: String = e.displayText(opt["l"].string, companyID: message.companyID)
+        pending = PendingAction(title: label, message: e.displayText(opt["d"].string, companyID: message.companyID), button: label, alwaysAsk: true) {
+            payDue(message, index, label)
         }
-        if ConfirmThreshold.skips(action) { answer(message, index, label, inline: inline); return }
-        pending = action
     }
 
-    private func answer(_ message: Message, _ index: Int, _ label: String, inline: Bool = false) {
-        var effects: [String] = []
-        if let e = store.engine, message.options.indices.contains(index) { effects = MessageCard.preview(e, message, message.options[index]) }
-        if effects.isEmpty, let e = store.engine, message.options.indices.contains(index) {
-            let d: String = e.displayText(message.options[index]["d"].string, companyID: message.companyID)
-            if !d.isEmpty { effects = [d] }
-        }
-        let ok = store.act { $0.answer(messageID: message.id, option: index) } ?? false
-        if ok { Haptics.option() }
+    /// Pays a tax bill the chosen way; a way that cannot cover it leaves the bill open.
+    private func payDue(_ message: Message, _ index: Int, _ label: String) {
+        let result: DecisionAnswer? = store.act { (g: inout GameEngine) -> DecisionAnswer in g.answerDecision(messageID: message.id, option: index) }
+        let ok: Bool = result?.applied ?? false
         detailID = nil
         if ok {
-            store.announceAnswer(label: label, effects: effects, ok: true, messageTitle: message.title, companyID: message.companyID)
-        } else if message.actionID == PersonalFinance.dueAction {
+            Haptics.option()
+            store.announceDecision(label: label, answer: result)
+        } else {
             Haptics.warning()
             store.tell("Not applied", "That way of paying could not cover the bill, so it is still open. Choose another way.", tone: "warn")
-        } else {
-            store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: message.title, companyID: message.companyID)
         }
-    }
-
-    private func openOnInformation() {
-        guard store.tutorialActive, detailID == nil else { return }
-        if store.tutorialStep == .readInbox, (store.engine?.tutorialInboxGuide ?? []).isEmpty { store.tutorialAdvance(from: .readInbox) }
     }
 
     private func takeRequest() {
@@ -142,10 +115,7 @@ struct InboxView: View {
                 page(e)
             }
         }
-        .onAppear {
-            takeRequest()
-            openOnInformation()
-        }
+        .onAppear { takeRequest() }
         .onChange(of: store.appRequest) { _, _ in takeRequest() }
         .onChange(of: query) { _, _ in limit = Self.page }
         .onChange(of: store.depth(store.tab)) { _, _ in detailID = nil }
@@ -204,12 +174,9 @@ struct InboxView: View {
 
     private func mailRow(_ m: Message, week: Int, inline: Bool, guide: [Int] = []) -> some View {
         let pinnedNow: Bool = pinned.contains(m.id)
-        let answer: ((Int) -> Void)? = inline && m.isOwnerAddressed ? { (i: Int) in ask(m, i, inline: true) } : nil
+        let answer: ((Int) -> Void)? = inline && m.isOwnerAddressed ? { (i: Int) in ask(m, i) } : nil
         let marked: Bool = guide.contains(m.id)
-        return InboxMailRow(message: m, week: week, pinned: pinnedNow, openDetail: {
-            detailID = m.id
-            if marked { store.tutorialAdvance(from: .readInbox) }
-        }, answer: answer, guided: marked)
+        return InboxMailRow(message: m, week: week, pinned: pinnedNow, openDetail: { detailID = m.id }, answer: answer, guided: marked)
             .coachAnchor(.inboxGuided, enabled: marked && m.id == guide.first)
             .id(m.id)
             .mailRowStyle()
@@ -357,12 +324,6 @@ struct MessageCard: View {
 
     private func text(_ s: String) -> String { (store.engine?.displayText(s, companyID: message.companyID) ?? s).tidyMoney }
 
-    static func preview(_ e: GameEngine, _ message: Message, _ option: JSONValue) -> [String] {
-        let cur = message.companyID != 0 ? (e.state.company(message.companyID).map { e.currency(for: $0) } ?? e.homeCurrency) : e.homeCurrency
-        return EffectPreview.lines(option["fx"], currency: cur)
-    }
-    private func preview(_ option: JSONValue) -> [String] { store.engine.map { Self.preview($0, message, option) } ?? [] }
-
     static func answerConfirm(title: String, message: String, button: String, need: DecisionConfirmation, run: @escaping () -> Void) -> PendingAction {
         let words: String = button.lowercased()
         let hold: Bool = need.irreversible && ["sell", "fire", "dismiss", "sack", "let go", "wind up", "terminate"].contains { words.contains($0) }
@@ -454,7 +415,7 @@ struct MessageCard: View {
                     Text("Handled by " + message.handledBy).textStyle(.caption, tint: P.accent, weight: .medium)
                 }
             }
-            if let link { QuietButton(title: link.title) { link.run() } }
+            if let link, !open || message.options.isEmpty { QuietButton(title: link.title) { link.run() } }
             if open { decision }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -491,35 +452,12 @@ struct MessageCard: View {
                 Text(left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week").popupText(.risk, variant: left <= 1 ? .destructive : .standard)
             }
             .accessibilityElement(children: .combine)
-            if let leave = store.engine?.expiryOutcome(message) {
-                Text(leave).popupText(.caption)
-            }
         }
-        let opts = Array(message.options.enumerated())
-        if opts.isEmpty {
+        if message.options.isEmpty {
             Text("Dealt with in the company.").popupText(.caption)
+        } else {
+            DecisionChoices(labels: message.options.map { (o: JSONValue) -> String in text(o["l"].string) },
+                            identifier: { (_: Int) -> String in "inbox-option" }, pick: { (idx: Int) in ask(message, idx) })
         }
-        VStack(spacing: Theme.Space.s) {
-            ForEach(opts, id: \.offset) { idx, opt in
-                optionButton(idx, opt)
-            }
-        }
-    }
-
-    private func optionButton(_ idx: Int, _ opt: JSONValue) -> some View {
-        let effect: String = preview(opt).joined(separator: ". ")
-        let detail: String = effect.isEmpty ? text(opt["d"].string) : effect + "."
-        return Button { ask(message, idx) } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(text(opt["l"].string)).popupText(.button)
-                if !detail.isEmpty { Text(detail).popupText(.caption).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true) }
-            }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .padding(.vertical, Theme.Space.s).padding(.leading, Theme.Space.m).padding(.trailing, Theme.Space.xxl)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(idx == 0 ? P.accent.opacity(0.7) : Color.clear, lineWidth: 1))
-            .overlay(alignment: .trailing) { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).padding(.trailing, Theme.Space.m) }
-            .contentShape(Rectangle())
-        }.buttonStyle(PressableStyle()).accessibilityIdentifier("inbox-option")
     }
 }

@@ -20,6 +20,10 @@ struct CompanyRouteDestination: View {
                 GroupSupplierDirectory()
                     .ledgerBackground()
                     .appScreen(title: "Suppliers", subtitle: "Every supplier your companies use")
+            case .supplier(let id, let subject):
+                SupplierProfileScreen(companyID: id, subject: SupplierSubject(id: subject) ?? .line(subject))
+            case .supplierOwner(let ref):
+                SupplierOwnerProfile(ref: ref)
             }
         }
         .zoomDestination(route)
@@ -186,10 +190,11 @@ struct CompanySwitcherBar: View {
             .accessibilityLabel("Switch company")
             .accessibilityValue(context)
             .padding(.horizontal, Theme.Space.page)
+            .frame(maxWidth: .infinity)
             .background {
                 ZStack {
-                    if P != .game { P.ground.ignoresSafeArea(edges: .top) }
-                    if let b = LookKit.companyBackdrop(e, id) { HeaderBackdropFill(reward: b).ignoresSafeArea(edges: .top) }
+                    if P != .game { P.ground.ignoresSafeArea(edges: [.top, .horizontal]) }
+                    if let b = LookKit.companyBackdrop(e, id) { HeaderBackdropFill(reward: b).ignoresSafeArea(edges: [.top, .horizontal]) }
                 }
             }
         }

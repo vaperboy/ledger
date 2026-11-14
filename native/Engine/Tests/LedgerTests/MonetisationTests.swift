@@ -49,7 +49,6 @@ final class EntitlementGatesTests: XCTestCase {
         for f in ["tradeAboveCostLine", "expansionAbroad", "groupLayer", "ventures", "luxuryGivingFootball", "sandboxMode"] {
             XCTAssertNil(LockedFeature(rawValue: f), f)
         }
-        XCTAssertNoThrow(try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, difficulty: .sandbox))
     }
 }
 
@@ -119,18 +118,18 @@ final class AdCapsTests: XCTestCase {
     func testNewSaveKeepsTheRealTimeMarksAndClearsTheWeekOnes() {
         var l = AdLedger()
         _ = AdPolicy.grantPass(.free, now: t0, &l)
-        l.lastInterstitialWeek = 9; l.lastInterstitialAt = t0; l.lastReportWeek = 9; l.lastRewardedGrantWeek = 9; l.doubledGrantWeek = 9; l.secondChanceUsed = true
+        l.lastInterstitialWeek = 9; l.lastInterstitialAt = t0; l.lastReportWeek = 9; l.lastRewardedGrantWeek = 9; l.doubledGrantWeek = 9
         l.beginSession(now: t0); l.doublesToday = 2
         l.resetForNewSave()
         XCTAssertEqual(l.lastPassAt, t0); XCTAssertEqual(l.lastInterstitialAt, t0); XCTAssertEqual(l.doublesToday, 2); XCTAssertEqual(l.sessionsToday, 1)
-        XCTAssertNil(l.lastInterstitialWeek); XCTAssertNil(l.lastReportWeek); XCTAssertNil(l.lastRewardedGrantWeek); XCTAssertNil(l.doubledGrantWeek); XCTAssertFalse(l.secondChanceUsed)
+        XCTAssertNil(l.lastInterstitialWeek); XCTAssertNil(l.lastReportWeek); XCTAssertNil(l.lastRewardedGrantWeek); XCTAssertNil(l.doubledGrantWeek)
         XCTAssertFalse(AdPolicy.canOfferPass(entitlements: .free, now: t0.addingTimeInterval(3600), l), "Retry or a new game does not re-offer the pass")
     }
 
     func testOldSavedLedgerStillDecodes() throws {
         let old = #"{"lastInterstitialWeek":6,"lastPassAt":1800000000}"#
         let l = try JSONDecoder().decode(AdLedger.self, from: Data(old.utf8))
-        XCTAssertEqual(l.lastInterstitialWeek, 6); XCTAssertEqual(l.sessionsToday, 0); XCTAssertFalse(l.secondChanceUsed)
+        XCTAssertEqual(l.lastInterstitialWeek, 6); XCTAssertEqual(l.sessionsToday, 0)
         let again = try JSONDecoder().decode(AdLedger.self, from: JSONEncoder().encode(l))
         XCTAssertEqual(again, l)
     }
@@ -225,34 +224,5 @@ final class AdRewardsTests: XCTestCase {
             XCTAssertEqual(AdRewards.grantCash(s, doubledThrough: s.week), 0, "a doubled grant is not doubled again")
             XCTAssertEqual(AdRewards.payDouble(&s, currency: cur, doubledThrough: s.week), 0)
         }
-    }
-
-    func testSecondChanceReopensOnceWithABalancedStake() throws {
-        var e = try ChainsTests.engine()
-        _ = ChainsTests.start(&e, "cafe")
-        let cur = e.homeCurrency
-        e.update { s, _, _ in
-            XCTAssertFalse(AdRewards.canSecondChance(s, currency: cur), "only after the books closed")
-            s.week = 9; s.gameOver = .object(["reason": "broke", "week": 9, "nw": 0])
-        }
-        var l = AdLedger()
-        let now = Date(timeIntervalSince1970: 1_800_000_000)
-        XCTAssertTrue(AdPolicy.canOfferSecondChance(e.state, currency: cur, entitlements: .free, now: now, l))
-        XCTAssertFalse(AdPolicy.canOfferSecondChance(e.state, currency: cur, entitlements: EntitlementSnapshot(owned: [.pro]), now: now, l))
-        let before = e.state.cash
-        e.update { s, _, _ in XCTAssertTrue(AdRewards.applySecondChance(&s, currency: cur)) }
-        l.secondChanceUsed = true
-        XCTAssertFalse(e.state.isGameOver)
-        XCTAssertEqual(e.state.cash - before, AdRewards.secondChanceStake(cur), accuracy: 0.5)
-        XCTAssertEqual(e.state.statement[0].label, AdRewards.secondChanceLabel)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        e.update { s, _, _ in s.gameOver = .object(["reason": "broke"]) }
-        XCTAssertFalse(AdPolicy.canOfferSecondChance(e.state, currency: cur, entitlements: .free, now: now, l), "once per save")
-        l.resetForNewSave()
-        XCTAssertTrue(AdPolicy.canOfferSecondChance(e.state, currency: cur, entitlements: .free, now: now, l))
-        e.update { s, _, _ in s.week = 3 }
-        XCTAssertFalse(AdPolicy.canOfferSecondChance(e.state, currency: cur, entitlements: .free, now: now, l), "not in the first four weeks")
-        e.update { s, _, _ in s.week = 9; s.cash = -s.overdraftLimit * 2 }
-        XCTAssertFalse(AdRewards.canSecondChance(e.state, currency: cur), "a stake that cannot lift the overdraft is not sold")
     }
 }

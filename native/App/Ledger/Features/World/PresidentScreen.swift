@@ -160,7 +160,7 @@ struct PresidentScreen: View {
             HStack {
                 Text("Weeks it runs").textStyle(.body)
                 Spacer(minLength: 8)
-                CivicStepper(value: $supportWeeks, range: 1...Double(GovPriceSupport.maxWeeks), step: 1, format: { (v: Double) -> String in String(Int(v)) },
+                CivicStepper(value: $supportWeeks, range: 1...Double(GovPriceSupport.maxWeeks), step: 1, format: { (v: Double) -> String in String(Int(saturating: v)) },
                              tint: P.accent, ink: P.ink, fill: P.cardDeep)
             }
             VStack(alignment: .leading, spacing: 6) {

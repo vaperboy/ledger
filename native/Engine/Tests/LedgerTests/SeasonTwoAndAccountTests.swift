@@ -7,6 +7,7 @@ final class SeasonTwoAndAccountTests: XCTestCase {
     private let me = "me"
 
     private var start1: Int { SeasonCatalog.firstSeasonStart ?? 0 }
+    private var start2: Int { start1 + SeasonPass.seasonDays }
 
     func testSeasonTwoIsServedAndNotFounder() throws {
         let s2: SeasonDef = try XCTUnwrap(SeasonCatalog.def(2))
@@ -16,30 +17,31 @@ final class SeasonTwoAndAccountTests: XCTestCase {
         XCTAssertTrue(ItemThemes.isKnown("spring"))
         XCTAssertEqual(SeasonCatalog.active(2)?.number, 2, "season 2 no longer falls back to season 1")
         XCTAssertEqual(SeasonCatalog.active(1)?.number, 1)
-        XCTAssertEqual(SeasonRewards.reward(.free, tier: 1, season: 2)?.id, "badge.s2.sprout")
-        XCTAssertEqual(SeasonRewards.reward(.free, tier: 1, season: 1)?.id, "badge.s1.first")
-        XCTAssertNotNil(SeasonRewards.reward(.free, tier: 30, season: 2))
-        XCTAssertNotNil(SeasonRewards.reward(.premium, tier: 30, season: 2))
+        XCTAssertEqual(SeasonRewards.reward(.free, tier: 1, season: 2, today: start2)?.id, "outfit.s2.sprout")
+        XCTAssertEqual(SeasonRewards.reward(.free, tier: 1, season: 1, today: start1)?.id, "outfit.s1.pennant")
+        XCTAssertNotNil(SeasonRewards.reward(.free, tier: 30, season: 2, today: start2))
+        XCTAssertNotNil(SeasonRewards.reward(.premium, tier: 30, season: 2, today: start2))
         XCTAssertTrue(s2.rewards.allSatisfy { !$0.founderEdition && !$0.accountBound })
     }
 
     func testSeasonTwoRewardsAreUniqueMixedAndResolvable() throws {
         let s2: SeasonDef = try XCTUnwrap(SeasonCatalog.def(2))
-        let others: Set<String> = Set(SeasonRewards.all.filter { $0.season != 2 }.map(\.id))
+        let others: Set<String> = Set(SeasonRewards.everything.filter { $0.season != 2 }.map(\.id))
         let ids: [String] = s2.rewards.map(\.id)
         XCTAssertEqual(Set(ids).count, ids.count)
         XCTAssertTrue(Set(ids).isDisjoint(with: others), "reward ids are unique across seasons")
-        XCTAssertTrue(Set(ids).isDisjoint(with: Set(GoldCosmetics.all.map(\.id))))
+        XCTAssertTrue(Set(ids).isDisjoint(with: Set(GoldCosmetics.everything.map(\.id))))
         var slots: Set<String> = []
         for r in s2.rewards { XCTAssertTrue(slots.insert("\(r.premium)\(r.tier)").inserted, r.id) }
         let kinds: Set<SeasonReward.Kind> = Set(s2.rewards.map(\.kind))
-        for k in [SeasonReward.Kind.artifact, .xp, .gold, .box, .profileCard, .companyCard, .theme, .namePlate, .backdrop, .badge] {
+        for k in [SeasonReward.Kind.artifact, .xp, .gold, .box, .profileCard, .companyCard, .outfit, .backdrop] {
             XCTAssertTrue(kinds.contains(k), "season 2 should hold a \(k.label)")
         }
+        XCTAssertFalse(kinds.contains(.namePlate), "name plates are not pass rewards")
         let rarities: Set<BoxRarity> = Set(s2.rewards.compactMap(\.rarity))
         XCTAssertEqual(rarities, Set(BoxRarity.allCases), "rewards come in every rarity")
         let companyLogos: Set<String> = Set(s2.rewards.filter { $0.kind == .companyCard }.compactMap { CardCatalog.def($0.id)?.logo })
-        XCTAssertTrue(companyLogos.contains("car.fill") && companyLogos.contains("sailboat.fill"), "a car and a boat")
+        XCTAssertTrue(companyLogos.contains("car.fill") && !companyLogos.isDisjoint(with: ["sailboat.fill", "ferry.fill"]), "a car and a boat")
         for r in s2.rewards where r.kind == .artifact {
             XCTAssertNotNil(ArtifactCatalog.defs.first { $0.id == r.id }, r.id)
             XCTAssertEqual(r.rarity, ArtifactCatalog.def(r.id)?.rarity)
@@ -70,12 +72,12 @@ final class SeasonTwoAndAccountTests: XCTestCase {
         p.align(firstDay: start1, today: start1 + 40)
         XCTAssertEqual(p.seasonNumber, 1)
         XCTAssertEqual(p.firstDay, start1)
-        p.xp = 300
+        p.xp = 180
         XCTAssertFalse(p.rollover(today: start1 + SeasonPass.seasonDays - 1))
         XCTAssertTrue(p.rollover(today: start1 + SeasonPass.seasonDays))
         XCTAssertEqual(p.seasonNumber, 2)
         XCTAssertEqual(p.seasonDef?.name, "Spring Market")
-        XCTAssertEqual(p.reward(.free, tier: 1)?.id, "badge.s2.sprout")
+        XCTAssertEqual(p.reward(.free, tier: 1, today: start2)?.id, "outfit.s2.sprout")
         var q = SeasonPass(today: start1 + SeasonPass.seasonDays + 3)
         q.xp = 600
         q.align(firstDay: start1, today: start1 + SeasonPass.seasonDays + 3)
@@ -91,11 +93,11 @@ final class SeasonTwoAndAccountTests: XCTestCase {
         var p = SeasonPass(today: 1)
         p.season = 1
         p.xp = SeasonPass.xpPerTier * 2
-        guard case .claimed(let r) = p.claim(.free, tier: 2, isPlus: false) else { return XCTFail("tier 2 xp boost") }
+        guard case .claimed(let r) = p.claim(.free, tier: 2, isPlus: false, today: start2) else { return XCTFail("tier 2 xp boost") }
         XCTAssertEqual(r.kind, .xp)
         XCTAssertEqual(p.xp, SeasonPass.xpPerTier * 2 + 60)
         XCTAssertFalse(TradeRules.isSellable(reward: r))
-        let art: SeasonReward? = SeasonRewards.reward(.free, tier: 7, season: 2)
+        let art: SeasonReward? = SeasonRewards.reward(.free, tier: 7, season: 2, today: start2)
         XCTAssertEqual(art?.kind, .artifact)
         XCTAssertEqual(art?.title, "Painted egg")
         XCTAssertTrue(art.map { TradeRules.isSellable(reward: $0) } ?? false)
@@ -166,68 +168,67 @@ final class SeasonTwoAndAccountTests: XCTestCase {
     }
 
     func testEveryStoreShelfCosmeticIsBound() {
-        let shelf: [GoldCosmetic] = GoldCosmetics.all.filter { $0.source == .store }
+        let shelf: [GoldCosmetic] = GoldCosmetics.everything.filter { $0.source == .store }
         XCTAssertFalse(shelf.isEmpty)
         for c in shelf {
             XCTAssertTrue(c.item.accountBound, c.id)
             XCTAssertTrue(TradeRules.isAccountBound(c.id), c.id)
             XCTAssertFalse(TradeRules.isSellable(ArtifactItem(defID: c.id, serial: 1)), c.id)
         }
-        for c in GoldCosmetics.all where c.source != .store && c.source != .plan { XCTAssertEqual(c.item.accountBound, false, c.id) }
-        for c in GoldCosmetics.all where c.source == .plan { XCTAssertTrue(c.item.accountBound, c.id); XCTAssertNil(c.price, c.id) }
+        for c in GoldCosmetics.everything where [.box, .collection, .free].contains(c.source) { XCTAssertEqual(c.item.accountBound, false, c.id) }
+        for c in GoldCosmetics.everything where [.plan, .level, .rank, .goal].contains(c.source) { XCTAssertTrue(c.item.accountBound, c.id); XCTAssertNil(c.price, c.id) }
     }
 
     private func ownedPass() -> SeasonPass {
         var p = SeasonPass(today: 100)
-        p.owned = ["theme.ocean", "plate.walnut"]
+        p.owned = ["plate.marble", "plate.walnut"]
         return p
     }
 
     func testCosmeticsAreAccountLevelAndSurviveSaveChanges() throws {
         var p = ownedPass()
         p.activate(save: "s1")
-        p.equip("theme.ocean")
-        XCTAssertEqual(p.equipped["theme"], "theme.ocean")
+        p.equip("plate.marble")
+        XCTAssertEqual(p.equipped["namePlate"], "plate.marble")
         p.succeed(save: "s1", with: "s2")
         p.activate(save: "s2")
-        XCTAssertEqual(p.equipped["theme"], "theme.ocean", "a new game after bankruptcy keeps the look")
-        XCTAssertTrue(p.owned.contains("theme.ocean") && p.owned.contains("plate.walnut"))
+        XCTAssertEqual(p.equipped["namePlate"], "plate.marble", "a new game after bankruptcy keeps the look")
+        XCTAssertTrue(p.owned.contains("plate.marble") && p.owned.contains("plate.walnut"))
         let back: SeasonPass = try JSONDecoder().decode(SeasonPass.self, from: JSONEncoder().encode(p))
         XCTAssertEqual(back, p)
         XCTAssertEqual(back.owned, p.owned)
         XCTAssertEqual(back.currentSave, "s2")
 
-        let old = Data(#"{"firstDay":5,"season":0,"xp":0,"claimed":[],"owned":["theme.ocean"],"equipped":{"theme":"theme.ocean"},"xpDay":5,"xpToday":0,"cashStreak":0}"#.utf8)
+        let old = Data(#"{"firstDay":5,"season":0,"xp":0,"claimed":[],"owned":["plate.marble"],"equipped":{"namePlate":"plate.marble"},"xpDay":5,"xpToday":0,"cashStreak":0}"#.utf8)
         var legacy: SeasonPass = try JSONDecoder().decode(SeasonPass.self, from: old)
         XCTAssertEqual(legacy.currentSave, "current")
         legacy.activate(save: "s9")
-        XCTAssertEqual(legacy.equipped["theme"], "theme.ocean", "the first save to open adopts the old look")
-        XCTAssertNil(legacy.wornElsewhere("theme.ocean"))
+        XCTAssertEqual(legacy.equipped["namePlate"], "plate.marble", "the first save to open adopts the old look")
+        XCTAssertNil(legacy.wornElsewhere("plate.marble"))
     }
 
     func testTwoSavesCannotWearTheSameItemAtOnce() {
         var p = ownedPass()
         p.activate(save: "A")
-        XCTAssertEqual(p.equip("theme.ocean"), .equipped)
+        XCTAssertEqual(p.equip("plate.marble"), .equipped)
         p.activate(save: "B")
-        XCTAssertNil(p.equipped["theme"])
-        XCTAssertEqual(p.wornElsewhere("theme.ocean"), "A")
-        XCTAssertEqual(p.equip("theme.ocean"), .wornElsewhere(save: "A"), "refused until the player agrees to move it")
-        XCTAssertNil(p.equipped["theme"])
+        XCTAssertNil(p.equipped["namePlate"])
+        XCTAssertEqual(p.wornElsewhere("plate.marble"), "A")
+        XCTAssertEqual(p.equip("plate.marble"), .wornElsewhere(save: "A"), "refused until the player agrees to move it")
+        XCTAssertNil(p.equipped["namePlate"])
         XCTAssertEqual(p.equip("plate.walnut"), .equipped, "another item is free")
-        XCTAssertEqual(p.equip("theme.ocean", replacing: true), .equipped)
-        XCTAssertEqual(p.equipped["theme"], "theme.ocean")
-        XCTAssertNil(p.wornElsewhere("theme.ocean"))
+        XCTAssertEqual(p.equip("plate.marble", replacing: true), .equipped)
+        XCTAssertEqual(p.equipped["namePlate"], "plate.marble")
+        XCTAssertNil(p.wornElsewhere("plate.marble"))
         p.activate(save: "A")
-        XCTAssertNil(p.equipped["theme"], "the first save lost it when it was moved")
-        XCTAssertEqual(p.wornElsewhere("theme.ocean"), "B")
+        XCTAssertNil(p.equipped["namePlate"], "the first save lost it when it was moved")
+        XCTAssertEqual(p.wornElsewhere("plate.marble"), "B")
         p.activate(save: "B")
-        XCTAssertEqual(p.equipped["theme"], "theme.ocean")
-        XCTAssertEqual(p.equipped["namePlate"], "plate.walnut")
-        p.unequip(.theme)
-        XCTAssertNil(p.equipped["theme"])
+        XCTAssertEqual(p.equipped["namePlate"], "plate.marble", "the moved plate replaced the walnut one in this save")
+        p.unequip(.namePlate)
+        XCTAssertNil(p.equipped["namePlate"])
         p.activate(save: "A")
-        XCTAssertEqual(p.equip("theme.ocean"), .equipped, "free again once the other save took it off")
+        XCTAssertEqual(p.equip("plate.marble"), .equipped, "free again once the other save took it off")
     }
 
     func testAProfileCardIsClaimedByOneSaveToo() {
@@ -246,11 +247,11 @@ final class SeasonTwoAndAccountTests: XCTestCase {
     func testRetiringASaveFreesItsItems() {
         var p = ownedPass()
         p.activate(save: "A")
-        p.equip("theme.ocean")
+        p.equip("plate.marble")
         p.activate(save: "B")
-        XCTAssertEqual(p.wornElsewhere("theme.ocean"), "A")
+        XCTAssertEqual(p.wornElsewhere("plate.marble"), "A")
         p.retire(save: "A")
-        XCTAssertNil(p.wornElsewhere("theme.ocean"))
-        XCTAssertEqual(p.equip("theme.ocean"), .equipped)
+        XCTAssertNil(p.wornElsewhere("plate.marble"))
+        XCTAssertEqual(p.equip("plate.marble"), .equipped)
     }
 }

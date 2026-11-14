@@ -108,9 +108,29 @@ public enum Banking {
         default: break
         }
         if kind == "biz", let c = co, c.flag("loanFrozen") { maxLoan = 0 }
+        if kind != "lomb", loanBanUntil(s) != nil { maxLoan = 0 }
         if (owedP + owedC) > max(1, netWorth) * 0.6 { margin += 0.012 }
         margin += context.lending.marginAdjustment(kind, co, s)
         return LoanOffer(maximum: (maxLoan / 1000).rounded(.down) * 1000, margin: margin, creditBand: band)
+    }
+
+    /// Banks lend to a company under two years old, or one whose share capital is below the loan, only against the owner's personal guarantee.
+    public static let guaranteeAgeWeeks = 104
+    public static func needsGuarantee(company co: Company, amount: Double, week: Int) -> Bool {
+        week - co.foundedWeek < guaranteeAgeWeeks || co.shareCapital < amount
+    }
+
+    /// After a bankruptcy banks lend nothing new for two years, except against pawned items.
+    public static let bankruptcyLoanBanWeeks = 104
+    public static func loanBanUntil(_ s: GameState) -> Int? {
+        guard let w = s.rest["flags"]?["bustW"], !w.isNull else { return nil }
+        let until = w.int + bankruptcyLoanBanWeeks
+        return s.week < until ? until : nil
+    }
+    public static func recordBankruptcy(_ s: inout GameState) {
+        var f = s.rest["flags"] ?? .object([:])
+        f["bustW"] = .number(Double(s.week))
+        s.rest["flags"] = f
     }
 
     public static func take(kind: String, amount: Double, termMonths: Int, company co: Company?, guaranteed: Bool = false,
@@ -129,7 +149,7 @@ public enum Banking {
         loan.termMonths = termMonths
         loan.companyID = co?.id ?? 0
         loan.startWeek = s.week
-        loan.isGuaranteed = guaranteed
+        loan.isGuaranteed = guaranteed || (kind == "biz" && co.map { needsGuarantee(company: $0, amount: amount, week: s.week) } == true)
         loan.monthlyPayment = Loans.annuity(principal: amount, yearlyRate: s.economy.policyRate + countryRateShift(companyID: loan.companyID, state: s, context: context) + off.margin, months: Double(termMonths))
         s.loans.append(loan)
         if let c = co {

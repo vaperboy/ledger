@@ -3,23 +3,34 @@ import SwiftUI
 struct PlayerProfileView: View {
     var playerID: String
     var preset: PlayerProfile?
+    /// A name already known from a list row. If the profile cannot load, the card is drawn from this and the directory instead.
+    var knownName: String? = nil
     @Environment(OnlineSession.self) private var online
     @State private var profile: PlayerProfile?
     @State private var failure: String?
+    @State private var loading = false
+    @State private var attempt = UUID()
     @State private var busy = false
     @State private var pending: PendingAction?
     @State private var reporting: ReportTarget?
     @State private var reportSent = false
 
-    init(playerID: String, preset: PlayerProfile? = nil) {
+    /// Longest a profile may take to load before the player is offered a retry.
+    private static let loadLimit: UInt64 = 12_000_000_000
+
+    init(playerID: String, preset: PlayerProfile? = nil, knownName: String? = nil) {
         self.playerID = playerID
         self.preset = preset
+        self.knownName = knownName
         _profile = State(initialValue: preset)
     }
 
     var body: some View {
         PhonePageScroll(spacing: Theme.Space.l) {
-            if let p = profile {
+            if profile == nil, let p = fallback {
+                header(p)
+                loadStatus
+            } else if let p = profile {
                 header(p)
                 if p.relation == .blocked {
                     Text("You blocked this player. They cannot send you requests.").textStyle(.body, tint: Theme.inkSoft).multilineTextAlignment(.center).frame(maxWidth: .infinity)
@@ -27,13 +38,13 @@ struct PlayerProfileView: View {
                     detailGroups(p)
                 }
                 if preset == nil { actions(p) }
-            } else if let failure {
-                Text(failure).textStyle(.body, tint: Theme.inkSoft).frame(maxWidth: .infinity).padding(.top, Theme.Space.xl)
+            } else if failure != nil {
+                loadStatus.padding(.top, Theme.Space.xl)
             } else {
                 ProgressView().frame(maxWidth: .infinity).padding(.top, Theme.Space.xl)
             }
         }
-        .appScreen(title: profile?.displayName ?? "Player", subtitle: profile?.subline ?? "")
+        .appScreen(title: profile?.displayName ?? fallback?.displayName ?? "Player", subtitle: profile?.subline ?? "")
         .task { if preset == nil { await load() } }
         .confirmAction($pending)
         .centerSheet(item: $reporting, title: "Report player", category: .medium) { (t: ReportTarget) in
@@ -46,30 +57,38 @@ struct PlayerProfileView: View {
         }
     }
 
-    private func header(_ p: PlayerProfile) -> some View {
-        VStack(spacing: Theme.Space.s) {
-            PlayerAvatar(player: p, size: 84)
-            HStack(spacing: Theme.Space.xs) {
-                Text(p.displayName).textStyle(.title)
-                if p.badges.contains(HallOfFameBadge.name) { HallOfFameMark() }
+    /// What is already known about this player, used while the profile loads or when it cannot be loaded.
+    private var fallback: PlayerProfile? {
+        if let known = OnlineDirectoryCache.players.first(where: { (q: PlayerProfile) -> Bool in q.id == playerID }) { return known }
+        guard let name = knownName, !name.isEmpty else { return nil }
+        return PlayerProfile(id: playerID, code: "", displayName: name, avatarColour: AvatarCatalog.colour(for: name), countryCode: "", level: nil, badges: [],
+                             privacy: .everyone, companyCount: nil, companies: nil, gameWeek: nil, tradesCompleted: nil, relation: .none)
+    }
+
+    /// Shown under a card drawn from known data, or alone when there is nothing to draw: loading, or what went wrong with a retry.
+    @ViewBuilder private var loadStatus: some View {
+        if let failure {
+            VStack(spacing: Theme.Space.s) {
+                Text(failure).textStyle(.body, tint: Theme.inkSoft).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                Button("Try again") { Haptics.tap(); Task { await load() } }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .accessibilityIdentifier("profile-retry")
             }
-            Text(p.subline).textStyle(.caption)
-            let shown: [String] = p.badges.filter { (b: String) -> Bool in b != HallOfFameBadge.name }
-            if !shown.isEmpty {
-                Text(shown.joined(separator: "  ·  ")).textStyle(.caption, tint: Theme.accent).multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+        } else if loading {
+            HStack(spacing: Theme.Space.s) {
+                ProgressView()
+                Text("Loading the rest of the profile").textStyle(.caption, tint: Theme.inkSoft)
             }
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity).padding(.vertical, Theme.Space.m)
+    }
+
+    private func header(_ p: PlayerProfile) -> some View {
+        PlayerCard(data: PlayerCardData(profile: p))
     }
 
     @ViewBuilder private func detailGroups(_ p: PlayerProfile) -> some View {
-        if p.level != nil || p.companyCount != nil || p.gameWeek != nil {
-            OnlineGroup(title: "Profile") {
-                if let l = p.level { OnlineLine(glyph: Glyph.achievements, title: "Level", value: "\(l)") }
-                if let n = p.companyCount { Hairline(); OnlineLine(glyph: Glyph.group, title: "Companies", value: "\(n)") }
-                if let w = p.gameWeek { Hairline(); OnlineLine(glyph: Glyph.stats, title: "Their game is in week", value: "\(w + 1)") }
-            }
-        }
         if let list = p.companies, !list.isEmpty {
             OnlineGroup(title: "Companies and how they are doing") {
                 OnlineCompanyList(companies: Array(list.prefix(3)))
@@ -79,11 +98,8 @@ struct PlayerProfileView: View {
                         .buttonStyle(PressableStyle())
                 }
             }
-        } else {
+        } else if p.privacy != .onlyMe || p.relation == .you {
             Text(hiddenNote(p)).textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center).frame(maxWidth: .infinity)
-        }
-        if let t = p.tradesCompleted {
-            OnlineGroup(title: "Trade record") { OnlineLine(glyph: Glyph.market, title: "Trades completed", value: "\(t)") }
         }
     }
 
@@ -154,8 +170,29 @@ struct PlayerProfileView: View {
         .disabled(busy)
     }
 
+    /// Loads the profile. A request that never answers is cut off after `loadLimit` so the screen never spins forever.
     private func load() async {
-        do { profile = try await online.service.profile(id: playerID); failure = nil } catch { failure = (error as? LocalizedError)?.errorDescription ?? "Could not load this profile." }
+        let mine: UUID = UUID()
+        attempt = mine
+        loading = true
+        failure = nil
+        Task {
+            try? await Task.sleep(nanoseconds: Self.loadLimit)
+            if attempt == mine && loading {
+                loading = false
+                if profile == nil { failure = "This is taking too long. Check your connection and try again." }
+            }
+        }
+        do {
+            let loaded: PlayerProfile = try await online.service.profile(id: playerID)
+            guard attempt == mine else { return }
+            profile = loaded
+            failure = nil
+        } catch {
+            guard attempt == mine else { return }
+            if profile == nil { failure = (error as? LocalizedError)?.errorDescription ?? "Could not load this profile. Try again." }
+        }
+        if attempt == mine { loading = false }
     }
 
     private func run(_ call: @escaping () async throws -> Void) {

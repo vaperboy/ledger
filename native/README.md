@@ -54,14 +54,14 @@ Pictures: drop a PNG named `<kind>.<id>.png` into `App/Ledger/Resources/Content/
 | Season pass reward | `.../Content/season/season_1.json` | id, tier (1 to 30), premium (true or false), kind, title, detail, colors; card: card; box or gold: amount | `<kind>.<id>.png` |
 | Box odds, name | `.../Content/boxes/boxes.json` | title, rows (rarity, prize, weight, amount); weights add to 10000 | `box.<id>.png` |
 | Any price (box, cosmetic, save slot, gold pack, service, store tier) | `.../Content/pricing/prices.json` | gold prices in gold (1 gold is about 1 NOK); App Store tiers in US cents; per-currency table | none |
-| Feature unlock level | `.../Content/progression/level_gates.json` | feature, level, title, gives | none |
+| Feature unlock level | `Engine/Sources/Businesses/Unlocks.swift`, `FeatureUnlocks.table` | feature, level (one feature per level), title, gives | none |
 | Company logo | `Engine/Sources/Businesses/Resources/logo_catalogue.json` | id, name, how (free, level:N, box:rarity), asset | the `asset` name plus `.png` |
 | Country | `Engine/Sources/Countries/Resources/countries.json` | copy the `NO` block and change every value; then add the code to `city_market.json` and `country_traits.json` | none |
 | Country news | `Engine/Sources/Events/Resources/country_events.json` | cc, head, text, fx, tone | none |
 | Random event | `Engine/Sources/Events/Resources/events_pack.json` | area, tone, sev, w, t, b, cool, exp, fx; limits: tr, notTr, fam, cc | none |
 | Decision (choice popup) | `Engine/Sources/Events/Resources/decisions.json` | t, b, opts (l, d, fx), w, def, tone; limits: fam, notTr | none |
-| Trade (job or business type) | `Engine/Sources/Businesses/Resources/trades.json` | copy the nearest trade and add its id to `order`; then add it to `trade_icons.json`, `supply_catalogue.json` and the item files that list the nearest trade | `trade.<id>.png` |
-| Supplies a trade buys | `Engine/Sources/Businesses/Resources/supply_catalogue.json` | lines, families, trades | none |
+| Trade (job or business type) | `Engine/Sources/Businesses/Resources/trades.json` | copy the nearest trade and add its id to `order`; then add it to `trade_icons.json`, `supply_map.json` (what it buys under `trades`, and the lines it supplies) and the item files that list the nearest trade | `trade.<id>.png` |
+| Supplies a trade buys and who supplies them | `Engine/Sources/Businesses/Resources/supply_map.json` (the one map the engine, app and server read; regenerate `supabase/migrations` rows from it) | groups, lines, trades | none |
 | Luxury item (car, watch, art, yacht, jet, home) | `Engine/Sources/Businesses/Resources/luxury.json` | id, name, detail, price, upkeep, growth, volatility | image set in `Assets.xcassets` |
 | Equipment, items, jobs, rentals, recipes, courses, brokers | the matching file in `Engine/Sources/Businesses/Resources/` (each starts with an `about` line explaining its fields) | copy a neighbour entry | `equipment.<id>.png` |
 

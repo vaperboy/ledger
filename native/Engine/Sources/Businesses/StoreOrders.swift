@@ -131,6 +131,7 @@ public enum StoreOrders {
             if one { pay = .cash }
             if pay == .lease && !EquipmentMarket.canLease(e, tradeID: c.bd.id, unitPrice: unit, company: co, c.w, tables: c.tables) { return nil }
             if pay == .finance && !EquipmentMarket.canFinance(e, tradeID: c.bd.id, total: total, company: co, c.w, tables: c.tables) { return nil }
+            if pay == .finance && !EquipmentMarket.financeApproved(s, companyID: companyID, price: total, data: data) { pay = .cash }
             let now: Double = pay == .finance ? total * 0.2 : pay == .lease ? 0 : total
             return Priced(name: offer.name + (q > 1 ? " x\(q)" : ""), subtitle: e.name, goods: total, chargeNow: now, payment: pay, digital: one, isVehicle: false,
                           baseDays: one ? 0 : leadDays(kind: k, vehicleKind: nil, used: false, goods: total, currency: cur),
@@ -146,10 +147,11 @@ public enum StoreOrders {
             guard e.vehicleModels != nil, let offer = EquipmentMarket.vehicleOffers(s, companyID: companyID, equipmentID: e.id, data: data).first(where: { $0.id == line.vehicleOfferID }),
                   let vm = c.tables.vehicles[offer.modelID] else { return nil }
             let base = EquipmentMarket.vehiclePrice(vm, factor: offer.priceFactor, c.w, dealWeek: s.week)
-            let now: Double = line.payment == .finance ? base * 0.2 : line.payment == .lease ? 0 : base
-            return Priced(name: offer.name + ", new", subtitle: offer.modelName, goods: base, chargeNow: now, payment: line.payment, digital: false, isVehicle: true,
+            let pay = line.payment == .finance && !EquipmentMarket.financeApproved(s, companyID: companyID, price: base, data: data) ? EquipmentMarket.Payment.cash : line.payment
+            let now: Double = pay == .finance ? base * 0.2 : pay == .lease ? 0 : base
+            return Priced(name: offer.name + ", new", subtitle: offer.modelName, goods: base, chargeNow: now, payment: pay, digital: false, isVehicle: true,
                           baseDays: leadDays(kind: "veh", vehicleKind: vm.kind, used: false, goods: base, currency: cur),
-                          monthly: line.payment == .lease ? EquipmentMarket.vehicleLeaseMonthly(price: base) : 0)
+                          monthly: pay == .lease ? EquipmentMarket.vehicleLeaseMonthly(price: base) : 0)
         case .used:
             guard let u = line.used,
                   EquipmentMarket.canBuyUsed(e, tradeID: c.bd.id, tables: c.tables),
@@ -157,6 +159,7 @@ public enum StoreOrders {
             var pay = line.payment
             if pay == .lease { return nil }
             if pay == .finance && !EquipmentMarket.canFinance(e, tradeID: c.bd.id, total: u.price, company: co, c.w, tables: c.tables) { pay = .cash }
+            if pay == .finance && !EquipmentMarket.financeApproved(s, companyID: companyID, price: u.price, data: data) { pay = .cash }
             let now: Double = pay == .finance ? u.price * 0.2 : u.price
             let vk: String? = e.vehicleModels != nil ? "car" : nil
             return Priced(name: u.name + " \u{00B7} " + String(u.year) + ", used", subtitle: e.name, goods: u.price, chargeNow: now, payment: pay, digital: false, isVehicle: e.vehicleModels != nil,

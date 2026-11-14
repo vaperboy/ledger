@@ -4,29 +4,12 @@ import Countries
 import Businesses
 import Simulation
 
+// Every piece of equipment as one slim row; a tap opens its single detail screen.
 struct CompanyEquipmentScreen: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
     var companyID: Int
-    @State private var asking: PendingAction? = nil
     @State private var detail: EquipmentTarget? = nil
-
-    private enum Pending: Identifiable {
-        case unit(equipmentID: String, unitID: Int, name: String)
-        case all(equipmentID: String, name: String)
-        case vehicle(id: Int, name: String)
-        case cancelPlan(equipmentID: String, name: String)
-        case endLease(equipmentID: String, name: String, units: Int, monthly: String)
-        var id: String {
-            switch self {
-            case .unit(let e, let u, _): return "u\(e)\(u)"
-            case .all(let e, _): return "a\(e)"
-            case .vehicle(let v, _): return "v\(v)"
-            case .cancelPlan(let e, _): return "c\(e)"
-            case .endLease(let e, _, _, _): return "l\(e)"
-            }
-        }
-    }
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
@@ -35,17 +18,12 @@ struct CompanyEquipmentScreen: View {
             let owned: [EquipmentMarket.Owned] = e.ownedEquipment(companyID: companyID)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                    if let d = detail {
-                        EquipmentDetailScreen(companyID: companyID, target: d, usedFor: enables(e, d.equipmentID), garageID: e.carRepairGarages(for: companyID).first,
-                                              onClose: { detail = nil }, onService: { (eq: String) in service(eq) },
-                                              onRepair: { (gid: Int, k: RepairKind, name: String) in askGarage(e, gid, k, name, e.currency(for: co)) },
-                                              onSell: { (t: EquipmentTarget, name: String) in sell(t, name) })
-                    } else if !(rel.machines || rel.vehicles || rel.software) {
+                    if !(rel.machines || rel.vehicles || rel.software) {
                         EmptyState(glyph: Glyph.settings, title: "No equipment in this business").frame(maxWidth: .infinity).padding(.top, Theme.Space.xxl)
                     } else {
                         header(rel, needs, owned)
-                        if rel.machines { machinesSection(e, co, needs, owned) }
                         missingSection(e, co, rel, needs)
+                        if rel.machines { machinesSection(e, co, owned) }
                         if rel.vehicles { vehiclesSection(e, co, owned) }
                         if rel.software { softwareSection(e, co, needs, owned) }
                     }
@@ -55,7 +33,9 @@ struct CompanyEquipmentScreen: View {
             }
             .scrollIndicators(.hidden)
             .ledgerBackground()
-            .confirmAction($asking)
+            .navigationDestination(item: $detail) { (t: EquipmentTarget) in
+                EquipmentDetailScreen(companyID: companyID, target: t).environment(\.outsidePalette, P)
+            }
             .appScreen(title: "Equipment", subtitle: co.name, tab: .company)
         } else {
             EmptyState(glyph: Glyph.settings, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
@@ -72,6 +52,12 @@ struct CompanyEquipmentScreen: View {
     }
 
     private func isWorn(_ seen: Double, _ down: Int) -> Bool { down == 0 && seen < 0.48 }
+
+    private func wordFor(_ seen: Double, down: Int) -> (text: String, tone: AcctPill.Tone) {
+        if down > 0 { return (text: "In repair", tone: .bad) }
+        if seen < 0.48 { return (text: "Worn", tone: .warn) }
+        return (text: "Working", tone: .good)
+    }
 
     private func header(_ rel: (machines: Bool, vehicles: Bool, software: Bool), _ needs: [EquipmentMarket.Need], _ owned: [EquipmentMarket.Owned]) -> some View {
         let machineCount: Int = owned.filter { isMachine($0) }.reduce(0) { $0 + Int($1.count) + Int($1.leasedCount) }
@@ -90,205 +76,120 @@ struct CompanyEquipmentScreen: View {
         }
     }
 
-    private func itemRow<T: View>(_ title: String, _ subtitle: String, pill: String, tone: AcctPill.Tone, equipmentID: String = "", opens: EquipmentTarget? = nil, @ViewBuilder trailing: () -> T) -> some View {
-        HStack(alignment: .center, spacing: Theme.Space.m) {
-            HStack(alignment: .center, spacing: Theme.Space.m) {
-                SlotImage(asset: ArtAsset.equipment(equipmentID), glyph: Glyph.settings, size: 56)
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    Text(title.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
-                    if !subtitle.isEmpty { Text(subtitle.tidyText).textStyle(.caption).lineLimit(2).multilineTextAlignment(.leading) }
-                }
-            }
-            .contentShape(Rectangle())
-            .onTapGesture { if let opens { Haptics.tap(); detail = opens } }
-            Spacer(minLength: Theme.Space.s)
-            VStack(alignment: .trailing, spacing: Theme.Space.xs) {
-                AcctPill(text: pill, tone: tone)
-                trailing()
-            }
-        }
-        .padding(.vertical, Theme.Space.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func moreMenu<T: View>(@ViewBuilder _ items: () -> T) -> some View {
-        Menu { items() } label: {
-            Image(systemName: "ellipsis").font(.system(size: 15, weight: .semibold)).foregroundStyle(P.inkSoft).frame(width: 32, height: 28)
-        }
-    }
-
-    private func wearTint(_ seen: Double) -> Color { seen >= 0.8 ? P.gain : seen >= 0.48 ? P.inkSoft : P.loss }
-
-    private func enables(_ e: GameEngine, _ equipmentID: String) -> String {
-        guard let s = e.tradeInfo(companyID: companyID)?.allEquipment.first(where: { $0.id == equipmentID }) else { return "" }
-        var parts: [String] = []
-        if s.isRequired { parts.append("Needed to trade") }
-        if s.limitsCapacity { parts.append("Sets capacity") }
-        if s.affectsQuality { parts.append("Lifts quality") }
-        return parts.joined(separator: " \u{00B7} ")
-    }
-
     private func priceText(_ x: EquipmentMarket.Need, _ cur: Currency) -> String {
         x.subscription ? "from " + cur.tidyShort(x.fromPrice / max(1, x.lifeYears) / 12) + "/mo" : "from " + cur.tidyShort(x.fromPrice)
     }
 
-    private func machinesSection(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need], _ all: [EquipmentMarket.Owned]) -> some View {
-        let list: [EquipmentMarket.Owned] = all.filter { isMachine($0) }
-        let cur: Currency = e.currency(for: co)
-        return PageGroup("Machines") {
-            if list.isEmpty {
-                Text("None owned").textStyle(.caption).padding(.vertical, Theme.Space.s)
-            }
-            ForEach(Array(list.enumerated()), id: \.element.id) { n, o in
-                if n > 0 { RowRule(inset: 0) }
-                machineBlock(e, o, cur)
-            }
-        }
+    private func glyph(for kind: String) -> String {
+        kind == "veh" ? Glyph.vehicle : kind == "soft" ? Glyph.software : Glyph.settings
     }
 
-    private func machineBlock(_ e: GameEngine, _ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {
-        let down: Int = o.units.filter { $0.daysInRepair > 0 }.count
-        let worn: Int = o.units.filter { isWorn($0.seenCondition, $0.daysInRepair) }.count
-        let pill: String = down > 0 ? "\(down) in repair" : worn > 0 ? "Worn" : o.outdated ? "Outdated" : "Working"
-        let tone: AcctPill.Tone = down > 0 ? .bad : (worn > 0 || o.outdated) ? .warn : .good
-        var sub: [String] = []
-        let en: String = enables(e, o.equipmentID)
-        if !en.isEmpty { sub.append(en) }
-        if o.count + o.leasedCount > 1 { sub.append("\(Int(o.count + o.leasedCount)) units") }
-        if o.leasedCount > 0 { sub.append("\(Int(o.leasedCount)) leased, " + cur.tidyShort(o.leaseMonthly) + "/mo") }
-        if let s = o.subscription { sub.append(s + ", " + cur.tidyShort(o.subscriptionMonthly) + "/mo") }
-        else if let l = o.licence { sub.append(l) }
-        return VStack(alignment: .leading, spacing: 0) {
-            itemRow(o.name, sub.joined(separator: " \u{00B7} "), pill: pill, tone: tone, equipmentID: o.equipmentID,
-                    opens: o.units.count == 1 ? o.units.first.map { (u: EquipmentMarket.UnitRow) -> EquipmentTarget in .machine(equipmentID: o.equipmentID, unitID: u.id) } : nil) {
-                HStack(spacing: Theme.Space.xs) {
-                    if o.subscription == nil && o.licence == nil && o.count > 0 {
-                        Button("Service \(cur.tidyShort(o.serviceCost))") { service(o.equipmentID) }
-                            .buttonStyle(SecondaryButtonStyle(size: .compact))
-                    }
-                    moreMenu {
-                        if o.count > 1 { Button("Sell all") { ask(.all(equipmentID: o.equipmentID, name: o.name.lowercased())) } }
-                        if o.leasedCount > 0 {
-                            Button("End the lease") { ask(.endLease(equipmentID: o.equipmentID, name: o.name.lowercased(), units: Int(o.leasedCount), monthly: cur.tidyShort(o.leaseMonthly))) }
-                        }
-                        if o.subscription != nil { Button("Cancel plan") { ask(.cancelPlan(equipmentID: o.equipmentID, name: o.name.lowercased())) } }
-                    }
-                }
-            }
-            if o.units.count > 1 || o.units.contains(where: { $0.daysInRepair > 0 }) {
-                ForEach(o.units) { u in
-                    HStack(spacing: Theme.Space.s) {
-                        Text(u.name + (u.year > 0 ? " \u{00B7} \(u.year)" : "")).textStyle(.caption).lineLimit(1)
-                            .contentShape(Rectangle())
-                            .onTapGesture { Haptics.tap(); detail = .machine(equipmentID: o.equipmentID, unitID: u.id) }
-                        Spacer(minLength: Theme.Space.s)
-                        Text(u.daysInRepair > 0 ? "In repair \(u.daysInRepair) days" : u.wear).textStyle(.caption, tint: u.daysInRepair > 0 ? P.loss : wearTint(u.seenCondition))
-                        Button("Sell") { ask(.unit(equipmentID: o.equipmentID, unitID: u.id, name: o.name.lowercased())) }
-                            .buttonStyle(TertiaryButtonStyle(size: .compact, tint: P.inkSoft))
-                    }
-                    .padding(.leading, Theme.Space.m).padding(.bottom, Theme.Space.xs)
-                }
-            } else if let u = o.units.first {
-                HStack(spacing: Theme.Space.s) {
-                    Text(u.wear).textStyle(.caption, tint: wearTint(u.seenCondition))
-                    Spacer(minLength: Theme.Space.s)
-                    Button("Sell") { ask(.unit(equipmentID: o.equipmentID, unitID: u.id, name: o.name.lowercased())) }
-                        .buttonStyle(TertiaryButtonStyle(size: .compact, tint: P.inkSoft))
-                }
-                .padding(.leading, Theme.Space.m).padding(.bottom, Theme.Space.xs)
-            }
-        }
-    }
+    // MARK: missing
 
-    private func sell(_ t: EquipmentTarget, _ name: String) {
-        switch t {
-        case .machine(let eq, let uid): ask(.unit(equipmentID: eq, unitID: uid, name: name.lowercased()))
-        case .vehicle(_, let vid): ask(.vehicle(id: vid, name: name))
-        }
-        detail = nil
-    }
-
-    private func service(_ equipmentID: String) {
-        switch store.act({ $0.serviceEquipment(companyID: companyID, equipmentID: equipmentID) }) {
-        case .ok?: store.show("Serviced.", tone: "good")
-        default: store.show("Not enough cash.", tone: "warn")
-        }
-    }
-
+    // Each missing item opens the shop on that exact item.
     @ViewBuilder private func missingSection(_ e: GameEngine, _ co: Company, _ rel: (machines: Bool, vehicles: Bool, software: Bool), _ needs: [EquipmentMarket.Need]) -> some View {
         let list: [EquipmentMarket.Need] = shortNeeds(rel, needs)
         let cur: Currency = e.currency(for: co)
         if !list.isEmpty {
-            PageGroup(title: "Missing but needed", trailing: { Text("Buy in TechPro").textStyle(.caption) }) {
-                ShopGrid {
-                    ForEach(list) { (x: EquipmentMarket.Need) in
-                        let have: Int = Int((x.have + x.leased).rounded())
-                        let none: Bool = x.have + x.leased < 1
-                        EquipmentNeedTile(equipmentID: x.equipmentID, name: x.name, price: priceText(x, cur),
-                                          state: none ? (x.required ? "Blocks trading" : "Missing") : "\(have) of \(Int(x.need))",
-                                          tone: none && x.required ? .bad : .warn,
-                                          item: ArtAsset.cellFallback(x.equipmentID, group: x.kind == "soft" ? "software" : "equipment", seed: x.equipmentID + "|" + co.type))
+            PageGroup(title: "Missing but needed", trailing: { Text("Opens TechPro").textStyle(.caption) }) {
+                ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, x: EquipmentMarket.Need) in
+                    let none: Bool = x.have + x.leased < 1
+                    if n > 0 { RowRule(inset: 0) }
+                    EquipmentListRow(equipmentID: x.equipmentID, name: x.name, detail: priceText(x, cur), condition: nil,
+                                     status: none ? (x.required ? "Blocks trading" : "Missing") : "\(Int(saturating: (x.have + x.leased).rounded())) of \(Int(x.need))",
+                                     tone: none && x.required ? .bad : .warn, glyph: glyph(for: x.kind), identifier: "equipment-missing-\(x.equipmentID)") {
+                        store.openTechPro(companyID: companyID, equipmentID: x.equipmentID)
                     }
                 }
-                .padding(.vertical, Theme.Space.s)
             }
         }
     }
+
+    // MARK: machines
+
+    private func planRow(_ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {
+        var sub: String = ""
+        var status: String = "Leased"
+        var tone: AcctPill.Tone = .neutral
+        if o.subscription != nil {
+            sub = cur.tidyShort(o.subscriptionMonthly) + " a month"
+            status = "Active"; tone = .good
+        } else if o.licence != nil {
+            status = o.outdated ? "Outdated" : "Current"; tone = o.outdated ? .warn : .good
+        } else if o.leasedCount > 0 {
+            sub = "\(Int(o.leasedCount)) on lease, " + cur.tidyShort(o.leaseMonthly) + " a month"
+        }
+        return EquipmentListRow(equipmentID: o.equipmentID, name: o.name, detail: sub, condition: nil, status: status, tone: tone, glyph: glyph(for: o.kind),
+                                identifier: "equipment-plan-\(o.equipmentID)") {
+            detail = .plan(equipmentID: o.equipmentID)
+        }
+    }
+
+    @ViewBuilder private func machinesSection(_ e: GameEngine, _ co: Company, _ all: [EquipmentMarket.Owned]) -> some View {
+        let list: [EquipmentMarket.Owned] = all.filter { isMachine($0) }
+        let cur: Currency = e.currency(for: co)
+        PageGroup("Machines") {
+            if list.isEmpty {
+                Text("None owned").textStyle(.caption).padding(.vertical, Theme.Space.s)
+            }
+            ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, o: EquipmentMarket.Owned) in
+                if n > 0 { RowRule(inset: 0) }
+                machineBlock(o, cur)
+            }
+        }
+    }
+
+    private func unitName(_ o: EquipmentMarket.Owned, _ u: EquipmentMarket.UnitRow, _ index: Int) -> String {
+        if !u.name.isEmpty && u.name != o.name { return u.name }
+        return o.units.count > 1 ? "\(o.name) \(index + 1)" : o.name
+    }
+
+    private func machineBlock(_ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(o.units.enumerated()), id: \.element.id) { (n: Int, u: EquipmentMarket.UnitRow) in
+                let w = wordFor(u.seenCondition, down: u.daysInRepair)
+                if n > 0 { RowRule(inset: 0) }
+                EquipmentListRow(equipmentID: o.equipmentID, name: unitName(o, u, n), detail: u.year > 0 ? "Built \(u.year)" : "", condition: u.seenCondition,
+                                 status: w.text, tone: w.tone, identifier: "equipment-unit-\(o.equipmentID)-\(u.id)") {
+                    detail = .machine(equipmentID: o.equipmentID, unitID: u.id)
+                }
+            }
+            if o.subscription != nil || o.licence != nil || o.leasedCount > 0 {
+                if !o.units.isEmpty { RowRule(inset: 0) }
+                planRow(o, cur)
+            }
+        }
+    }
+
+    // MARK: vehicles
 
     @ViewBuilder private func vehiclesSection(_ e: GameEngine, _ co: Company, _ all: [EquipmentMarket.Owned]) -> some View {
         let cur: Currency = e.currency(for: co)
         let own: [EquipmentMarket.Owned] = all.filter { $0.kind == "veh" && $0.equipmentID != CompanyCarPerk.equipmentID }
         let perk: EquipmentMarket.Owned? = all.first { $0.equipmentID == CompanyCarPerk.equipmentID }
-        let garage: Int? = e.carRepairGarages(for: companyID).first
+        let rows: [(eq: String, row: EquipmentMarket.VehicleRow)] = own.flatMap { (o: EquipmentMarket.Owned) -> [(eq: String, row: EquipmentMarket.VehicleRow)] in
+            o.vehicles.map { (v: EquipmentMarket.VehicleRow) -> (eq: String, row: EquipmentMarket.VehicleRow) in (eq: o.equipmentID, row: v) }
+        } + (perk?.vehicles ?? []).map { (v: EquipmentMarket.VehicleRow) -> (eq: String, row: EquipmentMarket.VehicleRow) in (eq: CompanyCarPerk.equipmentID, row: v) }
         PageGroup("Vehicles") {
-            if own.isEmpty && perk == nil { Text("None owned").textStyle(.caption).padding(.vertical, Theme.Space.s) }
-            ForEach(Array(vehiclePairs(own).enumerated()), id: \.element.row.id) { n, pair in
+            if rows.isEmpty { Text("None owned").textStyle(.caption).padding(.vertical, Theme.Space.s) }
+            ForEach(Array(rows.enumerated()), id: \.element.row.id) { (n: Int, pair: (eq: String, row: EquipmentMarket.VehicleRow)) in
                 if n > 0 { RowRule(inset: 0) }
-                vehicleRow(e, pair.row, cur, garage, equipmentID: pair.eq)
-            }
-            if let perk {
-                ForEach(Array(perk.vehicles.enumerated()), id: \.element.id) { n, v in
-                    if n > 0 || !own.isEmpty { RowRule(inset: 0) }
-                    itemRow(v.driver.isEmpty ? v.name : v.driver, v.name + " \u{00B7} fuel " + cur.tidyShort(v.fuelPerWeek) + "/wk",
-                            pill: v.daysInRepair > 0 ? "In repair" : "Company car", tone: v.daysInRepair > 0 ? .bad : .neutral, equipmentID: CompanyCarPerk.equipmentID) {
-                        Text(cur.tidyShort(v.monthlyLease) + "/mo").textStyle(.caption, numeric: true)
-                    }
-                }
+                vehicleRow(pair.row, equipmentID: pair.eq, cur)
             }
             runningCosts(e, cur)
         }
     }
 
-    private func vehiclePairs(_ own: [EquipmentMarket.Owned]) -> [(eq: String, row: EquipmentMarket.VehicleRow)] {
-        own.flatMap { (o: EquipmentMarket.Owned) -> [(eq: String, row: EquipmentMarket.VehicleRow)] in
-            o.vehicles.map { (v: EquipmentMarket.VehicleRow) -> (eq: String, row: EquipmentMarket.VehicleRow) in (eq: o.equipmentID, row: v) }
-        }
-    }
-
-    private func vehicleRow(_ e: GameEngine, _ v: EquipmentMarket.VehicleRow, _ cur: Currency, _ garage: Int?, equipmentID: String = "") -> some View {
-        let broken: Bool = v.daysInRepair > 0
-        let worn: Bool = v.seenCondition < 0.8 || broken
+    private func vehicleRow(_ v: EquipmentMarket.VehicleRow, equipmentID: String, _ cur: Currency) -> some View {
+        let w = wordFor(v.seenCondition, down: v.daysInRepair)
         var sub: [String] = []
         if !v.driver.isEmpty { sub.append(v.driver) }
-        sub.append(v.mode == "fin" ? "Financed" : v.mode == "lease" ? "Leased " + cur.tidyShort(v.monthlyLease) + "/mo" : "Owned")
-        sub.append("\(v.kilometres / 1000) 000 km")
-        if v.fuelPerWeek > 0 { sub.append("fuel " + cur.tidyShort(v.fuelPerWeek) + "/wk") }
-        let pill: String = broken ? "In repair \(v.daysInRepair) days" : v.wear
-        let tone: AcctPill.Tone = broken ? .bad : v.seenCondition >= 0.8 ? .good : v.seenCondition >= 0.48 ? .neutral : .warn
-        let sell: Pending = .vehicle(id: v.id, name: v.name)
-        return itemRow(v.name, sub.joined(separator: " \u{00B7} "), pill: pill, tone: tone, equipmentID: equipmentID, opens: .vehicle(equipmentID: equipmentID, vehicleID: v.id)) {
-            HStack(spacing: Theme.Space.xs) {
-                if let gid = garage, worn {
-                    Menu {
-                        ForEach(CarRepairJobs.kinds) { (k: RepairKind) in
-                            Button(k.name) { askGarage(e, gid, k, v.name, cur) }
-                        }
-                    } label: { Text("Repair").textStyle(.caption, tint: P.accent, weight: .semibold).frame(minHeight: 28) }
-                    moreMenu { Button(v.mode == "lease" ? "Return" : "Sell") { ask(sell) } }
-                } else {
-                    Button(v.mode == "lease" ? "Return" : "Sell") { ask(sell) }.buttonStyle(SecondaryButtonStyle(size: .compact))
-                }
-            }
+        sub.append(v.mode == "fin" ? "Financed" : v.mode == "lease" ? "Leased" : "Owned")
+        if v.kilometres > 0 { sub.append("\(v.kilometres / 1000) 000 km") }
+        let name: String = equipmentID == CompanyCarPerk.equipmentID && !v.driver.isEmpty ? v.driver : v.name
+        return EquipmentListRow(equipmentID: equipmentID, name: name, detail: sub.joined(separator: " \u{00B7} "), condition: v.seenCondition, status: w.text, tone: w.tone,
+                                glyph: Glyph.vehicle, identifier: "equipment-vehicle-\(v.id)") {
+            detail = .vehicle(equipmentID: equipmentID, vehicleID: v.id)
         }
     }
 
@@ -300,22 +201,7 @@ struct CompanyEquipmentScreen: View {
         }
     }
 
-    private func askGarage(_ e: GameEngine, _ garageID: Int, _ kind: RepairKind, _ vehicle: String, _ cur: Currency) {
-        guard let q = e.carRepairQuote(garageID: garageID, kind: kind.id) else {
-            store.show("The garage has no room for this job now.", tone: "warn"); return
-        }
-        let cid: Int = companyID
-        let weeks: String = "\(q.weeks) " + (q.weeks == 1 ? "week" : "weeks")
-        let msg: String = q.garageName + " charges " + cur.tidyShort(q.price) + " plus " + cur.tidyShort(q.vat) + " VAT for " + kind.name.lowercased() + ", back in about " + weeks + "."
-        asking = PendingAction(title: "Repair " + vehicle + "?", message: msg, button: "Order", amount: q.total, currency: cur, tone: .info, icon: "wrench.and.screwdriver") {
-            let r: RepairResult? = store.act { (g: inout GameEngine) -> RepairResult in g.orderCarRepair(garageID: garageID, dealerID: cid, kind: kind.id, ref: vehicle) }
-            switch r {
-            case .ordered(let o)?: store.show("Ordered for " + cur.tidyShort(o.price + o.vat) + ", back in \(o.weeks) " + (o.weeks == 1 ? "week" : "weeks") + ".", tone: "good")
-            case .refused(let why)?: store.show(why, tone: "warn")
-            case nil: break
-            }
-        }
-    }
+    // MARK: software
 
     @ViewBuilder private func softwareSection(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need], _ all: [EquipmentMarket.Owned]) -> some View {
         let cur: Currency = e.currency(for: co)
@@ -325,95 +211,22 @@ struct CompanyEquipmentScreen: View {
         }
         if !list.isEmpty {
             PageGroup(title: "Software", trailing: { Text("Priced by users: \(EquipmentMarket.users(co))").textStyle(.caption) }) {
-                ForEach(Array(list.enumerated()), id: \.element.id) { n, x in
+                ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, x: EquipmentMarket.Need) in
                     if n > 0 { RowRule(inset: 0) }
-                    softwareRow(e, x, all.first { $0.equipmentID == x.equipmentID }, cur)
+                    softwareRow(x, all.first { $0.equipmentID == x.equipmentID }, cur)
                 }
             }
         }
     }
 
-    private func softwareRow(_ e: GameEngine, _ x: EquipmentMarket.Need, _ o: EquipmentMarket.Owned?, _ cur: Currency) -> some View {
-        let mode = e.softwareMode(companyID: companyID, equipmentID: x.equipmentID)
-        let modeWord: String = mode == .subscription ? "Subscription" : mode == .once ? "One-time licence" : "Licence with yearly updates"
-        let pill: String = o?.subscription != nil ? "Active" : o?.licence != nil ? (o?.outdated == true ? "Outdated" : "Current") : "Not owned"
-        let tone: AcctPill.Tone = o?.outdated == true ? .warn : o != nil ? .good : .neutral
-        return itemRow(x.name, modeWord, pill: pill, tone: tone, equipmentID: x.equipmentID) {
-            if let o, o.subscription != nil {
-                HStack(spacing: Theme.Space.xs) {
-                    Text(cur.tidyShort(o.subscriptionMonthly) + "/mo").textStyle(.caption, numeric: true)
-                    moreMenu { Button("Cancel plan") { ask(.cancelPlan(equipmentID: x.equipmentID, name: x.name.lowercased())) } }
-                }
-            } else if o == nil {
-                Text(priceText(x, cur)).textStyle(.caption, numeric: true)
+    @ViewBuilder private func softwareRow(_ x: EquipmentMarket.Need, _ o: EquipmentMarket.Owned?, _ cur: Currency) -> some View {
+        if let o {
+            planRow(o, cur)
+        } else {
+            EquipmentListRow(equipmentID: x.equipmentID, name: x.name, detail: priceText(x, cur), condition: nil, status: "Not owned", tone: .neutral, glyph: Glyph.software,
+                             identifier: "equipment-software-\(x.equipmentID)") {
+                store.openTechPro(companyID: companyID, equipmentID: x.equipmentID)
             }
         }
-    }
-
-    private func askTitle(_ p: Pending) -> String {
-        switch p {
-        case .unit(_, _, let n): return "Sell this \(n)?"
-        case .all(_, let n): return "Sell all \(n)?"
-        case .vehicle(_, let n): return "Sell \(n)?"
-        case .cancelPlan(_, let n): return "Cancel \(n)?"
-        case .endLease(_, let n, _, _): return "End the lease of \(n)?"
-        }
-    }
-    private func askMessage(_ p: Pending) -> String {
-        switch p {
-        case .unit: return "Used equipment sells for well under what you paid, less if it looks worn."
-        case .all: return "You get about 70% of book value. Capacity may collapse."
-        case .vehicle: return "You get roughly 78% of its book value. A loan on it is settled; a lease just ends."
-        case .cancelPlan: return "It stops working right away."
-        case .endLease(_, _, let units, let monthly): return "The \(units) leased \(units == 1 ? "unit goes" : "units go") back at once and the capacity they gave is lost until you replace \(units == 1 ? "it" : "them"). The \(monthly) a month stops."
-        }
-    }
-    private func buttonTitle(_ p: Pending) -> String {
-        if case .cancelPlan = p { return "Cancel plan" }
-        if case .endLease = p { return "End the lease" }
-        return "Sell"
-    }
-    private func ask(_ p: Pending) {
-        asking = PendingAction(title: askTitle(p), message: askMessage(p), button: buttonTitle(p), destructive: false, tone: .danger, icon: "tag") { confirm(p) }
-    }
-    private func confirm(_ p: Pending) {
-        switch p {
-        case .unit(let eq, let u, _):
-            let v = store.act { $0.sellEquipmentUnit(companyID: companyID, equipmentID: eq, unitID: u) } ?? 0
-            store.show(v > 0 ? "Sold for \(store.short(v))." : "Not sold.", tone: v > 0 ? "good" : "warn")
-        case .all(let eq, _):
-            let v = store.act { $0.sellAllEquipment(companyID: companyID, equipmentID: eq) } ?? 0
-            store.show(v > 0 ? "Sold for \(store.short(v))." : "Nothing was sold.", tone: v > 0 ? "good" : "warn")
-        case .vehicle(let id, _):
-            let v = store.act { $0.sellVehicle(companyID: companyID, vehicleID: id) } ?? 0
-            store.show(v > 0 ? "Sold for \(store.short(v))." : "Vehicle returned.", tone: "good")
-        case .cancelPlan(let eq, _):
-            let gone = store.act { $0.cancelSubscription(companyID: companyID, equipmentID: eq) } ?? false
-            store.show(gone ? "Plan cancelled." : "The plan could not be cancelled.", tone: gone ? "n" : "warn")
-        case .endLease(let eq, let name, _, _):
-            if store.act({ $0.endEquipmentLease(companyID: companyID, equipmentID: eq) }) == true { Haptics.warning(); store.show("Lease of \(name) ended.", tone: "n") }
-            else { store.show("There is no lease of \(name) to end.", tone: "warn") }
-        }
-    }
-}
-
-struct EquipmentNeedTile: View {
-    @Environment(\.outsidePalette) private var P
-    var equipmentID: String
-    var name: String
-    var price: String
-    var state: String
-    var tone: AcctPill.Tone
-    var item: String = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            ShopPhoto(name: ArtAsset.equipment(equipmentID), glyph: Glyph.settings, height: 150, cornerRadius: Theme.Radius.medium, item: item)
-                .overlay(alignment: .topLeading) { AcctPill(text: state, tone: tone).padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs).background(Capsule().fill(P.surface)).padding(Theme.Space.s) }
-            Text(name.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
-            Text(price).textStyle(.caption, numeric: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .accessibilityElement(children: .combine)
     }
 }

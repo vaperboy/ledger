@@ -35,9 +35,15 @@ public extension GameEngine {
 public enum AuctionCash {
     static let rememberLimit = 200
 
+    /// The most one sale can pay: the asking cap on a legendary piece, in local money.
+    public static func maxProceeds(currency cur: Currency) -> Int {
+        AuctionRules.maxAsk(value: AuctionMarket.suggestedStart(.legendary, priceLevel: 1 / max(cur.rate, 0.000_001)))
+    }
+
     @discardableResult
     public static func settle(_ s: inout GameState, local: Int, claimID: String, label: String, currency cur: Currency) -> Double? {
         guard local != 0, !claimID.isEmpty else { return nil }
+        guard local <= maxProceeds(currency: cur) else { return nil }
         var seen: [JSONValue] = (s.rest["aucm"] ?? .null).array
         if seen.contains(where: { $0.string == claimID }) { return nil }
         let cash: Double = jsRound(Double(local) * cur.rate)
@@ -53,10 +59,8 @@ public enum AuctionCash {
 public extension GameEngine {
     var auctionCash: Int { max(0, Int((state.cash / homeCurrency.rate).rounded(.down))) }
 
-    var auctionPriceLevel: Double {
-        let cur: Currency = homeCurrency
-        return cur.scaledPrice(100_000) / 100_000 / cur.rate
-    }
+    /// Local money per unit of game money, so gold-based values follow the game's exchange rate only.
+    var auctionPriceLevel: Double { 1 / homeCurrency.rate }
 
     @discardableResult
     mutating func settleAuctionCash(_ local: Int, claimID: String, label: String) -> Double? {

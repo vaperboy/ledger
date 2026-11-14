@@ -69,7 +69,6 @@ struct GroupEntityPage: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
-                CompanyCustomiseButton(companyID: entity.companyID)
             }
             HStack(alignment: .bottom, spacing: Theme.Space.m) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {

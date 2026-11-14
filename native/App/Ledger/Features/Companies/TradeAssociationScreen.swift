@@ -147,7 +147,7 @@ struct TradeAssociationScreen: View {
         .padding(Theme.Space.m).frame(maxWidth: .infinity, alignment: .leading).glassSurface()
     }
 
-    private func percent(_ v: Double) -> String { "\(Int((v * 100).rounded())) percent" }
+    private func percent(_ v: Double) -> String { "\(Int(saturating: (v * 100).rounded())) percent" }
 
     private func syncMembers(_ e: GameEngine, _ co: Company) {
         guard let m = TradeAssociations.membership(e.state, companyID: co.id) else { return }

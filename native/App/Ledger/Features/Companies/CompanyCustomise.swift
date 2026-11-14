@@ -4,33 +4,14 @@ import Businesses
 import Countries
 import Simulation
 
-struct CompanyCardPreview: View {
-    var name: String
-    var def: CardDef?
-    var logoID: String
-    var tradeKey: String
-    var badge: Cosmetics.Badge
-    var accent: Color
-    var backdrop: SeasonReward? = nil
-
-    var body: some View {
-        VStack(spacing: Theme.Space.s) {
-            CompanyCardView(name: name, def: def, logoID: logoID, backdrop: backdrop)
-            HStack(spacing: Theme.Space.m) {
-                if logoID.isEmpty { ThumbnailView(kind: .trade, key: tradeKey, size: 28) } else { LogoBadge(logoID: logoID, size: 28) }
-                CosmeticBadgeView(badge: badge, tint: accent, size: 24)
-            }
-        }
-    }
-}
-
 struct CompanyCustomiseButton: View {
     var companyID: Int
     @State private var open = false
 
     var body: some View {
         Button { Haptics.tap(); open = true } label: {
-            LedgerGlyph(glyph: Glyph.luxury, size: Theme.Icon.medium, tint: Theme.gold)
+            Image(systemName: "wrench.and.screwdriver.fill")
+                .font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.gold)
                 .frame(width: 40, height: 40)
                 .background(Circle().fill(Color.black.opacity(0.45)))
                 .overlay(Circle().strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1.2))
@@ -39,17 +20,19 @@ struct CompanyCustomiseButton: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel("Customise")
-        .accessibilityHint("Backdrop, card, colours and logo")
+        .accessibilityHint("Name, logo and banner")
         .accessibilityIdentifier("company-customise")
         .navigationDestination(isPresented: $open) { CompanyCustomiseView(companyID: companyID) }
     }
 }
 
+/// The one place to change how a company looks: its name, logo and banner. Opened by the wrench on the company header.
+/// The banner styles the company's header wherever it is shown. Tap the logo, name or banner in the preview to open that tab.
 struct CompanyCustomiseView: View {
     enum Part: String, CaseIterable, Identifiable {
-        case card, backdrop, colours, badge, logo, plate
+        case name, logo, banner
         var id: String { rawValue }
-        var title: String { self == .plate ? "Plate" : rawValue.capitalized }
+        var title: String { rawValue.capitalized }
     }
 
     static let barClearance: CGFloat = 130
@@ -57,11 +40,10 @@ struct CompanyCustomiseView: View {
     var companyID: Int
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
-    @AppStorage(CosmeticKeys.badge) private var globalBadge: String = Cosmetics.defaultBadgeID
-    @AppStorage(CosmeticKeys.theme) private var globalTheme: String = Cosmetics.defaultThemeID
     @ObservedObject private var season = SeasonModel.shared
     private let session = StoreSession.shared
-    @State private var part: Part = .card
+    @State private var part: Part = .banner
+    @State private var renaming = false
     @State private var pending: PendingAction?
     @State private var note = ""
     @State private var shareURL: URL?
@@ -73,55 +55,49 @@ struct CompanyCustomiseView: View {
     var body: some View {
         Group {
             if let e = store.engine, let co = e.state.company(companyID) {
-                let cabinet: Cabinet = session.state.cabinet
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        preview(e, co, cabinet)
-                        ScrollView(.horizontal) {
-                            SegmentedPill(items: Part.allCases, title: { (p: Part) -> String in p.title }, selection: $part, identifier: { (p: Part) -> String in "company-look-" + p.rawValue })
-                                .fixedSize(horizontal: true, vertical: false)
-                        }
-                        .scrollIndicators(.hidden)
+                        preview(e, co)
+                        SegmentedPill(items: Part.allCases, title: { (p: Part) -> String in p.title }, selection: $part, identifier: { (p: Part) -> String in "company-look-" + p.rawValue })
                         if !note.isEmpty { Text(note).textStyle(.caption, tint: Theme.accent).frame(maxWidth: .infinity, alignment: .leading).lineLimit(3) }
-                        content(e, co, cabinet)
+                        content(e, co)
                     }
                     .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Self.barClearance)
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden)
-                .scrollDismissesKeyboard(.interactively)
-                .onAppear { refreshShare(e, co, cabinet) }
-                .onChange(of: signature(e, co, cabinet)) { _, _ in refreshShare(e, co, cabinet) }
+                .onAppear { refreshShare(e, co) }
+                .onChange(of: signature(e, co)) { _, _ in refreshShare(e, co) }
             } else {
                 Text("This company no longer exists.").textStyle(.body, tint: Theme.inkSoft).frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .appScreen(title: "Customise", subtitle: store.engine?.state.company(companyID)?.name ?? "", backdrop: store.engine.flatMap { (e: GameEngine) -> SeasonReward? in LookKit.companyBackdrop(e, companyID) })
         .confirmAction($pending)
+        .companyRename(companyID: companyID, isPresented: $renaming)
         .task { await session.load() }
     }
 
-    private func style(_ e: GameEngine) -> (theme: String, badge: String) {
-        let s: (theme: String, badge: String) = e.companyStyle(companyID: companyID)
-        return (s.theme.isEmpty ? globalTheme : s.theme, s.badge.isEmpty ? globalBadge : s.badge)
+    private func previewView(_ e: GameEngine, _ co: Company) -> some View {
+        CompanyCardView(name: co.name, def: nil, logoID: e.companyLogoID(companyID: co.id), backdrop: LookKit.companyBackdrop(e, co.id))
     }
 
-    private func previewView(_ e: GameEngine, _ co: Company, _ cabinet: Cabinet) -> CompanyCardPreview {
-        let s: (theme: String, badge: String) = style(e)
-        let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(s.badge, earned: e.careerCosmetics, pro: ent.isPro)
-        let accent: Color = Cosmetics.resolvedTheme(s.theme, pro: ent.isPro).accent
-        return CompanyCardPreview(name: co.name, def: e.companyCard(co.id, cabinet: cabinet), logoID: e.companyLogoID(companyID: co.id), tradeKey: co.type, badge: badge, accent: accent, backdrop: LookKit.companyBackdrop(e, co.id))
+    /// The preview you tap: the logo, the name and the banner each open their own tab.
+    private func livePreview(_ e: GameEngine, _ co: Company) -> some View {
+        CompanyCardView(name: co.name, def: nil, logoID: e.companyLogoID(companyID: co.id), backdrop: LookKit.companyBackdrop(e, co.id),
+                        onLogo: { part = .logo; note = "" },
+                        onName: { part = .name; note = ""; renaming = true },
+                        onBanner: { part = .banner; note = "" })
     }
 
-    private func signature(_ e: GameEngine, _ co: Company, _ cabinet: Cabinet) -> String {
-        let s: (theme: String, badge: String) = style(e)
-        return [co.name, e.companyCard(co.id, cabinet: cabinet)?.id ?? "", e.companyLogoID(companyID: co.id), s.theme, s.badge, e.companyBackdrop(companyID: co.id)].joined(separator: "|")
+    private func signature(_ e: GameEngine, _ co: Company) -> String {
+        [co.name, e.companyLogoID(companyID: co.id), e.companyBackdrop(companyID: co.id)].joined(separator: "|")
     }
 
-    private func preview(_ e: GameEngine, _ co: Company, _ cabinet: Cabinet) -> some View {
+    private func preview(_ e: GameEngine, _ co: Company) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("As other players see it").textStyle(.label, tint: Theme.inkFaint)
-            previewView(e, co, cabinet)
+            Text("As other players see it. Tap a part to change it.").textStyle(.label, tint: Theme.inkFaint)
+            livePreview(e, co)
             if let url = shareURL {
                 ShareLink(item: url) {
                     HStack(spacing: Theme.Space.xs) {
@@ -135,8 +111,8 @@ struct CompanyCustomiseView: View {
         }
     }
 
-    private func refreshShare(_ e: GameEngine, _ co: Company, _ cabinet: Cabinet) {
-        let page = previewView(e, co, cabinet)
+    private func refreshShare(_ e: GameEngine, _ co: Company) {
+        let page = previewView(e, co)
             .frame(width: 360)
             .padding(Theme.Space.l)
             .background(Theme.page)
@@ -148,14 +124,11 @@ struct CompanyCustomiseView: View {
         do { try data.write(to: url, options: .atomic); shareURL = url } catch { shareURL = nil }
     }
 
-    @ViewBuilder private func content(_ e: GameEngine, _ co: Company, _ cabinet: Cabinet) -> some View {
+    @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
         switch part {
-        case .card: cardGrid(e, co, cabinet)
-        case .backdrop: backdropGrid(e, co)
-        case .colours: colours(e, co, show: .colour)
-        case .badge: colours(e, co, show: .badge)
+        case .name: nameSection(e, co)
+        case .banner: bannerGrid(e, co)
         case .logo: logoGrid(e, co)
-        case .plate: plateGrid()
         }
     }
 
@@ -163,56 +136,27 @@ struct CompanyCustomiseView: View {
         pending = PendingAction(title: "Replace?", message: item + " is on " + other + ". Move it here?", button: "Move", alwaysAsk: true, run: run)
     }
 
-    private func cardGrid(_ e: GameEngine, _ co: Company, _ cabinet: Cabinet) -> some View {
-        let owned: [ArtifactItem] = cabinet.sorted.filter { (i: ArtifactItem) -> Bool in CardCatalog.def(forItem: i.id)?.kind == .company }
-        let used: [Int: String] = e.companyCardAssignments()
-        return Group {
-            if owned.isEmpty {
-                Text("You do not own a company card yet. Open a card pack, climb the Season Pass or level up.").textStyle(.body, tint: Theme.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+    private func nameSection(_ e: GameEngine, _ co: Company) -> some View {
+        let left: Int = e.renameCooldownLeft(companyID: co.id)
+        let cur: Currency = e.currency(for: co)
+        let cost: Double = e.renameCost(companyID: co.id)
+        let inChain: Bool = e.chainOf(companyID: co.id) != nil
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(co.name).textStyle(.title)
+            if inChain {
+                Text("This store carries its chain's name. Rebranding the whole chain is done from the chain.").textStyle(.caption, tint: Theme.inkSoft)
             } else {
-                LazyVGrid(columns: columns, spacing: Theme.Space.s) {
-                    ForEach(owned) { (item: ArtifactItem) in
-                        if let d = CardCatalog.def(forItem: item.id) {
-                            let holder: Int? = used.first(where: { (_: Int, v: String) -> Bool in v == item.id })?.key
-                            let here: Bool = holder == co.id
-                            let elsewhere: String? = holder.flatMap { (id: Int) -> String? in id == co.id ? nil : e.state.company(id)?.name }
-                            LookTile(title: d.name, note: elsewhere.map { (n: String) -> String in "On " + n } ?? (d.isAnimated ? "Animated" : ""), worn: here, wornText: "On this company", locked: false,
-                                     id: "company-card-" + item.id, art: CardThumb(def: d, width: 72), action: { pickCard(item, d, here: here, elsewhere: elsewhere) })
-                        }
-                    }
-                }
+                Text(left > 0 ? "The name can change again in \(left) \(left == 1 ? "week" : "weeks"). Costs \(cur.tidyDisplay(cost))."
+                              : "Costs \(cur.tidyDisplay(cost)); about a third of customers lose track of you. Then you wait \(GameEngine.renameCooldownWeeks) weeks.")
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Button("Rename") { Haptics.tap(); renaming = true }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("company-rename")
             }
         }
     }
 
-    private func pickCard(_ item: ArtifactItem, _ d: CardDef, here: Bool, elsewhere: String?) {
-        let id: Int = companyID
-        let cabinet: Cabinet = session.state.cabinet
-        let apply: () -> Void = {
-            Haptics.success()
-            _ = store.act { (e: inout GameEngine) -> Void in _ = e.applyCompanyCard(itemID: item.id, companyID: id, cabinet: cabinet) }
-            note = ""
-        }
-        if here {
-            Haptics.choose()
-            _ = store.act { (e: inout GameEngine) -> Void in e.clearCompanyCard(companyID: id) }
-        } else if let other = elsewhere {
-            replace(d.name, on: other, then: apply)
-        } else {
-            apply()
-        }
-    }
-
-    private func colours(_ e: GameEngine, _ co: Company, show: ColourBadgePicker.Show) -> some View {
-        let id: Int = companyID
-        let s: (theme: String, badge: String) = style(e)
-        let theme = Binding<String>(get: { s.theme }, set: { (v: String) in _ = store.act { (g: inout GameEngine) -> Void in _ = g.setCompanyStyle(companyID: id, theme: v) } })
-        let badge = Binding<String>(get: { s.badge }, set: { (v: String) in _ = store.act { (g: inout GameEngine) -> Void in _ = g.setCompanyStyle(companyID: id, badge: v) } })
-        return ColourBadgePicker(earned: e.careerCosmetics, theme: theme, badge: badge, show: show)
-    }
-
-    private func backdropGrid(_ e: GameEngine, _ co: Company) -> some View {
+    private func bannerGrid(_ e: GameEngine, _ co: Company) -> some View {
         var seen = Set<String>()
         let all: [SeasonReward] = (SeasonRewards.all + GoldCosmetics.all.map { (g: GoldCosmetic) -> SeasonReward in g.item })
             .filter { (r: SeasonReward) -> Bool in r.kind == .backdrop && seen.insert(r.id).inserted }
@@ -221,12 +165,12 @@ struct CompanyCustomiseView: View {
         let current: String = e.companyBackdrop(companyID: co.id)
         let id: Int = co.id
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Fills the top of this company's page and its card.").textStyle(.caption, tint: Theme.inkSoft)
+            Text("Fills the top of this company everywhere it is shown.").textStyle(.caption, tint: Theme.inkSoft)
             LazyVGrid(columns: columns, spacing: Theme.Space.s) {
                 ForEach(owned + shut) { (r: SeasonReward) in
                     let isOpen: Bool = season.pass.owned.contains(r.id)
                     let how: String = CustomiseView.how(r)
-                    LookTile(title: r.title, note: isOpen ? "" : how, worn: current == r.id, wornText: "On this company", locked: !isOpen, id: "company-backdrop-" + r.id,
+                    LookTile(title: r.title, note: isOpen ? "" : how, worn: current == r.id, wornText: "On this company", locked: !isOpen, id: "company-banner-" + r.id,
                              art: ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 48, wide: true)) {
                         if !isOpen { Haptics.warning(); note = r.title + ": " + how; return }
                         Haptics.success()
@@ -262,35 +206,11 @@ struct CompanyCustomiseView: View {
         }
         if c.id == current {
             Haptics.choose()
-            _ = store.act { (e: inout GameEngine) -> Void in _ = e.clearCompanyLogo(companyID: id) }
+            _ = store.act { (e: inout GameEngine) -> Void in e.clearCompanyLogo(companyID: id) }
         } else if let other = elsewhere {
             replace(c.logo.name, on: other, then: apply)
         } else {
             apply()
-        }
-    }
-
-    private func plateGrid() -> some View {
-        var seen = Set<String>()
-        let all: [SeasonReward] = (SeasonRewards.all + GoldCosmetics.all.map { (g: GoldCosmetic) -> SeasonReward in g.item })
-            .filter { (r: SeasonReward) -> Bool in r.kind == .tradePlate && seen.insert(r.id).inserted }
-        let owned: [SeasonReward] = all.filter { (r: SeasonReward) -> Bool in season.pass.owned.contains(r.id) }.sorted { $0.title < $1.title }
-        let shut: [SeasonReward] = all.filter { (r: SeasonReward) -> Bool in !season.pass.owned.contains(r.id) }
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Frames your company name on your profile.").textStyle(.caption, tint: Theme.inkSoft)
-            LazyVGrid(columns: columns, spacing: Theme.Space.s) {
-                ForEach(owned + shut) { (r: SeasonReward) in
-                    let isOpen: Bool = season.pass.owned.contains(r.id)
-                    let worn: Bool = season.pass.equipped[r.kind.rawValue] == r.id
-                    let how: String = CustomiseView.how(r)
-                    LookTile(title: r.title, note: isOpen ? "" : how, worn: worn, locked: !isOpen, id: "company-plate-" + r.id,
-                             art: ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 48, wide: true)) {
-                        if !isOpen { Haptics.warning(); note = r.title + ": " + how; return }
-                        Haptics.success()
-                        if worn { season.unequip(r.kind) } else { season.equipAsking(r.id, pending: $pending) }
-                    }
-                }
-            }
         }
     }
 }

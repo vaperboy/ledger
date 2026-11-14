@@ -47,7 +47,10 @@ public enum InventoryResult: Equatable, Sendable {
 }
 
 public enum PlayerInventory {
-    public static let key = "inv"
+    // Its own key: "inv" holds crypto, funds and deposits, and each side used to overwrite the other there.
+    public static let key = "pinv"
+    static let sharedOldKey = "inv"
+    static let emptyInvestments: JSONValue = .object(["crypto": .object([:]), "funds": .object([:]), "deposits": .array([])])
     public static let holdKey = "invHold"
     public static let listedPrefix = "L:"
     public static let repairLock = "repair"
@@ -85,10 +88,20 @@ public enum PlayerInventory {
         return .object(o)
     }
 
-    public static func items(_ s: GameState) -> [InventoryItem] { (s.rest[key]?.array ?? []).map(decode) }
+    public static func items(_ s: GameState) -> [InventoryItem] { stored(s).map(decode) }
     public static func item(_ s: GameState, id: String) -> InventoryItem? { items(s).first { $0.id == id } }
 
-    static func save(_ s: inout GameState, _ list: [InventoryItem]) { s.rest[key] = .array(list.map(encode)) }
+    // Older saves kept the inventory under the investments' own key; an array there is that inventory.
+    static func stored(_ s: GameState) -> [JSONValue] {
+        if let list = s.rest[key] { return list.array }
+        if let old = s.rest[sharedOldKey], case .array(let list) = old { return list }
+        return []
+    }
+
+    static func save(_ s: inout GameState, _ list: [InventoryItem]) {
+        s.rest[key] = .array(list.map(encode))
+        if let old = s.rest[sharedOldKey], case .array = old { s.rest[sharedOldKey] = emptyInvestments }
+    }
 
     static func update(_ s: inout GameState, id: String, _ body: (inout InventoryItem) -> Void) {
         var list = items(s)
@@ -188,7 +201,7 @@ public enum PlayerInventory {
         return amount
     }
 
-    public static func heldTotal(_ s: GameState) -> Double { holds(s).values.reduce(0, +) }
+    public static func heldTotal(_ s: GameState) -> Double { holds(s).sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value } }
 
     @discardableResult
     public static func takeDelivery(_ s: inout GameState, dealID: String, wire: JSONValue, price: Double, currency: String, data: GameData) -> InventoryItem? {

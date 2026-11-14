@@ -159,7 +159,7 @@ struct OnlineCompanyList: View {
                 }
                 .accessibilityElement(children: .combine)
                 HStack(spacing: Theme.Space.s) {
-                    Button("Visit") { Haptics.tap(); store.openMarket(tab: .companies) }
+                    Button("Visit") { Haptics.tap(); store.openMarket(tab: .overview) }
                         .buttonStyle(TertiaryButtonStyle(size: .compact))
                         .accessibilityIdentifier("friend-company-visit-\(c.id)")
                     Button("Trade") { Haptics.tap(); store.openMarket(tab: .exchange) }

@@ -426,8 +426,8 @@ struct FranchiseTalkView: View {
     }
 
     private func send(_ a: Franchising.Applicant, co: Company, cur: Currency) {
-        let helpText: [String: String] = ["none": "no help with the setup", "l25": "a loan of a quarter of the setup", "l50": "a loan of half of the setup", "c50": "half of the setup covered for \(Int(terms.profitShare * 100))% of the profit"]
-        log.append((true, "Fee \(terms.feeFactor == 1 ? "in full" : terms.feeFactor > 0 ? "half" : "waived"), \(Int(terms.royalty * 100))% royalty, \(helpText[terms.help] ?? ""), \(terms.years) years."))
+        let helpText: [String: String] = ["none": "no help with the setup", "l25": "a loan of a quarter of the setup", "l50": "a loan of half of the setup", "c50": "half of the setup covered for \(Int(saturating: terms.profitShare * 100))% of the profit"]
+        log.append((true, "Fee \(terms.feeFactor == 1 ? "in full" : terms.feeFactor > 0 ? "half" : "waived"), \(Int(saturating: terms.royalty * 100))% royalty, \(helpText[terms.help] ?? ""), \(terms.years) years."))
         guard let r = store.act({ $0.offerToApplicant(companyID: companyID, applicantID: applicantID, terms: terms) }) ?? nil else { return }
         log.append((false, r.answer.text))
         if let n = r.note { log.append((false, n)) }

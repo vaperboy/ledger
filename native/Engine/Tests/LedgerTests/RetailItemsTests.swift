@@ -159,6 +159,8 @@ final class RetailItemsTests: XCTestCase {
             if let i = s.companyIndex(garage) { var lw = s.companies[i].value("lastW"); lw["cap"] = .number(60); s.companies[i].set("lastW", lw) }
         }
         gBefore = e.state.company(garage)!; dBefore = e.state.company(dealer)!
+        // The two companies draw on the one account, so each side is read from its own cash flow.
+        let gFlow0: Double = e.state.cashFlow["co\(garage)"] ?? 0, dFlow0: Double = e.state.cashFlow["co\(dealer)"] ?? 0
         let q = try XCTUnwrap(e.carRepairQuote(garageID: garage, kind: "mechanical"))
         XCTAssertGreaterThan(q.price, 0)
         XCTAssertGreaterThanOrEqual(q.weeks, 1)
@@ -167,8 +169,8 @@ final class RetailItemsTests: XCTestCase {
         XCTAssertEqual(big.labour, q.labour * 2, accuracy: 1e-6)
         guard case .ordered(let o) = e.orderCarRepair(garageID: garage, dealerID: dealer, kind: "mechanical", ref: "Golf") else { return XCTFail("refused") }
         let g = e.state.company(garage)!, d = e.state.company(dealer)!
-        XCTAssertEqual(g.cash - gBefore.cash, o.price - o.partsCost + o.vat, accuracy: 1.5)
-        XCTAssertEqual(dBefore.cash - d.cash, o.price + o.vat, accuracy: 1.5)
+        XCTAssertEqual((e.state.cashFlow["co\(garage)"] ?? 0) - gFlow0, o.price - o.partsCost + o.vat, accuracy: 1.5)
+        XCTAssertEqual(dFlow0 - (e.state.cashFlow["co\(dealer)"] ?? 0), o.price + o.vat, accuracy: 1.5)
         XCTAssertGreaterThan((g.books.total["rev", default: 0]) - (gBefore.books.total["rev", default: 0]), o.price - 1.5)
         XCTAssertGreaterThan((d.books.total["cogs", default: 0]) - (dBefore.books.total["cogs", default: 0]), o.price - 1.5)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")

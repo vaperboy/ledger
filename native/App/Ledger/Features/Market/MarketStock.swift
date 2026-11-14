@@ -55,7 +55,7 @@ struct MarketStockPage: View {
             ValueRow(label: "Next close can land", value: ExchangeUI.price(row.dayLow, cur) + " to " + ExchangeUI.price(row.dayHigh, cur), tint: P.ink)
             ValueRow(label: "Traded at last close", value: row.volume.formatted() + " shares", tint: P.ink)
             if row.mine > 0 { ValueRow(label: "Your shares", value: row.mine.formatted() + " \u{00B7} " + cur.tidyShort(row.value), tint: P.accent) }
-            Text("The closing price moves at most \(Int(ExchangeRules.dayMoveShare * 100))% a day and stays within \(Int(ExchangeRules.bandShare * 100))% of the value per share.")
+            Text("The closing price moves at most \(Int(saturating: ExchangeRules.dayMoveShare * 100))% a day and stays within \(Int(saturating: ExchangeRules.bandShare * 100))% of the value per share.")
                 .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             if row.kind == "own", let b = row.blocked {
                 Text(b.tidyText).textStyle(.caption, tint: P.caution).fixedSize(horizontal: false, vertical: true)

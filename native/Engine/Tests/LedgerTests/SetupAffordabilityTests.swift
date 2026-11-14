@@ -69,6 +69,7 @@ final class SetupAffordabilityTests: XCTestCase {
         XCTAssertFalse(eq.isEmpty)
         for i in eq { XCTAssertGreaterThan(i.cost, 0, i.id); XCTAssertFalse(i.detail.isEmpty, i.id) }
         let f = try XCTUnwrap(e.setupFunding(companyID: id))
-        XCTAssertEqual(f.missing, items.filter { !$0.isDone }.reduce(0) { $0 + $1.cost } - max(0, try XCTUnwrap(e.state.company(id)).cash), accuracy: 0.5)
+        // Nothing is missing when the account already covers it (one account: the company draws on all of it).
+        XCTAssertEqual(f.missing, max(0, items.filter { !$0.isDone }.reduce(0) { $0 + $1.cost } - max(0, try XCTUnwrap(e.state.company(id)).cash)), accuracy: 0.5)
     }
 }

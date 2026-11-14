@@ -93,7 +93,7 @@ struct ListingCountdown: View {
     var seconds: Double
 
     var body: some View {
-        let s: Int = max(0, Int(seconds.rounded(.down)))
+        let s: Int = max(0, Int(saturating: seconds.rounded(.down)))
         HStack(spacing: Theme.Space.xs) {
             unit(s / 3_600, "HRS")
             Text(":").textStyle(.headline, tint: P.inkFaint)

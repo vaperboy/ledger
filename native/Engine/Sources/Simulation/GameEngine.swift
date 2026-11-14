@@ -22,6 +22,7 @@ public struct GameEngine {
         Markets.refreshNames(&state, country: data.countries.resolve(state.homeCountryCode, orHome: state.homeCountryCode))
         MarketBook.backfillCostBases(&state)
         HeldMoney.normalise(&state)
+        SupplyMigration.run(&state, countries: data.countries, nouns: data.catalog.tables.raw["FAM_NOUN"])
         self.state = state
         self.data = data
         self.events = events
@@ -37,7 +38,6 @@ public struct GameEngine {
 
     public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, story: LifeStory = .loan, ambition: String? = nil,
                                tradeID: String? = nil, companyName: String? = nil, chooseFirstItem: Bool = false, channel: SalesChannel? = nil,
-                               difficulty: Difficulty = .classic,
                                admins: Set<String>? = nil, worldRules: WorldRules? = nil) throws -> GameEngine {
         let (data, events, marketing) = try loadResources()
         guard let country = data.countries[countryCode] ?? data.countries.countries.first else { throw CocoaError(.fileReadUnknown) }
@@ -79,7 +79,6 @@ public struct GameEngine {
         }
         state.economy.set("rate0", state.economy.policyRate)
         state.rest["gameID"] = .string("g\(seed)")
-        state.rest[Difficulty.restKey] = .string(difficulty.rawValue)
         PlayerGoals.startLadder(&state)
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
@@ -211,10 +210,13 @@ public struct GameEngine {
         sweepLadder()
         sweepCareer()
         sweepLevel()
+        syncMissions()
         checkMilestones(weekClosed: completed)
         routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })
+        if Tutorial.isComplete(state) { DailyBeat.ensure(&state, fresh: state.inbox.filter { !before.contains($0.id) }, library: events, data: data, context: context) }
         Tutorial.advance(&state, from: .nextDay)
         Tutorial.sync(&state)
+        settleTutorial()
         let fresh = state.inbox.filter { !before.contains($0.id) }
         return DayOutcome(newMessages: fresh, completedWeek: completed, gameOver: state.isGameOver)
     }
@@ -309,7 +311,12 @@ public struct GameEngine {
         var msgs = pend["msgs"].array
         let fresh = state.inbox.filter { !mark.inboxBefore.contains($0.id) }
         state.inbox.removeAll { !mark.inboxBefore.contains($0.id) }
-        for m in fresh { msgs.append(.object(["m": .object(m.raw), "d": .number(Double(now) + (r.next() * 7).rounded(.down))])) }
+        for m in fresh {
+            // Decisions and alerts arrive the day they happen; other news is spread over the week.
+            let lag: Double = (r.next() * 7).rounded(.down)
+            let immediate: Bool = m.route == .decision || m.route == .alert
+            msgs.append(.object(["m": .object(m.raw), "d": .number(Double(now) + (immediate ? 0 : lag))]))
+        }
         var newsList = pend["news"].array
         let allNews = state.rest["news"]?.array ?? []
         let addedNews = Array(allNews.prefix(max(0, allNews.count - mark.newsBefore)))
@@ -410,7 +417,6 @@ public struct GameEngine {
             Aftermath.weekly(&state, data: data, context: context)
             EventEngine.expire(&state, data: data, context: context)
             Unlocks.weekly(&state, context: context)
-            Gates.recordOpen(&state, data: data)
             Engagement.weekly(&state, data: data)
         case 4:
             StrategicDecisions.weekly(&state, data: data, context: context)
@@ -431,7 +437,7 @@ public struct GameEngine {
     mutating func runFailureChecks() {
         Failure.warn(&state, context: context)
         FirstYear.freezeSweep(&state, balance: data.balance)
-        let bankruptcyOn = FirstYear.effective(state, balance: data.balance).bankruptcyActive(week: state.week)
+        let bankruptcyOn = data.balance.firstYear.bankruptcyActive(week: state.week)
         for i in state.companies.indices where bankruptcyOn {
             let c = state.companies[i]
             if state.isBranch(c) { continue }

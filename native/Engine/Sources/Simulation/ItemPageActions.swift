@@ -32,16 +32,15 @@ public extension GameEngine {
     }
 
     @discardableResult
-    mutating func setItemSupplier(companyID: Int, itemID: String, vendorID: String?, unitsPerMonth: Int? = nil) -> SettingResult {
+    mutating func setItemSupplier(companyID: Int, itemID: String, vendorID: String?) -> SettingResult {
         let data = self.data
         return applySetting(refuse: { s in
             if let why = SalesItems.refusal(s, companyID: companyID, itemID: itemID, data: data) { return why }
             guard ItemModels.needsSupplier(s, companyID: companyID, itemID: itemID, data: data) else { return "This item needs no supplier." }
-            return ItemModels.pickRefusal(s, companyID: companyID, itemID: itemID, vendorID: vendorID, units: unitsPerMonth, data: data)
+            return ItemModels.pickRefusal(s, companyID: companyID, itemID: itemID, vendorID: vendorID, data: data)
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             ItemModels.migrateItem(&s, companyID: companyID, itemID: itemID, data: d)
-            ItemModels.pick(&s, companyID: companyID, itemID: itemID, vendorID: vendorID, units: unitsPerMonth, data: d)
-            Tutorial.advance(&s, from: .pickSupplier)
+            ItemModels.pick(&s, companyID: companyID, itemID: itemID, vendorID: vendorID, data: d)
         }
     }
 

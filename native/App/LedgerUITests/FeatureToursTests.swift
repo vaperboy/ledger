@@ -16,6 +16,10 @@ final class FeatureToursTests: FeatureTourCase {
             }
             step("tab \(title): health") { health("tab \(title)", title: false) }
         }
+        step("store: the first tab opens on the plans") {
+            guard goTab("Store") else { return .fail("no Store tab") }
+            return find(wait: 4, { $0.id == "plan-plus" }) != nil ? .pass() : .fail("no plan-plus card on the Store tab")
+        }
         _ = goTab("Home")
         step("home: Next day is in view without scrolling") { primaryInView("next-day") }
         step("home: the companies list shows at most 6 rows or a 'Show all'") {
@@ -45,7 +49,7 @@ final class FeatureToursTests: FeatureTourCase {
                 return .pass("-> \(after.text)" + (backed ? "" : " (no Back button: left by the tab bar)"))
             }
         }
-        roundTrip("home: the rank ring opens Goals and Back returns to Home", prepare: { goTab("Home") }) { tapID("home-rank-ring") }
+        roundTrip("home: the goal strip opens Goals and Back returns to Home", prepare: { goTab("Home") }) { tapID("home-goal") }
         step("home: a Needs you row opens its object and Back/close returns to Home") {
             guard goTab("Home") else { return .fail("no Home") }
             guard tapWhere(wait: 2, { $0.id == "suggestion-row" || $0.id == "suggestion-open-company" }) else { return .skip("nothing in Needs you") }
@@ -101,11 +105,11 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     func testT03_PhoneAppsB() {
-        for t in ["Market", "Competition", "Season", "Settings", "AirStay", "TechPro", "Insurance", "Marketplace", "Store"] { tourApp(t) }
+        for t in ["Market", "Competition", "Goals", "Settings", "AirStay", "TechPro", "Insurance", "Marketplace", "Store"] { tourApp(t) }
     }
 
     private func groupEntity() -> String {
-        guard goGroup("Structure") else { return "" }
+        guard goGroup("Overview") else { return "" }
         if let h = find(wait: 4, { $0.id.hasPrefix("group-entity-co") && $0.type == .button && $0.label.range(of: "Caf", options: [.caseInsensitive, .diacriticInsensitive]) != nil }) { return h.id }
         return ids(prefix: "group-entity-co", wait: 1).first ?? ids(prefix: "group-entity-", wait: 1).first ?? ""
     }
@@ -129,7 +133,7 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     private func openEntityTab(_ entity: String, _ name: String) -> Bool {
-        guard !entity.isEmpty, goGroup("Structure") else { return false }
+        guard !entity.isEmpty, goGroup("Overview") else { return false }
         guard tapID(entity, wait: 4) else { return false }
         return tapGroupTab(name)
     }
@@ -137,10 +141,10 @@ final class FeatureToursTests: FeatureTourCase {
     func testT04_Group() {
         step("group tab: opens on Overview") { goTab("Group") ? (isSelected("group-home-tab-Overview") ? .pass(signature().text) : .fail("Overview not selected: " + tabState())) : .fail("no Group tab") }
         step("group tab: health") { health("Group", title: false) }
-        for home in ["Structure", "People", "Suppliers"] {
+        for home in ["Overview", "People", "Suppliers"] {
             step("group tab: \(home) opens and is clean") {
                 guard goGroup(home) else { return .fail("no \(home) tab") }
-                if home == "Structure" && ids(prefix: "group-entity-").isEmpty { return .fail("no group-entity-* rows: " + tabState()) }
+                if home == "Overview" && ids(prefix: "group-entity-").isEmpty { return .fail("no group-entity-* rows: " + tabState()) }
                 return health("Group \(home)", title: false)
             }
         }

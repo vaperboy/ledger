@@ -17,6 +17,8 @@ actor SupabaseOnlineService: OnlineService {
     private let tokens: any IdentityTokenProvider
     private let transport: any HTTPTransport
     private let decoder: JSONDecoder = SupabaseWire.makeDecoder()
+    private var pendingSwitch: (session: SupabaseSession, game: String?)?
+    private var switchedGame: String?
 
     init(baseURL: URL, apiKey: String, tokens: any IdentityTokenProvider, transport: any HTTPTransport = URLSession.shared) {
         self.base = baseURL; self.apiKey = apiKey; self.tokens = tokens; self.transport = transport
@@ -32,6 +34,75 @@ actor SupabaseOnlineService: OnlineService {
 
     func signIn(with provider: SignInProvider) async throws -> OnlineAccount {
         account(from: try await tokens.link(provider))
+    }
+
+    func link(_ request: SignInRequest) async throws -> OnlineAccount {
+        switch request {
+        case .apple(let idToken, let nonce): return account(from: try await tokens.linkApple(idToken: idToken, nonce: nonce))
+        case .google: return account(from: try await tokens.link(.google))
+        }
+    }
+
+    // Apple must be offered wherever another sign-in is, so nothing is offered while Apple is switched off on the server.
+    func signInOptions() async -> [SignInProvider] {
+        guard let on = await tokens.enabledProviders(), on.contains(.apple) else { return [] }
+        return [.apple, .google].filter { (p: SignInProvider) -> Bool in on.contains(p) }
+    }
+
+    func prepareSwitch(_ request: SignInRequest) async throws -> AccountSwitchOffer {
+        if let old = pendingSwitch { await tokens.release(old.session) }
+        pendingSwitch = nil
+        let session: SupabaseSession = try await tokens.signInExisting(request)
+        let name: String? = (try? decode(PlayerProfile.self, try await raw(path: "/rest/v1/rpc/view_profile", method: "POST", body: Data("{}".utf8), as: session)))?.displayName
+        let game: String? = try? await savedGame(as: session)
+        pendingSwitch = (session, game)
+        return AccountSwitchOffer(provider: request.provider, playerID: session.userID, name: name, savedGame: game.flatMap(AccountGameCodec.info(of:)))
+    }
+
+    func completeSwitch() async throws -> OnlineAccount {
+        guard let held = pendingSwitch else { throw OnlineError.notSignedIn }
+        pendingSwitch = nil
+        await tokens.adopt(held.session)
+        switchedGame = held.game
+        return account(from: held.session)
+    }
+
+    func cancelSwitch() async {
+        guard let held = pendingSwitch else { return }
+        pendingSwitch = nil
+        await tokens.release(held.session)
+    }
+
+    func accountGame() async throws -> String? {
+        if let game = switchedGame { switchedGame = nil; return game }
+        return try await savedGame(as: try await liveSession())
+    }
+
+    func saveAccountGame(_ text: String) async throws {
+        let me: String = try await liveSession().userID
+        let stamp: String = ISO8601DateFormatter().string(from: Date())
+        let body: Data = try JSONSerialization.data(withJSONObject: ["user_id": me, "slot": Self.gameSlot, "payload": text, "version": 1, "updated_at": stamp])
+        _ = try await raw(path: "/rest/v1/save_blobs", method: "POST", query: [URLQueryItem(name: "on_conflict", value: "user_id,slot")], body: body,
+                          prefer: "resolution=merge-duplicates,return=minimal")
+    }
+
+    func deletionPreview() async throws -> DeletionPreview { try decode(DeletionPreview.self, try await rpcData("account_deletion_preview")) }
+
+    private static let gameSlot: Int = 0
+
+    private func savedGame(as session: SupabaseSession) async throws -> String? {
+        struct Row: Decodable { var payload: String }
+        let query: [URLQueryItem] = [URLQueryItem(name: "select", value: "payload"), URLQueryItem(name: "user_id", value: "eq." + session.userID),
+                                     URLQueryItem(name: "slot", value: "eq.\(Self.gameSlot)")]
+        let rows: [Row] = try decode([Row].self, try await raw(path: "/rest/v1/save_blobs", method: "GET", query: query, as: session))
+        return rows.first?.payload
+    }
+
+    // A request made with a session that is not the kept one, used before the player agrees to switch.
+    private func raw(path: String, method: String, query: [URLQueryItem] = [], body: Data? = nil, as session: SupabaseSession) async throws -> Data {
+        let (data, status) = try await exchange(path: path, method: method, query: query, body: body, token: session.accessToken, prefer: nil)
+        guard (200..<300).contains(status) else { throw SupabaseWire.mapError(status: status, body: data) }
+        return data
     }
 
     private func account(from session: SupabaseSession) -> OnlineAccount {
@@ -64,6 +135,8 @@ actor SupabaseOnlineService: OnlineService {
         if let privacy = update.privacy { fields["p_privacy"] = SupabaseWire.privacyWire(privacy) }
         if let icon = update.avatarIcon { fields["p_avatar_icon"] = icon }
         if !fields.isEmpty { _ = try await rpcData("update_my_profile", fields) }
+        // The look goes in its own call, so a server that does not know it yet still saves the rest.
+        if let look = update.avatarLook { _ = try? await rpcData("update_my_profile", ["p_avatar_look": look]) }
         if update.level != nil || update.badges != nil || update.gameWeek != nil || update.companies != nil {
             struct Args: Encodable {
                 var p_level: Int?; var p_badges: [String]?; var p_game_week: Int?; var p_companies: [OnlineCompany]?
@@ -168,6 +241,18 @@ actor SupabaseOnlineService: OnlineService {
 
     func rpcData(_ name: String, _ params: [String: Any] = [:]) async throws -> Data {
         try await raw(path: "/rest/v1/rpc/" + name, method: "POST", body: try JSONSerialization.data(withJSONObject: params))
+    }
+
+    // Calls one of the project's edge functions as the signed-in player.
+    func functionData(_ name: String, _ params: [String: Any]) async throws -> Data {
+        try await raw(path: "/functions/v1/" + name, method: "POST", body: try JSONSerialization.data(withJSONObject: params))
+    }
+
+    func signedInUserID() async -> String? { try? await liveSession().userID }
+
+    // Reads rows the signed-in player may see from one table.
+    func tableData(_ table: String, query: [URLQueryItem]) async throws -> Data {
+        try await raw(path: "/rest/v1/" + table, method: "GET", query: query)
     }
 
     private func liveSession() async throws -> SupabaseSession { try await tokens.validSession() }

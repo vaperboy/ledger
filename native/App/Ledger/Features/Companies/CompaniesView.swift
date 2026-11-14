@@ -36,6 +36,11 @@ struct CompaniesView: View {
             .overlay(alignment: .bottomTrailing) {
                 if let e = store.engine { NextDayDock(engine: e).padding(.bottom, NextDayDock.gap) }
             }
+            .overlay(alignment: .bottomLeading) {
+                AdGoldBubble()
+                    .padding(.leading, Theme.Space.page)
+                    .padding(.bottom, NextDayDock.gap + (NextDayDock.height - 44) / 2)
+            }
             .padding(.bottom, missingBottom)
             .ledgerBackground()
             .background(GeometryReader { (g: GeometryProxy) in
@@ -43,7 +48,7 @@ struct CompaniesView: View {
                     .onAppear { ownInsets = g.safeAreaInsets }
                     .onChange(of: g.safeAreaInsets) { _, v in ownInsets = v }
             })
-            .onAppear { store.refreshPending(); store.endVisits() }
+            .onAppear { store.refreshPending(); store.endVisits(); store.syncAdminLevels() }
             .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
@@ -66,35 +71,21 @@ struct CompaniesView: View {
             ScrollView(.vertical) { page(e, rows: rows, limit: nil, compact: false) }
                 .scrollIndicators(.hidden)
         } else {
-            if rows.count <= 1 {
-                ViewThatFits(in: .vertical) {
-                    page(e, rows: rows, limit: 1, compact: false, fills: true)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true, trim: 1)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true, trim: 2)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true, trim: 3)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true, chart: false, trim: 3)
-                }
-            } else {
-                ViewThatFits(in: .vertical) {
+            // One page laid out once. It fills the screen when it is short and scrolls when it is long,
+            // instead of measuring several full copies of Home on every update.
+            GeometryReader { (geo: GeometryProxy) in
+                ScrollView(.vertical) {
                     page(e, rows: rows, limit: 5, compact: false, fills: true)
-                    page(e, rows: rows, limit: 4, compact: false, fills: true)
-                    page(e, rows: rows, limit: 3, compact: false, fills: true)
-                    page(e, rows: rows, limit: 4, compact: true, fills: true)
-                    page(e, rows: rows, limit: 3, compact: true, fills: true)
-                    page(e, rows: rows, limit: 2, compact: true, fills: true)
-                    page(e, rows: rows, limit: 2, compact: true, fills: true, chart: false)
-                    page(e, rows: rows, limit: 1, compact: true, fills: true, chart: false)
-                    ScrollView(.vertical) { page(e, rows: rows, limit: 3, compact: false) }
-                        .scrollIndicators(.hidden)
-                        .scrollBounceBehavior(.basedOnSize)
+                        .frame(minHeight: geo.size.height, alignment: .top)
                 }
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize)
             }
         }
     }
 
-    private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool, fills: Bool = false, chart: Bool = true, trim: Int = 0) -> some View {
-        HomeSummary(engine: e, compact: compact, fills: fills, chart: chart, trim: trim) {
+    private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool, fills: Bool = false, chart: Bool = true) -> some View {
+        HomeSummary(engine: e, compact: compact, fills: fills, chart: chart) {
             companiesBlock(e, rows: rows, limit: limit, compact: compact)
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, (compact ? Theme.Space.xs : Theme.Space.s) + missingTop).padding(.bottom, Theme.Space.m)
@@ -294,26 +285,24 @@ struct CompanyRow: View {
     var engine: GameEngine
     var company: Company
     var health: CompanyHealth
-    @Environment(Entitlements.self) private var ent
-    @AppStorage(CosmeticKeys.badge) private var badgeID: String = Cosmetics.defaultBadgeID
-    @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
     static let textInset: CGFloat = 28 + Theme.Space.m
 
     var body: some View {
         let co = company, h = health
-        let style: (theme: String, badge: String) = engine.companyStyle(companyID: co.id)
-        let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(style.badge.isEmpty ? badgeID : style.badge, earned: engine.careerCosmetics, pro: ent.isPro)
-        let accent: Color = Cosmetics.resolvedTheme(style.theme.isEmpty ? themeID : style.theme, pro: ent.isPro).accent
         let urgent = CompaniesView.urgency(co, h) == 0
-        let month: Double = h.profitTTM / 12
-        let profitTint: Color = month < -0.5 ? Theme.loss : month > 0.5 ? Theme.gain : Theme.inkSoft
+        let weekProfits: [Int: Double] = store.memo("homeWeekProfit") { (g: GameEngine) -> [Int: Double] in
+            var out: [Int: Double] = [:]
+            for c in g.reports(.week).last?.companies ?? [] { out[c.id] = c.pnl.netProfit }
+            return out
+        } ?? [:]
+        let week: Double? = weekProfits[co.id]
+        let profitTint: Color = (week ?? 0) < -0.5 ? Theme.loss : (week ?? 0) > 0.5 ? Theme.gain : Theme.inkSoft
         HStack(spacing: Theme.Space.s) {
             if engine.companyLogoID(companyID: co.id).isEmpty { ThumbnailView(kind: .trade, key: co.type, size: 28) } else { LogoBadge(logoID: engine.companyLogoID(companyID: co.id), size: 28) }
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: Theme.Space.xs) {
                     if urgent { LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.small, tint: Theme.loss).accessibilityLabel("Needs attention") }
                     Text(co.name).textStyle(.headline).lineLimit(1)
-                    CosmeticBadgeView(badge: badge, tint: accent, size: 14)
                 }
                 HStack(spacing: Theme.Space.xs) {
                     Circle().fill(statusTint(co, h)).frame(width: 6, height: 6).accessibilityHidden(true)
@@ -322,9 +311,9 @@ struct CompanyRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 1) {
-                Text((month < -0.5 ? "\u{2212}" : month > 0.5 ? "+" : "") + store.short(abs(month), in: co) + " a month")
+                Text(week.map { (w: Double) -> String in (w < -0.5 ? "\u{2212}" : w > 0.5 ? "+" : "") + store.short(abs(w), in: co) } ?? "\u{2013}")
                     .textStyle(.body, tint: profitTint, numeric: true, weight: .medium)
-                Text("Cash " + store.short(co.cash, in: co)).textStyle(.caption, tint: co.cash < 0 ? Theme.loss : Theme.inkFaint, numeric: true)
+                Text("this week").textStyle(.caption, tint: Theme.inkFaint)
             }
             .lineLimit(1)
             .layoutPriority(1)

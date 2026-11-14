@@ -26,23 +26,25 @@ struct JointVentureMeetingsView: View {
                     SegmentedPill(items: Part.allCases, title: { $0.rawValue }, selection: $part, identifier: { "jv-part-\($0.rawValue.lowercased())" },
                                   badges: { (p: Part) -> Bool in p == .upcoming ? waiting(false) : p == .urgent ? waiting(true) : false })
                         .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xxs).padding(.bottom, Theme.Space.s)
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: Theme.Space.m) {
-                            switch part {
-                            case .upcoming: upcoming(e, co, st, live.filter { !$0.urgent }, week)
-                            case .urgent: urgent(e, co, st, live.filter { $0.urgent }, week)
-                            case .history: history(e, co, st)
+                    SegmentPager(items: Part.allCases, selection: $part) { (p: Part) in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                                switch p {
+                                case .upcoming: upcoming(e, co, st, live.filter { !$0.urgent }, week)
+                                case .urgent: urgent(e, co, st, live.filter { $0.urgent }, week)
+                                case .history: history(e, co, st)
+                                }
+                                if p != .history && st.members.count > 1 {
+                                    Button { Haptics.tap(); callOpen = true } label: { Text("Put something to the board").frame(maxWidth: .infinity) }
+                                        .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                                        .accessibilityIdentifier("jv-call")
+                                }
                             }
-                            if part != .history && st.members.count > 1 {
-                                Button { Haptics.tap(); callOpen = true } label: { Text("Put something to the board").frame(maxWidth: .infinity) }
-                                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
-                                    .accessibilityIdentifier("jv-call")
-                            }
+                            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
+                            .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                         }
-                        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
-                        .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+                        .scrollIndicators(.hidden)
                     }
-                    .scrollIndicators(.hidden)
                 }
                 .appScreen(title: "Board meetings", subtitle: co.name)
             } else {
@@ -112,9 +114,9 @@ struct JointVentureMeetingsView: View {
             Text(it.title).textStyle(.body, tint: Theme.ink, weight: .medium)
             Text("If this passes: \(it.effect)").textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             if it.takesMoneyOut { Text("Money leaves the company for its owners, so it needs the vote.").textStyle(.caption, tint: Theme.warn) }
-            FlowVotes(votes: it.votes, names: names, closed: m.closed)
+            FlowVotes(votes: it.votes, names: names, closed: m.closed, sealed: !m.closed && it.remoteMeeting != nil)
             if !m.closed, let t = e.jvTally(companyID: co.id, meetingID: m.id, itemID: it.id) {
-                Text("Yes so far: \(Int(t.yesPercent.rounded()))% of all shares. It needs more than 50%.").textStyle(.caption, tint: Theme.inkSoft)
+                Text("Yes so far: \(Int(saturating: t.yesPercent.rounded()))% of all shares. It needs more than 50%.").textStyle(.caption, tint: Theme.inkSoft)
             }
             if let out = it.outcome {
                 HStack(spacing: 6) {
@@ -131,9 +133,12 @@ private struct FlowVotes: View {
     var votes: [String: JVRules.Choice]
     var names: [String: String]
     var closed: Bool
+    // Votes of real players stay sealed on the server until the meeting closes.
+    var sealed: Bool = false
 
     var body: some View {
-        let ids: [String] = names.keys.sorted { (a: String, b: String) -> Bool in a == JointVenture.Member.me ? true : b == JointVenture.Member.me ? false : (names[a] ?? "") < (names[b] ?? "") }
+        let all: [String] = names.keys.sorted { (a: String, b: String) -> Bool in a == JointVenture.Member.me ? true : b == JointVenture.Member.me ? false : (names[a] ?? "") < (names[b] ?? "") }
+        let ids: [String] = sealed ? all.filter { (id: String) -> Bool in id == JointVenture.Member.me } : all
         VStack(alignment: .leading, spacing: 2) {
             ForEach(ids, id: \.self) { (id: String) in
                 HStack(spacing: 6) {
@@ -145,6 +150,7 @@ private struct FlowVotes: View {
                     }
                 }
             }
+            if sealed { Text("How each partner voted shows when the meeting closes.").textStyle(.caption, tint: Theme.inkFaint) }
         }
     }
 }
@@ -158,7 +164,7 @@ struct JVVoteSheet: View {
     var meetingID: Int
     @State private var picks: [Int: JVRules.Choice] = [:]
 
-    private static let titles: [String] = ["For", "Against", "Abstain"]
+    private static let titles: [String] = ["Against", "For", "Abstain"]
     private func choice(_ title: String) -> JVRules.Choice { title == "For" ? .yes : title == "Against" ? .no : .abstain }
     private func title(_ c: JVRules.Choice) -> String { c == .yes ? "For" : c == .no ? "Against" : "Abstain" }
 
@@ -193,7 +199,7 @@ struct JVVoteSheet: View {
 
     private func standing(_ e: GameEngine, _ it: JointVenture.Item) -> some View {
         let t = e.jvTally(companyID: companyID, meetingID: meetingID, itemID: it.id)
-        let words: String = t.map { "Of all shares: for \(Int($0.yesPercent.rounded()))% · against \(Int($0.noPercent.rounded()))% · not voted \(Int((100 - $0.yesPercent - $0.noPercent).rounded()))%" } ?? ""
+        let words: String = t.map { "Of all shares: for \(Int(saturating: $0.yesPercent.rounded()))% · against \(Int(saturating: $0.noPercent.rounded()))% · not voted \(Int(saturating: (100 - $0.yesPercent - $0.noPercent).rounded()))%" } ?? ""
         return HStack(spacing: 6) {
             if let t, t.yes > t.no { StockArrow(up: true, good: true) } else if let t, t.no > t.yes { StockArrow(up: false, good: false) }
             Text(words).popupText(.caption)
@@ -210,6 +216,7 @@ struct JVVoteSheet: View {
         }
         Haptics.success()
         dismiss()
+        Task { @MainActor in await JointVentureCoordinator.shared.sync(store) }
         store.tell("Votes recorded", lines.joined(separator: "\n") + "\nVoting closes \(JVClock.closes(m))" + (m.urgent ? ", or as soon as more than half of all shares have voted yes" : "") + ". What passes is carried out by the game.", tone: "good")
     }
 }
@@ -231,8 +238,9 @@ struct JVCallSheet: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             let cur: Currency = e.currency(for: co)
             let top: Double = kind == .dividend ? e.maximumDividend(companyID: companyID) : cur.scaledPrice(500_000)
+            let offered: [JVRules.Kind] = e.jvIsRemote(companyID: companyID) ? Self.kinds.filter { (k: JVRules.Kind) -> Bool in k != .sell } : Self.kinds
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                ForEach(Self.kinds, id: \.self) { (k: JVRules.Kind) in
+                ForEach(offered, id: \.self) { (k: JVRules.Kind) in
                     ChoiceCard(title: k.title, subtitle: JVRules.effect(k, amount: amount, steps: down ? -1 : 1, money: { cur.tidyDisplay($0) }), selected: kind == k) { kind = k; amount = min(max(amount, 0), top) }
                 }
                 if kind == .price { SegmentedPill(items: ["Down", "Up"], title: { $0 }, selection: Binding(get: { down ? "Down" : "Up" }, set: { down = $0 == "Down" })) }
@@ -264,6 +272,7 @@ struct JVCallSheet: View {
             guard ok else { Haptics.warning(); store.tell("Not added", "There is no board to put it to.", tone: "warn"); return }
             Haptics.success()
             dismiss()
+            Task { @MainActor in await JointVentureCoordinator.shared.sync(store) }
             store.tell("Added to the next board meeting", "\"\(item.title)\" is on the agenda. It passes with yes votes from more than half of all shares; your own shares already count for it.", tone: "good")
             return
         }
@@ -272,6 +281,7 @@ struct JVCallSheet: View {
         case .called?:
             Haptics.success()
             dismiss()
+            Task { @MainActor in await JointVentureCoordinator.shared.sync(store) }
             store.tell("Emergency meeting called", "The other owners have been notified and have 24 hours to vote. It passes with yes votes from more than half of all shares; a vote not cast counts as an abstention.", tone: "good")
         case .refused(let why)?:
             Haptics.warning()
@@ -369,6 +379,7 @@ struct BoardProposalSheet: View {
             Haptics.success()
             dismiss(); onDone()
             store.tell("Added to the next board meeting", "\"\(p.title)\" is on the agenda of \(p.boardName). Nothing changes unless more than half of all shares vote yes.", tone: "good")
+            Task { @MainActor in await JointVentureCoordinator.shared.sync(store) }
         case .called?:
             Haptics.success()
             dismiss(); onDone()

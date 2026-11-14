@@ -22,21 +22,35 @@ public enum EventEngine {
         let eqv = co.num("eqv") != 0 ? co.num("eqv") : (CompanyFigures.equipmentBookValue(co) != 0 ? CompanyFigures.equipmentBookValue(co) : 50000 * costIndex)
         let v: [String: Double] = ["wk": wk, "pay": pay, "eqv": eqv, "co.eqc": co.num("eqc", 1), "co.q": co.quality, "co.mgrQ": co.num("mgrQ"),
                                    "co.payGap": co.num("payGap"), "co.books": co.num("books", 0.5), "co.rep": co.reputation]
-        return Context(wk: wk, pay: pay, eqv: eqv, variables: v)
+        return Context(wk: wk, pay: pay, eqv: eqv, variables: v.merging(situation(co, wk: wk)) { (a: Double, _: Double) -> Double in a })
+    }
+
+    /// The company's situation, so an answer's odds can depend on it: staff mood (0-100), weeks of sales held as cash, how full it runs, team size.
+    static func situation(_ co: Company, wk: Double) -> [String: Double] {
+        let mood: Double = co.value("mood").isNull ? 60 : co.num("mood")
+        let cashWeeks: Double = clamp(co.cash / max(1, wk), -20, 52)
+        let util: Double = co.value("lastW")["util"].isNull ? 0.7 : clamp(co.value("lastW")["util"].double, 0, 1.5)
+        return ["co.mood": mood, "co.cashWk": cashWeeks, "co.util": util, "co.staffN": Double(co.staff.count)]
     }
 
     static let moneyKeys: Set<String> = ["cash", "fine", "loss", "bonus", "owner"]
-    static func resolve(_ fx: JSONValue, _ ctx: Context, currency: Currency? = nil) -> JSONValue {
+    /// Odds between 0 and 1: a formula for them is kept as it is, not rounded like an amount.
+    static let oddsKeys: Set<String> = ["p", "stay"]
+
+    static func resolve(_ fx: JSONValue, _ ctx: Context, currency: Currency? = nil, key: String? = nil) -> JSONValue {
         switch fx {
         case .object(let o):
-            if let e = o["expr"], o.count == 1 { return .number(jsRound(Formula(e.string).evaluate(ctx.variables))) }
+            if let e = o["expr"], o.count == 1 {
+                let x: Double = Formula(e.string).evaluate(ctx.variables)
+                return .number(key.map { oddsKeys.contains($0) } == true ? x : jsRound(x))
+            }
             var out: [String: JSONValue] = [:]
             for (k, v) in o {
                 if let cur = currency, moneyKeys.contains(k), case .number(let n) = v { out[k] = .number(cur.scaledPrice(n)) }
-                else { out[k] = resolve(v, ctx, currency: currency) }
+                else { out[k] = resolve(v, ctx, currency: currency, key: k) }
             }
             return .object(out)
-        case .array(let a): return .array(a.map { resolve($0, ctx, currency: currency) })
+        case .array(let a): return .array(a.map { resolve($0, ctx, currency: currency, key: key) })
         default: return fx
         }
     }
@@ -54,13 +68,13 @@ public enum EventEngine {
         let c = context(for: s.companies[i], data: data, country: w.country(s.companies[i]))
         for id in bd.eventIDs {
             let co = s.companies[i]
-            guard let e = library[id] else { continue }
+            guard let e = library[id], e.appliesTo(bd) else { continue }
             if e.minimumCompanyAgeWeeks > 0 && s.week - co.foundedWeek < e.minimumCompanyAgeWeeks { continue }
             if (e.tone == "good" || id == "g_press" || id == "g_offer") && !(co.lastWeekUnits > 0.5 && co.openedWeek != nil && s.week - co.openedWeek! >= goodEventMinimumWeeks(s, companyIndex: i)) { continue }
             if co.staff.isEmpty && mentionsStaff(e) { continue }
             if co.staff.isEmpty && co.managerID == nil && !soloAllowed(id, co) { continue }
             var p = e.weight * risk * 0.6 * (e.condition?.evaluate(c.variables) ?? 1)
-            if e.tone == "bad" { p *= Difficulty.of(s).eventRamp(data.balance, week: s.week) }
+            if e.tone == "bad" { p *= FairRules.eventRamp(data.balance, week: s.week) }
             if !(p > 0) { p = 0 }
             if p <= 0 || !s.random.chance(p) { continue }
             if Sourcing.shields(s, companyID: co.id, eventID: id) {
@@ -91,7 +105,7 @@ public enum EventEngine {
     }
 
     static func takeBadSlot(_ s: inout GameState, companyID: Int, eventID: String) -> Bool {
-        guard s.week <= Difficulty.of(s).badEventCapWeeks else { return true }
+        guard s.week <= FairRules.badEventCapWeeks else { return true }
         var st = s.rest["evBad"] ?? .object([:])
         if st["week"].int != s.week { st["week"] = .number(Double(s.week)); st["n"] = .number(0) }
         if st["n"].int >= 1 {
@@ -192,8 +206,8 @@ public enum EventEngine {
         if decision == .manager {
             let pick = choose(co, options: options, ctx: ctx, quality: ManagerModel.quality(co, bd(data, co), people: s.people), random: &s.random)
             let who = s.people[co.managerID ?? 0]?.name ?? "The manager"
-            s.addMessage(from: co.name, title: title, body: "\(who) chose: \(options[pick]["l"].string).", companyID: co.id, tone: e.tone, options: options)
-            if let k = s.inbox.indices.first, true { s.inbox[k].set("status", "done"); s.inbox[k].set("pick", pick); s.inbox[k].set("mgrName", who); s.inbox[k].set("ev", e.id) }
+            // The manager answered: one line for the day and the report, no message.
+            s.feedLine("\(title) \(who) chose: \(options[pick]["l"].string).", tone: e.tone, companyID: co.id)
             apply(&s, companyIndex: i, options[pick]["fx"], ctx: ctx, event: e, data: data, context: fc)
             if e.tone == "bad" { Threat.survived(&s, companyID: co.id, text: "\"\(title)\" at \(co.name). \(who) handled it: \(options[pick]["l"].string).") }
             else { s.note("\(co.name): \(who) handled \"\(title)\" by choosing: \(options[pick]["l"].string).", tone: "n", companyID: co.id) }
@@ -228,8 +242,8 @@ public enum EventEngine {
     }
 
     static func summary(_ fx: JSONValue, currency: Currency, tone: String) -> String {
-        let lines: [String] = EffectPreview.lines(fx, currency: currency)
-        return lines.isEmpty ? plainLine(tone: tone) : lines.joined(separator: ". ") + "."
+        let lines: [String] = EffectPreview.story(fx, currency: currency, money: true)
+        return lines.isEmpty ? plainLine(tone: tone) : lines.joined(separator: " ")
     }
 
     static let insuranceNames: [String: String] = ["prop": "property", "liab": "liability", "prof": "professional", "cyber": "cyber", "bi": "business-interruption"]
@@ -252,7 +266,7 @@ public enum EventEngine {
         let line: String = insuranceLine(co, e, currency: currency)
         if !line.isEmpty { parts.append(line) }
         let weeks: Int = max(1, e.expiresAfterWeeks)
-        parts.append("Answer within \(weeks) week\(weeks == 1 ? "" : "s"), or the cheapest answer is taken.")
+        parts.append("Answer within \(weeks) week\(weeks == 1 ? "" : "s"), or nothing is done and it plays out.")
         return parts.joined(separator: " ")
     }
 
@@ -331,17 +345,13 @@ public enum EventEngine {
             let i = s.companyIndex(m.companyID)
             if m.kind == "decision" {
                 guard let ci = i else { s.inbox[k].set("status", "done"); continue }
-                var bestIndex = 0, best = -Double.infinity
-                for (n, o) in m.options.enumerated() where o["fx"]["tier"].isNull {
-                    let v = -abs(o["fx"]["cash"].double)
-                    if v > best { best = v; bestIndex = n }
-                }
                 let ctx = context(for: s.companies[ci], data: data, country: fc.country(of: s.companies[ci], s))
+                let bestIndex = passiveOption(m.options, ctx)
                 let e = GameEvent(id: m.str("ev"), json: .object(["cat": .string(m.str("cat", "none"))]))
                 apply(&s, companyIndex: ci, m.options[bestIndex]["fx"], ctx: ctx, event: e, data: data, context: fc)
                 if let k2 = s.inbox.firstIndex(where: { $0.id == due }) { k = k2 }
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", bestIndex); s.inbox[k].set("auto", 1)
-                s.note("No answer in time on \"\(m.title)\". Default taken: \(m.options[bestIndex]["l"].string).", tone: "bad", companyID: m.companyID)
+                s.note("No answer in time on \"\(m.title)\". Nothing was done: \(m.options[bestIndex]["l"].string).", tone: "bad", companyID: m.companyID)
             } else if m.actionID == StrategicDecisions.action {
                 let pick = StrategicDecisions.expired(&s, message: m, data: data, context: fc)
                 if let k2 = s.inbox.firstIndex(where: { $0.id == due }) { k = k2 }
@@ -355,6 +365,32 @@ public enum EventEngine {
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", -1); s.inbox[k].set("auto", 1)
             }
         }
+    }
+
+    /// The answer an unanswered decision gets: the option that does nothing if there is one; otherwise, of the options that spend
+    /// nothing, the one that plays out worst; if every option spends, the cheapest. Leaving a choice open never earns more than answering it.
+    public static func passiveOption(of m: Message, _ s: GameState, data: GameData, context fc: FinanceContext) -> Int {
+        guard let co = s.company(m.companyID) else { return 0 }
+        return passiveOption(m.options, context(for: co, data: data, country: fc.country(of: co, s)))
+    }
+
+    static func passiveOption(_ options: [JSONValue], _ ctx: Context) -> Int {
+        let open = options.indices.filter { options[$0]["fx"]["tier"].isNull }
+        guard let first = open.first else { return 0 }
+        if let idle = open.last(where: { options[$0]["fx"].object.isEmpty }) { return idle }
+        let free = open.filter { options[$0]["fx"]["cash"].double >= 0 && options[$0]["fx"]["raise"].double <= 0 }
+        var pick = first
+        if free.isEmpty {
+            var cheapest = -Double.infinity
+            for n in open where options[n]["fx"]["cash"].double > cheapest { cheapest = options[n]["fx"]["cash"].double; pick = n }
+            return pick
+        }
+        var worst = Double.infinity
+        for n in free {
+            let v = score(options[n]["fx"], ctx)
+            if v <= worst { worst = v; pick = n }
+        }
+        return pick
     }
 
     public static func openDecisionCount(_ s: GameState) -> Int { s.inbox.filter { $0.status == "open" }.count }

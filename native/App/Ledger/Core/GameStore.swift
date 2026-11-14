@@ -9,17 +9,17 @@ import SaveSystem
 import Simulation
 
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
-    case projects, group, company, custom, phone
+    case custom, group, company, projects, phone
     var id: String { rawValue }
-    var title: String { switch self { case .company: return "Home"; case .custom: return "Custom"; case .group: return "Group"; case .projects: return "Ventures"; case .phone: return "Phone" } }
+    var title: String { switch self { case .company: return "Home"; case .custom: return "Store"; case .group: return "Group"; case .projects: return "Ventures"; case .phone: return "Phone" } }
     var symbol: String {
-        switch self { case .company: return "house"; case .custom: return "star"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .phone: return "iphone" }
+        switch self { case .company: return "house"; case .custom: return "bag"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .phone: return "iphone" }
     }
     var glyph: String {
-        switch self { case .company: return Glyph.home; case .custom: return Glyph.bank; case .group: return Glyph.group; case .projects: return Glyph.projects; case .phone: return Glyph.phone }
+        switch self { case .company: return Glyph.home; case .custom: return Glyph.shopBag; case .group: return Glyph.group; case .projects: return Glyph.projects; case .phone: return Glyph.phone }
     }
     var accent: Color {
-        switch self { case .company: return Theme.gold; case .custom: return Color(hex: 0xA58BD0); case .group: return Color(hex: 0x7F9BC4); case .projects: return Color(hex: 0xE0BC5E); case .phone: return Color(hex: 0x86B890) }
+        switch self { case .company: return Theme.gold; case .custom: return Color(hex: 0xE0BC5E); case .group: return Color(hex: 0x7F9BC4); case .projects: return Color(hex: 0xE0BC5E); case .phone: return Color(hex: 0x86B890) }
     }
     static let launch: AppTab = .company
     static func from(raw: String) -> AppTab { AppTab(rawValue: raw) ?? .launch }
@@ -58,6 +58,8 @@ struct OutcomeNote: Identifiable, Equatable {
     let id = UUID()
     var chosen: String
     var result: String
+    /// The one screen an answered decision is about, shown as a link under the result.
+    var link: DecisionLink? = nil
 }
 
 struct OutcomeCapture {
@@ -133,14 +135,13 @@ final class GameStore: ObservableObject {
     @Published private(set) var reportSheet: ReportDigest?
     @Published private(set) var celebrationQueue: [Celebration] = []
     @Published var homeCliffhanger: Int = 0
-    @Published var showGoals = false
-    func openGoals() { showGoals = true }
+    func openGoals() { openApp(.season) }
     var playStreakShown: Int {
         guard let e = engine else { return 0 }
         let n: Int = PlayStreak.current(e.state, today: GameStore.calendarDay())
         return n >= PlayStreak.showFrom ? n : 0
     }
-    static func calendarDay() -> Int { Calendar(identifier: .gregorian).ordinality(of: .day, in: .era, for: Date()) ?? 0 }
+    static func calendarDay() -> Int { TrustedClock.today() }
     func scheduleReminders() {
         guard let e = engine else { return }
         Reminders.schedule(SessionHooks.reminders(e.state))
@@ -181,14 +182,15 @@ final class GameStore: ObservableObject {
         guard !items.isEmpty else { return }
         homeEvents = Array((items + homeEvents).prefix(12))
     }
-    @Published private(set) var transferChip: TransferChip?
+    /// Lives in its own small object so a flying money chip redraws only the overlay, not every screen.
+    var transferChip: TransferChip? { ChipFlight.shared.chip }
     func flyChip(_ label: String, amount: Double, from origin: CGPoint? = nil, outgoing: Bool = false, text: String? = nil) {
-        transferChip = TransferChip(label: label, amount: amount, origin: origin, outgoing: outgoing, text: text)
+        ChipFlight.shared.chip = TransferChip(label: label, amount: amount, origin: origin, outgoing: outgoing, text: text)
     }
-    func clearChip() { transferChip = nil }
+    func clearChip() { ChipFlight.shared.chip = nil }
     @Published private(set) var dailySheet: DailyDigest?
 
-    @Published var tab: AppTab = AppTab.launch
+    @Published var tab: AppTab = AppTab.launch { didSet { if tab != oldValue { routeChanged() } } }
     @Published private(set) var previousTab: AppTab?
     func returnToPreviousTab() {
         guard let p = previousTab, p != tab else { return }
@@ -196,12 +198,13 @@ final class GameStore: ObservableObject {
     }
     private struct LastPush { var route: NavRoute; var tab: AppTab; var at: Date }
     private var lastPush: LastPush?
-    @Published private(set) var stacks: [AppTab: [NavRoute]] = [:]
-    @Published var customTarget: CustomTabTarget = CustomTabTarget.stored()
-    @Published var customPickerOpen = false
+    @Published private(set) var stacks: [AppTab: [NavRoute]] = [:] { didSet { routeChanged() } }
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
     @Published private(set) var appRequest: AppRequest?
     @Published private(set) var loadProblem: String?
+    /// True from launch until the saved game has been read, so the first frame never waits for the file.
+    @Published private(set) var isLoadingSave: Bool = false
+    private let writer: SaveWriter?
 
     let saves: SaveStore?
     private let isShowcase = ProcessInfo.processInfo.arguments.contains("-showcase")
@@ -213,18 +216,23 @@ final class GameStore: ObservableObject {
 
     init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Ledger/Saves", isDirectory: true)
-        saves = try? SaveStore(directory: base)
+        let store: SaveStore? = try? SaveStore(directory: base)
+        saves = store
+        writer = store.map { SaveWriter(store: $0) }
         if isShowcase, let e = try? GameEngine.showcase(wealthy: ProcessInfo.processInfo.arguments.contains("-showcase-rich"), board: ProcessInfo.processInfo.arguments.contains("-showcase-board"),
                                                         extraTrades: Self.showcaseTrades) { engine = e }
-        else if let saves, saves.hasSave() { loadCurrent() }
+        else if let saves, saves.hasSave() { isLoadingSave = true }
+        writer?.onFailure = { [weak self] (message: String) -> Void in self?.errorText = message }
         ConfirmThreshold.delegated = { [weak self] () -> (limit: Double, rate: Double) in self?.engine?.delegatedSpendLimit() ?? (limit: 0, rate: 0) }
         StoreSession.shared.moneyPrizeHandler = { [weak self] (amount: Int, id: String) -> Void in self?.claimBoxMoney(amount, claimID: id) }
+        StoreSession.shared.moneyPackHandler = { [weak self] (pack: String, id: String) -> Double? in self?.claimMoneyPack(pack, claimID: id) }
         StoreSession.shared.purse = { [weak self] () -> AuctionPurse? in
             guard let e = self?.engine else { return nil }
             let cur: Currency = e.homeCurrency
             return AuctionPurse(cash: e.auctionCash, priceLevel: e.auctionPriceLevel, format: { (n: Int) -> String in cur.display(Double(n) * cur.rate).tidyMoney })
         }
         StoreSession.shared.cashHandler = { [weak self] (amount: Int, id: String, label: String) -> Void in self?.settleAuctionCash(amount, claimID: id, label: label) }
+        StoreSession.shared.adminHandler = { [weak self] (on: Bool) -> Void in self?.applyAdminLevels(on) }
     }
 
     func settleAuctionCash(_ amount: Int, claimID: String, label: String) {
@@ -239,18 +247,38 @@ final class GameStore: ObservableObject {
     var hasGame: Bool { engine != nil }
     var hasSavedGame: Bool { saves?.hasSave() ?? false }
 
-    func money(_ v: Double) -> String { (engine?.homeCurrency.display(v) ?? String(Int(v))).tidyMoney }
-    func short(_ v: Double) -> String { (engine?.homeCurrency.short(v) ?? String(Int(v))).tidyMoney }
-    func money(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).display(v) ?? String(Int(v))).tidyMoney }
-    func short(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).short(v) ?? String(Int(v))).tidyMoney }
+    func money(_ v: Double) -> String { (engine?.homeCurrency.display(v) ?? String(Int(saturating: v))).tidyMoney }
+    func short(_ v: Double) -> String { (engine?.homeCurrency.short(v) ?? String(Int(saturating: v))).tidyMoney }
+    func money(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).display(v) ?? String(Int(saturating: v))).tidyMoney }
+    func short(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).short(v) ?? String(Int(saturating: v))).tidyMoney }
 
     func loadCurrent() {
         guard let saves else { return }
+        writer?.flush()
         do { try start(with: saves.load()); loadProblem = nil; resetNavigation() }
-        catch {
-            let kept: Bool = saves.keepUnreadable()
-            loadProblem = Self.describe(error) + (kept ? " A copy of your save was kept on this device." : "")
+        catch { noteLoadFailure(error, saves: saves) }
+    }
+
+    /// Reads the saved game off the main thread, after the first frame is on screen.
+    func loadInitialSave() async {
+        guard isLoadingSave, let saves else { isLoadingSave = false; return }
+        let result: Result<GameState, Error> = await Task.detached { () -> Result<GameState, Error> in
+            Result { try saves.load() }
+        }.value
+        switch result {
+        case .success(let state):
+            do { try start(with: state); loadProblem = nil; resetNavigation() }
+            catch { noteLoadFailure(error, saves: saves) }
+        case .failure(let error):
+            noteLoadFailure(error, saves: saves)
         }
+        isLoadingSave = false
+        syncPlayerCompanies()
+    }
+
+    private func noteLoadFailure(_ error: Error, saves: SaveStore) {
+        let kept: Bool = saves.keepUnreadable()
+        loadProblem = Self.describe(error) + (kept ? " A copy of your save was kept on this device." : "")
     }
 
     func currentSaveSummary() -> SaveSummary? {
@@ -275,29 +303,46 @@ final class GameStore: ObservableObject {
         engine = e
     }
 
+    /// Queues a save; the file is written in the background a moment later.
     func save(backup: Bool = false) {
-        guard !isShowcase, let saves, let engine else { return }
-        do {
-            let summary = saves.summary(of: engine.state, trades: engine.data.catalog)
-            try saves.save(engine.state, summary: summary)
-            if backup { try saves.backup(engine.state, summary: summary) }
-        } catch { errorText = "Saving failed: \(error)" }
+        guard !isShowcase, let saves, let engine, let writer else { return }
+        writer.schedule(engine.state, summary: saves.summary(of: engine.state, trades: engine.data.catalog), backup: backup)
+    }
+
+    /// Writes the save now. Used before leaving the app or touching save files.
+    func saveNow() {
+        save()
+        writer?.flush()
     }
 
     func slotList() -> [(slot: String, summary: SaveSummary?)] { saves?.slots() ?? [] }
 
-    @discardableResult
-    func saveToSlot(_ raw: String) -> Bool {
-        guard !isShowcase, let saves, let engine, let name = SaveStore.cleanSlotName(raw), name != "current", !saves.hasSave(slot: name) else { return false }
-        do { try saves.save(engine.state, slot: name, summary: saves.summary(of: engine.state, trades: engine.data.catalog)); return true }
-        catch { errorText = "Saving failed: \(error)"; return false }
+    /// Slots are separate careers: the current one is parked under its own name and the chosen one continues from its latest state.
+    func switchCareer(to slot: String) {
+        guard !isShowcase, let saves, slot != "current", saves.hasSave(slot: slot) else { return }
+        saveNow()
+        do {
+            if saves.hasSave() { guard try saves.park(as: careerName) != nil else { errorText = "Your career could not be put aside."; return } }
+            guard try saves.unpark(slot) else { errorText = "That career could not be opened."; return }
+            try start(with: saves.load()); loadProblem = nil; resetNavigation(); save()
+        } catch { errorText = "That career could not be opened. " + Self.describe(error) }
     }
 
-    func loadSlot(_ slot: String) {
-        guard !isShowcase, let saves else { return }
-        save(backup: true)
-        do { try start(with: saves.load(slot: slot)); loadProblem = nil; resetNavigation(); save() }
-        catch { errorText = "That slot could not be opened. " + Self.describe(error) }
+    /// Puts the current career aside in its own slot and returns to the start screen for a new one.
+    @discardableResult
+    func parkForNewCareer() -> Bool {
+        guard !isShowcase, let saves, engine != nil else { return false }
+        saveNow()
+        do {
+            guard try saves.park(as: careerName) != nil else { return false }
+            resetNavigation(); engine = nil
+            return true
+        } catch { errorText = "Your career could not be put aside. " + Self.describe(error); return false }
+    }
+
+    private var careerName: String {
+        guard let s = engine?.state else { return "Career" }
+        return SaveStore.cleanSlotName(s.companies.first?.name ?? s.player.name) ?? "Career"
     }
 
     func deleteSlot(_ slot: String) { try? saves?.delete(slot: slot) }
@@ -305,10 +350,10 @@ final class GameStore: ObservableObject {
     @discardableResult
     func renameSlot(_ slot: String, to raw: String) -> Bool { (try? saves?.renameSlot(slot, to: raw)) ?? false }
 
-    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, channel: SalesChannel? = nil, difficulty: Difficulty = .classic) {
+    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, channel: SalesChannel? = nil) {
         RememberedDetails.clearAll()
         do {
-            var e = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, channel: channel, difficulty: difficulty)
+            var e = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, channel: channel)
             ProfileStore.adopt(into: &e)
             if let old = engine, !isShowcase { SeasonModel.shared.succeed(save: Self.saveID(old.state), with: Self.saveID(e.state)) }
             engine = e
@@ -318,37 +363,38 @@ final class GameStore: ObservableObject {
         } catch { errorText = "Could not start a game: \(error)" }
     }
 
-    var canRetrySameSetup: Bool {
-        guard let s = engine?.state else { return false }
-        let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
-        return story != .fresh || !s.companies.isEmpty
+    /// Restores the cloud copy only when it is newer than every copy of that career on this phone, so a backup never rolls a career back.
+    func restoreBackup(text: String) -> String? {
+        guard let saves else { return "Saving is not available." }
+        do {
+            let state: GameState = try saves.importLegacy(text: text)
+            let id: String = Self.saveID(state)
+            for row in saves.slots() where row.slot != "current" {
+                if let parked = try? saves.load(slot: row.slot), Self.saveID(parked) == id { return "This career is in the slot \(row.slot). Open it there." }
+            }
+            if engine != nil { saveNow() }
+            writer?.flush()
+            var here: GameState? = engine?.state
+            if here == nil, saves.hasSave() { here = try? saves.load() }
+            if let here {
+                if Self.saveID(here) == id {
+                    guard (state.week, state.day) > (here.week, here.day) else { return "This phone already has this career at the same point or later." }
+                } else {
+                    let name: String = SaveStore.cleanSlotName(here.companies.first?.name ?? here.player.name) ?? "Career"
+                    guard try saves.park(as: name) != nil else { return "Your career could not be put aside." }
+                }
+            }
+            try start(with: state); loadProblem = nil; resetNavigation(); save()
+            return nil
+        } catch { return "That backup could not be restored. " + Self.describe(error) }
     }
-
-    func retryWithSameSetup() {
-        guard let s = engine?.state else { return }
-        let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
-        if story == .fresh, let c = s.companies.first {
-            newGame(name: s.player.name, countryCode: s.homeCountryCode, story: .fresh, tradeID: c.type, companyName: c.name, channel: c.chosenChannel)
-        } else if story != .fresh {
-            newGame(name: s.player.name, countryCode: s.homeCountryCode, story: story)
-        }
-    }
-
-    func restoreBackup(text: String) {
-        guard let saves else { return }
-        do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save() }
-        catch { errorText = "That backup could not be restored. " + Self.describe(error) }
-    }
-
-    static let classicStartKey = "ledger.classicStartUnlocked"
-    var classicStartUnlocked: Bool { UserDefaults.standard.bool(forKey: Self.classicStartKey) }
 
     func backupText() -> String? {
         guard let engine, let d = try? JSONEncoder().encode(engine.state) else { return nil }
         return String(data: d, encoding: .utf8)
     }
 
-    func quitToMenu() { save(); resetNavigation(); engine = nil }
+    func quitToMenu() { saveNow(); resetNavigation(); engine = nil }
 
     func nextDay() {
         guard !isAdvancing, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, engine != nil else { return }
@@ -385,7 +431,6 @@ final class GameStore: ObservableObject {
         engine = e
         SeasonModel.shared.observe(e.state)
         StoreSession.shared.receiveLevel(e.playerLevel.level)
-        if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }
         Haptics.nextDay()
         SoundCues.play(out.completedWeek ? .weekReport : .dayClose)
         report(out.newMessages)
@@ -468,8 +513,6 @@ final class GameStore: ObservableObject {
         if !celebrationQueue.isEmpty { celebrationQueue.removeFirst() }
     }
 
-    var homeShortcuts: [HomeShortcut] { HomeShortcut.resolve(engine?.homeShortcutIDs) }
-
     private func report(_ fresh: [Message]) {
         if fresh.contains(where: { $0.isOwnerAddressed && ($0.status == "open" || $0.severity >= 3) }) { Haptics.warning() }
         let alerts: [Message] = fresh.filter { (m: Message) -> Bool in m.isAlert && !redAlerts.contains(where: { (a: Message) -> Bool in a.id == m.id }) }
@@ -516,9 +559,10 @@ final class GameStore: ObservableObject {
     }
 
     func markRead(_ id: Int) {
-        guard var e = engine else { return }
-        e.update { s, _, _ in if let i = s.inbox.firstIndex(where: { $0.id == id }), !s.inbox[i].isRead { s.inbox[i].isRead = true } }
+        guard var e = engine, e.state.inbox.contains(where: { $0.id == id && !$0.isRead }) || e.tutorialStep != nil else { return }
+        e.markMessageRead(id)
         engine = e
+        noteTutorialDone()
     }
 
     @discardableResult
@@ -590,12 +634,12 @@ final class GameStore: ObservableObject {
         outcome(chosen: label, result: effects.joined(separator: "\n"))
     }
 
-    func outcome(chosen: String, result: String) {
+    func outcome(chosen: String, result: String, link: DecisionLink? = nil) {
         let c: String = chosen.tidyText
         let r: String = result.tidyText
         outcomeCapture?.told = true
         if r.isEmpty { Haptics.success(); return }
-        outcomes.append(OutcomeNote(chosen: c, result: r.isEmpty ? "Done: " + c : r))
+        outcomes.append(OutcomeNote(chosen: c, result: r.isEmpty ? "Done: " + c : r, link: link))
     }
 
     func runConfirmed(_ action: PendingAction) {
@@ -701,6 +745,7 @@ final class GameStore: ObservableObject {
         } else {
             if resetRoot { popToRoot(t) }
             previousTab = tab
+            TabSwitchTimer.begin(t)
             tab = t
         }
         appRequest = nil
@@ -716,6 +761,7 @@ final class GameStore: ObservableObject {
     func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
         if var e = engine, e.noteVisit(app: app.rawValue) { engine = e }
         appRequest = request
+        if app == .store { selectTab(.custom); return }
         push(.app(app))
     }
 

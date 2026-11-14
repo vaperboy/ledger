@@ -18,22 +18,13 @@ struct StoreAppear: ViewModifier {
     }
 }
 
+/// Kept for callers; the Store no longer floats or sweeps a sheen, so it stays light on every phone.
 struct StoreFloat: ViewModifier {
     var amplitude: CGFloat = 3
     var period: Double = 4.2
     var phase: Double = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    func body(content: Content) -> some View {
-        if reduceMotion {
-            content
-        } else {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { tl in
-                let t: Double = tl.date.timeIntervalSinceReferenceDate
-                content.offset(y: CGFloat(sin((t / period + phase) * 2 * Double.pi)) * amplitude)
-            }
-        }
-    }
+    func body(content: Content) -> some View { content }
 }
 
 struct StoreSheen: ViewModifier {
@@ -42,31 +33,8 @@ struct StoreSheen: ViewModifier {
     var period: Double = 4.6
     var offset: Double = 0
     var strength: Double = 0.30
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    func body(content: Content) -> some View {
-        if enabled && !reduceMotion {
-            content.overlay {
-                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { tl in
-                    let t: Double = (tl.date.timeIntervalSinceReferenceDate + offset).truncatingRemainder(dividingBy: period) / period
-                    let sweeping: Bool = t < 0.26
-                    let s: Double = min(1, t / 0.26)
-                    GeometryReader { (g: GeometryProxy) in
-                        LinearGradient(colors: [.clear, Color.white.opacity(strength), .clear], startPoint: .leading, endPoint: .trailing)
-                            .frame(width: g.size.width * 0.4, height: g.size.height * 1.8)
-                            .rotationEffect(.degrees(16))
-                            .offset(x: -g.size.width * 0.5 + g.size.width * 1.6 * s, y: -g.size.height * 0.4)
-                            .opacity(sweeping ? 1 : 0)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-                    .allowsHitTesting(false)
-                }
-                .accessibilityHidden(true)
-            }
-        } else {
-            content
-        }
-    }
+    func body(content: Content) -> some View { content }
 }
 
 extension View {
@@ -77,28 +45,16 @@ extension View {
     }
 }
 
+/// A flat card surface tinted with a colour; a glowing one gets a brighter edge, no animation.
 struct StoreSurface: View {
     var tint: Color = Theme.gold
     var glow = false
     var radius: CGFloat = Theme.Radius.hero
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        if glow && !reduceMotion {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { tl in
-                let s: Double = (sin(tl.date.timeIntervalSinceReferenceDate / 2.8 * 2 * Double.pi) + 1) / 2
-                card(shadow: 0.26 + 0.22 * s, blur: 14 + 8 * s)
-            }
-        } else {
-            card(shadow: glow ? 0.34 : 0, blur: 16)
-        }
-    }
-
-    private func card(shadow: Double, blur: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .fill(LinearGradient(colors: [tint.opacity(0.16), Theme.surfaceRaised, Theme.surface], startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(tint.opacity(glow ? 0.65 : 0.28), lineWidth: glow ? 1.2 : 0.8))
-            .shadow(color: tint.opacity(shadow), radius: blur, y: 2)
+            .fill(LinearGradient(colors: [tint.opacity(0.22), Theme.surfaceRaised], startPoint: .topLeading, endPoint: .bottomTrailing))
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(tint.opacity(glow ? 0.75 : 0.3), lineWidth: glow ? 1.2 : 0.8))
     }
 }
 
@@ -151,7 +107,7 @@ struct CountingNumber: View, Animatable {
         get { value }
         set { value = newValue }
     }
-    var body: some View { Text(Int(value.rounded()).formatted()) }
+    var body: some View { Text(Int(saturating: value.rounded()).formatted()) }
 }
 
 struct BoxArt: View {
@@ -190,23 +146,13 @@ struct BoxArt: View {
     }
 }
 
+/// Still rays behind a reveal.
 struct StoreRays: View {
     var tint: Color
     var size: CGFloat
     var strength: Double = 0.5
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        if reduceMotion {
-            rays(angle: 0)
-        } else {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { tl in
-                rays(angle: tl.date.timeIntervalSinceReferenceDate * 9)
-            }
-        }
-    }
-
-    private func rays(angle: Double) -> some View {
         let count: Int = 10
         var stops: [Gradient.Stop] = []
         for i in 0..<count {
@@ -217,7 +163,6 @@ struct StoreRays: View {
             stops.append(Gradient.Stop(color: tint.opacity(0), location: b))
         }
         return AngularGradient(gradient: Gradient(stops: stops), center: .center)
-            .rotationEffect(.degrees(angle))
             .mask(RadialGradient(colors: [.black, .clear], center: .center, startRadius: size * 0.1, endRadius: size / 2))
             .frame(width: size, height: size)
             .accessibilityHidden(true)

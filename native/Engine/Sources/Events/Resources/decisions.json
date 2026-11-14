@@ -1731,7 +1731,7 @@
 },
 {
 "l": "Raise prices 2%",
-"d": "A safer step.",
+"d": "A smaller step.",
 "fx": {
 "gamble": {
 "p": 0.85,
@@ -2166,7 +2166,7 @@
 },
 {
 "l": "License it with quality controls",
-"d": "Less money and a safer outcome.",
+"d": "Less money, and less at stake.",
 "fx": {
 "cash": {
 "expr": "-wk*0.3"

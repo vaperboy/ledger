@@ -135,8 +135,11 @@ struct UsedCarYardSection: View {
             Text(count).textStyle(.caption, tint: Theme.inkFaint)
         }) {
             if cars.isEmpty {
-                Text("The yard is empty: buy cars in Marketplace.")
+                Text("The yard is empty.")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Button("Buy cars in Marketplace") { store.openApp(.marketplace) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .accessibilityIdentifier("yard-open-marketplace")
             }
             ForEach(Array(cars.enumerated()), id: \.element.id) { (n: Int, c: UsedCarStockItem) -> AnyView in
                 AnyView(VStack(spacing: 0) {
@@ -175,8 +178,11 @@ struct UsedCarYardSection: View {
         return PageGroup("Buyers") {
             VStack(alignment: .leading, spacing: 0) {
                 if recs.isEmpty {
-                    Text("You buy by hand in Marketplace.")
-                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).padding(.bottom, 8)
+                    Text("You buy by hand.")
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    Button("Open Marketplace") { store.openApp(.marketplace) }
+                        .buttonStyle(SecondaryButtonStyle(size: .compact))
+                        .padding(.bottom, 8)
                 }
                 ForEach(Array(recs.enumerated()), id: \.offset) { (i: Int, r: UsedCarBuyerRecord) in
                     FlatRow(label: r.name + " (" + roleWord(r.role) + ")", value: Words.level(r.rating, scale: .quality), sub: track(r), rule: i > 0)

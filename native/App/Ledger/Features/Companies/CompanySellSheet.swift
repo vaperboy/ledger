@@ -45,7 +45,7 @@ struct CompanySellSheet: View {
 
     private func content(_ e: GameEngine, _ co: Company) -> some View {
         let cur: Currency = e.currency(for: co)
-        let pct: Int = Int(percent.rounded())
+        let pct: Int = Int(saturating: percent.rounded())
         let shown = Binding<Double>(get: { percent }, set: { (v: Double) in percent = (v / 5).rounded() * 5 })
         let q: CompanySale.Quote? = e.saleQuote(companyID: companyID, percent: pct, method: method)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {

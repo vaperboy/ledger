@@ -71,14 +71,17 @@ final class PlayerMarketModel: ObservableObject {
     @Published var listings: [PlayerListing] = []
     @Published var state: MarketState = .empty
     @Published var loaded = false
+    @Published var loadFailed = false
     @Published var busy = false
 
     var openDeals: Int { state.incoming.filter { (d: MarketDeal) -> Bool in d.isOpen }.count + state.outgoing.filter { (d: MarketDeal) -> Bool in d.status == "discussing" }.count }
 
     func refresh(_ online: OnlineSession) async {
         guard online.isSignedIn else { listings = []; state = .empty; loaded = true; return }
-        if let l = try? await online.service.marketBrowse(kind: nil) { listings = l }
-        if let m = try? await online.service.marketMine() { state = m }
+        var failed = false
+        do { listings = try await online.service.marketBrowse(kind: nil) } catch { failed = true }
+        do { state = try await online.service.marketMine() } catch { failed = true }
+        loadFailed = failed
         loaded = true
     }
 
@@ -99,7 +102,7 @@ final class PlayerMarketModel: ObservableObject {
             if let why = r?.reason { _ = try? await online.service.marketWithdraw(dealID: d.id); await refresh(online); return why }
             await finish(store, online)
             return nil
-        } catch { return error.localizedDescription }
+        } catch { return OnlineWords.friendly(error) }
     }
 
     func offer(_ l: PlayerListing, price: Double, store: GameStore, online: OnlineSession) async -> String? {
@@ -114,7 +117,7 @@ final class PlayerMarketModel: ObservableObject {
             if let why = r?.reason { _ = try? await online.service.marketWithdraw(dealID: d.id); await refresh(online); return why }
             await finish(store, online)
             return nil
-        } catch { return error.localizedDescription }
+        } catch { return OnlineWords.friendly(error) }
     }
 
     func withdraw(_ d: MarketDeal, store: GameStore, online: OnlineSession) async -> String? {
@@ -124,7 +127,7 @@ final class PlayerMarketModel: ObservableObject {
             _ = try await online.service.marketWithdraw(dealID: d.id)
             await finish(store, online)
             return nil
-        } catch { return error.localizedDescription }
+        } catch { return OnlineWords.friendly(error) }
     }
 
     func answer(_ d: MarketDeal, accept: Bool, store: GameStore, online: OnlineSession) async -> String? {
@@ -138,7 +141,7 @@ final class PlayerMarketModel: ObservableObject {
             _ = try await online.service.marketAnswer(dealID: d.id, accept: accept)
             await finish(store, online)
             return nil
-        } catch { return error.localizedDescription }
+        } catch { return OnlineWords.friendly(error) }
     }
 
     func respond(_ d: MarketDeal, reply: MarketReply, price: Double?, store: GameStore, online: OnlineSession) async -> String? {
@@ -148,7 +151,7 @@ final class PlayerMarketModel: ObservableObject {
             _ = try await online.service.marketRespond(dealID: d.id, reply: reply, price: price)
             await finish(store, online)
             return nil
-        } catch { return error.localizedDescription }
+        } catch { return OnlineWords.friendly(error) }
     }
 
     func list(itemID: String, price: Double, store: GameStore, online: OnlineSession) async -> String? {
@@ -162,7 +165,7 @@ final class PlayerMarketModel: ObservableObject {
             store.act { (g: inout GameEngine) in g.lockInventory(itemID: itemID, listingID: l.id) }
             await refresh(online)
             return nil
-        } catch { return error.localizedDescription }
+        } catch { return OnlineWords.friendly(error) }
     }
 
     func cancel(_ l: PlayerListing, store: GameStore, online: OnlineSession) async -> String? {
@@ -173,7 +176,7 @@ final class PlayerMarketModel: ObservableObject {
             store.act { (g: inout GameEngine) in g.unlockInventory(itemID: l.itemID) }
             await refresh(online)
             return nil
-        } catch { return error.localizedDescription }
+        } catch { return OnlineWords.friendly(error) }
     }
 }
 
@@ -198,7 +201,7 @@ struct MarketPriceField: View {
         }
         .padding(.vertical, Theme.Space.s)
         .overlay(alignment: .bottom) { Rectangle().fill(P.hairline).frame(height: 0.5) }
-        .onAppear { if value > 0, text.isEmpty { text = String(Int(value.rounded())) } }
+        .onAppear { if value > 0, text.isEmpty { text = String(Int(saturating: value.rounded())) } }
     }
 }
 
@@ -285,7 +288,7 @@ struct PlayerListingPage: View {
             }
             ShopSection(title: "Details") { ShopFacts(facts: facts) }
             ShopSection(title: "Seller") {
-                ListingPanel {
+                sellerLink(l) {
                     HStack(spacing: Theme.Space.m) {
                         PlayerAvatar(initials: ArtLibrary.initials(l.sellerName), colour: l.avatarColour ?? AvatarCatalog.colour(for: l.sellerName), icon: l.avatarIcon, size: 40)
                             .overlay(alignment: .bottomTrailing) {
@@ -298,6 +301,7 @@ struct PlayerListingPage: View {
                         }
                         Spacer(minLength: 0)
                         if let lv = l.sellerLevel { Text("Level \(lv)").textStyle(.caption) }
+                        if !l.mine { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint) }
                     }
                 }
             }
@@ -307,6 +311,17 @@ struct PlayerListingPage: View {
         .accessibilityIdentifier("mk-player-listing")
         .safeAreaInset(edge: .bottom, spacing: 0) { ShopBottomAction { actions(l) }.environment(\.outsidePalette, P) }
         .centerSheet(isPresented: $offering, title: "Your offer", category: .medium, tone: .info) { offerSheet(l) }
+    }
+
+    /// The seller panel opens the seller's player card; your own listing has nothing to open.
+    @ViewBuilder private func sellerLink<C: View>(_ l: PlayerListing, @ViewBuilder content: @escaping () -> C) -> some View {
+        if l.mine {
+            ListingPanel { content() }
+        } else {
+            NavigationLink { PlayerProfileView(playerID: l.sellerID, knownName: l.sellerName) } label: { ListingPanel { content() } }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier("mk-seller-card")
+        }
     }
 
     private func dealNote(_ d: MarketDeal) -> some View {

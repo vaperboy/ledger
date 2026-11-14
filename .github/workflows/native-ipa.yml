@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BUNDLE_ID: com.example.ledger
+  BUNDLE_ID: com.matasdovyda.ledger
   SOURCE_BRANCH: native-swiftui
 
 jobs:

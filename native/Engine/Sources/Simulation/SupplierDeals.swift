@@ -102,19 +102,22 @@ public extension GameEngine {
     func supplierCurrentProviders(companyID: Int) -> [(inputID: String, title: String, provider: String)] {
         guard let co = state.company(companyID), co.status.isLive, let bd = data.catalog[co.type] else { return [] }
         var out: [(inputID: String, title: String, provider: String)] = []
-        if Suppliers.hasGoods(bd, co) { out.append((inputID: "goods", title: "Goods", provider: Suppliers.goodsVendor(state, company: co, data: data)?.name ?? "Market")) }
-        if !bd.equipment.isEmpty { out.append((inputID: "repair", title: "Repairs and upkeep", provider: Suppliers.repairVendor(state, company: co, data: data)?.name ?? "No fixed supplier")) }
+        if Suppliers.hasGoods(bd, co), let v = Suppliers.goodsVendor(state, company: co, data: data) { out.append((inputID: "goods", title: "Goods", provider: v.name)) }
+        if !bd.equipment.isEmpty, let v = Suppliers.repairVendor(state, company: co, data: data) { out.append((inputID: "repair", title: "Repairs and upkeep", provider: v.name)) }
         for k in IntercompanySupply.kindsFor(co) {
             if let l = IntercompanySupply.link(state, buyer: co.id, kind: k.id), let s = state.company(l.supplierID) {
                 out.append((inputID: k.id, title: k.name, provider: s.name))
-            } else if let a = AccountSupply.link(state, buyer: co.id, kind: k.id) {
-                let n = AccountSupply.candidates(state, buyer: co.id, kind: k.id, data: data).first { $0.accountID == a.accountID }?.accountName ?? "Business customer"
-                out.append((inputID: k.id, title: k.name, provider: n))
             } else {
-                out.append((inputID: k.id, title: k.name, provider: "Outside suppliers"))
+                out.append((inputID: k.id, title: k.name, provider: supplierLineName(co, bd, line: k.id)))
             }
         }
         return out
+    }
+
+    // The player company that supplies a line when no own company does.
+    func supplierLineName(_ co: Company, _ bd: Trade, line: String) -> String {
+        if let l = SupplyCatalogue.lines(co, bd).first(where: { $0.id == line }), let o = SupplyCatalogue.current(state, co, bd, line: l, data: data) { return o.name }
+        return Suppliers.lineSuppliers(state, company: co, line: line, data: data).first?.name ?? ""
     }
 
     private func supplierYearlyRevenue(_ co: Company) -> Double {
@@ -146,21 +149,14 @@ public extension GameEngine {
             x.yearlyVsMarket = spend * (1 - o.costFactor)
             x.yearlyVsCurrent = curCost.map { spend * ($0 - o.costFactor) }
             x.quality = String(format: "%@ quality %+.0f points", Suppliers.goodsClassNames[min(2, max(0, o.goodsClass))], o.qualityShift)
-            x.risks = ["Outside supplier: price rises, failures and cut deliveries can hit you."]
-            if o.current && auto { x.subtitle += " · picked by " + (co.managerID != nil ? "your manager" : "the market") }
+            x.risks = ["Price rises, failures and cut deliveries can hit you."]
             return x
         }
         if let a = Suppliers.agreement(state, scope: "goods"), auto, let i = options.firstIndex(where: { $0.vendorID == a }) {
             options[i].subtitle += " · board agreement for all companies"
         }
-        let managerRisk = Sourcing.summary(state, company: co, data: data, classes: marketing.goodsClasses)?.managerMayOverpay ?? false
-        let autoOpt = SupplierOption(id: "v:auto", kind: .outside, name: co.managerID != nil ? "Let the manager choose" : "Let the market choose", subtitle: "Re-picked every 26 weeks",
-                                     change: .goodsVendor("auto"), isCurrent: auto, priceFactor: nil, yearlyVsMarket: nil, yearlyVsCurrent: nil, discount: nil, relationship: nil,
-                                     relationshipWord: nil, nextLevel: nil, vendorID: nil, quality: nil, reliability: "Depends on who picks",
-                                     terms: "Best offer by discount and quality when the buyer is skilled, otherwise whoever comes first",
-                                     delivery: "With your regular orders", risks: managerRisk ? ["Your manager is not always good at finding the best deal."] : [], blocked: nil)
         return SupplierInput(id: "goods", title: "Goods", what: "What the business sells or uses up: stock, ingredients, materials", yearlySpend: spend,
-                             current: options.first { $0.isCurrent }, options: options + [autoOpt], noOwnProvider: nil)
+                             current: options.first { $0.isCurrent }, options: options, noOwnProvider: nil)
     }
 
     private func supplierRepairInput(_ co: Company) -> SupplierInput {
@@ -169,17 +165,13 @@ public extension GameEngine {
         func opt(_ v: Suppliers.Vendor) -> SupplierOption {
             var x = supplierVendorOption(v, id: "f:" + v.id, kind: .repairVendor, change: .repairVendor(v.id), current: v.id == cur?.id)
             x.terms = v.discount > 0 ? "\(supplierPct(v.discount)) off repair and upkeep bills" : "Standard bills, no discount yet"
-            x.risks = ["Outside supplier."]
+            x.risks = []
             return x
         }
-        var options: [SupplierOption] = cands.sorted { $0.discount > $1.discount }.map(opt)
+        var options: [SupplierOption] = cands.map(opt)
         if let c = cur, !options.contains(where: { $0.vendorID == c.id }) { options.insert(opt(c), at: 0) }
-        let none = SupplierOption(id: "f:none", kind: .noneFixed, name: "No fixed supplier", subtitle: "Standard bills", change: .repairVendor("auto"), isCurrent: cur == nil,
-                                  priceFactor: nil, yearlyVsMarket: nil, yearlyVsCurrent: nil, discount: 0, relationship: nil, relationshipWord: nil, nextLevel: nil, vendorID: nil,
-                                  quality: nil, reliability: "n/a", terms: "Repairs at standard prices", delivery: "As needed", risks: [], blocked: nil)
-        let all = options + [none]
         return SupplierInput(id: "repair", title: "Repairs and upkeep", what: "Servicing of your equipment: the discount cuts every upkeep and service bill", yearlySpend: nil,
-                             current: all.first { $0.isCurrent }, options: all, noOwnProvider: nil)
+                             current: options.first { $0.isCurrent }, options: options, noOwnProvider: nil)
     }
 
     private func supplierKindInput(_ co: Company, _ k: IntercompanySupply.Kind) -> SupplierInput {
@@ -187,16 +179,20 @@ public extension GameEngine {
         let link = IntercompanySupply.link(state, buyer: co.id, kind: k.id)
         let acctLink = AccountSupply.link(state, buyer: co.id, kind: k.id)
         let cogs = k.category == "cogs"
-        let outsideRisk = cogs ? ["Exposed to outside supplier events: price rises, failures, cut deliveries."] : []
+        let outsideRisk = cogs ? ["Exposed to supplier events: price rises, failures, cut deliveries."] : []
         let dway = k.delivered ? IntercompanySupply.deliveryWay(co.type, data.balance) : nil
-        let outsideRel = dway.map { "Outside courier: \(Int(saturating: (($0.options["rel"] ?? 1) * 100).rounded()))% of orders reach the customer" }
+        let outsideRel = dway.map { "\(Int(saturating: (($0.options["rel"] ?? 1) * 100).rounded()))% of orders reach the customer" }
         var options: [SupplierOption] = []
-        options.append(SupplierOption(id: "out", kind: .outside, name: k.delivered ? "Outside courier" : "Outside suppliers", subtitle: "The market", change: .outside, isCurrent: link == nil && acctLink == nil,
+        let usual: String = data.catalog[co.type].map { supplierLineName(co, $0, line: k.id) } ?? ""
+        options.append(SupplierOption(id: "out", kind: .outside, name: usual.isEmpty ? k.name : usual, subtitle: "Player company", change: .outside, isCurrent: link == nil && acctLink == nil,
                                       priceFactor: 1, yearlyVsMarket: 0, yearlyVsCurrent: nil, discount: nil, relationship: nil, relationshipWord: nil, nextLevel: nil, vendorID: nil,
-                                      quality: nil, reliability: outsideRel ?? "Market supply",
-                                      terms: k.delivered ? "Market price per delivered order (\(supplierPct(k.buyers[co.type] ?? 0)) of the order value), paid as you deliver" : "Market price, paid as you buy",
-                                      delivery: k.delivered ? "Orders that are not delivered bring no customers" : "Whoever the market offers", risks: outsideRisk, blocked: nil))
-        for sp in IntercompanySupply.suppliers(state, for: co, kind: k) {
+                                      quality: nil, reliability: outsideRel ?? "Dependable",
+                                      terms: k.delivered ? "Usual price per delivered order (\(supplierPct(k.buyers[co.type] ?? 0)) of the order value), paid as you deliver" : "Usual price, paid as you buy",
+                                      delivery: k.delivered ? "Orders that are not delivered bring no customers" : (k.local ? "Same city" : "Same country"), risks: outsideRisk, blocked: nil))
+        // The own company that supplies now is always listed, also while it is not trading, so the current arrangement and its risks show.
+        var own: [Company] = IntercompanySupply.suppliers(state, for: co, kind: k)
+        if let l = link, !own.contains(where: { (c: Company) -> Bool in c.id == l.supplierID }), let sp = state.company(l.supplierID) { own.append(sp) }
+        for sp in own {
             for m in IntercompanySupply.modes {
                 let pf = IntercompanySupply.priceFactor(mode: m.id, supplier: sp, data: data, perkCut: Ambitions.supplyCostCut(state, data))
                 let isCur = link?.supplierID == sp.id && link?.mode == m.id
@@ -207,26 +203,20 @@ public extension GameEngine {
                 }
                 if m.id != "mkt" && pf >= 1 { risks.append("\(sp.name) runs at no margin today, so this mode gives no saving yet.") }
                 let delivered: String? = isCur ? link.map { "\(Int(saturating: ($0.lastShare * 100).rounded()))% delivered last week" } : nil
-                options.append(SupplierOption(id: "o:\(sp.id):\(m.id)", kind: .ownCompany, name: sp.name, subtitle: "Your company · \(m.name)", change: .ownCompany(sp.id, mode: m.id), isCurrent: isCur,
+                options.append(SupplierOption(id: "o:\(sp.id):\(m.id)", kind: .ownCompany, name: sp.name, subtitle: "Yours · \(m.name)", change: .ownCompany(sp.id, mode: m.id), isCurrent: isCur,
                                               priceFactor: pf, yearlyVsMarket: spend * (1 - pf), yearlyVsCurrent: nil, discount: nil, relationship: nil, relationshipWord: nil, nextLevel: nil,
                                               vendorID: nil, quality: nil, reliability: delivered ?? "Not measured until it delivers",
-                                              terms: "\(m.name), settled weekly between the two companies' books, VAT as on any sale in the country (reclaimed once the buyer is past the VAT threshold); never above the outside price",
+                                              terms: "\(m.name), settled weekly between the two companies' books, VAT as on any sale in the country (reclaimed once the buyer is past the VAT threshold); never above the usual price",
                                               delivery: k.local ? "Same city" : "Same country", risks: risks, blocked: nil))
             }
         }
-        for c in AccountSupply.candidates(state, buyer: co.id, kind: k.id, data: data) {
-            let isCur = acctLink?.accountID == c.accountID
-            let next = Suppliers.nextDiscountTier(c.relationship)
-            let word = Rivals.relationshipWord(c.relationship)
-            options.append(SupplierOption(id: "c:\(c.accountID)", kind: .businessCustomer, name: c.accountName, subtitle: "Business customer of \(c.ownerCompanyName) · \(word)",
-                                          change: .businessCustomer(c.accountID), isCurrent: isCur, priceFactor: c.priceFactor, yearlyVsMarket: c.yearlySaving, yearlyVsCurrent: nil, discount: nil,
-                                          relationship: c.relationship, relationshipWord: word,
-                                          nextLevel: next.map { "\($0.word) (from \(Int(saturating: $0.from.rounded()))): \(supplierPct($0.discount)) better price" },
-                                          vendorID: nil, quality: nil, reliability: "Warms every week you buy",
-                                          terms: "2% below the outside price, plus your relationship discount; weekly rebate booked as a lower cost",
-                                          delivery: k.local ? "Same city" : "Same country",
-                                          risks: ["Ends if they stop supplying; you buy outside again.", "Replaces any own-company supply of this input."],
-                                          blocked: c.canBuy ? nil : "Get to know them better first (familiar or closer)."))
+        if let a = acctLink, let c = AccountSupply.candidates(state, buyer: co.id, kind: k.id, data: data).first(where: { $0.accountID == a.accountID }) {
+            // Kept only while an earlier deal runs; new ones are not offered.
+            options.append(SupplierOption(id: "c:\(c.accountID)", kind: .businessCustomer, name: c.accountName, subtitle: "Business customer of \(c.ownerCompanyName)",
+                                          change: .businessCustomer(c.accountID), isCurrent: true, priceFactor: c.priceFactor, yearlyVsMarket: c.yearlySaving, yearlyVsCurrent: nil,
+                                          discount: nil, relationship: c.relationship, relationshipWord: Rivals.relationshipWord(c.relationship), nextLevel: nil, vendorID: nil,
+                                          quality: nil, reliability: "Warms every week you buy", terms: "2% below the usual price, plus your relationship discount",
+                                          delivery: k.local ? "Same city" : "Same country", risks: [], blocked: nil))
         }
         if let curPf = options.first(where: { $0.isCurrent })?.priceFactor {
             for i in options.indices { options[i].yearlyVsCurrent = options[i].priceFactor.map { spend * (curPf - $0) } }
@@ -258,7 +248,6 @@ public extension GameEngine {
             }
             if SupplyDeals.governedBy(s, co, input: input) != nil { r = .governed; return }
             r = SupplyDeals.perform(&s, d, companyID: companyID, input: input, to: change)
-            if r == .ok { Tutorial.advance(&s, from: .pickSupplier) }
         }
         return r
     }

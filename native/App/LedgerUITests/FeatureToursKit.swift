@@ -458,9 +458,9 @@ class FeatureTourCase: XCTestCase {
         guard gridUp(6) else { lastOpenWhy = "grid not shown"; log.note("phone grid not shown: " + tabState()); return false }
         let pred: (Hit) -> Bool = { $0.id == "phone-app-\(name)" && $0.type == .button }
         guard let tile = bringIn(pred, wait: 1.5) else {
-            if openViaPickTab(name) { lastOpenWhy = "pick"; return true }
+            if openViaTab(name) { lastOpenWhy = "pick"; return true }
             lastOpenWhy = "hidden"
-            log.note("no tile \(name) on the grid and not in the Pick tab picker: tiles=" + ids(prefix: "phone-app-", wait: 0).map { String($0.dropFirst(10)) }.joined(separator: ","))
+            log.note("no tile \(name) on the grid and it is not a tab: tiles=" + ids(prefix: "phone-app-", wait: 0).map { String($0.dropFirst(10)) }.joined(separator: ","))
             return false
         }
         if !tile.enabled { lastOpenWhy = "hidden"; return false }
@@ -469,12 +469,7 @@ class FeatureTourCase: XCTestCase {
         return true
     }
 
-    func customTab() -> Hit? {
-        let tabs: [Hit] = hits().filter { $0.id.hasPrefix("tab-") && $0.type == .button }.sorted { $0.frame.minX < $1.frame.minX }
-        return tabs.count == 5 ? tabs[3] : nil
-    }
-
-    func openViaPickTab(_ name: String) -> Bool {
+    func openViaTab(_ name: String) -> Bool {
         var n = 0
         while popupUp() && n < 3 { closePopup(); n += 1 }
         if let t = find({ $0.id == "tab-\(name)" && $0.type == .button }) {
@@ -482,17 +477,7 @@ class FeatureTourCase: XCTestCase {
             if !(find({ $0.id == "tab-\(name)" && $0.type == .button })?.selected ?? false), let a = find({ $0.id == "tab-\(name)" && $0.type == .button }) { touch(a) }
             return true
         }
-        guard let tab = customTab() else { return false }
-        touch(tab)
-        pause(0.6)
-        if find(wait: 1.5, { $0.id == "custom-pick-\(name)" }) == nil, let t2 = customTab() {
-            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: t2.frame.midX, dy: t2.frame.midY)).press(forDuration: 1.2)
-            pause(0.8)
-        }
-        guard tapWhere(wait: 3, { $0.id == "custom-pick-\(name)" }) else { while popupUp() && n < 6 { closePopup(); n += 1 }; return false }
-        pause(0.8)
-        while popupUp(0.5) && n < 6 { closePopup(); n += 1 }
-        return find(wait: 2, { $0.id == "tab-\(name)" && $0.type == .button }) != nil
+        return false
     }
 
     static var companyMisses = 0

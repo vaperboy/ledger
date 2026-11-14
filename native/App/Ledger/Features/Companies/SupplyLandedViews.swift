@@ -52,13 +52,13 @@ struct LandedCostLines: View {
     }
 }
 
+// A one-off stock order: the game orders what brings the shelves back to target; the player picks who from.
 struct StockOrderPopup: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
     var companyID: Int
     var onDone: () -> Void
     @State private var pickedID: String?
-    @State private var units: Double = 0
     @State private var message: String?
 
     var body: some View {
@@ -69,26 +69,28 @@ struct StockOrderPopup: View {
         }
     }
 
-    private func usable(_ e: GameEngine) -> [SupplyListing] {
-        market.service.listings(lineID: "goods").filter { e.playerSupplyAllowed(companyID: companyID, listing: $0) }
+    private func usable(_ e: GameEngine, _ co: Company) -> [SupplyListing] {
+        guard let bd = e.data.catalog[co.type], let line = SupplyCatalogue.stockLine(co, bd) else { return [] }
+        return market.service.listings(lineID: line.id).filter { e.playerSupplyAllowed(companyID: companyID, listing: $0) }
     }
 
     @ViewBuilder private func content(_ e: GameEngine, _ co: Company, _ basis: StockOrderBasis) -> some View {
         let cur: Currency = e.currency(for: co)
         let today: Int = SupplyMarketStore.today(e)
-        let all: [SupplyListing] = usable(e)
-        let rows: [SupplyLanded.Row] = e.playerSupplyLanded(companyID: companyID, listings: all, weeklyMarketSpend: basis.unitCost * Double(SupplyLandedBasis.compareUnits), units: SupplyLandedBasis.compareUnits)
+        let units: Int = e.stockOrderUnits(companyID: companyID)
+        let all: [SupplyListing] = usable(e, co)
+        let rows: [SupplyLanded.Row] = e.playerSupplyLanded(companyID: companyID, listings: all, weeklyMarketSpend: basis.unitCost * Double(units), units: units)
         let byID: [String: SupplyListing] = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let known: Set<String> = market.service.knownSuppliers()
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("On the shelves: \(Int(basis.held)) units" + (basis.target.map { " of about \(Int($0)) wanted" } ?? "") + ". At the market price a unit costs \(cur.tidyShort(basis.unitCost)).").popupText(.caption)
+            Text("On the shelves: \(Int(basis.held)) units" + (basis.target.map { " of about \(Int($0)) wanted" } ?? "") + ". This order brings in \(units) units at about \(cur.tidyShort(basis.unitCost)) a unit.").popupText(.caption)
             if rows.isEmpty {
                 Text("No player offers stock your trade uses right now.").popupText(.caption)
             }
             ForEach(Array(rows.prefix(6).enumerated()), id: \.element.id) { (n: Int, r: SupplyLanded.Row) in
                 if let l = byID[r.id] {
                     if n > 0 { Hairline() }
-                    offer(l, r, cur, today, known)
+                    offer(l, r, cur, today, known, units)
                 }
             }
             if let message { Text(message).popupText(.risk) }
@@ -97,35 +99,30 @@ struct StockOrderPopup: View {
         .centerSheetTitle("Order stock")
     }
 
-    @ViewBuilder private func offer(_ l: SupplyListing, _ r: SupplyLanded.Row, _ cur: Currency, _ today: Int, _ known: Set<String>) -> some View {
-        let availability: SupplyAvailability = SupplyGuards.availability(l, buyerLinkKeys: market.service.buyerLinkKeys, units: l.minOrder, today: today)
+    @ViewBuilder private func offer(_ l: SupplyListing, _ r: SupplyLanded.Row, _ cur: Currency, _ today: Int, _ known: Set<String>, _ units: Int) -> some View {
+        let room: Int = SupplyGuards.effectiveCapacity(l) - l.committedUnits
+        let fit: SupplyFit = SupplyFit.of(free: Double(max(0, room)), need: Double(units))
+        let availability: SupplyAvailability = SupplyGuards.availability(l, buyerLinkKeys: market.service.buyerLinkKeys, units: max(l.minOrder, units), today: today)
         SupplyListingCard(listing: l, known: known.contains(l.ownerID), availability: availability, landed: r, currency: cur, landedPriced: true) {
             pickedID = pickedID == l.id ? nil : l.id
-            units = Double(max(l.minOrder, 20))
             message = nil
         }
-        if pickedID == l.id && availability == .available {
-            let room: Int = max(l.minOrder, SupplyGuards.effectiveCapacity(l) - l.committedUnits)
-            HStack {
-                Text("Units").popupText(.rowLabel)
-                Spacer(minLength: Theme.Space.s)
-                Text("\(Int(units))").popupText(.rowValue)
-                StepperPill(value: $units, range: Double(l.minOrder)...Double(room), step: 5)
-            }
-            let n: Double = max(1, units)
-            Text("About \(cur.tidyShort(r.landedPerUnit * n)) with freight and customs, paid now.").popupText(.body)
-            PopupOptionButton(title: "Order \(Int(units)) from \(l.ownerName)", highlighted: true) { place(l) }
+        FitMark(fit: fit)
+        if pickedID == l.id && availability == .available && fit != .cannot {
+            Text("About \(cur.tidyShort(r.landedPerUnit * Double(units))) with freight and customs, paid now.").popupText(.body)
+            PopupOptionButton(title: "Order from \(l.companyName.isEmpty ? l.ownerName : l.companyName)", highlighted: true) { place(l, units) }
         }
     }
 
-    private func place(_ l: SupplyListing) {
-        if let why = market.order(store, companyID: companyID, listing: l, units: Int(units)) {
+    private func place(_ l: SupplyListing, _ units: Int) {
+        if let why = market.order(store, companyID: companyID, listing: l, units: units) {
             Haptics.warning()
             message = why
             return
         }
         Haptics.success()
-        store.outcome(chosen: "Order from \(l.ownerName)", result: "\(Int(units)) units ordered from \(l.ownerName). They are on the way and join the shelves when they arrive.")
+        let who: String = l.companyName.isEmpty ? l.ownerName : l.companyName
+        store.outcome(chosen: "Order from \(who)", result: "\(units) units ordered from \(who). They are on the way and join the shelves when they arrive.")
         onDone()
     }
 }

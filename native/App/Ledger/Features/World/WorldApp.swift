@@ -30,25 +30,31 @@ struct WorldApp: View {
     var body: some View {
         Group {
             if let e = store.engine {
-                switch tab {
-                case .government:
-                    if let r = e.worldRead() {
-                        pageView(e, r)
-                    } else {
-                        Text("Opening the state's books").textStyle(.body)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .outsideScreen(.civic)
-                    }
-                case .countries:
-                    WorldCountriesPage(tab: $tab, open: { (r: MarketRoute) in route = r })
-                case .people:
-                    WorldPeoplePage(tab: $tab)
+                SegmentPager(items: WorldTab.allCases, selection: $tab) { (t: WorldTab) in
+                    tabPage(t, e)
                 }
             }
         }
         .task { store.ensureWorld() }
         .navigationDestination(item: $route) { (r: MarketRoute) in MarketDestination(route: r).environment(\.outsidePalette, OutsidePalette.game) }
         .accessibilityIdentifier("world-app")
+    }
+
+    @ViewBuilder private func tabPage(_ t: WorldTab, _ e: GameEngine) -> some View {
+        switch t {
+        case .government:
+            if let r = store.cachedWorldRead {
+                pageView(e, r)
+            } else {
+                Text("Opening the state's books").textStyle(.body)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .outsideScreen(.civic)
+            }
+        case .countries:
+            WorldCountriesPage(tab: $tab, open: { (r: MarketRoute) in route = r })
+        case .people:
+            WorldPeoplePage(tab: $tab)
+        }
     }
 
     @ViewBuilder private func pageView(_ e: GameEngine, _ r: WorldRead) -> some View {

@@ -119,11 +119,13 @@ struct CompanySaleSection: View {
                         Text(cur.tidyShort(l.pct < 100 ? o.price : o.price * company.ownership / 100)).textStyle(.body, tint: Theme.accent, numeric: true)
                     }
                     Text(o.note + " Open until " + GameCalendar.dateString(week: o.expiresWeek) + ".").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
-                    WrapRow {
-                        Button("Accept…") { Haptics.tap(); askToSell(o) }.buttonStyle(QuietButtonStyle())
-                        Button("Talk to the buyer") { Haptics.tap(); talking = o.id }.buttonStyle(QuietButtonStyle())
-                        Button("Decline") { store.settle(store.act { $0.declineSaleOffer(companyID: company.id, offerID: o.id) }, "Offer from \(o.buyer) declined.", same: "That offer had already gone.") }.buttonStyle(QuietButtonStyle())
-                    }
+                    DecisionChoices(labels: ["Accept…", "Talk to the buyer", "Decline"], compact: true, pick: { (i: Int) in
+                        switch i {
+                        case 0: askToSell(o)
+                        case 1: talking = o.id
+                        default: _ = store.settle(store.act { $0.declineSaleOffer(companyID: company.id, offerID: o.id) }, "Offer from \(o.buyer) declined.", same: "That offer had already gone.")
+                        }
+                    })
                 }.padding(.vertical, Theme.Space.s)
             }
             Button("Take it off the market") {
@@ -180,7 +182,7 @@ struct BuyerTalkSheet: View {
                                 AmountField(title: "Your price for the whole company", currency: cur, amount: $ask)
                                 WrapRow {
                                     ForEach([0.03, 0.08, 0.15], id: \.self) { f in
-                                        Button("+\(Int(f * 100))%") { ask = (o.price * (1 + f) / 1000).rounded() * 1000 }.buttonStyle(QuietButtonStyle())
+                                        Button("+\(Int(saturating: f * 100))%") { ask = (o.price * (1 + f) / 1000).rounded() * 1000 }.buttonStyle(QuietButtonStyle())
                                     }
                                 }
                                 Text("At or below the offer they ask you to sign. A little above, they may agree or stretch half way; far above, they lose patience and may walk away.").popupText(.caption)

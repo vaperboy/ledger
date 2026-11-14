@@ -1,6 +1,7 @@
 {
- "about": "The one price table. 1 gold is about 1 NOK. Gold prices are in gold. Real-money prices are App Store tiers in US cents (product ids stay in PurchaseCatalog; Ledger.storekit shows the same tiers). localMoney holds the same prices per currency: box is 2 USD, EUR or GBP in that currency rounded up (the gold price of a box is that value in NOK rounded up to 25), battlePass is the 9.99 tier and oneTime the 99.99 tier, converted with each country's fx in countries.json and rounded up to a pretty number. gold.cosmetics is the store price by rarity (legendary items are box-only); gold.items names single items with their own price (save slots); gold.services are one-off services. Earned gold (levels, season pass, streak) is in its own files and is sized against these prices.",
+ "about": "The one price table. 1 gold is about 1 real NOK. Inside the game 1 gold is worth gameNokPerGold game NOK (other currencies by the game's exchange rates); every in-game value of gold uses that one rate, including gold.moneyPacks (money bought with gold; bonusPercent is extra money on top) and gold.freeMoneyPack (one small pack from a rewarded ad, perDay times a day). gold.moneyPackWeeklyGold caps the gold one account spends on money packs in any 7 days (the server counts it). Gold prices are in gold. Real-money prices are App Store tiers in US cents (product ids stay in PurchaseCatalog; Ledger.storekit shows the same tiers). localMoney holds the same prices per currency: box is 2 USD, EUR or GBP in that currency rounded up (the gold price of a box is that value in NOK rounded up to 25), battlePass is the 9.99 tier and oneTime the 99.99 tier, converted with each country's fx in countries.json and rounded up to a pretty number. gold.cosmetics is the store price by rarity (legendary items are box-only); gold.items names single items with their own price (save slots); gold.services are one-off services. gold.artifactValue is what an artifact of each rarity is worth in gold: its market and quick-sale price in game money follow from it. Earned gold (levels, season pass, streak) is in its own files and is sized against these prices.",
  "goldPerNok": 1,
+ "gameNokPerGold": 1000,
  "gold": {
   "boxes": {
    "free": 0,
@@ -27,6 +28,12 @@
     "price": 200
    }
   ],
+  "artifactValue": {
+   "common": 2,
+   "rare": 6,
+   "epic": 20,
+   "legendary": 75
+  },
   "cosmetics": {
    "common": 15,
    "rare": 35,
@@ -41,7 +48,16 @@
    "usernameChange": 20,
    "companyNameSkip": 15
   },
-  "battlePassPremium": 100
+  "battlePassPremium": 100,
+  "moneyPacks": [
+   {"id": "handful", "name": "Handful", "gold": 10, "bonusPercent": 0},
+   {"id": "bundle", "name": "Bundle", "gold": 50, "bonusPercent": 5},
+   {"id": "case", "name": "Case", "gold": 125, "bonusPercent": 10},
+   {"id": "safe", "name": "Safe", "gold": 250, "bonusPercent": 15},
+   {"id": "mountain", "name": "Mountain", "gold": 530, "bonusPercent": 20}
+  ],
+  "freeMoneyPack": {"id": "free", "name": "Free pack", "gold": 2, "perDay": 2},
+  "moneyPackWeeklyGold": 1060
  },
  "realMoney": {
   "goldPacks": [

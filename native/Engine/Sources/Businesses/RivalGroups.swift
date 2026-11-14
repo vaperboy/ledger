@@ -436,11 +436,7 @@ public enum RivalGroups {
     }
 
     static func goodsSupplier(_ s: GameState, _ co: Company, data: GameData) -> (id: String, name: String)? {
-        guard let bd = data.catalog[co.type], bd.costOfSales >= 0.03, !["fin", "energy", "rent", "club", "svc"].contains(bd.family),
-              !bd.id.hasPrefix("engcons"), !bd.id.hasPrefix("event") else { return nil }
-        let list = EquipmentMarket.vendors(for: "goods:" + co.type, count: EquipmentMarket.brandCount(co, state: s), family: bd.family, seed: s.seed,
-                                           countryCode: co.countryCode, countries: data.countries, nouns: data.catalog.tables.raw["FAM_NOUN"])
-        return list.first.map { ($0.id, $0.name) }
+        Suppliers.goodsVendor(s, company: co, data: data).map { (id: $0.id, name: $0.name) }
     }
 
     public static func supplierOwner(_ s: GameState, vendorID: String) -> String? {

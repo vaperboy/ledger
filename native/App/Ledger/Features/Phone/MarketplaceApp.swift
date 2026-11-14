@@ -239,7 +239,9 @@ struct MarketplaceApp: View {
             if !online.isSignedIn {
                 ShopEmptyNote(text: "Sign in to see what other players are selling.", glyph: Glyph.marketplace)
             } else if shown.isEmpty {
-                ShopEmptyNote(text: players.loaded ? "Nothing here yet. Be the first to list something." : "Loading.", glyph: Glyph.marketplace)
+                if !players.loaded { OnlineWaiting { Task { await players.refresh(online) } } }
+                else if players.loadFailed { ShopEmptyNote(text: OnlineWords.loadFailed, glyph: Glyph.marketplace, buttonTitle: "Try again") { Task { await players.refresh(online) } } }
+                else { ShopEmptyNote(text: "Nothing here yet. Be the first to list something.", glyph: Glyph.marketplace) }
             }
             ShopGrid {
                 ForEach(shown) { (l: PlayerListing) in
@@ -311,7 +313,7 @@ struct MarketplaceTile: View {
     var today: Int
 
     var body: some View {
-        let key: String = ArtLibrary.itemKey(group: "", familyKey: listing.family, seed: listing.id) ?? ""
+        let key: String = listing.art.isEmpty ? (ArtLibrary.itemKey(group: "", familyKey: listing.family, seed: listing.id) ?? "") : ArtLibrary.vehicleCell(listing.art)
         let ago: Int = max(0, today - listing.postedDay)
         let agoText: String = ago == 0 ? "today" : (ago == 1 ? "yesterday" : "\(ago) days ago")
         return MarketCard(photoKey: key, badge: "Used", title: listing.title, detail: "\(listing.city) \u{00B7} \(agoText)", price: price,

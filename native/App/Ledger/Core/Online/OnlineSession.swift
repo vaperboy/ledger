@@ -66,6 +66,12 @@ enum InviteLink {
     }
 }
 
+// A decision the player has to make about which account and game to use on this phone.
+enum AccountChoice: Equatable {
+    case confirmSignIn(SignInProvider)
+    case chooseGame(AccountSwitchOffer)
+}
+
 @MainActor @Observable
 final class OnlineSession {
     enum State: Equatable { case guest, signedIn(SignInProvider?) }
@@ -77,11 +83,14 @@ final class OnlineSession {
     private(set) var profile: PlayerProfile?
     private(set) var status: AccountStatus?
     private(set) var isAdmin = false
+    private(set) var isBetaTester = false
     private(set) var accountID: String?
     private(set) var linkReward: LinkRewardResult?
     private(set) var pulse: WorldPulse?
     private(set) var friendActivity: FriendActivity = .empty
     private(set) var pendingInvite: String?
+    private(set) var signInOptions: [SignInProvider] = []
+    var accountChoice: AccountChoice?
     var problem: String?
     var notice: String?
 
@@ -89,6 +98,7 @@ final class OnlineSession {
     @ObservationIgnored private var deviceRegistered = false
     @ObservationIgnored private var sharedWeek: Int?
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
+    @ObservationIgnored private var lastGameUpload: Date?
     private static let boards: any LeaderboardService = LeaderboardBackend.make()
     private static let adminKey = "ledger.online.adminAccounts"
     private static let inviteKey = "ledger.online.pendingInvite"
@@ -101,7 +111,6 @@ final class OnlineSession {
     var isSignedIn: Bool { if case .signedIn = state { return true }; return false }
     var provider: SignInProvider? { if case .signedIn(let p) = state { return p }; return nil }
     var isLinked: Bool { provider != nil }
-    var linkProviders: [SignInProvider] { OnlineConfig.linkProviders }
     var canLink: Bool { !isLinking && (isSignedIn ? !isLinked : !service.createsAccountsItself) }
     var awaitingAdultConfirmation: Bool { isSignedIn && status?.adultConfirmed == false }
     var linkRewardGold: Int { status?.linkRewardGold ?? 0 }
@@ -169,6 +178,7 @@ final class OnlineSession {
         status = s
         if s.fakePlayersRemoved == true { FakePlayers.removed = true }
         setAdmin(s.isAdmin)
+        isBetaTester = s.isBetaTester ?? false
         await WorldRulesSync.refresh()
     }
 
@@ -182,24 +192,96 @@ final class OnlineSession {
         UserDefaults.standard.set(Array(all), forKey: Self.adminKey)
     }
 
+    // Only the sign-ins switched on for the server are offered; a failed check keeps the last list.
+    func loadSignInOptions() async {
+        let options: [SignInProvider] = await service.signInOptions()
+        if !options.isEmpty || signInOptions.isEmpty { signInOptions = options }
+    }
+
+    // Links the sign-in to this phone's account. When it already belongs to another account, the player is asked whether to switch to it.
     @discardableResult
-    func signIn(with provider: SignInProvider) async -> Bool {
+    func connect(_ request: SignInRequest, engine: GameEngine? = nil) async -> Bool {
         problem = nil
         notice = nil
         isLinking = true
         defer { isLinking = false }
         do {
-            let account = try await service.signIn(with: provider)
+            let account = try await service.link(request)
             adopt(account)
             offline = false
             await finishSignIn()
+            await uploadGame(from: engine, force: true)
             return true
         } catch OnlineError.cancelled {
+            return false
+        } catch OnlineError.identityTaken(let provider) {
+            if case .apple = request { await offerSwitch(request) } else { accountChoice = .confirmSignIn(provider) }
             return false
         } catch {
             problem = (error as? LocalizedError)?.errorDescription ?? "Could not sign in. Try again."
             return false
         }
+    }
+
+    // Signs in to the existing account without leaving this one yet, then asks which game to keep.
+    func offerSwitch(_ request: SignInRequest) async {
+        accountChoice = nil
+        problem = nil
+        isLinking = true
+        defer { isLinking = false }
+        do {
+            accountChoice = .chooseGame(try await service.prepareSwitch(request))
+        } catch OnlineError.cancelled {
+        } catch {
+            problem = (error as? LocalizedError)?.errorDescription ?? "Could not sign in. Try again."
+        }
+    }
+
+    // Moves this phone to the other account. The phone's game is either kept and saved to the account, or swapped for the account's game.
+    func finishSwitch(_ offer: AccountSwitchOffer, loadGame: Bool, store: GameStore) async {
+        accountChoice = nil
+        problem = nil
+        isLinking = true
+        defer { isLinking = false }
+        let account: OnlineAccount
+        do { account = try await service.completeSwitch() } catch {
+            problem = (error as? LocalizedError)?.errorDescription ?? "Could not switch accounts. Try again."
+            return
+        }
+        clearAccount()
+        adopt(account)
+        offline = false
+        await finishSignIn()
+        await PushAlerts.sync(service: service, signedIn: true)
+        await StoreSession.shared.load()
+        if loadGame, offer.savedGame != nil {
+            guard let text = try? await service.accountGame(), let json = AccountGameCodec.unpack(text) else {
+                problem = "Signed in, but the account's game could not be loaded."
+                return
+            }
+            notice = store.restoreBackup(text: json) ?? "Signed in. The account's game is on this phone now."
+        } else {
+            await uploadGame(from: store.engine, force: true)
+            notice = "Signed in to your account."
+        }
+    }
+
+    func cancelAccountChoice() {
+        accountChoice = nil
+        Task { await service.cancelSwitch() }
+    }
+
+    // Keeps the game of a linked account on the server, so it can be loaded on a new phone.
+    func uploadGame(from engine: GameEngine?, force: Bool = false) async {
+        guard isLinked, status?.adultConfirmed == true, let e = engine else { return }
+        if !force, let last = lastGameUpload, Date().timeIntervalSince(last) < 180 { return }
+        guard let data = try? JSONEncoder().encode(e.state) else { return }
+        let info = AccountGameInfo(updatedAt: Date(), week: e.state.week, title: e.state.companies.first?.name ?? e.state.player.name)
+        guard let text = AccountGameCodec.pack(stateJSON: data, info: info) else { return }
+        do {
+            try await service.saveAccountGame(text)
+            lastGameUpload = Date()
+        } catch {}
     }
 
     @discardableResult
@@ -237,24 +319,14 @@ final class OnlineSession {
         profile = nil
         status = nil
         isAdmin = false
+        isBetaTester = false
         accountID = nil
         linkReward = nil
         pulse = nil
         friendActivity = .empty
         deviceRegistered = false
         sharedWeek = nil
-    }
-
-    func redeemAdminCode(_ code: String) async -> AdminCodeResult? {
-        problem = nil
-        do {
-            let r = try await service.redeemAdminCode(code)
-            await refreshStatus()
-            return r
-        } catch {
-            problem = (error as? LocalizedError)?.errorDescription ?? "Could not check the code. Try again."
-            return nil
-        }
+        lastGameUpload = nil
     }
 
     func deleteAccount() async {
@@ -265,6 +337,14 @@ final class OnlineSession {
             clearAccount()
         } catch {
             problem = (error as? LocalizedError)?.errorDescription ?? "Could not delete the account. Try again."
+        }
+    }
+
+    func deletionPreview() async -> DeletionPreview? {
+        problem = nil
+        do { return try await service.deletionPreview() } catch {
+            problem = (error as? LocalizedError)?.errorDescription ?? "Could not check the account. Try again."
+            return nil
         }
     }
 
@@ -319,6 +399,7 @@ final class OnlineSession {
             change.gameWeek = week
         }
         _ = await update(change)
+        await uploadGame(from: e)
         guard let id = accountID else { return }
         await Self.boards.publish(e.leaderboardSubmission(playerID: id))
     }
@@ -365,12 +446,25 @@ final class OnlineSession {
             return
         } catch {}
         await bookSettlements(store: store)
+        await syncSharedCompanies(store: store)
         if let e = store.engine, sharedWeek != e.state.week {
             sharedWeek = e.state.week
             await shareProgress(from: e)
         }
         if let a = try? await service.friendActivity() { friendActivity = a }
         await syncFriendPlay(store: store)
+    }
+
+    // Shared companies: the owner's boards follow the server, and offers made to this player are picked up and announced once.
+    private func syncSharedCompanies(store: GameStore) async {
+        JointVentureCoordinator.shared.attach(service)
+        await JointVentureCoordinator.shared.sync(store)
+        let shares: PartnerSharesModel = PartnerSharesModel.shared
+        await shares.refresh(self)
+        for o in shares.unseenOffers() {
+            store.tell("\(o.chairName ?? "A player") invites you into \(o.companyName)",
+                       "You are offered \(PartnerShareText.percent(o.pct)) for \(PartnerShareText.money(o.price, o.currency)). Open Ventures to read the offer and answer.", tone: "good")
+        }
     }
 
     private func bookSettlements(store: GameStore) async {

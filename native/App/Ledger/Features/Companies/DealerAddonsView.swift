@@ -203,9 +203,9 @@ struct DealerAddonsView: View {
                 Text(value).textStyle(.headline, numeric: true)
             }
             Spacer(minLength: 8)
-            Button { Haptics.choose(); minus() } label: { Image(systemName: "minus.circle").font(.system(size: 20)).foregroundStyle(Theme.ivoryMuted) }
+            Button { Haptics.choose(); minus() } label: { Image(systemName: "minus.circle").font(.system(size: 20)).foregroundStyle(Theme.ivoryMuted).frame(width: 44, height: 44).contentShape(Rectangle()) }
                 .buttonStyle(PressableStyle()).accessibilityLabel("Less: " + label)
-            Button { Haptics.choose(); plus() } label: { Image(systemName: "plus.circle").font(.system(size: 20)).foregroundStyle(Theme.ivoryMuted) }
+            Button { Haptics.choose(); plus() } label: { Image(systemName: "plus.circle").font(.system(size: 20)).foregroundStyle(Theme.ivoryMuted).frame(width: 44, height: 44).contentShape(Rectangle()) }
                 .buttonStyle(PressableStyle()).accessibilityLabel("More: " + label)
         }
     }

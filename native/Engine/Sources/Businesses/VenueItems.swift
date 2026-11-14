@@ -87,7 +87,7 @@ public enum VenueItems {
         var total = co.lastWages + CompanyCosts.fixedOverhead(co, bd, w)
         let prem = co.value("prem")
         if !prem.isNull, !prem["owned"].bool, prem["m2"].double > 0 { total += prem["rent"].double * prem["m2"].double / 52 }
-        for (id, r) in co.value("eq").object where r["n"].double > 0 {
+        for (id, r) in co.value("eq").object.sorted(by: { $0.key < $1.key }) where r["n"].double > 0 {
             if let spec = bd.allEquipment.first(where: { $0.id == id }) { total += r["cost"].double / max(1, spec.lifeYears) / 52 }
         }
         return total

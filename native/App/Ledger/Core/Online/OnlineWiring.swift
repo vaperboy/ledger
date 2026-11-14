@@ -45,18 +45,39 @@ struct PlayerProfileByCode: View {
     var code: String
     @Environment(OnlineSession.self) private var online
     @State private var id: String?
+    @State private var failed = false
 
     var body: some View {
         Group {
-            if let id { PlayerProfileView(playerID: id) } else { ProgressView().tint(Theme.inkSoft) }
+            if let id {
+                PlayerProfileView(playerID: id)
+            } else if failed {
+                VStack(spacing: Theme.Space.s) {
+                    Text("Could not find this player. Check your connection and try again.").textStyle(.body, tint: Theme.inkSoft).multilineTextAlignment(.center)
+                    Button("Try again") { Haptics.tap(); Task { await find() } }
+                        .buttonStyle(SecondaryButtonStyle(size: .compact))
+                }
+                .padding(Theme.Space.page).frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ledgerBackground()
+                .appScreen(title: "Player", subtitle: "")
+            } else {
+                ProgressView().tint(Theme.inkSoft).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ledgerBackground()
+                    .appScreen(title: "Player", subtitle: "")
+            }
         }
-        .task { id = try? await online.service.profile(code: code).id }
+        .task { await find() }
+    }
+
+    private func find() async {
+        failed = false
+        do { id = try await online.service.profile(code: code).id } catch { failed = true }
     }
 }
 
 enum OnlineWiring {
     @MainActor static func install() {
         SupplyMarketPlayersSource.provider = OnlinePlayersAdapter()
-        SupplierOwnerProfileHook.destination = { code in AnyView(PlayerProfileByCode(code: code)) }
+        JointVentureCoordinator.shared.attach(OnlineBackend.shared)
     }
 }

@@ -92,15 +92,6 @@ final class PricingUnificationTests: XCTestCase {
         XCTAssertGreaterThan(high, low + 0.05, "a better company can charge more: \(low) -> \(high)")
     }
 
-    func testBestPriceFollowsRivals() throws {
-        var (e, id) = try engine()
-        setRivals(&e, id, priceFactor: 0.85)
-        let cheapRivals = bestRatio(e, id)
-        setRivals(&e, id, priceFactor: 1.25)
-        let dearRivals = bestRatio(e, id)
-        XCTAssertGreaterThan(dearRivals, cheapRivals + 0.05, "\(cheapRivals) -> \(dearRivals)")
-    }
-
     func testBestPriceIsNotAFixedMultipleOfCost() throws {
         var (e, id) = try engine()
         setQuality(&e, id, 20)

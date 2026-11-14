@@ -12,14 +12,12 @@ final class AdCoordinator {
     private static let ledgerKey = "ledger.adLedger"
 
     private(set) var isShowing = false
+    /// Bumped when a free money pack is used, so screens that show the count left refresh.
+    private(set) var freeMoneyUsed = 0
 
     init(entitlements: Entitlements, provider: AdProvider? = nil) {
         self.entitlements = entitlements
-        #if canImport(GoogleMobileAds) && canImport(UserMessagingPlatform)
-        self.provider = provider ?? AdMobProvider()
-        #else
-        self.provider = provider ?? PlaceholderAdProvider()
-        #endif
+        self.provider = provider ?? AdProviders.make()
         if let d = UserDefaults.standard.data(forKey: Self.ledgerKey), let l = try? JSONDecoder().decode(AdLedger.self, from: d) { ledger = l } else { ledger = AdLedger() }
         ledger.beginSession(now: Date())
         store()
@@ -37,7 +35,6 @@ final class AdCoordinator {
         if let t = readyTask { await t.value; return }
         let t: Task<Void, Never> = Task { @MainActor in
             let personalised: Bool = await provider.gatherConsent()
-            await TrackingPermission.requestOnce()
             await provider.start(nonPersonalised: AdPolicy.requestNonPersonalised(consentGranted: personalised))
         }
         readyTask = t
@@ -93,24 +90,6 @@ final class AdCoordinator {
         return paid
     }
 
-    func secondChanceOffer(_ game: GameStore) -> Double? {
-        guard available, !isShowing, let e = game.engine else { return nil }
-        guard AdPolicy.canOfferSecondChance(e.state, currency: e.homeCurrency, entitlements: entitlements.effective, now: Date(), ledger) else { return nil }
-        return AdRewards.secondChanceStake(e.homeCurrency)
-    }
-
-    @discardableResult
-    func watchForSecondChance(_ game: GameStore) async -> Bool {
-        guard secondChanceOffer(game) != nil, await rewardedFinished(), let cur = game.engine?.homeCurrency else { return false }
-        let ok: Bool = game.act { (eng: inout GameEngine) -> Bool in
-            var done: Bool = false
-            eng.update { s, _, _ in done = AdRewards.applySecondChance(&s, currency: cur) }
-            return done
-        } ?? false
-        if ok { ledger.secondChanceUsed = true; store() }
-        return ok
-    }
-
     var canOfferSeasonBonus: Bool { available && !isShowing && !entitlements.effective.isAdFree(now: Date()) && SeasonModel.shared.adBonusAvailable }
 
     @discardableResult
@@ -128,6 +107,34 @@ final class AdCoordinator {
         let e = AdPolicy.grantPass(entitlements.effective, now: Date(), &l)
         ledger = l; store()
         if let end = e.passExpires { entitlements.grantPass(until: end) }
+        return true
+    }
+
+    /// Rewarded ad for gold from the floating button. Shown to every player who taps it; the server pays and caps it.
+    @discardableResult
+    func watchForGold() async -> Bool {
+        guard available, !isShowing else { return false }
+        return await rewardedFinished()
+    }
+
+    var freeMoneyLeft: Int { AdPolicy.freeMoneyLeft(now: TrustedClock.now(), ledger) }
+
+    var canOfferFreeMoney: Bool {
+        let adFree: Bool = entitlements.effective.isAdFree(now: Date())
+        return !isShowing && (adFree || available) && AdPolicy.canOfferFreeMoney(entitlements: entitlements.effective, now: TrustedClock.now(), ledger)
+    }
+
+    /// Shows the rewarded ad (not to ad-free players) and counts one free pack against today's cap. True when the pack may be paid.
+    @discardableResult
+    func watchForFreeMoney() async -> Bool {
+        guard canOfferFreeMoney else { return false }
+        if !entitlements.effective.isAdFree(now: Date()) {
+            guard await rewardedFinished() else { return false }
+        }
+        var l = ledger
+        AdPolicy.recordFreeMoney(now: TrustedClock.now(), &l)
+        ledger = l; store()
+        freeMoneyUsed += 1
         return true
     }
 }

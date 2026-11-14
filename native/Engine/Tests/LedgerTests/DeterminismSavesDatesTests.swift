@@ -346,8 +346,9 @@ final class DeterminismSavesDatesTests: XCTestCase {
             XCTAssertEqual(ev.map { $0.month }, payIndexes, tag("company \(id): one payroll a month, in order"))
             XCTAssertEqual(ev.map(at), expectedPay, tag("company \(id): payroll on the right dates"))
         }
-        XCTAssertEqual(Set(r.paydayMessageDays), Set(expectedPay).intersection(r.payrollPaidDays), tag("a Payday message arrives on every pay day on which wages were paid and on no other day"))
-        XCTAssertGreaterThanOrEqual(r.paydayMessageDays.count, expectedPay.count - 1, tag("only a pay day before any wages have accrued goes without a message"))
+        // Pay day shows as a bank line, not a message.
+        XCTAssertTrue(r.paydayMessageDays.isEmpty, tag("no Payday message reaches the inbox"))
+        XCTAssertGreaterThanOrEqual(Set(expectedPay).intersection(r.payrollPaidDays).count, expectedPay.count - 1, tag("wages are paid on every pay day but one before any wages have accrued"))
         if W == 156 { XCTAssertEqual(payIndexes.count, 36, tag("36 payrolls in three years")) }
 
         let lastDays = calendar.map { Self.lastDayOfMonth($0.year, $0.month0) }.filter { $0 > start && $0 <= end }

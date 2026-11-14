@@ -36,6 +36,7 @@ struct PopupLayer: View {
             }
             .modifier(unlockRegistration)
             .groupReviewPopup(store)
+            .homePopups(store)
     }
 
     private var unlockRegistration: HostedPopupModifier<AnyView> {
@@ -163,6 +164,12 @@ struct OutcomePopup: View {
                 ForEach(Array(lines.enumerated()), id: \.offset) { (pair: (offset: Int, element: String)) in
                     Text(pair.element.tidyMoney).popupText(.body).fixedSize(horizontal: false, vertical: true)
                 }
+                if let link = note.link {
+                    PopupOptionButton(title: link.title, identifier: "outcome-link") {
+                        store.dismissOutcome()
+                        store.openDecisionLink(link)
+                    }
+                }
                 PopupOptionButton(title: "OK", highlighted: true, identifier: "outcome-ok") { store.dismissOutcome() }
             }
         }
@@ -195,22 +202,8 @@ struct DecisionPopup: View {
         PopupBody {
             let intro: String = e.displayText(m.body, companyID: m.companyID)
             if !intro.isEmpty { Text(intro.tidyMoney).popupText(.subtitle) }
-            ForEach(Array(m.options.enumerated()), id: \.offset) { pair in
-                optionRow(e, m, pair.offset, pair.element)
-            }
-        }
-    }
-
-    private func optionRow(_ e: GameEngine, _ m: Message, _ index: Int, _ opt: JSONValue) -> some View {
-        let label: String = e.displayText(opt["l"].string, companyID: m.companyID)
-        let detail: String = e.displayText(opt["d"].string, companyID: m.companyID)
-        let lines: [String] = MessageCard.preview(e, m, opt)
-        return VStack(alignment: .leading, spacing: PopupSpace.tight) {
-            PopupOptionButton(title: label) { choose(e, m, index) }
-            if !detail.isEmpty { Text(detail.tidyMoney).popupText(.caption) }
-            ForEach(lines, id: \.self) { line in
-                Text(line.tidyMoney).popupText(.effect)
-            }
+            DecisionChoices(labels: DecisionAnswering.labels(e, m), identifier: { (i: Int) -> String in "decision-\(i)" },
+                            pick: { (i: Int) in choose(e, m, i) })
         }
     }
 
@@ -220,40 +213,39 @@ struct DecisionPopup: View {
 }
 
 enum DecisionAnswering {
+    /// The answers' labels as the player reads them, in their original order.
+    @MainActor static func labels(_ e: GameEngine, _ m: Message) -> [String] {
+        m.options.map { (o: JSONValue) -> String in e.displayText(o["l"].string, companyID: m.companyID) }
+    }
+
+    /// Asks before a costly or final answer, with one plain line: what it costs, or what the decision is about.
     @MainActor static func choose(_ store: GameStore, _ e: GameEngine, _ m: Message, _ index: Int,
                                   ask: @escaping (PendingAction) -> Void, done: @escaping () -> Void) {
         guard m.options.indices.contains(index) else { return }
-        let opt: JSONValue = m.options[index]
-        let label: String = e.displayText(opt["l"].string, companyID: m.companyID)
+        let label: String = e.displayText(m.options[index]["l"].string, companyID: m.companyID)
         let need: DecisionConfirmation = DecisionConfirm.confirmation(for: m, option: index)
         guard need.needsQuestion else { send(store, e, m, index, label, done); return }
-        var lines: [String] = []
-        let d: String = e.displayText(opt["d"].string, companyID: m.companyID)
-        if !d.isEmpty { lines.append(d) }
-        lines += MessageCard.preview(e, m, opt)
-        if index == 0 || m.options.count == 1 { lines += e.messageFacts(m) }
         let company: Company? = m.companyID != 0 ? e.state.company(m.companyID) : nil
+        let cur: Currency = company.map { (c: Company) -> Currency in e.currency(for: c) } ?? e.homeCurrency
         let place: String = company?.name ?? ""
-        let fallback: String = e.displayText(m.title, companyID: m.companyID)
-        var action = MessageCard.answerConfirm(title: label + (place.isEmpty ? "" : " · " + place), message: lines.isEmpty ? fallback : lines.joined(separator: "\n"),
+        let line: String = need.irreversible && need.amount != nil
+            ? "It costs " + cur.display(need.amount ?? 0) + "."
+            : e.displayText(m.title, companyID: m.companyID)
+        var action = MessageCard.answerConfirm(title: label + (place.isEmpty ? "" : " · " + place), message: line,
                                                button: label, need: need) { send(store, e, m, index, label, done) }
         if !need.irreversible, let amount = need.amount {
             action.amount = amount
-            action.currency = company.map { e.currency(for: $0) } ?? e.homeCurrency
+            action.currency = cur
         }
         if ConfirmThreshold.skips(action) { send(store, e, m, index, label, done); return }
         ask(action)
     }
 
+    /// Applies exactly the tapped answer and shows what it actually did.
     @MainActor private static func send(_ store: GameStore, _ e: GameEngine, _ m: Message, _ index: Int, _ label: String, _ done: () -> Void) {
-        var effects: [String] = m.options.indices.contains(index) ? MessageCard.preview(e, m, m.options[index]) : []
-        if effects.isEmpty, m.options.indices.contains(index) {
-            let d: String = e.displayText(m.options[index]["d"].string, companyID: m.companyID)
-            if !d.isEmpty { effects = [d] }
-        }
-        let ok: Bool = store.act { $0.answer(messageID: m.id, option: index) } ?? false
+        let result: DecisionAnswer? = store.act { (g: inout GameEngine) -> DecisionAnswer in g.answerDecision(messageID: m.id, option: index) }
         done()
-        store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: m.title, companyID: m.companyID)
+        store.announceDecision(label: label, answer: result)
     }
 }
 

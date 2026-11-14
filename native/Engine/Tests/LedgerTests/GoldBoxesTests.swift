@@ -100,7 +100,7 @@ final class GoldBoxesTests: XCTestCase {
         let a = BoxOdds.open(.grand, pity: BoxPity(), ownedCosmetics: [], seed: "same")
         let b = BoxOdds.open(.grand, pity: BoxPity(), ownedCosmetics: [], seed: "same")
         XCTAssertEqual(a.result, b.result)
-        let everything = Set(GoldCosmetics.all.map(\.id))
+        let everything = Set(GoldCosmetics.everything.map(\.id))
         for n in 0..<2_000 {
             if case .cosmetic = BoxOdds.open(.grand, pity: BoxPity(), ownedCosmetics: everything, seed: "o\(n)").result.content { XCTFail("owned cosmetic offered") }
         }
@@ -151,17 +151,20 @@ final class GoldBoxesTests: XCTestCase {
         var p = SeasonPass(today: 20_000)
         p.xp = SeasonPass.tierCount * SeasonPass.xpPerTier
         let got = p.claimAll(isPlus: true)
-        XCTAssertEqual(got.filter { $0.kind == .box }.reduce(0) { $0 + $1.amount }, boxes.reduce(0) { $0 + $1.amount })
+        // A pass covers one season; the list of all rewards spans every season.
+        let seasonBoxes = (p.seasonDef?.rewards ?? []).filter { $0.kind == .box }
+        XCTAssertFalse(seasonBoxes.isEmpty)
+        XCTAssertEqual(got.filter { $0.kind == .box }.reduce(0) { $0 + $1.amount }, seasonBoxes.reduce(0) { $0 + $1.amount })
     }
 
     func testBoughtCosmeticsEquipAndSlotsCount() {
         var p = SeasonPass(today: 20_000)
-        p.grantOwned("gold.plate.copper")
-        XCTAssertEqual(p.equipped["namePlate"], "gold.plate.copper")
-        p.grantOwned("gold.plate.onyx")
-        XCTAssertEqual(p.equipped["namePlate"], "gold.plate.copper", "the first is kept")
-        p.equip("gold.plate.onyx")
-        XCTAssertEqual(p.equipped["namePlate"], "gold.plate.onyx")
+        p.grantOwned("gold.backdrop.fog")
+        XCTAssertEqual(p.equipped["backdrop"], "gold.backdrop.fog")
+        p.grantOwned("gold.backdrop.slate")
+        XCTAssertEqual(p.equipped["backdrop"], "gold.backdrop.fog", "the first is kept")
+        p.equip("gold.backdrop.slate")
+        XCTAssertEqual(p.equipped["backdrop"], "gold.backdrop.slate")
         let before = p.bonusSaveSlots
         p.grantOwned("gold.slot.1")
         XCTAssertEqual(p.bonusSaveSlots, before + 1)
@@ -171,7 +174,8 @@ final class GoldBoxesTests: XCTestCase {
     }
 
     func testPaidBoxesAlsoHoldCashInTheRareTiers() {
-        for kind in BoxKind.allCases where kind.isPaid {
+        for kind in BoxKind.cardPacks { XCTAssertEqual(BoxOdds.moneyPercent(kind), 0, "\(kind): a card pack holds cards only") }
+        for kind in BoxKind.standard where kind.isPaid {
             XCTAssertGreaterThan(BoxOdds.moneyPercent(kind), 0)
             XCTAssertLessThanOrEqual(BoxOdds.moneyPercent(kind), 5)
             var cash = 0
@@ -208,13 +212,13 @@ final class GoldBoxesTests: XCTestCase {
             BoxResult(rarity: .rare, content: .gold(40, doubled: false), guaranteed: false),
             BoxResult(rarity: .rare, content: .money(1_000), guaranteed: false),
             BoxResult(rarity: .epic, content: .money(2_000), guaranteed: false),
-            BoxResult(rarity: .common, content: .cosmetic("gold.plate.copper"), guaranteed: false),
+            BoxResult(rarity: .common, content: .cosmetic("gold.backdrop.fog"), guaranteed: false),
             BoxResult(rarity: .common, content: .artifact(ArtifactItem(defID: "abacus", serial: 3)), guaranteed: false)
         ]
         let h = BoxHaul(rs)
         XCTAssertEqual(h.gold, 60)
         XCTAssertEqual(h.money, 3_000)
-        XCTAssertEqual(h.cosmetics, ["gold.plate.copper"])
+        XCTAssertEqual(h.cosmetics, ["gold.backdrop.fog"])
         XCTAssertEqual(h.artifacts.map(\.id), ["abacus#3"])
     }
 

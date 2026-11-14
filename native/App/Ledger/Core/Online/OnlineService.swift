@@ -66,6 +66,7 @@ struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
     var relation: FriendRelation
     var avatarIcon: String? = nil
     var lastSeen: Double? = nil
+    var avatarLook: String? = nil
 
     static let avatarColourCount = 8
     var initials: String {
@@ -84,11 +85,12 @@ struct ProfileUpdate: Codable, Sendable {
     var badges: [String]?
     var gameWeek: Int?
     var avatarIcon: String?
+    var avatarLook: String?
     init(avatarColour: Int? = nil, countryCode: String? = nil, privacy: PrivacyLevel? = nil,
-         companies: [OnlineCompany]? = nil, level: Int? = nil, badges: [String]? = nil, gameWeek: Int? = nil, avatarIcon: String? = nil) {
+         companies: [OnlineCompany]? = nil, level: Int? = nil, badges: [String]? = nil, gameWeek: Int? = nil, avatarIcon: String? = nil, avatarLook: String? = nil) {
         self.avatarColour = avatarColour; self.countryCode = countryCode; self.privacy = privacy
         self.companies = companies; self.level = level; self.badges = badges; self.gameWeek = gameWeek
-        self.avatarIcon = avatarIcon
+        self.avatarIcon = avatarIcon; self.avatarLook = avatarLook
     }
 }
 
@@ -134,6 +136,7 @@ enum OnlineError: Error, Equatable, LocalizedError, Sendable {
     case notAdmin
     case cancelled
     case rejected(String)
+    case identityTaken(SignInProvider)
     var errorDescription: String? {
         switch self {
         case .notSignedIn: return "Sign in to use this."
@@ -148,6 +151,7 @@ enum OnlineError: Error, Equatable, LocalizedError, Sendable {
         case .notAdmin: return "This account is not an administrator."
         case .cancelled: return nil
         case .rejected(let why): return why
+        case .identityTaken(let p): return "That \(p.title) account already has a Ledger account."
         }
     }
 }
@@ -159,6 +163,8 @@ struct AccountStatus: Codable, Equatable, Sendable {
     var linkRewardGold: Int
     var linkRewardClaimed: Bool
     var fakePlayersRemoved: Bool? = nil
+    /// True for an account that redeemed a beta key; absent until the server sends it.
+    var isBetaTester: Bool? = nil
 }
 
 struct LinkRewardResult: Codable, Equatable, Sendable {
@@ -243,7 +249,7 @@ protocol OnlineWorldService: Sendable {
     func acknowledgeSettlements(_ ids: [String]) async throws
 }
 
-protocol OnlineService: AdminService, OnlineWorldService, FriendPlayService, PushService, MarketplaceService, Sendable {
+protocol OnlineService: AdminService, OnlineWorldService, FriendPlayService, PushService, MarketplaceService, AccountService, Sendable {
     var createsAccountsItself: Bool { get }
     func currentAccount() async -> OnlineAccount?
     func startSession(createIfMissing: Bool) async throws -> OnlineAccount

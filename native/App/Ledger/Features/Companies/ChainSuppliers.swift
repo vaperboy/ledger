@@ -40,14 +40,11 @@ struct ChainSupplyOverview: View {
         }
     }
 
-    private func isOutside(_ p: String) -> Bool { p == "Outside suppliers" || p == "Market" || p == "No fixed supplier" }
-
     var body: some View {
         let all = rows()
         let ids = Set(summary.stores.map { $0.id })
         let links = engine.supplyLinks().filter { ids.contains($0.buyerID) || ids.contains($0.supplierID) }
-        let active = all.filter { r in !(r.exceptions.isEmpty && isOutside(r.usual) && r.id != "goods" && r.id != "repair") }
-        let quiet = all.filter { r in r.exceptions.isEmpty && isOutside(r.usual) && r.id != "goods" && r.id != "repair" }
+        let active = all
         let rules = engine.chainSupplierRules(chainID: summary.id)
         if !all.isEmpty {
             MoreBlock(title: "Suppliers", card: false, trailing: { Text("\(links.count) from your own").textStyle(.caption, tint: Theme.inkFaint) }) {
@@ -62,10 +59,6 @@ struct ChainSupplyOverview: View {
                         }
                     }
                     setRuleMenu(all)
-                    if !quiet.isEmpty {
-                        Text("All stores buy outside: " + quiet.map { $0.title.lowercased() }.joined(separator: ", ") + ". Open a store's Operations > Suppliers to compare your own companies and business customers.")
-                            .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
-                    }
                     ForEach(links, id: \.id) { l in
                         let buyer = engine.state.company(l.buyerID)?.name ?? "Store"
                         let supplier = engine.state.company(l.supplierID)?.name ?? "Supplier"

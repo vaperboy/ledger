@@ -55,15 +55,19 @@ final class OnlineSettlementsTests: XCTestCase {
         let g = try game()
         var e = g.engine
         let id = g.company
-        let co0: Double = try XCTUnwrap(e.state.company(id)).cash
-        let me0: Double = e.state.cash
+        // The company draws on the one account, so who was paid is read from the cash flows.
+        let co0: Double = e.state.cashFlow["co\(id)"] ?? 0
+        let me0: Double = e.state.cashFlow["me"] ?? 0
+        let cash0: Double = e.state.cash
         let sale = OnlineSettlement(id: "a:1", amount: 1000, currency: "GBP", kind: "supply_sale", label: "Sold to other players", companyKey: "own.\(id)", units: 50, unitPrice: 20)
         let purchase = OnlineSettlement(id: "a:2", amount: -1000, currency: "GBP", kind: "supply_purchase", companyKey: "own.\(id)", units: 50, unitPrice: 20)
         var done: [String] = []
         e.update { s, d, _ in done = OnlineSettlements.book(&s, [sale, purchase], data: d) }
         XCTAssertEqual(done, ["a:1", "a:2"])
-        XCTAssertGreaterThan(try XCTUnwrap(e.state.company(id)).cash, co0)
-        XCTAssertEqual(e.state.cash, me0, "a supply sale pays the company, not the player")
+        let received: Double = (e.state.cashFlow["co\(id)"] ?? 0) - co0
+        XCTAssertGreaterThan(received, 0)
+        XCTAssertEqual(e.state.cashFlow["me"] ?? 0, me0, accuracy: 0.01, "a supply sale pays the company, not the player")
+        XCTAssertEqual(e.state.cash - cash0, received, accuracy: 0.01, "the purchase is only acknowledged: nothing else moves")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 

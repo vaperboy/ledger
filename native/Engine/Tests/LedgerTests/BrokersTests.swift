@@ -98,13 +98,16 @@ final class BrokersTests: XCTestCase {
         e.update { s, data, _ in
             let i = s.companyIndex(id)!, ai = s.companyIndex(airline)!
             XCTAssertEqual(Brokers.ownSupplier(s, buyer: s.companies[i], trade: "airline"), airline)
-            let agency0 = s.companies[i].cash, air0 = s.companies[ai].cash
+            // Both companies draw on the one account, so each side is read from its own cash flow.
+            func flow(_ id: Int) -> Double { s.cashFlow["co\(id)"] ?? 0 }
+            let agency0 = flow(id), air0 = flow(airline), account = s.cash
             var b = Brokers.Book()
             b.deals = [Brokers.Deal(id: 1, line: "flt", due: s.week, cancelWeek: 0, value: 7_000, commission: 490, fee: 0, supplier: airline, procuration: 0, trail: 0, sold: 0)]
             let rev = Brokers.settle(&s, i, data.catalog["travel"]!, Brokers.config["trades"]["travel"], &b, scale: 1, quality: 0.5, active: [])
             XCTAssertEqual(rev, 0, "the airline's payment is booked at once, not through the week's takings")
-            XCTAssertEqual(s.companies[i].cash - agency0, 490, accuracy: 0.5)
-            XCTAssertEqual(air0 - s.companies[ai].cash, 490, accuracy: 0.5)
+            XCTAssertEqual(flow(id) - agency0, 490, accuracy: 0.5)
+            XCTAssertEqual(air0 - flow(airline), 490, accuracy: 0.5)
+            XCTAssertEqual(s.cash, account, accuracy: 0.5, "money between two own companies leaves the account unchanged")
         }
         noGaps(e, "airline pays commission")
     }

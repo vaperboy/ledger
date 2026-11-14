@@ -59,8 +59,8 @@ struct WorldRule: Codable, Identifiable, Hashable, Sendable {
     func text(_ v: Double) -> String {
         switch unit {
         case .share: return String(format: v < 0.1 ? "%.1f%%" : "%.0f%%", v * 100)
-        case .weeks: return Int(v.rounded()) == 1 ? "1 week" : "\(Int(v.rounded())) weeks"
-        case .count: return "\(Int(v.rounded()))"
+        case .weeks: return Int(saturating: v.rounded()) == 1 ? "1 week" : "\(Int(saturating: v.rounded())) weeks"
+        case .count: return "\(Int(saturating: v.rounded()))"
         case .factor: return String(format: "%.2f\u{00D7}", v)
         }
     }

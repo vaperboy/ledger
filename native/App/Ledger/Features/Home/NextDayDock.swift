@@ -81,3 +81,11 @@ struct NextDayDock: View {
         .accessibilityIdentifier("next-day")
     }
 }
+
+struct DayChip: Equatable, Identifiable {
+    var id: UUID
+    var day: Int
+    var netWorthChange: Double
+    var cashChange: Double
+    var profit: Double? = nil
+}

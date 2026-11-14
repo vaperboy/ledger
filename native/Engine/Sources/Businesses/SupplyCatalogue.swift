@@ -19,68 +19,44 @@ public enum SupplyCatalogue {
         public var variable: Bool
         public var tiers: Bool
         public var automatic: Bool
+        public var isStock: Bool = false
         public var isCogs: Bool { category == "cogs" }
     }
 
-    struct Template { var name: String; var group: String; var category: String; var input: String?; var lead: Int; var terms: Int; var critical: Bool; var variable: Bool; var tiers: Bool; var automatic: Bool }
-    struct Catalogue {
-        var groups: [String] = []
-        var templates: [String: Template] = [:]
-        var families: [String: [(id: String, share: Double, name: String)]] = [:]
-        var trades: [String: (drop: [String], set: [String: (share: Double?, name: String?)], add: [(id: String, share: Double, name: String)])] = [:]
-    }
-
-    static let catalogue: Catalogue = {
-        var c = Catalogue()
-        guard let url = Bundle.module.url(forResource: "supply_catalogue", withExtension: "json", subdirectory: "Resources"),
-              let raw = try? Data(contentsOf: url), let j = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return c }
-        c.groups = j["groups"].array.map { $0.string }
-        for (k, v) in j["lines"].object {
-            c.templates[k] = Template(name: v["name"].string, group: v["group"].string, category: v["category"].string, input: v["input"].isNull ? nil : v["input"].string,
-                                      lead: v["lead"].int, terms: v["terms"].int, critical: v["critical"].bool, variable: v["variable"].bool, tiers: v["tiers"].isNull ? true : v["tiers"].bool, automatic: v["auto"].bool)
-        }
-        func entry(_ e: JSONValue) -> (id: String, share: Double, name: String) { (e.array[0].string, e.array[1].double, e.array[2].string) }
-        for (k, v) in j["families"].object { c.families[k] = v.array.map(entry) }
-        for (k, v) in j["trades"].object {
-            var set: [String: (share: Double?, name: String?)] = [:]
-            for (id, a) in v["set"].object { set[id] = (a.array[0].isNull ? nil : a.array[0].double, a.array[1].isNull ? nil : a.array[1].string) }
-            c.trades[k] = (v["drop"].array.map { $0.string }, set, v["add"].array.map(entry))
-        }
-        return c
-    }()
-
-    public static var groups: [String] { catalogue.groups }
+    public static var groups: [String] { SupplyMap.groups }
 
     static func ownCostModel(_ bd: Trade) -> Bool {
-        ["usedcar", "cardealer", "salmon", "startup", "travel", "insbroker", "finbroker"].contains(bd.id) || !["venue", "retail", "prod", "logi", "svc"].contains(bd.family)
+        ["usedcar", "cardealer", "salmon", "startup", "travel", "insbroker", "finbroker", "wholesale"].contains(bd.id) || !["venue", "retail", "prod", "logi", "svc"].contains(bd.family)
+    }
+
+    // What the role of a line is for this company: stock (goods), equipment upkeep (repair), an own-company supply kind, or none.
+    static func input(_ need: SupplyMap.Need, _ spec: SupplyMap.LineSpec, _ co: Company, _ bd: Trade) -> String? {
+        if need.isStock && Suppliers.hasGoods(bd, co) { return "goods" }
+        if !bd.equipment.isEmpty, need.line == Suppliers.upkeepLine(bd) { return "repair" }
+        if !spec.automatic, need.salesShare != nil, IntercompanySupply.kind(need.line) != nil { return need.line }
+        return nil
     }
 
     public static func lines(_ co: Company, _ bd: Trade) -> [Line] {
-        let c = catalogue
-        var entries = c.families[bd.family] ?? []
-        if let o = c.trades[bd.id] {
-            entries = entries.filter { !o.drop.contains($0.id) }
-            entries = entries.map { e in
-                guard let x = o.set[e.id] else { return e }
-                return (e.id, x.share ?? e.share, x.name ?? e.name)
-            }
-            for a in o.add { entries.removeAll { $0.id == a.id }; entries.append(a) }
-        }
         let hasGoods = Suppliers.hasGoods(bd, co)
         var out: [Line] = []
-        for e in entries {
-            guard let t = c.templates[e.id] else { continue }
-            if t.category == "cogs" {
-                if e.id == "goods" { guard hasGoods else { continue } }
+        for n in SupplyMap.needs(bd.id) {
+            guard let share = n.costShare, let spec = SupplyMap.line(n.line) else { continue }
+            let category = n.category ?? spec.category
+            if category == "cogs" {
+                if n.isStock { guard hasGoods || (bd.costOfSales >= 0.03 && !ownCostModel(bd)) else { continue } }
                 else { guard bd.costOfSales >= 0.03, !ownCostModel(bd) else { continue } }
             }
-            out.append(Line(id: e.id, name: e.name, kind: t.name, group: t.group, category: t.category, share: e.share, input: t.input, leadDays: t.lead, termsDays: t.terms,
-                            critical: t.critical, variable: t.variable, tiers: t.tiers, automatic: t.automatic))
+            out.append(Line(id: n.line, name: n.label ?? spec.name, kind: spec.name, group: spec.group, category: category, share: share, input: input(n, spec, co, bd),
+                            leadDays: spec.lead, termsDays: spec.terms, critical: spec.critical, variable: spec.variable, tiers: !spec.automatic,
+                            automatic: spec.automatic, isStock: n.isStock))
         }
-        let others = out.filter { $0.isCogs && $0.id != "goods" }.reduce(0) { $0 + $1.share }
-        if let g = out.firstIndex(where: { $0.id == "goods" }) { out[g].share = max(0.3, 1 - others) }
+        let others = out.filter { $0.isCogs && !$0.isStock }.reduce(0) { $0 + $1.share }
+        if let g = out.firstIndex(where: { $0.isStock && $0.isCogs && $0.share == 0 }) { out[g].share = max(0.3, 1 - others) }
         return out
     }
+
+    public static func stockLine(_ co: Company, _ bd: Trade) -> Line? { lines(co, bd).first { $0.isStock } }
 
     public struct Offer: Identifiable, Equatable, Sendable {
         public var id: String
@@ -92,45 +68,54 @@ public enum SupplyCatalogue {
         public var termsDays: Int
         public var leadDays: Int
         public var relationshipWord: String?
-        public var isMarket: Bool { id == "market" }
+        public var tradeID: String = ""
+        public var ownerCode: String = ""
+        public var city: String = ""
+        public var logoID: String = ""
+        public var quality: Double = 0
+        public var capacityFactor: Double = 4
+        public var load: Double = 0.3
+        public var staff: Int = 0
+        public var weeksTrading: Int = 0
+        public var isStandard: Bool = false
     }
 
     static let tierPrice: [Double] = [0.90, 1.0, 1.14]
     static let tierQuality: [Double] = [-4, 0, 4]
-    static let tierReliability: [Double] = [0.89, 0.95, 0.985]
     static let qualityWords = ["Basic", "Solid", "Top grade"]
 
     public static func qualityWord(tier: Int) -> String { qualityWords[min(2, max(0, tier))] }
     public static func reliabilityWord(_ r: Double) -> String { r < 0.9 ? "Patchy" : r < 0.96 ? "Steady" : "Dependable" }
 
+    static func offer(_ p: SupplyPlayers.Supplier, line: Line, _ s: GameState) -> Offer {
+        let r = Suppliers.relationship(s, p.id)
+        let disc = Suppliers.relationshipDiscount(r)
+        return Offer(id: p.id, name: p.name, owner: p.owner, tier: p.tier, priceFactor: tierPrice[min(2, max(0, p.tier))] * (1 - disc), reliability: p.reliability,
+                     termsDays: [0, line.termsDays, line.termsDays * 2][min(2, max(0, p.tier))], leadDays: line.leadDays + (p.tier == 0 ? 1 : 0),
+                     relationshipWord: Suppliers.relationshipWord(r), tradeID: p.tradeID, ownerCode: p.ownerCode, city: p.city, logoID: p.logoID, quality: p.quality,
+                     capacityFactor: p.capacityFactor, load: p.load, staff: p.staff, weeksTrading: p.weeksTrading, isStandard: p.isStandard)
+    }
+
+    // The player companies that supply this line: the standard one first, then the others, then a signed player contract.
     public static func offers(_ s: GameState, _ co: Company, _ bd: Trade, line: Line, data: GameData) -> [Offer] {
-        var out = [Offer(id: "market", name: "Standard supplier", owner: "", tier: 1, priceFactor: 1, reliability: 0.97, termsDays: 0, leadDays: line.leadDays, relationshipWord: nil)]
-        guard line.tiers, !line.automatic, line.input != "goods", line.input != "repair" else { return out }
-        let vs = EquipmentMarket.vendors(for: "line:\(co.type):\(line.id)", count: 3, family: bd.family, seed: s.seed, countryCode: co.countryCode,
-                                         countries: data.countries, nouns: Suppliers.nouns(data)).sorted { $0.quality < $1.quality }
-        let tiers: [[Int]] = [[], [1], [0, 2], [0, 1, 2]]
-        for (n, v) in vs.enumerated() {
-            let t = tiers[vs.count][n]
-            let made = Suppliers.make(v, scope: "line", s)
-            let rel = min(0.995, max(0.85, tierReliability[t] + v.quality * 0.03))
-            out.append(Offer(id: v.id, name: v.name, owner: v.owner, tier: t, priceFactor: tierPrice[t] * (1 - made.discount), reliability: rel,
-                             termsDays: [0, line.termsDays, line.termsDays * 2][t], leadDays: line.leadDays + (t == 0 ? 1 : 0), relationshipWord: made.relationshipWord))
-        }
+        guard !line.automatic else { return [] }
+        var out = Suppliers.lineSuppliers(s, company: co, line: line.id, data: data).map { offer($0, line: line, s) }
         if let c = PlayerSupply.contract(s, buyer: co.id, line: line.id) { out.append(PlayerSupply.offer(c, line: line)) }
         return out
     }
 
-    public static func chosenID(_ co: Company, line: String) -> String {
+    public static func chosenID(_ co: Company, line: String) -> String? {
         let v = co.value("sc")[line]
-        return v.isNull ? "market" : v.string
+        return v.isNull ? nil : v.string
     }
 
-    public static func current(_ s: GameState, _ co: Company, _ bd: Trade, line: Line, data: GameData) -> Offer {
+    public static func current(_ s: GameState, _ co: Company, _ bd: Trade, line: Line, data: GameData) -> Offer? {
         let all = offers(s, co, bd, line: line, data: data)
-        let id = chosenID(co, line: line.id)
-        return all.first { $0.id == id } ?? all[0]
+        if let id = chosenID(co, line: line.id), let o = all.first(where: { $0.id == id }) { return o }
+        return all.first
     }
 
+    // Lines whose supplier is picked here (stock and upkeep follow their own supplier rules; own-company links override).
     static func folded(_ s: GameState, _ co: Company, _ line: Line) -> Bool {
         guard line.tiers, !line.automatic, line.input != "goods", line.input != "repair" else { return false }
         if let k = line.input, IntercompanySupply.link(s, buyer: co.id, kind: k) != nil || AccountSupply.link(s, buyer: co.id, kind: k) != nil { return false }
@@ -138,25 +123,25 @@ public enum SupplyCatalogue {
     }
 
     @discardableResult
-    public static func choose(_ s: inout GameState, companyID: Int, line id: String, offer: String, data: GameData) -> Bool {
+    public static func choose(_ s: inout GameState, companyID: Int, line id: String, offer: String?, data: GameData) -> Bool {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type],
-              let line = lines(s.companies[i], bd).first(where: { $0.id == id }), folded(s, s.companies[i], line),
-              offers(s, s.companies[i], bd, line: line, data: data).contains(where: { $0.id == offer }) else { return false }
-        var sc = s.companies[i].value("sc"); if sc.isNull { sc = .object([:]) }
-        var o = sc.object
-        if offer == "market" { o.removeValue(forKey: id) } else { o[id] = .string(offer) }
-        sc = .object(o)
-        s.companies[i].set("sc", sc)
+              let line = lines(s.companies[i], bd).first(where: { $0.id == id }), line.tiers, !line.automatic else { return false }
+        let all = offers(s, s.companies[i], bd, line: line, data: data)
+        var o = s.companies[i].value("sc").object
+        if let offer, let picked = all.first(where: { $0.id == offer }), !picked.isStandard { o[id] = .string(picked.id) }
+        else if offer == nil || all.contains(where: { $0.id == offer && $0.isStandard }) { o.removeValue(forKey: id) }
+        else { return false }
+        s.companies[i].set("sc", .object(o))
         return true
     }
 
     public static func cogsEffect(_ s: GameState, _ co: Company, _ bd: Trade, data: GameData) -> (m: Double, q: Double) {
         var m = 1.0, q = 0.0
         for line in lines(co, bd) where folded(s, co, line) {
-            let o = current(s, co, bd, line: line, data: data)
+            guard let o = current(s, co, bd, line: line, data: data) else { continue }
             let w = line.isCogs ? line.share : line.share * 0.5
             if line.isCogs { m += line.share * (o.priceFactor - 1) }
-            q += w * tierQuality[o.tier]
+            q += w * tierQuality[min(2, max(0, o.tier))]
         }
         return (m, q)
     }
@@ -191,16 +176,15 @@ public enum SupplyCatalogue {
         }
     }
 
+    // How often a picked supplier falls short. The standard supplier of a line never misses, as the market did before.
     static func reliability(_ s: GameState, _ co: Company, _ bd: Trade, line: Line, data: GameData) -> Double? {
         if let c = PlayerSupply.contract(s, buyer: co.id, line: line.id) { return c.reliability }
         if line.input == "goods" {
-            let src = co.value("src")["v"]
-            guard !src.isNull, src.string != "auto", let v = Suppliers.vendor(s, id: src.string, data: data) else { return nil }
-            return 0.85 + (v.rating - 2.6) / 2.2 * 0.14
+            guard let v = Suppliers.goodsVendor(s, company: co, data: data), !v.isStandard else { return nil }
+            return v.reliability
         }
-        guard folded(s, co, line) else { return nil }
-        let o = current(s, co, bd, line: line, data: data)
-        return o.isMarket ? nil : o.reliability
+        guard folded(s, co, line), let o = current(s, co, bd, line: line, data: data), !o.isStandard else { return nil }
+        return o.reliability
     }
 
     static func settleOverhead(_ s: inout GameState, _ i: Int, _ bd: Trade, base: Double, util: Double, data: GameData) -> Double {
@@ -210,12 +194,11 @@ public enum SupplyCatalogue {
         var spend: [String: Double] = [:]
         var bought: [(vendor: String, amount: Double)] = []
         for line in all where !line.isCogs {
-            let folded = folded(s, co, line)
-            let o = folded ? current(s, co, bd, line: line, data: data) : nil
+            let o = folded(s, co, line) ? current(s, co, bd, line: line, data: data) : nil
             let part = base * line.share * (o?.priceFactor ?? 1) * activity(line, util: util) * (line.id == "power" ? EnergyMarket.costFactor(s) : 1)
             share += line.share
             spend[line.id] = part
-            guard let o, !o.isMarket else { continue }
+            guard let o, !o.isStandard else { continue }
             if !o.id.hasPrefix("P:") { bought.append((o.id, part)) }
             if o.termsDays == 0 { immediate += part } else { invoiced += part }
         }
@@ -234,11 +217,17 @@ public enum SupplyCatalogue {
         }
         let cogsWeek = s.companies[i].value("lastW")["cogs"].double
         let cl = all.filter { $0.isCogs }
-        let weights: [String: Double] = Dictionary(uniqueKeysWithValues: cl.map { l in
-            (l.id, l.share * (folded(s, co, l) ? current(s, co, bd, line: l, data: data).priceFactor : 1))
-        })
-        let wsum = weights.values.reduce(0, +)
-        if wsum > 0 { for l in cl { spend[l.id] = cogsWeek * (weights[l.id] ?? 0) / wsum; if let o = folded(s, co, l) ? current(s, co, bd, line: l, data: data) : nil, !o.isMarket, !o.id.hasPrefix("P:") { bought.append((o.id, spend[l.id] ?? 0)) } } }
+        var picked: [String: Offer] = [:]
+        for l in cl where folded(s, co, l) { if let o = current(s, co, bd, line: l, data: data) { picked[l.id] = o } }
+        let weights: [String: Double] = Dictionary(uniqueKeysWithValues: cl.map { l in (l.id, l.share * (picked[l.id]?.priceFactor ?? 1)) })
+        // Summed in line order: a dictionary's order changes between runs and would change the rounding.
+        let wsum = cl.reduce(0.0) { $0 + (weights[$1.id] ?? 0) }
+        if wsum > 0 {
+            for l in cl {
+                spend[l.id] = cogsWeek * (weights[l.id] ?? 0) / wsum
+                if let o = picked[l.id], !o.isStandard, !o.id.hasPrefix("P:") { bought.append((o.id, spend[l.id] ?? 0)) }
+            }
+        }
         let rec = s.companies[i].value("scw")
         var next: [String: JSONValue] = [:]
         for (k, v) in spend { next[k] = .array([.number(v), .number(rec[k].array.first?.double ?? v)]) }
@@ -252,5 +241,13 @@ public enum SupplyCatalogue {
         let v = co.value("scw")[line].array
         guard v.count == 2 else { return nil }
         return (v[0].double, v[1].double)
+    }
+
+    // What a line needs a week, in supplier units, from last week's spend (or the share of sales when it has not run yet).
+    public static func needUnits(_ co: Company, _ bd: Trade, line: String, costIndex: Double) -> Int {
+        var weekly = weeklySpend(co, line: line)?.now ?? 0
+        if weekly <= 0, let n = SupplyMap.need(bd.id, line: line), let share = n.salesShare { weekly = co.lastWeekRevenue * share }
+        if weekly <= 0 { weekly = co.lastWeekRevenue * 0.02 }
+        return SupplyNeed.units(weekly: weekly, costIndex: costIndex)
     }
 }

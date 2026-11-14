@@ -32,7 +32,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .news: return "News"
         case .desk: return "Desk"
         case .profile: return "Profile"
-        case .season: return "Season"
+        case .season: return "Goals"
         case .settings: return "Settings"
         }
     }
@@ -64,7 +64,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     var subtitle: String {
         switch self {
         case .bank: return "Cash, accounts, savings and loans"
-        case .stats: return "Fun facts, reports and where the money went"
+        case .stats: return "You, your companies, your money and your records"
         case .atlas: return "Cover for your companies"
         case .market: return "Your markets, companies, investments and the exchange"
         case .luxury: return "Cars, watches, art, yachts, jets and homes"
@@ -80,7 +80,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .news: return "The world, other players, government and weather"
         case .desk: return "One small question a day, and your notebook"
         case .profile: return "You, your trophies and your friends"
-        case .season: return "Half-year rewards, free and Plus"
+        case .season: return "Daily, weekly, season and long-term goals"
         case .settings: return "How much you decide, saving, haptics"
         }
     }
@@ -99,7 +99,7 @@ enum PhoneSection: String, CaseIterable, Identifiable {
         switch self {
         case .money: return [.bank, .stats, .atlas]
         case .market: return [.market, .luxury]
-        case .shops: return [.marketplace, .auctions, .airStay, .techPro, .store]
+        case .shops: return [.marketplace, .auctions, .airStay, .techPro]
         case .field: return [.competition, .rankings, .world]
         case .daily: return [.inbox, .news, .desk]
         case .you: return [.profile, .season, .settings]
@@ -150,8 +150,7 @@ extension GateVisibility {
 extension PhoneApp {
     var gate: Gate? {
         switch self {
-        case .inbox, .stats, .settings, .desk, .store, .profile, .market, .rankings, .competition, .auctions: return nil
-        case .bank, .news, .season: return .bank
+        case .inbox, .stats, .settings, .desk, .store, .profile, .market, .rankings, .competition, .auctions, .bank, .news, .season: return nil
         case .marketplace: return .marketplace
         case .airStay: return .airstay
         case .techPro: return .techpro
@@ -161,21 +160,19 @@ extension PhoneApp {
         }
     }
 
+    /// Apps that open with a level feature of their own rather than a gate.
+    var levelFeature: LevelFeature? {
+        switch self {
+        case .auctions: return .auctions
+        case .world: return .government
+        case .desk: return .desk
+        default: return nil
+        }
+    }
+
     func visibility(_ e: GameEngine) -> GateVisibility {
-        if self == .desk { return e.deskOpen ? .open : .hidden }
-        if self == .competition {
-            return Gates.visibility(.reviews, e.state, data: e.data)
-        }
-        if self == .auctions {
-            if LevelGates.isOpen(.auctions, e.state) { return .open }
-            let away: Int = LevelGates.level(.auctions) - PlayerLevel.info(e.state).level
-            return away <= 1 ? .locked("Unlocks at level \(LevelGates.level(.auctions))") : .hidden
-        }
-        if self == .world {
-            if LevelGates.isOpen(.government, e.state) { return .open }
-            let away: Int = LevelGates.level(.government) - PlayerLevel.info(e.state).level
-            return away <= 1 ? .locked("Unlocks at level \(LevelGates.level(.government))") : .hidden
-        }
+        if let f = levelFeature { return LevelGates.visibility(f, e.state) }
+        if self == .competition { return Gates.visibility(.reviews, e.state, data: e.data) }
         guard let gate else { return .open }
         return Gates.visibility(gate, e.state, data: e.data)
     }

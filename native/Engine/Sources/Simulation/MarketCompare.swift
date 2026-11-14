@@ -116,7 +116,7 @@ public extension GameEngine {
             for c in mine { prices["c\(c.id)"] = Pricing.ticket(c, bd, w) }
             for r in rivals { prices["r\(r.id)"] = Rivals.price(co, r, w) }
         }
-        let avgPrice = prices.isEmpty ? 0 : prices.values.reduce(0, +) / Double(prices.count)
+        let avgPrice = prices.isEmpty ? 0 : prices.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value } / Double(prices.count)
         func sizeWord(_ rev: Double) -> String {
             let ref = max(1, truth.total / Double(max(1, truth.players.count + mine.count)))
             return rev >= ref * 1.3 ? "Large" : rev >= ref * 0.7 ? "Medium" : "Small"

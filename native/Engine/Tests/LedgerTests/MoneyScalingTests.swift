@@ -103,7 +103,16 @@ final class MoneyLiteralLintTests: XCTestCase {
         "StaffPerks.swift": ["5500": "perk cost a month at the reference level; scaled with scaledPrice in monthlyCost", "1500": "perk cost a month at the reference level; scaled with scaledPrice in monthlyCost"],
         "Luxury.swift": ["1000": "small floor on a luxury excess in accounting units"],
         "ManagerWeek.swift": ["3000": "reference-level fallback weekly revenue / ranking of candidates by asking wage per skill point (relative)", "1500": "reference-level fallback weekly revenue / ranking of candidates by asking wage per skill point (relative)"],
-        "Franchising.swift": ["1000": "rounding step of a displayed price (to the nearest thousand), not an amount / fallback document cost, scaled with scaledPrice right after", "25000": "rounding step of a displayed price (to the nearest thousand), not an amount / fallback document cost, scaled with scaledPrice right after"],
+        "Franchising.swift": ["1000": "rounding step of a displayed price (to the nearest thousand), not an amount / fallback document cost, scaled with scaledPrice right after", "25000": "rounding step of a displayed price (to the nearest thousand), not an amount / fallback document cost, scaled with scaledPrice right after", "150_000": "entry fee at the reference level; scaled with scaledPrice where it is charged (ChainActions)"],
+        "FirstYear.swift": ["100_000": "default start savings at the reference level (balance.json sets it); scaled with scaledPrice where it is paid (LifeStories)"],
+        "PublicCompany.swift": ["30_000_000": "listing minimum at the reference level; scaled with scaledPrice in listingMinimum", "1000": "rounding step of a dividend (to the nearest thousand), not an amount"],
+        "SalesWays.swift": ["1_000_000_000": "hash / seed arithmetic, not money"],
+        "JointVenture.swift": ["3600": "seconds in an hour: real-time voting clock, not money"],
+        "JointVentureRules.swift": ["3600": "seconds in an hour: real-time meeting clock, not money", "86400": "seconds in a day: real-time meeting clock, not money"],
+        "WorldRecap.swift": ["86_400": "seconds in a day: real-time window, not money"],
+        "BankReads.swift": ["4000": "how many bank lines to read (a count, not money)"],
+        "FriendPlay.swift": ["10_000": "rounding of a growth ratio to four decimals, not an amount"],
+        "DecisionAnswers.swift#unicode": ["2212": "unicode escape of the minus sign"],
         "Rivals.swift": ["1000": "rounding step of a displayed price (to the nearest thousand), not an amount / rival id counter / hash", "9_000_000": "rounding step of a displayed price (to the nearest thousand), not an amount / rival id counter / hash", "1_000_000_000": "rounding step of a displayed price (to the nearest thousand), not an amount / rival id counter / hash"],
         "PriceMoves.swift": ["10000": "rounding of a price factor to 3 or 4 decimals", "1000": "rounding of a price factor to 3 or 4 decimals"],
         "Ambitions.swift": ["1500": "milestone targets at the reference level, scaled by K()/ms()", "300000": "milestone targets at the reference level, scaled by K()/ms()", "700000": "milestone targets at the reference level, scaled by K()/ms()"],
@@ -167,6 +176,8 @@ final class MoneyLiteralLintTests: XCTestCase {
         "StartEstimate.swift": ["7919": "hash arithmetic", "20_000_000_000": "funds of a throwaway trial game, large enough never to bind (not a price)", "1_000_000": "upper bound on a payback time in weeks (a duration, not money)"],
         "GoalClaims.swift": ["1_000": "goal cash at the reference level; scaled with scaledPrice where it is paid", "3_000": "goal cash at the reference level; scaled with scaledPrice where it is paid", "10_000": "goal cash at the reference level; scaled with scaledPrice where it is paid"],
         "Banking.swift#annuity": ["100000": "ratio: instalment per 100 000 borrowed, any currency"],
+        "Unlocks.swift": ["300_000": "compared with a trade's opening cost from trades.json, which is at the reference level", "1_500_000": "compared with a trade's opening cost from trades.json, which is at the reference level"],
+        "PlayMissions.swift": ["86400": "seconds in a day (clock arithmetic, not money)"],
     ]
     static let skipFiles: Set<String> = ["GameCalendar.swift", "LZString.swift", "JSONValue.swift", "HashedRandom.swift", "DeterministicRandom.swift", "FaceCatalog.swift", "FaceTraits.swift"]
     static let scalingMarkers = ["scaledPrice(", "medianMonthlyWage", "roundedStep(", "step:", ".tidy(", "wageLevel", "costIndex", "ReferenceEconomy", "Balance"]

@@ -1,7 +1,7 @@
 import XCTest
 
 final class ScreenShotsTests: FeatureTourCase {
-    static let seenFlags: [String] = ["firstRun.tour.group", "firstRun.tour.ventures", "firstRun.tour.phone", "firstRun.tour.custom", "firstRun.tour.company", "firstRun.customTabTip",
+    static let seenFlags: [String] = ["firstRun.tour.group", "firstRun.tour.ventures", "firstRun.tour.phone", "firstRun.tour.custom", "firstRun.tour.company",
                                       "firstRun.appHelp.bank", "firstRun.appHelp.market", "firstRun.appHelp.atlas", "firstRun.appHelp.inbox", "firstRun.appHelp.news",
                                       "firstRun.appHelp.competition", "firstRun.appHelp.techPro", "firstRun.appHelp.airStay", "firstRun.appHelp.luxury",
                                       "firstRun.appHelp.marketplace", "firstRun.appHelp.auctions"]
@@ -336,20 +336,15 @@ final class ScreenShotsTests: FeatureTourCase {
                 tapInStrip("company-tab-sales", stripPrefix: "company-tab-") && has("first-item-confirm", wait: 5)
             }
         }
-        screen("tutorial-supplier") {
+        screen("tutorial-price") {
             guard companyOpen else { return "the company page did not open" }
             let row: (Hit) -> Bool = { (h: Hit) -> Bool in h.type == .button && h.id.hasPrefix("first-item-") && h.id != "first-item-confirm" }
             guard tapWhere(wait: 2, row) else { return "no product row to pick" }
             guard seekEnabled("first-item-confirm") else { return "no enabled Start with this product button" }
-            return ok(has("item-supplier-keep", wait: 5) || has("item-supplier-done"), "no supplier question for the first product")
+            return ok(has("item-price-done", wait: 6), "the price sheet did not open after the first product")
         }
         act {
-            if !pressButton("item-supplier-keep", wait: 1) { _ = pressButton("item-supplier-done", wait: 1) }
-            pause(0.8)
-        }
-        screen("tutorial-price") { ok(has("item-keep-price", wait: 6) || has("item-price-done"), "the price sheet did not open") }
-        act {
-            if !pressButton("item-keep-price", wait: 1) { _ = pressButton("item-price-done", wait: 1) }
+            _ = pressButton("item-price-done", wait: 1)
             pause(0.8)
             clearPopups()
         }
@@ -395,11 +390,7 @@ final class ScreenShotsTests: FeatureTourCase {
         screen("fresh-tab-ventures") { ok(openTab("Ventures"), "no Ventures tab") }
         act { clearPopups() }
         screen("fresh-tab-group") { ok(goTab("Group"), "no Group tab") }
-        screen("fresh-tab-custom") {
-            guard let t = customTab() else { return "no fourth tab" }
-            touch(t)
-            return nil
-        }
+        screen("fresh-tab-store") { ok(goTab("Store"), "no Store tab") }
         screen("fresh-phone-grid") {
             guard goTab("Phone") else { return "no Phone tab" }
             return ok(gridUp(6), "the Phone grid did not show")
@@ -412,7 +403,7 @@ final class ScreenShotsTests: FeatureTourCase {
             guard goTab("Home") else { return "no Home tab" }
             return ok(homeVisible(6), "Home did not show")
         }
-        popup("home-goals") { ok(tapID("home-rank-ring", wait: 2), "no home-rank-ring on Home") }
+        popup("home-goals") { ok(tapID("home-goal", wait: 2), "no home-goal on Home") }
         page("home-new-company") {
             guard goTab("Home"), tapID("home-new-company", wait: 2) else { return "no Start a company button on Home in this game" }
             return ok(has("back-button", wait: 4), "the new company page did not open")
@@ -428,12 +419,12 @@ final class ScreenShotsTests: FeatureTourCase {
             screen("ventures-" + part.lowercased()) { when(ventures, off: "Ventures is locked in this game", "no \(part) part") { tapLabel(part, wait: 2) } }
         }
         screen("tab-group") { ok(goTab("Group"), "no Group tab") }
-        for part in ["Structure", "People", "Suppliers"] {
+        for part in ["Overview", "People", "Suppliers"] {
             screen("group-" + part.lowercased()) { ok(goGroup(part), "no group-home-tab-\(part)") }
         }
         var entity = false
         screen("group-company") {
-            guard goGroup("Structure"), tapPrefix("group-entity-", wait: 4) else { return "no company in the Group structure" }
+            guard goGroup("Overview"), tapPrefix("group-entity-", wait: 4) else { return "no company in the Group structure" }
             entity = has("group-back", wait: 4)
             return ok(entity, "the group company page did not open")
         }
@@ -446,16 +437,7 @@ final class ScreenShotsTests: FeatureTourCase {
             guard goGroup("Overview") else { return "no Group overview" }
             return ok(tapID("group-add", wait: 2), "no group-add button")
         }
-        screen("tab-custom") {
-            guard let t = customTab() else { return "no fourth tab" }
-            touch(t)
-            return nil
-        }
-        popup("custom-tab-picker") {
-            guard let t = customTab() else { return "no fourth tab" }
-            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: t.frame.midX, dy: t.frame.midY)).press(forDuration: 1.2)
-            return ok(has("custom-picker", wait: 3) || popupUp(1), "the picker did not open")
-        }
+        screen("tab-store") { ok(goTab("Store"), "no Store tab") }
         screen("tab-phone") {
             guard goTab("Phone") else { return "no Phone tab" }
             return ok(gridUp(6), "the Phone grid did not show")

@@ -1,4 +1,45 @@
 # What's new
+- Redeem gift codes at the top of the Store: gold, cosmetics or boxes, with a reward popup
+- Brighter Store: clear offer cards with big reward icons and prices, a new cosmetics shelf every day (never Battle Pass items), a small "watch an ad for gold" button on Home and the Store, open Supporter perks, and one Redeem a code field for beta keys
+- Battle pass grows to 50 tiers with more costumes, Season 3 "Riviera Summer" starts on its own by date, 38 new store cosmetics, Creator and Beta tester badges, work uniforms per trade, and animated legendary items
+- Smoother app: lighter visuals with no live blur or heavy shadows, only the open tab is drawn, no animations in Low Power Mode, swipe between sub-tabs, and Market overview and Companies in one screen
+- Fairer first company: every starter begins with the same savings, the bank lends what the kit costs beyond them, and the start-up grant is a few weeks of running costs that counts for no trophy, milestone or ranking; no trophies in the first four weeks; the gym now opens as a second company
+- Prices: you can always change a price your manager or market advisor sets, and hand pricing back to them with one tap
+- Decisions: No on the left, Yes on the right, a small Later below; outcomes are told as what happened, with a single cost line only for big choices
+- Daily missions: 4 easy and 1 hard each day (plus weekly and monthly sets) picked from hundreds of missions, rewards that match the effort, and a Claim button on Home
+- Smoother first-company guide: it never covers the screen, it notices every way you do a step, and if you wait 5 seconds it points at what to tap; stock, upkeep and servicing suppliers are now picked for you when a company opens (change them any time on the supplier screen), so the guide no longer asks for one and a new product goes straight to its price
+- First-company guide fixes: Done on the price screen always saves the price and moves the guide on, keeping the supplier in use counts as choosing one, looking at a supplier's owner brings you back to the supplier list, small sales show as decimals instead of 0, and the guide ends after the Inbox when no reward is ready
+- Fairer economy: auction prices follow real value, equipment loans are repaid when you sell, net worth counts company debt, bankruptcy can no longer hide money, startup stakes are realistic, and ignored decisions do nothing
+- Sign in with Apple, sign back into your account on a new phone, and account deletion that settles your deals first
+- Safer online play: partner payments and company values are capped, ranking scores are checked, and marketplace listings must be real items at fair prices
+- Faster and safer saving in the background, iPhone portrait only, and clearer loading and retry on online screens
+- Your first company is one of 11 simple starter trades, and the start-up grant only ever covers those; bigger trades such as hotels, factories, airlines and oil and gas open later as you level up
+- Insurance now opens at level 3 and Rivals at level 6, still one new feature per level
+- The country list starts with the country of your phone, and the last setup step is skipped when your trade sells one way only
+- Events fit the company: shop events skip web shops and wholesalers, premises events skip home-based and vehicle businesses, and money losses scale with the size of the company; grant windows name your own country's agency
+- Suppliers in countries where a trade cannot be started are importers, electricians and plumbers sell whole projects, and a gold prize no longer resets a box guarantee
+- Gold, boxes, the cabinet, the Battle Pass and purchases are kept on your account on the server: they follow you to a new phone, purchases count once, money packs are limited to 1,060 gold a week, and the Store is read-only while offline; your phone's old wallet moves over once
+- Buy in-game money with gold in the Store (five packs with up to 20% bonus, plus a free pack twice a day); name plates are retired and refunded
+- Decisions: every answer has its own result, shown after you choose; which answer is best depends on your company; equal answer buttons with No always first; a few bigger stories each month with a follow-up
+- Suppliers are always player companies: plain Stock, Upkeep, Transport and Services lines, no quantities to pick, a yellow or red mark when a supplier may not or cannot deliver, your own companies first, and a company card for every supplier
+- New trades: Wholesaler, Filling station and Laundry service; Security is now a Security company
+- A Store tab on the far left with offers, bundles, boxes, cosmetics and gold; Ventures now sits right of Home
+- New price screen: one bar from cost to market, Cheap / Market / Premium, and a live estimate of sales and profit
+- Cleaner Group page, a one-step partner invite with share and price, tap other players to see their card, and name plates removed
+- Player card redesign: the backdrop fills the whole card, real name plates, tap any part (or the +) to change it, and a Character tab with face, skin colour, hair and outfit; frames and badges are retired (gold spent on frames is refunded)
+- Many more cosmetics: 80 outfits, faces, hair styles, skin tones, backdrops, plates and flairs from boxes, the pass and levels; future season items stay hidden until the season starts
+- Company customise opens from the wrench and holds rename, logo and banner; the banner fills the full width
+- Decisions wait until the daily brief is closed, answers are never highlighted, partner invites let you set the share and price, and the battle pass has a card on Home
+- Decisions wait for the daily brief and all answers look equal; invites let you set the share and the price by typing; Group has one Overview with the structure below; Home shows the Battle Pass with a Get the pass button
+- Realistic closing and bankruptcy: closing a company repays all its debts first, a company that owes more than it has can only go bankrupt, guaranteed loans pass to the owner, money taken out while insolvent is clawed back, and no bank loans for 2 years after a bankruptcy
+- One fair game for everyone: no difficulty modes, retries or rolling back to older saves; save slots are separate careers, and every company type starts with the same 12-week runway from your savings plus a government start-up grant
+- Features unlock one per level ("Unlocks at level N"), decisions pop up on Home one at a time with Later, every day brings at least one event, and the Inbox only keeps what needs you
+- One Home for every player, one Goals screen with the battle pass on top (Daily, Weekly, Season, Long-term) and one Stats screen
+- Company shares with real players: invites with percentage and price, buyback offers the other player must accept, board votes by share with a 24-hour Decide now meeting, and a shares section for partners in Ventures
+- Create a half-body avatar before your first company, a business-card player profile, one-screen Customise with a live preview, company logo and banner, and loot boxes that build up and flip each card
+- Slim equipment and supplier rows with one detail page each, and Rent in AirStay / Buy in TechPro open the exact item
+- Worker and product pages in one popup each, a one-page company overview with one graph, and collections that show their reward
+- Realistic rents and prices for warehouses, industry, gyms, farms and football tickets; 1 gold is worth 1,000 in-game NOK
 - Goal rewards are claimed on purpose: finished goals wait with a Claim button (ladder, career and daily) and pay a small cash reward; Home shows your level bar, the current mission and the Season Pass claim or a watch-an-ad bonus, and you can put the cards away for a week
 - One global electricity price that follows how much power companies use and how much plants supply, a World prices card in the Market app, and bank, insurance, fund, casino and football club can no longer be started
 - A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold
@@ -18,7 +59,7 @@
 - Fix for the crash on opening a game that has a report waiting: the report popup no longer overflows the screen stack
 - Fix for a crash on opening an older game when the Custom tab pointed at a company that no longer exists
 - Every newly opened tab, company page and key phone app now gets its own short guided tour, shown once
-- Each company starts by choosing one of three products, the rest come later under add product, Sandbox mode needs Ledger Pro, and the New range option is gone
+- Each company starts by choosing one of three products, the rest come later under add product
 - Equipment opens straight into one structured list, showing machines, vehicles and software only where the business uses them
 - Home sits clear of the island, Next day sits above the tab bar, empty space is shared evenly, a single company shows a richer card, and the app has a soft gradient background with glass-style cards, tab bar and day button
 - Fix for a crash while playing the first weeks of a new game: more number conversions can no longer overflow or hit a non-number, and charts ignore values that are not numbers
@@ -26,12 +67,12 @@
 - Money in is a green up arrow and money out a red down arrow instead of plus and minus; a company shows this week so far live with its change on last week; only the change in a figure rolls (up in green, down in red); the net worth chart adds each new day instead of redrawing
 - A holding company sells nothing and no longer earns interest on idle cash; its income is dividends from your companies and gains on money it invests
 - Events can chain (an ignored breach becomes a claim, then a press story; late invoices, a skipped inspection and price wars escalate), each of the twelve starter trades has its own events, big owners get a fourth answer, daily goals vary with streak perks, a recap shows when you return, and Stats has a "How you are playing" panel
-- Choose Classic, Sandbox or Hard when you start; rivals bid for the best accounts and staff of a top company, markets warn before a crash, big groups lose creditor confidence, and a bad event your team handled shows as "Survived it"
-- Better feel: every button press and choice has a haptic, milestones and trophies are celebrated full-screen, a sounds option (off by default), a game-over screen with a one-tap retry, a four-step first-session tour, and a short help sheet the first time you open each phone app
+- Rivals bid for the best accounts and staff of a top company, markets warn before a crash, big groups lose creditor confidence, and a bad event your team handled shows as "Survived it"
+- Better feel: every button press and choice has a haptic, milestones and trophies are celebrated full-screen, a sounds option (off by default), a four-step first-session tour, and a short help sheet the first time you open each phone app
 - Companies and Phone apps open with a zoom, payroll, loans and large sales send a small chip to your net worth, charts draw in from the left, a cash shortfall opens the loan application with the amount filled in, and two-answer decisions are answered on the Home card
 - The game runs day by day: no work is saved up for the end of the week, each company and process runs on its own day, and month-end money (tax, VAT, loan instalments) lands on the real last day of the month
 - Things that cannot be measured are described in words instead of numbers (worker performance, name recognition, equipment condition, risk, standing); money, wages, ownership and tax stay as numbers
-- Next day is a floating button above the tab bar and Skip week is gone, the daily report popup is back, and Home never scrolls with one company
+- Next day is a floating button above the tab bar, the daily report popup is back, and Home never scrolls with one company
 - Unlocks belong to the player: once one company earns a feature it is open for every company, new ones start with it, and the unlock popup shows once
 - The manager screen has five orders (Direction, Budget, Headcount, Pay and bonus, Replace) with a staffing plan, a weekly digest and read-only targets with one yearly budget approval
 - Boards are simpler: one decision list (sell, close, dividend, CEO, capital, open or close a location) with a recommendation per item, one quarterly review with the CEO (Direction and Budget), and chain standards that every location follows

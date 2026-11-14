@@ -5,7 +5,7 @@
    "id": "counting",
    "name": "Counting House",
    "blurb": "Tools of the old bookkeepers.",
-   "reward": "gold.coll.counting",
+   "reward": "gold.coll.counting.backdrop",
    "look": {"top": "A8803A", "bottom": "4A3512", "ink": "FFE9B0", "motif": "rings"}
   },
   {
@@ -34,6 +34,7 @@
    "name": "Spring Market",
    "blurb": "Eggs, blossom and hares of the spring fair.",
    "reward": "gold.coll.spring",
+   "theme": "spring",
    "look": {"top": "E8A9BC", "bottom": "5E7F52", "ink": "FFF3DC", "motif": "dots"}
   }
  ],

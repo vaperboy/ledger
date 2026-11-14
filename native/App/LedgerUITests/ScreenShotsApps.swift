@@ -13,7 +13,7 @@ extension ScreenShotsTests {
         page("app-stats-annual") { inApp("no stats-annual row: no finished year in this game") { seekID("stats-annual") } }
         phoneApp("Insurance", "app-insurance")
         phoneApp("Market", "app-market")
-        for part in ["Companies", "Invest", "Exchange"] {
+        for part in ["Invest", "Exchange"] {
             appPart("app-market-" + part.lowercased(), "market-tab-" + part, strip: "market-tab-")
         }
         phoneApp("Luxury", "app-luxury")
@@ -72,22 +72,26 @@ extension ScreenShotsTests {
     func testG_StoreSeasonAndLootBox() {
         letter = "G"
         act { playOneDay() }
-        phoneApp("Store", "app-store")
-        lower("app-store-lower", on: appOpen, why: "the Store did not open")
-        screen("store-plans") { inApp("the plans sheet did not open") { tapID("store-plans") && popupUp(3) } }
-        screen("store-plans-lower") {
-            guard popupUp() else { return "the plans sheet is not open" }
-            dragPage(-420)
-            return nil
+        screen("app-store") {
+            appOpen = goTab("Store")
+            return ok(appOpen, "no Store tab")
         }
+        lower("app-store-lower", on: appOpen, why: "the Store did not open")
+        screen("store-plans") { ok(has("plan-plus", wait: 4), "the plans are not in the Store") }
         act { clearPopups() }
         var season = false
-        screen("app-season") {
-            season = openApp("Season") == nil
-            if !season && openApp("Store") == nil && tapID("store-open-pass") { season = !has("store-open-pass", wait: 1) }
-            return ok(season, "no Season tile on the Phone grid and no Open pass button in the Store")
+        screen("app-goals") {
+            _ = openApp("Goals")
+            return ok(has("goals-app", wait: 2), "no Goals tile on the Phone grid")
         }
-        for part in ["Missions", "Collection"] {
+        for tab in ["Weekly", "Season", "Long-term"] {
+            screen("goals-" + tab.lowercased()) { when(has("goals-app", wait: 1), off: "Goals did not open", "no \(tab) tab") { seekLabel(tab) } }
+        }
+        screen("app-season") {
+            season = has("goals-pass", wait: 1) && tapID("goals-pass")
+            return ok(season, "no battle pass strip on the Goals screen")
+        }
+        for part in ["Collection"] {
             screen("season-" + part.lowercased()) { when(season, off: "the Season pass did not open", "no \(part) tab") { seekLabel(part) } }
         }
         screen("season-claimed", settle: 2) {
@@ -136,7 +140,7 @@ extension ScreenShotsTests {
         }
         page("store-cosmetics") {
             guard openApp("Store") == nil else { return "the Store did not open" }
-            return ok(seekText("Cosmetics and bundles"), "no Cosmetics and bundles row")
+            return ok(seekText("TODAY'S SHELF"), "no shelf band")
         }
     }
 

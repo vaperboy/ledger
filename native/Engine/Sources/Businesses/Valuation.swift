@@ -32,6 +32,20 @@ public enum Valuation {
         return max(0, jsRound(net + goodwill))
     }
 
+    /// What the company is worth before its loans, never below 0. Net worth adds this and counts every loan in full as debt,
+    /// because borrowed money sits in the one pooled account; a value floored after loans would let debt raise net worth.
+    public static func valueBeforeLoans(_ co: Company, state s: GameState, trades: any TradeCatalogProviding) -> Double {
+        if !co.status.isLive { return 0 }
+        guard let bd = trades.facts(for: co.type) else { return 0 }
+        let fm = co.value("fm")
+        if bd.family == "club", !fm.isNull, !fm["val"].isNull, fm["val"].double != 0 {
+            return max(0, jsRound(jsRound(fm["val"].double) + fm["book"].double * 0.8))
+        }
+        let net = CompanyFigures.assets(co) - CompanyFigures.billsOwed(co)
+        if bd.id == StartupModel.tradeID { return jsRound(max(0, StartupModel.value(co, state: s, net: net))) }
+        return max(0, jsRound(net + goodwill(co, state: s, trades: trades)))
+    }
+
     public static func goodwill(_ co: Company, state s: GameState, trades: any TradeCatalogProviding) -> Double {
         guard let bd = trades.facts(for: co.type) else { return 0 }
         let mult: Double = bd.family == "fin" ? 1.0 : bd.family == "rent" ? 0.0 : bd.family == "energy" ? 5 : (bd.margin > 0.2 ? 5 : 4)
@@ -43,6 +57,9 @@ public enum Valuation {
     }
 
     public static let youngCompanyWeeks = 8
+
+    /// The government start-up grant paid at a fresh start, 0 for other starts.
+    public static func startGrant(_ s: GameState) -> Double { s.rest["start"]?["grant"].double ?? 0 }
 
     public static func netWorth(_ s: GameState, trades: any TradeCatalogProviding, forGoals: Bool = false) -> NetWorth {
         var crypto = 0.0, funds = 0.0
@@ -60,13 +77,15 @@ public enum Valuation {
         companies += (s.rest["stakes"]?.array ?? []).reduce(0) { $0 + $1["val"].double }
         companies += GroupStakes.stakesValue(s)
         for co in s.companies where co.status.isLive {
-            var v = companyValue(co, state: s, trades: trades) + HeldMoney.remaining(s, companyID: co.id)
+            var v = valueBeforeLoans(co, state: s, trades: trades) + HeldMoney.remaining(s, companyID: co.id)
             if forGoals, s.week - co.foundedWeek < youngCompanyWeeks, co.ownerNetFlow > 0 { v = min(v, co.ownerNetFlow) }
             companies += v * co.ownership / 100
         }
         let lux = (s.rest["lux"]?.array ?? []).filter { $0["co"].isNull || $0["co"].double == 0 }.reduce(0) { $0 + $1["val"].double }
-        let debt = s.loans.filter { $0.companyID == 0 }.reduce(0) { $0 + $1.balance }
-        return NetWorth(personal: s.cash + HeldMoney.playerRemaining(s), crypto: crypto, funds: funds, companies: companies,
+        let debt = s.loans.reduce(0) { $0 + $1.balance }
+        // The start-up grant is given, not earned: trophies, milestones and rankings count without it.
+        let given: Double = forGoals ? startGrant(s) : 0
+        return NetWorth(personal: s.cash + HeldMoney.playerRemaining(s) - given, crypto: crypto, funds: funds, companies: companies,
                         luxury: lux, debt: debt, pendingTax: s.tax.pending, exchange: PublicExchange.holdingsValue(s))
     }
 }

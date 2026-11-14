@@ -46,15 +46,24 @@ final class HeldMoneyAndFiguresTests: XCTestCase {
     func testWindUpMidWeekSettlesHeldMoneyAndLeavesNoStrayCash() throws {
         var (e, id) = try game()
         midWeek(&e, day: 2)
-        let held = HeldMoney.remaining(e.state, companyID: id)
+        // The week's held change belongs to the one account, so it is held for the player, never for the company.
+        XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, accuracy: 0.01)
+        let heldForMe = HeldMoney.playerRemaining(e.state)
+        let worth = e.state.cash + heldForMe
+        let terms = try XCTUnwrap(e.windUpTerms(companyID: id))
+        XCTAssertEqual(e.windUpEstimate(companyID: id), terms.toOwner)
+        // Debts the sale of its things does not cover are paid from the account before anything reaches the owner.
+        let payout = terms.toOwner - terms.fromAccount
         XCTAssertEqual(e.windUpCompany(companyID: id), true)
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(co.status, .sold)
-        XCTAssertEqual(co.cash, 0, accuracy: 0.01)
-        XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, "the held days were settled, not left behind")
+        XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, "nothing is left held for a company that is gone")
+        XCTAssertEqual(HeldMoney.playerRemaining(e.state), heldForMe, accuracy: 0.01, "the held days still land in the account")
+        XCTAssertEqual(e.state.cash + HeldMoney.playerRemaining(e.state), worth + payout, accuracy: 1, "winding up pays the quoted amount once and loses nothing held")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "gaps: \(Ledger.gaps(e.state))")
+        let flowAtEnd = e.state.cashFlow["co\(id)"] ?? 0
         for _ in 0..<8 { e.nextDay() }
-        XCTAssertEqual(try XCTUnwrap(e.state.company(id)).cash, 0, accuracy: 0.01, "nothing lands in a dead company afterwards (held was \(held))")
+        XCTAssertEqual(e.state.cashFlow["co\(id)"] ?? 0, flowAtEnd, accuracy: 0.01, "nothing is paid or received by a dead company afterwards")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
@@ -90,9 +99,10 @@ final class HeldMoneyAndFiguresTests: XCTestCase {
         for _ in 0..<(7 * 10) { e.nextDay() }
         let nw = e.netWorth
         XCTAssertEqual(nw.total, nw.totalAssets - nw.debt - nw.pendingTax, accuracy: 0.01)
-        XCTAssertEqual(nw.debt, Banking.totalDebt(e.state, personalOnly: true), accuracy: 0.5, "personal debt is the loans that are not a company's")
+        XCTAssertEqual(nw.debt, Banking.totalDebt(e.state), accuracy: 0.5, "one account: every loan, personal or a company's, is debt")
         XCTAssertEqual(nw.personal, e.state.cash + HeldMoney.playerRemaining(e.state), accuracy: 0.01)
         let co = try XCTUnwrap(e.state.company(id))
-        XCTAssertEqual(nw.companies, (Valuation.companyValue(co, state: e.state, trades: e.data.catalog) + HeldMoney.remaining(e.state, companyID: co.id)) * co.ownership / 100, accuracy: 1)
+        XCTAssertEqual(nw.companies, (Valuation.valueBeforeLoans(co, state: e.state, trades: e.data.catalog) + HeldMoney.remaining(e.state, companyID: co.id)) * co.ownership / 100, accuracy: 1,
+                       "companies count before their loans, which are in the debt")
     }
 }

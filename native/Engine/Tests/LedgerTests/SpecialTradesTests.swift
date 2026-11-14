@@ -78,7 +78,8 @@ final class SpecialTradesTests: XCTestCase {
         XCTAssertGreaterThan(sum.table.count, 10)
         let co = try XCTUnwrap(e.state.company(bought))
         let owed = e.state.loans.filter { $0.companyID == bought }.reduce(0) { $0 + $1.balance }
-        let expected = (co.value("fm")["val"].double + co.cash).rounded() - owed + co.value("fm")["book"].double * 0.8
+        // The club holds no cash of its own: its worth is the squad and ground value less its loans, plus most of the book value.
+        let expected = co.value("fm")["val"].double.rounded() - owed + co.value("fm")["book"].double * 0.8
         XCTAssertEqual(Valuation.companyValue(co, state: e.state, trades: e.data.catalog), expected.rounded(), accuracy: 1)
         XCTAssertGreaterThanOrEqual(e.state.company(bought)?.value("fm")["hist"].array.count ?? 0, 1, "a season should have finished")
     }

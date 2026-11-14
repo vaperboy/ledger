@@ -2,6 +2,7 @@ import SwiftUI
 import GameCore
 import Simulation
 import Businesses
+import Events
 
 extension Message {
     var inboxGlyph: String {
@@ -61,7 +62,7 @@ struct InboxMailRow: View {
 
     private var consequence: String {
         let e: GameEngine? = store.engine
-        let raw: String = (open ? e?.expiryOutcome(message) : e?.answeredOutcome(message)) ?? message.body
+        let raw: String = (open ? nil : e?.answeredOutcome(message)) ?? message.body
         return text(raw)
     }
 
@@ -75,24 +76,14 @@ struct InboxMailRow: View {
         .padding(.vertical, Theme.Space.m)
     }
 
+    /// The same answer layout as every decision, in the compact size; a tap sends the answer's own index.
     private func inlineOptions(_ answer: @escaping (Int) -> Void) -> some View {
-        let labels: [String] = message.options.map { (o: JSONValue) -> String in text(o["l"].string) }
-        return ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Space.s) { optionButtons(labels, answer, fullWidth: false) }
-            VStack(alignment: .leading, spacing: Theme.Space.s) { optionButtons(labels, answer, fullWidth: true) }
-        }
-        .padding(.leading, Self.avatar + Theme.Space.m - Theme.Space.s)
+        DecisionChoices(labels: message.options.map { (o: JSONValue) -> String in text(o["l"].string) }, compact: true,
+                        identifier: { (_: Int) -> String in "inbox-inline-option" }, pick: answer)
+            .padding(.leading, Self.avatar + Theme.Space.m - Theme.Space.s)
     }
 
     static let avatar: CGFloat = 36
-
-    private func optionButtons(_ labels: [String], _ answer: @escaping (Int) -> Void, fullWidth: Bool) -> some View {
-        ForEach(Array(labels.enumerated()), id: \.offset) { (i: Int, label: String) in
-            Button(label) { Haptics.tap(); answer(i) }
-                .buttonStyle(TertiaryButtonStyle(size: .compact, tint: i == 0 ? P.accent : P.inkSoft))
-                .accessibilityIdentifier("inbox-inline-option")
-        }
-    }
 
     private var content: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {

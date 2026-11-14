@@ -219,7 +219,7 @@ public enum Payday {
             }
             if cfg.billShortMonths >= 2 { s.companies[i].reputation = clamp(s.companies[i].reputation - 1, 0, 100) }
         } else { cfg.billShortMonths = 0 }
-        let cutoffOn = FirstYear.effective(s, base: data?.balance.firstYear ?? FirstYear.bundled).supplierCutoffActive(week: s.week)
+        let cutoffOn = (data?.balance.firstYear ?? FirstYear.bundled).supplierCutoffActive(week: s.week)
         let level = !cutoffOn ? 0 : cfg.billShortMonths >= 3 ? 2 : cfg.billShortMonths >= 2 ? 1 : 0
         if level > 0 || s.companies[i].raw["supCutB"] != nil { s.companies[i].set("supCutB", level); if level == 0 { s.companies[i].raw.removeValue(forKey: "supCutB") } }
         let level2 = max(level, SupplyTerms.invoiceCutLevel(s.companies[i], week: s.week))
@@ -304,7 +304,7 @@ public enum Payday {
     }
 
     static func waitsForCash(_ s: inout GameState, _ i: Int, due: Double, today t: Int, data: GameData) -> Bool {
-        guard due > 0, FirstYear.effective(s, balance: data.balance).noOverdraftActive(s), due > s.companies[i].cash else { return false }
+        guard due > 0, data.balance.firstYear.noOverdraftActive(s), due > s.companies[i].cash else { return false }
         s.rest["tight"] = .number(Double(t))
         return true
     }

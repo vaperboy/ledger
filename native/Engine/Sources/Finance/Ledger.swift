@@ -24,7 +24,10 @@ public enum Ledger {
         switch holder {
         case .me: s.cash += amount; AccountingLedger.pending = nil
         case .company(let id):
-            if let i = s.companyIndex(id) { AccountingLedger.record(&s, companyIndex: i, amount: amount); s.cash += amount }
+            if let i = s.companyIndex(id) {
+                AccountingLedger.record(&s, companyIndex: i, amount: amount); s.cash += amount
+                s.companies[i].retainedCash = max(0, s.companies[i].retainedCash + amount)
+            }
         }
         s.cashFlow[holder.flowKey, default: 0] += amount
     }
@@ -59,7 +62,7 @@ public enum Ledger {
             let live = s.company(id)?.status.isLive ?? false
             if !live && abs(left) > 1 { out.append(("held week money of \(s.company(id)?.name ?? "company \(id)")", left)) }
         }
-        let gap = s.cash - s.openingCash - s.cashFlow.values.reduce(0, +)
+        let gap = s.cash - s.openingCash - s.cashFlow.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value }
         if abs(gap) > 1 { out.append(("me", gap)) }
         return out
     }

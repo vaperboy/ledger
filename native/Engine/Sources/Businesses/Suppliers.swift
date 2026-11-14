@@ -21,6 +21,13 @@ public enum Suppliers {
         public var relationship: Double
         public var relationshipWord: String
         public var discount: Double
+        public var tradeID: String = ""
+        public var ownerCode: String = ""
+        public var city: String = ""
+        public var logoID: String = ""
+        public var reliability: Double = 0.95
+        public var lineID: String = ""
+        public var isStandard: Bool = false
     }
 
     static func homeCurrency(_ s: GameState, _ data: GameData) -> Currency {
@@ -31,21 +38,50 @@ public enum Suppliers {
 
     static func make(_ v: EquipmentMarket.Vendor, scope: String, _ s: GameState) -> Vendor {
         let r = relationship(s, v.id)
-        return Vendor(id: v.id, name: v.name, owner: v.owner, quality: v.quality, rating: jsRound(clamp(3.6 + v.quality * 2.2, 2.6, 4.8) * 10) / 10,
-                      relationship: r, relationshipWord: relationshipWord(r), discount: discount(s, scope: scope, vendorID: v.id))
+        let rating = jsRound(clamp(3.6 + v.quality * 2.2, 2.6, 4.8) * 10) / 10
+        return Vendor(id: v.id, name: v.name, owner: v.owner, quality: v.quality, rating: rating,
+                      relationship: r, relationshipWord: relationshipWord(r), discount: discount(s, scope: scope, vendorID: v.id),
+                      reliability: min(0.995, max(0.8, 0.85 + (rating - 2.6) / 2.2 * 0.14)))
+    }
+
+    // A supplier company seen through the relationship, deal and terms rules every supplier shares.
+    static func make(_ p: SupplyPlayers.Supplier, scope: String, _ s: GameState) -> Vendor {
+        let r = relationship(s, p.id)
+        let rating = jsRound(clamp(2.6 + (p.reliability - 0.85) / 0.14 * 2.2, 2.6, 4.9) * 10) / 10
+        return Vendor(id: p.id, name: p.name, owner: p.owner, quality: p.quality, rating: rating, relationship: r, relationshipWord: relationshipWord(r),
+                      discount: discount(s, scope: scope, vendorID: p.id), tradeID: p.tradeID, ownerCode: p.ownerCode, city: p.city, logoID: p.logoID,
+                      reliability: p.reliability, lineID: p.lineID, isStandard: p.isStandard)
     }
 
     public static func fakesOff(_ s: GameState) -> Bool { (s.rest["fake"] ?? .null)["off"].bool }
     public static func realSuppliers(_ s: GameState) -> Int { max(0, (s.rest["fake"] ?? .null)["real"].int) }
 
-    public static func fakeSlots(needed: Int, real: Int, off: Bool) -> Int { off ? 0 : max(0, needed - max(0, real)) }
+    // Every line keeps at least two suppliers: real players take the other places first.
+    public static let minimumSuppliers = 2
+    public static func fakeSlots(needed: Int, real: Int, off: Bool) -> Int { max(minimumSuppliers, needed - max(0, real)) }
+
+    // The line a scope buys on: goods is the stock line, fix the building or machine upkeep line.
+    public static func scopeLine(_ co: Company, _ bd: Trade, scope: String) -> String? {
+        switch scope {
+        case "goods": return SupplyMap.stockLine(bd.id)?.line
+        case "fix": return upkeepLine(bd)
+        default: return SupplyMap.need(bd.id, line: scope) != nil ? scope : nil
+        }
+    }
+
+    public static func upkeepLine(_ bd: Trade) -> String? {
+        SupplyMap.needs(bd.id).first { $0.line == "upkeep" || $0.line == "machines" }?.line
+    }
+
+    public static func lineSuppliers(_ s: GameState, company co: Company, line: String, data: GameData) -> [SupplyPlayers.Supplier] {
+        let trades = SupplyMap.suppliers(line: line, buyer: co.type)
+        let n = fakeSlots(needed: EquipmentMarket.brandCount(co, state: s), real: realSuppliers(s), off: fakesOff(s))
+        return SupplyPlayers.list(seed: s.seed, countryCode: co.countryCode, line: line, trades: trades, count: n, countries: data.countries)
+    }
 
     public static func candidates(_ s: GameState, company co: Company, scope: String, data: GameData) -> [Vendor] {
-        guard let bd = data.catalog[co.type] else { return [] }
-        let n = EquipmentMarket.brandCount(co, state: s)
-        let slots = fakeSlots(needed: n, real: realSuppliers(s), off: fakesOff(s))
-        return EquipmentMarket.vendors(for: scope + ":" + co.type, count: n, family: bd.family, seed: s.seed, countryCode: co.countryCode,
-                                       countries: data.countries, nouns: nouns(data)).prefix(slots).map { make($0, scope: scope, s) }
+        guard let bd = data.catalog[co.type], let line = scopeLine(co, bd, scope: scope) else { return [] }
+        return lineSuppliers(s, company: co, line: line, data: data).map { make($0, scope: scope, s) }
     }
 
     public static func setRealSuppliers(_ s: inout GameState, count: Int) {
@@ -56,29 +92,18 @@ public enum Suppliers {
         s.rest["fake"] = f
     }
 
+    // Computer-run players leave the boards; supply lines keep their suppliers so no line is left without one.
     @discardableResult
     public static func removeFakes(_ s: inout GameState) -> Int {
         var f = s.rest["fake"] ?? .object([:])
         let already = f["off"].bool
         f["off"] = .bool(true)
         s.rest["fake"] = f
-        let n = ItemModels.dropFakeVendors(&s)
-        for i in s.companies.indices {
-            let co = s.companies[i]
-            if !co.value("src")["v"].isNull, co.value("src")["v"].string != "auto" {
-                var src = co.value("src"); src["v"] = .string("auto"); s.companies[i].set("src", src)
-            }
-            if !co.value("fixv").isNull, co.value("fixv").string != "auto" { s.companies[i].set("fixv", JSONValue.string("auto")) }
-        }
-        if !already {
-            s.addMessage(kind: "info", from: "Suppliers", title: "Supplier lists changed",
-                         body: "Computer-run players were removed from the world. Items they supplied need a new supplier.", tone: "bad")
-        }
-        return n
+        return already ? 0 : 1
     }
 
     public static func vendor(_ s: GameState, id: String, scope: String = "goods", data: GameData) -> Vendor? {
-        guard !fakesOff(s) else { return nil }
+        if let p = SupplyPlayers.supplier(seed: s.seed, id: id, countries: data.countries) { return make(p, scope: scope, s) }
         let p = id.split(separator: "-").map(String.init)
         guard p.count == 3, p[0] == "V", let i = Int(p[2]) else { return nil }
         let pool = EquipmentMarket.vendorPool(seed: s.seed, countryCode: p[1], countries: data.countries, nouns: nouns(data))
@@ -170,28 +195,24 @@ public enum Suppliers {
 
     public static func hasGoods(_ bd: Trade, _ co: Company) -> Bool {
         !(bd.costOfSales < 0.03 || ["fin", "energy", "rent", "club", "svc"].contains(bd.family) || co.type.hasPrefix("engcons") || co.type.hasPrefix("event"))
+            && SupplyMap.stockLine(bd.id) != nil
     }
 
+    // The chosen supplier, else the board agreement, else the line's standard supplier (one that has not just let the company down).
     public static func goodsVendor(_ s: GameState, company co: Company, data: GameData) -> Vendor? {
         guard let bd = data.catalog[co.type], hasGoods(bd, co) else { return nil }
-        let src = co.value("src")
-        if !src["v"].isNull, src["v"].string != "auto", let v = vendor(s, id: src["v"].string, scope: "goods", data: data) { return v }
-        if let a = agreement(s, scope: "goods"), let v = vendor(s, id: a, scope: "goods", data: data) { return v }
         let all = candidates(s, company: co, scope: "goods", data: data)
-        guard !all.isEmpty else { return nil }
-        let open = all.filter { !Sourcing.lapsed(co, vendorID: $0.id, week: s.week) }
-        let list = open.isEmpty ? all : open
-        if let ac = co.raw["srcAuto"], !ac.isNull, Double(s.week) - ac["w"].double < 26, let v = list.first(where: { $0.id == ac["v"].string }) { return v }
-        var r = HashedRandom("\(s.seed):gp:\(co.id):\(s.week / 26)")
-        let best = list.max { ($0.discount - $0.quality * 0.06) < ($1.discount - $1.quality * 0.06) }!
-        return r.next() < buyerSkill(s, co, bd) ? best : list[min(list.count - 1, Int(r.next() * Double(list.count)))]
+        let src = co.value("src")
+        if !src["v"].isNull, src["v"].string != "auto", let v = all.first(where: { $0.id == src["v"].string }) { return v }
+        if let a = agreement(s, scope: "goods"), let v = all.first(where: { $0.id == a }) { return v }
+        return all.first { !Sourcing.lapsed(co, vendorID: $0.id, week: s.week) } ?? all.first
     }
 
     public static func goodsEffect(_ s: GameState, company co: Company, _ bd: Trade, data: GameData, classes: [(cost: Double, quality: Double)]) -> (m: Double, q: Double, vendor: Vendor?) {
         guard hasGoods(bd, co) else { return (1, 0, nil) }
         let cls = co.value("src")["c"].isNull ? 1 : co.value("src")["c"].int
         let c = classes.indices.contains(cls) ? classes[cls] : classes[1]
-        if let pc = PlayerSupply.contract(s, buyer: co.id, line: "goods") {
+        if let line = SupplyMap.stockLine(bd.id)?.line, let pc = PlayerSupply.contract(s, buyer: co.id, line: line) {
             let qc = classes.indices.contains(pc.qualityTier) ? classes[pc.qualityTier] : classes[1]
             return (clamp(qc.cost * PlayerSupply.priceFactor(pc), 0.7, 1.6), qc.quality, nil)
         }
@@ -203,13 +224,16 @@ public enum Suppliers {
     }
 
     public static func repairVendor(_ s: GameState, company co: Company, data: GameData) -> Vendor? {
+        let all = candidates(s, company: co, scope: "fix", data: data)
         let f = co.value("fixv")
-        if !f.isNull, f.string != "auto", !f.string.isEmpty { return vendor(s, id: f.string, scope: "fix", data: data) }
-        if let a = agreement(s, scope: "fix") { return vendor(s, id: a, scope: "fix", data: data) }
-        return nil
+        if !f.isNull, f.string != "auto", !f.string.isEmpty, let v = all.first(where: { $0.id == f.string }) { return v }
+        if let a = agreement(s, scope: "fix"), let v = all.first(where: { $0.id == a }) { return v }
+        return all.first
     }
     public static func repairDiscount(_ s: GameState, company co: Company, data: GameData) -> Double {
-        if let pc = PlayerSupply.contract(s, buyer: co.id, line: "repair") { return 1 - SupplyCatalogue.tierPrice[min(2, max(0, pc.priceTier))] }
+        if let bd = data.catalog[co.type], let line = upkeepLine(bd), let pc = PlayerSupply.contract(s, buyer: co.id, line: line) {
+            return 1 - SupplyCatalogue.tierPrice[min(2, max(0, pc.priceTier))]
+        }
         guard let v = repairVendor(s, company: co, data: data) else { return 0 }
         return v.discount + SupplyDeals.dealDiscount(co, scope: "fix", vendorID: v.id, week: s.week)
     }

@@ -44,17 +44,19 @@ final class OwnershipRoutingTests: XCTestCase {
                 s.companies[di].set("lastW", .object(["rev": 100_000, "cogs": 80_000]))
             }
         }
+        // Both companies draw on the one account, so each side is read from its own cash flow.
+        func flow(_ id: Int) -> Double { e.state.cashFlow["co\(id)"] ?? 0 }
         prep(plantCountry: "NO")
-        var p0 = try XCTUnwrap(e.state.company(plant)).cash
+        var p0 = flow(plant)
         e.update { s, d, _ in Chains.reachWeek(&s, data: d) }
-        XCTAssertEqual(try XCTUnwrap(e.state.company(plant)).cash, p0, accuracy: 0.5)
+        XCTAssertEqual(flow(plant), p0, accuracy: 0.5)
         let home = try XCTUnwrap(e.state.company(dealer)).countryCode
         prep(plantCountry: home)
-        p0 = try XCTUnwrap(e.state.company(plant)).cash
-        let d0 = try XCTUnwrap(e.state.company(dealer)).cash
+        p0 = flow(plant)
+        let d0 = flow(dealer)
         e.update { s, d, _ in Chains.reachWeek(&s, data: d) }
-        let plantGain = try XCTUnwrap(e.state.company(plant)).cash - p0
-        let dealerGain = try XCTUnwrap(e.state.company(dealer)).cash - d0
+        let plantGain = flow(plant) - p0
+        let dealerGain = flow(dealer) - d0
         XCTAssertEqual(plantGain, 6_000, accuracy: 1)
         XCTAssertGreaterThanOrEqual(dealerGain, plantGain - 1)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)

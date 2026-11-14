@@ -269,7 +269,7 @@ public enum SupplyDeals {
     }
 
     public static func negotiate(_ s: inout GameState, _ d: GameData, companyID: Int, input: String, vendorID: String, ask: Double) -> Talk {
-        guard let sc = scope(input), let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return .notNeeded("Only outside suppliers of goods and repairs are negotiated.") }
+        guard let sc = scope(input), let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return .notNeeded("Only stock and upkeep suppliers are negotiated.") }
         let co = s.companies[i]
         if governedBy(s, co, input: input) != nil { return .notAllowed }
         guard Suppliers.candidates(s, company: co, scope: sc, data: d).contains(where: { $0.id == vendorID }) else { return .notAllowed }

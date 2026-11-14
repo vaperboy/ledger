@@ -244,7 +244,7 @@ public enum SupplyTerms {
         let hist = (lateWeeks(co).filter { s.week - $0 < t.windowWeeks }) + [s.week]
         s.companies[bi].set("lt", .array(hist.map { .number(Double($0)) }))
         let before = invoiceCutLevel(s.companies[bi], week: s.week)
-        if hist.count >= t.cutoffAfter && !inv.vendorID.isEmpty && FirstYear.effective(s, base: FirstYear.bundled).supplierCutoffActive(week: s.week) {
+        if hist.count >= t.cutoffAfter && !inv.vendorID.isEmpty && FirstYear.bundled.supplierCutoffActive(week: s.week) {
             let level = hist.count > t.cutoffAfter ? t.levelRepeat : t.levelFirst
             if level > before {
                 s.companies[bi].set("supCutI", .object(["l": .number(Double(level)), "u": .number(Double(s.week + t.cutoffWeeks))]))
@@ -364,6 +364,8 @@ public enum SupplyTerms {
     }
 
     static func lapseTerms(_ s: inout GameState, data: GameData) {
+        // A company that has stopped trading keeps no supplier credit.
+        for i in s.companies.indices where !s.companies[i].status.isLive && !s.companies[i].value("pterm").isNull { s.companies[i].set("pterm", .null) }
         for i in s.companies.indices where s.companies[i].status.isLive && !s.companies[i].value("pterm")["fix"].isNull {
             let co = s.companies[i]
             guard let id = agreedRepairTerm(co), let t = vendorTerm(id) else { continue }

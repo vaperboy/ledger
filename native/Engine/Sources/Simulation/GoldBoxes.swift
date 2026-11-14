@@ -48,6 +48,10 @@ public struct BoxResult: Equatable, Sendable {
     public var rarity: BoxRarity
     public var content: Content
     public var guaranteed: Bool
+
+    public init(rarity: BoxRarity, content: Content, guaranteed: Bool) {
+        self.rarity = rarity; self.content = content; self.guaranteed = guaranteed
+    }
 }
 
 public struct BoxHaul: Equatable, Sendable {
@@ -81,8 +85,9 @@ public struct BoxPity: Codable, Equatable, Sendable {
         return "A rare or better item is guaranteed within \(left) more paid boxes. Finding one sooner starts the count again."
     }
 
-    public mutating func record(_ rarity: BoxRarity) {
-        if rarity >= .rare { sinceRare = 0 } else { sinceRare += 1 }
+    /// Only an item of rare or better quality resets the count; a gold or money prize never does.
+    public mutating func record(_ rarity: BoxRarity, isItem: Bool = true) {
+        if rarity >= .rare && isItem { sinceRare = 0 } else { sinceRare += 1 }
     }
 }
 
@@ -235,7 +240,12 @@ public enum BoxOdds {
             content = .artifact(card(.company, row.rarity, itemRoll, serialRoll))
         }
         var next: BoxPity = pity
-        if kind.isPaid { next.record(row.rarity) }
+        var isItem = true
+        switch content {
+        case .gold, .money: isItem = false
+        default: break
+        }
+        if kind.isPaid { next.record(row.rarity, isItem: isItem) }
         return (BoxResult(rarity: row.rarity, content: content, guaranteed: guaranteed), next)
     }
 

@@ -24,6 +24,7 @@ struct RankingsBoards: View {
     @State private var kind: LeaderboardKind = .netWorth
     @State private var others: [LeaderboardSubmission] = []
     @State private var loaded = false
+    @State private var realCount: Int?
 
     private static let service: any LeaderboardService = LeaderboardBackend.make()
 
@@ -36,6 +37,10 @@ struct RankingsBoards: View {
                 SegmentedPill(items: LeaderboardKind.allCases, title: { (k: LeaderboardKind) -> String in k == .netWorth ? "Net worth" : "Trading result" },
                               selection: $kind, identifier: { (k: LeaderboardKind) -> String in "board-kind-\(k.rawValue)" })
                 hero(view, cur)
+                if loaded, realCount == 0 {
+                    EmptyState(glyph: Glyph.cloud, title: online.offline ? "You are offline, so other players could not be loaded." : "No other players are on this board yet.",
+                               actionTitle: online.offline ? "Try again" : nil, action: online.offline ? { Task { await load(me, e) } } : nil, centered: false)
+                }
                 if loaded {
                     let top: Double = max(1, view.top.map { (x: LeaderboardEntry) -> Double in x.value }.max() ?? 1)
                     MarketLabel(title: "Top \(view.top.count)")
@@ -51,7 +56,7 @@ struct RankingsBoards: View {
                         .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                     RankingRecords()
                 } else {
-                    ProgressView().tint(P.inkSoft).frame(maxWidth: .infinity).padding(.top, Theme.Space.xl)
+                    OnlineWaiting { Task { await load(me, e) } }
                 }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -125,7 +130,7 @@ struct RankingsBoards: View {
         if BoardProfiles.isRival(x.id) {
             PlayerProfileView(playerID: x.id, preset: BoardProfiles.rivalProfile(id: x.id, name: x.name))
         } else {
-            PlayerProfileView(playerID: x.id)
+            PlayerProfileView(playerID: x.id, knownName: x.name)
         }
     }
 
@@ -152,6 +157,7 @@ struct RankingsBoards: View {
         let scale: Double = max(100_000, e.richListStanding.hundredth)
         let rivals: [LeaderboardSubmission] = BoardRivals.fill(template: me, real: real, scale: scale, week: e.state.week, seed: e.state.seed, taken: [me.name])
         others = real + rivals
+        realCount = real.count
         loaded = true
     }
 }

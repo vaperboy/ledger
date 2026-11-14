@@ -55,6 +55,16 @@ actor GoldVault {
         StoreState(wallet: wallet, boxes: boxes, pity: pity, firstPurchaseDone: firstPurchaseDone, cabinet: cabinet, boxesOpened: opened)
     }
 
+    /// Empties the wallet, boxes and cabinet once they have moved to the server, so they cannot move twice.
+    func wipeAfterImport() {
+        wallet = GoldWallet()
+        boxes = [:]
+        pity = BoxPity()
+        cabinet = Cabinet()
+        opened = 0
+        save()
+    }
+
     private func save() {
         let s = Saved(wallet: wallet, boxes: boxes, pity: pity, firstPurchaseDone: firstPurchaseDone, cabinet: cabinet, opened: opened, book: book, lastTick: lastTick, cashAuctions: true, deliveries: deliveries)
         if let data = try? JSONEncoder().encode(s) { defaults.set(data, forKey: key) }
@@ -101,7 +111,7 @@ actor GoldVault {
     }
 
     func buyCosmetic(_ id: String, owned: Set<String>) throws -> StoreState {
-        guard let c = GoldCosmetics.cosmetic(id), let price = c.price else { throw StoreError.unknownItem }
+        guard let c = GoldCosmetics.cosmetic(id), let price = StoreRotation.price(c) else { throw StoreError.unknownItem }
         guard !owned.contains(id) else { throw StoreError.alreadyOwned }
         guard wallet.spend(price) else { throw StoreError.notEnoughGold(missing: price - wallet.available) }
         save()

@@ -1,6 +1,7 @@
 import SwiftUI
 import Simulation
 
+/// Extra save slots, always on sale for gold. Cosmetics are sold from the daily shelf on the Store page.
 struct StoreShelfView: View {
     @Environment(\.dismiss) private var dismiss
     private let session = StoreSession.shared
@@ -9,19 +10,25 @@ struct StoreShelfView: View {
     @State private var shortNeed = 0
 
     var body: some View {
+        let owned: Set<String> = SeasonModel.shared.pass.owned
         PhonePageScroll(spacing: Theme.Space.xl) {
-            cosmeticsGroup.storeAppear(0)
-            bundlesGroup.storeAppear(1)
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                StoreBand(title: "Save slots", glyph: Glyph.luxury, tint: StoreColors.violet)
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible())], spacing: Theme.Space.s) {
+                    ForEach(Self.slots) { (c: GoldCosmetic) in slotTile(c, owned: owned.contains(c.id), blocked: Self.isLockedSlot(c, owned: owned)) }
+                }
+                .padding(.horizontal, Theme.Space.m)
+            }
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 NavigationLink { CustomiseView() } label: { Text("Wear what you own in Customise").textStyle(.body, tint: Theme.accent, weight: .semibold).frame(minHeight: 44) }
                     .buttonStyle(PressableStyle())
                     .accessibilityIdentifier("shelf-look")
-                Text("These change how things look and how many saves you can keep, never how the game plays.")
+                Text("A slot keeps one more game. Slots never change how the game plays.")
                     .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, Theme.Space.m)
         }
-        .appScreen(title: "Cosmetics", subtitle: "Bought with gold")
+        .appScreen(title: "Save slots", subtitle: "Bought with gold")
         .confirmAction($pending)
         .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") {
             ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; dismiss() })
@@ -29,93 +36,34 @@ struct StoreShelfView: View {
         .task { await session.load() }
     }
 
-    private var cosmeticsGroup: some View {
-        let owned: Set<String> = SeasonModel.shared.pass.owned
-        let items: [GoldCosmetic] = GoldCosmetics.storeItems
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Cosmetics and comfort").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.m), GridItem(.flexible())], spacing: Theme.Space.m) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { (i: Int, c: GoldCosmetic) in
-                    cosmeticTile(c, owned: owned.contains(c.id), blocked: isLockedSlot(c, owned: owned), index: i)
-                }
-            }
-        }
-    }
+    static var slots: [GoldCosmetic] { GoldCosmetics.storeItems.filter { $0.item.kind == .saveSlot } }
 
-    private func isLockedSlot(_ c: GoldCosmetic, owned: Set<String>) -> Bool {
-        let slots: [GoldCosmetic] = GoldCosmetics.storeItems.filter { $0.item.kind == .saveSlot }
-        guard c.item.kind == .saveSlot, let i = slots.firstIndex(where: { $0.id == c.id }), i > 0 else { return false }
+    /// Slots are bought in order.
+    static func isLockedSlot(_ c: GoldCosmetic, owned: Set<String>) -> Bool {
+        guard let i = slots.firstIndex(where: { $0.id == c.id }), i > 0 else { return false }
         return !owned.contains(slots[i - 1].id)
     }
 
-    private func cosmeticTile(_ c: GoldCosmetic, owned: Bool, blocked: Bool, index: Int) -> some View {
-        let shiny: Bool = c.rarity >= .epic
-        return Button { askCosmetic(c) } label: {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                ItemArt(cosmetic: c, size: 36).frame(height: 56).frame(maxWidth: .infinity)
-                Text(c.item.title).textStyle(.headline).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: Theme.Space.xs) {
-                    RarityTag(rarity: c.rarity)
-                    Text(c.item.kind.label).textStyle(.caption).lineLimit(1)
+    private func slotTile(_ c: GoldCosmetic, owned: Bool, blocked: Bool) -> some View {
+        Button { StorePurchase.ask(.cosmetic(c), pending: $pending, onShort: { (price: Int) in shortNeed = price; shortOfGold = true }) } label: {
+            VStack(spacing: Theme.Space.s) {
+                RewardIcon(reward: StoreReward(kind: .slot, amount: "+1", caption: "save slot"), size: 48)
+                Text(c.item.title).font(.headline.weight(.heavy)).foregroundStyle(.white).lineLimit(2).multilineTextAlignment(.center)
+                if owned {
+                    Text("Owned").font(.headline.weight(.heavy)).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 44)
+                } else if blocked {
+                    Text("Buy the one before").font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.85)).frame(maxWidth: .infinity, minHeight: 44)
+                } else {
+                    StorePriceBar(gold: StoreRotation.price(c) ?? 0)
                 }
-                Spacer(minLength: 0)
-                if owned { Text("Owned").textStyle(.caption, tint: Theme.gain) }
-                else if blocked { Text("Buy the one before").textStyle(.caption) }
-                else if let p = c.price { GoldAmount(amount: p) }
-                if c.item.accountBound { LockNote(text: "Bound to your account") }
             }
-            .padding(Theme.Space.m)
-            .frame(maxWidth: .infinity, minHeight: 156, alignment: .topLeading)
-            .background(StoreSurface(tint: c.rarity.tint, radius: Theme.Radius.card))
-            .storeSheen(radius: Theme.Radius.card, enabled: shiny && !owned, offset: Double(index) * 0.7, strength: 0.22)
+            .padding(Theme.Space.s)
+            .frame(maxWidth: .infinity, minHeight: 168)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(StoreColors.gradient(StoreColors.violet)))
             .contentShape(Rectangle())
             .accessibilityElement(children: .combine)
         }
         .buttonStyle(PressableStyle())
         .disabled(owned || blocked)
-    }
-
-    private func askCosmetic(_ c: GoldCosmetic) {
-        StorePurchase.ask(.cosmetic(c), pending: $pending, onShort: shortage)
-    }
-
-    private var bundlesGroup: some View {
-        let best: String? = StorePurchase.bestBundle?.id
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Box bundles, paid with gold").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
-            ForEach(GoldStore.boxBundles) { (b: BoxBundle) in
-                Button { askBundle(b) } label: {
-                    HStack(spacing: Theme.Space.m) {
-                        BoxArt(kind: b.kind, size: 40).padding(.trailing, Theme.Space.xs)
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack(spacing: Theme.Space.s) {
-                                Text("\(b.count) \(b.kind.title)es").textStyle(.headline)
-                                if b.id == best { StoreTag(text: "Best saving") }
-                            }
-                            Text("\(b.savingPercent)% less than \(b.count) single boxes (\(StoreText.gold(b.singlesPrice)))").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-                        }
-                        Spacer(minLength: Theme.Space.s)
-                        GoldAmount(amount: b.price)
-                    }
-                    .padding(Theme.Space.m).frame(minHeight: 64)
-                    .background(StoreSurface(tint: Theme.gold, glow: b.id == best, radius: Theme.Radius.card))
-                    .storeSheen(radius: Theme.Radius.card, enabled: b.id == best, offset: 2)
-                    .contentShape(Rectangle())
-                    .accessibilityElement(children: .combine)
-                }
-                .buttonStyle(PressableStyle())
-            }
-            Text("The boxes wait in your stock until you open them.")
-                .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private func askBundle(_ b: BoxBundle) {
-        StorePurchase.ask(.boxBundle(b), pending: $pending, onShort: shortage)
-    }
-
-    private func shortage(_ price: Int) {
-        shortNeed = price
-        shortOfGold = true
     }
 }

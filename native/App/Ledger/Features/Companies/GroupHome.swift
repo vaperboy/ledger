@@ -4,7 +4,7 @@ import Businesses
 import Simulation
 
 enum GroupHomeTab: String, CaseIterable, Hashable {
-    case overview = "Overview", structure = "Structure", people = "People", suppliers = "Suppliers"
+    case overview = "Overview", people = "People", suppliers = "Suppliers"
 }
 
 struct GroupHome: View {
@@ -20,7 +20,7 @@ struct GroupHome: View {
         let badges: [GroupHomeTab: Int] = waiting > 0 ? [GroupHomeTab.overview: waiting] : [:]
         VStack(spacing: 0) {
             GroupSectionBar(tab: $tab, badges: badges, sections: GroupHomeTab.allCases, idPrefix: "group-home-tab-",
-                            anchors: [GroupHomeTab.structure: CoachStop.groupStructure, GroupHomeTab.people: CoachStop.groupPeople])
+                            anchors: [GroupHomeTab.people: CoachStop.groupPeople])
                 .padding(.top, Theme.Space.s)
             SegmentPager(items: GroupHomeTab.allCases, selection: $tab) { (t: GroupHomeTab) in
                 ScrollScreen(spacing: Theme.Space.xxl, top: Theme.Space.l) { content(t) }
@@ -31,7 +31,6 @@ struct GroupHome: View {
     @ViewBuilder private func content(_ t: GroupHomeTab) -> some View {
         switch t {
         case .overview: GroupOverviewTab(engine: engine, onAdd: onAdd, onPick: onPick)
-        case .structure: GroupStructureTab(engine: engine, onPick: onPick)
         case .people: GroupPeopleTab(engine: engine, onPick: onPick)
         case .suppliers: GroupSupplierDirectory(embedded: true)
         }
@@ -56,18 +55,16 @@ struct GroupOverviewTab: View {
     var body: some View {
         let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(engine)
         let ov: TeamOverview = store.teamOverviewNow ?? engine.teamOverview()
-        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                hero
-                LedgerRow(leading: .symbol("plus"), title: "Add to group", identifier: "group-add", action: onAdd)
-                    .coachAnchor(.groupAdd)
-            }
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            hero(keyFigures(list, ov))
+            LedgerRow(leading: .symbol("plus"), title: "Add to group", identifier: "group-add", action: onAdd)
+                .coachAnchor(.groupAdd)
+            GroupStructureTab(engine: engine, onPick: onPick)
             needsYou(list)
-            keyFigures(list, ov)
         }
     }
 
-    private var hero: some View {
+    private func hero<Figures: View>(_ figures: Figures) -> some View {
         let value: Double = (store.netWorthNow ?? engine.netWorth).companies
         let hist: DayHistory = store.dayHistoryNow ?? engine.dayHistory
         let vc = DayHistory.change(hist.companies, days: 30)
@@ -86,6 +83,7 @@ struct GroupOverviewTab: View {
                 Spacer(minLength: 0)
             }
             .accessibilityElement(children: .combine)
+            figures
             if trend.count >= 2 {
                 Sparkline(values: trend, tint: (trend.last ?? 0) >= (trend.first ?? 0) ? Theme.accent : Theme.loss)
                     .frame(height: 44)
@@ -103,7 +101,7 @@ struct GroupOverviewTab: View {
         }
         if !waiting.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Needs you").textStyle(.label, tint: P.inkFaint)
+                Text("Decisions waiting").textStyle(.label, tint: P.inkFaint)
                 ForEach(waiting) { (w: Waiting) in tile(w) }
             }
         }
@@ -137,7 +135,7 @@ struct GroupOverviewTab: View {
         var id: String { entity.id }
     }
 
-    private func keyFigures(_ list: [GroupEntity], _ ov: TeamOverview) -> some View {
+    private func keyFigures(_ list: [GroupEntity], _ ov: TeamOverview) -> KeyFigures {
         let profit: Double = list.reduce(0) { (a: Double, g: GroupEntity) -> Double in a + g.profit }
         let staff: Int = ov.companies.reduce(0) { (a: Int, l: TeamOverview.CompanyLine) -> Int in a + l.staff }
         let sign: String = profit > 0.5 ? "+" : (profit < -0.5 ? "\u{2212}" : "")
@@ -263,10 +261,21 @@ struct GroupPeopleTab: View {
 
     private func face(_ personID: Int?) -> String? { personID.flatMap { (id: Int) -> String? in engine.state.people[id]?.faceKey } }
 
+    // People rows read like the company's own people list.
+    @ViewBuilder private func personRow(_ row: ThinPersonRow, identifier: String, action: (() -> Void)?) -> some View {
+        if let action {
+            Button { Haptics.tap(); action() } label: { row }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier(identifier)
+        } else {
+            row.accessibilityIdentifier(identifier)
+        }
+    }
+
     private func memberRow(_ m: TeamOverview.Member, action: (() -> Void)?) -> some View {
-        LedgerRow(leading: .thumb(ThumbSpec(kind: .person, key: "executive", initials: m.name, face: face(m.personID))),
-                  title: m.name, subtitle: m.role, value: m.monthlyWage > 0 ? store.short(m.monthlyWage) : "",
-                  lineLimit: 1, identifier: "group-staff-\(m.id)", action: action)
+        personRow(ThinPersonRow(name: m.name, title: m.role, wage: m.monthlyWage > 0 ? store.short(m.monthlyWage) : nil, chevron: action != nil,
+                                roleKey: "executive", face: face(m.personID)),
+                  identifier: "group-staff-\(m.id)", action: action)
     }
 
     private func authority(_ l: TeamOverview.CompanyLine) -> String? {
@@ -280,21 +289,23 @@ struct GroupPeopleTab: View {
 
     private func companyRow(_ l: TeamOverview.CompanyLine, passedUp: Int) -> some View {
         let managerID: Int? = engine.state.company(l.id)?.managerID
-        let who: String = l.managerTitle.map { (t: String) -> String in l.managedBy + ", " + t.lowercased() } ?? "You run it"
+        // The player's own avatar when they run it; a boss above the store is found by name when the store has no manager of its own.
+        let boss: Person? = managerID == nil && l.managerTitle != nil ? engine.state.people.values.first { (p: Person) -> Bool in p.name == l.managedBy } : nil
+        let who: String = l.managerTitle ?? "You run it"
         var parts: [String] = [who]
         if passedUp > 0 { parts.append("\(passedUp) passed up to you") } else if l.managerTitle != nil, let a = authority(l) { parts.append(a) }
         let id: Int = l.id
-        return LedgerRow(leading: .thumb(ThumbSpec(kind: .person, key: l.managerTitle ?? "owner", initials: l.managedBy, face: face(managerID))),
-                         title: l.name, subtitle: parts.joined(separator: " \u{00B7} "),
-                         value: "\(l.staff) staff", valueNote: l.monthlyWages > 0 ? store.short(l.monthlyWages) : "", lineLimit: 2,
+        parts.insert(l.name, at: 0)
+        return personRow(ThinPersonRow(name: l.managerTitle == nil ? engine.state.player.name : l.managedBy, title: parts.joined(separator: " \u{00B7} "),
+                                       wage: "\(l.staff) staff", chevron: managerID != nil, roleKey: l.managerTitle ?? "manager",
+                                       face: face(managerID) ?? boss?.faceKey, isYou: l.managerTitle == nil),
                          identifier: "group-who-\(l.id)", action: managerID == nil ? nil : { sheet = .manager(id) })
     }
 
     private func seatRow(_ s: ManagerModel.Seat, _ g: GroupEntity) -> some View {
         let p = engine.state.people[s.id]
         let name: String = p?.name ?? s.title
-        return LedgerRow(leading: .thumb(ThumbSpec(kind: .person, key: p?.role ?? "executive", initials: name, face: p?.faceKey)),
-                         title: name, subtitle: s.title + " \u{00B7} board", lineLimit: 1,
+        return personRow(ThinPersonRow(name: name, title: s.title + " \u{00B7} board", roleKey: p?.role ?? "executive", face: p?.faceKey),
                          identifier: "group-seat-\(g.id)-\(s.id)", action: { onPick(g, .board) })
     }
 }

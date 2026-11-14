@@ -151,7 +151,7 @@ final class SalesChannelTests: XCTestCase {
     func testPlayersPostDemandAndItComesBackAsAnOfferFromAPlayer() throws {
         var e = try ChainsTests.engine()
         let id = try openBakery(&e, channel: .business)
-        e.savePlayerDemand((0..<40).map { DemandPost(id: "P\($0)", ownerName: "Ann", companyName: "Ann Foods", lineID: "goods", units: 12, weeks: 8) })
+        e.savePlayerDemand((0..<40).map { DemandPost(id: "P\($0)", ownerName: "Ann", companyName: "Ann Foods", lineID: "bread", units: 12, weeks: 8) })
         XCTAssertEqual(e.playerDemandPosts.count, 40)
         let offer = try XCTUnwrap(firstOffer(&e, id, weeks: 80, decline: true, where: { $0.value("data")["pl"].bool }), "no offer from a player")
         XCTAssertTrue(offer.title.contains("Ann Foods"), offer.title)

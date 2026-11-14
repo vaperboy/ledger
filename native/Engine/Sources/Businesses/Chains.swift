@@ -112,10 +112,16 @@ public enum Chains {
     public static func knobStandardPlan(_ s: GameState, chainID: Int, knob: String, value: Int, data: GameData) -> KnobStandardPlan? {
         guard let ch = chain(s, id: chainID), data.catalog[ch["type"].string]?.knobs.contains(where: { $0.id == knob }) == true else { return nil }
         var lines: [KnobStandardLine] = []
+        // All stores pay from the same account, so each change is checked against what the earlier ones leave.
+        var left = s.cash
         for c in stores(s, ch) {
             guard let q = KnobChange.quote(s, data, companyID: c.id, knob: knob, value: value, byChain: true) else { continue }
             let same = (c.value("knob")[knob].isNull ? (data.catalog[c.type]?.knobs.first { $0.id == knob }?.defaultIndex ?? 0) : c.value("knob")[knob].int) == value
-            lines.append(KnobStandardLine(storeID: c.id, storeName: c.name, changes: !same, cost: q.totalCost, weeks: q.transitionWeeks, reason: same ? nil : q.blocked))
+            var reason: String? = same ? nil : q.blocked
+            if !same, reason == nil, c.status == .open, q.totalCost > 0 {
+                if q.totalCost > left { reason = "Not enough cash once the other stores have changed." } else { left -= q.totalCost }
+            }
+            lines.append(KnobStandardLine(storeID: c.id, storeName: c.name, changes: !same, cost: q.totalCost, weeks: q.transitionWeeks, reason: reason))
         }
         return KnobStandardPlan(lines: lines)
     }

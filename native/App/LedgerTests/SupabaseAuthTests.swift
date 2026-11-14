@@ -305,8 +305,9 @@ final class SupabaseAuthTests: XCTestCase {
             do { _ = try SupabaseWire.authorizationCode(from: URL(string: url)!, provider: .google); return nil } catch { return error as? OnlineError }
         }
         XCTAssertEqual(failure("ledger://auth-callback?error=access_denied&error_description=User+denied"), .cancelled)
-        XCTAssertEqual(failure("ledger://auth-callback#error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked"),
-                       .rejected("That Google account is already linked to another player."))
+        XCTAssertEqual(failure("ledger://auth-callback#error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user"),
+                       .identityTaken(.google))
+        XCTAssertEqual(failure("ledger://auth-callback#error=server_error&error_code=identity_already_exists"), .identityTaken(.google))
         XCTAssertEqual(failure("ledger://auth-callback?error=server_error&error_code=manual_linking_disabled"),
                        .rejected("Linking accounts is not switched on for the server yet."))
         XCTAssertEqual(failure("ledger://auth-callback"), .rejected("Linking did not finish. Try again."))
@@ -386,7 +387,7 @@ final class AutomaticAccountTests: XCTestCase {
         let online = makeOnline(transport, authenticator: FakeAuthenticator(result: .success(URL(string: "ledger://auth-callback?code=abc")!)))
         await online.start()
         await waitUntil { online.profile != nil }
-        let ok = await online.signIn(with: .google)
+        let ok = await online.connect(.google)
         XCTAssertTrue(ok)
         XCTAssertEqual(online.provider, .google)
         XCTAssertEqual(online.accountID, "anon-1")
@@ -399,7 +400,7 @@ final class AutomaticAccountTests: XCTestCase {
         let online = makeOnline(FakeTransport(routes(Flag())))
         await online.start()
         await waitUntil { online.profile != nil }
-        let ok = await online.signIn(with: .google)
+        let ok = await online.connect(.google)
         XCTAssertFalse(ok)
         XCTAssertNil(online.problem)
         XCTAssertTrue(online.isSignedIn)
@@ -453,6 +454,7 @@ final class AutomaticAccountTests: XCTestCase {
         await online.start()
         XCTAssertFalse(online.isSignedIn)
         XCTAssertTrue(online.canLink)
-        XCTAssertFalse(OnlineConfig.serverLinkProviders.contains(.apple))
+        await online.loadSignInOptions()
+        XCTAssertEqual(online.signInOptions, [.apple, .google])
     }
 }

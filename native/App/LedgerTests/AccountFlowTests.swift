@@ -71,7 +71,7 @@ final class AccountFlowTests: XCTestCase {
 
     func testSigningInCreatesTheProfileAndPaysTheRewardOnce() async {
         let online = OnlineSession(service: service())
-        let ok = await online.signIn(with: .apple)
+        let ok = await online.connect(.apple(idToken: "token", nonce: "nonce"))
         XCTAssertTrue(ok)
         XCTAssertFalse(online.awaitingAdultConfirmation)
         XCTAssertNotNil(online.profile)

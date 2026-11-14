@@ -13,7 +13,13 @@ public struct FirstYear: Sendable, Equatable {
     public var bankruptcyWeek = 27
     public var frozenAfterWeeks = 4
     public var noOverdraftWeeks = 12
-    public var startRunwayWeeks = 8
+    public var startRunwayWeeks = 4
+    /// Own savings every new player brings, in the reference economy; a government grant adds a short runway of running costs.
+    public var startSavings = 100_000.0
+    /// Share of the savings kept as working money when the bank lends for the opening kit.
+    public var startKeepShare = 0.5
+    /// The grant never exceeds this share of the savings, so no trade starts much richer than another.
+    public var startGrantCapShare = 0.3
     public var untendedDemand = 1.0
     public var untendedServe = 1.0
 
@@ -31,6 +37,9 @@ public struct FirstYear: Sendable, Equatable {
         if !j["frozenAfterWeeks"].isNull { frozenAfterWeeks = j["frozenAfterWeeks"].int }
         if !j["noOverdraftWeeks"].isNull { noOverdraftWeeks = j["noOverdraftWeeks"].int }
         if !j["startRunwayWeeks"].isNull { startRunwayWeeks = j["startRunwayWeeks"].int }
+        if !j["startSavings"].isNull { startSavings = j["startSavings"].double }
+        if !j["startKeepShare"].isNull { startKeepShare = j["startKeepShare"].double }
+        if !j["startGrantCapShare"].isNull { startGrantCapShare = j["startGrantCapShare"].double }
         if !j["untendedDemand"].isNull { untendedDemand = j["untendedDemand"].double }
         if !j["untendedServe"].isNull { untendedServe = j["untendedServe"].double }
     }
@@ -54,7 +63,7 @@ public struct FirstYear: Sendable, Equatable {
     public static let frozenText = "The bank has frozen the account until the balance is back above zero."
 
     public static func freezeSweep(_ s: inout GameState, balance: Balance) {
-        let f = effective(s, balance: balance)
+        let f = balance.firstYear
         noticeSweep(&s, balance: balance)
         guard !f.bankruptcyActive(week: s.week) else { return }
         for i in s.companies.indices where s.companies[i].status == .open {
@@ -70,7 +79,7 @@ public struct FirstYear: Sendable, Equatable {
     public static func companyAge(_ co: Company, week: Int) -> Int { week - (co.openedWeek ?? co.foundedWeek) }
 
     public static func noticeSweep(_ s: inout GameState, balance: Balance) {
-        let f = effective(s, balance: balance)
+        let f = balance.firstYear
         var done = s.rest["fyNotes"] ?? .object([:])
         func due(_ key: String, week: Int) -> Bool {
             guard s.week >= week, s.week < week + 2, done[key].isNull else { return false }

@@ -22,28 +22,24 @@ private struct CoachTourLayer: View {
     @State private var passed: [String: Int] = [:]
     @State private var activeID: String?
     @State private var readyKey: String = ""
-
-    private var firstCompanyID: Int? {
-        guard let e = store.engine else { return nil }
-        return e.state.companies.first { (c: Company) -> Bool in c.status.isLive }?.id
-    }
+    @State private var idleKey: String = ""
 
     private var blocked: Bool {
-        host.hasVisible || store.popupOpen || !store.unlockQueue.isEmpty || store.customPickerOpen || store.workerPopup != nil || store.isAdvancing
+        host.hasVisible || store.popupOpen || !store.unlockQueue.isEmpty || store.workerPopup != nil || store.isAdvancing
+    }
+
+    /// Supplier pages are a side trip: the player looks or chooses there, so no guide mark covers them.
+    private var onSupplierPage: Bool {
+        guard let r = store.path(for: store.tab).last else { return false }
+        switch r {
+        case .supplier, .supplierOwner: return true
+        default: return false
+        }
     }
 
     private func atRoot(_ t: AppTab) -> Bool { store.tab == t && store.path(for: t).isEmpty }
 
-    private var companyOnTop: Bool {
-        if let r = store.path(for: store.tab).last {
-            switch r {
-            case .company, .companyAt, .companyPart: return true
-            default: return false
-            }
-        }
-        if store.tab == .custom, case .company = store.customTarget { return true }
-        return false
-    }
+    private var companyOnTop: Bool { store.path(for: store.tab).last?.companyID != nil }
 
     private func triggerHolds(_ t: CoachTour) -> Bool {
         switch t.trigger {
@@ -60,11 +56,13 @@ private struct CoachTourLayer: View {
         }
     }
 
-    private func available(_ m: CoachMark, _ geo: GeometryProxy) -> Bool {
-        guard let a = m.anchor(in: anchors) else { return false }
-        let onScreen: CGRect = geo[a].intersection(CGRect(origin: .zero, size: geo.size))
-        return !onScreen.isNull && onScreen.width > 8 && onScreen.height > 8
+    private func onScreen(_ m: CoachMark, _ geo: GeometryProxy) -> CGRect? {
+        guard let a = m.anchor(in: anchors) else { return nil }
+        let r: CGRect = geo[a].intersection(CGRect(origin: .zero, size: geo.size))
+        return !r.isNull && r.width > 8 && r.height > 8 ? r : nil
     }
+
+    private func available(_ m: CoachMark, _ geo: GeometryProxy) -> Bool { onScreen(m, geo) != nil }
 
     private func nextIndex(_ t: CoachTour, from: Int, _ geo: GeometryProxy) -> Int? {
         guard from >= 0, from < t.marks.count else { return nil }
@@ -93,62 +91,62 @@ private struct CoachTourLayer: View {
         return n
     }
 
-    private func tutorialMark(_ step: TutorialStep, _ geo: GeometryProxy) -> CoachMark? {
-        CoachTours.tutorial(step).first { (m: CoachMark) -> Bool in available(m, geo) }
-    }
-
-    private var tutorialPosition: Int { (TutorialStep.allCases.firstIndex(where: { (s: TutorialStep) -> Bool in s == store.tutorialStep }) ?? 0) + 1 }
-
-    private func noteCompanyOpened() {
-        if companyOnTop { store.tutorialAdvance(from: .openCompany) }
-    }
-
-    private func noteInboxOpened() {
-        if store.showsApp(.inbox) { store.tutorialAdvance(from: .openInbox) }
-    }
-
-    private func endIfAbandoned() {
-        if store.tutorialActive && firstCompanyID == nil { store.tutorialFinish() }
+    /// The most exact mark of the step whose control is on screen now.
+    private func guideMark(_ step: TutorialStep, _ geo: GeometryProxy) -> (mark: CoachMark, hole: CGRect)? {
+        for m in CoachTours.tutorial(step) {
+            if let r = onScreen(m, geo) { return (m, r.insetBy(dx: -4, dy: -4)) }
+        }
+        return nil
     }
 
     var body: some View {
         GeometryReader { (geo: GeometryProxy) in
             let step: TutorialStep? = store.tutorialStep
-            let tutMark: CoachMark? = step.flatMap { (s: TutorialStep) -> CoachMark? in tutorialMark(s, geo) }
+            let guide: (mark: CoachMark, hole: CGRect)? = step.flatMap { (s: TutorialStep) -> (mark: CoachMark, hole: CGRect)? in guideMark(s, geo) }
             let tour: CoachTour? = step == nil ? pick(geo) : nil
             let index: Int? = tour.flatMap { (t: CoachTour) -> Int? in nextIndex(t, from: cursor[t.id] ?? 0, geo) }
-            let tutKey: String = step.flatMap { (s: TutorialStep) -> String? in tutMark.map { (m: CoachMark) -> String in "tutorial.\(s.rawValue).\(m.stop)" } } ?? ""
-            let key: String = blocked ? "" : (step != nil ? tutKey : (tour?.id ?? ""))
+            let guideKey: String = step.flatMap { (s: TutorialStep) -> String? in guide.map { (g: (mark: CoachMark, hole: CGRect)) -> String in "tutorial.\(s.rawValue).\(g.mark.stop)" } } ?? ""
+            let key: String = blocked ? "" : (step != nil ? (onSupplierPage ? "" : guideKey) : (tour?.id ?? ""))
             let drawn: Bool = !key.isEmpty && readyKey == key
             ZStack {
-                if let m = tutMark {
-                    CoachMarks(marks: [m], anchors: anchors, step: 0, visible: drawn,
-                               position: tutorialPosition, total: TutorialStep.allCases.count,
-                               onNext: { }, onSkip: { store.tutorialFinish() })
+                if drawn, let s = step, let g = guide {
+                    GuideMarkView(mark: g.mark, hole: g.hole, size: geo.size,
+                                  position: (TutorialStep.allCases.firstIndex(of: s) ?? 0) + 1, total: Tutorial.stepCount,
+                                  pointing: idleKey == key, onSkip: { store.tutorialFinish() })
                 } else if let t = tour, let i = index {
                     let later: Int = remaining(t, after: i, geo)
                     let done: Int = passed[t.id] ?? 0
                     CoachMarks(marks: [shownMark(t, i, last: later == 0)], anchors: anchors, step: 0, visible: drawn,
                                position: done + 1, total: done + 1 + later,
                                onNext: { advance(t, from: i, geo) }, onSkip: { finish(t) })
+                        .allowsHitTesting(drawn)
                 }
             }
-            .allowsHitTesting(drawn)
-            .task(id: key) {
-                guard !key.isEmpty else { readyKey = ""; return }
-                let wait: Double = key.hasPrefix("tutorial.") ? 0.25 : (CoachTours.all.first(where: { (t: CoachTour) -> Bool in t.id == key })?.delay ?? 0.6)
-                try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
-                if !Task.isCancelled { readyKey = key }
-            }
+            .task(id: key) { await settle(key) }
             .onChange(of: tour?.id) { _, id in activeID = id }
         }
-        .onChange(of: store.path(for: store.tab).count) { _, _ in noteCompanyOpened(); noteInboxOpened() }
-        .onChange(of: store.tab) { _, _ in noteCompanyOpened(); noteInboxOpened() }
+        .onChange(of: store.tutorialStep) { _, _ in store.noteTutorialRoute() }
         .onAppear {
-            endIfAbandoned()
-            noteCompanyOpened()
-            noteInboxOpened()
+            let live: Bool = store.engine?.state.companies.contains(where: { (c: Company) -> Bool in c.status.isLive }) ?? false
+            if store.tutorialActive && !live { store.tutorialFinish() }
+            store.noteTutorialRoute()
         }
+    }
+
+    /// Shows a mark after a short settle; a guide mark then points at its control once the player has waited.
+    private func settle(_ key: String) async {
+        readyKey = ""
+        idleKey = ""
+        guard !key.isEmpty else { return }
+        let guide: Bool = key.hasPrefix("tutorial.")
+        let wait: UInt64 = guide ? GuideTiming.settleNanos : UInt64((CoachTours.all.first(where: { (t: CoachTour) -> Bool in t.id == key })?.delay ?? 0.6) * 1_000_000_000)
+        try? await Task.sleep(nanoseconds: wait)
+        guard !Task.isCancelled else { return }
+        readyKey = key
+        guard guide else { return }
+        try? await Task.sleep(nanoseconds: GuideTiming.idleNanos)
+        guard !Task.isCancelled else { return }
+        idleKey = key
     }
 
     private func shownMark(_ t: CoachTour, _ i: Int, last: Bool) -> CoachMark {

@@ -82,11 +82,13 @@ final class MarketEventsTests: XCTestCase {
     func testMajorContractThreshold() throws {
         var (e, id) = try engineWithCafe()
         e.update { s, _, _ in
+            // Offers that came during the six weeks of play are cleared, so only the two below are counted.
+            s.rest.removeValue(forKey: "mev")
             let i = s.companyIndex(id)!
             s.companies[i].set("rv26", .array([.number(1000), .number(1000)]))
             let co = s.companies[i]
             MarketEvents.noteContractOffer(&s, company: co, customer: "Acme", worth: 2000)
-            XCTAssertTrue(MarketEvents.events(s, limit: 10).filter { $0.kind == .majorContract }.isEmpty)
+            XCTAssertTrue(MarketEvents.events(s, limit: 10).filter { $0.kind == .majorContract }.isEmpty, "a small offer is not logged")
             MarketEvents.noteContractOffer(&s, company: co, customer: "Acme", worth: 3000)
         }
         XCTAssertEqual(e.marketEvents(limit: 10).filter { $0.kind == .majorContract }.count, 1)

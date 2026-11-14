@@ -16,6 +16,15 @@ struct PurchaseDeliveryResult: Sendable {
     var state: StoreState
     var delivered: Bool
     var gold: Int
+    /// Pass tiers the purchase unlocked (Battle Pass Plus Levels, the Founder pass).
+    var passTiers: Int = 0
+}
+
+/// One App Store transaction as StoreKit verified it; the server checks Apple's signature again from `jws`.
+struct PurchaseReceipt: Sendable {
+    var transactionID: String
+    var originalID: String
+    var jws: String
 }
 
 struct BoxOpening: Sendable {
@@ -32,15 +41,16 @@ struct QuickSale: Sendable {
 }
 
 enum StoreError: Error, Equatable, LocalizedError, Sendable {
-    case notEnoughGold(missing: Int), noBox, paidBoxesUnavailable, alreadyOwned, unknownItem, offline
+    case notEnoughGold(missing: Int), noBox, paidBoxesUnavailable, alreadyOwned, unknownItem, offline, auctionsClosed
     var errorDescription: String? {
         switch self {
+        case .auctionsClosed: return "The auction house is closed for now. Quick sale still pays at once."
         case .notEnoughGold(let n): return "You need \(n) more gold."
         case .noBox: return "You have no box of that kind."
         case .paidBoxesUnavailable: return "Paid boxes are not offered where you are."
         case .alreadyOwned: return "You already have this."
         case .unknownItem: return "That item is not in the store."
-        case .offline: return "Could not reach the store."
+        case .offline: return "You are offline. Your gold is safe on the server; spending and rewards need a connection."
         }
     }
 }
@@ -78,11 +88,14 @@ protocol AuctionService: Sendable {
 }
 
 enum StoreBackend {
-    static let serverURL: URL? = nil
-
-    static func make() -> (store: any StoreService, auctions: any AuctionService) {
+    /// With the online server the wallet lives there and the phone's vault is only read once, to move it over.
+    /// Previews and tests keep the local vault.
+    static func make() -> (store: any StoreService, auctions: any AuctionService, server: ServerStore?, vault: GoldVault) {
         let vault = GoldVault()
-        return (LocalStoreService(vault: vault), MockAuctionService(vault: vault))
+        if let online = OnlineBackend.shared as? SupabaseOnlineService {
+            return (LocalStoreService(vault: vault), ClosedAuctionService(), ServerStore(online: online), vault)
+        }
+        return (LocalStoreService(vault: vault), MockAuctionService(vault: vault), nil, vault)
     }
 }
 

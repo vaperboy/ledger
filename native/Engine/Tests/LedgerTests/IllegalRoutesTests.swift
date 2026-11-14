@@ -299,8 +299,8 @@ final class IllegalRoutesTests: XCTestCase {
     func testForcedClosureSeizesCashPaysNothingOutAndConvicts() throws {
         try audited(level: 4) { s, w, cashCo, cashMe, i in
             XCTAssertEqual(s.companies[i].status, .bust)
-            XCTAssertLessThanOrEqual(s.companies[i].cash.magnitude, 1)
             XCTAssertLessThanOrEqual(s.cash, cashMe, "the owner receives nothing from the closure")
+            XCTAssertTrue(s.loans.allSatisfy { $0.companyID != s.companies[i].id }, "the company's things and debts are gone with it")
             let conv = w.justice.convictions
             XCTAssertEqual(conv.count, 1)
             XCTAssertTrue(w.justice.watchlist.isEmpty, "not grave enough to be public")
@@ -309,7 +309,14 @@ final class IllegalRoutesTests: XCTestCase {
             XCTAssertFalse(w.justice.barred("me", .vote, week: 51))
             let pf = conv[0].fine
             XCTAssertEqual(pf, 10_000, "half of what was taken")
-            XCTAssertEqual(w.government?.treasury.balance ?? 0, cashCo + pf, accuracy: 1.5, "all of the company's cash and the fine went to the treasury")
+            // The one account also carries the owner's other money: only the takings, the audit fine and the conviction fine leave it.
+            // Money clawed back for the company's creditors leaves the account too, but goes to them, not the treasury.
+            let lost = cashMe - s.cash - s.companies[i].num("clawBk")
+            XCTAssertEqual(w.government?.treasury.balance ?? 0, lost, accuracy: 1.5, "what was taken went to the treasury")
+            XCTAssertNotNil(Banking.loanBanUntil(s), "a closure bans new bank loans like any bankruptcy")
+            XCTAssertGreaterThan(lost, pf, "the takings and the audit fine come on top of the conviction fine")
+            XCTAssertLessThan(lost, 1_000_000, "the rest of the account is not seized")
+            _ = cashCo
             XCTAssertEqual(w.government?.treasury.gap, 0)
             XCTAssertTrue(Ledger.gaps(s).isEmpty, "\(Ledger.gaps(s))")
         }

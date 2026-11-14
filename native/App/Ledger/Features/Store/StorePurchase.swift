@@ -7,14 +7,16 @@ enum GoldGood {
     case avatar(AvatarDef)
     case service(String, Int)
     case username(Int)
+    case moneyPack(MoneyPack)
 
     var price: Int {
         switch self {
         case .boxBundle(let b): return b.price
-        case .cosmetic(let c): return c.price ?? 0
+        case .cosmetic(let c): return StoreRotation.price(c) ?? 0
         case .avatar(let d): return d.price ?? 0
         case .service(_, let price): return price
         case .username(let price): return price
+        case .moneyPack(let pack): return MoneyPacks.price(pack)
         }
     }
 }
@@ -37,19 +39,27 @@ enum StorePurchase {
                              effect: "you get \(b.count) \(b.kind.title)es in your stock, nothing opened yet. That is \(b.savingPercent)% less than \(StoreText.gold(b.singlesPrice)) for single boxes.",
                              price: b.price, icon: "shippingbox")
         case .cosmetic(let c):
-            return GoldOffer(title: "Buy \(c.item.title)?", effect: "you get \(c.item.title) (\(c.rarity.title)). \(c.item.detail)", price: c.price ?? 0, icon: "paintpalette")
+            return GoldOffer(title: "Buy \(c.item.title)?", effect: "you get \(c.item.title) (\(c.rarity.title)). \(c.item.detail)", price: StoreRotation.price(c) ?? 0, icon: "paintpalette")
         case .avatar(let d):
             return GoldOffer(title: "Buy \(d.title)?", effect: "you get the \(d.title) profile icon. You can wear it straight away.", price: d.price ?? 0, icon: "person.crop.circle")
         case .service(let title, let price):
             return GoldOffer(title: title + "?", effect: "the wait is skipped.", price: price, icon: "forward.end")
         case .username(let price):
             return GoldOffer(title: "Change your username?", effect: "your username changes. The old one is never given to anyone else.", price: price, icon: "pencil")
+        case .moneyPack(let pack):
+            return GoldOffer(title: "Buy the \(pack.name) pack?", effect: "\(moneyText(pack)) is paid into your personal account in the game" + (pack.bonusPercent > 0 ? ", \(pack.bonusPercent)% more than the gold rate." : "."),
+                             price: MoneyPacks.price(pack), icon: "banknote")
         }
+    }
+
+    /// A pack's money in the open game's currency.
+    static func moneyText(_ pack: MoneyPack) -> String {
+        session.money(Int((MoneyPacks.gameMoney(pack) * session.priceLevel).rounded()))
     }
 
     static func ask(offer: GoldOffer, pending: Binding<PendingAction?>, onShort: @escaping (Int) -> Void, run: @escaping () -> Void) {
         guard offer.price > 0 else { return }
-        if session.available < offer.price { onShort(offer.price); return }
+        if !session.isAdmin && session.available < offer.price { onShort(offer.price); return }
         pending.wrappedValue = PendingAction(title: offer.title, message: "If you buy this, \(offer.effect) You pay \(StoreText.gold(offer.price)).", button: "Buy",
                                              alwaysAsk: true, tone: .investment, icon: offer.icon, run: run)
     }

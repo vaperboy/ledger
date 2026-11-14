@@ -10,7 +10,7 @@ private extension GameEngine {
 }
 
 final class ItemModelsTests: XCTestCase {
-    static let trade = "cardealer"
+    static let trade = "fuelstation"
     func engine(_ trade: String = ItemModelsTests.trade, weeks: Int = 8) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
@@ -149,22 +149,24 @@ final class ItemModelsTests: XCTestCase {
         var (e, id) = try engine("barber", weeks: 3)
         let it = try XCTUnwrap(e.salesItems(companyID: id).first { $0.isService })
         XCTAssertTrue(try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.isEmpty)
-        XCTAssertEqual(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: "V-UK-0"), .refused("This item needs no supplier."))
-        let hasMaterials = e.supplyLines(companyID: id).flatMap { $0.rows }.contains { $0.id == "mat" && $0.canSwitch }
-        XCTAssertEqual(e.supplyAsk(companyID: id, itemID: it.id), hasMaterials ? .line("mat") : nil)
+        let anyone = try XCTUnwrap(e.supplierCandidates(companyID: id, scope: "goods").first?.id ?? e.supplyLines(companyID: id).flatMap { $0.rows }.first?.offers.first?.id)
+        XCTAssertEqual(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: anyone), .refused("This item needs no supplier."))
+        let hasMaterials = e.supplyLines(companyID: id).flatMap { $0.rows }.contains { $0.id == "care" && $0.canSwitch }
+        XCTAssertEqual(e.supplyAsk(companyID: id, itemID: it.id), hasMaterials ? .line("care") : nil)
     }
 
-    func testTheOrderQuantityDefaultsToTheMonthlyNeedAndCanBeEdited() throws {
+    func testTheOrderIsAlwaysWhatTheItemNeeds() throws {
         var (e, id) = try engine()
         let it = e.salesItems(companyID: id)[0]
         let need = e.itemMonthlyNeed(companyID: id, itemID: it.id)
         XCTAssertGreaterThanOrEqual(need, 1)
-        let v = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.offers.first).vendorID
-        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: v).isRefused)
+        let offer = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.offers.first { $0.fit != .cannot })
+        XCTAssertEqual(offer.need, need)
+        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: offer.vendorID).isRefused)
         XCTAssertEqual(ItemModels.record(try XCTUnwrap(e.state.company(id)), itemID: it.id)?.monthlyUnits, need)
-        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: v, unitsPerMonth: need + 1).isRefused)
-        XCTAssertEqual(ItemModels.record(try XCTUnwrap(e.state.company(id)), itemID: it.id)?.monthlyUnits, need + 1)
-        XCTAssertEqual(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: v, unitsPerMonth: 0), .refused("Order at least one unit a month."))
+        e.week()
+        XCTAssertEqual(ItemModels.record(try XCTUnwrap(e.state.company(id)), itemID: it.id)?.monthlyUnits, e.itemMonthlyNeed(companyID: id, itemID: it.id),
+                       "the order follows the need week by week")
     }
 
     func testThePriceShownIsThePriceAppliedForEachSupplier() throws {
@@ -173,7 +175,7 @@ final class ItemModelsTests: XCTestCase {
         for o in try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers {
             XCTAssertEqual(o.buyPrice, o.listCost * (1 - Suppliers.discount(e.state, scope: "goods", vendorID: o.vendorID)), accuracy: 1e-9, o.vendorID)
         }
-        let v = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.offers.last).vendorID
+        let v = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.offers.last { $0.fit != .cannot }).vendorID
         e.update { s, _, _ in Suppliers.bumpPublic(&s, v, by: 40) }
         e.update { s, _, _ in var a = s.rest["agree"] ?? .object([:]); a["goods"] = .string(v); s.rest["agree"] = a }
         let shown = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.offers.first { $0.vendorID == v })
@@ -188,13 +190,13 @@ final class ItemModelsTests: XCTestCase {
     func testASupplierCannotBeRepickedForFourWeeksButTheFirstPickIsFree() throws {
         var (e, id) = try engine()
         let it = e.salesItems(companyID: id)[0]
-        let offers = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers
+        let offers = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.filter { $0.fit != .cannot }
         guard offers.count > 1 else { throw XCTSkip("one supplier only") }
         XCTAssertEqual(e.itemRepickWeeksLeft(companyID: id, itemID: it.id), 0)
         XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: offers[0].vendorID).isRefused)
         XCTAssertEqual(e.itemRepickWeeksLeft(companyID: id, itemID: it.id), ItemModels.repickWeeks)
         XCTAssertTrue(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: offers[1].vendorID).isRefused)
-        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: offers[0].vendorID, unitsPerMonth: 1).isRefused, "the same supplier may change the order")
+        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: offers[0].vendorID).isRefused, "the same supplier may be picked again")
         for _ in 0..<3 { e.week() }
         XCTAssertEqual(e.itemRepickWeeksLeft(companyID: id, itemID: it.id), 1)
         XCTAssertTrue(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: offers[1].vendorID).isRefused)
@@ -206,28 +208,33 @@ final class ItemModelsTests: XCTestCase {
         XCTAssertEqual(saved.pickedWeek, e.state.week)
     }
 
-    func testASupplierCannotTakeMoreThanItCanSupply() throws {
+    func testEachSupplierIsMarkedByWhetherItCanCoverTheNeed() throws {
         var (e, id) = try engine()
         let it = e.salesItems(companyID: id)[0]
-        let offer = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.offers.first)
-        XCTAssertGreaterThan(offer.capacityFree, 0)
-        XCTAssertLessThanOrEqual(offer.capacityFree, offer.capacityTotal)
-        let over = e.setItemSupplier(companyID: id, itemID: it.id, vendorID: offer.vendorID, unitsPerMonth: offer.capacityFree + 1)
-        XCTAssertEqual(over, .refused("This supplier can only take \(offer.capacityFree) more units a month, you asked for \(offer.capacityFree + 1)."))
-        XCTAssertNil(ItemModels.record(try XCTUnwrap(e.state.company(id)), itemID: it.id)?.supplierID)
-        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: offer.vendorID, unitsPerMonth: offer.capacityFree).isRefused)
+        let need = e.itemMonthlyNeed(companyID: id, itemID: it.id)
+        let offers = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers
+        for o in offers {
+            XCTAssertLessThanOrEqual(o.capacityFree, o.capacityTotal)
+            XCTAssertEqual(o.fit, SupplyFit.of(free: Double(o.capacityFree), need: Double(need)), o.vendorID)
+        }
+        if let short = offers.first(where: { $0.fit == .cannot }) {
+            XCTAssertEqual(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: short.vendorID),
+                           .refused("This supplier cannot supply enough: \(short.capacityFree) units a month free, this item needs \(need)."))
+        }
+        let offer = try XCTUnwrap(offers.first { $0.fit != .cannot })
+        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: offer.vendorID).isRefused)
         let left = ItemModels.room(e.state, companyID: id, vendorID: offer.vendorID, excluding: nil, data: e.data).free
-        XCTAssertEqual(left, 0)
+        XCTAssertEqual(left, offer.capacityFree - need, "the order takes the item's need out of the supplier's room")
         XCTAssertEqual(try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.supply).capacityFree, offer.capacityFree)
     }
 
     func testEndingASupplyCostsTwoWeeksOfTheOrderAndEitherSideCanEndIt() throws {
         var (e, id) = try engine()
         let it = e.salesItems(companyID: id)[0]
-        let offer = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.offers.first)
+        let offer = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.offers.first { $0.fit != .cannot })
         let v = offer.vendorID
-        let units = max(1, min(13, offer.capacityFree))
-        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: v, unitsPerMonth: units).isRefused)
+        let units = e.itemMonthlyNeed(companyID: id, itemID: it.id)
+        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: v).isRefused)
         let supply = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.supply)
         let fee = Double(units) / (52.0 / 12.0) * supply.buyPrice * 2
         XCTAssertEqual(e.itemCancelFee(companyID: id, itemID: it.id), fee, accuracy: 1e-9)
@@ -239,32 +246,33 @@ final class ItemModelsTests: XCTestCase {
         XCTAssertEqual(gone.monthlyUnits, 0)
         XCTAssertEqual(e.cancelItemSupplier(companyID: id, itemID: it.id), .refused("There is no supplier to end."))
         for _ in 0..<4 { e.week() }
-        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: v, unitsPerMonth: units).isRefused)
+        XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: v).isRefused)
         let cash = try XCTUnwrap(e.state.company(id)).cash
         XCTAssertFalse(e.cancelItemSupplier(companyID: id, itemID: it.id, bySupplier: true).isRefused)
         XCTAssertGreaterThan(try XCTUnwrap(e.state.company(id)).cash, cash)
     }
 
-    func testComputerPlayersFadeAsRealOnesJoinAndCanBeRemoved() throws {
+    func testRealPlayersTakeFakePlacesButEveryLineKeepsTwoSuppliers() throws {
         var (e, id) = try engine()
         let it = e.salesItems(companyID: id)[0]
         let all = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.count
-        XCTAssertGreaterThan(all, 0)
-        e.setRealSuppliers(count: 2)
-        XCTAssertEqual(try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.count, max(0, all - 2))
+        XCTAssertGreaterThanOrEqual(all, Suppliers.minimumSuppliers)
+        e.setRealSuppliers(count: 1)
+        XCTAssertEqual(try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.count, max(Suppliers.minimumSuppliers, all - 1))
         e.setRealSuppliers(count: 100)
-        XCTAssertTrue(try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.isEmpty)
+        XCTAssertEqual(try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.count, Suppliers.minimumSuppliers, "a line is never left without suppliers")
         e.setRealSuppliers(count: 0)
         XCTAssertEqual(try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.count, all)
         let v = try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)?.offers.first).vendorID
         XCTAssertFalse(e.setItemSupplier(companyID: id, itemID: it.id, vendorID: v).isRefused)
         XCTAssertFalse(e.fakePlayersRemoved)
-        XCTAssertGreaterThanOrEqual(e.removeFakePlayers(), 1)
+        XCTAssertEqual(e.removeFakePlayers(), 1)
         XCTAssertTrue(e.fakePlayersRemoved)
-        XCTAssertTrue(try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.isEmpty)
-        XCTAssertNil(ItemModels.record(try XCTUnwrap(e.state.company(id)), itemID: it.id)?.supplierID)
-        XCTAssertTrue(e.supplierCandidates(companyID: id, scope: "goods").isEmpty)
-        XCTAssertNil(e.currentGoodsSupplier(companyID: id))
+        XCTAssertEqual(e.removeFakePlayers(), 0, "only once")
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(e.itemPage(companyID: id, itemID: it.id)).offers.count, Suppliers.minimumSuppliers)
+        XCTAssertEqual(ItemModels.record(try XCTUnwrap(e.state.company(id)), itemID: it.id)?.supplierID, v, "the supply goes on")
+        XCTAssertGreaterThanOrEqual(e.supplierCandidates(companyID: id, scope: "goods").count, Suppliers.minimumSuppliers)
+        XCTAssertNotNil(e.currentGoodsSupplier(companyID: id))
     }
 
     func testCompanyLogosFollowFreeLevelAndBoxRules() throws {

@@ -118,7 +118,7 @@ struct TechProProduct: View {
         var item: String = ArtAsset.cellFallback(equipmentID, group: group, seed: equipmentID)
         if offerKey.hasPrefix("v"), let o = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.VehicleOffer) -> Bool in x.id == offerRest }) {
             photo = TechPhotos.vehicle(model: o.modelID)
-            item = ArtLibrary.itemKey(group: "vehicle", familyKey: o.modelID, seed: equipmentID + "#" + String(o.index)) ?? ""
+            item = ArtLibrary.vehicleCell(o.art)
         } else if offerKey.hasPrefix("n"), let n = Int(offerRest) {
             item = ArtLibrary.itemKey(group: group, familyKey: equipmentID, seed: equipmentID + "#" + String(n)) ?? ""
         }
@@ -352,10 +352,7 @@ struct TechProProduct: View {
         let users: String = p.maxUsers > 1_000_000 ? "Any number of users" : "Up to \(p.maxUsers) users"
         return HStack(alignment: .center, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                HStack(spacing: Theme.Space.s) {
-                    Text(p.name).textStyle(.headline)
-                    if p.recommended { Text("Fits your team").textStyle(.caption, tint: P.accent, weight: .semibold) }
-                }
+                Text(p.name).textStyle(.headline)
                 Text(ok ? users : users + " \u{00B7} not on offer now").textStyle(.caption)
                 Text(cur.tidyShort(p.monthlyFee) + "/mo").textStyle(.headline, numeric: true)
             }
@@ -364,7 +361,7 @@ struct TechProProduct: View {
                 Haptics.success()
                 onAdd(line)
             }
-            .buttonStyle(p.recommended ? AnyButtonStyle(PrimaryButtonStyle(size: .compact)) : AnyButtonStyle(SecondaryButtonStyle(size: .compact)))
+            .buttonStyle(SecondaryButtonStyle(size: .compact))
             .disabled(!ok)
             .accessibilityIdentifier(p.recommended ? "tp-add" : "tp-add-plan-\(p.index)")
         }

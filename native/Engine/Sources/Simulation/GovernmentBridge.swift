@@ -258,7 +258,7 @@ public enum GovernmentBridge {
         let owed = jsRound(a.liability * (RouteRules.backMultiple + RouteRules.fineMultiple(level: a.level)))
         let cash0 = s.companies[i].cash
         _ = Payments.companyPays(&s, companyID: id, amount: owed, category: "fine", label: "Audit: illegal takings")
-        var paid = max(0, cash0 - s.companies[i].cash)
+        let paid = max(0, cash0 - s.companies[i].cash)
         var body = "An audit of \(name) found \(a.route.title.lowercased()). It must hand back and pay \(cur.display(paid))."
         if a.suspends, s.companies[i].status == .open {
             s.companies[i].status = .closed
@@ -266,15 +266,16 @@ public enum GovernmentBridge {
             body += " It is shut for \(RouteRules.suspensionWeeks) weeks."
         }
         if a.closes {
-            let seize = max(0, s.companies[i].cash)
-            let c1 = s.companies[i].cash
-            if seize >= 1 { _ = Payments.companyPays(&s, companyID: id, amount: seize, category: nil, label: "Assets seized") }
-            paid += max(0, c1 - s.companies[i].cash)
+            // The company has no cash of its own: the account also carries the owner's other companies, so only the company and its things are taken.
             let own = s.companies[i].ownership
             s.companies[i].ownership = 0
             Failure.bankrupt(&s, companyIndex: i, reason: "closed", data: data, context: context, announce: false)
             s.companies[i].ownership = own
             s.credit = clamp(s.credit - RouteRules.closureCreditLoss, 0, 100)
+            // A closure is a bankruptcy for the banks too: its lenders' losses are clawed back and no new loans for two years.
+            Banking.recordBankruptcy(&s)
+            s.stats.bankruptcies += 1
+            let claw = s.companies[i].num("clawBk")
             let pf = jsRound(a.liability * RouteRules.convictionFineMultiple(level: a.level))
             if pf >= 1 { Payments.playerPays(&s, pf, label: "Fine: conviction") }
             let grave = a.grave
@@ -284,7 +285,9 @@ public enum GovernmentBridge {
             g.removeFromOffice(account: w.account, reason: "convicted", week: week)
             if grave { g.publish("\(w.name) is on the watchlist: \(conv.summary).", tone: "bad", week: week) }
             s.news("\(name) was shut down by the authorities.", tone: "bad", companyID: id)
-            body += " The company is closed and its cash seized, with nothing paid out to you. You are convicted and banned from trading and from office."
+            body += " The company is closed and everything it owns seized, with nothing paid out to you. You are convicted and banned from trading and from office."
+            if claw >= 1 { body += " \(cur.display(claw)) of borrowed money it brought into your account is taken back for its lenders." }
+            body += " " + Failure.banText
             w.routes.drop(companyID: id)
         }
         g.receive(toHome(s, context, paid, from: cc), kind: "audit_fine", ref: String(id), week: week)

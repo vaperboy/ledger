@@ -26,16 +26,12 @@ public final class SaveStore {
     }
 
     public func save(_ state: GameState, slot: String = "current", summary: SaveSummary) throws {
-        let envelope: JSONValue = .object([
-            "format": .string(NativeSaveFormat.formatName), "version": .number(Double(NativeSaveFormat.currentVersion)),
-            "savedAt": .string(ISO8601DateFormatter().string(from: summary.savedAt)),
-            "summary": try JSONValue.fromEncodable(summary), "state": try JSONValue.fromEncodable(state),
-        ])
+        let envelope = SaveEnvelope(format: NativeSaveFormat.formatName, version: NativeSaveFormat.currentVersion,
+                                    savedAt: ISO8601DateFormatter().string(from: summary.savedAt), summary: summary, state: state)
         let data = try JSONEncoder().encode(envelope)
         let target = url(slot: slot)
         let temp = directory.appendingPathComponent(".\(slot).writing")
         try data.write(to: temp, options: .atomic)
-        _ = try Self.read(data: data)
         if fm.fileExists(atPath: target.path) {
             try? fm.removeItem(at: previousURL(slot: slot))
             try fm.copyItem(at: target, to: previousURL(slot: slot))
@@ -77,8 +73,15 @@ public final class SaveStore {
     public func slots() -> [(slot: String, summary: SaveSummary?)] {
         let files = (try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
         return files.filter { $0.pathExtension == "ledgersave" && !$0.lastPathComponent.contains(".previous.") }
-            .map { f in (f.deletingPathExtension().lastPathComponent, (try? Self.read(data: Data(contentsOf: f)))?.1) }
+            .map { f in (f.deletingPathExtension().lastPathComponent, Self.summary(at: f)) }
             .sorted { $0.slot < $1.slot }
+    }
+
+    /// Reads only the summary of a save file, without decoding the whole game state.
+    static func summary(at file: URL) -> SaveSummary? {
+        guard let data = try? Data(contentsOf: file), let head = try? JSONDecoder().decode(SaveHead.self, from: data),
+              head.format == NativeSaveFormat.formatName, head.version == NativeSaveFormat.currentVersion else { return nil }
+        return head.summary
     }
 
     public static func cleanSlotName(_ raw: String) -> String? {
@@ -97,6 +100,26 @@ public final class SaveStore {
         guard slot != "current", let name = Self.cleanSlotName(raw), name != "current", !hasSave(slot: name), hasSave(slot: slot) else { return false }
         try fm.moveItem(at: url(slot: slot), to: url(slot: name))
         if fm.fileExists(atPath: previousURL(slot: slot).path) { try fm.moveItem(at: previousURL(slot: slot), to: previousURL(slot: name)) }
+        return true
+    }
+
+    /// Moves the current career into a named slot, so it exists once and continues from where it stopped.
+    @discardableResult
+    public func park(as raw: String) throws -> String? {
+        guard hasSave(), let base = Self.cleanSlotName(raw), base != "current" else { return nil }
+        var name = base, n = 2
+        while hasSave(slot: name) || name == "current" { name = Self.cleanSlotName("\(base.prefix(20)) \(n)") ?? "\(n)"; n += 1 }
+        try fm.moveItem(at: url(slot: "current"), to: url(slot: name))
+        try? fm.removeItem(at: previousURL(slot: "current"))
+        return name
+    }
+
+    /// Makes a parked career the current one again. The slot file is moved, not copied, so no older copy stays behind.
+    @discardableResult
+    public func unpark(_ slot: String) throws -> Bool {
+        guard slot != "current", !hasSave(), hasSave(slot: slot) else { return false }
+        try fm.moveItem(at: url(slot: slot), to: url(slot: "current"))
+        try? fm.removeItem(at: previousURL(slot: slot))
         return true
     }
 
@@ -122,6 +145,20 @@ public final class SaveStore {
         try text.write(to: importsDirectory.appendingPathComponent("original-\(stamp).txt"), atomically: true, encoding: .utf8)
         return state
     }
+}
+
+private struct SaveEnvelope: Encodable {
+    var format: String
+    var version: Int
+    var savedAt: String
+    var summary: SaveSummary
+    var state: GameState
+}
+
+private struct SaveHead: Decodable {
+    var format: String?
+    var version: Int?
+    var summary: SaveSummary?
 }
 
 extension JSONValue {

@@ -50,6 +50,8 @@ final class BalanceProbeTests: XCTestCase {
             }
         }
         let progress = ProcessInfo.processInfo.environment["LEDGER_PROGRESS"] != nil
+        // The company draws on the one account, so the money really tied up in it is the most it ever had out of the account.
+        var drawn = 0.0
         for day in 0..<(years * 52 * 7) {
             if progress && day % 28 == 0 {
                 var ru = rusage()
@@ -62,6 +64,7 @@ final class BalanceProbeTests: XCTestCase {
             }
             BalanceProbeTests.drained {
                 e.nextDay()
+                drawn = max(drawn, -(e.state.cashFlow["co\(id)"] ?? 0))
                 for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
                 if ProcessInfo.processInfo.environment["LEDGER_APPROVE"] != nil {
                     for m in e.openDecisions where m.actionID == "prop" && ["hire", "eq", "veh", "space", "prem"].contains(m.value("data")["t"].string) { e.answer(messageID: m.id, option: 0) }
@@ -90,6 +93,7 @@ final class BalanceProbeTests: XCTestCase {
             }
         }
         guard let co = e.state.company(id) else { return nil }
+        invested = max(invested, drawn)
         let h = co.monthlyHistory
         let y1 = h.prefix(12).reduce(0) { $0 + $1.profit }, y3 = h.suffix(12).reduce(0) { $0 + $1.profit }
         let v = Valuation.companyValue(co, state: e.state, trades: e.data.catalog)

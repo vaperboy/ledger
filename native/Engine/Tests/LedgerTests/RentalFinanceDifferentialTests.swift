@@ -14,6 +14,14 @@ final class RentalFinanceDifferentialTests: XCTestCase {
 
     func index(_ s: GameState, _ g: JSONValue, _ key: String) -> Int { s.companyIndex(g["ids"][key].int)! }
 
+    // The original kept cash in each company; here every company draws on the one account.
+    // This is the fixed distance between the two, so a cash figure of the original can be compared after the same steps.
+    func cashShift(_ s0: GameState, companyID id: Int) throws -> Double {
+        let cos = try Golden.load("rf_save")["cos"].array
+        let original = try XCTUnwrap(cos.first { $0["id"].int == id }, "company \(id) is in the save")["cash"].double
+        return original - s0.cash
+    }
+
     func close(_ a: Double, _ b: Double, _ tol: Double = 1e-9) -> Bool { abs(a - b) <= tol * max(1, abs(b)) }
 
     func compareNumbers(_ mine: JSONValue, _ theirs: JSONValue, _ tag: String, skip: Set<String> = []) -> [String] {
@@ -96,6 +104,7 @@ final class RentalFinanceDifferentialTests: XCTestCase {
             var s = s0
             let id = g["ids"][key].int
             let i = s.companyIndex(id)!
+            let shift = try cashShift(s0, companyID: id)
             Ledger.moveRaw(&s, .company(id), 500_000_000)
             let bd = data.catalog[s.companies[i].type]!
             let o = g["ops"][key]
@@ -107,7 +116,7 @@ final class RentalFinanceDifferentialTests: XCTestCase {
             let p = s.companies[i].properties.last!
             let q = o["afterBuy"]["props"].array.last!
             for f in ["cost", "val", "loan", "units", "rentU", "vac", "cond", "idx0"] where f != "loan" && !close(p.num(f), q[f].double) { bad.append("\(key) prop.\(f) \(p.num(f)) vs \(q[f].double)") }
-            XCTAssertTrue(close(s.companies[i].cash, o["afterBuy"]["cash"].double, 1e-9), "\(key) cash after buy \(s.companies[i].cash) vs \(o["afterBuy"]["cash"].double)")
+            XCTAssertTrue(close(s.cash + shift, o["afterBuy"]["cash"].double, 1e-9), "\(key) cash after buy \(s.cash + shift) vs \(o["afterBuy"]["cash"].double)")
             let l = s.loans.last!
             XCTAssertTrue(close(l.margin, o["newLoan"]["margin"].double) && close(l.monthlyPayment, o["newLoan"]["pay"].double) && close(l.balance, o["newLoan"]["bal"].double), "\(key) mortgage")
             XCTAssertEqual(RentalModel.buy(&s, companyID: id, listing: ls[3], loanToValue: 0.9, data: data) == .ok, o["buyBigLoan"].string == "ok", "\(key) 90% loan decision")
@@ -115,10 +124,10 @@ final class RentalFinanceDifferentialTests: XCTestCase {
             XCTAssertEqual(RentalModel.renovate(&s, companyID: id, propertyID: s.companies[i].properties[0].id, data: data), .ok)
             bad += compareNumbers(s.companies[i].value("fm"), o["afterReno"]["fm"], key + ".reno")
             XCTAssertTrue(close(s.companies[i].properties[0].condition, o["afterReno"]["props"][0]["cond"].double) && close(s.companies[i].properties[0].value, o["afterReno"]["props"][0]["val"].double), "\(key) renovation")
-            XCTAssertTrue(close(s.companies[i].cash, o["afterReno"]["cash"].double, 1e-9), "\(key) cash after renovation")
+            XCTAssertTrue(close(s.cash + shift, o["afterReno"]["cash"].double, 1e-9), "\(key) cash after renovation")
             let net = RentalModel.sell(&s, companyID: id, propertyID: s.companies[i].properties.last!.id)
             XCTAssertTrue(close(net, o["sellNet"].double), "\(key) sale \(net) vs \(o["sellNet"].double)")
-            XCTAssertTrue(close(s.companies[i].cash, o["afterSell"]["cash"].double, 1e-9), "\(key) cash after sale")
+            XCTAssertTrue(close(s.cash + shift, o["afterSell"]["cash"].double, 1e-9), "\(key) cash after sale")
             XCTAssertTrue(close(s.companies[i].books.week["loss"] ?? 0, o["afterSell"]["books"]["loss"].double), "\(key) loss booked")
             XCTAssertTrue(bad.isEmpty, "\n" + bad.joined(separator: "\n"))
             XCTAssertTrue(Ledger.gaps(s).filter { $0.holder == s.companies[i].name }.isEmpty || true)
@@ -154,7 +163,8 @@ final class RentalFinanceDifferentialTests: XCTestCase {
         XCTAssertEqual(native, Set(o["prods"].object.keys.map { RentalFinance.legacyProducts[$0] ?? $0 }))
         XCTAssertEqual(FinanceModel.setProduct(&s, companyID: id, product: "life", on: true, data: data), .ok)
         XCTAssertTrue(FinanceModel.isOffered(s.companies[i], "life"))
-        XCTAssertTrue(close(s.companies[i].cash, o["afterProd"]["cash"].double, 1e-9), "approval fee")
+        let shift = try cashShift(s0, companyID: id)
+        XCTAssertTrue(close(s.cash + shift, o["afterProd"]["cash"].double, 1e-9), "approval fee")
         let ag = s.companies[i].staff.first { $0.role == "agent" }!
         XCTAssertEqual(FinanceModel.verifyAgent(&s, companyID: id, staffID: ag.id, product: "life", data: data), .ok)
         let done = s.companies[i].staff.first { $0.id == ag.id }!.value("ver")["life"]["done"].double

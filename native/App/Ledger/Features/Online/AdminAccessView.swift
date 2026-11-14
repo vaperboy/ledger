@@ -3,17 +3,12 @@ import SwiftUI
 struct AdminAccessView: View {
     @Environment(OnlineSession.self) private var online
     @EnvironmentObject private var store: GameStore
-    @State private var code = ""
-    @State private var working = false
-    @State private var outcome: Outcome?
     @State private var pending: PendingAction?
     @State private var worldNote: String?
     @State private var removing = false
-    @FocusState private var focused: Bool
 
     private let P: OutsidePalette = .control
 
-    private enum Outcome: Equatable { case invalid, locked, failed }
 
     var body: some View {
         ScrollView {
@@ -96,66 +91,10 @@ struct AdminAccessView: View {
         }
     }
 
+    /// Codes are typed in one place only: the Store's "Redeem gift code".
     private var entry: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Text("An administrator code is given out by the owner of the game and works once. Type it exactly as you received it.")
-                .textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
-
-            SecureField("Code", text: $code)
-                .textInputAutocapitalization(.characters).autocorrectionDisabled()
-                .font(.system(size: 18, weight: .medium, design: .monospaced)).foregroundStyle(P.ink)
-                .focused($focused)
-                .submitLabel(.done)
-                .padding(.horizontal, Theme.Space.m).frame(minHeight: 52)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(P.cardDeep))
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(focused ? P.accent : P.line, lineWidth: 1))
-                .accessibilityLabel("Administrator code")
-                .accessibilityIdentifier("admin-code")
-
-            if let message = message { Text(message).textStyle(.caption, tint: P.loss).fixedSize(horizontal: false, vertical: true) }
-
-            Button {
-                Haptics.tap()
-                focused = false
-                pending = PendingAction.online(
-                    title: "Spend this code?",
-                    effect: "the code is used up for good and this account becomes an administrator who can change world rules. Every change you make is recorded under your name.",
-                    button: "Spend code", risk: "Too many wrong codes lock this for an hour.", tone: .warning, icon: "key") {
-                    working = true
-                    Task {
-                        let r: AdminCodeResult? = await online.redeemAdminCode(code)
-                        working = false
-                        switch r {
-                        case .some(.granted), .some(.alreadyAdmin): outcome = nil; code = ""
-                        case .some(.invalid): outcome = .invalid
-                        case .some(.locked): outcome = .locked
-                        case .none: outcome = .failed
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: Theme.Space.s) {
-                    if working { ProgressView().tint(P.onAccent) }
-                    Text("Redeem code").font(.system(size: 17, weight: .semibold))
-                }
-                .foregroundStyle(P.onAccent)
-                .frame(maxWidth: .infinity, minHeight: 54)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(P.accent.opacity(canSubmit ? 1 : 0.35)))
-            }
-            .buttonStyle(PressableStyle())
-            .disabled(!canSubmit)
-            .accessibilityIdentifier("admin-redeem")
-        }
-    }
-
-    private var canSubmit: Bool { !working && code.trimmingCharacters(in: .whitespacesAndNewlines).count >= 12 }
-
-    private var message: String? {
-        switch outcome {
-        case .invalid: return "That code is not valid, has been used, or has expired."
-        case .locked: return "Too many tries. Wait an hour and try again."
-        case .failed: return online.problem ?? "Could not check the code. Try again."
-        case nil: return nil
-        }
+        Text("An administrator code is given out by the owner of the game and works once. Type it in the Store under Redeem gift code, at the top of the Store page.")
+            .textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("admin-code-where")
     }
 }

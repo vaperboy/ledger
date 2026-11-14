@@ -139,8 +139,10 @@ public enum CompanySale {
         let co = s.companies[i]
         let mine = co.ownership / 100
         let proceeds = jsRound(price * mine)
-        let gain = max(0, proceeds - max(0, co.injectedCapital) * mine)
+        let shortfall = loansNotTakenOver(s, co, data: data)
+        let gain = max(0, proceeds - shortfall - max(0, co.injectedCapital) * mine)
         Payments.ownerReceivesSale(&s, from: co, amount: proceeds, gain: gain, label: "Sold \(co.name) (\(buyer))")
+        if shortfall > 0 { Payments.playerPays(&s, shortfall, label: "Loans of \(co.name) repaid on sale", companyID: co.id) }
         for l in s.loans.filter({ $0.companyID == co.id }) { Banking.close(loanID: l.id, repaid: l.balance, state: &s) }
         for m in s.companies[i].staff { if var p = s.people[m.id] { p.employerID = 0; s.people[m.id] = p } }
         s.companies[i].staff = []
@@ -151,6 +153,14 @@ public enum CompanySale {
         s.note("Sold \(co.name) for \(fc.homeCurrency(s).display(proceeds)) to \(buyer).", tone: "good")
         if buyer != "Dissolution" { JointVenture.announceSale(&s, company: co, price: price, buyer: buyer, context: fc) }
         return proceeds
+    }
+
+    /// A buyer pays for the shares and takes over the company's loans only as far as the business is worth before them.
+    /// The rest is repaid out of the sale, so borrowed money never leaves with the seller.
+    public static func loansNotTakenOver(_ s: GameState, _ co: Company, data: GameData) -> Double {
+        let owed = s.loans.filter { $0.companyID == co.id }.reduce(0) { $0 + $1.balance }
+        guard owed > 0 else { return 0 }
+        return jsRound(max(0, owed - Valuation.valueBeforeLoans(co, state: s, trades: data.catalog)))
     }
 
     static func sellPart(_ s: inout GameState, companyIndex i: Int, pct: Double, amount: Double, buyer: String, data: GameData, context fc: FinanceContext) {

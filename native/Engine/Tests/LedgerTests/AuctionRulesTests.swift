@@ -102,7 +102,7 @@ final class AuctionRulesTests: XCTestCase {
         let end = t0 + 3_600
         let r = try b.place("A1", bidder: me, amount: 100, now: end - 60, cash: 1_000)
         XCTAssertTrue(r.extended)
-        XCTAssertEqual(b.auctions[0].endsAt, end - 60 + 120)
+        XCTAssertEqual(b.auctions[0].endsAt, end + AuctionRules.bidExtension, "a late bid adds a short fixed extension to the end")
         XCTAssertEqual(b.auctions[0].extensions, 1)
     }
 
@@ -232,9 +232,9 @@ final class AuctionRulesTests: XCTestCase {
     }
 
     func testASuggestedStartScalesWithTheRarityAndThePriceLevel() {
-        XCTAssertEqual(AuctionMarket.suggestedStart(.common, priceLevel: 1), 300)
+        XCTAssertEqual(AuctionMarket.suggestedStart(.common, priceLevel: 1), 2_000)
         XCTAssertGreaterThan(AuctionMarket.suggestedStart(.legendary, priceLevel: 1), AuctionMarket.suggestedStart(.epic, priceLevel: 1))
-        XCTAssertEqual(AuctionMarket.suggestedStart(.rare, priceLevel: 0.1), 120)
+        XCTAssertEqual(AuctionMarket.suggestedStart(.rare, priceLevel: 0.1), 600)
         XCTAssertGreaterThanOrEqual(AuctionMarket.suggestedStart(.common, priceLevel: 0.0001), 1)
     }
 
@@ -247,7 +247,7 @@ final class AuctionRulesTests: XCTestCase {
             XCTAssertLessThanOrEqual(quick * 100, market * 90)
             XCTAssertEqual(quick, AuctionRules.quickSalePrice(rarity, priceLevel: 1))
         }
-        XCTAssertEqual(AuctionRules.quickSalePrice(.common, priceLevel: 1), 264)
+        XCTAssertEqual(AuctionRules.quickSalePrice(.common, priceLevel: 1), 1_760)
         XCTAssertGreaterThanOrEqual(AuctionRules.quickSalePrice(.common, priceLevel: 0.0001), 1)
     }
 
@@ -276,7 +276,7 @@ final class AuctionRulesTests: XCTestCase {
     func testEveryCosmeticABoxCanDropCanBeWorn() {
         let kinds: Set<SeasonReward.Kind> = Set(BoxRarity.allCases.flatMap { GoldCosmetics.boxPool($0, owned: []).map(\.item.kind) })
         XCTAssertFalse(kinds.isEmpty)
-        XCTAssertTrue(kinds.allSatisfy(\.isEquippable))
+        XCTAssertTrue(kinds.allSatisfy { $0.isEquippable || CosmeticCatalog.avatarKinds.contains($0) }, "a drop is worn on the profile or on the avatar")
     }
 
     func testWalletNeverSpendsMoreThanItHas() {
@@ -299,7 +299,7 @@ final class AuctionRulesTests: XCTestCase {
         XCTAssertTrue(c.add(ArtifactItem(defID: "abacus", serial: 99)).isEmpty)
         XCTAssertEqual(ArtifactCatalog.label(ArtifactItem(defID: "strongbox", serial: 14)), "14 of 500")
         XCTAssertTrue(ArtifactCatalog.collections.allSatisfy { GoldCosmetics.cosmetic($0.rewardID) != nil })
-        XCTAssertEqual(Set(ArtifactCatalog.collections.flatMap(\.members)), Set(ArtifactCatalog.defs.map(\.id)))
+        XCTAssertEqual(Set(ArtifactCatalog.everyCollection.flatMap(\.members)), Set(ArtifactCatalog.defs.map(\.id)))
         for rarity in BoxRarity.allCases { XCTAssertFalse(ArtifactCatalog.defs(of: rarity).isEmpty) }
         XCTAssertEqual(ArtifactCatalog.serial(of: ArtifactCatalog.defs[3], roll: 0.9999), 100)
         XCTAssertEqual(ArtifactCatalog.serial(of: ArtifactCatalog.defs[3], roll: 0), 1)

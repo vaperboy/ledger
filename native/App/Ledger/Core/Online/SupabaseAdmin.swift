@@ -3,7 +3,7 @@ import Foundation
 extension SupabaseOnlineService {
     func redeemAdminCode(_ code: String) async throws -> AdminCodeResult {
         struct Answer: Decodable { var ok: Bool; var reason: String }
-        let a: Answer = try decode(Answer.self, try await rpcData("redeem_admin_code", ["p_code": code]))
+        let a: Answer = try decode(Answer.self, try await rpcData("redeem_code", ["p_code": code]))
         switch a.reason {
         case "granted": return .granted
         case "already_admin": return .alreadyAdmin

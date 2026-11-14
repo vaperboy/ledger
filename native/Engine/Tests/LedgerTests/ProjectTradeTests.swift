@@ -118,7 +118,7 @@ final class ProjectTradeTests: XCTestCase {
             }
         }
         XCTAssertGreaterThan(sent, 0, "no tender could be bid for in three years")
-        let titles = e.state.inbox.map { $0.title }
+        let titles = e.state.feedLines.map { $0.text } + e.state.inbox.map { $0.title }
         XCTAssertTrue(titles.contains { $0.hasPrefix("Award:") || $0.hasPrefix("Not awarded:") }, "no award was announced")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
