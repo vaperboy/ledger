@@ -88,8 +88,7 @@ final class SupabaseWireTests: XCTestCase {
 
     func testSessionRefreshWindow() {
         let now = Date()
-        let s = SupabaseSession(accessToken: "a", refreshToken: "r", expiresAt: now.addingTimeInterval(30), userID: "u", createdAt: now,
-                                isAnonymous: false, provider: .apple)
+        let s = SupabaseSession(accessToken: "a", refreshToken: "r", expiresAt: now.addingTimeInterval(30), userID: "u", createdAt: now, provider: .apple)
         XCTAssertTrue(s.needsRefresh(now: now))
         XCTAssertFalse(s.needsRefresh(now: now.addingTimeInterval(-3600)))
     }
