@@ -573,9 +573,9 @@ final class StoreSession {
         }
     }
 
-    enum CodeResult: Equatable { case admin, beta(Int), alreadyAdmin, betaUsed, invalid, locked, offline }
+    enum CodeResult: Equatable { case admin, beta(Int), gift(ServerGiftReward), alreadyAdmin, betaUsed, giftUsed, expired, owned, invalid, locked, offline }
 
-    /// Spends a typed code: an administrator code or a beta key. Only the server can check it.
+    /// Spends a typed code: an administrator code, a beta key or a gift code. Only the server can check it.
     func redeemCode(_ code: String) async -> CodeResult {
         problem = nil
         guard let remote else { return .offline }
@@ -583,9 +583,15 @@ final class StoreSession {
               let out = try? remote.body(ServerRedeem.self, data) else { return .offline }
         if let snap = try? remote.snapshot(data) { adopt(snap) }
         switch out.reason {
-        case "granted": return out.kind == "admin" ? .admin : .beta(out.gold ?? 0)
+        case "granted":
+            if out.kind == "admin" { return .admin }
+            if out.kind == "gift" { return .gift(out.reward ?? ServerGiftReward(gold: out.gold ?? 0, items: [], boxes: [:])) }
+            return .beta(out.gold ?? 0)
         case "already_admin": return .alreadyAdmin
         case "beta_used": return .betaUsed
+        case "gift_used": return .giftUsed
+        case "expired": return .expired
+        case "owned": return .owned
         case "locked": return .locked
         default: return .invalid
         }

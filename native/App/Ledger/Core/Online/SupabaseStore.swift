@@ -109,7 +109,9 @@ struct ServerQuickSale: Decodable, Sendable {
     var sold: [Sold]
 }
 /// The answer to a typed code: an administrator code or a beta key.
-struct ServerRedeem: Decodable, Sendable { var ok: Bool; var kind: String?; var reason: String; var gold: Int? }
+struct ServerRedeem: Decodable, Sendable { var ok: Bool; var kind: String?; var reason: String; var gold: Int?; var reward: ServerGiftReward? }
+/// What a gift code paid: gold, the cosmetic ids that were new to the account, and boxes by kind.
+struct ServerGiftReward: Decodable, Sendable, Equatable { var gold: Int; var items: [String]; var boxes: [String: Int] }
 /// The answer to an ad or mission gold claim.
 struct ServerGoldClaim: Decodable, Sendable { var ok: Bool; var gold: Int?; var reason: String?; var wait: Int? }
 struct ServerImport: Decodable, Sendable { var imported: Bool; var reason: String?; var gold: Int?; var items: Int? }
