@@ -21,7 +21,11 @@ private struct CenterSheetFooterKey: PreferenceKey {
     static func reduce(value: inout AnyView?, nextValue: () -> AnyView?) { if let n = nextValue() { value = n } }
 }
 
-enum CenterSheetSize { case fit, fitBleed, tall }
+/// fit hugs its content; tall fills most of the screen. The Bleed variants leave the side margins to content that sets its own.
+enum CenterSheetSize {
+    case fit, fitBleed, tall, tallBleed
+    var isTall: Bool { self == .tall || self == .tallBleed }
+}
 
 struct PopupHeaderRow: View {
     @Environment(\.outsidePalette) private var P
@@ -154,7 +158,7 @@ struct CenterSheetFrame<Content: View>: View {
         .environment(\.insidePopup, true)
         .environment(\.popupTone, shade)
         .environment(\.popupCategory, cat)
-        .frame(height: size == .tall ? cardMax : nil)
+        .frame(height: size.isTall ? cardMax : nil)
         .overlayPreferenceValue(CenterSheetFooterKey.self, alignment: .bottom) { (f: AnyView?) in footerLayer(f) }
         .clipShape(RoundedRectangle(cornerRadius: PopupLayout.radius, style: .continuous))
         .modifier(PopupGlass(tone: shade, light: P.isLight))
@@ -209,9 +213,16 @@ struct CenterSheetFrame<Content: View>: View {
     }
 
     @ViewBuilder private func inner(bodyMax: CGFloat) -> some View {
-        if size == .tall {
+        if size == .tallBleed {
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if size == .tall {
+            // Same safe margins as a fit card, so nothing touches the card's edges.
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(.horizontal, PopupLayout.inset)
+                .padding(.top, hasHeader ? PopupLayout.topGap : PopupLayout.inset)
+                .padding(.bottom, footerHeight > 0 ? 0 : PopupLayout.inset)
         } else {
             ScrollView(.vertical) { padded }
                 .scrollBounceBehavior(.basedOnSize)
@@ -237,7 +248,7 @@ struct CenterSheetFrame<Content: View>: View {
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, pad)
-            .padding(.top, cat == .compact ? 10 : (hasHeader ? 4 : pad))
+            .padding(.top, cat == .compact ? 10 : (hasHeader ? PopupLayout.topGap : pad))
             .padding(.bottom, pad)
     }
 

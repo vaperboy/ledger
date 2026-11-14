@@ -1,4 +1,5 @@
 # What's new
+- Cleaner "Invite a friend": pick a face, then one slider each for share and price (tap the number to type, a small mark shows fair value), Partner or CFO, and one summary line above Send offer; all popups keep a safe margin from their edges
 - Inviting a co-owner lists only your real friends
 - Redeem gift codes at the top of the Store: gold, cosmetics or boxes, with a reward popup
 - Brighter Store: clear offer cards with big reward icons and prices, a new cosmetics shelf every day (never Battle Pass items), a small "watch an ad for gold" button on Home and the Store, open Supporter perks, and one Redeem a code field for beta keys

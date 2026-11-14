@@ -19,7 +19,7 @@ struct BankLoansTab: View {
                 if account != .investments { applyCard(e) }
                 loansFor(e)
             }
-            .centerSheet(isPresented: $applying, size: .tall) { BankLoanApplyFlow(prefill: prefill) }
+            .centerSheet(isPresented: $applying, size: .tallBleed) { BankLoanApplyFlow(prefill: prefill) }
             .onAppear { openWithAmount() }
             .onChange(of: store.pendingLoanApply) { _, _ in openWithAmount() }
         }

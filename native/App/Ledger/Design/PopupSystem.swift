@@ -44,6 +44,8 @@ enum PopupLayout {
     static let radius: CGFloat = 28
     static let inset: CGFloat = 20
     static let screenMargin: CGFloat = 16
+    /// Space between the title row and the first line of content.
+    static let topGap: CGFloat = Theme.Space.s
 
     static func maxHeight(_ c: PopupCategory, screenHeight: CGFloat) -> CGFloat {
         switch c {
@@ -66,7 +68,7 @@ enum PopupLayout {
     }
 
     static func category(for size: CenterSheetSize) -> PopupCategory {
-        size == .tall ? .detail : .medium
+        size.isTall ? .detail : .medium
     }
 }
 

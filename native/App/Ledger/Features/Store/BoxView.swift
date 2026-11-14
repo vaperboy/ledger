@@ -75,7 +75,7 @@ struct BoxView: View {
             if opened == nil, let unseen = session.pendingOpening { opened = OpenedBox(opening: unseen) }
         }
         .confirmAction($pending)
-        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: kind) }
+        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tallBleed) { LootBoxInfoSheet(kind: kind) }
         .centerSheet(item: sheet(batch: false), title: "You opened a box") { (o: OpenedBox) in
             BoxResultCard(opened: o, paidBoxesAllowed: paidAllowed, onShort: { short(for: 1) }, onNew: { opened = $0 }, onRevealed: seen)
         }

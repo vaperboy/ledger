@@ -47,7 +47,7 @@ struct StoreApp: View {
         .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") {
             ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false })
         }
-        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: .cabinet, others: [.grand] + BoxKind.cardPacks) }
+        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tallBleed) { LootBoxInfoSheet(kind: .cabinet, others: [.grand] + BoxKind.cardPacks) }
         .centerSheet(isPresented: $showRedeem, title: "Redeem a code") {
             RedeemCodeCard(startCode: redeemStart,
                            onGift: { (reward: ServerGiftReward) in showRedeem = false; StorePurchase.afterPopup { gift = reward; showGift = true } },
