@@ -226,7 +226,7 @@ public enum PlayMissions {
 
     // MARK: Store
 
-    static let storeKey = "msn"
+    public static let storeKey = "msn"
 
     static func isDone(_ e: JSONValue) -> Bool { e["n"].double > 0 && e["x"].double >= e["n"].double }
 
