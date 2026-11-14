@@ -23,10 +23,10 @@
   "crane": ["crane", "crane_var", "crane_v2"],
   "foodtruck": ["foodtruck", "foodtruck_var", "foodtruck_v2"],
   "van_box": ["van_box", "van_box_var", "van_box_v2"],
-  "ship_s": ["vehicle.ship_s"],
-  "ship_l": ["vehicle.ship_l"],
-  "ferry": ["vehicle.ferry"],
-  "plane_s": ["vehicle.plane_s"]
+  "ship_s": ["ship_s"],
+  "ship_l": ["ship_l"],
+  "ferry": ["ferry"],
+  "plane_s": ["plane_s"]
  },
  "names": {
   "van_box": "Moverra 20",
@@ -84,9 +84,9 @@
   "foodtruck": "Galley Truck",
   "foodtruck_var": "Galley Truck Plus",
   "foodtruck_v2": "Galley Truck Eco",
-  "vehicle.ship_s": "Coaster 4200",
-  "vehicle.ship_l": "Bulker 60",
-  "vehicle.ferry": "Ferry 400",
-  "vehicle.plane_s": "Turboprop 70"
+  "ship_s": "Coaster 4200",
+  "ship_l": "Bulker 60",
+  "ferry": "Ferry 400",
+  "plane_s": "Turboprop 70"
  }
 }

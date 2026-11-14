@@ -341,7 +341,7 @@ final class CosmeticCatalogTests: XCTestCase {
 
     func testPlaceholderSlotsAreOnlyForModelsWithoutAPicture() {
         let placeholders: [String] = VehicleCatalog.allArtKeys.filter { VehicleCatalog.isPlaceholder($0) }
-        XCTAssertEqual(Set(placeholders), ["vehicle.ship_s", "vehicle.ship_l", "vehicle.ferry", "vehicle.plane_s"])
+        XCTAssertEqual(placeholders, [], "every fleet vehicle has a picture")
     }
 
     func testEveryLuxuryCarYachtAndJetHasItsOwnPicture() throws {
