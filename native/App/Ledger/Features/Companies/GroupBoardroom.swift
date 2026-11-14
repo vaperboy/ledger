@@ -262,7 +262,8 @@ struct BoardMeetingScreen: View {
         .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
         .frame(maxWidth: 760).frame(maxWidth: .infinity)
         .ledgerBackground()
-        .appScreen(title: "Board meeting", subtitle: points.isEmpty ? "" : "\(points.count) \(points.count == 1 ? "question" : "questions")", tab: .group)
+        .appScreen(title: "Board meeting", subtitle: points.isEmpty ? "" : "\(points.count) \(points.count == 1 ? "question" : "questions")", tab: .group,
+                    backdrop: store.engine.flatMap { (e: GameEngine) -> SeasonReward? in keys.first.flatMap { (k: String) -> SeasonReward? in LookKit.boardBackdrop(e, k) } })
         .task { await open() }
     }
 

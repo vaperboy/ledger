@@ -79,7 +79,7 @@ struct CompanySupplierRecordPage: View {
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
-            .appScreen(title: "Supplier", subtitle: co.name)
+            .appScreen(title: "Supplier", subtitle: co.name, backdrop: LookKit.companyBackdrop(e, co.id))
         }
     }
 

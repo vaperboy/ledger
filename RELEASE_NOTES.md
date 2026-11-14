@@ -1,4 +1,5 @@
 # What's new
+- Your company's backdrop now shows behind all of its menus (sections, hiring, suppliers, insurance, boards) and a group company's pages, as a still picture under a dark fade so text stays easy to read
 - Cleaner "Invite a friend": pick a face, then one slider each for share and price (tap the number to type, a small mark shows fair value), Partner or CFO, and one summary line above Send offer; all popups keep a safe margin from their edges
 - Inviting a co-owner lists only your real friends
 - New art: outfits, faces, hair styles, backdrops, flairs, store offers, packs and box opening animations

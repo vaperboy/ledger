@@ -350,6 +350,7 @@ struct AppScreen<Trailing: View>: ViewModifier {
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @Environment(\.outsidePalette) private var palette
     @Environment(\.hidesRootBack) private var hidesRootBack
+    @Environment(\.screenBackdropID) private var inheritedBackdrop
     var title: String
     var subtitle: String
     var tab: AppTab
@@ -359,7 +360,10 @@ struct AppScreen<Trailing: View>: ViewModifier {
     @ViewBuilder var trailing: () -> Trailing
 
     func body(content: Content) -> some View {
-        content
+        let look: SeasonReward? = backdrop ?? LookKit.item(inheritedBackdrop)
+        // On the game palette the page itself carries the backdrop, so the header stays see-through over it.
+        let pageFill: Bool = look != nil && palette == .game
+        return content
             .navigationBarBackButtonHidden(true)
             .swipeBackEnabled()
             .toolbar(.hidden, for: .navigationBar)
@@ -371,15 +375,18 @@ struct AppScreen<Trailing: View>: ViewModifier {
                     .frame(maxWidth: .infinity)
                     .background {
                         ZStack {
-                            if palette == .game {
+                            if pageFill {
+                                LinearGradient(colors: [Color.black.opacity(0.2), Color.clear], startPoint: .top, endPoint: .bottom).ignoresSafeArea(edges: [.top, .horizontal])
+                            } else if palette == .game {
                                 LinearGradient(colors: [Theme.page.opacity(0.6), Theme.page.opacity(0.25)], startPoint: .top, endPoint: .bottom).ignoresSafeArea(edges: [.top, .horizontal])
                             } else {
                                 (palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: [.top, .horizontal])
                             }
-                            if let backdrop { HeaderBackdropFill(reward: backdrop).ignoresSafeArea(edges: [.top, .horizontal]) }
+                            if !pageFill, let look { HeaderBackdropFill(reward: look).ignoresSafeArea(edges: [.top, .horizontal]) }
                         }
                     }
             }
+            .environment(\.screenBackdropID, look?.id ?? "")
     }
 }
 

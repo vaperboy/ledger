@@ -23,7 +23,7 @@ struct CompanySectionScreen: View {
             .scrollIndicators(.hidden)
             .scrollBounceBehavior(.basedOnSize)
             .scrollDismissesKeyboard(.interactively)
-            .appScreen(title: section.rawValue, subtitle: co.name)
+            .appScreen(title: section.rawValue, subtitle: co.name, backdrop: LookKit.companyBackdrop(e, co.id))
         } else {
             EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }

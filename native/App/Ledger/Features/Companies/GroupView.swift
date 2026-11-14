@@ -68,8 +68,7 @@ struct GroupEntityScreen: View {
         Group {
             if let e = store.engine, let entity = (GroupEntities.cached(store) ?? GroupEntities.build(e)).first(where: { (g: GroupEntity) -> Bool in g.id == entityID }) {
                 GroupEntityPage(entity: entity, section: $section, onBack: { dismiss() })
-                    .safeAreaInset(edge: .top, spacing: 0) { EntityBreadcrumb(entity: entity, section: section, onGroup: { dismiss() }) }
-            } else {
+                    .safeAreaInset(edge: .top, spacing: 0) { EntityBreadcrumb(entity: entity, section: section, onGroup: { dismiss() }) }            } else {
                 EmptyState(glyph: Glyph.group, title: "This company is no longer in your group")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

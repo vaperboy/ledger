@@ -1,5 +1,6 @@
 import SwiftUI
 import Countries
+import Simulation
 import enum Events.ConfirmRule
 
 struct Card<Content: View>: View {
@@ -237,10 +238,16 @@ extension View {
 
 struct LedgerBackground: ViewModifier {
     @Environment(\.outsidePalette) private var palette
+    @Environment(\.screenBackdropID) private var backdropID
     func body(content: Content) -> some View {
         content
             .ledgerScreen()
-            .background(LedgerBackdrop(palette: palette))
+            .background {
+                ZStack {
+                    LedgerBackdrop(palette: palette)
+                    if palette == .game, let look = LookKit.item(backdropID) { ScreenBackdropFill(reward: look) }
+                }
+            }
             .foregroundStyle(palette.ink)
             .environment(\.colorScheme, palette.isLight ? .light : .dark)
     }
