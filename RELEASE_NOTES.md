@@ -1,4 +1,5 @@
 # What's new
+- Cleaner "Invite a friend": pick a face, then one slider each for share and price (tap the number to type, a small mark shows fair value), Partner or CFO, and one summary line above Send offer; all popups keep a safe margin from their edges
 - Inviting a co-owner lists only your real friends
 - New art: outfits, faces, hair styles, backdrops, flairs, store offers, packs and box opening animations
 - Redeem gift codes at the top of the Store: gold, cosmetics or boxes, with a reward popup

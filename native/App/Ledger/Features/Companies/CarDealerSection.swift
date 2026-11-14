@@ -99,7 +99,7 @@ struct CarDealerSection: View {
         }
         .centerSheet(item: $carSheet, title: "Car", category: .compact, tone: .info) { (c: CarSheetID) in CarPriceSheet(companyID: company.id, carID: c.id).environmentObject(store) }
         .centerSheet(isPresented: $ordering, title: "Order cars", category: .medium, tone: .info) { CarOrderSheet(companyID: company.id).environmentObject(store) }
-        .centerSheet(isPresented: $brandScreen, title: "Brand contract", size: .tall, category: .detail, tone: .investment) { CarBrandScreen(companyID: company.id).environmentObject(store) }
+        .centerSheet(isPresented: $brandScreen, title: "Brand contract", size: .tallBleed, category: .detail, tone: .investment) { CarBrandScreen(companyID: company.id).environmentObject(store) }
     }
 
     private func supplierBlock(_ cur: Currency) -> some View {

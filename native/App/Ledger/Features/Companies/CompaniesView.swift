@@ -23,7 +23,7 @@ struct CompaniesView: View {
                     let rows = healths.sorted(by: order)
                     homeScreen(e, rows: rows)
                     .id(store.rootToken(.company))
-                    .centerSheet(isPresented: $showAll, title: "All companies", size: .tall, category: .detail, tone: .info) {
+                    .centerSheet(isPresented: $showAll, title: "All companies", size: .tallBleed, category: .detail, tone: .info) {
                         AllCompaniesList(engine: e, rows: rows) { (id: Int) in
                             showAll = false
                             store.push(.company(id), on: .company)

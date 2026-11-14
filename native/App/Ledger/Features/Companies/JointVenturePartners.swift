@@ -12,6 +12,7 @@ struct JointVenturePartnersCard: View {
     var company: Company
     @State private var inviteOpen = false
     @State private var meetingsOpen = false
+    @State private var friendsOpen = false
     @State private var buyTarget: BuyTarget?
 
     private struct BuyTarget: Identifiable { var id: String }
@@ -53,10 +54,11 @@ struct JointVenturePartnersCard: View {
                 }
             }
         }
-        .centerSheet(isPresented: $inviteOpen, title: "Invite a friend", size: .tall) {
-            JVInviteSheet(companyID: company.id).environmentObject(store).environment(online)
+        .centerSheet(isPresented: $inviteOpen, title: "Invite a friend", size: .tall, category: .medium) {
+            JVInviteSheet(companyID: company.id, onFindFriends: { friendsOpen = true }).environmentObject(store).environment(online)
         }
         .navigationDestination(isPresented: $meetingsOpen) { JointVentureMeetingsView(companyID: company.id) }
+        .navigationDestination(isPresented: $friendsOpen) { FriendsScreen().environmentObject(store).environment(online) }
         .task { JointVentureCoordinator.shared.attach(online.service); await JointVentureCoordinator.shared.sync(store) }
         .centerSheet(item: $buyTarget, title: "Offer for their shares") { (t: BuyTarget) in JVBuybackSheet(companyID: company.id, memberID: t.id).environmentObject(store) }
     }
@@ -124,17 +126,18 @@ struct JointVenturePartnersCard: View {
 struct JVInviteSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
+    @Environment(\.outsidePalette) private var P
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
+    var onFindFriends: () -> Void = {}
     @State private var friends: [PlayerProfile] = []
     @State private var loaded = false
     @State private var picked: PlayerProfile?
     @State private var pct: Double = 20
     @State private var factor: Double = 1
     @State private var role: String = "Partner"
-    @State private var showTerms = false
     @State private var search = ""
     @State private var pctText = "20"
     @State private var priceText = ""
@@ -142,16 +145,24 @@ struct JVInviteSheet: View {
     @State private var editingPrice = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            if let e = store.engine, let co = e.state.company(companyID) {
-                let cur: Currency = e.currency(for: co)
-                let fair: Double = e.jvFairPrice(companyID: companyID, pct: pct)
-                let price: Double = privatePrice(e, fair: fair)
-                form(e, co, cur, fair: fair, price: price)
-            } else {
-                Text("This company no longer exists.").popupText(.body)
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                if let e = store.engine, let co = e.state.company(companyID) {
+                    let cur: Currency = e.currency(for: co)
+                    let fair: Double = e.jvFairPrice(companyID: companyID, pct: pct)
+                    let price: Double = privatePrice(e, fair: fair)
+                    form(e, cur, fair: fair, price: price)
+                } else {
+                    Text("This company no longer exists.").popupText(.body)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, Theme.Space.l)
         }
+        .scrollIndicators(.hidden)
+        .scrollBounceBehavior(.basedOnSize)
+        .scrollDismissesKeyboard(.interactively)
+        .popupFooter { footer }
         .onChange(of: pct) { _, v in
             if !editingPct { pctText = Self.pctString(v) }
             syncPriceText()
@@ -171,7 +182,11 @@ struct JVInviteSheet: View {
         abs(v - v.rounded()) < 0.05 ? String(Int(saturating: v.rounded())) : String(format: "%.1f", v)
     }
 
-    /// Keeps the price box in step with the slider and the share, unless the player is typing in it.
+    private static func firstName(_ p: PlayerProfile) -> String {
+        p.displayName.split(separator: " ").first.map(String.init) ?? p.displayName
+    }
+
+    /// Keeps the typed price in step with the slider and the share, unless the player is typing it.
     private func syncPriceText() {
         guard !editingPrice, let e = store.engine, let co = e.state.company(companyID) else { return }
         let cur: Currency = e.currency(for: co)
@@ -211,58 +226,55 @@ struct JVInviteSheet: View {
         return min(max((fair * factor).rounded(), (fair * b.lowerBound).rounded(.up)), (fair * b.upperBound).rounded(.down))
     }
 
-    @ViewBuilder private func form(_ e: GameEngine, _ co: Company, _ cur: Currency, fair: Double, price: Double) -> some View {
-        friendPicker
-        if picked != nil {
-            termsCard(e, cur, fair: fair, price: price)
-            Text("Role").capsLabel()
-            SegmentedPill(items: ["Partner", "CFO"], title: { $0 }, selection: $role)
-            summary(friend: picked, pct: pct, price: price, fair: fair, cur: cur)
-            readLine(e, price: price)
+    private var hasFriends: Bool { !loaded || !friends.isEmpty }
+
+    @ViewBuilder private func form(_ e: GameEngine, _ cur: Currency, fair: Double, price: Double) -> some View {
+        if !loaded {
+            ProgressView().tint(P.inkSoft).frame(maxWidth: .infinity, minHeight: 120)
+        } else if friends.isEmpty {
+            Text("Add a friend first, then you can share this company with them.")
+                .popupText(.body).multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 120)
+        } else {
+            JVSheetSection(title: "Who") { friendPicker }
+            shareSection
+            priceSection(e, cur, fair: fair, price: price)
+            JVSheetSection(title: "Role") {
+                SegmentedPill(items: ["Partner", "CFO"], title: { $0 }, selection: $role)
+            }
             if (e.jointVenture(companyID: companyID)?.members.count ?? 1) > 1 {
-                Text("You have partners, so the invitation goes out only if more than half of all shares vote for it at an emergency meeting.").popupText(.risk)
+                Text("Your partners vote on it first.").popupText(.risk)
             }
         }
-        Color.clear.frame(height: 0)
-            .popupFooter {
-                PopupFooter(cancel: "Cancel", action: "Send offer", onCancel: { dismiss() }, onAction: { if let f = picked { send(f) } }, actionEnabled: picked != nil, actionID: "jv-send")
-            }
     }
 
-    /// Step 1: pick the friend from one row of faces, with a search box once the list is long.
+    /// One row of faces; the search box appears only for a long list.
     @ViewBuilder private var friendPicker: some View {
-        Text("Who").capsLabel()
-        if !loaded {
-            ProgressView().tint(Theme.inkSoft)
-        } else if friends.isEmpty {
-            Text("Add friends in the Friends app first. Their profile shows up here.").popupText(.caption)
-        } else {
-            if friends.count > 5 {
-                LedgerField(placeholder: "Search friends", text: $search, keyboard: .default, identifier: "jv-friend-search")
-            }
-            let shown: [PlayerProfile] = friends.filter { (p: PlayerProfile) -> Bool in
-                search.trimmingCharacters(in: .whitespaces).isEmpty || p.displayName.localizedCaseInsensitiveContains(search.trimmingCharacters(in: .whitespaces))
-            }
-            ScrollView(.horizontal) {
-                HStack(spacing: Theme.Space.m) {
-                    ForEach(shown) { (p: PlayerProfile) in friendChip(p) }
-                }
-                .padding(.vertical, Theme.Space.xxs)
-            }
-            .scrollIndicators(.hidden)
+        if friends.count > 8 {
+            LedgerField(placeholder: "Search friends", text: $search, keyboard: .default, identifier: "jv-friend-search")
         }
+        let q: String = search.trimmingCharacters(in: .whitespaces)
+        let shown: [PlayerProfile] = friends.filter { (p: PlayerProfile) -> Bool in q.isEmpty || p.displayName.localizedCaseInsensitiveContains(q) }
+        ScrollView(.horizontal) {
+            HStack(spacing: Theme.Space.s) {
+                ForEach(shown) { (p: PlayerProfile) in friendChip(p) }
+            }
+            .padding(.vertical, Theme.Space.xxs)
+        }
+        .scrollIndicators(.hidden)
     }
 
     private func friendChip(_ p: PlayerProfile) -> some View {
         let on: Bool = picked?.id == p.id
         return Button { Haptics.tap(); picked = p } label: {
-            VStack(spacing: Theme.Space.xxs) {
-                PlayerAvatar(player: p, size: 44)
-                    .overlay(Circle().strokeBorder(on ? Theme.accent : Color.clear, lineWidth: 2).padding(-3))
-                Text(p.displayName.split(separator: " ").first.map(String.init) ?? p.displayName)
-                    .textStyle(.caption, tint: on ? Theme.accent : Theme.inkSoft, weight: on ? .semibold : .regular).lineLimit(1)
+            VStack(spacing: Theme.Space.xs) {
+                PlayerAvatar(player: p, size: 46)
+                    .padding(3)
+                    .overlay(Circle().strokeBorder(on ? P.accent : Color.clear, lineWidth: 2))
+                Text(Self.firstName(p))
+                    .textStyle(.caption, tint: on ? P.accent : P.inkSoft, weight: on ? .semibold : .regular).lineLimit(1)
             }
-            .frame(width: 64, height: 76)
+            .frame(width: 64)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
@@ -270,56 +282,49 @@ struct JVInviteSheet: View {
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    /// Step 2: the share and the price together in one compact card.
-    private func termsCard(_ e: GameEngine, _ cur: Currency, fair: Double, price: Double) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Their share").capsLabel()
-            LedgerField(placeholder: "Share", text: $pctText, suffix: "% of the company", keyboard: .decimalPad, identifier: "jv-pct",
-                        onFocusChange: { (f: Bool) in if f { editingPct = true } else { commitPct() } }, onSubmit: { commitPct() })
+    private var shareSection: some View {
+        JVSheetSection(title: "Share", trailing: {
+            TapToTypeValue(shown: "\(Self.pctString(pct))%", text: $pctText, suffix: "%", identifier: "jv-pct",
+                           onBegin: { pctText = Self.pctString(pct); editingPct = true }, onCommit: { commitPct() })
                 .onChange(of: pctText) { _, _ in if editingPct, let v = typedPct() { pct = v } }
-            LedgerSlider(value: $pct, in: Self.pctRange, step: 1, valueText: "\(Self.pctString(pct))%")
-            Text("Their price").capsLabel()
-            LedgerField(placeholder: "Price", text: $priceText, prefix: cur.country.currencySymbol, keyboard: .decimalPad, identifier: "jv-price",
-                        onFocusChange: { (f: Bool) in if f { editingPrice = true } else { commitPrice(e, cur, fair: fair) } }, onSubmit: { commitPrice(e, cur, fair: fair) })
+        }) {
+            LedgerSlider(value: $pct, in: Self.pctRange, step: 1)
+                .accessibilityLabel("Share")
+                .accessibilityValue("\(Self.pctString(pct))%")
+        }
+    }
+
+    private func priceSection(_ e: GameEngine, _ cur: Currency, fair: Double, price: Double) -> some View {
+        let b: ClosedRange<Double> = band(e)
+        return JVSheetSection(title: "Price", trailing: {
+            TapToTypeValue(shown: cur.tidyDisplay(price), text: $priceText, prefix: cur.country.currencySymbol, identifier: "jv-price",
+                           onBegin: { editingPrice = true }, onCommit: { commitPrice(e, cur, fair: fair) })
                 .onChange(of: priceText) { _, _ in
                     if editingPrice, fair > 0, let v = typedPrice(e, cur, fair: fair) { factor = v / fair }
                 }
-            LedgerSlider(value: $factor, in: band(e), step: 0.05, valueText: cur.tidyDisplay(price))
-            Text("Fair value \(cur.tidyDisplay(fair)). Allowed \(cur.tidyDisplay((fair * band(e).lowerBound).rounded(.up))) to \(cur.tidyDisplay((fair * band(e).upperBound).rounded(.down))). Shares \(Int(Self.pctRange.lowerBound))% to \(Int(Self.pctRange.upperBound))%.")
-                .popupText(.caption)
+        }) {
+            LedgerSlider(value: $factor, in: b, step: 0.05)
+                .overlay { FairTick(range: b) }
+                .accessibilityLabel("Price")
+                .accessibilityValue(cur.tidyDisplay(price))
         }
     }
 
-    private func summary(friend: PlayerProfile?, pct: Double, price: Double, fair: Double, cur: Currency) -> some View {
-        let who: String = friend?.displayName ?? "Your friend"
-        let diff: Double = fair > 0 ? (price / fair - 1) * 100 : 0
-        let note: String = abs(diff) < 0.5 ? "the fair value" : (diff < 0 ? "\(Int(abs(diff).rounded()))% under the fair value, which dilutes you" : "\(Int(saturating: diff.rounded()))% over the fair value")
-        return VStack(alignment: .leading, spacing: 2) {
-            Text("\(who) gets \(Self.pctString(pct))% for \(cur.tidyDisplay(price))").popupText(.rowLabel)
-            Text("That is \(note). They accept or decline.").popupText(.caption)
-        }
+    private var summaryLine: String {
+        guard let e = store.engine, let f = picked, let co = e.state.company(companyID) else { return "Pick a friend" }
+        let fair: Double = e.jvFairPrice(companyID: companyID, pct: pct)
+        return "\(Self.firstName(f)) gets \(Self.pctString(pct))% for \(e.currency(for: co).tidyDisplay(privatePrice(e, fair: fair)))"
     }
 
-    /// What the friend will read before answering, folded into one line.
-    @ViewBuilder private func readLine(_ e: GameEngine, price: Double) -> some View {
-        if let terms = e.jvTerms(companyID: companyID, pct: pct, price: price) {
-            Button { Haptics.tap(); showTerms.toggle() } label: {
-                HStack {
-                    Text("What they will read").textStyle(.caption, tint: Theme.accent, weight: .semibold)
-                    Spacer(minLength: 8)
-                    Image(systemName: showTerms ? "chevron.up" : "chevron.down").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkFaint)
-                }
-                .frame(minHeight: 36).contentShape(Rectangle())
-            }
-            .buttonStyle(PressableStyle())
-            if showTerms {
-                ForEach(Array(terms.lines.enumerated()), id: \.offset) { pair in
-                    HStack(alignment: .top, spacing: 8) {
-                        Circle().fill(Theme.accent).frame(width: 5, height: 5).padding(.top, 7)
-                        Text(pair.element).popupText(.caption)
-                    }
-                }
-            }
+    @ViewBuilder private var footer: some View {
+        if hasFriends {
+            Text(summaryLine)
+                .textStyle(.body, tint: picked == nil ? P.inkSoft : P.ink, numeric: true, weight: .medium)
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity)
+            PopupFooter(cancel: "Cancel", action: "Send offer", onCancel: { dismiss() }, onAction: { if let f = picked { send(f) } }, actionEnabled: picked != nil, actionID: "jv-send")
+        } else {
+            PopupFooter(cancel: "Cancel", action: "Find friends", onCancel: { dismiss() }, onAction: { dismiss(); onFindFriends() }, actionID: "jv-find-friends")
         }
     }
 
@@ -405,5 +410,115 @@ struct JVBuybackSheet: View {
         dismiss()
         store.tell("Offer sent", "\(name) has your offer. Nothing moves until they accept; they may also decline.", tone: "good")
         Task { @MainActor in await JointVentureCoordinator.shared.sync(store) }
+    }
+}
+
+/// A rounded inner section with a small caps label; `trailing` holds the section's one value.
+private struct JVSheetSection<Trailing: View, Content: View>: View {
+    @Environment(\.outsidePalette) private var P
+    var title: String
+    @ViewBuilder var trailing: () -> Trailing
+    @ViewBuilder var content: () -> Content
+
+    init(title: String, @ViewBuilder trailing: @escaping () -> Trailing, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.trailing = trailing
+        self.content = content
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .center) {
+                Text(title).capsLabel()
+                Spacer(minLength: Theme.Space.s)
+                trailing()
+            }
+            .frame(minHeight: 28)
+            content()
+        }
+        .padding(.horizontal, Theme.Space.l)
+        .padding(.vertical, Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: PopupRadius.inner, style: .continuous).fill(P.inset))
+    }
+}
+
+extension JVSheetSection where Trailing == EmptyView {
+    init(title: String, @ViewBuilder content: @escaping () -> Content) {
+        self.init(title: title, trailing: { EmptyView() }, content: content)
+    }
+}
+
+/// A value shown once; tapping it turns it into a number field, and leaving the field commits it.
+private struct TapToTypeValue: View {
+    @Environment(\.outsidePalette) private var P
+    var shown: String
+    @Binding var text: String
+    var prefix: String? = nil
+    var suffix: String? = nil
+    var identifier: String
+    var onBegin: () -> Void
+    var onCommit: () -> Void
+    @State private var typing = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        Group {
+            if typing {
+                HStack(spacing: Theme.Space.xs) {
+                    if let prefix { Text(prefix).textStyle(.headline, tint: P.inkSoft) }
+                    TextField("", text: $text)
+                        .keyboardType(.decimalPad)
+                        .focused($focused)
+                        .multilineTextAlignment(.trailing)
+                        .textStyle(.headline, numeric: true)
+                        .frame(minWidth: 48, maxWidth: 140)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .accessibilityIdentifier(identifier)
+                        .onAppear { DispatchQueue.main.async { focused = true } }
+                    if let suffix { Text(suffix).textStyle(.headline, tint: P.inkSoft) }
+                }
+                .padding(.horizontal, Theme.Space.m)
+                .frame(minHeight: 36)
+                .background(Capsule().fill(P.page))
+                .overlay(Capsule().strokeBorder(P.focus, lineWidth: 1))
+            } else {
+                Button { Haptics.tap(); onBegin(); typing = true } label: {
+                    Text(shown)
+                        .textStyle(.headline, numeric: true)
+                        .padding(.horizontal, Theme.Space.m)
+                        .frame(minHeight: 36)
+                        .background(Capsule().fill(P.page))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier(identifier)
+                .accessibilityHint("Double tap to type a value")
+            }
+        }
+        .onChange(of: focused) { _, f in
+            if !f && typing { typing = false; onCommit() }
+        }
+    }
+}
+
+/// A small mark under a LedgerSlider's track where the fair value (factor 1) sits.
+private struct FairTick: View {
+    @Environment(\.outsidePalette) private var P
+    var range: ClosedRange<Double>
+
+    var body: some View {
+        let span: Double = range.upperBound - range.lowerBound
+        if span > 0, range.contains(1) {
+            let f: CGFloat = CGFloat((1 - range.lowerBound) / span)
+            GeometryReader { (g: GeometryProxy) in
+                let thumb: CGFloat = 22
+                Capsule().fill(P.inkSoft)
+                    .frame(width: 2, height: 7)
+                    .position(x: thumb / 2 + max(1, g.size.width - thumb) * f, y: g.size.height / 2 + 15)
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
     }
 }
