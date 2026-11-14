@@ -31,20 +31,53 @@ final class ScreenShotsTests: FeatureTourCase {
 
     override func setUp() {
         continueAfterFailure = true
-        testDeadline = Date().addingTimeInterval(13 * 60)
         winCache = .zero
         smallTargets = [:]
         tappedTargets = []
         app = XCUIApplication()
         let fresh: Bool = name.contains("FirstLaunch")
+        let test: String = name.components(separatedBy: " test").last.map { (t: String) -> String in String(t.prefix(1)) } ?? "X"
+        testDeadline = Date().addingTimeInterval(13 * 60)
         if fresh && !Self.firstRunAllowed { return }
         app.launchArguments = fresh ? [] : Self.showcaseArguments
+        let began: Date = Date()
         app.launch()
-        if !fresh && !reachHome() { stopped = "Home did not show within 45 s of launch" }
+        let launched: Int = Int(Date().timeIntervalSince(began))
+        if !fresh {
+            // The showcase game is simulated at launch, which is slow in a debug build.
+            let home: Bool = reachHome(Self.launchWait)
+            let took: Int = Int(Date().timeIntervalSince(began))
+            let result: String = home ? "shown" : "not shown"
+            remark("launch-" + test, "launch call \(launched) s, Home \(result) after \(took) s")
+            if !home {
+                stopped = "Home did not show within \(Int(Self.launchWait)) s of launch"
+                keep(test + "00-launch-stuck")
+                remark("stuck-" + test, launchDiag())
+            }
+        }
+        // The time cap counts the screens, not the launch.
+        testDeadline = Date().addingTimeInterval(13 * 60)
     }
 
-    private func reachHome() -> Bool {
-        let end: Date = Date().addingTimeInterval(45)
+    static let launchWait: TimeInterval = 300
+
+    func remark(_ label: String, _ text: String) {
+        let a: XCTAttachment = XCTAttachment(string: text)
+        a.name = "NOTE-" + label
+        a.lifetime = .keepAlways
+        add(a)
+    }
+
+    // What is on the screen when Home never came up: the app state and the first named elements.
+    private func launchDiag() -> String {
+        let hs: [Hit] = hits()
+        let named: [Hit] = hs.filter { (h: Hit) -> Bool in h.type == .button || !h.id.isEmpty }
+        let list: [String] = named.prefix(70).map { (h: Hit) -> String in h.id + "|" + String(h.label.prefix(28)) }
+        return "state \(app.state.rawValue), \(hs.count) elements, popup \(popupUp()): " + list.joined(separator: ", ")
+    }
+
+    private func reachHome(_ limit: TimeInterval) -> Bool {
+        let end: Date = Date().addingTimeInterval(limit)
         var home = false
         while Date() < end && !home {
             let later: XCUIElement = app.buttons["ambition-later"].firstMatch
@@ -129,6 +162,20 @@ final class ScreenShotsTests: FeatureTourCase {
         act { if shown { dragPage(420) } }
     }
 
+    // A long page, one numbered shot per drag, then back to its top.
+    func scrolled(_ name: String, on: Bool, why: String, pages: Int, step: CGFloat = 540) {
+        var moved = 0
+        for i in 0..<pages {
+            let shown: Bool = screen(name + "-" + String(i + 2)) {
+                guard on else { return why }
+                dragPage(-step)
+                return nil
+            }
+            if shown { moved += 1 }
+        }
+        act { for _ in 0..<moved { dragPage(step) } }
+    }
+
     func skipCoach() {
         let q: XCUIElementQuery = app.buttons.matching(NSPredicate(format: "identifier IN %@", Self.coachIDs))
         var n = 0
@@ -158,10 +205,10 @@ final class ScreenShotsTests: FeatureTourCase {
     }
 
     // Taps what the predicate finds, scrolling the page down a few times when it is below the fold.
-    func seek(wait: TimeInterval = 2, _ pred: (Hit) -> Bool) -> Bool {
+    func seek(wait: TimeInterval = 2, drags: Int = 4, _ pred: (Hit) -> Bool) -> Bool {
         if tapWhere(wait: wait, pred) { return true }
         var moved = 0
-        while moved < 4 {
+        while moved < drags {
             dragPage(-360)
             moved += 1
             if tapWhere(wait: 0.2, pred) { return true }
@@ -170,7 +217,10 @@ final class ScreenShotsTests: FeatureTourCase {
         return false
     }
 
-    func seekID(_ id: String) -> Bool { seek { (h: Hit) -> Bool in h.id == id } }
+    func seekID(_ id: String, drags: Int = 4) -> Bool { seek(drags: drags) { (h: Hit) -> Bool in h.id == id } }
+
+    // The Store from its top: leaving the tab and coming back rebuilds the page.
+    func storeTop() -> Bool { goTab("Home") && goTab("Store") }
     func seekPrefix(_ prefix: String) -> Bool { seek { (h: Hit) -> Bool in h.type == .button && h.id.hasPrefix(prefix) } }
     func seekEnabled(_ id: String) -> Bool { seek { (h: Hit) -> Bool in h.type == .button && h.enabled && h.id == id } }
     func seekLabel(_ label: String) -> Bool { seek { (h: Hit) -> Bool in h.type == .button && h.label == label } }
@@ -299,13 +349,28 @@ final class ScreenShotsTests: FeatureTourCase {
         act {
             if has("start-continue") { stopped = "a saved game is on this simulator and is not replaced, so the new-game walk is left out" }
         }
-        screen("setup-1-country") {
+        var avatar = false
+        screen("setup-0-avatar") {
             guard tapID("start-new") else { return "no start-new button" }
+            avatar = has("avatar-continue", wait: 8)
+            return ok(avatar, "no avatar step: a look was already saved on this simulator")
+        }
+        for part in ["skin", "hair", "outfit"] {
+            screen("setup-0-avatar-" + part) { when(avatar, off: "the avatar step did not open", "no avatar-part-\(part) segment") { tapID("avatar-part-" + part, wait: 2) } }
+        }
+        // The country rows sit under the avatar step, so they count only once it has closed.
+        screen("setup-1-country") {
+            if avatar {
+                guard tapEnabled("avatar-continue", wait: 3) else { return "Continue stayed disabled on the avatar step" }
+                var waits = 0
+                while waits < 10 && has("avatar-continue") { pause(0.5); waits += 1 }
+                if has("avatar-continue") { return "the avatar step did not close" }
+            }
             return ok(buttonUp(prefix: "country-", wait: 8), "the country step did not open")
         }
         screen("setup-2-trade") {
             guard tapPrefix("country-", wait: 2) else { return "no country row" }
-            return ok(buttonUp(prefix: "trade-", wait: 25), "no trade rows loaded")
+            return ok(buttonUp(prefix: "trade-", wait: 40), "no trade rows loaded")
         }
         screen("setup-3-trade-detail") {
             let picked: Bool = has("trade-cafe") ? tapID("trade-cafe") : tapPrefix("trade-", wait: 2)
@@ -469,17 +534,23 @@ final class ScreenShotsTests: FeatureTourCase {
         companyTab("company-stats", "stats")
         lower("company-stats-lower", on: companyOpen, why: "the company page did not open")
         screen("company-stats-customers") { inCompany("no stats-part-customers segment") { seekID("stats-part-customers") } }
+        popup("company-invite") {
+            inCompany("no jv-invite button on the overview of this company") {
+                tapInStrip("company-tab-overview", stripPrefix: "company-tab-") && seekID("jv-invite")
+            }
+        }
         var look = false
-        screen("company-customise-card") {
+        screen("company-customise") {
             guard companyOpen else { return "the company page did not open" }
-            look = tapID("company-customise") && has("company-look-card", wait: 4)
+            look = seekID("company-customise") && buttonUp(prefix: "company-look-", wait: 4)
             return ok(look, "no company-customise button, or its page did not open")
         }
-        for part in ["backdrop", "colours", "badge", "logo", "plate"] {
+        for part in ["name", "logo", "banner"] {
             screen("company-customise-" + part) {
                 when(look, off: "the company customise page did not open", "no company-look-\(part) segment") { tapInStrip("company-look-" + part, stripPrefix: "company-look-") }
             }
         }
+        act { if look { _ = tapBack() } }
         screen("second-company-overview") {
             companyOpen = openCompanyRow(1)
             return ok(companyOpen, "no second company row on Home")

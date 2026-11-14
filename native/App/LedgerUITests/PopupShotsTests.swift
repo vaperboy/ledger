@@ -173,15 +173,6 @@ final class PopupShotsTests: CompanyBatchTourCase {
     }
 
     func testCompanyPopups() {
-        site("acquisition") {
-            guard openPhoneApp("Competition") else { return false }
-            let r = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'competition-rival-co'")).firstMatch
-            guard r.waitForExistence(timeout: 4) else { return false }
-            r.tap(); sleep(1)
-            guard tapID("rival-make-offer", wait: 2) else { return false }
-            popup("acquisition"); closeAny(); return true
-        }
-        goBackToHome()
         site("sales-item") {
             guard openFirstCompany(), tapID("company-tab-sales") else { return false }
             guard tapContaining("vs market") || tapContaining("At market") else { return false }

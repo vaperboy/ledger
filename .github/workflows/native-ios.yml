@@ -279,6 +279,7 @@ jobs:
           PY
           echo "screens: $(ls "$OUT" | grep -ciE '\.(png|jpe?g|heic)$' || true), skipped: $(ls "$OUT" | grep -c '^SKIPPED-' || true)"
           cat "$OUT"/SKIPPED-*.txt 2>/dev/null | head -n 200 || true
+          for f in "$OUT"/NOTE-*.txt; do [ -f "$f" ] && echo "screens: note $(basename "$f" .txt): $(head -c 3000 "$f")"; done || true
       - name: Upload the screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -294,7 +295,7 @@ jobs:
             [ -f "$f" ] || continue
             sips -Z 1100 -s format jpeg -s formatOptions 60 "$f" --out "$RUNNER_TEMP/small/$(basename "${f%.*}").jpg" >/dev/null 2>&1 || true
           done
-          cp screens/SKIPPED-*.txt "$RUNNER_TEMP/small/" 2>/dev/null || true
+          cp screens/SKIPPED-*.txt screens/NOTE-*.txt "$RUNNER_TEMP/small/" 2>/dev/null || true
           cd "$RUNNER_TEMP/small"
           git init -q -b screens
           git config user.name "ledger-ci"

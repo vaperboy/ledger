@@ -72,13 +72,27 @@ extension ScreenShotsTests {
     func testG_StoreSeasonAndLootBox() {
         letter = "G"
         act { playOneDay() }
-        screen("app-store") {
+        screen("store-1-top") {
             appOpen = goTab("Store")
             return ok(appOpen, "no Store tab")
         }
-        lower("app-store-lower", on: appOpen, why: "the Store did not open")
-        screen("store-plans") { ok(has("plan-plus", wait: 4), "the plans are not in the Store") }
-        act { clearPopups() }
+        scrolled("store", on: appOpen, why: "the Store did not open", pages: 8)
+        popup("store-redeem-code") {
+            guard storeTop() else { return "no Store tab" }
+            return ok(seekID("store-redeem", drags: 14), "no gift code row")
+        }
+        popup("store-odds") {
+            guard storeTop() else { return "no Store tab" }
+            return ok(seekID("box-info", drags: 14), "no odds button")
+        }
+        popup("store-buy-confirm") {
+            guard storeTop() else { return "no Store tab" }
+            return ok(seek(drags: 14) { (h: Hit) -> Bool in h.type == .button && h.enabled && h.id.hasPrefix("shelf-") }, "no shelf item left to buy")
+        }
+        page("store-save-slots") {
+            guard storeTop() else { return "no Store tab" }
+            return ok(seekID("store-shelf", drags: 14), "no save slots link")
+        }
         var season = false
         screen("app-goals") {
             _ = openApp("Goals")
@@ -102,8 +116,8 @@ extension ScreenShotsTests {
         act { clearPopups() }
         var box = false
         screen("loot-box") {
-            guard openApp("Store") == nil else { return "the Store did not open" }
-            guard seekText("Open it") || seekPrefix("store-box-") else { return "no box in stock and no paid boxes offered here" }
+            guard storeTop() else { return "the Store did not open" }
+            guard seek(drags: 14, { (h: Hit) -> Bool in h.type == .button && h.id.hasPrefix("store-box-") }) else { return "no box in stock and no paid boxes offered here" }
             box = has("box-open", wait: 4)
             return ok(box, "the box page did not open")
         }
@@ -135,27 +149,38 @@ extension ScreenShotsTests {
         screen("loot-box-not-enough-gold") { ok(outcome == "short", "not shown: gold was enough, or no box could be tried") }
         act { clearPopups(4) }
         page("store-collection") {
-            guard openApp("Store") == nil else { return "the Store did not open" }
-            return ok(seekText("Artifacts and cards"), "no Artifacts and cards row")
-        }
-        page("store-cosmetics") {
-            guard openApp("Store") == nil else { return "the Store did not open" }
-            return ok(seekText("TODAY'S SHELF"), "no shelf band")
+            guard storeTop() else { return "the Store did not open" }
+            return ok(seek(drags: 14, { (h: Hit) -> Bool in (h.type == .button || h.type == .cell) && h.label.localizedCaseInsensitiveContains("Artifacts and cards") }), "no Artifacts and cards row")
         }
     }
 
     func testH_PlayerCustomise() {
         letter = "H"
         var custom = false
-        screen("customise-icon") {
+        screen("customise-card") {
             guard openApp("Profile") == nil else { return "the Profile app did not open" }
-            custom = seekID("profile-customise") && has("customise-part-icon", wait: 4)
+            custom = seekID("profile-customise") && buttonUp(prefix: "customise-part-", wait: 4)
             return ok(custom, "no profile-customise button, or its page did not open")
         }
-        for part in ["card", "plate", "backdrop", "theme", "flair", "colour", "badge", "showcase"] {
+        var character = false
+        screen("customise-character") {
+            guard custom else { return "the customise page did not open" }
+            character = tapInStrip("customise-part-character", stripPrefix: "customise-part-") && buttonUp(prefix: "customise-look-", wait: 3)
+            return ok(character, "no customise-part-character tile, or it has no look tabs")
+        }
+        for look in ["skin", "hair", "outfit"] {
+            screen("customise-character-" + look) {
+                when(character, off: "the character part did not open", "no customise-look-\(look) segment") { tapInStrip("customise-look-" + look, stripPrefix: "customise-look-") }
+            }
+        }
+        for part in ["backdrop", "flair"] {
             screen("customise-" + part) {
                 when(custom, off: "the customise page did not open", "no customise-part-\(part) chip") { tapInStrip("customise-part-" + part, stripPrefix: "customise-part-") }
             }
+        }
+        page("profile-friends") {
+            guard openApp("Profile") == nil else { return "the Profile app did not open" }
+            return ok(seekID("profile-add-friend"), "no profile-add-friend link")
         }
     }
 }
