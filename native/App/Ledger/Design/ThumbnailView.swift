@@ -71,10 +71,26 @@ struct ThumbnailView: View {
 
     private var facePicture: CGImage? { kind == .person ? FaceSheet.image(face) : nil }
 
+    /// Uniform id in a face text such as "w12.uchef"; empty when the person wears their own clothes.
+    private var uniformID: String {
+        guard let face else { return "" }
+        for part in face.split(separator: ".").dropFirst() where part.hasPrefix("u") && part.count > 1 { return String(part.dropFirst()) }
+        return ""
+    }
+
+    /// The trade's work clothes, a transparent layer over the lower part of the portrait; nothing until the art file exists.
+    @ViewBuilder private var uniformLayer: some View {
+        #if canImport(UIKit)
+        if !uniformID.isEmpty, let ui = ArtLibrary.droppedImage("uniform." + uniformID) {
+            Image(uiImage: ui).resizable().interpolation(.high).aspectRatio(1, contentMode: .fill).frame(width: size, height: size).clipped().allowsHitTesting(false)
+        }
+        #endif
+    }
+
     @ViewBuilder private var slot: some View {
         if let cg = facePicture {
             let image = Image(decorative: cg, scale: 1).resizable().interpolation(.high).aspectRatio(1, contentMode: .fill).frame(width: size, height: size).clipped()
-            image.clipShape(Circle()).overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+            image.overlay(uniformLayer).clipShape(Circle()).overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
         } else {
             artSlot
         }

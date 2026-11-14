@@ -46,7 +46,7 @@ struct CountedFigure: View {
 
     private func count(to target: Double, instant now: Bool) async {
         let from: Double = shown
-        if reduceMotion || now || abs(from - target) < 0.0001 { shown = target; return }
+        if Motion.still(reduceMotion) || now || abs(from - target) < 0.0001 { shown = target; return }
         if delay > 0 && from == 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
         let start: Date = Date()
         while !Task.isCancelled {

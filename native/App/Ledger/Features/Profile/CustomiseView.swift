@@ -80,7 +80,7 @@ struct CustomiseView: View {
             ScrollView {
                 VStack(spacing: Theme.Space.m) {
                     if let e = store.engine {
-                        PlayerCard(data: PlayerCardData.mine(e, store: store, trial: trial, trialLook: trialLook), onPart: { (c: CardPart) in
+                        PlayerCard(data: PlayerCardData.mine(e, store: store, trial: trial, trialLook: trialLook, badges: ProfileBadge.ids(isAdmin: online.isAdmin, isBeta: online.isBetaTester)), onPart: { (c: CardPart) in
                             choosePart(Part(card: c))
                             withAnimation { proxy.scrollTo("customise-chips", anchor: .center) }
                         })

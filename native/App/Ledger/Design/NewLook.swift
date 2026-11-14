@@ -6,7 +6,7 @@ struct LedgerIcon: Shape {
     var svg: String
 
     func path(in rect: CGRect) -> Path {
-        let raw: Path = SVGPathData.parse(svg)
+        let raw: Path = SVGPathData.cached(svg)
         let side: CGFloat = min(rect.width, rect.height)
         let scale: CGFloat = side / 24
         let dx: CGFloat = rect.minX + (rect.width - side) / 2
@@ -67,6 +67,22 @@ enum Glyph {
 }
 
 enum SVGPathData {
+    private static let lock = NSLock()
+    private static var parsed: [String: Path] = [:]
+
+    /// Glyph paths are parsed once per string; icons redraw often and parsing allocates.
+    static func cached(_ d: String) -> Path {
+        lock.lock()
+        let hit: Path? = parsed[d]
+        lock.unlock()
+        if let hit { return hit }
+        let p: Path = parse(d)
+        lock.lock()
+        parsed[d] = p
+        lock.unlock()
+        return p
+    }
+
     static func parse(_ d: String) -> Path {
         let toks: [String] = tokens(d)
         var path = Path()
@@ -658,14 +674,9 @@ struct PillTabBar: View {
     @State private var flashing: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Namespace private var pillSpace
     static let height: CGFloat = 66 + 8
 
     var body: some View {
-        GlassGroup { bar }
-    }
-
-    private var bar: some View {
         HStack(spacing: 0) {
             ForEach(items) { item in
                 let on = item.id == selection
@@ -678,9 +689,6 @@ struct PillTabBar: View {
                         LedgerGlyph(glyph: item.locked ? Glyph.lock : item.glyph, size: Theme.Icon.medium, tint: on ? item.accent : Theme.inkSoft)
                         Text(item.title).font(.system(size: 11, weight: on ? .medium : .regular)).foregroundStyle(on ? item.accent : Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
                     }
-                    .id(item.glyph + item.title)
-                    .transition(.opacity)
-                    .animation(Motion.quickAnimation, value: item.title)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background(selectedPill(on, accent: item.accent))
@@ -698,8 +706,7 @@ struct PillTabBar: View {
                         longPressed = nil
                     }
                 }, including: item.changeable ? .all : .subviews)
-                .animation(reduceMotion ? nil : Motion.moveAnimation, value: on)
-                .coachAnchor(.customTab, enabled: item.id == AppTab.custom.rawValue)
+                .coachAnchor(item.id == AppTab.custom.rawValue ? CoachStop.customTab : CoachStop.tabItem(item.id))
                 .accessibilityLabel(item.title)
                 .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
                 .accessibilityValue(item.locked ? "Locked" : (item.badge > 0 ? "\(item.badge) waiting" : ""))
@@ -710,24 +717,12 @@ struct PillTabBar: View {
         .padding(.horizontal, 6)
         .frame(height: PillTabBar.height - 8)
         .glassCapsule()
-        .elevation(.raised)
         .padding(.horizontal, Theme.Space.l).padding(.bottom, Theme.Space.s)
     }
 
     @ViewBuilder private func selectedPill(_ on: Bool, accent: Color) -> some View {
         if on {
-            Group {
-                #if compiler(>=6.2)
-                if #available(iOS 26.0, *), !reduceTransparency {
-                    Capsule().fill(Color.clear).liquidGlassCapsule(tint: accent, interactive: true)
-                } else {
-                    Capsule().fill(accent.opacity(0.14)).overlay(Capsule().strokeBorder(accent.opacity(reduceTransparency ? 0.7 : 0.35), lineWidth: 1))
-                }
-                #else
-                Capsule().fill(accent.opacity(0.14)).overlay(Capsule().strokeBorder(accent.opacity(reduceTransparency ? 0.7 : 0.35), lineWidth: 1))
-                #endif
-            }
-            .matchedGeometryEffect(id: "tab-pill", in: pillSpace)
+            Capsule().fill(accent.opacity(0.14)).overlay(Capsule().strokeBorder(accent.opacity(reduceTransparency ? 0.7 : 0.35), lineWidth: 1))
         } else {
             Color.clear
         }

@@ -199,19 +199,20 @@ struct CompanyOwnershipSection: View {
                     Spacer(minLength: 8)
                     Text(headline).textStyle(.body, tint: Theme.ink, numeric: true, weight: .medium)
                 }
-                WrapRow {
-                    QuietButton(title: "Accept") {
+                DecisionChoices(labels: o.countered ? ["Accept", "Decline"] : ["Accept", "Decline", "Counter"], compact: true, pick: { (i: Int) in
+                    switch i {
+                    case 0:
                         pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(saturating: o.pct.rounded()))%?", message: DealText.describe(engine.fundingOfferTerms(companyID: id, offerIndex: o.id), cur, companyName: company.name) + "\nThis cannot be undone.", button: "Accept", destructive: true) {
                             let ok = store.act { $0.acceptFundingOffer(companyID: id, index: o.id) } ?? false
                             if !ok { Haptics.warning() } else { Haptics.success() }
                             store.show(ok ? "\(cur.tidyShort(o.amount)) is in your account; \(o.name) now owns \(Int(saturating: o.pct.rounded()))%." : "The offer has gone.", tone: ok ? "good" : "warn")
                         }
+                    case 1:
+                        _ = store.settle(store.act { $0.declineFundingOffer(companyID: id, index: o.id) }, "Declined.", same: "That offer had already gone.")
+                    default:
+                        _ = store.settle(store.act { $0.counterFundingOffer(companyID: id, index: o.id) }, "Counter sent. Their answer replaces the offer.", same: "That offer has gone or was already countered.")
                     }
-                    if !o.countered {
-                        QuietButton(title: "Counter", tint: Theme.ivoryMuted) { store.settle(store.act { $0.counterFundingOffer(companyID: id, index: o.id) }, "Counter sent. Their answer replaces the offer.", same: "That offer has gone or was already countered.") }
-                    }
-                    QuietButton(title: "Decline", tint: Theme.loss) { store.settle(store.act { $0.declineFundingOffer(companyID: id, index: o.id) }, "Declined.", same: "That offer had already gone.") }
-                }
+                })
             }
         }
     }

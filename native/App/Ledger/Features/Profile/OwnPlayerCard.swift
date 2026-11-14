@@ -7,7 +7,7 @@ import Simulation
 
 extension PlayerCardData {
     /// Your own card. `trial` holds items being tried on (kind to item id, empty id for none) and `trialLook` an avatar look being tried.
-    @MainActor static func mine(_ e: GameEngine, store: GameStore, trial: [String: String] = [:], trialLook: AvatarLook? = nil) -> PlayerCardData {
+    @MainActor static func mine(_ e: GameEngine, store: GameStore, trial: [String: String] = [:], trialLook: AvatarLook? = nil, badges: [String] = []) -> PlayerCardData {
         let local: ProfileLocal = ProfileLocal.shared
         let cabinet: Cabinet = StoreSession.shared.state.cabinet
         var worn: [String: String] = SeasonModel.shared.pass.equipped
@@ -25,6 +25,7 @@ extension PlayerCardData {
                                         PlayerCardFigure(title: "Companies", value: "\(live)"),
                                         PlayerCardFigure(title: "Weeks played", value: "\(e.state.week)")],
                               hallOfFame: e.inHallOfFame,
+                              exclusiveBadges: badges,
                               supporter: StoreSession.shared.isSupporter)
     }
 }

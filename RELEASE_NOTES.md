@@ -1,5 +1,9 @@
 # What's new
+- Battle pass grows to 50 tiers with more costumes, Season 3 "Riviera Summer" starts on its own by date, 38 new store cosmetics, Creator and Beta tester badges, work uniforms per trade, and animated legendary items
+- Smoother app: lighter visuals with no live blur or heavy shadows, only the open tab is drawn, no animations in Low Power Mode, swipe between sub-tabs, and Market overview and Companies in one screen
+- Decisions: No on the left, Yes on the right, a small Later below; outcomes are told as what happened, with a single cost line only for big choices
 - Daily missions: 4 easy and 1 hard each day (plus weekly and monthly sets) picked from hundreds of missions, rewards that match the effort, and a Claim button on Home
+- Smoother first-company guide: it never covers the screen, it notices every way you do a step, and if you wait 5 seconds it points at what to tap; stock, upkeep and servicing suppliers are now picked for you when a company opens (change them any time on the supplier screen), so the guide no longer asks for one and a new product goes straight to its price
 - First-company guide fixes: Done on the price screen always saves the price and moves the guide on, keeping the supplier in use counts as choosing one, looking at a supplier's owner brings you back to the supplier list, small sales show as decimals instead of 0, and the guide ends after the Inbox when no reward is ready
 - Fairer economy: auction prices follow real value, equipment loans are repaid when you sell, net worth counts company debt, bankruptcy can no longer hide money, startup stakes are realistic, and ignored decisions do nothing
 - Sign in with Apple, sign back into your account on a new phone, and account deletion that settles your deals first

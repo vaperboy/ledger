@@ -49,6 +49,11 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
     public var art: String = ""
     /// How a name plate is drawn (ribbon, chalkboard, wood, ...). Empty when the file gives none.
     public var style: String = ""
+    /// Legendary items have a short looping clip (`anim` slot, shown large) besides the still.
+    public var animated: Bool = false
+    /// neon (flashy colour) or cool (subtle shimmer); only describes the clip.
+    public var animStyle: String = ""
+    public var anim: String = ""
 }
 
 public enum SeasonRewards {
@@ -76,6 +81,9 @@ public enum SeasonRewards {
         r.accountBound = e["bound"].bool
         r.art = e["art"].string
         r.style = e["style"].string
+        r.animated = e["animated"].bool
+        r.animStyle = e["animStyle"].string
+        r.anim = e["anim"].string
         if r.kind == .profileCard || r.kind == .companyCard || r.kind == .artifact {
             r.rarity = CardCatalog.def(r.id)?.rarity ?? ArtifactCatalog.defs.first(where: { (d: ArtifactDef) -> Bool in d.id == r.id })?.rarity
         } else if !e["rarity"].isNull {

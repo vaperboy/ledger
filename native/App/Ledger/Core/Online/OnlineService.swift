@@ -163,6 +163,8 @@ struct AccountStatus: Codable, Equatable, Sendable {
     var linkRewardGold: Int
     var linkRewardClaimed: Bool
     var fakePlayersRemoved: Bool? = nil
+    /// True for an account that redeemed a beta key; absent until the server sends it.
+    var isBetaTester: Bool? = nil
 }
 
 struct LinkRewardResult: Codable, Equatable, Sendable {

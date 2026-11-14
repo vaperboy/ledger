@@ -41,7 +41,7 @@ struct ProfileView: View {
         let rank: String = e.careerStatus.rank.title
         let accent: Color = Theme.gold
         return VStack(spacing: Theme.Space.s) {
-            PlayerCard(data: PlayerCardData.mine(e, store: store), onRename: { renaming = true })
+            PlayerCard(data: PlayerCardData.mine(e, store: store, badges: ProfileBadge.ids(isAdmin: online.isAdmin, isBeta: online.isBetaTester)), onRename: { renaming = true })
             if local.nameTaken {
                 Text("Your username is taken by another player. Tap your name to choose a new one.").textStyle(.caption, tint: Theme.loss)
                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)

@@ -1,0 +1,34 @@
+{
+ "about": "Work clothes by trade. Staff and managers are drawn with the uniform of their company's trade: the portrait stays, and a transparent clothing layer uniform.<id>.png (512x512, shoulders and collar in the lower 40 percent, nothing above) is drawn over the bottom of it. trades maps a trade id to a uniform id; families is the fallback by trade family; a trade or family that maps to nothing keeps its own clothes. officeRoles keep their own clothes in every trade.",
+ "uniforms": [
+  {"id": "chef", "title": "Chef whites", "detail": "A white double-breasted jacket with a neckerchief."},
+  {"id": "barista", "title": "Barista apron", "detail": "A dark apron over a plain shirt."},
+  {"id": "shop", "title": "Shop apron", "detail": "A green shop apron over a work shirt."},
+  {"id": "overalls", "title": "Overalls", "detail": "Blue work overalls with a breast pocket."},
+  {"id": "hivis", "title": "Hi-vis vest", "detail": "An orange hi-vis vest with reflective bands."},
+  {"id": "scrubs", "title": "Scrubs", "detail": "Pale teal clinic scrubs."},
+  {"id": "suit", "title": "Business suit", "detail": "A dark suit, white shirt and tie."},
+  {"id": "sport", "title": "Sports polo", "detail": "A fitted team polo with a zip collar."},
+  {"id": "cleaner", "title": "Cleaner's tunic", "detail": "A light blue tunic with a company stripe."},
+  {"id": "security", "title": "Guard uniform", "detail": "A dark shirt with epaulettes and a badge."},
+  {"id": "hotel", "title": "Hotel waistcoat", "detail": "A black waistcoat, white shirt and bow tie."},
+  {"id": "driver", "title": "Driver shirt", "detail": "A crisp shirt with a tie and a driver's vest."},
+  {"id": "farm", "title": "Farm jacket", "detail": "A green waxed work jacket."},
+  {"id": "salon", "title": "Stylist smock", "detail": "A black smock with a cape collar."},
+  {"id": "pilot", "title": "Crew uniform", "detail": "A navy jacket with gold stripes on the cuffs."},
+  {"id": "workshop", "title": "Workshop apron", "detail": "A heavy leather apron over a grey shirt."}
+ ],
+ "officeRoles": ["acct", "hr", "buyer", "consult", "projc", "compl", "dispatch", "fin"],
+ "families": {"fin": "suit", "rent": "suit", "logi": "hivis", "energy": "hivis", "project": "hivis", "retail": "shop", "club": "sport"},
+ "trades": {
+  "restaurant": "chef", "foodtruck": "chef", "bakery": "chef", "cafe": "barista", "nightclub": "hotel", "hotel": "hotel", "casino": "hotel",
+  "gym": "sport", "fun": "sport", "skires": "sport", "indoorski": "sport", "drivsk": "sport", "club": "sport", "pcbang": "barista",
+  "handy": "overalls", "electrician": "overalls", "plumber": "overalls", "carrepair": "overalls", "factory": "overalls", "usedcar": "overalls", "carclean": "overalls",
+  "furniture": "workshop", "brewery": "workshop", "hardware": "shop", "kiosk": "shop", "grocery": "shop", "boutique": "suit",
+  "construction": "hivis", "wh3pl": "hivis", "courier": "hivis", "trucking": "hivis", "shipping": "hivis", "fuelstation": "hivis", "parking": "hivis", "power": "hivis", "oilgas": "hivis", "realdev": "hivis",
+  "dental": "scrubs", "physio": "scrubs", "pets": "scrubs",
+  "law": "suit", "acctfirm": "suit", "insbroker": "suit", "finbroker": "suit", "estate": "suit", "insco": "suit", "bank": "suit", "fund": "suit", "staffing": "suit", "engcons": "suit", "travel": "suit", "cardealer": "suit", "event": "suit", "wholesale": "suit",
+  "cleaning": "cleaner", "laundry": "cleaner", "security": "security", "taxi": "driver", "carrental": "driver", "airline": "pilot",
+  "farm": "farm", "salmon": "farm", "vineyard": "farm", "barber": "salon"
+ }
+}

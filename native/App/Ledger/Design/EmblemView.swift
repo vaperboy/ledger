@@ -208,7 +208,7 @@ struct EmblemView: View {
     var body: some View {
         let outline: AnyShape = shape.outline(height: size)
         let line: CGFloat = max(1, size * 0.025)
-        ZStack {
+        let core = ZStack {
             if let picture {
                 picture.resizable().scaledToFill().frame(width: width, height: size).clipShape(outline)
             } else {
@@ -230,9 +230,16 @@ struct EmblemView: View {
             }
         }
         .frame(width: width, height: size)
-        .shadow(color: glow, radius: size >= 28 ? size * 0.11 : 0)
         .accessibilityHidden(true)
+        // Only epic and legendary frames glow; a clear shadow still costs an offscreen pass.
+        if glows {
+            core.shadow(color: glow, radius: size * 0.11)
+        } else {
+            core
+        }
     }
+
+    private var glows: Bool { size >= 28 && (frame == .legendary || frame == .epic) }
 
     private var glow: Color {
         switch frame {
@@ -249,19 +256,16 @@ struct EmblemView: View {
             Image(systemName: spec.symbol)
                 .font(.system(size: size * 0.42, weight: .semibold))
                 .foregroundStyle(ink)
-                .shadow(color: Color.black.opacity(0.35), radius: size * 0.03, y: size * 0.02)
         case .leading:
             Image(systemName: spec.symbol)
                 .font(.system(size: size * 0.36, weight: .semibold))
                 .foregroundStyle(ink)
-                .shadow(color: Color.black.opacity(0.3), radius: size * 0.03, y: size * 0.02)
                 .padding(.leading, isWide ? size * 0.28 : 0)
                 .frame(width: width, height: size, alignment: isWide ? .leading : .center)
         case .corner:
             Image(systemName: spec.symbol)
                 .font(.system(size: size * 0.3, weight: .semibold))
                 .foregroundStyle(ink)
-                .shadow(color: Color.black.opacity(0.3), radius: size * 0.03, y: size * 0.02)
                 .padding(size * 0.14)
                 .frame(width: width, height: size, alignment: .topTrailing)
         }

@@ -155,7 +155,7 @@ final class CosmeticCatalogTests: XCTestCase {
     func testSeasonOnePassTiersHoldOutfitsNotBadgesOrThemes() throws {
         let s1: SeasonDef = try XCTUnwrap(SeasonCatalog.def(1))
         let outfits: [String: (Int, Bool)] = Dictionary(uniqueKeysWithValues: s1.rewards.filter { $0.kind == .outfit }.map { ($0.id, ($0.tier, $0.premium)) })
-        XCTAssertEqual(outfits.count, 11)
+        XCTAssertEqual(outfits.count, 21)
         XCTAssertEqual(outfits["outfit.s1.pennant"]?.0, 1)
         XCTAssertEqual(outfits["outfit.s1.pennant"]?.1, false)
         XCTAssertEqual(outfits["outfit.s1.finisher"]?.0, 30)
@@ -176,8 +176,9 @@ final class CosmeticCatalogTests: XCTestCase {
 
     func testSeasonTwoPassTiersHoldOutfitsToo() throws {
         let s2: SeasonDef = try XCTUnwrap(SeasonCatalog.def(2))
-        XCTAssertEqual(s2.rewards.filter { $0.kind == .outfit }.map(\.id).sorted(),
-                       ["outfit.s2.crown", "outfit.s2.egg", "outfit.s2.fairday", "outfit.s2.lilac", "outfit.s2.mint", "outfit.s2.plus", "outfit.s2.sprout"])
+        let ids: Set<String> = Set(s2.rewards.filter { $0.kind == .outfit }.map(\.id))
+        XCTAssertEqual(ids.count, 17)
+        for id in ["outfit.s2.crown", "outfit.s2.egg", "outfit.s2.fairday", "outfit.s2.lilac", "outfit.s2.mint", "outfit.s2.plus", "outfit.s2.sprout"] { XCTAssertTrue(ids.contains(id), id) }
         XCTAssertFalse(s2.rewards.contains { $0.kind == .badge || $0.kind == .theme })
     }
 

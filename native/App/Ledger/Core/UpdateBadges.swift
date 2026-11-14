@@ -87,7 +87,14 @@ enum UpdateFeed {
 }
 
 extension GameStore {
+    /// Read from the cached badge table, which is rebuilt only when the game or the seen marks change.
     func appBadge(_ app: PhoneApp) -> Int {
+        guard engine != nil else { return 0 }
+        if let n = phoneBadges[app] { return n }
+        return PhoneApp.launcher.contains(app) ? 0 : freshBadge(app)
+    }
+
+    private func freshBadge(_ app: PhoneApp) -> Int {
         guard let e = engine else { return 0 }
         return max(0, UpdateFeed.count(e, app, marks: seenMarks))
     }
@@ -96,7 +103,7 @@ extension GameStore {
         memo("badges") { (_: GameEngine) -> [PhoneApp: Int] in
             var out: [PhoneApp: Int] = [:]
             for app in PhoneApp.launcher {
-                let n: Int = appBadge(app)
+                let n: Int = freshBadge(app)
                 if n > 0 { out[app] = n }
             }
             return out

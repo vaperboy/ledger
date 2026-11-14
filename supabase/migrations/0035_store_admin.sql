@@ -128,11 +128,20 @@ begin
     'watched', coalesce((select ads_watched from public.gold_wallets where user_id = uid), 0));
 end $$;
 
--- The "Supporter" badge on the player card is set here only: a badge of that name sent by the app is dropped.
+create or replace function private.is_beta_tester(uid uuid) returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from private.redeem_codes where kind = 'beta' and redeemed_by = uid);
+$$;
+
+-- Badges only the server gives (Supporter, badge.creator for administrators, badge.beta for beta testers) are set
+-- here; the same names sent by the app are dropped.
 create or replace function private.profile_supporter_badge() returns trigger language plpgsql security definer set search_path = '' as $$
+declare given text[] := '{}';
 begin
-  new.badges := array_remove(coalesce(new.badges, '{}'::text[]), 'Supporter');
-  if private.is_supporter(new.id) then new.badges := (array['Supporter'] || new.badges)[1:64]; end if;
+  new.badges := array(select b from unnest(coalesce(new.badges, '{}'::text[])) b where b not in ('Supporter', 'badge.creator', 'badge.beta'));
+  if private.is_admin(new.id) then given := given || 'badge.creator'::text; end if;
+  if private.is_beta_tester(new.id) then given := given || 'badge.beta'::text; end if;
+  if private.is_supporter(new.id) then given := given || 'Supporter'::text; end if;
+  new.badges := (given || new.badges)[1:64];
   return new;
 end $$;
 create trigger profiles_supporter_badge before insert or update of badges on public.profiles
@@ -191,18 +200,6 @@ create or replace function private.has_premium(uid uuid, n int) returns boolean 
       or (n = 1 and exists (select 1 from public.store_perks where user_id = uid and perk = 'founder'));
 $$;
 
-create or replace function private.pass_tier_ceiling(uid uuid, n int) returns int language plpgsql stable security definer set search_path = '' as $$
-declare days int := greatest(1, (private.utc_today() - private.season_start(n)) + 1); xp int;
-begin
-  if private.is_admin(uid) then return 30; end if;
-  xp := days * 200 + ceil(days / 7.0)::int * 120 + ceil(days / 30.0)::int * 240
-      + coalesce((select bonus_tiers from public.pass_owners where user_id = uid and season = n), 0) * 300
-      + coalesce((select sum(r.amount) from public.pass_claims c
-                    join private.store_pass_rewards r on r.season = private.pass_season_def(n) and r.track = c.track and r.tier = c.tier and r.kind = 'xp'
-                   where c.user_id = uid and c.season = n), 0);
-  return least(30, xp / 300);
-end $$;
-
 -- Tops the wallet up to the floor and grants every current cosmetic (retired items are left out).
 create or replace function private.admin_grant_all(uid uuid) returns void language plpgsql security definer set search_path = '' as $$
 declare w public.gold_wallets := private.wallet(uid); top int;
@@ -241,6 +238,7 @@ begin
     insert into public.admins (user_id) values (uid) on conflict do nothing;
     perform private.admin_grant_all(uid);
     perform private.audit(uid, 'admin_granted', uid::text, null, jsonb_build_object('code', c.id), 'one-time code redeemed');
+    perform private.refresh_supporter(uid);
   else
     if exists (select 1 from private.redeem_codes where kind = 'beta' and redeemed_by = uid) then
       return jsonb_build_object('ok', false, 'kind', 'beta', 'reason', 'beta_used');
@@ -248,6 +246,7 @@ begin
     update private.redeem_codes set redeemed_by = uid, redeemed_at = now() where id = c.id;
     v_gold := private.store_extra('betaGold');
     perform private.store_credit(uid, v_gold, 'beta_key', c.id::text);
+    perform private.refresh_supporter(uid);
   end if;
   return jsonb_build_object('ok', true, 'kind', c.kind, 'reason', 'granted', 'gold', v_gold, 'state', private.store_state_for(uid));
 end $$;
@@ -363,7 +362,7 @@ begin
     'ads', private.ad_terms(uid),
     'shelf', jsonb_build_object('day', v_today,
                                 'items', coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'price', s.price)) from private.store_shelf(v_today) s), '[]'::jsonb)),
-    'betaRedeemed', exists (select 1 from private.redeem_codes where kind = 'beta' and redeemed_by = uid));
+    'betaRedeemed', private.is_beta_tester(uid));
 end $$;
 
 -- Store cosmetics are sold from the day's shelf (yesterday's too, for a shelf opened just before midnight);
@@ -425,10 +424,27 @@ end $$;
 revoke execute on function public.redeem_admin_code(text) from public, anon, authenticated;
 update public.admin_codes set expires_at = least(expires_at, now()) where redeemed_at is null;
 
--- Players who already bought something show the badge from now on.
+-- The account status tells the app about beta testers as well as administrators.
+create or replace function public.account_status() returns jsonb language plpgsql security definer set search_path = '' as $$
+declare uid uuid := private.require_user(); p public.profiles; had boolean;
+begin
+  select * into p from public.profiles where id = uid and deleted_at is null;
+  had := found;
+  return jsonb_build_object(
+    'hasProfile', had,
+    'adultConfirmed', had and p.adult_confirmed,
+    'isAdmin', had and p.adult_confirmed and private.is_admin(uid),
+    'isBetaTester', had and private.is_beta_tester(uid),
+    'linkRewardGold', private.link_reward_gold(),
+    'linkRewardClaimed', exists (select 1 from public.link_reward_claims where user_id = uid),
+    'fakePlayersRemoved', private.fakes_removed());
+end $$;
+
+-- Buyers and administrators show their badges from now on.
 update public.profiles set badges = badges
  where id in (select user_id from public.store_transactions where revoked_at is null
-              union select user_id from public.store_plans where revoked_at is null);
+              union select user_id from public.store_plans where revoked_at is null
+              union select user_id from public.admins);
 
 revoke execute on function public.redeem_code(text), public.claim_ad_gold(text), public.claim_mission_gold(text, text, int) from public, anon;
 grant execute on function public.redeem_code(text), public.claim_ad_gold(text), public.claim_mission_gold(text, text, int) to authenticated;

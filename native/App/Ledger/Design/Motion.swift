@@ -21,16 +21,24 @@ enum Motion {
         try SwiftUI.withAnimation(animation, body)
     }
 
-    static func standard(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : quickAnimation }
-    static func arrive(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : moveAnimation }
-    static func tap(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : tapAnimation }
-    static func quick(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : quickAnimation }
-    static func move(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : moveAnimation }
-    static func size(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : sizeAnimation }
-    static func reveal(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : revealAnimation }
+    /// True when motion should be skipped: Reduce Motion is on, or the phone is in Low Power Mode.
+    static func still(_ reduceMotion: Bool) -> Bool { reduceMotion || PowerMode.isLow }
+
+    static func standard(_ reduceMotion: Bool) -> Animation? { still(reduceMotion) ? nil : quickAnimation }
+    static func arrive(_ reduceMotion: Bool) -> Animation? { still(reduceMotion) ? nil : moveAnimation }
+    static func tap(_ reduceMotion: Bool) -> Animation? { still(reduceMotion) ? nil : tapAnimation }
+    static func quick(_ reduceMotion: Bool) -> Animation? { still(reduceMotion) ? nil : quickAnimation }
+    static func move(_ reduceMotion: Bool) -> Animation? { still(reduceMotion) ? nil : moveAnimation }
+    static func size(_ reduceMotion: Bool) -> Animation? { still(reduceMotion) ? nil : sizeAnimation }
+    static func reveal(_ reduceMotion: Bool) -> Animation? { still(reduceMotion) ? nil : revealAnimation }
     static func run(_ reduceMotion: Bool, _ body: () -> Void) {
-        if reduceMotion { body() } else { SwiftUI.withAnimation(quickAnimation, body) }
+        if still(reduceMotion) { body() } else { SwiftUI.withAnimation(quickAnimation, body) }
     }
+}
+
+/// Low Power Mode, read live. While it is on the root view drops every animation and decorative timers stop.
+enum PowerMode {
+    static var isLow: Bool { ProcessInfo.processInfo.isLowPowerModeEnabled }
 }
 
 struct PressableStyle: ButtonStyle {
@@ -39,7 +47,6 @@ struct PressableStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .opacity(configuration.isPressed ? 0.6 : 1)
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
             .animation(Motion.tap(reduceMotion), value: configuration.isPressed)
     }
 }
@@ -122,30 +129,15 @@ extension View {
     }
 }
 
+/// Rolls the digits when a money value changes. No colour flash: it needed an offscreen pass on every figure.
 struct MoneyFlash: ViewModifier {
     var value: Double
-    @State private var flash: Int = 0
-    @State private var token: Int = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        let tint: Color = flash > 0 ? Theme.gain : Theme.loss
         content
-            .contentTransition(reduceMotion ? .identity : .numericText(value: value))
+            .contentTransition(Motion.still(reduceMotion) ? .identity : .numericText(value: value))
             .animation(Motion.reveal(reduceMotion), value: value)
-            .overlay(Rectangle().fill(tint).opacity(flash == 0 ? 0 : 1).blendMode(.sourceAtop))
-            .compositingGroup()
-            .animation(Motion.revealAnimation, value: flash)
-            .onChange(of: value) { old, new in
-                guard new != old else { return }
-                flash = new > old ? 1 : -1
-                token += 1
-                let mine: Int = token
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 300_000_000)
-                    if mine == token { flash = 0 }
-                }
-            }
     }
 }
 

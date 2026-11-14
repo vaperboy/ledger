@@ -40,7 +40,6 @@ public extension GameEngine {
         var ok = false
         update { s, d, _ in
             ok = PlayerSupply.sign(&s, contract: contract, listing: l, weeklyMarketSpend: weeklyMarketSpend, data: d)
-            if ok { Tutorial.advance(&s, from: .pickSupplier) }
         }
         return ok
     }

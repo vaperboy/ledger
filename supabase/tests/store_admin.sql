@@ -50,6 +50,8 @@ begin
   r := public.redeem_code('ledger admn test 0001');
   if not (r ->> 'ok')::boolean or r ->> 'kind' <> 'admin' then raise exception 'admin code failed: %', r - 'state'; end if;
   if not private.is_admin(a) or not (r -> 'state' ->> 'isAdmin')::boolean then raise exception 'admin flag missing'; end if;
+  if not ((public.account_status() ->> 'isAdmin')::boolean) then raise exception 'account status lacks the admin flag'; end if;
+  if not exists (select 1 from public.profiles where id = a and 'badge.creator' = any (badges)) then raise exception 'no creator badge'; end if;
   if pg_temp.gold(a) < floor_gold then raise exception 'admin wallet not topped up: %', pg_temp.gold(a); end if;
 
   perform pg_temp.as_user(b);
@@ -72,7 +74,7 @@ begin
   if (select debt from public.gold_wallets where user_id = a) <> 0 then raise exception 'debt blocked an admin'; end if;
   st := public.store_state();
   if not (st ->> 'premium')::boolean then raise exception 'admin lacks the premium pass'; end if;
-  if private.pass_tier_ceiling(a, private.current_season()) <> 30 then raise exception 'admin cannot claim every tier'; end if;
+  if private.pass_tier_ceiling(a, private.current_season()) < 30 then raise exception 'admin cannot claim every tier'; end if;
   if jsonb_array_length(st -> 'cosmetics') < (select count(*) from private.store_cosmetics where source <> 'retired') then
     raise exception 'admin lacks cosmetics';
   end if;
@@ -89,6 +91,10 @@ begin
   r := public.redeem_code('LEDGER-BETA-AAAA-0001');
   if not (r ->> 'ok')::boolean or (r ->> 'gold')::int <> 500 or pg_temp.gold(b) <> before + 500 then raise exception 'beta key did not pay 500: %', r - 'state'; end if;
   if not (r -> 'state' ->> 'betaRedeemed')::boolean then raise exception 'beta flag missing'; end if;
+  if not ((public.account_status() ->> 'isBetaTester')::boolean) then raise exception 'account status lacks the beta flag'; end if;
+  if not exists (select 1 from public.profiles where id = b and 'badge.beta' = any (badges)) then raise exception 'no beta badge'; end if;
+  update public.profiles set badges = array['Trader'] where id = b;
+  if not exists (select 1 from public.profiles where id = b and 'badge.beta' = any (badges)) then raise exception 'the app removed the beta badge'; end if;
   r := public.redeem_code('LEDGER-BETA-AAAA-0002');
   if (r ->> 'ok')::boolean or r ->> 'reason' <> 'beta_used' or pg_temp.gold(b) <> before + 500 then raise exception 'a second beta key paid one account: %', r; end if;
   if private.is_admin(b) then raise exception 'a beta key made an admin'; end if;
@@ -193,8 +199,8 @@ end $$;
 do $$
 declare c uuid := pg_temp.id('c'); d uuid := pg_temp.id('d'); r jsonb; t jsonb;
 begin
-  update public.profiles set badges = array['Supporter', 'Trader'] where id = d;
-  if exists (select 1 from public.profiles where id = d and 'Supporter' = any (badges)) then raise exception 'the app could set the supporter badge'; end if;
+  update public.profiles set badges = array['Supporter', 'badge.creator', 'badge.beta', 'Trader'] where id = d;
+  if exists (select 1 from public.profiles where id = d and badges && array['Supporter', 'badge.creator', 'badge.beta']) then raise exception 'the app could set a server badge'; end if;
   if private.is_supporter(c) then raise exception 'c should not be a supporter yet'; end if;
   perform public.grant_purchase(c, 'sup-1', 'com.ledger.gold.pouch',
     jsonb_build_object('originalTransactionId', 'sup-1', 'transactionId', 'sup-1', 'productId', 'com.ledger.gold.pouch', 'bundleId', 'com.matasdovyda.ledger', 'environment', 'Sandbox'));

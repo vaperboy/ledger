@@ -127,18 +127,18 @@ private struct StartupPanel: View {
             Text("\(o.name) offers \(cur.tidyShort(o.amount)) for \(Int(saturating: o.pct.rounded()))%").textStyle(.headline, tint: Theme.accent)
             Text("\(o.says) Values it at \(cur.tidyShort(o.preMoney)) before the money, \(terms.map { cur.tidyDisplay($0.pricePerShare) } ?? "") a share, \(terms.map { String($0.sharesIssued) } ?? "") new shares.")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
-            HStack {
-                Button("Accept") {
-                    pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(saturating: o.pct.rounded()))%?",
-                                            message: DealText.describe(terms, cur, companyName: f.name),
-                                            button: "Close the round", destructive: true, tone: .investment, icon: "chart.pie") {
-                        let ok = store.act { $0.acceptStartupRound(startupID: f.id, index: o.id) } ?? false
-                        store.show(ok ? "Round closed: \(cur.tidyShort(o.amount)) in for \(Int(saturating: o.pct.rounded()))%." : "That offer is no longer on the table.", tone: ok ? "good" : "warn")
-                    }
-                }.buttonStyle(PrimaryButtonStyle(size: .compact))
-                Button("Decline") { store.settle(store.act { $0.declineStartupRound(startupID: f.id, index: o.id) }, "Offer declined.", same: "That offer had already gone.") }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact))
-            }
+            DecisionChoices(labels: ["Accept", "Decline"], compact: true, pick: { (i: Int) in
+                guard i == 0 else {
+                    store.settle(store.act { $0.declineStartupRound(startupID: f.id, index: o.id) }, "Offer declined.", same: "That offer had already gone.")
+                    return
+                }
+                pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(saturating: o.pct.rounded()))%?",
+                                        message: DealText.describe(terms, cur, companyName: f.name),
+                                        button: "Close the round", destructive: true, tone: .investment, icon: "chart.pie") {
+                    let ok = store.act { $0.acceptStartupRound(startupID: f.id, index: o.id) } ?? false
+                    store.show(ok ? "Round closed: \(cur.tidyShort(o.amount)) in for \(Int(saturating: o.pct.rounded()))%." : "That offer is no longer on the table.", tone: ok ? "good" : "warn")
+                }
+            })
         }.padding(.vertical, Theme.Space.xs)
     }
 
