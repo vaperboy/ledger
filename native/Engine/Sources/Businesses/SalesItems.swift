@@ -65,7 +65,7 @@ public enum SalesItems {
     /// The owner changed a price by hand, so prices stay the owner's until handed back.
     public static func pricesTakenBack(_ co: Company) -> Bool { co.value(ownPricesKey).bool }
 
-    static func setPricesTakenBack(_ s: inout GameState, companyID: Int, _ on: Bool) {
+    public static func setPricesTakenBack(_ s: inout GameState, companyID: Int, _ on: Bool) {
         guard let i = s.companyIndex(companyID) else { return }
         if on { s.companies[i].set(ownPricesKey, true) } else { s.companies[i].raw[ownPricesKey] = nil }
     }
