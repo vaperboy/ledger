@@ -952,6 +952,34 @@
    "col": 3,
    "caption": "Helpdesk headset",
    "group": "software"
+  },
+  "ship_s": {
+   "file": "items/ship_s.jpg",
+   "row": -1,
+   "col": -1,
+   "caption": "Coaster",
+   "group": "vehicle"
+  },
+  "ship_l": {
+   "file": "items/ship_l.jpg",
+   "row": -1,
+   "col": -1,
+   "caption": "Bulker",
+   "group": "vehicle"
+  },
+  "ferry": {
+   "file": "items/ferry.jpg",
+   "row": -1,
+   "col": -1,
+   "caption": "Ferry",
+   "group": "vehicle"
+  },
+  "plane_s": {
+   "file": "items/plane_s.jpg",
+   "row": -1,
+   "col": -1,
+   "caption": "Turboprop",
+   "group": "vehicle"
   }
  }
 }

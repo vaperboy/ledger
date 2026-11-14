@@ -17,7 +17,7 @@ enum AvatarArt {
     static let aspect: CGFloat = 1.1
 }
 
-/// The half-body avatar, drawn in layers: hair behind, body and outfit, face, front hair.
+/// The half-body avatar, drawn in layers: hair behind, face (a photo head under the outfit), body and outfit, front hair.
 /// Each layer uses its art asset when present and a vector placeholder otherwise.
 struct HalfBodyAvatar: View {
     var look: AvatarLook
@@ -30,15 +30,21 @@ struct HalfBodyAvatar: View {
         let tint: Color = AvatarParts.hairColour(look.hairColour)
         let tone: SkinDef? = AvatarParts.skin(look.skin)
         let skin: Color = tone.map { (t: SkinDef) -> Color in Color(hex: t.colour) } ?? Color(hex: face?.skin ?? 0xE0B48E)
+        let faceArt: Image? = face.flatMap { (f: FaceDef) -> Image? in AvatarArt.image("avatar.face.\(f.id)") }
+        let frontArt: Bool = AvatarArt.image("avatar.hair." + hairKey) != nil
         ZStack {
-            tinted("avatar.hair." + hairKey + ".back", tint: tint) { AvatarHairBack(key: hairKey, w: width).foregroundStyle(tint) }
+            if let back = AvatarArt.image("avatar.hair." + hairKey + ".back") {
+                back.resizable().scaledToFit().colorMultiply(tint)
+            } else if !frontArt {
+                AvatarHairBack(key: hairKey, w: width).foregroundStyle(tint)
+            }
+            // A photo head sits under the outfit so the collar covers its neck; the drawn head sits on top as before.
+            if let faceArt { faceArt.resizable().scaledToFit() }
             if let outfit {
                 plain("avatar.body." + outfit.id) { AvatarBodyArt(outfit: outfit, skin: skin, w: width) }
             }
             if let tone, let img = AvatarArt.image("avatar.skin." + tone.id) { img.resizable().scaledToFit() }
-            if let face {
-                plain("avatar.face.\(face.id)") { AvatarFaceArt(face: face, skin: skin, w: width) }
-            }
+            if let face, faceArt == nil { AvatarFaceArt(face: face, skin: skin, w: width) }
             tinted("avatar.hair." + hairKey, tint: tint) { AvatarHairFront(key: hairKey, w: width).foregroundStyle(tint) }
         }
         .frame(width: width, height: width * AvatarArt.aspect)
@@ -55,7 +61,8 @@ struct HalfBodyAvatar: View {
 
     @ViewBuilder private func tinted<P: View>(_ name: String, tint: Color, @ViewBuilder placeholder: () -> P) -> some View {
         if let img = AvatarArt.image(name) {
-            img.resizable().renderingMode(.template).scaledToFit().foregroundStyle(tint)
+            // grey hair art keeps its strands: the colour multiplies over it
+            img.resizable().scaledToFit().colorMultiply(tint)
         } else {
             placeholder()
         }

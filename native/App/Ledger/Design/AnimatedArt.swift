@@ -19,6 +19,17 @@ extension ArtLibrary {
         let path: String = root + "/Content/art/" + artStem(category, id) + ".anim.mp4"
         return FileManager.default.fileExists(atPath: path) ? URL(fileURLWithPath: path) : nil
     }
+
+    /// The opening clip of a box (box.<kind>.open.mp4); a box without one borrows the cabinet's, a card pack the basic pack's.
+    static func openingURL(_ kind: BoxKind) -> URL? {
+        guard let root = Bundle.main.resourcePath else { return nil }
+        let shared: String = kind.isCardPack ? "cardBasic" : "cabinet"
+        for name in [kind.rawValue, shared] {
+            let path: String = root + "/Content/art/box." + name + ".open.mp4"
+            if FileManager.default.fileExists(atPath: path) { return URL(fileURLWithPath: path) }
+        }
+        return nil
+    }
     #endif
 }
 
@@ -90,6 +101,56 @@ private final class PlayerView: UIView {
         looper?.disableLooping()
         playerLayer?.player = nil
         looper = nil
+        player = nil
+    }
+}
+
+/// Plays a clip once, sped up or slowed down to last `duration` seconds, and holds the last frame. The clips are drawn on black,
+/// so the layer is screen-blended and the black falls away over a dark background.
+struct OneShotClip: UIViewRepresentable {
+    var url: URL
+    var duration: Double
+
+    func makeUIView(context: Context) -> OneShotView {
+        let v: OneShotView = OneShotView()
+        v.backgroundColor = .clear
+        v.isOpaque = false
+        v.start(url: url, duration: duration)
+        return v
+    }
+
+    func updateUIView(_ view: OneShotView, context: Context) {}
+
+    static func dismantleUIView(_ view: OneShotView, coordinator: Void) { view.stop() }
+}
+
+final class OneShotView: UIView {
+    override class var layerClass: AnyClass { AVPlayerLayer.self }
+    private var player: AVPlayer?
+
+    private var playerLayer: AVPlayerLayer? { layer as? AVPlayerLayer }
+
+    func start(url: URL, duration: Double) {
+        let item: AVPlayerItem = AVPlayerItem(url: url)
+        let p: AVPlayer = AVPlayer(playerItem: item)
+        p.isMuted = true
+        p.actionAtItemEnd = .pause
+        p.preventsDisplaySleepDuringVideoPlayback = false
+        player = p
+        playerLayer?.player = p
+        playerLayer?.videoGravity = .resizeAspect
+        playerLayer?.compositingFilter = "screenBlendMode"
+        let asset: AVAsset = item.asset
+        Task { @MainActor [weak self] in
+            let length: Double = (try? await asset.load(.duration).seconds) ?? 4
+            let rate: Float = Float(max(0.5, min(2.5, length / max(0.5, duration))))
+            self?.player?.playImmediately(atRate: rate)
+        }
+    }
+
+    func stop() {
+        player?.pause()
+        playerLayer?.player = nil
         player = nil
     }
 }

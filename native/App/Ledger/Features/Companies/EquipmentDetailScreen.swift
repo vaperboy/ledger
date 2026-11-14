@@ -163,7 +163,7 @@ struct EquipmentDetailScreen: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 ListingHero(height: 240, counter: "") {
-                    ShopPhoto(name: ArtAsset.equipment(target.equipmentID), glyph: f.glyph, height: 240, cornerRadius: 0, item: art)
+                    ShopPhoto(name: ArtAsset.equipment(target.equipmentID, trade: co.type), glyph: f.glyph, height: 240, cornerRadius: 0, item: art)
                 } badge: {
                     ListingPill(text: f.status, dot: toneColor(f.tone))
                 }

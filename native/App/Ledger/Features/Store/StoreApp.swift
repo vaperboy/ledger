@@ -23,14 +23,14 @@ struct StoreApp: View {
             StoreOffersSection(ask: ask).storeAppear(0)
             StoreShelfSection(ask: ask).storeAppear(1)
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                StoreBand(title: "Boxes", glyph: Glyph.luxury, tint: StoreColors.orange)
+                StoreBand(title: "Boxes", glyph: Glyph.luxury, tint: StoreColors.orange, art: "store.band.boxes")
                 lootBoxes(paid: paid)
             }
             .storeAppear(2)
             stockGroup(paid: paid)
             StoreBundlesSection(ask: ask)
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                StoreBand(title: "Gold", glyph: Glyph.bank, tint: StoreColors.red)
+                StoreBand(title: "Gold", glyph: Glyph.bank, tint: StoreColors.red, art: "store.band.gold")
                 ProPlansView(part: .packs)
             }
             StoreMoneySection(ask: ask)
@@ -120,7 +120,14 @@ struct StoreApp: View {
     }
 
     private var collectionGroup: some View {
-        OnlineGroup(title: "Collection", footer: "") {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            StoreBand(title: "Collection", glyph: Glyph.luxury, tint: StoreColors.violet, art: "store.band.collection")
+            collectionRows
+        }
+    }
+
+    private var collectionRows: some View {
+        OnlineGroup(title: "Artifacts and cards", footer: "") {
             NavigationLink { CabinetView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Artifacts and cards", note: "Your pieces, collections and sales", chevron: true) }
                 .buttonStyle(PressableStyle())
         }

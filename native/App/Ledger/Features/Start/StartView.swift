@@ -72,6 +72,8 @@ struct StartView: View {
                     problemCard(problem)
                 } else if store.hasSavedGame {
                     saveSummary
+                } else if StartPictures.ready {
+                    StartPictures()
                 } else {
                     promises
                 }
@@ -158,5 +160,52 @@ struct StartView: View {
         .padding(Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surfaceRaised))
+    }
+}
+
+/// The first-launch pictures (onboarding.1 to onboarding.4), swiped through, each with its line at the bottom.
+struct StartPictures: View {
+    static let pages: [(art: String, title: String)] = [
+        ("onboarding.1", "Open a business"),
+        ("onboarding.2", "Hire your people"),
+        ("onboarding.3", "Grow it, keep the books"),
+        ("onboarding.4", "Top the rich list"),
+    ]
+
+    static var ready: Bool { pages.allSatisfy { ArtAsset.exists($0.art) } }
+
+    @State private var page = 0
+
+    var body: some View {
+        TabView(selection: $page) {
+            ForEach(Array(Self.pages.enumerated()), id: \.offset) { (i: Int, p: (art: String, title: String)) in
+                picture(p.art)
+                    .overlay(alignment: .bottom) {
+                        LinearGradient(colors: [.clear, Color.black.opacity(0.75)], startPoint: .top, endPoint: .bottom)
+                            .frame(height: 140)
+                    }
+                    .overlay(alignment: .bottomLeading) {
+                        Text(p.title).font(.title2.weight(.bold)).foregroundStyle(.white)
+                            .padding(.horizontal, Theme.Space.l).padding(.bottom, Theme.Space.xl + Theme.Space.s)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+                    .padding(.horizontal, 2)
+                    .tag(i)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(p.title)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .always))
+        .aspectRatio(1170.0 / 1600.0, contentMode: .fit)
+        .frame(maxWidth: 420)
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder private func picture(_ name: String) -> some View {
+        #if canImport(UIKit)
+        if let ui = ArtAsset.uiImage(name) {
+            Image(uiImage: ui).resizable().scaledToFill()
+        }
+        #endif
     }
 }

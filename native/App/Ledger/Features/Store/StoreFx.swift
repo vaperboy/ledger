@@ -90,6 +90,16 @@ struct StoreCoinHeap: View {
     var tier: Int
 
     var body: some View {
+        let packs: [GoldPack] = GoldStore.packs
+        let pack: GoldPack? = packs.isEmpty ? nil : packs[max(0, min(packs.count - 1, tier - 1))]
+        if let pack, let picture = StoreArt.image(pack.art) {
+            picture.resizable().scaledToFit().frame(width: 44, height: 44).accessibilityHidden(true)
+        } else {
+            heap
+        }
+    }
+
+    private var heap: some View {
         ZStack {
             ForEach(0..<max(1, min(5, tier)), id: \.self) { (i: Int) in
                 StoreCoin(size: 26)

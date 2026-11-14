@@ -365,7 +365,7 @@ struct TechProApp: View {
             Haptics.tap()
             showItem(n.equipmentID)
         } label: {
-            TechTile(photo: n.isVehicle ? vehiclePhoto(e, co, n) : ArtAsset.equipment(n.equipmentID), glyph: TechCategory.of(n).glyph, title: n.name, from: from, deal: n.dealPercent,
+            TechTile(photo: n.isVehicle ? vehiclePhoto(e, co, n) : ArtAsset.equipment(n.equipmentID, trade: co.type), glyph: TechCategory.of(n).glyph, title: n.name, from: from, deal: n.dealPercent,
                      label: st.text, tint: st.tint, item: tileItem(e, co, n))
         }
         .buttonStyle(PressableStyle())

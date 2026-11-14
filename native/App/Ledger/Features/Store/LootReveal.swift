@@ -49,36 +49,101 @@ enum LootHaptics {
     }
 }
 
-/// The box shaking and glowing in the colour of the best rarity inside, rising until it opens.
+/// The box opening: its clip (or a shaking still when there is none, or with Reduce Motion or Low Power Mode) under a glow
+/// in the colour of the best rarity inside, rising until it opens. Every box kind gets the glow; the clip is the box's own or a shared one.
 struct BoxShake: View {
     var kind: BoxKind
     var rarity: BoxRarity
     var start: Date
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var lowPower: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
 
     var body: some View {
         let total: Double = LootTiming.buildUp(rarity)
-        let tint: Color = rarity.tint
+        let glow: LootGlow = LootGlow(rarity)
+        let clip: URL? = reduceMotion || lowPower ? nil : ArtLibrary.openingURL(kind)
         return TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { (tl: TimelineViewDefaultContext) in
             let t: Double = tl.date.timeIntervalSince(start)
             let p: Double = min(1, max(0, t / total))
             let rise: Double = p * p
-            let shake: Double = reduceMotion ? 0 : 1
             ZStack {
                 Circle()
-                    .fill(RadialGradient(colors: [tint.opacity(0.12 + 0.7 * rise), .clear], center: .center, startRadius: 4, endRadius: 40 + 100 * rise))
-                    .frame(width: 260, height: 260)
+                    .fill(RadialGradient(colors: [glow.color.opacity(glow.strength * (0.15 + 0.75 * rise)), .clear], center: .center, startRadius: 4, endRadius: 50 + 110 * rise))
+                    .frame(width: 280, height: 280)
                 Circle()
-                    .strokeBorder(tint.opacity(0.5 * rise), lineWidth: 2)
-                    .frame(width: 120 + 120 * CGFloat(rise), height: 120 + 120 * CGFloat(rise))
-                BoxArt(kind: kind, size: 110)
-                    .scaleEffect(1 + 0.14 * rise * shake)
-                    .rotationEffect(.degrees(shake * sin(t * (16 + 24 * p)) * (1 + 11 * rise)))
-                    .offset(x: CGFloat(shake * sin(t * 47) * (0.5 + 5 * rise)))
-                    .shadow(color: tint.opacity(0.8 * rise), radius: 6 + 24 * CGFloat(rise))
+                    .strokeBorder(glow.color.opacity(0.55 * rise), lineWidth: glow.flashy ? 3 : 2)
+                    .frame(width: 120 + 130 * CGFloat(rise), height: 120 + 130 * CGFloat(rise))
+                if let clip {
+                    OneShotClip(url: clip, duration: total)
+                        .frame(width: 200, height: 200)
+                        .mask(RadialGradient(colors: [.white, .white, .clear], center: .center, startRadius: 10, endRadius: 100))
+                        .overlay(
+                            // the box picks up the rarity colour as the lid starts to open
+                            RadialGradient(colors: [glow.color.opacity(glow.strength * 0.6 * rise), .clear], center: .center, startRadius: 2, endRadius: 90)
+                                .blendMode(.plusLighter)
+                                .allowsHitTesting(false)
+                        )
+                } else {
+                    let shake: Double = reduceMotion ? 0 : 1
+                    BoxArt(kind: kind, size: 110)
+                        .scaleEffect(1 + 0.14 * rise * shake)
+                        .rotationEffect(.degrees(shake * sin(t * (16 + 24 * p)) * (1 + 11 * rise)))
+                        .offset(x: CGFloat(shake * sin(t * 47) * (0.5 + 5 * rise)))
+                        .shadow(color: glow.color.opacity(0.8 * rise), radius: 6 + 24 * CGFloat(rise))
+                }
+                if glow.flashy && !reduceMotion {
+                    LootSparks(t: t, rise: rise, color: glow.color, count: rarity == .legendary ? 28 : 16)
+                }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name.NSProcessInfoPowerStateDidChange)) { (_: Notification) in
+            lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
         .accessibilityHidden(true)
+    }
+}
+
+/// The opening glow of a rarity: grey, blue, purple or gold; purple and gold are brighter and throw sparks.
+struct LootGlow {
+    var color: Color
+    var strength: Double
+    var flashy: Bool
+
+    init(_ r: BoxRarity) {
+        switch r {
+        case .common: color = Color(hex: 0xA7ABB3); strength = 0.55; flashy = false
+        case .rare: color = Color(hex: 0x4C8DFF); strength = 0.75; flashy = false
+        case .epic: color = Color(hex: 0xA65CFF); strength = 1.0; flashy = true
+        case .legendary: color = Color(hex: 0xFFC93C); strength = 1.0; flashy = true
+        }
+    }
+}
+
+/// Sparks rising round the box, faster and denser as the opening builds up.
+private struct LootSparks: View {
+    var t: Double
+    var rise: Double
+    var color: Color
+    var count: Int
+
+    var body: some View {
+        Canvas { (ctx: inout GraphicsContext, size: CGSize) in
+            let c: CGPoint = CGPoint(x: size.width / 2, y: size.height / 2)
+            ctx.blendMode = .plusLighter
+            for i in 0..<count {
+                let seed: Double = Double(i) * 2.399
+                let life: Double = (t * (0.6 + 0.5 * rise) + Double(i) / Double(count)).truncatingRemainder(dividingBy: 1)
+                let angle: Double = seed + t * 0.4
+                let dist: Double = (40 + 90 * life) * (0.6 + 0.6 * rise)
+                let x: Double = Double(c.x) + cos(angle) * dist
+                let y: Double = Double(c.y) + sin(angle) * dist * 0.7 - 40 * life
+                let r: Double = (1.5 + 2.5 * (1 - life)) * (0.6 + rise)
+                let rect: CGRect = CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)
+                ctx.fill(Path(ellipseIn: rect), with: .color(color.opacity((1 - life) * (0.3 + 0.7 * rise))))
+            }
+        }
+        .frame(width: 280, height: 260)
+        .allowsHitTesting(false)
     }
 }
 

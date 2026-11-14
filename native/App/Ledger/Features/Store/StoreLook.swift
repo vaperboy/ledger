@@ -74,12 +74,16 @@ struct StoreReward: Identifiable {
 struct RewardIcon: View {
     var reward: StoreReward
     var size: CGFloat = 46
+    /// A pack picture shown in place of the drawn coin or note.
+    var art: String = ""
 
     var body: some View {
         VStack(spacing: 4) {
             ZStack {
                 RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).fill(StoreColors.gradient(reward.tint))
-                if reward.kind == .gold {
+                if let picture = StoreArt.image(art) {
+                    picture.resizable().scaledToFit().padding(size * 0.04)
+                } else if reward.kind == .gold {
                     StoreCoin(size: size * 0.62)
                 } else {
                     Image(systemName: reward.symbol).font(.system(size: size * 0.46, weight: .bold)).foregroundStyle(.white)
@@ -189,10 +193,12 @@ struct StoreOfferCard<Price: View>: View {
     var tag: String? = nil
     var ends: Date? = nil
     var rewards: [StoreReward]
+    var art: String = ""
     @ViewBuilder var price: () -> Price
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
+            OfferPicture(name: art)
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title.uppercased()).font(.title2.weight(.black)).italic().foregroundStyle(.white)
@@ -212,6 +218,21 @@ struct StoreOfferCard<Price: View>: View {
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Color.white.opacity(0.22), lineWidth: 1))
         .accessibilityElement(children: .contain)
         .padding(.horizontal, Theme.Space.m)
+    }
+}
+
+/// A 2:1 picture (an offer or a collection) across the top of its card; nothing until the picture exists.
+struct OfferPicture: View {
+    var name: String
+
+    var body: some View {
+        if let picture = StoreArt.image(name) {
+            Color.clear
+                .aspectRatio(2, contentMode: .fit)
+                .overlay { picture.resizable().scaledToFill() }
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card - 4, style: .continuous))
+                .accessibilityHidden(true)
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 # What's new
 - Inviting a co-owner lists only your real friends
+- New art: outfits, faces, hair styles, backdrops, flairs, store offers, packs and box opening animations
 - Redeem gift codes at the top of the Store: gold, cosmetics or boxes, with a reward popup
 - Brighter Store: clear offer cards with big reward icons and prices, a new cosmetics shelf every day (never Battle Pass items), a small "watch an ad for gold" button on Home and the Store, open Supporter perks, and one Redeem a code field for beta keys
 - Battle pass grows to 50 tiers with more costumes, Season 3 "Riviera Summer" starts on its own by date, 38 new store cosmetics, Creator and Beta tester badges, work uniforms per trade, and animated legendary items
