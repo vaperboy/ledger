@@ -176,6 +176,8 @@ final class MoneyLiteralLintTests: XCTestCase {
         "StartEstimate.swift": ["7919": "hash arithmetic", "20_000_000_000": "funds of a throwaway trial game, large enough never to bind (not a price)", "1_000_000": "upper bound on a payback time in weeks (a duration, not money)"],
         "GoalClaims.swift": ["1_000": "goal cash at the reference level; scaled with scaledPrice where it is paid", "3_000": "goal cash at the reference level; scaled with scaledPrice where it is paid", "10_000": "goal cash at the reference level; scaled with scaledPrice where it is paid"],
         "Banking.swift#annuity": ["100000": "ratio: instalment per 100 000 borrowed, any currency"],
+        "Unlocks.swift": ["300_000": "compared with a trade's opening cost from trades.json, which is at the reference level", "1_500_000": "compared with a trade's opening cost from trades.json, which is at the reference level"],
+        "PlayMissions.swift": ["86400": "seconds in a day (clock arithmetic, not money)"],
     ]
     static let skipFiles: Set<String> = ["GameCalendar.swift", "LZString.swift", "JSONValue.swift", "HashedRandom.swift", "DeterministicRandom.swift", "FaceCatalog.swift", "FaceTraits.swift"]
     static let scalingMarkers = ["scaledPrice(", "medianMonthlyWage", "roundedStep(", "step:", ".tidy(", "wageLevel", "costIndex", "ReferenceEconomy", "Balance"]

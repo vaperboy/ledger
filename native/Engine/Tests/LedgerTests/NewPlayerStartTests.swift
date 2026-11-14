@@ -10,13 +10,14 @@ final class NewPlayerStartTests: XCTestCase {
         try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed, story: .fresh, tradeID: trade, companyName: "Test Café")
     }
 
-    func testCompanyIsOpenOnDayOneWithNoLoan() throws {
+    func testCompanyIsOpenOnDayOneAndOnlyTheKitIsBorrowed() throws {
         for code in ["NO", "US", "JP"] {
             let e = try fresh(code)
             let co = try XCTUnwrap(e.state.companies.first)
             XCTAssertEqual(co.status, .open, code)
             XCTAssertEqual(co.name, "Test Café")
-            XCTAssertTrue(e.state.loans.isEmpty)
+            XCTAssertTrue(e.state.loans.allSatisfy { $0.companyID == co.id }, "\(code): no personal start-up loan")
+            XCTAssertLessThanOrEqual(e.state.loans.reduce(0) { $0 + $1.balance }, CompanyFigures.fixedAssets(co) + 100, "\(code): borrowing never exceeds the kit it paid for")
             XCTAssertEqual(e.state.week, 0)
             XCTAssertEqual(co.cash, e.state.cash, accuracy: 0.5, code)
             XCTAssertGreaterThan(e.state.cash, 0, code)
@@ -30,7 +31,8 @@ final class NewPlayerStartTests: XCTestCase {
             let e = try fresh(code)
             let co = try XCTUnwrap(e.state.companies.first)
             let weekly = e.context.weeklyCost(co, e.state)
-            XCTAssertGreaterThanOrEqual(co.cash, weekly * Double(e.data.balance.firstYear.startRunwayWeeks) - 1, code)
+            let own = try XCTUnwrap(e.state.rest["start"]?["own"].double)
+            XCTAssertGreaterThanOrEqual(co.cash, min(own, weekly * Double(e.data.balance.firstYear.startRunwayWeeks)) - 1, code)
         }
     }
 

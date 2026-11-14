@@ -113,6 +113,9 @@ public enum Trophies {
         return L
     }()
 
+    /// Weeks at the start of a new game in which no trophy is recorded.
+    public static let quietWeeks = 4
+
     static let netWorthChain: [[String]] = [["million", "nw5m", "tenm", "nw50m", "hm", "nw500m", "bn", "nw5b", "nw10b", "nw50b"]]
 
     static func record(_ s: GameState) -> JSONValue { s.rest["ach28"] ?? .object([:]) }
@@ -127,13 +130,15 @@ public enum Trophies {
 
     @discardableResult
     public static func check(_ s: inout GameState, data: GameData, context fc: FinanceContext) -> [String] {
+        // A new game earns nothing in its first weeks: the start itself is no achievement.
+        if s.rest["start"] != nil, s.week < quietWeeks { return [] }
         var rec = record(s)
-        let first = s.rest["ach28i"] == nil && (s.week > 8 || s.rest["start"] != nil)
+        // An older save, or an inherited company, records what it already has without a celebration; a fresh start earns each one.
+        let fresh: Bool = s.rest["start"]?["story"].string == "fresh"
+        let first = s.rest["ach28i"] == nil && (s.week > 8 || (s.rest["start"] != nil && !fresh))
         if s.rest["ach28i"] == nil { s.rest["ach28i"] = .number(1) }
         if !s.loans.isEmpty && s.rest["ach28d"] == nil { s.rest["ach28d"] = .number(1) }
-        var nw: NetWorth = Valuation.netWorth(s, trades: data.catalog, forGoals: true)
-        // The start money is no achievement: on the first look the net worth trophies it reaches are recorded without a celebration.
-        if first, let start = s.rest["start"]?["cash"].double, start > nw.total { nw.personal += start - nw.total }
+        let nw: NetWorth = Valuation.netWorth(s, trades: data.catalog, forGoals: true)
         let f = Facts(s: s, data: data, cur: fc.homeCurrency(s), netWorth: nw,
                       live: s.companies.filter { $0.status == .open || $0.status == .closed }, ever: s.companies)
         var got: [String] = []

@@ -1,6 +1,7 @@
 import XCTest
 import GameCore
 import Countries
+import Finance
 @testable import Businesses
 @testable import Simulation
 
@@ -26,8 +27,10 @@ final class RealisticPricesTests: XCTestCase {
     }
 
     func testGymMembershipInOsloIsAboutSixHundredAMonth() throws {
-        let e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 3, story: .fresh, tradeID: "gym", companyName: "Test Gym")
-        let co = try XCTUnwrap(e.state.companies.first)
+        var e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 3)
+        e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "gym", cityID: e.state.player.cityID) else { return XCTFail("gym did not start") }
+        let co = try XCTUnwrap(e.state.company(id))
         let bd = try XCTUnwrap(e.data.catalog["gym"])
         let week = SalesItems.marketTicket(co, bd, World(state: e.state, data: e.data))
         XCTAssertTrue((450...800).contains(week * 52 / 12), "\(week) a member-week")

@@ -18,8 +18,8 @@ public enum Milestones {
 
     static func check(_ s: inout GameState, data: GameData, currency cur: Currency, weekClosed: Bool) {
         let firstCheck = s.rest["miles"] == nil && s.rest["start"] != nil
-        // The start money is no achievement: on the first look every step it reaches counts as already passed.
-        let startMoney: Double = firstCheck ? (s.rest["start"]?["cash"].double ?? 0) : 0
+        // The own savings are no achievement: on the first look every step they reach counts as already passed. The grant is never counted.
+        let startMoney: Double = firstCheck ? (s.rest["start"]?["own"].double ?? 0) : 0
         let nw = Valuation.netWorth(s, trades: data.catalog, forGoals: true).total
         let reach = max(nw, startMoney)
         var m = s.rest["miles"] ?? .object(["w": .number(nw)])

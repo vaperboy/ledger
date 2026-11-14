@@ -23,7 +23,7 @@ final class StartNetWorthTests: XCTestCase {
     }
 
     func testNoNetWorthTrophyOrMilestoneIsQueuedInTheFirstFourWeeks() throws {
-        for trade in Self.trades {
+        for trade in TradeUnlocks.starterIDs {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5, story: .fresh, tradeID: trade)
             for _ in 0..<28 { _ = e.nextDay() }
             let nwWords = e.pendingCelebrations.filter { $0.title.hasPrefix("Net worth") || $0.title == "First million" }
@@ -44,7 +44,7 @@ final class StartNetWorthTests: XCTestCase {
     }
 
     func testAFreshStartBuysOnlyWhatTheTradeNeedsToOpen() throws {
-        for trade in ["gym", "cafe", "hotel"] {
+        for trade in ["cafe", "barber", "kiosk"] {
             let e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5, story: .fresh, tradeID: trade)
             let co = e.state.companies[0]
             let bd = try XCTUnwrap(e.data.catalog[trade])

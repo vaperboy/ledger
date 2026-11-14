@@ -58,6 +58,9 @@ public enum Valuation {
 
     public static let youngCompanyWeeks = 8
 
+    /// The government start-up grant paid at a fresh start, 0 for other starts.
+    public static func startGrant(_ s: GameState) -> Double { s.rest["start"]?["grant"].double ?? 0 }
+
     public static func netWorth(_ s: GameState, trades: any TradeCatalogProviding, forGoals: Bool = false) -> NetWorth {
         var crypto = 0.0, funds = 0.0
         let cryptoPrices = s.rest["crypto"]?.object ?? [:]
@@ -80,7 +83,9 @@ public enum Valuation {
         }
         let lux = (s.rest["lux"]?.array ?? []).filter { $0["co"].isNull || $0["co"].double == 0 }.reduce(0) { $0 + $1["val"].double }
         let debt = s.loans.reduce(0) { $0 + $1.balance }
-        return NetWorth(personal: s.cash + HeldMoney.playerRemaining(s), crypto: crypto, funds: funds, companies: companies,
+        // The start-up grant is given, not earned: trophies, milestones and rankings count without it.
+        let given: Double = forGoals ? startGrant(s) : 0
+        return NetWorth(personal: s.cash + HeldMoney.playerRemaining(s) - given, crypto: crypto, funds: funds, companies: companies,
                         luxury: lux, debt: debt, pendingTax: s.tax.pending, exchange: PublicExchange.holdingsValue(s))
     }
 }
