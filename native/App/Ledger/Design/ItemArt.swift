@@ -41,7 +41,9 @@ extension ArtLibrary {
         let key: NSString = name as NSString
         if let hit = dropped.object(forKey: key) { return hit }
         if missing.object(forKey: ("file." + name) as NSString) != nil { return nil }
-        guard !name.isEmpty, let root = Bundle.main.resourcePath, let raw = UIImage(contentsOfFile: root + "/Content/art/" + name + ".png") else {
+        // Cut-out art is PNG; opaque photos are JPEG to keep the bundle small.
+        let stem: String = (Bundle.main.resourcePath ?? "") + "/Content/art/" + name
+        guard !name.isEmpty, let raw = UIImage(contentsOfFile: stem + ".png") ?? UIImage(contentsOfFile: stem + ".jpg") else {
             missing.setObject(NSNumber(value: true), forKey: ("file." + name) as NSString)
             return nil
         }
@@ -159,9 +161,13 @@ enum ArtAsset {
         "equipment." + (equipmentAlias[trade + "." + id] ?? equipmentAlias[id] ?? id)
     }
 
-    /// Items whose own picture shows something else: the existing picture that fits.
+    /// Items whose own picture shows something else: the picture that fits, some drawn for one trade.
     private static let equipmentAlias: [String: String] = [
-        "kit": "kitch", "tbar": "ilift", "ilift": "tbar", "pay": "sw",
+        "kit": "kitch", "tbar": "ilift", "ilift": "tbar",
+        "carclean.wash": "carclean.wash", "fuelstation.wash": "fuelstation.wash", "trucking.wash": "trucking.wash",
+        "farm.dry": "farm.dry", "hotel.lift": "hotel.lift", "plumber.cam": "plumber.cam", "plumber.tools": "plumber.tools",
+        "dental.cad": "dental.cad", "wh3pl.rack": "palletrack", "wholesale.rack": "palletrack", "hardware.rack": "palletrack",
+        "skires.groom": "igroom",
         "skires.chair": "tbar", "photo.cam": "photo", "laundry.wash": "laun", "laundry.dry": "laun",
         "trucking.truck": "dtruck", "wholesale.truck": "dtruck", "electrician.lift": "lad", "mktg.tools": "crm",
     ]

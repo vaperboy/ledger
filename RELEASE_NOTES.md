@@ -1,4 +1,5 @@
 # What's new
+- Equipment now shows real photos in their setting (114 new pictures), with the right picture per trade for car wash, pressure washer, grain dryer, hotel lift, drain camera, pipe tools, dental scanner and pallet racking; season 1 has its crown box picture
 - Simpler price popup: just the price, one result line and Done (suppliers and product stats live on their own screens); no more computer rival companies in Ventures or new-company text, and one place to open another outlet
 - Your company's backdrop now shows behind all of its menus (sections, hiring, suppliers, insurance, boards) and a group company's pages, as a still picture under a dark fade so text stays easy to read
 - Store offers show how many you can still buy ("Available 1/1" on the weekly featured bundle, "Remaining 2/3" on bundles and money packs, with the time until they come back), and gold packs are marked "Most popular" and "Best value"
