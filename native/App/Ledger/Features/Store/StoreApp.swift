@@ -7,6 +7,9 @@ struct StoreApp: View {
     @Environment(PurchaseManager.self) private var purchases
     private let session = StoreSession.shared
     @State private var showRedeem = false
+    @State private var redeemStart = ""
+    @State private var gift: ServerGiftReward?
+    @State private var showGift = false
     @State private var showAppleCode = false
     @State private var showInfo = false
     @State private var pending: PendingAction?
@@ -16,6 +19,7 @@ struct StoreApp: View {
     var body: some View {
         let paid: Bool = paidBoxesAllowed
         PhonePageScroll(spacing: Theme.Space.xl) {
+            RedeemGiftRow { (start: String) in redeemStart = start; showRedeem = true }
             StoreOffersSection(ask: ask).storeAppear(0)
             StoreShelfSection(ask: ask).storeAppear(1)
             VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -45,7 +49,12 @@ struct StoreApp: View {
         }
         .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: .cabinet, others: [.grand] + BoxKind.cardPacks) }
         .centerSheet(isPresented: $showRedeem, title: "Redeem a code") {
-            RedeemCodeCard(onAppleCode: purchases.offerCodesAvailable ? { showRedeem = false; StorePurchase.afterPopup { showAppleCode = true } } : nil)
+            RedeemCodeCard(startCode: redeemStart,
+                           onGift: { (reward: ServerGiftReward) in showRedeem = false; StorePurchase.afterPopup { gift = reward; showGift = true } },
+                           onAppleCode: purchases.offerCodesAvailable ? { showRedeem = false; StorePurchase.afterPopup { showAppleCode = true } } : nil)
+        }
+        .centerSheet(isPresented: $showGift, title: "Gift received") {
+            if let gift { GiftReceivedCard(reward: gift, onDone: { showGift = false }) }
         }
         .offerCodeRedemption(isPresented: $showAppleCode) { _ in Task { await purchases.codeRedeemed() } }
         .task { await session.load(); await purchases.loadProducts() }
@@ -120,9 +129,6 @@ struct StoreApp: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(spacing: Theme.Space.l) {
-                Button { Haptics.tap(); showRedeem = true } label: { Text("Redeem a code").textStyle(.caption, tint: Theme.accent, weight: .semibold).frame(minHeight: 44) }
-                    .buttonStyle(PressableStyle())
-                    .accessibilityIdentifier("store-redeem")
                 Link("Terms", destination: LedgerLinks.terms).textStyle(.caption)
                 Link("Privacy", destination: LedgerLinks.privacy).textStyle(.caption)
             }

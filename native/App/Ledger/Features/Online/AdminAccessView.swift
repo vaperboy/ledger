@@ -91,9 +91,9 @@ struct AdminAccessView: View {
         }
     }
 
-    /// Codes are typed in one place only: the Store's "Redeem a code".
+    /// Codes are typed in one place only: the Store's "Redeem gift code".
     private var entry: some View {
-        Text("An administrator code is given out by the owner of the game and works once. Type it in the Store under Redeem a code, at the bottom of the Store page.")
+        Text("An administrator code is given out by the owner of the game and works once. Type it in the Store under Redeem gift code, at the top of the Store page.")
             .textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("admin-code-where")
     }

@@ -29,6 +29,7 @@ jobs:
       - run: psql -v ON_ERROR_STOP=1 -q -1 -d t -f supabase/tests/server_wallet.sql
       - run: psql -v ON_ERROR_STOP=1 -q -1 -d t -f supabase/tests/account_delete.sql
       - run: psql -v ON_ERROR_STOP=1 -q -1 -d t -f supabase/tests/store_admin.sql
+      - run: psql -v ON_ERROR_STOP=1 -q -1 -d t -f supabase/tests/gift_codes.sql
 
   migrate:
     needs: sql-tests
