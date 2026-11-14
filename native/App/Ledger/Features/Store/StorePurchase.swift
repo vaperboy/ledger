@@ -59,7 +59,7 @@ enum StorePurchase {
 
     static func ask(offer: GoldOffer, pending: Binding<PendingAction?>, onShort: @escaping (Int) -> Void, run: @escaping () -> Void) {
         guard offer.price > 0 else { return }
-        if session.available < offer.price { onShort(offer.price); return }
+        if !session.isAdmin && session.available < offer.price { onShort(offer.price); return }
         pending.wrappedValue = PendingAction(title: offer.title, message: "If you buy this, \(offer.effect) You pay \(StoreText.gold(offer.price)).", button: "Buy",
                                              alwaysAsk: true, tone: .investment, icon: offer.icon, run: run)
     }

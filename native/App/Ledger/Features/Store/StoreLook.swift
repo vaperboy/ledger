@@ -98,6 +98,22 @@ struct RewardIcon: View {
     }
 }
 
+/// Just the coloured tile of a reward, for places that print the amount themselves.
+struct RewardTile: View {
+    var kind: StoreReward.Kind
+    var size: CGFloat
+
+    var body: some View {
+        let r = StoreReward(kind: kind, amount: "")
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).fill(StoreColors.gradient(r.tint))
+            if kind == .gold { StoreCoin(size: size * 0.62) } else { Image(systemName: r.symbol).font(.system(size: size * 0.46, weight: .bold)).foregroundStyle(.white) }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
 /// "You get" and a row of reward icons.
 struct RewardStrip: View {
     var rewards: [StoreReward]

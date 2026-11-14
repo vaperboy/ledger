@@ -253,7 +253,7 @@ final class StoreSession {
     @discardableResult
     func buy(_ good: GoldGood, paidBoxesAllowed: Bool) async -> Bool {
         problem = nil
-        guard available >= good.price else { problem = StoreError.notEnoughGold(missing: good.price - available).errorDescription; return false }
+        guard isAdmin || available >= good.price else { problem = StoreError.notEnoughGold(missing: good.price - available).errorDescription; return false }
         if let remote { return await buyOnServer(good, remote: remote, paidBoxesAllowed: paidBoxesAllowed) }
         do {
             switch good {
@@ -297,7 +297,7 @@ final class StoreSession {
         case .moneyPack(let pack):
             guard canSellForCash else { problem = "Open a game to buy money."; return false }
             let used: Int = server?.moneyWeek.used ?? 0
-            guard MoneyPacks.fitsThisWeek(pack, used: used) else {
+            guard isAdmin || MoneyPacks.fitsThisWeek(pack, used: used) else {
                 let room: Int = MoneyPacks.weeklyRoom(used: used)
                 problem = room == 0 ? "You have bought all the money allowed this week. Try again in a few days."
                     : "This week you can spend \(room) more gold on money."

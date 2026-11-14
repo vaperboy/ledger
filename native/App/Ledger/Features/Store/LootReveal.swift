@@ -116,8 +116,8 @@ struct LootArt: View {
             if let c = entry.cosmetic { ItemArt(reward: c.item, rarity: c.rarity, size: size, wide: true) } else { Image(systemName: "paintpalette.fill").font(.system(size: size * 0.7)).foregroundStyle(Theme.ink) }
         case .artifact:
             if let d = entry.artifact { ItemArt(artifact: d, size: size) } else { LedgerGlyph(glyph: Glyph.luxury, size: size * 0.8, tint: Theme.ink) }
-        case .gold: StoreCoin(size: size)
-        case .cash: Image(systemName: "banknote.fill").font(.system(size: size * 0.7)).foregroundStyle(Theme.ink)
+        case .gold: RewardTile(kind: .gold, size: size)
+        case .cash: RewardTile(kind: .money, size: size)
         }
     }
 }

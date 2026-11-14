@@ -329,18 +329,6 @@ final class OnlineSession {
         lastGameUpload = nil
     }
 
-    func redeemAdminCode(_ code: String) async -> AdminCodeResult? {
-        problem = nil
-        do {
-            let r = try await service.redeemAdminCode(code)
-            await refreshStatus()
-            return r
-        } catch {
-            problem = (error as? LocalizedError)?.errorDescription ?? "Could not check the code. Try again."
-            return nil
-        }
-    }
-
     func deleteAccount() async {
         problem = nil
         do {

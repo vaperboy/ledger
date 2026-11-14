@@ -1,4 +1,5 @@
 # What's new
+- Brighter Store: clear offer cards with big reward icons and prices, a new cosmetics shelf every day (never Battle Pass items), a small "watch an ad for gold" button on Home and the Store, open Supporter perks, and one Redeem a code field for beta keys
 - Battle pass grows to 50 tiers with more costumes, Season 3 "Riviera Summer" starts on its own by date, 38 new store cosmetics, Creator and Beta tester badges, work uniforms per trade, and animated legendary items
 - Smoother app: lighter visuals with no live blur or heavy shadows, only the open tab is drawn, no animations in Low Power Mode, swipe between sub-tabs, and Market overview and Companies in one screen
 - Decisions: No on the left, Yes on the right, a small Later below; outcomes are told as what happened, with a single cost line only for big choices
