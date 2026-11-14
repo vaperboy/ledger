@@ -1,4 +1,6 @@
 # What's new
+- Fairer first company: every starter begins with the same savings, the bank lends what the kit costs beyond them, and the start-up grant is a few weeks of running costs that counts for no trophy, milestone or ranking; no trophies in the first four weeks; the gym now opens as a second company
+- Prices: you can always change a price your manager or market advisor sets, and hand pricing back to them with one tap
 - Decisions: No on the left, Yes on the right, a small Later below; outcomes are told as what happened, with a single cost line only for big choices
 - Daily missions: 4 easy and 1 hard each day (plus weekly and monthly sets) picked from hundreds of missions, rewards that match the effort, and a Claim button on Home
 - First-company guide fixes: Done on the price screen always saves the price and moves the guide on, keeping the supplier in use counts as choosing one, looking at a supplier's owner brings you back to the supplier list, small sales show as decimals instead of 0, and the guide ends after the Inbox when no reward is ready
@@ -6,7 +8,7 @@
 - Sign in with Apple, sign back into your account on a new phone, and account deletion that settles your deals first
 - Safer online play: partner payments and company values are capped, ranking scores are checked, and marketplace listings must be real items at fair prices
 - Faster and safer saving in the background, iPhone portrait only, and clearer loading and retry on online screens
-- Your first company is one of 12 simple starter trades, and the start-up grant only ever covers those; bigger trades such as hotels, factories, airlines and oil and gas open later as you level up
+- Your first company is one of 11 simple starter trades, and the start-up grant only ever covers those; bigger trades such as hotels, factories, airlines and oil and gas open later as you level up
 - Insurance now opens at level 3 and Rivals at level 6, still one new feature per level
 - The country list starts with the country of your phone, and the last setup step is skipped when your trade sells one way only
 - Events fit the company: shop events skip web shops and wholesalers, premises events skip home-based and vehicle businesses, and money losses scale with the size of the company; grant windows name your own country's agency
