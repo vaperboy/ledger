@@ -1,0 +1,1 @@
+SKIPPED H08-profile-friends: no profile-add-friend link

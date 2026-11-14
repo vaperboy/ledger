@@ -1,0 +1,1 @@
+SKIPPED F07-app-desk: no Desk tile on the Phone grid in this game (hidden or locked by progress)

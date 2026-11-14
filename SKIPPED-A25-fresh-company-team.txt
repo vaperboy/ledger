@@ -1,0 +1,1 @@
+SKIPPED A25-fresh-company-team: the company page did not open

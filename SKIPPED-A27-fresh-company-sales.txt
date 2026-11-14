@@ -1,0 +1,1 @@
+SKIPPED A27-fresh-company-sales: the company page did not open

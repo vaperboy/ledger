@@ -1,0 +1,1 @@
+SKIPPED B02-home-goals: its popup did not open

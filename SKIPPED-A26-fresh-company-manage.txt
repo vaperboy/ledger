@@ -1,0 +1,1 @@
+SKIPPED A26-fresh-company-manage: the company page did not open

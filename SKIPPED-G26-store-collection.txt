@@ -1,0 +1,1 @@
+SKIPPED G26-store-collection: no Artifacts and cards row

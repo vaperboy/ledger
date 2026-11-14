@@ -1,0 +1,1 @@
+SKIPPED G17-goals-long-term: no Long-term tab

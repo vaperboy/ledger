@@ -1,0 +1,1 @@
+SKIPPED D06-app-stats-money: no stats-money row

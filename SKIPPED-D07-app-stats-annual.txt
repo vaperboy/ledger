@@ -1,0 +1,1 @@
+SKIPPED D07-app-stats-annual: no stats-annual row: no finished year in this game

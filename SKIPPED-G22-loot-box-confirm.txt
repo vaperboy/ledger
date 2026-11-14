@@ -1,0 +1,1 @@
+SKIPPED G22-loot-box-confirm: no confirmation was asked: not enough gold

@@ -1,0 +1,1 @@
+SKIPPED E10-app-world-people: its app did not open

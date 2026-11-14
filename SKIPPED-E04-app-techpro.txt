@@ -1,0 +1,1 @@
+SKIPPED E04-app-techpro: the TechPro tile did not open the app (locked in this game)

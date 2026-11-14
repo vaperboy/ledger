@@ -1,0 +1,1 @@
+SKIPPED D12-app-luxury: no Luxury tile on the Phone grid in this game (hidden or locked by progress)

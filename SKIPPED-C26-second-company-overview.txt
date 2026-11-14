@@ -1,0 +1,1 @@
+SKIPPED C26-second-company-overview: no second company row on Home

@@ -1,0 +1,1 @@
+launch call 12 s, Home shown after 165 s
