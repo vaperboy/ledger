@@ -78,7 +78,7 @@ struct HireWorkersView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { actionBar(e, co, cur, chosen) }
         .confirmAction($pending)
         .navigationDestination(item: $talk) { (w: WorkerRef) -> HireOnePageHost in HireOnePageHost(companyID: companyID, personID: w.id) }
-        .appScreen(title: "Hire workers", subtitle: co.name, tab: store.tab)
+        .appScreen(title: "Hire workers", subtitle: co.name, tab: store.tab, backdrop: LookKit.companyBackdrop(e, co.id))
     }
 
     private func hero(_ e: GameEngine, _ co: Company, _ waiting: Int, role: String?) -> some View {

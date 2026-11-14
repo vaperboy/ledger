@@ -33,7 +33,7 @@ struct BoardView: View {
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
             .ledgerBackground()
-            .appScreen(title: "Board of " + engine.boardName(key: key), subtitle: key.hasPrefix("ch:") ? "\(companies.count) \(companies.count == 1 ? "location" : "locations")" : "Board of the company", tab: .group)
+            .appScreen(title: "Board of " + engine.boardName(key: key), subtitle: key.hasPrefix("ch:") ? "\(companies.count) \(companies.count == 1 ? "location" : "locations")" : "Board of the company", tab: .group, backdrop: LookKit.boardBackdrop(engine, key))
         } else {
             Text("This board no longer meets.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }

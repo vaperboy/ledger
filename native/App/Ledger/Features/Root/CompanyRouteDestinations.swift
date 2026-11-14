@@ -3,7 +3,22 @@ import GameCore
 import Simulation
 
 struct CompanyRouteDestination: View {
+    @EnvironmentObject var store: GameStore
     var route: NavRoute
+
+    /// Every screen that belongs to one company or group entity carries that company's backdrop.
+    private var backdrop: SeasonReward? {
+        guard let e = store.engine else { return nil }
+        switch route {
+        case .company(let id), .companyAt(let id, _), .companyPart(let id, _, _), .hire(let id), .supplier(let id, _):
+            return LookKit.companyBackdrop(e, id)
+        case .entity(let id, _):
+            let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(e)
+            return list.first(where: { (g: GroupEntity) -> Bool in g.id == id }).flatMap { (g: GroupEntity) -> SeasonReward? in LookKit.entityBackdrop(e, g) }
+        default:
+            return nil
+        }
+    }
 
     var body: some View {
         Group {
@@ -26,6 +41,7 @@ struct CompanyRouteDestination: View {
                 SupplierOwnerProfile(ref: ref)
             }
         }
+        .screenBackdrop(backdrop)
         .zoomDestination(route)
         .id(route)
     }
@@ -194,7 +210,8 @@ struct CompanySwitcherBar: View {
             .background {
                 ZStack {
                     if P != .game { P.ground.ignoresSafeArea(edges: [.top, .horizontal]) }
-                    if let b = LookKit.companyBackdrop(e, id) { HeaderBackdropFill(reward: b).ignoresSafeArea(edges: [.top, .horizontal]) }
+                    // On the game palette the page behind already shows the backdrop.
+                    if P != .game, let b = LookKit.companyBackdrop(e, id) { HeaderBackdropFill(reward: b).ignoresSafeArea(edges: [.top, .horizontal]) }
                 }
             }
         }

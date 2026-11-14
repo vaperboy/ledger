@@ -29,7 +29,7 @@ struct CompanyCoverageScreen: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .appScreen(title: "Insurance", subtitle: "Policies, insurer and law firm", tab: .company)
+            .appScreen(title: "Insurance", subtitle: "Policies, insurer and law firm", tab: .company, backdrop: LookKit.companyBackdrop(e, co.id))
             .confirmAction($pending)
             .task { store.act { $0.prepareAdvisers(companyID: companyID) } }
         } else {
