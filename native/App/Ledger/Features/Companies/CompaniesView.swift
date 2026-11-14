@@ -36,6 +36,11 @@ struct CompaniesView: View {
             .overlay(alignment: .bottomTrailing) {
                 if let e = store.engine { NextDayDock(engine: e).padding(.bottom, NextDayDock.gap) }
             }
+            .overlay(alignment: .bottomLeading) {
+                AdGoldBubble()
+                    .padding(.leading, Theme.Space.page)
+                    .padding(.bottom, NextDayDock.gap + (NextDayDock.height - 44) / 2)
+            }
             .padding(.bottom, missingBottom)
             .ledgerBackground()
             .background(GeometryReader { (g: GeometryProxy) in
@@ -43,7 +48,7 @@ struct CompaniesView: View {
                     .onAppear { ownInsets = g.safeAreaInsets }
                     .onChange(of: g.safeAreaInsets) { _, v in ownInsets = v }
             })
-            .onAppear { store.refreshPending(); store.endVisits() }
+            .onAppear { store.refreshPending(); store.endVisits(); store.syncAdminLevels() }
             .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)

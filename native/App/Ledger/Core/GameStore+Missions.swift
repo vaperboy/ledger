@@ -25,7 +25,9 @@ extension GameStore {
 
     private func payMission(_ e: PlayMissions.Entry) -> (xp: Int, cash: Double, gold: Int)? {
         guard case .claimed(_, let xp, let cash, let gold)? = act({ (x: inout GameEngine) -> PlayMissions.Result in x.claimMission(e.period, id: e.missionID) }) else { return nil }
-        if gold > 0 { StoreSession.shared.receiveDaily(boxes: 0, gold: gold) }
+        // The period key names the set the mission came from, so the server pays each mission once.
+        let period: String = e.period.rawValue + ":" + String(TrustedClock.today() / e.period.days)
+        if gold > 0 { StoreSession.shared.receiveMission(id: e.missionID, period: period, gold: gold) }
         return (xp, cash, gold)
     }
 

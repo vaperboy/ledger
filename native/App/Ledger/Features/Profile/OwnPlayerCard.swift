@@ -24,7 +24,8 @@ extension PlayerCardData {
                               figures: [PlayerCardFigure(title: "Net worth", value: store.short(e.netWorth.total)),
                                         PlayerCardFigure(title: "Companies", value: "\(live)"),
                                         PlayerCardFigure(title: "Weeks played", value: "\(e.state.week)")],
-                              hallOfFame: e.inHallOfFame)
+                              hallOfFame: e.inHallOfFame,
+                              supporter: StoreSession.shared.isSupporter)
     }
 }
 

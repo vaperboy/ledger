@@ -8,6 +8,20 @@ struct AuctionPurse {
     var format: (Int) -> String
 }
 
+/// One item on today's cosmetics shelf, at its shelf price.
+struct ShelfPick: Identifiable, Equatable {
+    var item: GoldCosmetic
+    var price: Int
+    var id: String { item.id }
+}
+
+/// Mission gold the server has not confirmed yet; sent again until it answers.
+private struct OwedMissionGold: Codable, Equatable {
+    var id: String
+    var period: String
+    var gold: Int
+}
+
 @MainActor @Observable
 final class StoreSession {
     static let shared = StoreSession()
@@ -29,6 +43,8 @@ final class StoreSession {
     @ObservationIgnored var moneyPackHandler: ((String, String) -> Double?)?
     @ObservationIgnored var purse: (() -> AuctionPurse?)?
     @ObservationIgnored var cashHandler: ((Int, String, String) -> Void)?
+    /// Told whether the account is an administrator each time the server answers, so the game can open every level gate.
+    @ObservationIgnored var adminHandler: ((Bool) -> Void)?
     @ObservationIgnored private let store: any StoreService
     @ObservationIgnored private let market: any AuctionService
     @ObservationIgnored private let remote: ServerStore?
@@ -103,6 +119,7 @@ final class StoreSession {
         ServerStoreCache.save(snap)
         SeasonModel.shared.syncServer(snap.info, replace: snap.info.imported || UserDefaults.standard.bool(forKey: Self.importedKey))
         for id in snap.info.cosmetics where AvatarCatalog.def(id) != nil { AvatarModel.shared.grant(id) }
+        adminHandler?(snap.info.isAdmin ?? false)
     }
 
     private func run<T>(_ call: () async throws -> T) async -> T? {
@@ -143,6 +160,8 @@ final class StoreSession {
             }
         }
         await payOwedMoney()
+        if UserDefaults.standard.string(forKey: Self.adClaimKey) != nil { _ = await claimAdGold() }
+        await payMissionGold()
         if levelAsked > (server?.levelGoldPaid ?? 0) { await claimLevel(levelAsked) }
     }
 
@@ -531,6 +550,106 @@ final class StoreSession {
 
     private func grantCollections(_ done: [ArtifactCollection]) {
         for c in done { SeasonModel.shared.grantOwned(c.rewardID) }
+    }
+
+    // MARK: Store extras
+
+    /// An administrator account: gold never runs out, every cosmetic, the full pass, Pro and Plus, every level gate open.
+    var isAdmin: Bool { server?.isAdmin ?? false }
+    /// Bought something with real money or watched enough ads: a badge, more gold per ad and a shorter wait. Nothing else.
+    var isSupporter: Bool { server?.supporter ?? false }
+    var adTerms: ServerStoreInfo.AdTerms? { server?.ads }
+    var betaRedeemed: Bool { server?.betaRedeemed ?? false }
+
+    /// Today's cosmetics shelf: the server's pick, or the phone's own pick without the server.
+    var shelf: [ShelfPick] {
+        guard remote != nil else {
+            return StoreRotation.pick(day: SeasonCatalog.today()).compactMap { (c: GoldCosmetic) -> ShelfPick? in
+                StoreRotation.price(c).map { (p: Int) -> ShelfPick in ShelfPick(item: c, price: p) }
+            }
+        }
+        return (server?.shelf?.items ?? []).compactMap { (i: ServerStoreInfo.Shelf.Item) -> ShelfPick? in
+            GoldCosmetics.cosmetic(i.id).map { (c: GoldCosmetic) -> ShelfPick in ShelfPick(item: c, price: i.price) }
+        }
+    }
+
+    enum CodeResult: Equatable { case admin, beta(Int), alreadyAdmin, betaUsed, invalid, locked, offline }
+
+    /// Spends a typed code: an administrator code or a beta key. Only the server can check it.
+    func redeemCode(_ code: String) async -> CodeResult {
+        problem = nil
+        guard let remote else { return .offline }
+        guard let data = await run({ try await remote.online.storeRedeem(code: code) }),
+              let out = try? remote.body(ServerRedeem.self, data) else { return .offline }
+        if let snap = try? remote.snapshot(data) { adopt(snap) }
+        switch out.reason {
+        case "granted": return out.kind == "admin" ? .admin : .beta(out.gold ?? 0)
+        case "already_admin": return .alreadyAdmin
+        case "beta_used": return .betaUsed
+        case "locked": return .locked
+        default: return .invalid
+        }
+    }
+
+    enum AdGold: Equatable { case paid(Int), wait(Int), doneToday, failed }
+
+    private static let adClaimKey = "ledger.store.adClaim"
+
+    /// Gold for an ad that has been watched. The claim id is kept until the server answers, so a retry never pays twice.
+    func claimAdGold() async -> AdGold {
+        let claim: String = UserDefaults.standard.string(forKey: Self.adClaimKey) ?? UUID().uuidString
+        UserDefaults.standard.set(claim, forKey: Self.adClaimKey)
+        guard let remote else {
+            UserDefaults.standard.removeObject(forKey: Self.adClaimKey)
+            state = await store.grantFromSeason(boxes: 0, gold: 1)
+            return .paid(1)
+        }
+        guard let data = await run({ try await remote.online.storeClaimAd(claim: claim) }),
+              let out = try? remote.body(ServerGoldClaim.self, data) else { return .failed }
+        UserDefaults.standard.removeObject(forKey: Self.adClaimKey)
+        if let snap = try? remote.snapshot(data) { adopt(snap) }
+        if out.ok { return .paid(out.gold ?? 0) }
+        if out.reason == "cooldown" { return .wait(max(1, out.wait ?? 60)) }
+        return .doneToday
+    }
+
+    private static let missionKey = "ledger.store.missionGold"
+
+    private var owedMissions: [OwedMissionGold] {
+        get {
+            guard let d = UserDefaults.standard.data(forKey: Self.missionKey) else { return [] }
+            return (try? JSONDecoder().decode([OwedMissionGold].self, from: d)) ?? []
+        }
+        set {
+            if newValue.isEmpty { UserDefaults.standard.removeObject(forKey: Self.missionKey) }
+            else if let d = try? JSONEncoder().encode(Array(newValue.suffix(40))) { UserDefaults.standard.set(d, forKey: Self.missionKey) }
+        }
+    }
+
+    /// Gold from a claimed mission. With the server it is paid there, once per mission and period, within daily and weekly caps.
+    func receiveMission(id: String, period: String, gold: Int) {
+        guard gold > 0 else { return }
+        guard remote != nil else { receiveDaily(boxes: 0, gold: gold); return }
+        var owed: [OwedMissionGold] = owedMissions
+        let entry = OwedMissionGold(id: id, period: period, gold: gold)
+        if !owed.contains(entry) { owed.append(entry) }
+        owedMissions = owed
+        Task { await payMissionGold() }
+    }
+
+    private func payMissionGold() async {
+        guard let remote, canSpend else { return }
+        for m in owedMissions {
+            do {
+                let data: Data = try await remote.online.storeClaimMission(id: m.id, period: m.period, gold: m.gold)
+                if let snap = try? remote.snapshot(data) { adopt(snap) }
+            } catch OnlineError.rejected(_) {
+                // A refused claim is never paid; it is dropped.
+            } catch {
+                return
+            }
+            owedMissions = owedMissions.filter { (o: OwedMissionGold) -> Bool in o != m }
+        }
     }
 
     // MARK: Auctions

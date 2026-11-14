@@ -140,7 +140,7 @@ extension ScreenShotsTests {
         }
         page("store-cosmetics") {
             guard openApp("Store") == nil else { return "the Store did not open" }
-            return ok(seekText("Cosmetics and bundles"), "no Cosmetics and bundles row")
+            return ok(seekText("TODAY'S SHELF"), "no shelf band")
         }
     }
 

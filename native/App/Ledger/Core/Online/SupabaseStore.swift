@@ -27,6 +27,36 @@ struct ServerStoreInfo: Codable, Equatable, Sendable {
     var unpaidMoney: [UnpaidMoney]
     var imported: Bool
     var importsGold: Bool
+    /// Fields from the store extras; optional so answers and cached copies from before them still decode.
+    var isAdmin: Bool?
+    var supporter: Bool?
+    var ads: AdTerms?
+    var shelf: Shelf?
+    var betaRedeemed: Bool?
+
+    /// Rewarded-ad gold right now, with the plain and supporter terms the Store explains.
+    struct AdTerms: Codable, Equatable, Sendable {
+        var perDay: Int
+        var used: Int
+        var gold: Int
+        var cooldown: Int
+        /// When the next ad can pay, in seconds since 1970; nil when it can pay now.
+        var nextAt: Double?
+        var baseGold: Int
+        var supporterGold: Int
+        var baseCooldown: Int
+        var supporterCooldown: Int
+        var supporterAds: Int
+        var watched: Int
+        var left: Int { max(0, perDay - used) }
+    }
+
+    /// The cosmetics shelf of a server day.
+    struct Shelf: Codable, Equatable, Sendable {
+        struct Item: Codable, Equatable, Sendable { var id: String; var price: Int }
+        var day: Int
+        var items: [Item]
+    }
 }
 
 struct ServerStoreSnapshot: Codable, Equatable, Sendable {
@@ -78,6 +108,10 @@ struct ServerQuickSale: Decodable, Sendable {
     struct Sold: Decodable, Sendable { var defID: String; var serial: Int; var rarity: String? }
     var sold: [Sold]
 }
+/// The answer to a typed code: an administrator code or a beta key.
+struct ServerRedeem: Decodable, Sendable { var ok: Bool; var kind: String?; var reason: String; var gold: Int? }
+/// The answer to an ad or mission gold claim.
+struct ServerGoldClaim: Decodable, Sendable { var ok: Bool; var gold: Int?; var reason: String?; var wait: Int? }
 struct ServerImport: Decodable, Sendable { var imported: Bool; var reason: String?; var gold: Int?; var items: Int? }
 struct ServerPurchase: Decodable, Sendable {
     var granted: Bool?
@@ -134,6 +168,11 @@ extension SupabaseOnlineService {
     func storeImport(device: String, payload: Data) async throws -> Data {
         let body: Any = try JSONSerialization.jsonObject(with: payload)
         return try await rpcData("import_local_store", ["p_device": device, "p_store": body])
+    }
+    func storeRedeem(code: String) async throws -> Data { try await rpcData("redeem_code", ["p_code": code]) }
+    func storeClaimAd(claim: String) async throws -> Data { try await rpcData("claim_ad_gold", ["p_claim": claim]) }
+    func storeClaimMission(id: String, period: String, gold: Int) async throws -> Data {
+        try await rpcData("claim_mission_gold", ["mission_id": id, "period_key": period, "gold": gold])
     }
     func storePurchase(jws: String) async throws -> Data { try await functionData("store-purchase", ["jws": jws]) }
 }

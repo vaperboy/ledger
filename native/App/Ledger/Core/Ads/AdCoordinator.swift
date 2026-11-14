@@ -17,11 +17,7 @@ final class AdCoordinator {
 
     init(entitlements: Entitlements, provider: AdProvider? = nil) {
         self.entitlements = entitlements
-        #if canImport(GoogleMobileAds) && canImport(UserMessagingPlatform)
-        self.provider = provider ?? AdMobProvider()
-        #else
-        self.provider = provider ?? PlaceholderAdProvider()
-        #endif
+        self.provider = provider ?? AdProviders.make()
         if let d = UserDefaults.standard.data(forKey: Self.ledgerKey), let l = try? JSONDecoder().decode(AdLedger.self, from: d) { ledger = l } else { ledger = AdLedger() }
         ledger.beginSession(now: Date())
         store()
@@ -112,6 +108,13 @@ final class AdCoordinator {
         ledger = l; store()
         if let end = e.passExpires { entitlements.grantPass(until: end) }
         return true
+    }
+
+    /// Rewarded ad for gold from the floating button. Shown to every player who taps it; the server pays and caps it.
+    @discardableResult
+    func watchForGold() async -> Bool {
+        guard available, !isShowing else { return false }
+        return await rewardedFinished()
     }
 
     var freeMoneyLeft: Int { AdPolicy.freeMoneyLeft(now: TrustedClock.now(), ledger) }

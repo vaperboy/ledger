@@ -111,7 +111,7 @@ actor GoldVault {
     }
 
     func buyCosmetic(_ id: String, owned: Set<String>) throws -> StoreState {
-        guard let c = GoldCosmetics.cosmetic(id), let price = c.price else { throw StoreError.unknownItem }
+        guard let c = GoldCosmetics.cosmetic(id), let price = StoreRotation.price(c) else { throw StoreError.unknownItem }
         guard !owned.contains(id) else { throw StoreError.alreadyOwned }
         guard wallet.spend(price) else { throw StoreError.notEnoughGold(missing: price - wallet.available) }
         save()

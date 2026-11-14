@@ -65,6 +65,8 @@ final class Entitlements {
         case .off: break
         }
         #endif
+        // An administrator account has Pro and Plus without buying them.
+        if StoreSession.shared.isAdmin { return EntitlementSnapshot(owned: snapshot.owned.union([.pro, .plusYearly]), plusExpires: Date.distantFuture, passExpires: snapshot.passExpires) }
         return snapshot
     }
     var isPro: Bool { effective.isPro(now: now) }

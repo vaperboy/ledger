@@ -1,32 +1,37 @@
 import SwiftUI
 import Simulation
 
-/// A big section header on a slanted coloured band with a small picture at the right.
+/// A big section header: a bright slanted band with a white title and a small picture at the right.
 struct StoreBand: View {
     var title: String
     var glyph: String
-    var tint: Color = Theme.gold
+    var tint: Color = StoreColors.purple
+    var trailing: Date? = nil
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            StoreSlant().fill(LinearGradient(colors: [tint.opacity(0.9), tint.opacity(0.35)], startPoint: .leading, endPoint: .trailing))
-            HStack {
-                Text(title.uppercased()).font(.system(size: 26, weight: .heavy)).italic().foregroundStyle(Theme.accentInk)
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                Spacer(minLength: Theme.Space.s)
-                LedgerGlyph(glyph: glyph, size: 34, tint: Theme.accentInk.opacity(0.8))
+        HStack(spacing: Theme.Space.s) {
+            ZStack(alignment: .leading) {
+                StoreSlant().fill(StoreColors.gradient(tint))
+                HStack(spacing: Theme.Space.s) {
+                    Text(title.uppercased()).font(.title2.weight(.black)).italic().foregroundStyle(.white)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    LedgerGlyph(glyph: glyph, size: 24, tint: Color.white.opacity(0.9))
+                }
+                .padding(.leading, Theme.Space.l).padding(.trailing, Theme.Space.xl)
             }
-            .padding(.horizontal, Theme.Space.l)
+            .fixedSize(horizontal: true, vertical: false)
+            Spacer(minLength: 0)
+            if let trailing { StoreTimer(ends: trailing).padding(.trailing, Theme.Space.m) }
         }
-        .frame(height: 56)
+        .frame(height: 50)
+        .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
-        .accessibilityLabel(title)
     }
 }
 
 private struct StoreSlant: Shape {
     func path(in rect: CGRect) -> Path {
-        let cut: CGFloat = 18
+        let cut: CGFloat = 22
         var p = Path()
         p.move(to: CGPoint(x: rect.minX, y: rect.minY))
         p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
@@ -37,147 +42,190 @@ private struct StoreSlant: Shape {
     }
 }
 
-/// A bold price bar: the price in big type on a yellow strip.
+/// The yellow gold price bar used on gold goods.
 struct StorePriceBar: View {
     var gold: Int
 
     var body: some View {
-        HStack(spacing: Theme.Space.xs) {
-            Spacer(minLength: 0)
-            Circle().fill(Theme.accentInk.opacity(0.85)).frame(width: 12, height: 12).accessibilityHidden(true)
-            Text(gold.formatted()).font(.system(size: 20, weight: .heavy)).monospacedDigit().foregroundStyle(Theme.accentInk)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, Theme.Space.m).frame(maxWidth: .infinity, minHeight: 44)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.gold))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Buy for " + StoreText.gold(gold))
+        StorePriceLabel(text: gold.formatted(), gold: true, minHeight: 44)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Buy for " + StoreText.gold(gold))
     }
 }
 
-/// OFFERS: the season pass, the plans and the best box bundle as full-width cards.
+/// An App Store purchase as a big yellow price button.
+struct StoreAppStoreButton: View {
+    @Environment(PurchaseManager.self) private var purchases
+    var item: PurchaseItem
+    var title: String = ""
+    var identifier: String = ""
+
+    var body: some View {
+        let manager: PurchaseManager = purchases
+        let price: String? = manager.price(item)
+        let busy: Bool = manager.inFlight == item
+        Button { Haptics.tap(); manager.request(item) } label: {
+            HStack(spacing: 6) {
+                if busy { ProgressView().controlSize(.small).tint(StoreColors.priceInk) }
+                StorePriceLabel(text: label(price, busy: busy))
+            }
+        }
+        .buttonStyle(PressableStyle())
+        .disabled(manager.isBusy || price == nil)
+        .opacity(price == nil ? 0.6 : 1)
+        .accessibilityIdentifier(identifier)
+    }
+
+    private func label(_ price: String?, busy: Bool) -> String {
+        if busy { return "Working..." }
+        guard let price else { return purchases.catalogLoaded ? "Unavailable" : "..." }
+        return title.isEmpty ? price : title + "  " + price
+    }
+}
+
+/// OFFERS: the season pass, the plans and the best box bundle.
 struct StoreOffersSection: View {
     var ask: (GoldGood) -> Void
+    @ObservedObject private var season = SeasonModel.shared
+    @Environment(Entitlements.self) private var ent
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            StoreBand(title: "Offers", glyph: Glyph.shopBag)
-            StoreSeasonCard()
+            StoreBand(title: "Offers", glyph: Glyph.shopBag, tint: StoreColors.purple)
+            if season.premiumOpen(plus: ent.isPlus, founder: ent.isFounder) { StoreSeasonCard() } else { passOffer }
+            if let b = StorePurchase.bestBundle { bundleOffer(b) }
             ProPlansView(part: .offers)
-            if let b = StorePurchase.bestBundle { hero(b) }
         }
     }
 
-    private func hero(_ b: BoxBundle) -> some View {
-        Button { Haptics.tap(); ask(.boxBundle(b)) } label: {
-            VStack(spacing: 0) {
-                HStack(spacing: Theme.Space.m) {
-                    BoxArt(kind: b.kind, size: 72)
-                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                        Text("Best saving").textStyle(.caption, tint: Theme.gold, weight: .semibold)
-                        Text("\(b.count) \(b.kind.title)es").font(.system(size: 26, weight: .heavy)).foregroundStyle(Theme.ink)
-                        Text("\(b.savingPercent)% less than single boxes").textStyle(.caption)
-                    }
-                    Spacer(minLength: 0)
+    private var passOffer: some View {
+        let bundle: SeasonBundle = GoldStore.seasonBundle
+        let left: Int = season.pass.daysLeft(today: season.today)
+        var rewards: [StoreReward] = [StoreReward(kind: .premium, amount: "Premium", caption: "rewards track")]
+        for b in bundle.boxes { rewards.append(.boxes(b.count, b.kind)) }
+        if bundle.gold > 0 { rewards.append(.gold(bundle.gold)) }
+        return StoreOfferCard(title: "Season \(season.pass.seasonNumber) Battle Pass", line: "Unlock the premium rewards of this season.",
+                              tint: StoreColors.pink, ends: Calendar.current.date(byAdding: .day, value: max(1, left), to: Calendar.current.startOfDay(for: Date())),
+                              rewards: rewards) {
+            VStack(spacing: Theme.Space.s) {
+                StoreAppStoreButton(item: .seasonBundle, identifier: "plan-season-bundle")
+                StoreAppStoreButton(item: .seasonLevels, title: "+\(GoldStore.seasonLevels.tiers) tiers", identifier: "plan-season-levels")
+                Text("Lasts until this season ends. Nothing renews.").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.85))
+                NavigationLink {
+                    SeasonView().appScreen(title: "Season Pass", subtitle: "Tiers and rewards")
+                } label: {
+                    Text("See every reward").font(.subheadline.weight(.bold)).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 40)
                 }
-                .padding(Theme.Space.m)
-                StorePriceBar(gold: b.price).padding([.horizontal, .bottom], Theme.Space.m)
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier("store-open-pass")
             }
-            .background(StoreSurface(tint: Theme.gold, glow: true, radius: Theme.Radius.card))
-            .overlay(alignment: .topTrailing) { StoreTag(text: "\(b.savingPercent)% off", tint: Theme.loss).padding(Theme.Space.s) }
-            .padding(.horizontal, Theme.Space.m)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("store-featured-bundle")
+    }
+
+    private func bundleOffer(_ b: BoxBundle) -> some View {
+        StoreOfferCard(title: "\(b.count) \(b.kind.title)es", line: "\(b.savingPercent)% less than buying them one by one.", tint: StoreColors.orange,
+                       tag: "BEST SAVING", rewards: [.boxes(b.count, b.kind)]) {
+            Button { Haptics.tap(); ask(.boxBundle(b)) } label: { StorePriceBar(gold: b.price) }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier("store-featured-bundle")
+        }
     }
 }
 
-/// BUNDLES: one large card and the rest as half-width cards.
+/// BUNDLES: every box bundle as a card with what it holds and its price.
 struct StoreBundlesSection: View {
     var ask: (GoldGood) -> Void
 
     var body: some View {
-        let all: [BoxBundle] = GoldStore.boxBundles
+        let columns: [GridItem] = [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible())]
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            StoreBand(title: "Bundles", glyph: Glyph.luxury)
-            if let first = all.first { card(first, large: true) }
-            let rest: [BoxBundle] = Array(all.dropFirst())
-            if !rest.isEmpty {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.m), GridItem(.flexible())], spacing: Theme.Space.m) {
-                    ForEach(rest) { (b: BoxBundle) in card(b, large: false) }
-                }
-                .padding(.horizontal, Theme.Space.m)
+            StoreBand(title: "Bundles", glyph: Glyph.luxury, tint: StoreColors.green)
+            LazyVGrid(columns: columns, spacing: Theme.Space.s) {
+                ForEach(GoldStore.boxBundles) { (b: BoxBundle) in card(b) }
             }
+            .padding(.horizontal, Theme.Space.m)
             Text("The boxes wait in your stock until you open them.").textStyle(.caption).padding(.horizontal, Theme.Space.m)
         }
     }
 
-    private func card(_ b: BoxBundle, large: Bool) -> some View {
+    private func card(_ b: BoxBundle) -> some View {
         Button { Haptics.tap(); ask(.boxBundle(b)) } label: {
-            VStack(spacing: Theme.Space.s) {
-                BoxArt(kind: b.kind, size: large ? 84 : 56)
-                Text("\(b.count) \(b.kind.title)es").textStyle(.headline).lineLimit(1).minimumScaleFactor(0.8)
-                Text("\(b.savingPercent)% less than singles").textStyle(.caption)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("\(b.count) \(b.kind.title)es").font(.headline.weight(.heavy)).foregroundStyle(.white).lineLimit(2).minimumScaleFactor(0.8)
+                HStack { RewardIcon(reward: .boxes(b.count, b.kind), size: 42); Spacer(minLength: 0); StoreTag(text: "-\(b.savingPercent)%", tint: StoreColors.yellow) }
                 StorePriceBar(gold: b.price)
             }
-            .padding(Theme.Space.m)
-            .frame(maxWidth: .infinity)
-            .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
+            .padding(Theme.Space.s)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(StoreColors.gradient(StoreColors.green)))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
-        .padding(.horizontal, large ? Theme.Space.m : 0)
         .accessibilityIdentifier("store-bundle-\(b.id)")
     }
 }
 
-/// COSMETICS: a three-column grid of the rarest items still to buy, with a link to the full shelf.
-struct StoreCosmeticsSection: View {
+/// TODAY'S SHELF: a daily pick of cosmetics, the same for every player, until midnight UTC.
+struct StoreShelfSection: View {
     var ask: (GoldGood) -> Void
-
-    private var picks: [GoldCosmetic] {
-        let owned: Set<String> = SeasonModel.shared.pass.owned
-        let items: [GoldCosmetic] = GoldCosmetics.shelfItems.filter { (c: GoldCosmetic) -> Bool in
-            !owned.contains(c.id) && c.item.kind != .saveSlot
-        }
-        return Array(items.sorted { (a: GoldCosmetic, b: GoldCosmetic) -> Bool in a.rarity > b.rarity }.prefix(6))
-    }
+    private let session = StoreSession.shared
 
     var body: some View {
+        let picks: [ShelfPick] = session.shelf
+        let owned: Set<String> = SeasonModel.shared.pass.owned
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            StoreBand(title: "Cosmetics", glyph: Glyph.person)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 3), spacing: Theme.Space.s) {
-                ForEach(picks) { (c: GoldCosmetic) in tile(c) }
+            StoreBand(title: "Today's shelf", glyph: Glyph.person, tint: StoreColors.blue, trailing: StoreTimer.nextServerDay)
+            if picks.isEmpty {
+                Text("Today's shelf appears once the Store is online.").textStyle(.body, tint: Theme.inkSoft).padding(.horizontal, Theme.Space.m)
+            } else {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 3), spacing: Theme.Space.s) {
+                    ForEach(picks) { (p: ShelfPick) in ShelfTile(pick: p, owned: owned.contains(p.id)) { ask(.cosmetic(p.item)) } }
+                }
+                .padding(.horizontal, Theme.Space.m)
             }
-            .padding(.horizontal, Theme.Space.m)
+            Text("A new shelf every day. Battle Pass items are never sold here; the pass is the only way to get them.")
+                .textStyle(.caption).fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
             NavigationLink { StoreShelfView() } label: {
-                Text("See everything on the shelf").textStyle(.body, tint: Theme.accent, weight: .semibold).frame(minHeight: 44)
+                Text("Save slots").textStyle(.body, tint: Theme.accent, weight: .semibold).frame(minHeight: 44)
             }
             .buttonStyle(PressableStyle())
             .padding(.horizontal, Theme.Space.m)
             .accessibilityIdentifier("store-shelf")
         }
     }
+}
 
-    private func tile(_ c: GoldCosmetic) -> some View {
-        Button { Haptics.tap(); ask(.cosmetic(c)) } label: {
+struct ShelfTile: View {
+    var pick: ShelfPick
+    var owned: Bool
+    var buy: () -> Void
+
+    var body: some View {
+        let c: GoldCosmetic = pick.item
+        Button { Haptics.tap(); buy() } label: {
             VStack(spacing: Theme.Space.xs) {
-                ItemArt(cosmetic: c, size: 36).frame(height: 52).frame(maxWidth: .infinity)
-                Text(c.item.title).textStyle(.caption, tint: Theme.ink, weight: .semibold).lineLimit(2).multilineTextAlignment(.center)
-                    .frame(minHeight: 32)
-                RarityTag(rarity: c.rarity)
-                StorePriceBar(gold: c.price ?? 0)
+                Text(c.rarity.title.uppercased()).font(.caption2.weight(.heavy)).foregroundStyle(.white.opacity(0.9))
+                ItemArt(cosmetic: c, size: 44).frame(height: 60).frame(maxWidth: .infinity)
+                Text(c.item.title).font(.caption.weight(.bold)).foregroundStyle(.white).lineLimit(2).multilineTextAlignment(.center).frame(minHeight: 30)
+                if owned {
+                    Text("Owned").font(.headline.weight(.heavy)).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 44)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.black.opacity(0.25)))
+                } else {
+                    StorePriceBar(gold: pick.price)
+                }
             }
             .padding(Theme.Space.s)
-            .background(StoreSurface(tint: c.rarity.tint, radius: Theme.Radius.card))
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(StoreColors.gradient(c.rarity.storeTint)))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
+        .disabled(owned)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("shelf-" + c.id)
     }
 }
 
-/// MONEY: game money bought with gold, a three-column grid like the gold packs. The first tile is the free pack.
+/// MONEY: game money bought with gold, a three-column grid. The first tile is the free pack.
 struct StoreMoneySection: View {
     var ask: (GoldGood) -> Void
     private let session = StoreSession.shared
@@ -185,57 +233,53 @@ struct StoreMoneySection: View {
     var body: some View {
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 3)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            StoreBand(title: "Money", glyph: Glyph.bank)
+            StoreBand(title: "Money", glyph: Glyph.bank, tint: StoreColors.green)
             LazyVGrid(columns: columns, spacing: Theme.Space.s) {
                 FreeMoneyTile()
-                ForEach(Array(MoneyPacks.packs.enumerated()), id: \.element.id) { (i: Int, pack: MoneyPack) in
-                    MoneyPackTile(pack: pack, tier: i + 1) { ask(.moneyPack(pack)) }
+                ForEach(MoneyPacks.packs, id: \.id) { (pack: MoneyPack) in
+                    MoneyPackTile(pack: pack) { ask(.moneyPack(pack)) }
                 }
             }
             .padding(.horizontal, Theme.Space.m)
-            Text(session.canSellForCash ? "Money is paid into your personal account in the open game. Bigger packs add a bonus." : "Open a game to buy money. It is paid into your personal account.")
+            Text(session.canSellForCash ? "Money is paid into your account in the open game. Bigger packs add a bonus." : "Open a game to buy money.")
                 .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
         }
     }
 }
 
-/// A stack of notes that grows with the pack. A drawn placeholder until there is real art.
-struct MoneyHeap: View {
-    var tier: Int
+/// A coloured tile for the money grids: the amount on top, a big icon, the price button below.
+private struct MoneyTileFrame<Price: View>: View {
+    var title: String
+    var amount: String
+    var tag: String?
+    var tint: Color
+    @ViewBuilder var price: () -> Price
 
     var body: some View {
-        ZStack {
-            ForEach(0..<max(1, min(5, tier)), id: \.self) { (i: Int) in
-                Image(systemName: "banknote.fill")
-                    .font(.system(size: CGFloat(22 + tier * 2)))
-                    .foregroundStyle(Theme.gain.opacity(0.55 + 0.1 * Double(i)))
-                    .offset(x: CGFloat(i % 2 == 0 ? -1 : 1) * CGFloat(i) * 3.5, y: -CGFloat(i) * 5)
-            }
+        VStack(spacing: Theme.Space.xs) {
+            Text(title).font(.caption.weight(.heavy)).foregroundStyle(.white.opacity(0.9)).lineLimit(1)
+            RewardIcon(reward: StoreReward(kind: .money, amount: amount), size: 40)
+            if let tag { StoreTag(text: tag, tint: StoreColors.yellow) } else { Color.clear.frame(height: 18) }
+            price()
         }
-        .frame(width: 52, height: 48)
-        .accessibilityHidden(true)
+        .padding(Theme.Space.xs)
+        .frame(maxWidth: .infinity, minHeight: 168)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(StoreColors.gradient(tint)))
     }
 }
 
 struct MoneyPackTile: View {
     var pack: MoneyPack
-    var tier: Int
     var buy: () -> Void
     private let session = StoreSession.shared
 
     var body: some View {
         let open: Bool = session.canSellForCash
         Button { Haptics.tap(); buy() } label: {
-            VStack(spacing: Theme.Space.xs) {
-                if pack.bonusPercent > 0 { StoreTag(text: "+\(pack.bonusPercent)%", tint: Theme.gain) } else { Color.clear.frame(height: 18) }
-                MoneyHeap(tier: tier)
-                Text(pack.name).textStyle(.headline).lineLimit(1)
-                Text(open ? StorePurchase.moneyText(pack) : "Open a game").textStyle(.caption, tint: Theme.ink, weight: .semibold).lineLimit(1).minimumScaleFactor(0.6)
+            MoneyTileFrame(title: pack.name, amount: open ? StorePurchase.moneyText(pack) : "Open a game",
+                           tag: pack.bonusPercent > 0 ? "+\(pack.bonusPercent)%" : nil, tint: StoreColors.green) {
                 StorePriceBar(gold: pack.gold)
             }
-            .padding(.horizontal, Theme.Space.xs).padding(.vertical, Theme.Space.s)
-            .frame(maxWidth: .infinity, minHeight: 168)
-            .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
             .opacity(open ? 1 : 0.55)
             .contentShape(Rectangle())
         }
@@ -256,18 +300,16 @@ struct FreeMoneyTile: View {
         let left: Int = ads.freeMoneyLeft
         let ready: Bool = used >= 0 && ads.canOfferFreeMoney && session.canSellForCash && !busy
         Button { Haptics.tap(); claim() } label: {
-            VStack(spacing: Theme.Space.xs) {
-                StoreTag(text: left == 1 ? "1 left today" : "\(left) left today", tint: left > 0 ? Theme.gain : Theme.inkFaint)
-                MoneyHeap(tier: 1)
-                Text(pack.name).textStyle(.headline).lineLimit(1)
-                Text(session.canSellForCash ? StorePurchase.moneyText(pack) : "Open a game").textStyle(.caption, tint: Theme.ink, weight: .semibold).lineLimit(1).minimumScaleFactor(0.6)
-                Text("Free · watch an ad").font(.system(size: 14, weight: .heavy)).foregroundStyle(Theme.accentInk).lineLimit(1).minimumScaleFactor(0.6)
-                    .padding(.horizontal, Theme.Space.s).frame(maxWidth: .infinity, minHeight: 44)
-                    .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.gold))
+            MoneyTileFrame(title: "Free pack", amount: session.canSellForCash ? StorePurchase.moneyText(pack) : "Open a game",
+                           tag: left == 1 ? "1 left today" : "\(left) left today", tint: StoreColors.cyan) {
+                HStack(spacing: 4) {
+                    Image(systemName: "play.fill").font(.caption.weight(.black))
+                    Text("FREE").font(.headline.weight(.heavy))
+                }
+                .foregroundStyle(StoreColors.priceInk)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(StoreColors.yellow))
             }
-            .padding(.horizontal, Theme.Space.xs).padding(.vertical, Theme.Space.s)
-            .frame(maxWidth: .infinity, minHeight: 168)
-            .background(StoreSurface(tint: Theme.gain, radius: Theme.Radius.card))
             .opacity(ready ? 1 : 0.55)
             .contentShape(Rectangle())
         }
@@ -282,6 +324,45 @@ struct FreeMoneyTile: View {
         Task {
             if await ads.watchForFreeMoney(), await session.claimFreeMoney() { Haptics.success() }
             busy = false
+        }
+    }
+}
+
+/// FREE GOLD: the ad button's terms and the supporter perks, written out in full.
+struct StoreFreeGoldSection: View {
+    private let session = StoreSession.shared
+
+    var body: some View {
+        let t: ServerStoreInfo.AdTerms? = session.adTerms
+        let base: Int = t?.baseGold ?? 1
+        let plus: Int = t?.supporterGold ?? 2
+        let wait: Int = (t?.baseCooldown ?? 300) / 60
+        let shortWait: Int = (t?.supporterCooldown ?? 180) / 60
+        let perDay: Int = t?.perDay ?? 10
+        let ads: Int = t?.supporterAds ?? 50
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            StoreBand(title: "Free gold", glyph: Glyph.bank, tint: StoreColors.pink)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack(alignment: .top, spacing: Theme.Space.m) {
+                    RewardIcon(reward: .gold(base), size: 42)
+                    Text("Tap the round ad button on Home or here: one ad pays \(StoreText.gold(base)), up to \(perDay) ads a day, with \(wait) minutes between ads.")
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
+                }
+                Rectangle().fill(Color.white.opacity(0.25)).frame(height: 1)
+                HStack(spacing: Theme.Space.s) {
+                    SupporterMark()
+                    if session.isSupporter { Text("You are a Supporter. Thank you!").font(.subheadline.weight(.heavy)).foregroundStyle(.white) }
+                }
+                Text("Buy anything with real money, or watch \(ads) ads, and you become a Supporter for good: a Supporter badge on your player card, \(StoreText.gold(plus)) per ad instead of \(base), and \(shortWait) minutes between ads instead of \(wait). That is all: no edge in the game.")
+                    .font(.subheadline).foregroundStyle(.white.opacity(0.92)).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("store-supporter-rules")
+                if let t, !session.isSupporter {
+                    Text("Ads watched: \(min(t.watched, ads)) of \(ads)").font(.caption.weight(.heavy)).monospacedDigit().foregroundStyle(.white)
+                }
+            }
+            .padding(Theme.Space.m)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(StoreColors.gradient(StoreColors.violet)))
+            .padding(.horizontal, Theme.Space.m)
         }
     }
 }

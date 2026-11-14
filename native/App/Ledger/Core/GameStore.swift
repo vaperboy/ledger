@@ -231,6 +231,7 @@ final class GameStore: ObservableObject {
             return AuctionPurse(cash: e.auctionCash, priceLevel: e.auctionPriceLevel, format: { (n: Int) -> String in cur.display(Double(n) * cur.rate).tidyMoney })
         }
         StoreSession.shared.cashHandler = { [weak self] (amount: Int, id: String, label: String) -> Void in self?.settleAuctionCash(amount, claimID: id, label: label) }
+        StoreSession.shared.adminHandler = { [weak self] (on: Bool) -> Void in self?.applyAdminLevels(on) }
     }
 
     func settleAuctionCash(_ amount: Int, claimID: String, label: String) {
