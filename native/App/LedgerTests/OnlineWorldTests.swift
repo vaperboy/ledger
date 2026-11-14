@@ -31,11 +31,11 @@ final class OnlineWorldTests: XCTestCase {
          {"id":"6a2f0f3e-0000-4000-8000-0000000000a2","amount":-105,"currency":"USD","kind":"auction_win","ref":"r","label":"Won at auction","meta":{"auctionID":"a","defID":"abacus","serial":1}}]
         """)
         XCTAssertEqual(rows.count, 2)
-        XCTAssertEqual(rows[0].meta?.companyKey, "own.4")
-        XCTAssertEqual(rows[0].meta?.units, 50)
-        XCTAssertEqual(rows[0].meta?.unitPrice, 11)
+        XCTAssertEqual(rows[0].companyKey, "own.4")
+        XCTAssertEqual(rows[0].units, 50)
+        XCTAssertEqual(rows[0].unitPrice, 11)
         XCTAssertEqual(rows[1].amount, -105)
-        XCTAssertNil(rows[1].meta?.companyKey)
+        XCTAssertNil(rows[1].companyKey)
     }
 
     func testWorldPulseIgnoresTheServerClock() throws {
