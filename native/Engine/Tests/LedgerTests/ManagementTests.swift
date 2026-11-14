@@ -35,7 +35,9 @@ final class ManagementTests: XCTestCase {
         let sev = e.dismissManager(companyID: id)
         XCTAssertGreaterThan(sev, 0)
         XCTAssertNil(e.state.company(id)?.managerID)
-        r = e.hireManager(personID: cands[1].id, companyID: id, monthlyWage: cands[1].askingMonthlyWage * 1.2)
+        // Thirty weeks on, the first list is stale: asking wages and moods have moved, so search again.
+        let next = try XCTUnwrap(e.searchManagers(companyID: id)?.first { $0.id != pick.id })
+        r = e.hireManager(personID: next.id, companyID: id, monthlyWage: next.askingMonthlyWage * 1.2)
         XCTAssertEqual(r, .ok)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }

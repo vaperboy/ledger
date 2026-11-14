@@ -13,9 +13,13 @@ public struct FirstYear: Sendable, Equatable {
     public var bankruptcyWeek = 27
     public var frozenAfterWeeks = 4
     public var noOverdraftWeeks = 12
-    public var startRunwayWeeks = 12
-    /// Own savings every new player brings, in the reference economy; a government grant covers the rest of the runway.
+    public var startRunwayWeeks = 4
+    /// Own savings every new player brings, in the reference economy; a government grant adds a short runway of running costs.
     public var startSavings = 100_000.0
+    /// Share of the savings kept as working money when the bank lends for the opening kit.
+    public var startKeepShare = 0.5
+    /// The grant never exceeds this share of the savings, so no trade starts much richer than another.
+    public var startGrantCapShare = 0.3
     public var untendedDemand = 1.0
     public var untendedServe = 1.0
 
@@ -34,6 +38,8 @@ public struct FirstYear: Sendable, Equatable {
         if !j["noOverdraftWeeks"].isNull { noOverdraftWeeks = j["noOverdraftWeeks"].int }
         if !j["startRunwayWeeks"].isNull { startRunwayWeeks = j["startRunwayWeeks"].int }
         if !j["startSavings"].isNull { startSavings = j["startSavings"].double }
+        if !j["startKeepShare"].isNull { startKeepShare = j["startKeepShare"].double }
+        if !j["startGrantCapShare"].isNull { startGrantCapShare = j["startGrantCapShare"].double }
         if !j["untendedDemand"].isNull { untendedDemand = j["untendedDemand"].double }
         if !j["untendedServe"].isNull { untendedServe = j["untendedServe"].double }
     }

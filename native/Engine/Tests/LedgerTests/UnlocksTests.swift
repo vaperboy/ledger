@@ -40,6 +40,9 @@ final class UnlocksTests: XCTestCase {
         XCTAssertEqual(research.reason, "Unlocks at level \(FeatureUnlocks.unlockLevel(.research))")
         Self.level(&e, FeatureUnlocks.unlockLevel(.research))
         XCTAssertTrue(try XCTUnwrap(e.unlockItem("research", companyID: id)).unlocked)
+        XCTAssertEqual(try XCTUnwrap(e.unlockItem("marketplace", companyID: id)).unlocked,
+                       FeatureUnlocks.unlockLevel(.marketplace) <= FeatureUnlocks.unlockLevel(.research), "each page opens at its own level")
+        Self.level(&e, FeatureUnlocks.unlockLevel(.marketplace))
         XCTAssertTrue(try XCTUnwrap(e.unlockItem("marketplace", companyID: id)).unlocked)
         XCTAssertFalse(try XCTUnwrap(e.unlockItem("desk", companyID: id)).unlocked)
         XCTAssertFalse(e.deskOpen)

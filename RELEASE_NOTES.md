@@ -3,6 +3,8 @@
 - Brighter Store: clear offer cards with big reward icons and prices, a new cosmetics shelf every day (never Battle Pass items), a small "watch an ad for gold" button on Home and the Store, open Supporter perks, and one Redeem a code field for beta keys
 - Battle pass grows to 50 tiers with more costumes, Season 3 "Riviera Summer" starts on its own by date, 38 new store cosmetics, Creator and Beta tester badges, work uniforms per trade, and animated legendary items
 - Smoother app: lighter visuals with no live blur or heavy shadows, only the open tab is drawn, no animations in Low Power Mode, swipe between sub-tabs, and Market overview and Companies in one screen
+- Fairer first company: every starter begins with the same savings, the bank lends what the kit costs beyond them, and the start-up grant is a few weeks of running costs that counts for no trophy, milestone or ranking; no trophies in the first four weeks; the gym now opens as a second company
+- Prices: you can always change a price your manager or market advisor sets, and hand pricing back to them with one tap
 - Decisions: No on the left, Yes on the right, a small Later below; outcomes are told as what happened, with a single cost line only for big choices
 - Daily missions: 4 easy and 1 hard each day (plus weekly and monthly sets) picked from hundreds of missions, rewards that match the effort, and a Claim button on Home
 - Smoother first-company guide: it never covers the screen, it notices every way you do a step, and if you wait 5 seconds it points at what to tap; stock, upkeep and servicing suppliers are now picked for you when a company opens (change them any time on the supplier screen), so the guide no longer asks for one and a new product goes straight to its price
@@ -11,7 +13,7 @@
 - Sign in with Apple, sign back into your account on a new phone, and account deletion that settles your deals first
 - Safer online play: partner payments and company values are capped, ranking scores are checked, and marketplace listings must be real items at fair prices
 - Faster and safer saving in the background, iPhone portrait only, and clearer loading and retry on online screens
-- Your first company is one of 12 simple starter trades, and the start-up grant only ever covers those; bigger trades such as hotels, factories, airlines and oil and gas open later as you level up
+- Your first company is one of 11 simple starter trades, and the start-up grant only ever covers those; bigger trades such as hotels, factories, airlines and oil and gas open later as you level up
 - Insurance now opens at level 3 and Rivals at level 6, still one new feature per level
 - The country list starts with the country of your phone, and the last setup step is skipped when your trade sells one way only
 - Events fit the company: shop events skip web shops and wholesalers, premises events skip home-based and vehicle businesses, and money losses scale with the size of the company; grant windows name your own country's agency

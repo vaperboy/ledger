@@ -105,8 +105,11 @@ public enum FeatureUnlocks {
 
 /// Which trades a player can open. The first company is always a starter trade; the biggest trades wait behind a level feature in the table above.
 public enum TradeUnlocks {
-    /// The cheap, simple trades a new player can open on day one.
-    public static let starterIDs: [String] = ["cafe", "barber", "foodtruck", "cleaning", "handy", "webdev", "photo", "kiosk", "bakery", "gym", "boutique", "carclean"]
+    /// The cheap, simple trades a new player can open on day one. The gym is left out: its hall fit-out and machines cost
+    /// many times the starting savings, so it opens later, as a second company.
+    public static let starterIDs: [String] = ["cafe", "barber", "foodtruck", "cleaning", "handy", "webdev", "photo", "kiosk", "bakery", "boutique", "carclean"]
+    /// Small trades whose opening costs far more than a first start: they open with the second-company level.
+    public static let secondCompanyIDs: Set<String> = ["gym"]
     /// Reference-currency opening cost from which a trade counts as big, and as one of the largest.
     public static let bigOpeningCost = 300_000.0
     public static let largestOpeningCost = 1_500_000.0
@@ -116,6 +119,7 @@ public enum TradeUnlocks {
     /// The level feature that opens this trade; nil when it needs none.
     public static func feature(for t: Trade) -> LevelFeature? {
         if isStarter(t.id) { return nil }
+        if secondCompanyIDs.contains(t.id) { return .newCompany }
         if t.openingCost > largestOpeningCost { return .abroad }
         if t.openingCost >= bigOpeningCost { return .exchange }
         return nil

@@ -216,6 +216,22 @@ final class SalesItemsTests: XCTestCase {
         XCTAssertEqual(b.salesItems(companyID: id).first { $0.id == it.id }?.price ?? 0, it.marketPrice * 1.1, accuracy: 1e-6)
     }
 
+    func testOwnerTakesPricesBackFromAHelperAndCanHandThemBack() throws {
+        var (e, id) = try engine("estate", weeks: 1, opened: true)
+        e.update { s, _, _ in
+            let i = s.companyIndex(id)!
+            var m = StaffMember(raw: [:]); m.id = 9_998; m.role = NewItemOptions.advisorRole
+            s.companies[i].staff = s.companies[i].staff + [m]
+        }
+        XCTAssertEqual(e.priceHelper(companyID: id), .advisor)
+        XCTAssertTrue(e.handPricesBack(companyID: id).isRefused, "nothing to hand back yet")
+        let it = e.salesItems(companyID: id)[0]
+        XCTAssertEqual(e.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 1.1), .applied)
+        XCTAssertTrue(e.salesItems(companyID: id).allSatisfy { $0.priceSetter.isOwner }, "a hand-set price makes the owner the price setter")
+        XCTAssertEqual(e.handPricesBack(companyID: id), .applied)
+        XCTAssertTrue(e.salesItems(companyID: id).allSatisfy { $0.priceSetter == .advisor })
+    }
+
     func testPriceCeilingVariesByTrade() throws {
         let e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         let cat = e.data.catalog

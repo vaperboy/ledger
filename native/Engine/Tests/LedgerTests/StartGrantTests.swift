@@ -6,35 +6,37 @@ import Businesses
 @testable import Simulation
 
 final class StartGrantTests: XCTestCase {
-    func testEveryStartableCompanyTypeGetsTheSameRunway() throws {
+    func testEveryStarterGetsTheSameSavingsAndAShortCappedRunway() throws {
         for code in ["NO", "UK"] {
             let trades: [StarterTrade] = GameEngine.startableTrades(countryCode: code)
             XCTAssertGreaterThan(trades.count, 8, code)
             XCTAssertTrue(trades.allSatisfy { TradeUnlocks.isStarter($0.id) }, "\(code): a first start lists starter trades only")
-            var runways: [String: Double] = [:]
+            var owns: Set<Double> = []
             for t in trades {
                 let e: GameEngine
                 do { e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 3, story: .fresh, tradeID: t.id, companyName: "Test Co") }
                 catch { XCTFail("\(code) \(t.id) did not start: \(error)"); continue }
                 let co = try XCTUnwrap(e.state.companies.first, t.id)
-                let weekly = e.context.weeklyCost(co, e.state)
-                XCTAssertGreaterThan(weekly, 0, t.id)
-                let weeks = e.state.cash / weekly
-                runways[t.id] = weeks
-                let target = Double(e.data.balance.firstYear.startRunwayWeeks)
-                XCTAssertEqual(weeks, target, accuracy: 0.05 + 100 / weekly, "\(code) \(t.id): \(weeks) weeks of fixed costs")
+                let fy = e.data.balance.firstYear
                 let start = try XCTUnwrap(e.state.rest["start"])
-                XCTAssertEqual(start["cash"].double, start["own"].double + start["grant"].double, accuracy: 0.5, "\(code) \(t.id)")
+                let own = start["own"].double, grant = start["grant"].double
+                owns.insert(own)
+                let instalments = e.state.loans.filter { $0.companyID == co.id }.reduce(0) { $0 + $1.monthlyPayment }
+                let weekly = e.context.weeklyCost(co, e.state) + instalments * 12 / 52
+                XCTAssertGreaterThan(weekly, 0, t.id)
+                XCTAssertEqual(grant, min(own * fy.startGrantCapShare, weekly * Double(fy.startRunwayWeeks)), accuracy: 100, "\(code) \(t.id): the grant is a short runway, capped at part of the savings")
+                XCTAssertGreaterThanOrEqual(e.state.cash, own * fy.startKeepShare + grant - 1, "\(code) \(t.id): working money is left after the opening")
+                XCTAssertEqual(start["cash"].double, own + grant, accuracy: 0.5, "\(code) \(t.id)")
+                XCTAssertEqual(start["loan"].double, e.state.loans.filter { $0.name == OpeningLoan.label }.reduce(0) { $0 + $1.balance }, accuracy: 0.5, "\(code) \(t.id)")
                 XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(code) \(t.id): \(Ledger.gaps(e.state))")
             }
-            let spread = (runways.values.max() ?? 0) - (runways.values.min() ?? 0)
-            XCTAssertLessThan(spread, 0.5, "\(code): runways \(runways)")
+            XCTAssertEqual(owns.count, 1, "\(code): every starter brings the same savings \(owns)")
         }
     }
 
     func testTheGrantIsAVisibleLineSizedPerCompanyType() throws {
         var grants: [String: Double] = [:]
-        for trade in ["cafe", "gym", "bakery", "carclean"] {
+        for trade in ["cafe", "bakery", "carclean"] {
             let e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 3, story: .fresh, tradeID: trade, companyName: "Test Co")
             let co = try XCTUnwrap(e.state.companies.first)
             let grant = StartGrant.amount(e.state)
@@ -47,12 +49,12 @@ final class StartGrantTests: XCTestCase {
                 XCTAssertTrue(AccountingLedger.rows(co).contains { $0.label == StartGrant.label && abs($0.amount - grant) < 1 }, "\(trade): the grant is in the books")
             }
         }
-        XCTAssertGreaterThan(grants["gym"] ?? 0, grants["carclean"] ?? 0, "a bigger company type gets a bigger grant")
-        XCTAssertGreaterThan(grants["gym"] ?? 0, 0)
+        XCTAssertGreaterThan(grants["bakery"] ?? 0, grants["carclean"] ?? 0, "a company with higher running costs gets a longer-lasting grant")
+        XCTAssertGreaterThan(grants["carclean"] ?? 0, 0)
     }
 
     func testTheStartGrantNeverFundsABigTrade() throws {
-        for trade in ["hotel", "airline", "oilgas", "shipping", "restaurant"] {
+        for trade in ["hotel", "airline", "oilgas", "shipping", "restaurant", "gym"] {
             XCTAssertThrowsError(try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 3, story: .fresh, tradeID: trade, companyName: "Test Co"), trade)
         }
         let e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 3)
@@ -83,8 +85,10 @@ final class StartGrantTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(LevelGates.level(.rivals), 5)
     }
 
-    func testTheRunwayCoversTheWeeksWithoutOverdraft() throws {
+    func testTheGrantIsAShortRunwayInsideTheProtectedWeeks() throws {
         let fy = try Balance.bundled().firstYear
-        XCTAssertEqual(fy.startRunwayWeeks, fy.noOverdraftWeeks, "the start money lasts the protected weeks")
+        XCTAssertLessThanOrEqual(fy.startRunwayWeeks, 4, "the grant covers a few weeks of running costs, not the opening")
+        XCTAssertLessThan(fy.startRunwayWeeks, fy.noOverdraftWeeks)
+        XCTAssertGreaterThan(fy.startKeepShare, 0)
     }
 }
