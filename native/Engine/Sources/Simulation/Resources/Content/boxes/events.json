@@ -1,0 +1,895 @@
+{
+ "about": "Event boxes. Six event boxes are on sale at a time and change together every rotationDays days, counted from epoch (a UTC date); rotation n shows set n modulo the number of sets, so the order below is the schedule. Each event box has the slot's odds of boxes.json (event1 to event6) and its own exclusive epic and legendary items, which no other box, the shelf or the pass ever gives. Common and rare drops come from the usual box pool. art: the set's box picture (box art, shared by its six boxes); item art follows the cosmetics rule. Item ids, titles and art names must stay unique.",
+ "epoch": "2026-11-02",
+ "rotationDays": 14,
+ "sets": [
+  {
+   "id": "neon",
+   "title": "Neon Nights",
+   "art": "box.event.neon",
+   "colors": ["FF3DAE", "1B0B3A"],
+   "boxes": [
+    {
+     "id": "ev.neon.1",
+     "slot": 1,
+     "title": "Arcade Crate",
+     "colors": ["FF3DAE", "1B0B3A"],
+     "items": [
+      {"id": "outfit.ev.neon.pixelbomber", "kind": "outfit", "title": "Pixel bomber", "detail": "A bomber jacket stitched in glowing pixels.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "avatar.body.ev.neon.pixelbomber"},
+      {"id": "backdrop.ev.neon.arcadehall", "kind": "backdrop", "title": "Arcade hall", "detail": "Rows of cabinets humming in the dark.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "backdrop.ev.neon.arcadehall"},
+      {"id": "outfit.ev.neon.highscoresuit", "kind": "outfit", "title": "High-score suit", "detail": "A suit that flashes like a new record.", "rarity": "legendary", "colors": ["FF3DAE", "1B0B3A"], "art": "avatar.body.ev.neon.highscoresuit"}
+     ]
+    },
+    {
+     "id": "ev.neon.2",
+     "slot": 2,
+     "title": "Synthwave Case",
+     "colors": ["FF3DAE", "1B0B3A"],
+     "items": [
+      {"id": "outfit.ev.neon.chromesunsetjacket", "kind": "outfit", "title": "Chrome sunset jacket", "detail": "Mirror-chrome shoulders under a pink sun.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "avatar.body.ev.neon.chromesunsetjacket"},
+      {"id": "flair.ev.neon.cassettestar", "kind": "richListFlair", "title": "Cassette star", "detail": "A spinning tape star by your name.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "flair.ev.neon.cassettestar"},
+      {"id": "backdrop.ev.neon.retrowavegrid", "kind": "backdrop", "title": "Retrowave grid", "detail": "An endless neon grid to the horizon.", "rarity": "legendary", "colors": ["FF3DAE", "1B0B3A"], "art": "backdrop.ev.neon.retrowavegrid"}
+     ]
+    },
+    {
+     "id": "ev.neon.3",
+     "slot": 3,
+     "title": "Laser Vault",
+     "colors": ["FF3DAE", "1B0B3A"],
+     "items": [
+      {"id": "backdrop.ev.neon.lasergrid", "kind": "backdrop", "title": "Laser grid", "detail": "Red beams criss-cross a dark vault.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "backdrop.ev.neon.lasergrid"},
+      {"id": "flair.ev.neon.prismspark", "kind": "richListFlair", "title": "Prism spark", "detail": "A prism that splits light around your name.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "flair.ev.neon.prismspark"},
+      {"id": "outfit.ev.neon.lasertux", "kind": "outfit", "title": "Laser tux", "detail": "A tuxedo traced with moving light.", "rarity": "legendary", "colors": ["FF3DAE", "1B0B3A"], "art": "avatar.body.ev.neon.lasertux"}
+     ]
+    },
+    {
+     "id": "ev.neon.4",
+     "slot": 4,
+     "title": "Midnight Garage",
+     "colors": ["FF3DAE", "1B0B3A"],
+     "items": [
+      {"id": "outfit.ev.neon.racingleathers", "kind": "outfit", "title": "Racing leathers", "detail": "Black leathers with neon piping.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "avatar.body.ev.neon.racingleathers"},
+      {"id": "backdrop.ev.neon.tunergarage", "kind": "backdrop", "title": "Tuner garage", "detail": "Lowered cars under violet strip lights.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "backdrop.ev.neon.tunergarage"},
+      {"id": "flair.ev.neon.exhaustflare", "kind": "richListFlair", "title": "Exhaust flare", "detail": "A burst of blue flame by your name.", "rarity": "legendary", "colors": ["FF3DAE", "1B0B3A"], "art": "flair.ev.neon.exhaustflare"}
+     ]
+    },
+    {
+     "id": "ev.neon.5",
+     "slot": 5,
+     "title": "Rooftop Rave",
+     "colors": ["FF3DAE", "1B0B3A"],
+     "items": [
+      {"id": "outfit.ev.neon.glowstickvest", "kind": "outfit", "title": "Glow-stick vest", "detail": "A vest wrapped in coloured glow sticks.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "avatar.body.ev.neon.glowstickvest"},
+      {"id": "flair.ev.neon.basswave", "kind": "richListFlair", "title": "Bass wave", "detail": "A pulsing sound wave by your name.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "flair.ev.neon.basswave"},
+      {"id": "outfit.ev.neon.djheadlinercoat", "kind": "outfit", "title": "DJ headliner coat", "detail": "A long coat for the last set of the night.", "rarity": "legendary", "colors": ["FF3DAE", "1B0B3A"], "art": "avatar.body.ev.neon.djheadlinercoat"}
+     ]
+    },
+    {
+     "id": "ev.neon.6",
+     "slot": 6,
+     "title": "Hologram Safe",
+     "colors": ["FF3DAE", "1B0B3A"],
+     "items": [
+      {"id": "backdrop.ev.neon.hololobby", "kind": "backdrop", "title": "Holo lobby", "detail": "A lobby of floating holograms.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "backdrop.ev.neon.hololobby"},
+      {"id": "outfit.ev.neon.datastreamshirt", "kind": "outfit", "title": "Data-stream shirt", "detail": "A shirt with code running down it.", "rarity": "epic", "colors": ["FF3DAE", "1B0B3A"], "art": "avatar.body.ev.neon.datastreamshirt"},
+      {"id": "backdrop.ev.neon.hologramskyline", "kind": "backdrop", "title": "Hologram skyline", "detail": "A whole city drawn in light.", "rarity": "legendary", "colors": ["FF3DAE", "1B0B3A"], "art": "backdrop.ev.neon.hologramskyline"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "harvest",
+   "title": "Harvest Market",
+   "art": "box.event.harvest",
+   "colors": ["D9822B", "3A2210"],
+   "boxes": [
+    {
+     "id": "ev.harvest.1",
+     "slot": 1,
+     "title": "Orchard Crate",
+     "colors": ["D9822B", "3A2210"],
+     "items": [
+      {"id": "outfit.ev.harvest.applepickerssmock", "kind": "outfit", "title": "Apple picker's smock", "detail": "A sturdy smock with deep pockets.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "avatar.body.ev.harvest.applepickerssmock"},
+      {"id": "backdrop.ev.harvest.orcharddusk", "kind": "backdrop", "title": "Orchard dusk", "detail": "Low sun through laden apple trees.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "backdrop.ev.harvest.orcharddusk"},
+      {"id": "outfit.ev.harvest.harvestkingcoat", "kind": "outfit", "title": "Harvest king coat", "detail": "A russet coat trimmed with wheat gold.", "rarity": "legendary", "colors": ["D9822B", "3A2210"], "art": "avatar.body.ev.harvest.harvestkingcoat"}
+     ]
+    },
+    {
+     "id": "ev.harvest.2",
+     "slot": 2,
+     "title": "Cider Barrel",
+     "colors": ["D9822B", "3A2210"],
+     "items": [
+      {"id": "outfit.ev.harvest.ciderhousewaistcoat", "kind": "outfit", "title": "Cider-house waistcoat", "detail": "A waistcoat the colour of pressed apples.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "avatar.body.ev.harvest.ciderhousewaistcoat"},
+      {"id": "flair.ev.harvest.goldencider", "kind": "richListFlair", "title": "Golden cider", "detail": "A glass of cider glowing by your name.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "flair.ev.harvest.goldencider"},
+      {"id": "backdrop.ev.harvest.cidercellar", "kind": "backdrop", "title": "Cider cellar", "detail": "Oak barrels in a candlelit cellar.", "rarity": "legendary", "colors": ["D9822B", "3A2210"], "art": "backdrop.ev.harvest.cidercellar"}
+     ]
+    },
+    {
+     "id": "ev.harvest.3",
+     "slot": 3,
+     "title": "Pumpkin Chest",
+     "colors": ["D9822B", "3A2210"],
+     "items": [
+      {"id": "backdrop.ev.harvest.pumpkinpatch", "kind": "backdrop", "title": "Pumpkin patch", "detail": "Fields of orange under a misty sky.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "backdrop.ev.harvest.pumpkinpatch"},
+      {"id": "flair.ev.harvest.lanterngourd", "kind": "richListFlair", "title": "Lantern gourd", "detail": "A carved lantern by your name.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "flair.ev.harvest.lanterngourd"},
+      {"id": "outfit.ev.harvest.pumpkinvelvetsuit", "kind": "outfit", "title": "Pumpkin velvet suit", "detail": "Deep orange velvet with copper buttons.", "rarity": "legendary", "colors": ["D9822B", "3A2210"], "art": "avatar.body.ev.harvest.pumpkinvelvetsuit"}
+     ]
+    },
+    {
+     "id": "ev.harvest.4",
+     "slot": 4,
+     "title": "Grain Silo",
+     "colors": ["D9822B", "3A2210"],
+     "items": [
+      {"id": "outfit.ev.harvest.millersjacket", "kind": "outfit", "title": "Miller's jacket", "detail": "A dusty canvas jacket with brass clasps.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "avatar.body.ev.harvest.millersjacket"},
+      {"id": "backdrop.ev.harvest.goldenfields", "kind": "backdrop", "title": "Golden fields", "detail": "Wheat fields rolling to the hills.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "backdrop.ev.harvest.goldenfields"},
+      {"id": "flair.ev.harvest.sheafcrest", "kind": "richListFlair", "title": "Sheaf crest", "detail": "A golden sheaf by your name.", "rarity": "legendary", "colors": ["D9822B", "3A2210"], "art": "flair.ev.harvest.sheafcrest"}
+     ]
+    },
+    {
+     "id": "ev.harvest.5",
+     "slot": 5,
+     "title": "Maple Trunk",
+     "colors": ["D9822B", "3A2210"],
+     "items": [
+      {"id": "outfit.ev.harvest.mapleflannel", "kind": "outfit", "title": "Maple flannel", "detail": "Soft flannel in maple reds.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "avatar.body.ev.harvest.mapleflannel"},
+      {"id": "flair.ev.harvest.fallingleaf", "kind": "richListFlair", "title": "Falling leaf", "detail": "Maple leaves drifting by your name.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "flair.ev.harvest.fallingleaf"},
+      {"id": "outfit.ev.harvest.maplegroverobe", "kind": "outfit", "title": "Maple grove robe", "detail": "A robe dyed every shade of autumn.", "rarity": "legendary", "colors": ["D9822B", "3A2210"], "art": "avatar.body.ev.harvest.maplegroverobe"}
+     ]
+    },
+    {
+     "id": "ev.harvest.6",
+     "slot": 6,
+     "title": "Market Stall",
+     "colors": ["D9822B", "3A2210"],
+     "items": [
+      {"id": "backdrop.ev.harvest.farmersmarket", "kind": "backdrop", "title": "Farmers' market", "detail": "Striped awnings over crates of produce.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "backdrop.ev.harvest.farmersmarket"},
+      {"id": "outfit.ev.harvest.stallholdersapron", "kind": "outfit", "title": "Stallholder's apron", "detail": "A leather apron with a coin pouch.", "rarity": "epic", "colors": ["D9822B", "3A2210"], "art": "avatar.body.ev.harvest.stallholdersapron"},
+      {"id": "backdrop.ev.harvest.harvestmoonsquare", "kind": "backdrop", "title": "Harvest moon square", "detail": "A town square under a huge orange moon.", "rarity": "legendary", "colors": ["D9822B", "3A2210"], "art": "backdrop.ev.harvest.harvestmoonsquare"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "heist",
+   "title": "Grand Heist",
+   "art": "box.event.heist",
+   "colors": ["4FA3A5", "0E1B24"],
+   "boxes": [
+    {
+     "id": "ev.heist.1",
+     "slot": 1,
+     "title": "Getaway Bag",
+     "colors": ["4FA3A5", "0E1B24"],
+     "items": [
+      {"id": "outfit.ev.heist.getawayjacket", "kind": "outfit", "title": "Getaway jacket", "detail": "A dark jacket with many hidden pockets.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "avatar.body.ev.heist.getawayjacket"},
+      {"id": "backdrop.ev.heist.tunnelescape", "kind": "backdrop", "title": "Tunnel escape", "detail": "A torch-lit tunnel under the bank.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "backdrop.ev.heist.tunnelescape"},
+      {"id": "outfit.ev.heist.mastermindcoat", "kind": "outfit", "title": "Mastermind coat", "detail": "A long grey coat for the planner.", "rarity": "legendary", "colors": ["4FA3A5", "0E1B24"], "art": "avatar.body.ev.heist.mastermindcoat"}
+     ]
+    },
+    {
+     "id": "ev.heist.2",
+     "slot": 2,
+     "title": "Safe-Cracker Kit",
+     "colors": ["4FA3A5", "0E1B24"],
+     "items": [
+      {"id": "outfit.ev.heist.safecrackersvest", "kind": "outfit", "title": "Safe-cracker's vest", "detail": "A vest lined with fine tools.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "avatar.body.ev.heist.safecrackersvest"},
+      {"id": "flair.ev.heist.dialtumbler", "kind": "richListFlair", "title": "Dial tumbler", "detail": "A turning safe dial by your name.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "flair.ev.heist.dialtumbler"},
+      {"id": "backdrop.ev.heist.velvetvault", "kind": "backdrop", "title": "Velvet vault", "detail": "Velvet-lined drawers of jewels.", "rarity": "legendary", "colors": ["4FA3A5", "0E1B24"], "art": "backdrop.ev.heist.velvetvault"}
+     ]
+    },
+    {
+     "id": "ev.heist.3",
+     "slot": 3,
+     "title": "Diamond Case",
+     "colors": ["4FA3A5", "0E1B24"],
+     "items": [
+      {"id": "backdrop.ev.heist.diamondshowroom", "kind": "backdrop", "title": "Diamond showroom", "detail": "Glass cases glittering under spotlights.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "backdrop.ev.heist.diamondshowroom"},
+      {"id": "flair.ev.heist.cutdiamond", "kind": "richListFlair", "title": "Cut diamond", "detail": "A brilliant-cut stone by your name.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "flair.ev.heist.cutdiamond"},
+      {"id": "outfit.ev.heist.diamondheisttux", "kind": "outfit", "title": "Diamond heist tux", "detail": "A tux with a diamond pin at the lapel.", "rarity": "legendary", "colors": ["4FA3A5", "0E1B24"], "art": "avatar.body.ev.heist.diamondheisttux"}
+     ]
+    },
+    {
+     "id": "ev.heist.4",
+     "slot": 4,
+     "title": "Blueprint Tube",
+     "colors": ["4FA3A5", "0E1B24"],
+     "items": [
+      {"id": "outfit.ev.heist.plannersturtleneck", "kind": "outfit", "title": "Planner's turtleneck", "detail": "A black turtleneck for the big plan.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "avatar.body.ev.heist.plannersturtleneck"},
+      {"id": "backdrop.ev.heist.blueprintroom", "kind": "backdrop", "title": "Blueprint room", "detail": "A desk buried in building plans.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "backdrop.ev.heist.blueprintroom"},
+      {"id": "flair.ev.heist.masterkey", "kind": "richListFlair", "title": "Master key", "detail": "A golden master key by your name.", "rarity": "legendary", "colors": ["4FA3A5", "0E1B24"], "art": "flair.ev.heist.masterkey"}
+     ]
+    },
+    {
+     "id": "ev.heist.5",
+     "slot": 5,
+     "title": "Vault Door",
+     "colors": ["4FA3A5", "0E1B24"],
+     "items": [
+      {"id": "outfit.ev.heist.nightshiftguardcoat", "kind": "outfit", "title": "Night-shift guard coat", "detail": "A borrowed guard's coat, perfectly fitted.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "avatar.body.ev.heist.nightshiftguardcoat"},
+      {"id": "flair.ev.heist.lasertripwire", "kind": "richListFlair", "title": "Laser tripwire", "detail": "A thin red beam by your name.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "flair.ev.heist.lasertripwire"},
+      {"id": "outfit.ev.heist.vaultkingssuit", "kind": "outfit", "title": "Vault king's suit", "detail": "A suit lined with banknote silk.", "rarity": "legendary", "colors": ["4FA3A5", "0E1B24"], "art": "avatar.body.ev.heist.vaultkingssuit"}
+     ]
+    },
+    {
+     "id": "ev.heist.6",
+     "slot": 6,
+     "title": "Casino Chip Box",
+     "colors": ["4FA3A5", "0E1B24"],
+     "items": [
+      {"id": "backdrop.ev.heist.casinofloor", "kind": "backdrop", "title": "Casino floor", "detail": "Roulette wheels and green felt.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "backdrop.ev.heist.casinofloor"},
+      {"id": "outfit.ev.heist.dealerswaistcoat", "kind": "outfit", "title": "Dealer's waistcoat", "detail": "A crisp waistcoat with a gold chain.", "rarity": "epic", "colors": ["4FA3A5", "0E1B24"], "art": "avatar.body.ev.heist.dealerswaistcoat"},
+      {"id": "backdrop.ev.heist.highrollerlounge", "kind": "backdrop", "title": "High-roller lounge", "detail": "A private room with stacked chips.", "rarity": "legendary", "colors": ["4FA3A5", "0E1B24"], "art": "backdrop.ev.heist.highrollerlounge"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "winter",
+   "title": "Winter Gala",
+   "art": "box.event.winter",
+   "colors": ["8FC7EA", "142A45"],
+   "boxes": [
+    {
+     "id": "ev.winter.1",
+     "slot": 1,
+     "title": "Snowglobe",
+     "colors": ["8FC7EA", "142A45"],
+     "items": [
+      {"id": "outfit.ev.winter.snowflakeknit", "kind": "outfit", "title": "Snowflake knit", "detail": "A thick knit with white snowflakes.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "avatar.body.ev.winter.snowflakeknit"},
+      {"id": "backdrop.ev.winter.snowglobevillage", "kind": "backdrop", "title": "Snowglobe village", "detail": "A tiny village in falling snow.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "backdrop.ev.winter.snowglobevillage"},
+      {"id": "outfit.ev.winter.frostcrowncape", "kind": "outfit", "title": "Frost crown cape", "detail": "A cape edged with glittering frost.", "rarity": "legendary", "colors": ["8FC7EA", "142A45"], "art": "avatar.body.ev.winter.frostcrowncape"}
+     ]
+    },
+    {
+     "id": "ev.winter.2",
+     "slot": 2,
+     "title": "Ice Palace Chest",
+     "colors": ["8FC7EA", "142A45"],
+     "items": [
+      {"id": "outfit.ev.winter.icebluetailcoat", "kind": "outfit", "title": "Ice-blue tailcoat", "detail": "A tailcoat the colour of glacier ice.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "avatar.body.ev.winter.icebluetailcoat"},
+      {"id": "flair.ev.winter.icecrystal", "kind": "richListFlair", "title": "Ice crystal", "detail": "A turning ice crystal by your name.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "flair.ev.winter.icecrystal"},
+      {"id": "backdrop.ev.winter.icepalacehall", "kind": "backdrop", "title": "Ice palace hall", "detail": "Columns of clear ice in a great hall.", "rarity": "legendary", "colors": ["8FC7EA", "142A45"], "art": "backdrop.ev.winter.icepalacehall"}
+     ]
+    },
+    {
+     "id": "ev.winter.3",
+     "slot": 3,
+     "title": "Gingerbread Box",
+     "colors": ["8FC7EA", "142A45"],
+     "items": [
+      {"id": "backdrop.ev.winter.gingerbreadstreet", "kind": "backdrop", "title": "Gingerbread street", "detail": "A street of iced gingerbread houses.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "backdrop.ev.winter.gingerbreadstreet"},
+      {"id": "flair.ev.winter.candycane", "kind": "richListFlair", "title": "Candy cane", "detail": "A striped cane by your name.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "flair.ev.winter.candycane"},
+      {"id": "outfit.ev.winter.gingerbreadchefscoat", "kind": "outfit", "title": "Gingerbread chef's coat", "detail": "A chef's coat dusted with sugar.", "rarity": "legendary", "colors": ["8FC7EA", "142A45"], "art": "avatar.body.ev.winter.gingerbreadchefscoat"}
+     ]
+    },
+    {
+     "id": "ev.winter.4",
+     "slot": 4,
+     "title": "Sleigh Trunk",
+     "colors": ["8FC7EA", "142A45"],
+     "items": [
+      {"id": "outfit.ev.winter.sleighdriverscoat", "kind": "outfit", "title": "Sleigh driver's coat", "detail": "A red coat with fur trim.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "avatar.body.ev.winter.sleighdriverscoat"},
+      {"id": "backdrop.ev.winter.northernpines", "kind": "backdrop", "title": "Northern pines", "detail": "Snowy pines under a starry sky.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "backdrop.ev.winter.northernpines"},
+      {"id": "flair.ev.winter.silverbells", "kind": "richListFlair", "title": "Silver bells", "detail": "Two ringing bells by your name.", "rarity": "legendary", "colors": ["8FC7EA", "142A45"], "art": "flair.ev.winter.silverbells"}
+     ]
+    },
+    {
+     "id": "ev.winter.5",
+     "slot": 5,
+     "title": "Frost Crown Case",
+     "colors": ["8FC7EA", "142A45"],
+     "items": [
+      {"id": "outfit.ev.winter.frostedvelvet", "kind": "outfit", "title": "Frosted velvet", "detail": "Midnight velvet touched with frost.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "avatar.body.ev.winter.frostedvelvet"},
+      {"id": "flair.ev.winter.snowqueenstar", "kind": "richListFlair", "title": "Snow queen star", "detail": "A six-pointed star of ice by your name.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "flair.ev.winter.snowqueenstar"},
+      {"id": "outfit.ev.winter.wintermonarchrobe", "kind": "outfit", "title": "Winter monarch robe", "detail": "A white robe with a silver crown collar.", "rarity": "legendary", "colors": ["8FC7EA", "142A45"], "art": "avatar.body.ev.winter.wintermonarchrobe"}
+     ]
+    },
+    {
+     "id": "ev.winter.6",
+     "slot": 6,
+     "title": "Fireside Hamper",
+     "colors": ["8FC7EA", "142A45"],
+     "items": [
+      {"id": "backdrop.ev.winter.firesidelodge", "kind": "backdrop", "title": "Fireside lodge", "detail": "A crackling fire and deep armchairs.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "backdrop.ev.winter.firesidelodge"},
+      {"id": "outfit.ev.winter.cosycardigan", "kind": "outfit", "title": "Cosy cardigan", "detail": "A thick cardigan with wooden buttons.", "rarity": "epic", "colors": ["8FC7EA", "142A45"], "art": "avatar.body.ev.winter.cosycardigan"},
+      {"id": "backdrop.ev.winter.galaballroom", "kind": "backdrop", "title": "Gala ballroom", "detail": "A ballroom glittering with candles.", "rarity": "legendary", "colors": ["8FC7EA", "142A45"], "art": "backdrop.ev.winter.galaballroom"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "newyear",
+   "title": "New Year Countdown",
+   "art": "box.event.newyear",
+   "colors": ["F2C14E", "1A1530"],
+   "boxes": [
+    {
+     "id": "ev.newyear.1",
+     "slot": 1,
+     "title": "Firework Crate",
+     "colors": ["F2C14E", "1A1530"],
+     "items": [
+      {"id": "outfit.ev.newyear.sparklersuit", "kind": "outfit", "title": "Sparkler suit", "detail": "A suit flecked with silver sparks.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "avatar.body.ev.newyear.sparklersuit"},
+      {"id": "backdrop.ev.newyear.harbourfireworks", "kind": "backdrop", "title": "Harbour fireworks", "detail": "Fireworks bursting over a harbour.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "backdrop.ev.newyear.harbourfireworks"},
+      {"id": "outfit.ev.newyear.grandfinalecoat", "kind": "outfit", "title": "Grand finale coat", "detail": "A coat that ends the year in style.", "rarity": "legendary", "colors": ["F2C14E", "1A1530"], "art": "avatar.body.ev.newyear.grandfinalecoat"}
+     ]
+    },
+    {
+     "id": "ev.newyear.2",
+     "slot": 2,
+     "title": "Champagne Case",
+     "colors": ["F2C14E", "1A1530"],
+     "items": [
+      {"id": "outfit.ev.newyear.champagnejacket", "kind": "outfit", "title": "Champagne jacket", "detail": "A pale gold jacket with a satin collar.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "avatar.body.ev.newyear.champagnejacket"},
+      {"id": "flair.ev.newyear.bubbles", "kind": "richListFlair", "title": "Bubbles", "detail": "Rising champagne bubbles by your name.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "flair.ev.newyear.bubbles"},
+      {"id": "backdrop.ev.newyear.champagnetower", "kind": "backdrop", "title": "Champagne tower", "detail": "A tower of glasses catching the light.", "rarity": "legendary", "colors": ["F2C14E", "1A1530"], "art": "backdrop.ev.newyear.champagnetower"}
+     ]
+    },
+    {
+     "id": "ev.newyear.3",
+     "slot": 3,
+     "title": "Midnight Clock Box",
+     "colors": ["F2C14E", "1A1530"],
+     "items": [
+      {"id": "backdrop.ev.newyear.clocktower", "kind": "backdrop", "title": "Clock tower", "detail": "A great clock a minute to midnight.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "backdrop.ev.newyear.clocktower"},
+      {"id": "flair.ev.newyear.countdowndial", "kind": "richListFlair", "title": "Countdown dial", "detail": "A clock face ticking by your name.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "flair.ev.newyear.countdowndial"},
+      {"id": "outfit.ev.newyear.midnighttux", "kind": "outfit", "title": "Midnight tux", "detail": "A tux as dark as the last minute.", "rarity": "legendary", "colors": ["F2C14E", "1A1530"], "art": "avatar.body.ev.newyear.midnighttux"}
+     ]
+    },
+    {
+     "id": "ev.newyear.4",
+     "slot": 4,
+     "title": "Confetti Chest",
+     "colors": ["F2C14E", "1A1530"],
+     "items": [
+      {"id": "outfit.ev.newyear.confettiblazer", "kind": "outfit", "title": "Confetti blazer", "detail": "A blazer scattered with confetti.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "avatar.body.ev.newyear.confettiblazer"},
+      {"id": "backdrop.ev.newyear.partystreet", "kind": "backdrop", "title": "Party street", "detail": "A street strung with lights and ribbons.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "backdrop.ev.newyear.partystreet"},
+      {"id": "flair.ev.newyear.confettistorm", "kind": "richListFlair", "title": "Confetti storm", "detail": "A storm of gold confetti by your name.", "rarity": "legendary", "colors": ["F2C14E", "1A1530"], "art": "flair.ev.newyear.confettistorm"}
+     ]
+    },
+    {
+     "id": "ev.newyear.5",
+     "slot": 5,
+     "title": "Ballroom Trunk",
+     "colors": ["F2C14E", "1A1530"],
+     "items": [
+      {"id": "outfit.ev.newyear.ballroomwaistcoat", "kind": "outfit", "title": "Ballroom waistcoat", "detail": "A waistcoat of gold brocade.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "avatar.body.ev.newyear.ballroomwaistcoat"},
+      {"id": "flair.ev.newyear.partypopper", "kind": "richListFlair", "title": "Party popper", "detail": "A popping streamer by your name.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "flair.ev.newyear.partypopper"},
+      {"id": "outfit.ev.newyear.yearoneregalia", "kind": "outfit", "title": "Year-one regalia", "detail": "Gold regalia for the first day of the year.", "rarity": "legendary", "colors": ["F2C14E", "1A1530"], "art": "avatar.body.ev.newyear.yearoneregalia"}
+     ]
+    },
+    {
+     "id": "ev.newyear.6",
+     "slot": 6,
+     "title": "Resolution Safe",
+     "colors": ["F2C14E", "1A1530"],
+     "items": [
+      {"id": "backdrop.ev.newyear.rooftopcountdown", "kind": "backdrop", "title": "Rooftop countdown", "detail": "A rooftop party under the first fireworks.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "backdrop.ev.newyear.rooftopcountdown"},
+      {"id": "outfit.ev.newyear.freshstartshirt", "kind": "outfit", "title": "Fresh-start shirt", "detail": "A crisp white shirt for a new start.", "rarity": "epic", "colors": ["F2C14E", "1A1530"], "art": "avatar.body.ev.newyear.freshstartshirt"},
+      {"id": "backdrop.ev.newyear.goldennewdawn", "kind": "backdrop", "title": "Golden new dawn", "detail": "The first sunrise of the year over the city.", "rarity": "legendary", "colors": ["F2C14E", "1A1530"], "art": "backdrop.ev.newyear.goldennewdawn"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "alpine",
+   "title": "Alpine Lodge",
+   "art": "box.event.alpine",
+   "colors": ["6FB5A0", "1C2F35"],
+   "boxes": [
+    {
+     "id": "ev.alpine.1",
+     "slot": 1,
+     "title": "Ski Locker",
+     "colors": ["6FB5A0", "1C2F35"],
+     "items": [
+      {"id": "outfit.ev.alpine.retroskisuit", "kind": "outfit", "title": "Retro ski suit", "detail": "A bright one-piece from the old slopes.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "avatar.body.ev.alpine.retroskisuit"},
+      {"id": "backdrop.ev.alpine.powderslope", "kind": "backdrop", "title": "Powder slope", "detail": "Fresh powder under a blue sky.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "backdrop.ev.alpine.powderslope"},
+      {"id": "outfit.ev.alpine.championsskijacket", "kind": "outfit", "title": "Champion's ski jacket", "detail": "A gold-trimmed racing jacket.", "rarity": "legendary", "colors": ["6FB5A0", "1C2F35"], "art": "avatar.body.ev.alpine.championsskijacket"}
+     ]
+    },
+    {
+     "id": "ev.alpine.2",
+     "slot": 2,
+     "title": "Chalet Chest",
+     "colors": ["6FB5A0", "1C2F35"],
+     "items": [
+      {"id": "outfit.ev.alpine.chaletknit", "kind": "outfit", "title": "Chalet knit", "detail": "A cream knit with red reindeer.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "avatar.body.ev.alpine.chaletknit"},
+      {"id": "flair.ev.alpine.edelweiss", "kind": "richListFlair", "title": "Edelweiss", "detail": "A white mountain flower by your name.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "flair.ev.alpine.edelweiss"},
+      {"id": "backdrop.ev.alpine.chaletterrace", "kind": "backdrop", "title": "Chalet terrace", "detail": "A sunny terrace over the peaks.", "rarity": "legendary", "colors": ["6FB5A0", "1C2F35"], "art": "backdrop.ev.alpine.chaletterrace"}
+     ]
+    },
+    {
+     "id": "ev.alpine.3",
+     "slot": 3,
+     "title": "Summit Case",
+     "colors": ["6FB5A0", "1C2F35"],
+     "items": [
+      {"id": "backdrop.ev.alpine.summitridge", "kind": "backdrop", "title": "Summit ridge", "detail": "A knife-edge ridge above the clouds.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "backdrop.ev.alpine.summitridge"},
+      {"id": "flair.ev.alpine.summitflag", "kind": "richListFlair", "title": "Summit flag", "detail": "A small flag planted by your name.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "flair.ev.alpine.summitflag"},
+      {"id": "outfit.ev.alpine.mountaineersparka", "kind": "outfit", "title": "Mountaineer's parka", "detail": "An expedition parka with a fur hood.", "rarity": "legendary", "colors": ["6FB5A0", "1C2F35"], "art": "avatar.body.ev.alpine.mountaineersparka"}
+     ]
+    },
+    {
+     "id": "ev.alpine.4",
+     "slot": 4,
+     "title": "Cable Car Box",
+     "colors": ["6FB5A0", "1C2F35"],
+     "items": [
+      {"id": "outfit.ev.alpine.cablecarjacket", "kind": "outfit", "title": "Cable car jacket", "detail": "A neat jacket in cable-car red.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "avatar.body.ev.alpine.cablecarjacket"},
+      {"id": "backdrop.ev.alpine.cablecarvalley", "kind": "backdrop", "title": "Cable car valley", "detail": "A red car gliding over the valley.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "backdrop.ev.alpine.cablecarvalley"},
+      {"id": "flair.ev.alpine.gondolastar", "kind": "richListFlair", "title": "Gondola star", "detail": "A gondola light by your name.", "rarity": "legendary", "colors": ["6FB5A0", "1C2F35"], "art": "flair.ev.alpine.gondolastar"}
+     ]
+    },
+    {
+     "id": "ev.alpine.5",
+     "slot": 5,
+     "title": "Hot Spring Crate",
+     "colors": ["6FB5A0", "1C2F35"],
+     "items": [
+      {"id": "outfit.ev.alpine.sparobe", "kind": "outfit", "title": "Spa robe", "detail": "A thick robe for the hot springs.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "avatar.body.ev.alpine.sparobe"},
+      {"id": "flair.ev.alpine.steamswirl", "kind": "richListFlair", "title": "Steam swirl", "detail": "A curl of warm steam by your name.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "flair.ev.alpine.steamswirl"},
+      {"id": "outfit.ev.alpine.alpinespacoat", "kind": "outfit", "title": "Alpine spa coat", "detail": "A long coat of soft white wool.", "rarity": "legendary", "colors": ["6FB5A0", "1C2F35"], "art": "avatar.body.ev.alpine.alpinespacoat"}
+     ]
+    },
+    {
+     "id": "ev.alpine.6",
+     "slot": 6,
+     "title": "Avalanche Safe",
+     "colors": ["6FB5A0", "1C2F35"],
+     "items": [
+      {"id": "backdrop.ev.alpine.glaciercave", "kind": "backdrop", "title": "Glacier cave", "detail": "A blue cave of ancient ice.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "backdrop.ev.alpine.glaciercave"},
+      {"id": "outfit.ev.alpine.mountainguideshell", "kind": "outfit", "title": "Mountain guide shell", "detail": "A tough shell jacket in signal orange.", "rarity": "epic", "colors": ["6FB5A0", "1C2F35"], "art": "avatar.body.ev.alpine.mountainguideshell"},
+      {"id": "backdrop.ev.alpine.aurorapeaks", "kind": "backdrop", "title": "Aurora peaks", "detail": "Northern lights over the summits.", "rarity": "legendary", "colors": ["6FB5A0", "1C2F35"], "art": "backdrop.ev.alpine.aurorapeaks"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lunar",
+   "title": "Lunar Dragon",
+   "art": "box.event.lunar",
+   "colors": ["D8443A", "2A0E0C"],
+   "boxes": [
+    {
+     "id": "ev.lunar.1",
+     "slot": 1,
+     "title": "Lantern Box",
+     "colors": ["D8443A", "2A0E0C"],
+     "items": [
+      {"id": "outfit.ev.lunar.lanternsilkjacket", "kind": "outfit", "title": "Lantern silk jacket", "detail": "A red silk jacket with lantern buttons.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "avatar.body.ev.lunar.lanternsilkjacket"},
+      {"id": "backdrop.ev.lunar.lanternstreet", "kind": "backdrop", "title": "Lantern street", "detail": "A street of glowing red lanterns.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "backdrop.ev.lunar.lanternstreet"},
+      {"id": "outfit.ev.lunar.dragondancerobe", "kind": "outfit", "title": "Dragon dance robe", "detail": "A robe made for the dragon dance.", "rarity": "legendary", "colors": ["D8443A", "2A0E0C"], "art": "avatar.body.ev.lunar.dragondancerobe"}
+     ]
+    },
+    {
+     "id": "ev.lunar.2",
+     "slot": 2,
+     "title": "Jade Chest",
+     "colors": ["D8443A", "2A0E0C"],
+     "items": [
+      {"id": "outfit.ev.lunar.jadebuttontunic", "kind": "outfit", "title": "Jade-button tunic", "detail": "A green tunic with jade buttons.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "avatar.body.ev.lunar.jadebuttontunic"},
+      {"id": "flair.ev.lunar.jadedisc", "kind": "richListFlair", "title": "Jade disc", "detail": "A carved jade disc by your name.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "flair.ev.lunar.jadedisc"},
+      {"id": "backdrop.ev.lunar.jadegarden", "kind": "backdrop", "title": "Jade garden", "detail": "A quiet garden of stone and water.", "rarity": "legendary", "colors": ["D8443A", "2A0E0C"], "art": "backdrop.ev.lunar.jadegarden"}
+     ]
+    },
+    {
+     "id": "ev.lunar.3",
+     "slot": 3,
+     "title": "Red Envelope Case",
+     "colors": ["D8443A", "2A0E0C"],
+     "items": [
+      {"id": "backdrop.ev.lunar.luckyredcourtyard", "kind": "backdrop", "title": "Lucky red courtyard", "detail": "A courtyard hung with red envelopes.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "backdrop.ev.lunar.luckyredcourtyard"},
+      {"id": "flair.ev.lunar.luckyenvelope", "kind": "richListFlair", "title": "Lucky envelope", "detail": "A red envelope by your name.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "flair.ev.lunar.luckyenvelope"},
+      {"id": "outfit.ev.lunar.fortunebrocade", "kind": "outfit", "title": "Fortune brocade", "detail": "A brocade jacket woven with coins.", "rarity": "legendary", "colors": ["D8443A", "2A0E0C"], "art": "avatar.body.ev.lunar.fortunebrocade"}
+     ]
+    },
+    {
+     "id": "ev.lunar.4",
+     "slot": 4,
+     "title": "Dragon Scale Safe",
+     "colors": ["D8443A", "2A0E0C"],
+     "items": [
+      {"id": "outfit.ev.lunar.scalepatterncoat", "kind": "outfit", "title": "Scale-pattern coat", "detail": "A coat patterned like dragon scales.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "avatar.body.ev.lunar.scalepatterncoat"},
+      {"id": "backdrop.ev.lunar.pearlofthedragon", "kind": "backdrop", "title": "Pearl of the dragon", "detail": "A glowing pearl by your name.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "backdrop.ev.lunar.pearlofthedragon"},
+      {"id": "flair.ev.lunar.goldendragonsuit", "kind": "richListFlair", "title": "Golden dragon suit", "detail": "A suit with a dragon embroidered in gold.", "rarity": "legendary", "colors": ["D8443A", "2A0E0C"], "art": "flair.ev.lunar.goldendragonsuit"}
+     ]
+    },
+    {
+     "id": "ev.lunar.5",
+     "slot": 5,
+     "title": "Tea House Crate",
+     "colors": ["D8443A", "2A0E0C"],
+     "items": [
+      {"id": "outfit.ev.lunar.teamastersrobe", "kind": "outfit", "title": "Tea master's robe", "detail": "A calm robe of grey silk.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "avatar.body.ev.lunar.teamastersrobe"},
+      {"id": "flair.ev.lunar.teasteam", "kind": "richListFlair", "title": "Tea steam", "detail": "A rising curl from a teacup by your name.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "flair.ev.lunar.teasteam"},
+      {"id": "outfit.ev.lunar.teahousenight", "kind": "outfit", "title": "Tea house night", "detail": "A tea house glowing by the river.", "rarity": "legendary", "colors": ["D8443A", "2A0E0C"], "art": "avatar.body.ev.lunar.teahousenight"}
+     ]
+    },
+    {
+     "id": "ev.lunar.6",
+     "slot": 6,
+     "title": "Fortune Trunk",
+     "colors": ["D8443A", "2A0E0C"],
+     "items": [
+      {"id": "backdrop.ev.lunar.templegate", "kind": "backdrop", "title": "Temple gate", "detail": "A red temple gate in the morning mist.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "backdrop.ev.lunar.templegate"},
+      {"id": "outfit.ev.lunar.fortunesilkshirt", "kind": "outfit", "title": "Fortune silk shirt", "detail": "A shirt printed with lucky knots.", "rarity": "epic", "colors": ["D8443A", "2A0E0C"], "art": "avatar.body.ev.lunar.fortunesilkshirt"},
+      {"id": "backdrop.ev.lunar.dragonfestivalsky", "kind": "backdrop", "title": "Dragon festival sky", "detail": "A sky full of fireworks and kites.", "rarity": "legendary", "colors": ["D8443A", "2A0E0C"], "art": "backdrop.ev.lunar.dragonfestivalsky"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hearts",
+   "title": "Hearts and Roses",
+   "art": "box.event.hearts",
+   "colors": ["E5577A", "3A0F1E"],
+   "boxes": [
+    {
+     "id": "ev.hearts.1",
+     "slot": 1,
+     "title": "Rose Box",
+     "colors": ["E5577A", "3A0F1E"],
+     "items": [
+      {"id": "outfit.ev.hearts.roseredblazer", "kind": "outfit", "title": "Rose-red blazer", "detail": "A blazer the colour of a red rose.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "avatar.body.ev.hearts.roseredblazer"},
+      {"id": "backdrop.ev.hearts.rosegardenarch", "kind": "backdrop", "title": "Rose garden arch", "detail": "An arch of climbing roses.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "backdrop.ev.hearts.rosegardenarch"},
+      {"id": "outfit.ev.hearts.roseprincecoat", "kind": "outfit", "title": "Rose prince coat", "detail": "A long coat embroidered with roses.", "rarity": "legendary", "colors": ["E5577A", "3A0F1E"], "art": "avatar.body.ev.hearts.roseprincecoat"}
+     ]
+    },
+    {
+     "id": "ev.hearts.2",
+     "slot": 2,
+     "title": "Love Letter Case",
+     "colors": ["E5577A", "3A0F1E"],
+     "items": [
+      {"id": "outfit.ev.hearts.letterwriterscardigan", "kind": "outfit", "title": "Letter-writer's cardigan", "detail": "A soft cardigan for long letters.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "avatar.body.ev.hearts.letterwriterscardigan"},
+      {"id": "flair.ev.hearts.sealedletter", "kind": "richListFlair", "title": "Sealed letter", "detail": "A wax-sealed letter by your name.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "flair.ev.hearts.sealedletter"},
+      {"id": "backdrop.ev.hearts.writingdesk", "kind": "backdrop", "title": "Writing desk", "detail": "A desk of letters and pressed flowers.", "rarity": "legendary", "colors": ["E5577A", "3A0F1E"], "art": "backdrop.ev.hearts.writingdesk"}
+     ]
+    },
+    {
+     "id": "ev.hearts.3",
+     "slot": 3,
+     "title": "Chocolate Chest",
+     "colors": ["E5577A", "3A0F1E"],
+     "items": [
+      {"id": "backdrop.ev.hearts.chocolateshop", "kind": "backdrop", "title": "Chocolate shop", "detail": "Shelves of handmade chocolates.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "backdrop.ev.hearts.chocolateshop"},
+      {"id": "flair.ev.hearts.truffle", "kind": "richListFlair", "title": "Truffle", "detail": "A gold-wrapped truffle by your name.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "flair.ev.hearts.truffle"},
+      {"id": "outfit.ev.hearts.chocolatierscoat", "kind": "outfit", "title": "Chocolatier's coat", "detail": "A coat in rich cocoa brown.", "rarity": "legendary", "colors": ["E5577A", "3A0F1E"], "art": "avatar.body.ev.hearts.chocolatierscoat"}
+     ]
+    },
+    {
+     "id": "ev.hearts.4",
+     "slot": 4,
+     "title": "Cupid Crate",
+     "colors": ["E5577A", "3A0F1E"],
+     "items": [
+      {"id": "outfit.ev.hearts.cupidwingjacket", "kind": "outfit", "title": "Cupid wing jacket", "detail": "A white jacket with little wings.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "avatar.body.ev.hearts.cupidwingjacket"},
+      {"id": "backdrop.ev.hearts.cupidsarrow", "kind": "backdrop", "title": "Cupid's arrow", "detail": "A flying arrow by your name.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "backdrop.ev.hearts.cupidsarrow"},
+      {"id": "flair.ev.hearts.cloudnine", "kind": "richListFlair", "title": "Cloud nine", "detail": "Pink clouds at sunset.", "rarity": "legendary", "colors": ["E5577A", "3A0F1E"], "art": "flair.ev.hearts.cloudnine"}
+     ]
+    },
+    {
+     "id": "ev.hearts.5",
+     "slot": 5,
+     "title": "Candlelight Trunk",
+     "colors": ["E5577A", "3A0F1E"],
+     "items": [
+      {"id": "outfit.ev.hearts.candlelightvelvet", "kind": "outfit", "title": "Candlelight velvet", "detail": "Deep wine velvet for a quiet dinner.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "avatar.body.ev.hearts.candlelightvelvet"},
+      {"id": "flair.ev.hearts.candleflame", "kind": "richListFlair", "title": "Candle flame", "detail": "A small warm flame by your name.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "flair.ev.hearts.candleflame"},
+      {"id": "outfit.ev.hearts.sweetheartgalasuit", "kind": "outfit", "title": "Sweetheart gala suit", "detail": "A suit with a ruby heart pin.", "rarity": "legendary", "colors": ["E5577A", "3A0F1E"], "art": "avatar.body.ev.hearts.sweetheartgalasuit"}
+     ]
+    },
+    {
+     "id": "ev.hearts.6",
+     "slot": 6,
+     "title": "Heart Locket Safe",
+     "colors": ["E5577A", "3A0F1E"],
+     "items": [
+      {"id": "backdrop.ev.hearts.parisbalcony", "kind": "backdrop", "title": "Paris balcony", "detail": "A balcony over evening rooftops.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "backdrop.ev.hearts.parisbalcony"},
+      {"id": "outfit.ev.hearts.locketwaistcoat", "kind": "outfit", "title": "Locket waistcoat", "detail": "A waistcoat with a gold locket chain.", "rarity": "epic", "colors": ["E5577A", "3A0F1E"], "art": "avatar.body.ev.hearts.locketwaistcoat"},
+      {"id": "backdrop.ev.hearts.starlitbridge", "kind": "backdrop", "title": "Starlit bridge", "detail": "A lovers' bridge under the stars.", "rarity": "legendary", "colors": ["E5577A", "3A0F1E"], "art": "backdrop.ev.hearts.starlitbridge"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "space",
+   "title": "Space Race",
+   "art": "box.event.space",
+   "colors": ["7C8CF2", "0A0E26"],
+   "boxes": [
+    {
+     "id": "ev.space.1",
+     "slot": 1,
+     "title": "Launch Crate",
+     "colors": ["7C8CF2", "0A0E26"],
+     "items": [
+      {"id": "outfit.ev.space.flightjumpsuit", "kind": "outfit", "title": "Flight jumpsuit", "detail": "A pilot's jumpsuit with mission patches.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "avatar.body.ev.space.flightjumpsuit"},
+      {"id": "backdrop.ev.space.launchpad", "kind": "backdrop", "title": "Launch pad", "detail": "A rocket on the pad at dawn.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "backdrop.ev.space.launchpad"},
+      {"id": "outfit.ev.space.commandersspacesuit", "kind": "outfit", "title": "Commander's spacesuit", "detail": "A white suit with a gold visor.", "rarity": "legendary", "colors": ["7C8CF2", "0A0E26"], "art": "avatar.body.ev.space.commandersspacesuit"}
+     ]
+    },
+    {
+     "id": "ev.space.2",
+     "slot": 2,
+     "title": "Orbit Case",
+     "colors": ["7C8CF2", "0A0E26"],
+     "items": [
+      {"id": "outfit.ev.space.orbitbomber", "kind": "outfit", "title": "Orbit bomber", "detail": "A bomber jacket with a planet patch.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "avatar.body.ev.space.orbitbomber"},
+      {"id": "flair.ev.space.ringedplanet", "kind": "richListFlair", "title": "Ringed planet", "detail": "A small ringed planet by your name.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "flair.ev.space.ringedplanet"},
+      {"id": "backdrop.ev.space.earthrise", "kind": "backdrop", "title": "Earthrise", "detail": "The Earth rising over the Moon.", "rarity": "legendary", "colors": ["7C8CF2", "0A0E26"], "art": "backdrop.ev.space.earthrise"}
+     ]
+    },
+    {
+     "id": "ev.space.3",
+     "slot": 3,
+     "title": "Moon Rock Chest",
+     "colors": ["7C8CF2", "0A0E26"],
+     "items": [
+      {"id": "backdrop.ev.space.moonbase", "kind": "backdrop", "title": "Moon base", "detail": "Domes on a grey crater plain.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "backdrop.ev.space.moonbase"},
+      {"id": "flair.ev.space.moonrock", "kind": "richListFlair", "title": "Moon rock", "detail": "A glittering moon rock by your name.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "flair.ev.space.moonrock"},
+      {"id": "outfit.ev.space.lunarwalkersuit", "kind": "outfit", "title": "Lunar walker suit", "detail": "A suit made for the first steps.", "rarity": "legendary", "colors": ["7C8CF2", "0A0E26"], "art": "avatar.body.ev.space.lunarwalkersuit"}
+     ]
+    },
+    {
+     "id": "ev.space.4",
+     "slot": 4,
+     "title": "Rover Box",
+     "colors": ["7C8CF2", "0A0E26"],
+     "items": [
+      {"id": "outfit.ev.space.roverengineerscoat", "kind": "outfit", "title": "Rover engineer's coat", "detail": "A lab coat covered in mission notes.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "avatar.body.ev.space.roverengineerscoat"},
+      {"id": "backdrop.ev.space.redplanetdunes", "kind": "backdrop", "title": "Red planet dunes", "detail": "Rust-red dunes under a pale sky.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "backdrop.ev.space.redplanetdunes"},
+      {"id": "flair.ev.space.satellite", "kind": "richListFlair", "title": "Satellite", "detail": "A turning satellite by your name.", "rarity": "legendary", "colors": ["7C8CF2", "0A0E26"], "art": "flair.ev.space.satellite"}
+     ]
+    },
+    {
+     "id": "ev.space.5",
+     "slot": 5,
+     "title": "Nebula Safe",
+     "colors": ["7C8CF2", "0A0E26"],
+     "items": [
+      {"id": "outfit.ev.space.nebulasilkshirt", "kind": "outfit", "title": "Nebula silk shirt", "detail": "A shirt printed with a nebula.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "avatar.body.ev.space.nebulasilkshirt"},
+      {"id": "flair.ev.space.shootingstar", "kind": "richListFlair", "title": "Shooting star", "detail": "A streaking star by your name.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "flair.ev.space.shootingstar"},
+      {"id": "outfit.ev.space.galaxycaptaincoat", "kind": "outfit", "title": "Galaxy captain coat", "detail": "A captain's coat lined with stars.", "rarity": "legendary", "colors": ["7C8CF2", "0A0E26"], "art": "avatar.body.ev.space.galaxycaptaincoat"}
+     ]
+    },
+    {
+     "id": "ev.space.6",
+     "slot": 6,
+     "title": "Mission Control Trunk",
+     "colors": ["7C8CF2", "0A0E26"],
+     "items": [
+      {"id": "backdrop.ev.space.missioncontrol", "kind": "backdrop", "title": "Mission control", "detail": "Rows of screens and a big countdown.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "backdrop.ev.space.missioncontrol"},
+      {"id": "outfit.ev.space.flightdirectorvest", "kind": "outfit", "title": "Flight director vest", "detail": "A vest with a headset clip.", "rarity": "epic", "colors": ["7C8CF2", "0A0E26"], "art": "avatar.body.ev.space.flightdirectorvest"},
+      {"id": "backdrop.ev.space.deepspacewindow", "kind": "backdrop", "title": "Deep space window", "detail": "A window onto the Milky Way.", "rarity": "legendary", "colors": ["7C8CF2", "0A0E26"], "art": "backdrop.ev.space.deepspacewindow"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "carnival",
+   "title": "Carnival",
+   "art": "box.event.carnival",
+   "colors": ["B455D6", "250B33"],
+   "boxes": [
+    {
+     "id": "ev.carnival.1",
+     "slot": 1,
+     "title": "Masquerade Box",
+     "colors": ["B455D6", "250B33"],
+     "items": [
+      {"id": "outfit.ev.carnival.masqueradejacket", "kind": "outfit", "title": "Masquerade jacket", "detail": "A jacket with a silver mask brooch.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "avatar.body.ev.carnival.masqueradejacket"},
+      {"id": "backdrop.ev.carnival.maskedballroom", "kind": "backdrop", "title": "Masked ballroom", "detail": "A ballroom of masked dancers.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "backdrop.ev.carnival.maskedballroom"},
+      {"id": "outfit.ev.carnival.grandmasqueradecoat", "kind": "outfit", "title": "Grand masquerade coat", "detail": "A coat of feathers and gold thread.", "rarity": "legendary", "colors": ["B455D6", "250B33"], "art": "avatar.body.ev.carnival.grandmasqueradecoat"}
+     ]
+    },
+    {
+     "id": "ev.carnival.2",
+     "slot": 2,
+     "title": "Parade Float Crate",
+     "colors": ["B455D6", "250B33"],
+     "items": [
+      {"id": "outfit.ev.carnival.paradeshirt", "kind": "outfit", "title": "Parade shirt", "detail": "A shirt in every carnival colour.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "avatar.body.ev.carnival.paradeshirt"},
+      {"id": "flair.ev.carnival.paradedrum", "kind": "richListFlair", "title": "Parade drum", "detail": "A beating drum by your name.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "flair.ev.carnival.paradedrum"},
+      {"id": "backdrop.ev.carnival.paradeavenue", "kind": "backdrop", "title": "Parade avenue", "detail": "Floats rolling down a crowded avenue.", "rarity": "legendary", "colors": ["B455D6", "250B33"], "art": "backdrop.ev.carnival.paradeavenue"}
+     ]
+    },
+    {
+     "id": "ev.carnival.3",
+     "slot": 3,
+     "title": "Feather Chest",
+     "colors": ["B455D6", "250B33"],
+     "items": [
+      {"id": "backdrop.ev.carnival.featherplaza", "kind": "backdrop", "title": "Feather plaza", "detail": "A plaza full of feathers and music.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "backdrop.ev.carnival.featherplaza"},
+      {"id": "flair.ev.carnival.peacockplume", "kind": "richListFlair", "title": "Peacock plume", "detail": "A peacock feather by your name.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "flair.ev.carnival.peacockplume"},
+      {"id": "outfit.ev.carnival.plumedshowmansuit", "kind": "outfit", "title": "Plumed showman suit", "detail": "A suit topped with bright plumes.", "rarity": "legendary", "colors": ["B455D6", "250B33"], "art": "avatar.body.ev.carnival.plumedshowmansuit"}
+     ]
+    },
+    {
+     "id": "ev.carnival.4",
+     "slot": 4,
+     "title": "Samba Case",
+     "colors": ["B455D6", "250B33"],
+     "items": [
+      {"id": "outfit.ev.carnival.sambasequinjacket", "kind": "outfit", "title": "Samba sequin jacket", "detail": "A jacket covered in sequins.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "avatar.body.ev.carnival.sambasequinjacket"},
+      {"id": "backdrop.ev.carnival.beachparade", "kind": "backdrop", "title": "Beach parade", "detail": "A parade along a sunny beach.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "backdrop.ev.carnival.beachparade"},
+      {"id": "flair.ev.carnival.maracas", "kind": "richListFlair", "title": "Maracas", "detail": "Shaking maracas by your name.", "rarity": "legendary", "colors": ["B455D6", "250B33"], "art": "flair.ev.carnival.maracas"}
+     ]
+    },
+    {
+     "id": "ev.carnival.5",
+     "slot": 5,
+     "title": "Confetti Cannon Trunk",
+     "colors": ["B455D6", "250B33"],
+     "items": [
+      {"id": "outfit.ev.carnival.ringmastercoat", "kind": "outfit", "title": "Ringmaster coat", "detail": "A red ringmaster's coat.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "avatar.body.ev.carnival.ringmastercoat"},
+      {"id": "flair.ev.carnival.bigtopstar", "kind": "richListFlair", "title": "Big top star", "detail": "A circus star by your name.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "flair.ev.carnival.bigtopstar"},
+      {"id": "outfit.ev.carnival.carnivalkingrobe", "kind": "outfit", "title": "Carnival king robe", "detail": "A robe for the king of the carnival.", "rarity": "legendary", "colors": ["B455D6", "250B33"], "art": "avatar.body.ev.carnival.carnivalkingrobe"}
+     ]
+    },
+    {
+     "id": "ev.carnival.6",
+     "slot": 6,
+     "title": "Grand Mask Safe",
+     "colors": ["B455D6", "250B33"],
+     "items": [
+      {"id": "backdrop.ev.carnival.canalcarnival", "kind": "backdrop", "title": "Canal carnival", "detail": "Gondolas on a canal in festival lights.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "backdrop.ev.carnival.canalcarnival"},
+      {"id": "outfit.ev.carnival.harlequinvest", "kind": "outfit", "title": "Harlequin vest", "detail": "A diamond-pattern harlequin vest.", "rarity": "epic", "colors": ["B455D6", "250B33"], "art": "avatar.body.ev.carnival.harlequinvest"},
+      {"id": "backdrop.ev.carnival.goldenmaskhall", "kind": "backdrop", "title": "Golden mask hall", "detail": "A hall of golden masks.", "rarity": "legendary", "colors": ["B455D6", "250B33"], "art": "backdrop.ev.carnival.goldenmaskhall"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "jungle",
+   "title": "Jungle Expedition",
+   "art": "box.event.jungle",
+   "colors": ["4FAE5A", "0F2A14"],
+   "boxes": [
+    {
+     "id": "ev.jungle.1",
+     "slot": 1,
+     "title": "Explorer Crate",
+     "colors": ["4FAE5A", "0F2A14"],
+     "items": [
+      {"id": "outfit.ev.jungle.explorersshirt", "kind": "outfit", "title": "Explorer's shirt", "detail": "A khaki shirt with map pockets.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "avatar.body.ev.jungle.explorersshirt"},
+      {"id": "backdrop.ev.jungle.rivercamp", "kind": "backdrop", "title": "River camp", "detail": "A camp on a misty jungle river.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "backdrop.ev.jungle.rivercamp"},
+      {"id": "outfit.ev.jungle.expeditionleadercoat", "kind": "outfit", "title": "Expedition leader coat", "detail": "A long coat for the head of the expedition.", "rarity": "legendary", "colors": ["4FAE5A", "0F2A14"], "art": "avatar.body.ev.jungle.expeditionleadercoat"}
+     ]
+    },
+    {
+     "id": "ev.jungle.2",
+     "slot": 2,
+     "title": "Temple Chest",
+     "colors": ["4FAE5A", "0F2A14"],
+     "items": [
+      {"id": "outfit.ev.jungle.templescoutjacket", "kind": "outfit", "title": "Temple scout jacket", "detail": "A jacket worn smooth by vines.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "avatar.body.ev.jungle.templescoutjacket"},
+      {"id": "flair.ev.jungle.carvedglyph", "kind": "richListFlair", "title": "Carved glyph", "detail": "An ancient glyph by your name.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "flair.ev.jungle.carvedglyph"},
+      {"id": "backdrop.ev.jungle.losttemple", "kind": "backdrop", "title": "Lost temple", "detail": "A temple swallowed by the jungle.", "rarity": "legendary", "colors": ["4FAE5A", "0F2A14"], "art": "backdrop.ev.jungle.losttemple"}
+     ]
+    },
+    {
+     "id": "ev.jungle.3",
+     "slot": 3,
+     "title": "Parrot Case",
+     "colors": ["4FAE5A", "0F2A14"],
+     "items": [
+      {"id": "backdrop.ev.jungle.parrotcanopy", "kind": "backdrop", "title": "Parrot canopy", "detail": "Bright parrots in the treetops.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "backdrop.ev.jungle.parrotcanopy"},
+      {"id": "flair.ev.jungle.macawfeather", "kind": "richListFlair", "title": "Macaw feather", "detail": "A red macaw feather by your name.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "flair.ev.jungle.macawfeather"},
+      {"id": "outfit.ev.jungle.tropicalprintsuit", "kind": "outfit", "title": "Tropical print suit", "detail": "A suit in bold jungle prints.", "rarity": "legendary", "colors": ["4FAE5A", "0F2A14"], "art": "avatar.body.ev.jungle.tropicalprintsuit"}
+     ]
+    },
+    {
+     "id": "ev.jungle.4",
+     "slot": 4,
+     "title": "Vine Trunk",
+     "colors": ["4FAE5A", "0F2A14"],
+     "items": [
+      {"id": "outfit.ev.jungle.vinegreenutilityvest", "kind": "outfit", "title": "Vine-green utility vest", "detail": "A green vest with rope loops.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "avatar.body.ev.jungle.vinegreenutilityvest"},
+      {"id": "backdrop.ev.jungle.ropebridge", "kind": "backdrop", "title": "Rope bridge", "detail": "A swaying bridge over a gorge.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "backdrop.ev.jungle.ropebridge"},
+      {"id": "flair.ev.jungle.firefly", "kind": "richListFlair", "title": "Firefly", "detail": "A glowing firefly by your name.", "rarity": "legendary", "colors": ["4FAE5A", "0F2A14"], "art": "flair.ev.jungle.firefly"}
+     ]
+    },
+    {
+     "id": "ev.jungle.5",
+     "slot": 5,
+     "title": "Golden Idol Safe",
+     "colors": ["4FAE5A", "0F2A14"],
+     "items": [
+      {"id": "outfit.ev.jungle.idolhunterjacket", "kind": "outfit", "title": "Idol hunter jacket", "detail": "A leather jacket with a gold compass.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "avatar.body.ev.jungle.idolhunterjacket"},
+      {"id": "flair.ev.jungle.goldenidol", "kind": "richListFlair", "title": "Golden idol", "detail": "A small golden idol by your name.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "flair.ev.jungle.goldenidol"},
+      {"id": "outfit.ev.jungle.jadejaguarrobe", "kind": "outfit", "title": "Jade jaguar robe", "detail": "A robe with a green jaguar crest.", "rarity": "legendary", "colors": ["4FAE5A", "0F2A14"], "art": "avatar.body.ev.jungle.jadejaguarrobe"}
+     ]
+    },
+    {
+     "id": "ev.jungle.6",
+     "slot": 6,
+     "title": "Waterfall Box",
+     "colors": ["4FAE5A", "0F2A14"],
+     "items": [
+      {"id": "backdrop.ev.jungle.hiddenwaterfall", "kind": "backdrop", "title": "Hidden waterfall", "detail": "A waterfall behind the ferns.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "backdrop.ev.jungle.hiddenwaterfall"},
+      {"id": "outfit.ev.jungle.rainforestlinen", "kind": "outfit", "title": "Rainforest linen", "detail": "Light linen for the steamy forest.", "rarity": "epic", "colors": ["4FAE5A", "0F2A14"], "art": "avatar.body.ev.jungle.rainforestlinen"},
+      {"id": "backdrop.ev.jungle.emeraldvalley", "kind": "backdrop", "title": "Emerald valley", "detail": "A valley of green light from above.", "rarity": "legendary", "colors": ["4FAE5A", "0F2A14"], "art": "backdrop.ev.jungle.emeraldvalley"}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "garden",
+   "title": "Royal Garden",
+   "art": "box.event.garden",
+   "colors": ["9CCB6B", "23331A"],
+   "boxes": [
+    {
+     "id": "ev.garden.1",
+     "slot": 1,
+     "title": "Tulip Crate",
+     "colors": ["9CCB6B", "23331A"],
+     "items": [
+      {"id": "outfit.ev.garden.tulipblazer", "kind": "outfit", "title": "Tulip blazer", "detail": "A blazer in tulip pink.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "avatar.body.ev.garden.tulipblazer"},
+      {"id": "backdrop.ev.garden.tuliprows", "kind": "backdrop", "title": "Tulip rows", "detail": "Rows of tulips to the windmills.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "backdrop.ev.garden.tuliprows"},
+      {"id": "outfit.ev.garden.gardenprincecoat", "kind": "outfit", "title": "Garden prince coat", "detail": "A coat embroidered with tulips.", "rarity": "legendary", "colors": ["9CCB6B", "23331A"], "art": "avatar.body.ev.garden.gardenprincecoat"}
+     ]
+    },
+    {
+     "id": "ev.garden.2",
+     "slot": 2,
+     "title": "Topiary Chest",
+     "colors": ["9CCB6B", "23331A"],
+     "items": [
+      {"id": "outfit.ev.garden.topiarygardenervest", "kind": "outfit", "title": "Topiary gardener vest", "detail": "A neat vest with shears.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "avatar.body.ev.garden.topiarygardenervest"},
+      {"id": "flair.ev.garden.topiaryswan", "kind": "richListFlair", "title": "Topiary swan", "detail": "A clipped hedge swan by your name.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "flair.ev.garden.topiaryswan"},
+      {"id": "backdrop.ev.garden.mazegarden", "kind": "backdrop", "title": "Maze garden", "detail": "A hedge maze from above.", "rarity": "legendary", "colors": ["9CCB6B", "23331A"], "art": "backdrop.ev.garden.mazegarden"}
+     ]
+    },
+    {
+     "id": "ev.garden.3",
+     "slot": 3,
+     "title": "Greenhouse Case",
+     "colors": ["9CCB6B", "23331A"],
+     "items": [
+      {"id": "backdrop.ev.garden.palmhouse", "kind": "backdrop", "title": "Palm house", "detail": "A glass palm house in the rain.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "backdrop.ev.garden.palmhouse"},
+      {"id": "flair.ev.garden.orchid", "kind": "richListFlair", "title": "Orchid", "detail": "A rare orchid by your name.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "flair.ev.garden.orchid"},
+      {"id": "outfit.ev.garden.botanistscoat", "kind": "outfit", "title": "Botanist's coat", "detail": "A long coat with seed pockets.", "rarity": "legendary", "colors": ["9CCB6B", "23331A"], "art": "avatar.body.ev.garden.botanistscoat"}
+     ]
+    },
+    {
+     "id": "ev.garden.4",
+     "slot": 4,
+     "title": "Fountain Box",
+     "colors": ["9CCB6B", "23331A"],
+     "items": [
+      {"id": "outfit.ev.garden.fountainbluesuit", "kind": "outfit", "title": "Fountain-blue suit", "detail": "A suit in fountain-water blue.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "avatar.body.ev.garden.fountainbluesuit"},
+      {"id": "backdrop.ev.garden.fountaincourt", "kind": "backdrop", "title": "Fountain court", "detail": "A courtyard of splashing fountains.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "backdrop.ev.garden.fountaincourt"},
+      {"id": "flair.ev.garden.waterlily", "kind": "richListFlair", "title": "Water lily", "detail": "A floating lily by your name.", "rarity": "legendary", "colors": ["9CCB6B", "23331A"], "art": "flair.ev.garden.waterlily"}
+     ]
+    },
+    {
+     "id": "ev.garden.5",
+     "slot": 5,
+     "title": "Orangery Trunk",
+     "colors": ["9CCB6B", "23331A"],
+     "items": [
+      {"id": "outfit.ev.garden.orangerylinen", "kind": "outfit", "title": "Orangery linen", "detail": "Cool linen in orange-blossom white.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "avatar.body.ev.garden.orangerylinen"},
+      {"id": "flair.ev.garden.orangeblossom", "kind": "richListFlair", "title": "Orange blossom", "detail": "A sprig of blossom by your name.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "flair.ev.garden.orangeblossom"},
+      {"id": "outfit.ev.garden.royalgardenersrobe", "kind": "outfit", "title": "Royal gardener's robe", "detail": "A green robe with a gold trowel crest.", "rarity": "legendary", "colors": ["9CCB6B", "23331A"], "art": "avatar.body.ev.garden.royalgardenersrobe"}
+     ]
+    },
+    {
+     "id": "ev.garden.6",
+     "slot": 6,
+     "title": "Rose Garden Safe",
+     "colors": ["9CCB6B", "23331A"],
+     "items": [
+      {"id": "backdrop.ev.garden.palacerosegarden", "kind": "backdrop", "title": "Palace rose garden", "detail": "A palace garden in full bloom.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "backdrop.ev.garden.palacerosegarden"},
+      {"id": "outfit.ev.garden.gardenpartyshirt", "kind": "outfit", "title": "Garden party shirt", "detail": "A shirt for a summer garden party.", "rarity": "epic", "colors": ["9CCB6B", "23331A"], "art": "avatar.body.ev.garden.gardenpartyshirt"},
+      {"id": "backdrop.ev.garden.goldengategardens", "kind": "backdrop", "title": "Golden gate gardens", "detail": "Gilded gates over endless gardens.", "rarity": "legendary", "colors": ["9CCB6B", "23331A"], "art": "backdrop.ev.garden.goldengategardens"}
+     ]
+    }
+   ]
+  }
+ ]
+}

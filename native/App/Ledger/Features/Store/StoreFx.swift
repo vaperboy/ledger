@@ -132,6 +132,10 @@ struct BoxArt: View {
         case .cardBasic: return [Color(hex: 0x8FB4C9), Color(hex: 0x2E4A5C)]
         case .cardPremium: return [Color(hex: 0xC9A0D6), Color(hex: 0x4A2E5C)]
         case .cardElite: return [Color(hex: 0xE6C463), Color(hex: 0x6B4E12)]
+        case .elite: return [Color(hex: 0xF0CF6A), Color(hex: 0x3A2A08)]
+        case .event1, .event2, .event3, .event4, .event5, .event6:
+            let c: [UInt32] = EventBoxes.box(kind)?.colors ?? []
+            return [Color(hex: c.first ?? 0xE5577A), Color(hex: c.count > 1 ? c[1] : 0x3A0F1E)]
         }
     }
 

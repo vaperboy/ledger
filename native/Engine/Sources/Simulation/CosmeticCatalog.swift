@@ -25,6 +25,8 @@ public enum CosmeticCatalog {
         case .level: return "Level \(c.value)"
         case .rank: return "Rank \(c.value): " + (Int(c.value).flatMap { (n: Int) -> String? in n < Career.ranks.count ? Career.ranks[n].title : nil } ?? "")
         case .goal: return "Goal " + c.value + ": " + (Career.defs.first { $0.id == c.value }?.title ?? "")
+        case .mission: return "Sometimes found with a mission reward"
+        case .event: return "Event box only: " + (EventBoxes.home(of: c.id).map { (b: EventBox) -> String in b.title + " (" + b.setTitle + ")" } ?? "event")
         }
     }
 

@@ -36,7 +36,7 @@ enum StorePurchase {
         switch good {
         case .boxBundle(let b):
             return GoldOffer(title: "Buy \(b.count) \(b.kind.title)es?",
-                             effect: "you get \(b.count) \(b.kind.title)es in your stock, nothing opened yet. That is \(b.savingPercent)% less than \(StoreText.gold(b.singlesPrice)) for single boxes.",
+                             effect: "you get \(b.count) \(b.kind.title)es and open them one by one straight away; any you leave stay in your stock. That is \(b.savingPercent)% less than \(StoreText.gold(b.singlesPrice)) for single boxes.",
                              price: b.price, icon: "shippingbox")
         case .cosmetic(let c):
             return GoldOffer(title: "Buy \(c.item.title)?", effect: "you get \(c.item.title) (\(c.rarity.title)). \(c.item.detail)", price: StoreRotation.price(c) ?? 0, icon: "paintpalette")
@@ -99,6 +99,10 @@ extension BoxKind {
         case .cardBasic: return "Profile cards and company cards, mostly plain colours. A rare animated card is possible but unlikely."
         case .cardPremium: return "A fair chance of rare and epic cards, and a real chance of an animated one."
         case .cardElite: return "The best odds of epic and legendary animated cards. Every card is numbered and can be sold at auction."
+        case .elite: return "The best odds of any box: epic and legendary cosmetics are far more likely. Gold and cash only in the small rows."
+        case .event1, .event2, .event3, .event4, .event5, .event6:
+            let set: String = EventBoxes.box(self)?.setTitle ?? "this event"
+            return "Part of \(set). Its epic and legendary items come only from this box, and only while the event lasts."
         }
     }
 }

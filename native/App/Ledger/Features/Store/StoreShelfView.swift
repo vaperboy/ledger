@@ -15,8 +15,12 @@ struct StoreShelfView: View {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 StoreBand(title: "Save slots", glyph: Glyph.luxury, tint: StoreColors.violet)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible())], spacing: Theme.Space.s) {
-                    ForEach(Self.slots) { (c: GoldCosmetic) in slotTile(c, owned: owned.contains(c.id), blocked: Self.isLockedSlot(c, owned: owned)) }
+                    ForEach(Self.slots) { (c: GoldCosmetic) in
+                        slotTile(c, owned: owned.contains(c.id), blocked: Self.isLockedSlot(c, owned: owned))
+                            .adminPrice(kind: "item", id: c.id, current: StoreRotation.price(c) ?? 0)
+                    }
                 }
+                .id(session.priceVersion)
                 .padding(.horizontal, Theme.Space.m)
             }
             VStack(alignment: .leading, spacing: Theme.Space.xs) {

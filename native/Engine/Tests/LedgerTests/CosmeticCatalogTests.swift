@@ -115,7 +115,7 @@ final class CosmeticCatalogTests: XCTestCase {
     func testLegendariesAndEarnedItemsAreNeverSoldForGold() {
         for c in GoldCosmetics.everything {
             if c.rarity == .legendary { XCTAssertNotEqual(c.source, .store, "\(c.id) is box-only") }
-            if [.level, .rank, .goal, .plan, .free].contains(c.source) {
+            if [.level, .rank, .goal, .plan, .free, .mission, .event].contains(c.source) {
                 XCTAssertNil(c.price, c.id)
                 XCTAssertFalse(GoldCosmetics.boxPool(c.rarity, owned: []).contains { $0.id == c.id }, "\(c.id) is earned, not dropped")
             }

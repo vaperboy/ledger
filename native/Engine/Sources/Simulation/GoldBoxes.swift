@@ -12,17 +12,36 @@ public enum BoxKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case free
     case cabinet
     case grand
+    case elite
     case cardBasic
     case cardPremium
     case cardElite
+    /// The six event box slots; what each holds changes with the event rotation (EventBoxes).
+    case event1, event2, event3, event4, event5, event6
     public var id: String { rawValue }
-    public var title: String { BoxCatalog.entries[rawValue]?.title ?? rawValue }
-    public var price: Int { BoxCatalog.entries[rawValue]?.price ?? 0 }
+    public var title: String { EventBoxes.box(self)?.title ?? BoxCatalog.entries[rawValue]?.title ?? rawValue }
+    /// The gold price: the server's when it has sent one, else the content table.
+    public var price: Int { BoxCatalog.entries[rawValue] == nil ? 0 : GoldPrices.box(rawValue) }
     public var theme: String { BoxCatalog.entries[rawValue]?.theme ?? ItemThemes.classicID }
     public var isPaid: Bool { price > 0 }
     public var isCardPack: Bool { self == .cardBasic || self == .cardPremium || self == .cardElite }
-    public static var standard: [BoxKind] { allCases.filter { !$0.isCardPack } }
+    public var eventSlot: Int? {
+        switch self {
+        case .event1: return 1
+        case .event2: return 2
+        case .event3: return 3
+        case .event4: return 4
+        case .event5: return 5
+        case .event6: return 6
+        default: return nil
+        }
+    }
+    public var isEvent: Bool { eventSlot != nil }
+    public static func event(_ slot: Int) -> BoxKind? { events.first { $0.eventSlot == slot } }
+    /// Season, Basic, Premium and Elite boxes.
+    public static var standard: [BoxKind] { allCases.filter { !$0.isCardPack && !$0.isEvent } }
     public static var cardPacks: [BoxKind] { allCases.filter { $0.isCardPack } }
+    public static var events: [BoxKind] { [.event1, .event2, .event3, .event4, .event5, .event6] }
 }
 
 public enum BoxPrizeClass: Equatable, Sendable {
@@ -94,7 +113,6 @@ public struct BoxPity: Codable, Equatable, Sendable {
 enum BoxCatalog {
     struct Entry {
         var title: String
-        var price: Int
         var theme: String
         var rows: [BoxRow]
     }
@@ -102,7 +120,7 @@ enum BoxCatalog {
     static let entries: [String: Entry] = {
         var out: [String: Entry] = [:]
         for e in ContentFile.load("boxes", "boxes")["boxes"].array {
-            out[e["id"].string] = Entry(title: e["title"].string, price: GoldPrices.box(e["id"].string), theme: ItemThemes.id(e), rows: e["rows"].array.map { (r: JSONValue) -> BoxRow in BoxCatalog.row(r) })
+            out[e["id"].string] = Entry(title: e["title"].string, theme: ItemThemes.id(e), rows: e["rows"].array.map { (r: JSONValue) -> BoxRow in BoxCatalog.row(r) })
         }
         return out
     }()
@@ -229,7 +247,9 @@ public enum BoxOdds {
         case .money(let m):
             content = .money(m)
         case .cosmetic:
-            let pool: [GoldCosmetic] = GoldCosmetics.boxPool(row.rarity, owned: ownedCosmetics)
+            // An event box's epic and legendary rows are its own exclusive items.
+            let exclusive: Bool = kind.isEvent && row.rarity >= .epic
+            let pool: [GoldCosmetic] = exclusive ? EventBoxes.pool(kind, row.rarity, owned: ownedCosmetics) : GoldCosmetics.boxPool(row.rarity, owned: ownedCosmetics)
             if pool.isEmpty { content = .artifact(artifact(row.rarity, itemRoll, serialRoll)) }
             else { content = .cosmetic(pool[min(pool.count - 1, Int(itemRoll * Double(pool.count)))].id) }
         case .artifact:

@@ -37,7 +37,7 @@ public enum GoldStore {
 
     public static let seasonLevels: SeasonBundle = GoldPrices.seasonLevels
 
-    public static let boxBundles: [BoxBundle] = GoldPrices.boxBundles
+    public static var boxBundles: [BoxBundle] { GoldPrices.boxBundles }
 
     public static func firstPurchaseBonus(_ pack: GoldPack) -> Int { pack.gold / 2 }
 

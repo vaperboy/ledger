@@ -79,7 +79,7 @@ struct BoxTile: View {
     var index: Int
 
     var body: some View {
-        let tint: Color = kind == .grand || kind == .cardElite ? StoreColors.purple : (kind.isCardPack ? StoreColors.blue : StoreColors.orange)
+        let tint: Color = kind == .elite ? StoreColors.red : (kind == .grand || kind == .cardElite ? StoreColors.purple : (kind.isCardPack ? StoreColors.blue : StoreColors.orange))
         VStack(spacing: Theme.Space.xs) {
             Text(kind.title.uppercased()).font(.caption.weight(.heavy)).foregroundStyle(.white).multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.7)
             BoxArt(kind: kind, size: 60).padding(.vertical, Theme.Space.xs)

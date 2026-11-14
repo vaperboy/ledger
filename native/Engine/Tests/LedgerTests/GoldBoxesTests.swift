@@ -132,6 +132,56 @@ final class GoldBoxesTests: XCTestCase {
         }
     }
 
+    func testEliteIsTheDearestBoxAndBundleWithTheBestOdds() {
+        let paid: [BoxKind] = BoxKind.allCases.filter { $0.isPaid && $0 != .elite }
+        XCTAssertTrue(paid.allSatisfy { $0.price < BoxKind.elite.price })
+        let elite: BoxBundle? = GoldStore.boxBundles.first { $0.kind == .elite }
+        XCTAssertNotNil(elite)
+        XCTAssertTrue(GoldStore.boxBundles.allSatisfy { $0.kind == .elite || $0.price < (elite?.price ?? 0) })
+        func share(_ k: BoxKind, _ r: BoxRarity) -> Double { BoxOdds.rarityPercent(k).first { $0.rarity == r }?.percent ?? 0 }
+        for k in BoxKind.standard + BoxKind.events where k != .elite { XCTAssertGreaterThan(share(.elite, .legendary), share(k, .legendary), "\(k)") }
+    }
+
+    func testCashSitsBelowTheRarestRows() {
+        for kind in BoxKind.allCases {
+            for row in BoxOdds.rows(kind) where row.rarity >= .epic {
+                switch row.prize {
+                case .gold, .money: XCTFail("\(kind) pays cash or gold at \(row.rarity)")
+                default: break
+                }
+            }
+            if let top = BoxOdds.rows(kind).last, !kind.isCardPack {
+                XCTAssertEqual(top.prize, .cosmetic, "\(kind): the rarest row is a cosmetic")
+            }
+        }
+    }
+
+    func testEventBoxesDropOnlyTheirOwnExclusivesAtEpicAndAbove() {
+        XCTAssertGreaterThanOrEqual(EventBoxes.sets.count, 12)
+        var all: Set<String> = []
+        for s in EventBoxes.sets {
+            XCTAssertEqual(s.boxes.map(\.slot), [1, 2, 3, 4, 5, 6], s.id)
+            for b in s.boxes {
+                XCTAssertGreaterThanOrEqual(b.items.count, 3, b.id)
+                for id in b.items { XCTAssertTrue(all.insert(id).inserted, "\(id) is in two event boxes") }
+            }
+        }
+        let exclusive: Set<String> = Set(EventBoxes.cosmetics.filter { $0.rarity >= .epic }.map(\.id))
+        XCTAssertEqual(exclusive, all)
+        for r in BoxRarity.allCases { XCTAssertTrue(GoldCosmetics.boxPool(r, owned: []).allSatisfy { !all.contains($0.id) }) }
+        XCTAssertTrue(StoreRotation.eligible().allSatisfy { !all.contains($0.id) })
+        XCTAssertTrue(SeasonRewards.everything.allSatisfy { !all.contains($0.id) })
+        let day: Int = EventBoxes.epochDay + 3
+        XCTAssertEqual(EventBoxes.current(day: day).map(\.id), EventBoxes.current(day: day + 10).map(\.id))
+        XCTAssertNotEqual(EventBoxes.current(day: day).map(\.id), EventBoxes.current(day: day + EventBoxes.rotationDays).map(\.id))
+        for n in 0..<400 {
+            let r = BoxOdds.open(.event3, pity: BoxPity(), ownedCosmetics: [], seed: "ev\(n)").result
+            if r.rarity >= .epic, case .cosmetic(let id) = r.content {
+                XCTAssertTrue(EventBoxes.box(.event3)?.items.contains(id) ?? false, id)
+            }
+        }
+    }
+
     func testStoreAccess() {
         XCTAssertEqual(StoreAccess.access(adultConfirmed: nil, countryCode: "NO"), .hidden, "no confirmation hides the store")
         XCTAssertEqual(StoreAccess.access(adultConfirmed: false, countryCode: "NO"), .hidden)
