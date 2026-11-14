@@ -15,6 +15,7 @@ struct CollectionCard: View {
         let reward: GoldCosmetic? = GoldCosmetics.cosmetic(collection.rewardID)
         let claimed: Bool = season.pass.owned.contains(collection.rewardID)
         VStack(alignment: .leading, spacing: Theme.Space.s) {
+            OfferPicture(name: "collection." + collection.id)
             HStack(alignment: .firstTextBaseline) {
                 Text(collection.name.tidyText).textStyle(.headline)
                 Spacer(minLength: Theme.Space.s)

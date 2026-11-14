@@ -32,6 +32,7 @@ struct CompanyEquipmentScreen: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
+            .environment(\.equipmentTrade, co.type)
             .ledgerBackground()
             .navigationDestination(item: $detail) { (t: EquipmentTarget) in
                 EquipmentDetailScreen(companyID: companyID, target: t).environment(\.outsidePalette, P)

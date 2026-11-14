@@ -30,6 +30,7 @@ struct StoreSeasonCard: View {
         let ready: Int = pass.claimableCount(isPlus: model.premiumOpen(plus: ent.isPlus, founder: ent.isFounder))
         let fill: Double = pass.isComplete ? 1 : (Double(pass.tier) + pass.tierProgress) / Double(SeasonPass.tierCount)
         VStack(alignment: .leading, spacing: Theme.Space.s) {
+            OfferPicture(name: "offer.seasonlevels")
             HStack {
                 Text("SEASON \(pass.seasonNumber) PASS").font(.title3.weight(.black)).italic().foregroundStyle(.white)
                 Spacer()
@@ -100,7 +101,7 @@ struct PackTile: View {
     var body: some View {
         VStack(spacing: Theme.Space.xs) {
             Text(pack.name).font(.caption.weight(.heavy)).foregroundStyle(.white).lineLimit(1)
-            RewardIcon(reward: .gold(GoldStore.totalGold(pack, firstPurchase: first)), size: 44)
+            RewardIcon(reward: .gold(GoldStore.totalGold(pack, firstPurchase: first)), size: 44, art: pack.art)
             if best { StoreTag(text: "BEST VALUE", tint: StoreColors.red) } else if first { StoreTag(text: "+BONUS", tint: StoreColors.green) } else { Color.clear.frame(height: 18) }
             StoreAppStoreButton(item: .goldPack(pack.id), identifier: "pack-" + pack.id)
         }

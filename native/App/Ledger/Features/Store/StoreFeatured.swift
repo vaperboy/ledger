@@ -1,14 +1,48 @@
 import SwiftUI
 import Simulation
 
-/// A big section header: a bright slanted band with a white title and a small picture at the right.
+/// A big section header: a bright slanted band with a white title and a small picture at the right,
+/// or the section's banner picture (store.band.<name>) with the title over its left half when that picture exists.
 struct StoreBand: View {
     var title: String
     var glyph: String
     var tint: Color = StoreColors.purple
     var trailing: Date? = nil
+    var art: String = ""
 
     var body: some View {
+        if let picture = StoreArt.image(art) {
+            banner(picture)
+        } else {
+            band
+        }
+    }
+
+    private func banner(_ picture: Image) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+        return Color.clear
+            .aspectRatio(1170.0 / 420.0, contentMode: .fit)
+            .overlay { picture.resizable().scaledToFill() }
+            .overlay(LinearGradient(colors: [Color.black.opacity(0.7), Color.black.opacity(0.15), .clear], startPoint: .leading, endPoint: .trailing))
+            .overlay(alignment: .leading) {
+                HStack(spacing: Theme.Space.s) {
+                    Text(title.uppercased()).font(.title2.weight(.black)).italic().foregroundStyle(.white)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    LedgerGlyph(glyph: glyph, size: 22, tint: Color.white.opacity(0.9))
+                }
+                .padding(.leading, Theme.Space.l)
+            }
+            .overlay(alignment: .topTrailing) {
+                if let trailing { StoreTimer(ends: trailing).padding(Theme.Space.s) }
+            }
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(tint.opacity(0.6), lineWidth: 1))
+            .padding(.horizontal, Theme.Space.m)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private var band: some View {
         HStack(spacing: Theme.Space.s) {
             ZStack(alignment: .leading) {
                 StoreSlant().fill(StoreColors.gradient(tint))
@@ -26,6 +60,26 @@ struct StoreBand: View {
         .frame(height: 50)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+extension BoxBundle {
+    /// Offer picture of a box bundle, for example offer.boxbundle.cabinetx5.
+    var offerArt: String { "offer.boxbundle." + kind.rawValue + "x" + String(count) }
+}
+
+extension GoldPack {
+    /// Pack picture, for example goldpack.pouch for gold.pouch.
+    var art: String { "goldpack." + (id.split(separator: ".").last.map(String.init) ?? id) }
+}
+
+/// Store pictures: banners, offer art, gold and money packs. Nil until the picture exists, so the drawn look stays.
+enum StoreArt {
+    static func image(_ name: String) -> Image? {
+        #if canImport(UIKit)
+        if let ui = ArtAsset.uiImage(name) { return Image(uiImage: ui) }
+        #endif
+        return nil
     }
 }
 
@@ -91,7 +145,7 @@ struct StoreOffersSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            StoreBand(title: "Offers", glyph: Glyph.shopBag, tint: StoreColors.purple)
+            StoreBand(title: "Offers", glyph: Glyph.shopBag, tint: StoreColors.purple, art: "store.band.battlepass")
             if season.premiumOpen(plus: ent.isPlus, founder: ent.isFounder) { StoreSeasonCard() } else { passOffer }
             if let b = StorePurchase.bestBundle { bundleOffer(b) }
             ProPlansView(part: .offers)
@@ -106,7 +160,7 @@ struct StoreOffersSection: View {
         if bundle.gold > 0 { rewards.append(.gold(bundle.gold)) }
         return StoreOfferCard(title: "Season \(season.pass.seasonNumber) Battle Pass", line: "Unlock the premium rewards of this season.",
                               tint: StoreColors.pink, ends: Calendar.current.date(byAdding: .day, value: max(1, left), to: Calendar.current.startOfDay(for: Date())),
-                              rewards: rewards) {
+                              rewards: rewards, art: "offer.battlepass") {
             VStack(spacing: Theme.Space.s) {
                 StoreAppStoreButton(item: .seasonBundle, identifier: "plan-season-bundle")
                 StoreAppStoreButton(item: .seasonLevels, title: "+\(GoldStore.seasonLevels.tiers) tiers", identifier: "plan-season-levels")
@@ -124,7 +178,7 @@ struct StoreOffersSection: View {
 
     private func bundleOffer(_ b: BoxBundle) -> some View {
         StoreOfferCard(title: "\(b.count) \(b.kind.title)es", line: "\(b.savingPercent)% less than buying them one by one.", tint: StoreColors.orange,
-                       tag: "BEST SAVING", rewards: [.boxes(b.count, b.kind)]) {
+                       tag: "BEST SAVING", rewards: [.boxes(b.count, b.kind)], art: b.offerArt) {
             Button { Haptics.tap(); ask(.boxBundle(b)) } label: { StorePriceBar(gold: b.price) }
                 .buttonStyle(PressableStyle())
                 .accessibilityIdentifier("store-featured-bundle")
@@ -152,6 +206,7 @@ struct StoreBundlesSection: View {
         Button { Haptics.tap(); ask(.boxBundle(b)) } label: {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("\(b.count) \(b.kind.title)es").font(.headline.weight(.heavy)).foregroundStyle(.white).lineLimit(2).minimumScaleFactor(0.8)
+                OfferPicture(name: b.offerArt)
                 HStack { RewardIcon(reward: .boxes(b.count, b.kind), size: 42); Spacer(minLength: 0); StoreTag(text: "-\(b.savingPercent)%", tint: StoreColors.yellow) }
                 StorePriceBar(gold: b.price)
             }
@@ -174,7 +229,7 @@ struct StoreShelfSection: View {
         let picks: [ShelfPick] = session.shelf
         let owned: Set<String> = SeasonModel.shared.pass.owned
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            StoreBand(title: "Today's shelf", glyph: Glyph.person, tint: StoreColors.blue, trailing: StoreTimer.nextServerDay)
+            StoreBand(title: "Today's shelf", glyph: Glyph.person, tint: StoreColors.blue, trailing: StoreTimer.nextServerDay, art: "store.band.cosmetics")
             if picks.isEmpty {
                 Text("Today's shelf appears once the Store is online.").textStyle(.body, tint: Theme.inkSoft).padding(.horizontal, Theme.Space.m)
             } else {
@@ -233,7 +288,7 @@ struct StoreMoneySection: View {
     var body: some View {
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 3)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            StoreBand(title: "Money", glyph: Glyph.bank, tint: StoreColors.green)
+            StoreBand(title: "Money", glyph: Glyph.bank, tint: StoreColors.green, art: "store.band.money")
             LazyVGrid(columns: columns, spacing: Theme.Space.s) {
                 FreeMoneyTile()
                 ForEach(MoneyPacks.packs, id: \.id) { (pack: MoneyPack) in
@@ -253,12 +308,13 @@ private struct MoneyTileFrame<Price: View>: View {
     var amount: String
     var tag: String?
     var tint: Color
+    var art: String = ""
     @ViewBuilder var price: () -> Price
 
     var body: some View {
         VStack(spacing: Theme.Space.xs) {
             Text(title).font(.caption.weight(.heavy)).foregroundStyle(.white.opacity(0.9)).lineLimit(1)
-            RewardIcon(reward: StoreReward(kind: .money, amount: amount), size: 40)
+            RewardIcon(reward: StoreReward(kind: .money, amount: amount), size: 40, art: art)
             if let tag { StoreTag(text: tag, tint: StoreColors.yellow) } else { Color.clear.frame(height: 18) }
             price()
         }
@@ -277,7 +333,7 @@ struct MoneyPackTile: View {
         let open: Bool = session.canSellForCash
         Button { Haptics.tap(); buy() } label: {
             MoneyTileFrame(title: pack.name, amount: open ? StorePurchase.moneyText(pack) : "Open a game",
-                           tag: pack.bonusPercent > 0 ? "+\(pack.bonusPercent)%" : nil, tint: StoreColors.green) {
+                           tag: pack.bonusPercent > 0 ? "+\(pack.bonusPercent)%" : nil, tint: StoreColors.green, art: "moneypack." + pack.id) {
                 StorePriceBar(gold: pack.gold)
             }
             .opacity(open ? 1 : 0.55)
@@ -301,7 +357,7 @@ struct FreeMoneyTile: View {
         let ready: Bool = used >= 0 && ads.canOfferFreeMoney && session.canSellForCash && !busy
         Button { Haptics.tap(); claim() } label: {
             MoneyTileFrame(title: "Free pack", amount: session.canSellForCash ? StorePurchase.moneyText(pack) : "Open a game",
-                           tag: left == 1 ? "1 left today" : "\(left) left today", tint: StoreColors.cyan) {
+                           tag: left == 1 ? "1 left today" : "\(left) left today", tint: StoreColors.cyan, art: "moneypack." + pack.id) {
                 HStack(spacing: 4) {
                     Image(systemName: "play.fill").font(.caption.weight(.black))
                     Text("FREE").font(.headline.weight(.heavy))

@@ -27,6 +27,7 @@ struct ProPlansView: View {
 
     private var offers: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            StoreBand(title: "Ledger plans", glyph: Glyph.shopBag, tint: StoreColors.violet, art: "store.band.plans")
             plusCard
             proCard
             founderCard
@@ -50,8 +51,9 @@ struct ProPlansView: View {
         .padding(.horizontal, Theme.Space.m)
     }
 
-    private func card<Actions: View>(title: String, line: String, owned: String?, tint: Color = StoreColors.violet, glow: Bool = false, id: String, @ViewBuilder actions: () -> Actions) -> some View {
+    private func card<Actions: View>(title: String, line: String, owned: String?, tint: Color = StoreColors.violet, glow: Bool = false, id: String, art: String = "", @ViewBuilder actions: () -> Actions) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
+            OfferPicture(name: art)
             HStack(spacing: Theme.Space.s) {
                 Text(title.uppercased()).font(.title2.weight(.black)).italic().foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 0)
@@ -97,7 +99,7 @@ struct ProPlansView: View {
         let owned: String? = ent.isPlus ? "Active" : nil
         let monthly: String = purchases.price(.plan(.plusMonthly)) ?? ""
         return card(title: "Ledger Plus", line: "The Battle Pass premium track every season, a small profile flair and a profile icon.",
-                    owned: owned, tint: StoreColors.blue, glow: owned == nil, id: "plan-plus") {
+                    owned: owned, tint: StoreColors.blue, glow: owned == nil, id: "plan-plus", art: "offer.plus") {
             if owned == nil && ent.snapshot.owned.contains(.proYearly) {
                 Text("Included with your Pro subscription.").textStyle(.caption, tint: Color.white.opacity(0.85))
             } else if owned == nil {
@@ -138,7 +140,7 @@ struct ProPlansView: View {
     private var proCard: some View {
         let owned: String? = ent.ownsPro ? "Owned" : nil
         return card(title: "Ledger Pro", line: "A big gold bundle, \(StoreText.gold(GoldPrices.proBundleGold)), worth about 10 loot boxes, and an exclusive profile icon that cannot be traded.",
-                    owned: owned, tint: StoreColors.purple, id: "plan-pro") {
+                    owned: owned, tint: StoreColors.purple, id: "plan-pro", art: "offer.pro") {
             if owned == nil {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack {
@@ -171,7 +173,7 @@ struct ProPlansView: View {
         let onSale: Bool = PlanPerks.founderOnSale(season: season.pass.seasonNumber)
         let owned: String? = ent.isFounder ? "Owned" : nil
         return card(title: "Founder's Edition", line: "The top tier: \(StoreText.gold(GoldPrices.founderBundleGold)), a Founder flair, an exclusive pack of profile pictures and company logos, and the Season 1 Battle Pass with \(GoldPrices.founderPassTiers) tiers unlocked. Season 1 only, bought once.",
-                    owned: owned, tint: StoreColors.orange, glow: onSale, id: "plan-founder") {
+                    owned: owned, tint: StoreColors.orange, glow: onSale, id: "plan-founder", art: "offer.founder") {
             if owned == nil && onSale {
                 HStack {
                     Spacer(minLength: 0)
@@ -188,6 +190,7 @@ struct ProPlansView: View {
         let best: String? = StorePurchase.bestPack?.id
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 3)
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            if first { OfferPicture(name: "offer.firstpurchase").padding(.horizontal, Theme.Space.m) }
             Text("Gold packs").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
             LazyVGrid(columns: columns, spacing: Theme.Space.s) {
                 ForEach(GoldStore.packs) { (pack: GoldPack) in

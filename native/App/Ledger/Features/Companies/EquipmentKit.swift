@@ -48,6 +48,7 @@ struct EquipmentListRow: View {
     var glyph: String = Glyph.settings
     var identifier: String = ""
     var action: () -> Void
+    @Environment(\.equipmentTrade) private var trade
 
     var body: some View {
         Button {
@@ -55,7 +56,7 @@ struct EquipmentListRow: View {
             action()
         } label: {
             HStack(alignment: .center, spacing: Theme.Space.m) {
-                SlotImage(asset: ArtAsset.equipment(equipmentID), glyph: glyph, size: 52)
+                SlotImage(asset: ArtAsset.equipment(equipmentID, trade: trade), glyph: glyph, size: 52)
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     Text(name.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
                     if !detail.isEmpty { Text(detail.tidyText).textStyle(.caption).lineLimit(1).multilineTextAlignment(.leading) }

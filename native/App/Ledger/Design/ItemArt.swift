@@ -13,12 +13,23 @@ extension ArtLibrary {
         let key: NSString = (category.rawValue + "." + id) as NSString
         if let hit = catalogue.object(forKey: key) { return hit }
         if missing.object(forKey: key) != nil { return nil }
-        guard let img = UIImage(named: catalogueName(category, id)) ?? droppedImage(category.rawValue + "." + id) else {
+        let tier: UIImage? = category == .gold ? rewardTierStem(id).flatMap { (stem: String) -> UIImage? in droppedImage(stem) } : nil
+        guard let img = UIImage(named: catalogueName(category, id)) ?? droppedImage(category.rawValue + "." + id) ?? tier else {
             missing.setObject(NSNumber(value: true), forKey: key)
             return nil
         }
         catalogue.setObject(img, forKey: key)
         return img
+    }
+
+    /// Season gold and XP rewards without their own picture share one by size: a coin pile or a star.
+    static func rewardTierStem(_ id: String) -> String? {
+        guard let r = SeasonRewards.item(id), r.amount > 0 else { return nil }
+        if r.kind == .xp { return "reward.xp." + (r.amount >= 250 ? "250" : "200") }
+        guard r.kind == .gold else { return nil }
+        let tiers: [Int] = [12, 18, 24, 40, 55]
+        let best: Int = tiers.min { (a: Int, b: Int) -> Bool in abs(a - r.amount) < abs(b - r.amount) } ?? 12
+        return "reward.gold.\(best)"
     }
 
     private static let catalogue = NSCache<NSString, UIImage>()
@@ -143,10 +154,32 @@ enum ArtAsset {
         #endif
     }
 
-    static func equipment(_ id: String) -> String { "equipment." + id }
+    /// The picture of an equipment item. Ids shared by several trades can point at a better picture for one trade ("trade.id").
+    static func equipment(_ id: String, trade: String = "") -> String {
+        "equipment." + (equipmentAlias[trade + "." + id] ?? equipmentAlias[id] ?? id)
+    }
+
+    /// Items whose own picture shows something else: the existing picture that fits.
+    private static let equipmentAlias: [String: String] = [
+        "kit": "kitch", "tbar": "ilift", "ilift": "tbar", "pay": "sw",
+        "skires.chair": "tbar", "photo.cam": "photo", "laundry.wash": "laun", "laundry.dry": "laun",
+        "trucking.truck": "dtruck", "wholesale.truck": "dtruck", "electrician.lift": "lad", "mktg.tools": "crm",
+    ]
 
     static func cellFallback(_ equipmentID: String, group: String, seed: String) -> String {
         exists(equipment(equipmentID)) ? "" : (ArtLibrary.itemKey(group: group, familyKey: equipmentID, seed: seed) ?? "")
+    }
+}
+
+private struct EquipmentTradeKey: EnvironmentKey {
+    static let defaultValue: String = ""
+}
+
+extension EnvironmentValues {
+    /// The trade of the company whose equipment is listed, for trade-specific equipment pictures.
+    var equipmentTrade: String {
+        get { self[EquipmentTradeKey.self] }
+        set { self[EquipmentTradeKey.self] = newValue }
     }
 }
 

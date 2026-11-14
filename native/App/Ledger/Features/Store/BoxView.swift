@@ -304,7 +304,7 @@ struct BoxResultCard: View {
                         .id(opened.id)
                 }
             } else {
-                BoxShake(kind: kind, rarity: r.rarity, start: start)
+                BoxShake(kind: kind, rarity: opened.opening.results.map(\.rarity).max() ?? r.rarity, start: start)
             }
         }
         .frame(maxWidth: .infinity).frame(height: 200)
