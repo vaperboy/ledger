@@ -1,4 +1,5 @@
 # What's new
+- Store offers show how many you can still buy ("Available 1/1" on the weekly featured bundle, "Remaining 2/3" on bundles and money packs, with the time until they come back), and gold packs are marked "Most popular" and "Best value"
 - Cleaner "Invite a friend": pick a face, then one slider each for share and price (tap the number to type, a small mark shows fair value), Partner or CFO, and one summary line above Send offer; all popups keep a safe margin from their edges
 - Inviting a co-owner lists only your real friends
 - New art: outfits, faces, hair styles, backdrops, flairs, store offers, packs and box opening animations

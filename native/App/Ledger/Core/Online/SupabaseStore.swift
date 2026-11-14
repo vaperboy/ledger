@@ -36,6 +36,19 @@ struct ServerStoreInfo: Codable, Equatable, Sendable {
     /// Prices in force (catalogue or an administrator's), by group: boxes, bundles, rarity, items, services.
     var prices: [String: [String: Int]]?
     var events: Events?
+    var limits: [OfferLimit]?
+
+    /// A limited offer (a box bundle or money pack): how many sell per day or week, how many are left, when it resets.
+    struct OfferLimit: Codable, Equatable, Sendable {
+        var kind: String
+        var id: String
+        var cap: Int
+        var left: Int
+        var period: String
+        var featured: Bool
+        /// Seconds since 1970.
+        var resetsAt: Double
+    }
 
     /// The event boxes on sale: the rotation number and the first server day of the next one.
     struct Events: Codable, Equatable, Sendable {

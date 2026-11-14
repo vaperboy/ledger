@@ -83,6 +83,44 @@ enum StoreArt {
     }
 }
 
+extension StoreSession {
+    /// The server's purchase limit on an offer; nil when it has none or the Store is offline.
+    func offerLimit(_ kind: String, _ id: String) -> ServerStoreInfo.OfferLimit? {
+        server?.limits?.first { $0.kind == kind && $0.id == id }
+    }
+
+    /// The bundle on the Offers card: the one the server features, else the biggest saving.
+    var featuredBundle: BoxBundle? {
+        if let id = server?.limits?.first(where: { $0.kind == "bundle" && $0.featured })?.id,
+           let b = GoldStore.boxBundles.first(where: { $0.id == id }) { return b }
+        return StorePurchase.bestBundle
+    }
+}
+
+extension ServerStoreInfo.OfferLimit {
+    var soldOut: Bool { left <= 0 }
+    var resets: Date { Date(timeIntervalSince1970: resetsAt) }
+    /// "Remaining 2/3", or "Available 1/1" for a one-off offer.
+    var counter: String { (cap == 1 ? "Available " : "Remaining ") + "\(max(0, left))/\(cap)" }
+}
+
+/// A limited offer's counter: "Remaining 2/3", or "Sold out" with the time until it comes back.
+struct StoreLimitPill: View {
+    var limit: ServerStoreInfo.OfferLimit
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { tl in
+            Text(limit.soldOut ? "Sold out · back in " + StoreTimer.text(limit.resets.timeIntervalSince(tl.date)) : limit.counter)
+                .font(.caption2.weight(.heavy)).monospacedDigit().foregroundStyle(.white)
+                .lineLimit(1).minimumScaleFactor(0.7)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(Capsule().fill(Color.black.opacity(0.3)))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(limit.soldOut ? "Sold out" : limit.counter)
+    }
+}
+
 private struct StoreSlant: Shape {
     func path(in rect: CGRect) -> Path {
         let cut: CGFloat = 22
@@ -142,12 +180,13 @@ struct StoreOffersSection: View {
     var ask: (GoldGood) -> Void
     @ObservedObject private var season = SeasonModel.shared
     @Environment(Entitlements.self) private var ent
+    private let session = StoreSession.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             StoreBand(title: "Offers", glyph: Glyph.shopBag, tint: StoreColors.purple, art: "store.band.battlepass")
             if season.premiumOpen(plus: ent.isPlus, founder: ent.isFounder) { StoreSeasonCard() } else { passOffer }
-            if let b = StorePurchase.bestBundle { bundleOffer(b) }
+            if let b = session.featuredBundle { bundleOffer(b, limit: session.offerLimit("bundle", b.id)) }
             ProPlansView(part: .offers)
         }
     }
@@ -176,13 +215,19 @@ struct StoreOffersSection: View {
         }
     }
 
-    private func bundleOffer(_ b: BoxBundle) -> some View {
-        StoreOfferCard(title: "\(b.count) \(b.kind.title)es", line: "\(b.savingPercent)% less than buying them one by one.", tint: StoreColors.orange,
-                       tag: "BEST SAVING", rewards: [.boxes(b.count, b.kind)], art: b.offerArt) {
-            Button { Haptics.tap(); ask(.boxBundle(b)) } label: { StorePriceBar(gold: b.price) }
-                .buttonStyle(PressableStyle())
-                .adminPrice(kind: "bundle", id: b.id, current: b.price)
-                .accessibilityIdentifier("store-featured-bundle")
+    private func bundleOffer(_ b: BoxBundle, limit: ServerStoreInfo.OfferLimit?) -> some View {
+        let saving: String = "\(b.savingPercent)% less than buying them one by one."
+        let line: String = limit.map { (l: ServerStoreInfo.OfferLimit) -> String in l.counter + " · " + saving } ?? saving
+        return StoreOfferCard(title: "\(b.count) \(b.kind.title)es", line: line, tint: StoreColors.orange,
+                              tag: "BEST SAVING", ends: limit?.resets, rewards: [.boxes(b.count, b.kind)], art: b.offerArt) {
+            if let limit, limit.soldOut {
+                StoreLimitPill(limit: limit).frame(maxWidth: .infinity, minHeight: 44)
+            } else {
+                Button { Haptics.tap(); ask(.boxBundle(b)) } label: { StorePriceBar(gold: b.price) }
+                    .buttonStyle(PressableStyle())
+                    .adminPrice(kind: "bundle", id: b.id, current: b.price)
+                    .accessibilityIdentifier("store-featured-bundle")
+            }
         }
     }
 }
@@ -190,13 +235,16 @@ struct StoreOffersSection: View {
 /// BUNDLES: every box bundle as a card with what it holds and its price.
 struct StoreBundlesSection: View {
     var ask: (GoldGood) -> Void
+    private let session = StoreSession.shared
 
     var body: some View {
         let columns: [GridItem] = [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible())]
+        let featured: String? = session.featuredBundle?.id
+        let bundles: [BoxBundle] = GoldStore.boxBundles.filter { (b: BoxBundle) -> Bool in b.id != featured }
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             StoreBand(title: "Bundles", glyph: Glyph.luxury, tint: StoreColors.green)
             LazyVGrid(columns: columns, spacing: Theme.Space.s) {
-                ForEach(GoldStore.boxBundles) { (b: BoxBundle) in card(b) }
+                ForEach(bundles) { (b: BoxBundle) in card(b, limit: session.offerLimit("bundle", b.id)) }
             }
             .padding(.horizontal, Theme.Space.m)
             Text("You open a bundle's boxes one by one right after buying it; any you leave wait in your stock.").textStyle(.caption)
@@ -204,13 +252,15 @@ struct StoreBundlesSection: View {
         }
     }
 
-    private func card(_ b: BoxBundle) -> some View {
-        Button { Haptics.tap(); ask(.boxBundle(b)) } label: {
+    private func card(_ b: BoxBundle, limit: ServerStoreInfo.OfferLimit?) -> some View {
+        let closed: Bool = limit?.soldOut ?? false
+        return Button { Haptics.tap(); ask(.boxBundle(b)) } label: {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("\(b.count) \(b.kind.title)es").font(.headline.weight(.heavy)).foregroundStyle(.white).lineLimit(2).minimumScaleFactor(0.8)
                 OfferPicture(name: b.offerArt)
                 HStack { RewardIcon(reward: .boxes(b.count, b.kind), size: 42); Spacer(minLength: 0); StoreTag(text: "-\(b.savingPercent)%", tint: StoreColors.yellow) }
-                StorePriceBar(gold: b.price)
+                if let limit { StoreLimitPill(limit: limit) }
+                StorePriceBar(gold: b.price).opacity(closed ? 0.5 : 1)
             }
             .padding(Theme.Space.s)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -218,6 +268,7 @@ struct StoreBundlesSection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
+        .disabled(closed)
         .adminPrice(kind: "bundle", id: b.id, current: b.price)
         .accessibilityIdentifier("store-bundle-\(b.id)")
     }
@@ -286,7 +337,7 @@ struct ShelfTile: View {
     }
 }
 
-/// MONEY: game money bought with gold, a three-column grid. The first tile is the free pack.
+/// MONEY: game money bought with gold, a three-column grid. The first tile is the free pack; each pack sells a few times a day.
 struct StoreMoneySection: View {
     var ask: (GoldGood) -> Void
     private let session = StoreSession.shared
@@ -315,6 +366,8 @@ private struct MoneyTileFrame<Price: View>: View {
     var tag: String?
     var tint: Color
     var art: String = ""
+    var limit: ServerStoreInfo.OfferLimit? = nil
+    var counter: String? = nil
     @ViewBuilder var price: () -> Price
 
     var body: some View {
@@ -322,6 +375,13 @@ private struct MoneyTileFrame<Price: View>: View {
             Text(title).font(.caption.weight(.heavy)).foregroundStyle(.white.opacity(0.9)).lineLimit(1)
             RewardIcon(reward: StoreReward(kind: .money, amount: amount), size: 40, art: art)
             if let tag { StoreTag(text: tag, tint: StoreColors.yellow) } else { Color.clear.frame(height: 18) }
+            if let limit {
+                StoreLimitPill(limit: limit)
+            } else if let counter {
+                Text(counter).font(.caption2.weight(.heavy)).monospacedDigit().foregroundStyle(.white)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(Capsule().fill(Color.black.opacity(0.3)))
+            }
             price()
         }
         .padding(Theme.Space.xs)
@@ -336,10 +396,13 @@ struct MoneyPackTile: View {
     private let session = StoreSession.shared
 
     var body: some View {
-        let open: Bool = session.canSellForCash
+        let limit: ServerStoreInfo.OfferLimit? = session.offerLimit("money", pack.id)
+        let cash: Bool = session.canSellForCash
+        let open: Bool = cash && !(limit?.soldOut ?? false)
         Button { Haptics.tap(); buy() } label: {
-            MoneyTileFrame(title: pack.name, amount: open ? StorePurchase.moneyText(pack) : "Open a game",
-                           tag: pack.bonusPercent > 0 ? "+\(pack.bonusPercent)%" : nil, tint: StoreColors.green, art: "moneypack." + pack.id) {
+            MoneyTileFrame(title: pack.name, amount: cash ? StorePurchase.moneyText(pack) : "Open a game",
+                           tag: pack.bonusPercent > 0 ? "+\(pack.bonusPercent)%" : nil, tint: StoreColors.green, art: "moneypack." + pack.id,
+                           limit: limit) {
                 StorePriceBar(gold: pack.gold)
             }
             .opacity(open ? 1 : 0.55)
@@ -363,7 +426,8 @@ struct FreeMoneyTile: View {
         let ready: Bool = used >= 0 && ads.canOfferFreeMoney && session.canSellForCash && !busy
         Button { Haptics.tap(); claim() } label: {
             MoneyTileFrame(title: "Free pack", amount: session.canSellForCash ? StorePurchase.moneyText(pack) : "Open a game",
-                           tag: left == 1 ? "1 left today" : "\(left) left today", tint: StoreColors.cyan, art: "moneypack." + pack.id) {
+                           tag: "WATCH AD", tint: StoreColors.cyan, art: "moneypack." + pack.id,
+                           counter: "Remaining \(left)/\(MoneyPacks.freePerDay)") {
                 HStack(spacing: 4) {
                     Image(systemName: "play.fill").font(.caption.weight(.black))
                     Text("FREE").font(.headline.weight(.heavy))

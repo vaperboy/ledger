@@ -85,7 +85,13 @@ enum StorePurchase {
         }
     }
 
-    static var bestPack: GoldPack? { GoldStore.packs.max { GoldStore.goldPerUnit($0) < GoldStore.goldPerUnit($1) } }
+    /// The biggest gold pack carries "Best value"; the middle one "Most popular".
+    static var bestPack: GoldPack? { GoldStore.packs.max { $0.gold < $1.gold } }
+
+    static var popularPack: GoldPack? {
+        let packs: [GoldPack] = GoldStore.packs
+        return packs.count > 2 ? packs[packs.count / 2] : nil
+    }
 
     static var bestBundle: BoxBundle? { GoldStore.boxBundles.max { $0.savingPercent < $1.savingPercent } }
 }
