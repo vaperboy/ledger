@@ -188,13 +188,14 @@ struct ProPlansView: View {
     private var packs: some View {
         let first: Bool = !session.state.firstPurchaseDone
         let best: String? = StorePurchase.bestPack?.id
+        let popular: String? = StorePurchase.popularPack?.id
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 3)
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             if first { OfferPicture(name: "offer.firstpurchase").padding(.horizontal, Theme.Space.m) }
             Text("Gold packs").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
             LazyVGrid(columns: columns, spacing: Theme.Space.s) {
                 ForEach(GoldStore.packs) { (pack: GoldPack) in
-                    PackTile(pack: pack, first: first, best: pack.id == best)
+                    PackTile(pack: pack, first: first, best: pack.id == best, popular: pack.id == popular)
                 }
             }
             .padding(.horizontal, Theme.Space.m)

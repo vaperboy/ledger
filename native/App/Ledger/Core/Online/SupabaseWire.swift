@@ -189,6 +189,7 @@ enum SupabaseWire {
         case "in_debt": return .rejected("A refunded purchase left \(amount.isEmpty ? "some" : amount) gold owed. Spending opens again once new gold has covered it.")
         case "weekly_limit": return .rejected(amount == "0" || amount.isEmpty ? "You have bought all the money allowed this week. Try again in a few days." : "This week you can spend \(amount) more gold on money.")
         case "daily_limit": return .rejected("That is all for today. Come back tomorrow.")
+        case "offer_limit": return .rejected(amount == "week" ? "You have bought this offer as often as it sells this week." : "You have bought this offer as often as it sells today.")
         case "already_owned": return .rejected("You already have this.")
         case "already_claimed": return .rejected(StoreWireText.alreadyClaimed)
         case "no_reward": return .rejected(StoreWireText.noReward)

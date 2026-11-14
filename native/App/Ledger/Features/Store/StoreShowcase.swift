@@ -97,17 +97,32 @@ struct PackTile: View {
     var pack: GoldPack
     var first: Bool
     var best: Bool
+    var popular: Bool = false
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
         VStack(spacing: Theme.Space.xs) {
-            Text(pack.name).font(.caption.weight(.heavy)).foregroundStyle(.white).lineLimit(1)
+            Text(pack.name.uppercased()).font(.subheadline.weight(.black)).italic().foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.7)
             RewardIcon(reward: .gold(GoldStore.totalGold(pack, firstPurchase: first)), size: 44, art: pack.art)
-            if best { StoreTag(text: "BEST VALUE", tint: StoreColors.red) } else if first { StoreTag(text: "+BONUS", tint: StoreColors.green) } else { Color.clear.frame(height: 18) }
+            tag
             StoreAppStoreButton(item: .goldPack(pack.id), identifier: "pack-" + pack.id)
         }
         .padding(Theme.Space.xs)
         .frame(maxWidth: .infinity, minHeight: 168)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(StoreColors.gradient(StoreColors.orange)))
+        .background(shape.fill(StoreColors.gradient(StoreColors.orange)))
+        .overlay(shape.strokeBorder(best || popular ? StoreColors.yellow : Color.clear, lineWidth: 2))
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder private var tag: some View {
+        if best {
+            StoreTag(text: "BEST VALUE", tint: StoreColors.red)
+        } else if popular {
+            StoreTag(text: "MOST POPULAR", tint: StoreColors.pink)
+        } else if first {
+            StoreTag(text: "+BONUS", tint: StoreColors.green)
+        } else {
+            Color.clear.frame(height: 18)
+        }
     }
 }
