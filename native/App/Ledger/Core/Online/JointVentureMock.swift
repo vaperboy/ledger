@@ -10,9 +10,7 @@ final class MockJointVentureService: JointVentureService, @unchecked Sendable {
     init(online: any OnlineService) { self.online = online }
 
     func invitable() async -> [PlayerProfile] {
-        if let overview = try? await online.friends(), !overview.friends.isEmpty { return overview.friends }
-        let sample: [PlayerProfile] = OnlineDirectoryCache.players.filter { $0.relation != .you && $0.relation != .blocked }
-        return Array(sample.prefix(12))
+        (try? await online.friends())?.friends ?? []
     }
 
     func send(_ offer: JVOffer) async {

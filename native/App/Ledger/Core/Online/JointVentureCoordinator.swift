@@ -31,16 +31,11 @@ final class JointVentureCoordinator {
         board = online as? any VentureBoardService
     }
 
-    // Friends on the server are real players. Sample players are offered only when there is no server, or no friend yet.
+    /// Only real friends can be invited; with none, the sheet shows how to add one.
     func invitable() async -> [PlayerProfile] {
-        if board != nil {
-            if let overview = try? await online.friends(), !overview.friends.isEmpty {
-                realIDs.formUnion(overview.friends.map { (p: PlayerProfile) -> String in p.id })
-                return overview.friends
-            }
-            if FakePlayers.removed { return [] }
-        }
-        return await service.invitable()
+        guard let overview = try? await online.friends() else { return [] }
+        if board != nil { realIDs.formUnion(overview.friends.map { (p: PlayerProfile) -> String in p.id }) }
+        return overview.friends
     }
 
     func isReal(_ playerID: String) -> Bool { board != nil && realIDs.contains(playerID) }
