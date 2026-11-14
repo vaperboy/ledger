@@ -19,7 +19,7 @@ public struct FirstYear: Sendable, Equatable {
     /// Share of the savings kept as working money when the bank lends for the opening kit.
     public var startKeepShare = 0.5
     /// The grant never exceeds this share of the savings, so no trade starts much richer than another.
-    public var startGrantCapShare = 0.5
+    public var startGrantCapShare = 0.3
     public var untendedDemand = 1.0
     public var untendedServe = 1.0
 

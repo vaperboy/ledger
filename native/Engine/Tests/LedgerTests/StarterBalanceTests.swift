@@ -49,7 +49,9 @@ final class StarterBalanceTests: XCTestCase {
             for trade in TradeUnlocks.starterIDs {
                 do { rows.append(try Self.play(code, trade)) } catch { XCTFail("\(code) \(trade) did not start: \(error)") }
             }
-            let cur = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 7).homeCurrency
+            let plain = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 7)
+            let cur = plain.homeCurrency
+            let cap = plain.data.balance.firstYear.startGrantCapShare
             func k(_ v: Double) -> String { String(Int((v / cur.rate).rounded())) }
             var table = ["STARTERS \(code) trade own grant loan kit staff nw0 nw5 nw12 nw26"]
             for r in rows {
@@ -67,7 +69,7 @@ final class StarterBalanceTests: XCTestCase {
                 }
             }
             for r in rows {
-                XCTAssertLessThanOrEqual(r.grant, r.own * 0.5 + 100, "\(code) \(r.trade): the grant stays a small share of the savings")
+                XCTAssertLessThanOrEqual(r.grant, r.own * cap + 100, "\(code) \(r.trade): the grant stays a small share of the savings")
                 XCTAssertTrue(r.trophyWeeks.allSatisfy { $0 >= Trophies.quietWeeks }, "\(code) \(r.trade): a trophy in the first weeks \(r.trophyWeeks)")
                 XCTAssertLessThan(r.nw[26] ?? 0, (r.nw[0] ?? 0) * 3, "\(code) \(r.trade): half a year on defaults does not triple the start")
             }
